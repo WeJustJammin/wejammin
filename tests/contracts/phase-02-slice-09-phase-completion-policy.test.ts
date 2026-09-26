@@ -35,22 +35,19 @@ const acPolicyWindows = (source: string, id: string): string[] =>
     },
   );
 
-const linesContaining = (source: string, pattern: RegExp): string[] =>
-  source.split(/\r?\n/u).filter((line) => pattern.test(line));
-
 describe('Phase 2 Slice 09 completion policy', () => {
-  it('[P2-S09-AC-267] preserves 283 authored IDs with separate 280-item Slice 09 and 1997-item Phase 2 implementation denominators', () => {
+  it('[P2-S09-AC-267] preserves 283 authored IDs with separate 279-item Slice 09 and 1996-item Phase 2 implementation denominators', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(acceptanceIds(source), label).toEqual(expectedAuthoredIds);
       expect(source, label).toMatch(
-        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*1,?997\b/iu,
+        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*1,?996\b/iu,
       );
       expect(source, label).toMatch(
-        /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*280\b/iu,
+        /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*279\b/iu,
       );
-      expect(source, label).toMatch(/279\/280\s+active/iu);
+      expect(source, label).toMatch(/279\/279\s+active/iu);
       expect(source, label).toMatch(
-        /283 authored[^\n]*(?:AC209|AC211|AC266|production)/iu,
+        /283 authored[^\n]*(?:AC209|AC211|AC265|AC266|production)/iu,
       );
     }
   });
@@ -112,21 +109,17 @@ describe('Phase 2 Slice 09 completion policy', () => {
     );
   });
 
-  it('[P2-S09-AC-265] limits the Slice 10 implementation prerequisite to the staging-only hosted matrix', () => {
+  it('[P2-S09-AC-265] defers genuine hosted acceptance to pre-release without gating Slice 10 implementation', () => {
     for (const [label, source] of authoritativeDocuments) {
-      const dependencyLines = linesContaining(source, /Slice\s*10/iu);
-      const implementationPrerequisite = dependencyLines.find(
-        (line) =>
-          /AC265/iu.test(line) &&
-          !/AC209/iu.test(line) &&
-          !/AC211/iu.test(line) &&
-          !/AC266/iu.test(line),
+      expect(source, `${label} AC265 release timing`).toMatch(
+        /AC265[^\n]*mandatory pre-release|AC265[^\n]*pre-release[^\n]*mandatory/iu,
       );
-
-      expect(
-        implementationPrerequisite,
-        `${label} Slice 10 dependency`,
-      ).toBeDefined();
+      expect(source, `${label} Slice 10 dependency`).toMatch(
+        /AC265[^\n]*does not (?:block|gate) Slice 10 implementation|Slice 10 implementation[^\n]*no AC265 prerequisite/iu,
+      );
+      expect(source, `${label} AC265 row remains unchecked`).toMatch(
+        /^\s*-\s*\[ \].*P2-S09-AC-265/mu,
+      );
     }
   });
 
