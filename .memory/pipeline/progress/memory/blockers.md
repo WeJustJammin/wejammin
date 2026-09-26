@@ -2,18 +2,17 @@
 
 ## Active
 
-- **P2-S09 external release evidence** (updated 2026-09-25) — Slice 09 remains
-  at **279/280 active** (**283 authored IDs**) with authored depth ratio
-  **0.986**. Phase 2 has **1,997 active criteria / 2,000 authored** because
-  AC209, AC211, and AC266 are authored and unchecked outside the active
-  implementation-completion denominator (DEC-101, DEC-104).
-  AC265 is the only Slice 10 implementation prerequisite and remains an active
-  implementation gate. It **cannot close prelaunch** as currently implemented:
-  its contract is staging-only, but its declared acceptance route requires the
-  combined release-evidence verifier, which pins `alerting.deploymentId` and
-  `slo.deploymentId` to the expected production deployment. A hosted-scope
-  acceptance route is the tracked follow-up (DEC-104); until it lands the
-  prelaunch circularity is only partially resolved.
+- **P2-S09 external release evidence** (updated 2026-09-26) — Slice 09
+  implementation is complete at **279/279 active** (**283 authored IDs**),
+  with authored depth ratio **0.986** and active depth ratio **1.000**. Phase 2
+  has **1,996 active criteria / 2,000 authored**. AC209, AC211, AC265, and
+  AC266 remain authored and unchecked outside the active implementation
+  denominator (DEC-101, DEC-104, DEC-105). Slice 10 implementation is
+  unblocked. AC265 is a mandatory pre-release hosted acceptance gate, not a
+  Slice 10 implementation prerequisite. Its separate staging-scope verifier
+  exists, but genuine nine-role/ten-scenario hosted evidence, signed exact
+  artifact provenance, and an authenticated receipt remain absent. No AC265
+  acceptance is claimed.
   AC209 is deferred as a production-rollout/post-initial-controlled-deployment
   alert gate that must pass before alerting is declared ready — it does not
   gate Slice 10 implementation or the initial controlled production

@@ -52,6 +52,7 @@
 - [[specs/audits/phase-1-validation|Phase 1 Validation]] — audit — spec-vault
 - [[specs/audits/propagation-ac209-ac211-2026-09-25|Approved AC209/AC211 prelaunch production-evidence propagation]] — audit — spec-vault
 - [[specs/audits/propagation-ac265-2026-09-09|Approved AC265 propagation]] — audit — spec-vault
+- [[specs/audits/propagation-ac265-pre-release-2026-09-26|Approved AC265 pre-release propagation]] — audit — spec-vault
 - [[specs/audits/propagation-ac266-2026-09-21|Approved AC266 Phase 2 completion-policy propagation]] — audit — spec-vault
 - [[specs/audits/propagation-github-repository-identity-2026-09-22|Approved AC265 GitHub repository identity propagation]] — audit — spec-vault
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]] — audit — spec-vault
@@ -63,6 +64,7 @@
 - [[specs/audits/propagation-scan-2026-09-21|AC266 completion-policy propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-22-repository-identity|GitHub repository identity propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-25|AC209/AC211 prelaunch production-evidence propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-26-ac265-pre-release|AC265 pre-release gate propagation scan]] — audit — spec-vault
 - [[specs/audits/remediation-state|Pipeline remediation state]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1255|Infrastructure Verification Report]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1353|Infrastructure Verification Report]] — audit — spec-vault
@@ -1558,6 +1560,7 @@
 
 ## Structured Memory
 
+- decision: DEC-105: AC265 hosted acceptance is a mandatory pre-release gate, not a Slice 10 implementation prerequisite (2026-09-26) — 2026-09-26T18:02:36.994Z
 - decision: DEC-104: AC209 and AC211 move to post-implementation production-evidence gates without being passed or waived (2026-09-25) — 2026-09-25T20:30:00-04:00
 - decision: DEC-103: AC265 staging identities come from Cloud Identity Free, with exactly one narrow expiring CMS read grant (2026-09-25) — 2026-09-25T15:52:00-04:00
 - decision: DEC-102: Browser gates run Google Chrome only, on the engine-family wire contract (2026-09-24) — 2026-09-24T12:20:00-04:00

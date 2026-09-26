@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 104
-- **Unique decision titles**: 104
+- **Total decisions**: 105
+- **Unique decision titles**: 105
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -1533,6 +1533,21 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Follow-up (not delivered here)**: implement a hosted-scope acceptance route: add a hosted-scope evidence shape and hosted-only expected identity (`{artifact, hostedE2e, accessibility, verifiedAt}` without `productionDeploymentId`/`productionDeployedAt`) and route AC265 and AC266 acceptance through the retained hosted-report verifier plus the existing axe and manual verifiers. `alerting` and `slo` remain mandatory in the production sidecar for AC209 and AC211. Delivered as a separate follow-up PR so this rescope stays a policy and record correction.
 - **Reversibility**: High for implementation sequencing, but no production release may erase or weaken the deferred production-evidence obligations, and no initial launch may be represented as alerting-ready before AC209 passes, without a new owner decision and full downstream propagation.
 
+## DEC-105: AC265 hosted acceptance is a mandatory pre-release gate, not a Slice 10 implementation prerequisite (2026-09-26)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-09-26T18:02:36.994Z
+- **Agents**: codex
+- **Sources**: Owner decision - move P2-S09-AC-265 to pre-release
+- **Index**: [[index]]
+
+- **Problem**: AC265's genuine hosted staging matrix and exact-artifact provenance remain open, but requiring that external acceptance before Slice 10 implementation recreates a dependency lock while the product is still in development.
+- **Options considered**: Keep AC265 as the active implementation prerequisite; claim it passed or waive its evidence; or retain every authored evidence requirement and move acceptance timing to pre-release while allowing implementation to proceed.
+- **Decision**: Move P2-S09-AC-265 to a mandatory pre-release production-readiness/release gate. It is excluded only from the Slice 09 and Phase 2 active implementation-completion denominators. Slice 09 is 279/279 active with 283 authored IDs; Phase 2 has 1,996 active of 2,000 authored IDs. Slice 10 implementation has no AC265 prerequisite. AC265 remains authored and unchecked and must not be called passed, waived, simulated, or inferred. Its nine real staging role sessions, ten scenarios, signed exact artifact provenance, retained hosted report, and authenticated receipt remain necessary before release.
+- **Other gates**: AC266 remains a separate pre-release real-device accessibility gate. AC209 remains a production-rollout/post-deployment alerting-readiness gate. AC211 remains post-launch operational SLO acceptance. No gate is deleted, and this decision does not authorize launch while AC265 or AC266 is unproven.
+- **Downstream**: Update the Phase 2 plan, active progress records, architecture/runbooks, validator, and focused tests. Retain dated historical records and prior decisions; this decision supersedes DEC-104's sentence that AC265 is the only Slice 10 prerequisite, not DEC-104's AC209/AC211 timing.
+- **Reversibility**: A future timing change requires a new owner decision and propagation. The hosted evidence requirements remain fail-closed.
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -2958,3 +2973,17 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **AC265 boundary and remaining work**: AC265 remains the only Slice 10 implementation prerequisite and is an active implementation gate, but it **cannot close prelaunch** as currently implemented. Its contract is staging-only, yet its declared acceptance route requires the combined release-evidence verifier, which pins `alerting.deploymentId` and `slo.deploymentId` to `expected.productionDeploymentId` while the evidence shape requires all four members. Closing AC265 therefore requires production-bound AC209/AC211 evidence, which is the circularity this decision removes.
 - **Follow-up (not delivered here)**: implement a hosted-scope acceptance route: add a hosted-scope evidence shape and hosted-only expected identity (`{artifact, hostedE2e, accessibility, verifiedAt}` without `productionDeploymentId`/`productionDeployedAt`) and route AC265 and AC266 acceptance through the retained hosted-report verifier plus the existing axe and manual verifiers. `alerting` and `slo` remain mandatory in the production sidecar for AC209 and AC211. Delivered as a separate follow-up PR so this rescope stays a policy and record correction.
 - **Reversibility**: High for implementation sequencing, but no production release may erase or weaken the deferred production-evidence obligations, and no initial launch may be represented as alerting-ready before AC209 passes, without a new owner decision and full downstream propagation.
+
+### DEC-105: AC265 hosted acceptance is a mandatory pre-release gate, not a Slice 10 implementation prerequisite (2026-09-26)
+
+- **Timestamp**: 2026-09-26T18:02:36.994Z
+- **Agent**: codex
+- **Source**: Owner decision - move P2-S09-AC-265 to pre-release
+- **Tags**: decision, phase-2, slice-09, ac265, pre-release, propagation, owner-directive
+
+- **Problem**: AC265's genuine hosted staging matrix and exact-artifact provenance remain open, but requiring that external acceptance before Slice 10 implementation recreates a dependency lock while the product is still in development.
+- **Options considered**: Keep AC265 as the active implementation prerequisite; claim it passed or waive its evidence; or retain every authored evidence requirement and move acceptance timing to pre-release while allowing implementation to proceed.
+- **Decision**: Move P2-S09-AC-265 to a mandatory pre-release production-readiness/release gate. It is excluded only from the Slice 09 and Phase 2 active implementation-completion denominators. Slice 09 is 279/279 active with 283 authored IDs; Phase 2 has 1,996 active of 2,000 authored IDs. Slice 10 implementation has no AC265 prerequisite. AC265 remains authored and unchecked and must not be called passed, waived, simulated, or inferred. Its nine real staging role sessions, ten scenarios, signed exact artifact provenance, retained hosted report, and authenticated receipt remain necessary before release.
+- **Other gates**: AC266 remains a separate pre-release real-device accessibility gate. AC209 remains a production-rollout/post-deployment alerting-readiness gate. AC211 remains post-launch operational SLO acceptance. No gate is deleted, and this decision does not authorize launch while AC265 or AC266 is unproven.
+- **Downstream**: Update the Phase 2 plan, active progress records, architecture/runbooks, validator, and focused tests. Retain dated historical records and prior decisions; this decision supersedes DEC-104's sentence that AC265 is the only Slice 10 prerequisite, not DEC-104's AC209/AC211 timing.
+- **Reversibility**: A future timing change requires a new owner decision and propagation. The hosted evidence requirements remain fail-closed.

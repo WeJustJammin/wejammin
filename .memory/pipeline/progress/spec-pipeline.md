@@ -1,8 +1,8 @@
 # Spec Pipeline Progress
 
 **Project**: WeJammin
-**Last updated**: 2026-09-25
-**Overall**: IA 43/43 authored and independently ambiguity-passed (**fresh rerun PASS — 0/344 = 0.00%, 2026-08-28**); Phase 1 complete at 7/7 slices; Phase 2 at 8/17 complete with an active criteria denominator of 1,997 out of 2,000 authored. Slice 09 is blocked at 279/280 active with 283 authored IDs. AC209, AC211, and AC266 are authored, unchecked, and outside the active implementation denominator: AC209 is a production-rollout/post-deployment evidence gate that must pass before alerting is declared ready, AC211 is post-launch operational SLO acceptance that is mandatory after initial launch, and AC266 remains the pre-release production-readiness/release gate. AC265 is the only Slice 10 implementation prerequisite.
+**Last updated**: 2026-09-26
+**Overall**: IA 43/43 authored and independently ambiguity-passed (**fresh rerun PASS — 0/344 = 0.00%, 2026-08-28**); Phase 1 complete at 7/7 slices; Phase 2 at 9/17 complete with an active criteria denominator of 1,996 out of 2,000 authored. Slice 09 implementation is complete at 279/279 active with 283 authored IDs. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator: AC209 is post-deployment alerting readiness, AC211 is post-launch operational SLO acceptance, and AC265 and AC266 are separate mandatory pre-release release gates. Slice 10 implementation is unblocked by DEC-105.
 
 ## Legend
 
@@ -411,19 +411,16 @@ failed: malformed response`. The token still passes Workers Observability.
   contracts, and a fail-closed collector port boundary. This remains scaffolding:
   no protected collector/service protocol or hosted acceptance exists, and AC265
   remains open.
-- **NEXT:** pursue the **AC265** staging route and matrix now — its protected
-  target source, run-scoped session broker, receipt resolver/issuer, hosted
-  workflow, and accepted 9-role/10-scenario report. AC265 remains the only
-  Slice 10 implementation prerequisite, and it cannot close until a
-  hosted-scope acceptance route is implemented (DEC-104), so that decoupling
-  is immediate work. AC209 and AC211 are deferred to their production windows:
-  the AC209 correlated delivery receipt is collected after the initial
-  controlled production deployment, and the AC211 UTC-day/200-sample SLO and
-  DLQ report is collected after initial launch. Keep Slice 09 at 279/280 active
-  (283 authored IDs) and Phase 2 at 8/17 slices with 1,997 active criteria out
-  of 2,000 authored. Slice 10 remains locked only until AC265 passes. AC209,
-  AC211, and AC266 stay authored, unchecked, and outside the active
-  implementation denominator: AC209 must pass before alerting is declared
-  ready, AC211 is mandatory after initial launch, and AC266 remains the
-  pre-release production-readiness/release gate. None may be marked passed,
-  waived, simulated, or inferred.
+- **NEXT:** begin Slice 10 implementation at the CMS entry-revision contract.
+  Keep the **AC265** pre-release hosted route and matrix as mandatory release
+  work: protected target source, run-scoped session broker, receipt resolver/
+  issuer, hosted workflow, and an accepted 9-role/10-scenario report with signed
+  exact artifact provenance. The staging-scope acceptance route exists, but
+  no genuine hosted acceptance is claimed. Keep Slice 09 at 279/279 active
+  (283 authored IDs) and Phase 2 at 9/17 slices with 1,996 active criteria out
+  of 2,000 authored. Slice 10 implementation is unblocked by DEC-105. AC209,
+  AC211, AC265, and AC266 remain authored and unchecked outside the active
+  implementation denominator: AC265 and AC266 must pass before production
+  readiness/release, AC209 must pass before alerting is declared ready, and
+  AC211 is mandatory after initial launch. None may be marked passed, waived,
+  simulated, or inferred.

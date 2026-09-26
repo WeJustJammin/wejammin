@@ -4,6 +4,7 @@
 **Complexity**: M  
 **Surface scope**: web  
 **Depends on**: Slice 09  
+**Implementation gate**: unblocked by DEC-105 after Slice 09 reached 279/279 active; AC265 and AC266 remain mandatory pre-release gates and are not Slice 10 implementation prerequisites.  
 **Spec depth floor**: 60  
 **Acceptance criteria**: 60  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)

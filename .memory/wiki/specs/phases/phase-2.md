@@ -31,20 +31,21 @@ Explicitly deferred: IDA-05 and IDA-09–18; PRF-08–09 and PRF-13–16; CMS-15
 
 ## Phase 2 completion policy
 
-**Phase 2 implementation-completion denominator**: 1997.  
-**Slice 09 implementation-completion denominator**: 280.  
-**Slice 10 implementation prerequisites**: AC265.  
-**Authored criterion policy**: Slice 09 is **279/280 active** with 283 authored Slice 09 IDs retained; AC209, AC211, and AC266 remain authored and unchecked outside the active implementation denominators.
+**Phase 2 implementation-completion denominator**: 1996.  
+**Slice 09 implementation-completion denominator**: 279.  
+**Slice 10 implementation prerequisites**: none.  
+**Authored criterion policy**: Slice 09 is **279/279 active** with 283 authored Slice 09 IDs retained; AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominators.
 
-DEC-101 preserves all **2000 authored acceptance criteria**, including all **283 contiguous authored Slice 09 IDs**, and deferred `P2-S09-AC-266` as the pre-release post-Phase 2 production-readiness/release gate. DEC-104 supersedes DEC-101's Slice 10 dependency sentence and additionally defers the production-evidence closure of `P2-S09-AC-209` and `P2-S09-AC-211`.
+DEC-101 preserves all **2000 authored acceptance criteria**, including all **283 contiguous authored Slice 09 IDs**, and deferred `P2-S09-AC-266` as the pre-release post-Phase 2 production-readiness/release gate. DEC-104 supersedes DEC-101's Slice 10 dependency sentence and additionally defers the production-evidence closure of `P2-S09-AC-209` and `P2-S09-AC-211`. DEC-105 supersedes DEC-104's AC265-only Slice 10 prerequisite sentence: `P2-S09-AC-265` moves to a mandatory pre-release production-readiness/release gate and is excluded only from the Slice 09 and Phase 2 active implementation denominators, not from its authored evidence obligations. DEC-104's AC209/AC211 timing is unchanged.
 
-The three deferred criteria are mandatory on distinct timelines:
+The four deferred criteria are mandatory on distinct timelines:
 
 - `P2-S09-AC-209` — **production-rollout/post-deployment evidence gate**. It does not gate Slice 10 implementation or the initial controlled production deployment; it must pass before alerting is declared ready. AC209 remains authored and unchecked.
 - `P2-S09-AC-211` — **post-launch operational SLO acceptance**. It does not gate the initial launch and is mandatory after initial launch, once genuine production traffic spans a complete UTC day. AC211 remains authored and unchecked.
+- `P2-S09-AC-265` — **mandatory pre-release production-readiness/release gate**. It does not block Slice 10 implementation: AC265 is excluded from the Slice 09 and Phase 2 active implementation denominators without being waived. Its staging-scope acceptance route is implemented in `verify-ac265-hosted-staging-evidence.yml`, so production alert and SLO samples are not prerequisites for AC265 closure. AC265 remains open until the protected hosted runner produces genuine nine-role/ten-scenario evidence and the staging-scope verifier accepts its exact signed artifact provenance. AC265 remains authored and unchecked.
 - `P2-S09-AC-266` — **pre-release real-device** accessibility gate. AC266 remains authored and unchecked, and it is **open**. The genuine macOS/Safari/VoiceOver and Windows/Firefox/NVDA evidence contract is unchanged, and Linux-only or synthetic evidence cannot replace it. AC266 has no proven standalone acceptance path today: the protected staging manual verifier and the automated-axe verifier exist as separate components, but no AC266-only consumer binds both. The AC265 staging-scope verifier does not close AC266; an AC266-specific acceptance consumer and genuine device evidence are still required. AC266 must never be marked passed, accepted, waived, simulated, or inferred. By policy AC266 is pre-release rather than production-bound, and its staging-scope acceptance stays distinct from the later combined production-release verification, which still requires all four evidence streams including AC209/AC211.
 
-`P2-S09-AC-265` remains the only Slice 10 implementation prerequisite. Its staging-scope acceptance route is implemented in `verify-ac265-hosted-staging-evidence.yml`, so production alert and SLO samples are not prerequisites for AC265 closure. AC265 remains open until the protected hosted runner produces genuine nine-role/ten-scenario evidence and the staging-scope verifier accepts its exact signed artifact provenance. While deferred, AC209, AC211, and AC266 must never be marked passed, waived, simulated, or inferred.
+DEC-105 removes AC265 as a Slice 10 implementation prerequisite. Slice 10 implementation depends only on Slice 09 implementation completion. While deferred, AC209, AC211, AC265, and AC266 remain authored, unchecked, and mandatory on their own timelines, and none may ever be marked passed, waived, simulated, or inferred before genuine evidence exists.
 
 ## Coverage gates
 
@@ -134,7 +135,7 @@ Every in-scope flow, endpoint, and ledger row has exactly one slice. Shared FE s
 01–16 -> 17 Integrated close -> verify-infrastructure
 ```
 
-After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims do not overlap. After Slice 09, Slice 10 implementation remains locked only until AC265 passes. AC209, AC211, and AC266 remain outside the implementation denominators, are authored and unchecked, and are mandatory on their own timelines: AC209 before alerting is declared ready, AC211 after initial launch, and AC266 before production readiness/release. Slice 12 retains its existing dependency path. Contracts, migrations, shared registries, route manifests, and lockfiles remain single-owner and frozen during parallel work.
+After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims do not overlap. After Slice 09 implementation completion, Slice 10 implementation has no AC265 prerequisite and proceeds on its own dependency path. AC209, AC211, AC265, and AC266 remain outside the implementation denominators, are authored and unchecked, and are mandatory on their own timelines: AC209 before alerting is declared ready, AC211 after initial launch, and AC265 and AC266 as mandatory pre-release production-readiness/release gates. Slice 12 retains its existing dependency path. Contracts, migrations, shared registries, route manifests, and lockfiles remain single-owner and frozen during parallel work.
 
 ## Slice inventory
 
@@ -157,7 +158,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - Slice 17 — Phase 2 integration, infrastructure verification, and close gate: 10 criteria, S, depends on Slices 01–16.
 
 **Total authored acceptance criteria**: 2000; every slice meets its computed depth floor.
-**Phase 2 implementation-completion denominator**: 1997; AC209, AC211, and AC266 remain authored, unchecked, and reserved for their post-implementation production-evidence gates.
+**Phase 2 implementation-completion denominator**: 1996; AC209, AC211, AC265, and AC266 remain authored, unchecked, and mandatory acceptance gates on their distinct timelines.
 
 ## Slice 01 — Authentication, recovery, session, and identity bootstrap
 
@@ -1840,7 +1841,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 
 **Status**: not started; awaiting plan approval  
 **Complexity**: M  
-**Depends on**: Slice 09 implementation completion plus AC265 passing. AC209 remains a production-rollout/post-deployment evidence gate before alerting is declared ready, AC211 remains post-launch operational SLO acceptance, and AC266 remains the pre-release post-Phase 2 production-readiness/release gate.  
+**Depends on**: Slice 09 implementation completion. AC265 is a mandatory pre-release production-readiness/release gate that does not gate Slice 10 implementation. AC209 remains a production-rollout/post-deployment evidence gate before alerting is declared ready, AC211 remains post-launch operational SLO acceptance, and AC266 remains the pre-release post-Phase 2 production-readiness/release gate.  
 **Surface scope**: `web` — responsive Astro/PWA, bounded React islands, Hono REST/API, PostgreSQL/RLS, and admin/operator surface where applicable.  
 **Implementation layers**: Contract/data, API/policies, user-facing or system UI, admin/operator UI where applicable, QA, documentation/runbooks.  
 **IA flows**: CMS-05, CMS-06, CMS-07  

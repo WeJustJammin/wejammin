@@ -1,16 +1,16 @@
 # Implementation Progress
 
 **Project**: WeJammin  
-**Last updated**: 2026-09-25
-**Overall**: 15/24 slices (63%)
-**Phase 2 criteria**: 1,997 active / 2,000 authored; AC209, AC211, and AC266 are authored, unchecked, and outside the active completion denominator on distinct post-implementation timelines. Slice 09 is 279/280 active with 283 authored IDs. AC265 is the only Slice 10 implementation prerequisite.
+**Last updated**: 2026-09-26
+**Overall**: 16/24 slices (67%)
+**Phase 2 criteria**: 1,996 active / 2,000 authored; AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator. Slice 09 is 279/279 active with 283 authored IDs. AC265 is a mandatory pre-release gate and does not block Slice 10 implementation; AC266 remains a separate pre-release device gate. AC209 remains post-deployment alerting readiness and AC211 remains post-launch SLO acceptance.
 
 ## Phases
 
 | Phase                                  | Status      | Progress | Link                    |
 | -------------------------------------- | ----------- | -------: | ----------------------- |
 | Phase 1: Operational foundation        | complete    |      7/7 | [→](phases/phase-01.md) |
-| Phase 2: Identity, admin, CMS/settings | in-progress |     8/17 | [→](phases/phase-02.md) |
+| Phase 2: Identity, admin, CMS/settings | in-progress |     9/17 | [→](phases/phase-02.md) |
 
 ## Latest promoted checkpoint — 2026-09-21 AC265 CP-04e
 
@@ -96,4 +96,7 @@ receipts, and the complete hosted matrix remain open. At that checkpoint Phase
 active** with **283 authored IDs**, AC209/AC211/AC265 were open, and Slice 10
 was locked. DEC-104 later moved AC209 and AC211 outside the active
 implementation denominator, leaving Slice 09 at 279/280 and Slice 10 locked only
-on AC265.
+on AC265. DEC-105 later moved AC265 to a mandatory pre-release gate; Slice 09
+implementation is complete at 279/279 active and Slice 10 implementation is
+unblocked. AC265 remains unchecked and requires genuine hosted evidence before
+release.

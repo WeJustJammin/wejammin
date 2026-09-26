@@ -30,7 +30,7 @@ This foundation does not establish the upstream authenticated
 manifest/registry/run authority or the external replay ledger. No approved live
 target, signing key, issuer, artifact store, broker, hosted report, server
 receipt, or browser matrix exists. These local contracts and tests are not
-hosted acceptance evidence; AC265 remains open and Slice 10 remains locked.
+hosted acceptance evidence; AC265 remains open as a mandatory pre-release gate that does not block Slice 10 implementation.
 
 CP-03 adds a promoted signed mapping-attestation application boundary for the
 exact `ac265-approved-runner-mappings-v1` bytes. PR #85 at exact main SHA
@@ -249,7 +249,7 @@ result is only the automated AC266 component and does not satisfy the deferred
 manual platform reports or protected combined verification. The policy table
 remains empty, with no live dependency/route policy, target, signing key,
 retained artifact, hosted matrix, or independently authenticated receipt; CP-04b
-promotion does not close AC265 or unlock Slice 10.
+promotion does not close AC265; AC265 remains a mandatory pre-release gate that does not block Slice 10 implementation.
 
 The read-only AC209 verifier `35612514031` passed exact-main preflight,
 protection, and workspace checks, then failed closed at the capability query

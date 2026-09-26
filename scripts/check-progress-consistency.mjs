@@ -315,9 +315,9 @@ if (existsSync(SPEC_PIPELINE_PATH)) {
 }
 
 // ----- Cross-check the active Phase 2 completion policy -----
-// Slice 09 keeps all 283 authored IDs for traceability. AC266 (DEC-101) and
-// AC209/AC211 (DEC-104) are unchecked production-evidence gates outside the
-// 280-item Slice 09 and 1997-item Phase 2 implementation denominators. Keep
+// Slice 09 keeps all 283 authored IDs for traceability. AC266 (DEC-101),
+// AC209/AC211 (DEC-104), and AC265 (DEC-105) remain unchecked acceptance gates
+// outside the 279-item Slice 09 and 1996-item Phase 2 implementation denominators. Keep
 // this check scoped to the current tracker sections so historical 279/283
 // evidence remains valid audit history.
 const policySection = (text, heading, nextHeading = /^##\s/imu) => {
@@ -364,39 +364,39 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('index.md', indexHeader, [
     {
       pattern:
-        /\*\*Phase 2 criteria\*\*:\s*1,997\s+active\s*\/\s*2,000\s+authored/iu,
+        /\*\*Phase 2 criteria\*\*:\s*1,996\s+active\s*\/\s*2,000\s+authored/iu,
       message:
-        'index.md must publish the 1,997 active / 2,000 authored Phase 2 denominator',
+        'index.md must publish the 1,996 active / 2,000 authored Phase 2 denominator',
     },
     {
-      pattern: /Slice 09 is 279\/280\s+active\s+with\s+283\s+authored IDs/iu,
+      pattern: /Slice 09 is 279\/279\s+active\s+with\s+283\s+authored IDs/iu,
       message:
-        'index.md must publish Slice 09 as 279/280 active with 283 authored IDs',
+        'index.md must publish Slice 09 as 279/279 active with 283 authored IDs',
     },
     {
-      pattern: /AC265 is the only Slice 10 implementation prerequisite/iu,
+      pattern: /AC265[^\n]*mandatory pre-release[^\n]*does not (?:block|gate) Slice 10 implementation/iu,
       message:
-        'index.md must limit the Slice 10 implementation prerequisite to AC265',
+        'index.md must classify AC265 as mandatory pre-release and not a Slice 10 implementation gate',
     },
   ]);
 
   assertPolicy('phases/phase-02.md', phaseHeader, [
     {
       pattern:
-        /\*\*Criteria[^:]*\*\*:\s*1,997\s+active\s*\/\s*2,000\s+authored/iu,
+        /\*\*Criteria[^:]*\*\*:\s*1,996\s+active\s*\/\s*2,000\s+authored/iu,
       message:
-        'phase-02.md must publish the 1,997 active / 2,000 authored Phase 2 denominator',
+        'phase-02.md must publish the 1,996 active / 2,000 authored Phase 2 denominator',
     },
     {
       pattern:
-        /Slice 09 remains blocked at \*\*279\/280\s+active\*\* \(\*\*283\s+authored IDs\*\*\)/iu,
+        /Slice 09 implementation is complete at \*\*279\/279\s+active\*\* \(\*\*283\s+authored IDs\*\*\)/iu,
       message:
-        'phase-02.md current gate must publish Slice 09 as 279/280 active with 283 authored IDs',
+        'phase-02.md current gate must publish Slice 09 implementation as 279/279 active with 283 authored IDs',
     },
     {
-      pattern: /AC265 is the only Slice 10 implementation prerequisite/iu,
+      pattern: /AC265[^\n]*mandatory pre-release[^\n]*does not (?:block|gate) Slice 10 implementation/iu,
       message:
-        'phase-02.md must limit the Slice 10 implementation prerequisite to AC265',
+        'phase-02.md must classify AC265 as mandatory pre-release and not a Slice 10 implementation gate',
     },
     {
       pattern:
@@ -426,9 +426,9 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('phases/phase-02.md#slice-09', phaseRows, [
     {
       pattern:
-        /\|\s*09\s+Content schemas[^|]*\|\s*blocked\s*\|\s*279\/280\s+active\s*\(283\s+authored\)\s*\|/iu,
+        /\|\s*09\s+Content schemas[^|]*\|\s*complete\s*\|\s*279\/279\s+active\s*\(283\s+authored\)\s*\|/iu,
       message:
-        'phase-02.md Slice 09 row must use the 279/280 active and 283 authored notation',
+        'phase-02.md Slice 09 row must use complete, 279/279 active, and 283 authored notation',
     },
   ]);
 
@@ -438,14 +438,14 @@ const checkPhaseTwoCompletionPolicy = () => {
       message: 'Slice 09 must retain all 283 authored acceptance IDs',
     },
     {
-      pattern: /\*\*Active release denominator\*\*:\s*280\b/iu,
-      message: 'Slice 09 must declare a 280-item active release denominator',
+      pattern: /\*\*Active release denominator\*\*:\s*279\b/iu,
+      message: 'Slice 09 must declare a 279-item active release denominator',
     },
     {
       pattern:
-        /\*\*Local QA-GREEN \(active\)\*\*:\s*279\/280\s+verified;\s*283\s+authored IDs remain/iu,
+        /\*\*Local QA-GREEN \(active\)\*\*:\s*279\/279\s+verified;\s*283\s+authored IDs remain/iu,
       message:
-        'Slice 09 must publish 279/280 active evidence while retaining 283 authored IDs',
+        'Slice 09 must publish 279/279 active evidence while retaining 283 authored IDs',
     },
     {
       pattern:
@@ -472,9 +472,9 @@ const checkPhaseTwoCompletionPolicy = () => {
     [
       {
         pattern:
-          /AC265 is the only remaining\s+active Slice 09 implementation gate and the only Slice 10\s+implementation\s+prerequisite/iu,
+          /AC265[^\n]*mandatory pre-release[^\n]*does not (?:block|gate) Slice 10 implementation/iu,
         message:
-          'Slice 09 blocker section must state that AC265 is the only active implementation gate and Slice 10 prerequisite',
+          'Slice 09 blocker section must classify AC265 as mandatory pre-release and not a Slice 10 implementation gate',
       },
       {
         pattern:
@@ -512,23 +512,23 @@ const checkPhaseTwoCompletionPolicy = () => {
     const nextBlock = nextStart < 0 ? '' : nextSpecText.slice(nextStart);
     assertPolicy('spec-pipeline.md#next', nextBlock, [
       {
-        pattern: /AC265\*\* staging route and matrix/iu,
+        pattern: /AC265\*\* pre-release hosted route and matrix/iu,
         message:
-          'spec-pipeline.md NEXT must direct immediate work at the AC265 staging route and matrix',
+          'spec-pipeline.md NEXT must retain AC265 pre-release hosted route and matrix work',
       },
       {
-        pattern: /Slice 09 at 279\/280\s+active/iu,
+        pattern: /Slice 09 at 279\/279\s+active/iu,
         message:
-          'spec-pipeline.md NEXT must publish Slice 09 as 279/280 active',
+          'spec-pipeline.md NEXT must publish Slice 09 as 279/279 active',
       },
       {
-        pattern: /1,997 active criteria/iu,
+        pattern: /1,996 active criteria/iu,
         message:
-          'spec-pipeline.md NEXT must publish the 1,997 active Phase 2 criteria count',
+          'spec-pipeline.md NEXT must publish the 1,996 active Phase 2 criteria count',
       },
       {
-        pattern: /Slice 10 remains locked only until AC265 passes/iu,
-        message: 'spec-pipeline.md NEXT must limit the Slice 10 lock to AC265',
+        pattern: /Slice 10 implementation is unblocked/iu,
+        message: 'spec-pipeline.md NEXT must state that Slice 10 implementation is unblocked',
       },
       {
         pattern: /AC209 must pass before alerting is declared\s+ready/iu,
@@ -556,9 +556,9 @@ const checkPhaseTwoCompletionPolicy = () => {
     const header = nextSpecText.split('\n').slice(0, 6).join('\n');
     assertPolicy('spec-pipeline.md#header', header, [
       {
-        pattern: /\*\*Last updated\*\*:\s*2026-09-25/iu,
+        pattern: /\*\*Last updated\*\*:\s*2026-09-26/iu,
         message:
-          'spec-pipeline.md header must carry the current 2026-09-25 last-updated date',
+          'spec-pipeline.md header must carry the current 2026-09-26 last-updated date',
       },
     ]);
   }
@@ -567,9 +567,9 @@ const checkPhaseTwoCompletionPolicy = () => {
     const header = indexText.split('\n').slice(0, 6).join('\n');
     assertPolicy('index.md#header', header, [
       {
-        pattern: /\*\*Last updated\*\*:\s*2026-09-25/iu,
+        pattern: /\*\*Last updated\*\*:\s*2026-09-26/iu,
         message:
-          'index.md header must carry the current 2026-09-25 last-updated date',
+          'index.md header must carry the current 2026-09-26 last-updated date',
       },
     ]);
   }

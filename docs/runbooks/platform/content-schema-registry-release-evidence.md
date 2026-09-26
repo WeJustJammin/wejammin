@@ -4,12 +4,13 @@ Use this runbook to assemble and verify the release sidecar for
 `P2-S09-AC-209`, `P2-S09-AC-211`, `P2-S09-AC-265`, and `P2-S09-AC-266`.
 Passing local tests does not satisfy these gates.
 
-For Phase 2 implementation completion, AC265 is the only Slice 10
-implementation prerequisite. The plan retains all 283 authored Slice 09 IDs
+For Phase 2 implementation completion, DEC-105 moves AC265 to a mandatory
+pre-release production-readiness/release gate, so Slice 10 implementation has
+no AC265 prerequisite. The plan retains all 283 authored Slice 09 IDs
 and 2000 authored Phase 2 criteria, while implementation completion uses
-denominators of 280 for Slice 09 and 1997 for Phase 2. AC209, AC211, and AC266
-remain authored and unchecked outside those implementation denominators, on
-distinct timelines, and must not be marked passed, waived, simulated, or
+denominators of 279 for Slice 09 and 1996 for Phase 2. AC209, AC211, AC265, and
+AC266 remain authored and unchecked outside those implementation denominators,
+on distinct timelines, and must not be marked passed, waived, simulated, or
 inferred.
 
 This sidecar's production-bound expectations apply to production evidence.
@@ -254,7 +255,8 @@ result is only the automated AC266 component and does not satisfy the deferred
 manual platform reports or protected combined verification. No live
 dependency/route policy, target, signing key, retained artifact, hosted matrix,
 or independently authenticated receipt exists, so CP-04b promotion does not
-satisfy AC265 or unlock Slice 10.
+satisfy AC265; AC265 remains a mandatory pre-release gate that does not block
+Slice 10 implementation.
 
 ### CP-04c local attestation/resolver foundation (not release evidence)
 
@@ -270,7 +272,8 @@ The upstream authenticated manifest/registry/run authority and external replay
 ledger remain open. No approved live target, signing key, issuer, artifact
 store, broker, hosted report, server receipt, or browser matrix exists. This
 local foundation is not synthetic or hosted acceptance evidence: AC265 remains
-open and Slice 10 remains locked.
+open as a mandatory pre-release gate that does not block Slice 10
+implementation.
 
 ### CP-01 outage-lease control operation (not release evidence)
 
@@ -315,7 +318,8 @@ exercises no outage, seeds no approved target, registers no dependency or
 route, contacts no hosted browser session, mints no receipt, and creates no
 identity or grant. The approved dependency, route, and target remain
 owner-pending and are deliberately not selected here. It is not AC265
-acceptance evidence, it closes no criterion, and it does not unlock Slice 10.
+acceptance evidence, it closes no criterion, and it does not satisfy the AC265
+pre-release gate.
 
 The read-only AC209 verifier `35612514031` passed exact-main preflight,
 protection, and workspace checks, then failed closed at the capability query
@@ -810,7 +814,7 @@ hosted-origin safety, deployment chronology, trusted-cutoff bounds, and evidence
 timing. It does not collect telemetry,
 activate a provider, provision identities, attest provider truth independently,
 or perform the manual tests. A local pass proves sidecar/report consistency; it
-does not by itself satisfy any of the four release criteria or unlock Slice 10.
+does not by itself satisfy any of the four release criteria.
 
 The local v3 schema and internal cross-verifier are implemented. For AC265,
 the verifier hashes exact raw runner-contract, reference, execution-evidence,
@@ -865,12 +869,12 @@ no standalone command can produce acceptance success. This combined
 production-bound route is the acceptance path for AC209 and AC211; it is not
 the acceptance path for AC265 or AC266, whose staging-only and pre-release
 evidence must be verified through a hosted-scope route (see the policy section
-above and `DEC-104`). Keep AC265 as the only Slice 10 implementation
-prerequisite and blocked until it produces passing protected evidence and an
-operator reviews the retained source reports. AC209 and AC211 remain
-unchecked deferred production-evidence gates, and AC266 remains the separate
-pre-release production-readiness/release gate; while deferred none of them can
-be passed, waived, or simulated.
+above and `DEC-105`). Keep AC265 as a mandatory pre-release gate that does not
+block Slice 10 implementation and remains blocked until it produces passing
+protected evidence and an operator reviews the retained source reports. AC209
+and AC211 remain unchecked deferred production-evidence gates, and AC265 and
+AC266 remain the separate pre-release production-readiness/release gates; while
+deferred none of them can be passed, waived, or simulated.
 
 Any missing, malformed, duplicate, out-of-root, digest-mismatched,
 structurally local/synthetic, stale-order, threshold-equal,

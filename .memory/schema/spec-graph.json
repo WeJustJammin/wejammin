@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-09-26T02:02:15.557Z",
-  "nodeCount": 1636,
-  "edgeCount": 10133,
+  "builtAt": "2026-09-26T18:22:09.296Z",
+  "nodeCount": 1638,
+  "edgeCount": 10135,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -256,6 +256,13 @@
       "shardId": null
     },
     {
+      "id": "audit:audits/propagation-ac265-pre-release-2026-09-26",
+      "type": "audit",
+      "label": "Approved AC265 pre-release propagation",
+      "path": ".memory/wiki/specs/audits/propagation-ac265-pre-release-2026-09-26.md",
+      "shardId": null
+    },
+    {
       "id": "audit:audits/propagation-ac266-2026-09-21",
       "type": "audit",
       "label": "Approved AC266 Phase 2 completion-policy propagation",
@@ -330,6 +337,13 @@
       "type": "audit",
       "label": "AC209/AC211 prelaunch production-evidence propagation scan",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-25.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-26-ac265-pre-release",
+      "type": "audit",
+      "label": "AC265 pre-release gate propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-ac265-pre-release.md",
       "shardId": null
     },
     {
@@ -11686,6 +11700,12 @@
       "source": "wikilink"
     },
     {
+      "from": "audit:audits/propagation-ac265-pre-release-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
       "from": "audit:audits/propagation-ac266-2026-09-21",
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
@@ -11804,6 +11824,12 @@
       "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-ac265-pre-release",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
     },
     {
       "from": "audit:audits/remediation-state",
@@ -72260,7 +72286,7 @@
     "byNodeType": {
       "plan": 12,
       "architecture": 18,
-      "audit": 33,
+      "audit": 35,
       "be-spec": 157,
       "fe-spec": 44,
       "ia-spec": 85,
@@ -72269,7 +72295,7 @@
       "decision": 97
     },
     "byEdgeType": {
-      "phases_into": 97,
+      "phases_into": 99,
       "constrained_by": 9041,
       "references": 922,
       "derives_from": 64,

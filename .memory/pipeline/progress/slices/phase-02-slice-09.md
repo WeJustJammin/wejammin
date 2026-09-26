@@ -1,22 +1,23 @@
 # Phase 2 / Slice 09: Content schemas, relations, activation, and block registry
 
-**Status**: blocked  
+**Status**: complete  
 **Complexity**: L  
 **Surface scope**: web  
 **Depends on**: Slices 07 and 08  
 **Spec depth floor**: 283  
 **Acceptance criteria (authored)**: 283  
-**Active release denominator**: 280 (AC266 owner-deferred under DEC-101; AC209 and AC211 deferred under DEC-104 as production-evidence gates)  
-**Slice 09 implementation-completion denominator**: 280  
-**Phase 2 implementation-completion denominator**: 1997  
-**Slice 10 implementation prerequisites**: AC265.  
-**Authored criterion policy**: Slice 09 is **279/280 active**; 283 authored Slice 09 IDs remain, with AC209, AC211, and AC266 authored and unchecked outside the active implementation denominator.  
+**Active release denominator**: 279 (AC266 owner-deferred under DEC-101; AC209 and AC211 deferred under DEC-104; AC265 deferred to pre-release under DEC-105)  
+**Slice 09 implementation-completion denominator**: 279  
+**Phase 2 implementation-completion denominator**: 1996  
+**Slice 10 implementation prerequisites**: none.  
+**Authored criterion policy**: Slice 09 is **279/279 active**; 283 authored Slice 09 IDs remain, with AC209, AC211, AC265, and AC266 authored and unchecked outside the active implementation denominator.  
 **AC209 evidence status**: production-rollout/post-deployment evidence gate; remains authored and unchecked. Does not gate Slice 10 implementation or the initial controlled production deployment, and must pass before alerting is declared ready.  
 **AC211 evidence status**: post-launch operational SLO acceptance; remains authored and unchecked. Does not gate the initial launch and is mandatory after initial launch.  
-**AC266 evidence status**: owner-deferred pre-release gate; remains unchecked and **open** and excluded from active Phase 2 implementation completion; not passed, accepted, waived, simulated, or inferred. It has no proven standalone acceptance path until the hosted-scope acceptance route binds its separate manual and axe verifiers.  
+**AC265 evidence status**: mandatory pre-release hosted acceptance; remains authored and unchecked. AC265 is a mandatory pre-release gate and does not block Slice 10 implementation. Nine real staging role cases, ten hosted scenarios, signed exact artifact provenance, and the authenticated receipt are still required before release.  
+**AC266 evidence status**: owner-deferred pre-release gate — AC266 is a mandatory pre-release production-readiness/release gate; remains unchecked and **open** and excluded from active Phase 2 implementation completion; not passed, accepted, waived, simulated, or inferred. It has no proven standalone acceptance path until the hosted-scope acceptance route binds its separate manual and axe verifiers.  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)  
 **Preflight gate**: strict current-disk floor reconciled — [contract reconciliation](../verification/2026-09-02-slice-09-contract-reconciliation.md)
-**Local QA-GREEN (active)**: 279/280 verified; 283 authored IDs remain — [evidence and external gates](../../../wiki/specs/audits/phase-02-slice-09-qa-green.md)
+**Local QA-GREEN (active)**: 279/279 verified; 283 authored IDs remain — [evidence and external gates](../../../wiki/specs/audits/phase-02-slice-09-qa-green.md)
 
 ## 2026-09-21 AC265 CP-04c hosted artifact foundation (local/private only)
 
@@ -820,19 +821,28 @@ response`; Workers Observability passed. Cloudflare's documented successful
 ## Depth Ratio
 
 - Authored acceptance items: 279/283 verified; authored depth ratio: 0.986.
-- Active implementation completion: 279/280; AC209, AC211, and AC266 are
+- Active implementation completion: 279/279; active depth ratio: 1.000. AC209, AC211, AC265, and AC266 are
   excluded from the active implementation denominator while remaining
   authored, unchecked, and mandatory on their own timelines.
 
-## Blocking release evidence (current as of 2026-09-25)
+## Completion Signature
 
-Deferred production-evidence gates under DEC-104. AC265 is the only remaining
-active Slice 09 implementation gate and the only Slice 10 implementation
-prerequisite. None of the criteria below blocks initial launch: AC209 is a
-production-rollout/post-deployment gate that must pass before alerting is
-declared ready, AC211 is post-launch operational SLO acceptance that is
-mandatory after initial launch, and AC266 remains the pre-release real-device
-gate. Each remains authored and unchecked.
+- Date: 2026-09-26; runtime entrypoint: Node 22.23.1 / pnpm 11.24.0.
+- Slice 09 implementation: complete at 279/279 active; authored 279/283
+  verified (0.986) with four genuine-evidence criteria still unchecked.
+- `pnpm validate`: exit 0; 644 Vitest files, 5,456 passed + 1 skipped,
+  100% coverage; Chrome E2E, build, bundle, and performance gates passed.
+- `pnpm db:verify`: exit 0; 65 pgTAP files / 2,324 tests; generated types match.
+- `scripts/check-progress-consistency.mjs --json`: exit 0, `consistent`,
+  Phase 2 9/17. This signs implementation completion only, not AC209, AC211,
+  AC265, AC266, or production readiness.
+
+## Blocking release evidence (current as of 2026-09-26)
+
+DEC-105 moves AC265 out of the active implementation denominator. AC265 is a mandatory pre-release hosted gate and does not block Slice 10 implementation.
+AC266 remains the pre-release real-device gate. Both AC265 and AC266 must pass
+before production readiness/release; neither is waived by Slice 09
+implementation completion. AC209 is a production-rollout/post-deployment gate that must pass before alerting is declared ready. AC211 is post-launch operational SLO acceptance that is mandatory after initial launch. Each remains authored and unchecked.
 
 - P2-S09-AC-209 (production-rollout/post-deployment evidence gate, unchecked):
   retain a genuine post-configuration redacted live-delivery
@@ -875,8 +885,7 @@ gate. Each remains authored and unchecked.
   `rowCount=0`, so the remaining blocker is genuine production volume. No
   complete retained UTC-day report exists; retain a later complete day with at
   least 200 samples, all five SLO results, and daily queue/DLQ counts.
-- P2-S09-AC-265 (active Slice 09 implementation gate and only Slice 10
-  implementation prerequisite, unchecked): the latest candidate authorization
+- P2-S09-AC-265 (mandatory pre-release hosted gate, unchecked): the latest candidate authorization
   attempt used PR #80 SHA
   `918f598525de772c82b0a0bcd82348ea8f5d523d`, which passed CI `34823698333`
   and staging `34824312138` / deployment `6433521892`. Preflight `34824500796`
@@ -922,17 +931,11 @@ this candidate: fail-closed staging migration executed before app deployment,
 immutable migration evidence retained, exact-main-SHA CI/staging/deployment
 identity recorded, two consecutive production cron evaluations succeeded, and
 the staging/production auth-provider catalog transport is healthy.
-The active external acceptance gate above remains required: AC265. AC209 and
-AC211 are excluded from active Phase 2 implementation completion as
-production-evidence gates (DEC-104), and AC266 remains the owner-deferred
-pre-release production-readiness/release gate (DEC-101); none is passed,
-accepted, or waived.
-
-Slice 09 remains blocked only on AC265, which is its remaining active
-implementation gate. AC209, AC211, and AC266 are deferred, not accepted or
-waived, and do not block Slice 10 implementation. AC209 must pass before
-alerting is declared ready, AC211 is mandatory after initial launch, and AC266
-remains the mandatory pre-release production-readiness/release gate.
+Slice 09 implementation is complete at 279/279 active; all four deferred
+acceptance gates remain open and mandatory. AC265 and AC266 must pass before
+production readiness/release. AC209 must pass before alerting is declared
+ready, and AC211 is mandatory after initial launch. None is passed, accepted,
+or waived. Slice 10 implementation is unblocked by DEC-105.
 
 ## 2026-09-21 AC266 owner-deferred phase propagation
 

@@ -91,7 +91,7 @@ describe('Phase 2 Slice 08 completion-boundary RED evidence', () => {
         /Slice 08[\s\S]{0,180}(?:complete|51\/51)/iu,
       );
       expect(phaseProgress).toMatch(
-        /09 Content schemas, relations, activation, and block registry[\s\S]{0,180}(?:not started|in.progress|blocked|complete|\d+\/280\s+active\s+\(283\s+authored\))/iu,
+        /09 Content schemas, relations, activation, and block registry[\s\S]{0,180}(?:not started|in.progress|blocked|complete|\d+\/279\s+active\s+\(283\s+authored\))/iu,
       );
     } else {
       expect(phaseProgress).toMatch(

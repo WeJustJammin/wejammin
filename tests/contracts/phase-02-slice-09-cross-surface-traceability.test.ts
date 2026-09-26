@@ -352,19 +352,19 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-267] separates the 283 authored IDs from the 280-item active completion policy', () => {
+  it('[P2-S09-AC-267] separates the 283 authored IDs from the 279-item active completion policy', () => {
     expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(283);
     expect(sliceTracker).toMatch(
       /\*\*Acceptance criteria \(authored\)\*\*:\s*283\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Active release denominator\*\*:\s*280\b/iu,
+      /\*\*Active release denominator\*\*:\s*279\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Slice 09 implementation-completion denominator\*\*:\s*280\b/iu,
+      /\*\*Slice 09 implementation-completion denominator\*\*:\s*279\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Local QA-GREEN \(active\)\*\*:\s*279\/280\s+verified;\s*283\s+authored IDs remain/iu,
+      /\*\*Local QA-GREEN \(active\)\*\*:\s*279\/279\s+verified;\s*283\s+authored IDs remain/iu,
     );
 
     const ac266Row = sliceTracker
@@ -375,7 +375,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /AC266[\s\S]{0,500}owner-deferred[\s\S]{0,500}remains unchecked and excluded from active Phase 2/iu,
     );
     expect(sliceTracker).toMatch(
-      /Slice 10 implementation prerequisites\*\*:\s*AC265\b/iu,
+      /Slice 10 implementation prerequisites\*\*:\s*none\b/iu,
     );
     expect(sliceTracker).toMatch(
       /AC266[\s\S]{0,300}mandatory[\s\S]{0,100}pre-release[\s\S]{0,100}production-readiness\/release/iu,

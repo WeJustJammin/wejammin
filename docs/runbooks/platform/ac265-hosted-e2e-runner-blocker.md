@@ -68,12 +68,12 @@ empty and seeds no registration; disposable fixtures are local-test-only. PR
 result is only the automated AC266 component and cannot satisfy its deferred
 manual reports or combined verification. There is no live dependency/route
 policy, target, signing key, retained artifact, hosted matrix, or independently
-authenticated receipt, so CP-04b does not close AC265 or unlock Slice 10.
+authenticated receipt, so CP-04b does not close AC265; AC265 remains a mandatory pre-release gate that does not block Slice 10 implementation.
 The read-only AC209 verifier `35612514031` passed exact-main preflight,
 protection, and workspace checks, then failed closed at the capability query
 with `provider_graphql_error`; it made no effects and retained no receipt.
-AC209 remains open alongside AC265, and this CP-04b promotion does not unlock
-Slice 10.
+AC209 remains open alongside AC265, and this CP-04b promotion does not satisfy
+the AC265 pre-release gate.
 The local v3 schema/verifier does not satisfy those hosted gates. Do not generate
 `hosted/e2e.json` from policy, configuration, local fixtures, or a partial run.
 
@@ -90,8 +90,9 @@ to 64 KiB, and public-key PEM input is bounded to 8192 characters.
 These are local implementation and test boundaries only. Upstream authenticated
 manifest/registry/run authority and the external replay ledger remain open. No
 approved live target, signing key, issuer, artifact store, broker, hosted report,
-server receipt, or browser matrix exists. AC265 remains open and Slice 10 remains
-locked; local or synthetic proof cannot be promoted to hosted acceptance.
+server receipt, or browser matrix exists. AC265 remains open as a mandatory
+pre-release gate that does not block Slice 10 implementation; local or synthetic
+proof cannot be promoted to hosted acceptance.
 
 ## Locked evidence contract
 
