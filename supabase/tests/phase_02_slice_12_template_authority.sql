@@ -548,12 +548,14 @@ select 'a9120000-0000-4000-8000-000000000303',
 insert into platform_private.cms_content_type_versions(
   id, owner_id, state, content_type_id, version_no, labels,
   workflow_key, workflow_version, source_locale, default_locale,
+  supported_locales, fallback_chains, locale_config_hash,
   schema_artifact_id, definition_hash, compatibility, created_by
 )
 select 'a9120000-0000-4000-8000-000000000304',
        (select value::uuid from s10_ids where key = 'organization'),
        'draft', 'a9120000-0000-4000-8000-000000000303', 1, '{}'::jsonb,
        'editorial', 1, 'en-US', 'en-US',
+       '["en-US"]'::jsonb, '{}'::jsonb, '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
        'a9120000-0000-4000-8000-000000000305', repeat('c', 64),
        'additive', 'a9100000-0000-4000-8000-000000000001';
 insert into platform_private.cms_schema_artifacts(

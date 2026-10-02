@@ -3,6 +3,7 @@ import * as React from 'react';
 import type { CmsCapabilityGrantListProps } from './CmsCapabilityGrantList';
 import CmsCapabilityGrantList from './CmsCapabilityGrantList';
 import { safeContentSchemaRegistryErrorMessage } from '../content-schema-registry/content-schema-registry-types';
+import { grantListSummary } from './cms-capability-grant-summary';
 import type { CmsCapabilityGrantListState } from './cms-capability-grant-types';
 
 export interface CmsCapabilityGrantListRegionProps extends Omit<
@@ -10,6 +11,12 @@ export interface CmsCapabilityGrantListRegionProps extends Omit<
   'page' | 'commandsDisabled'
 > {
   readonly state: CmsCapabilityGrantListState;
+  /** True while a list read has run for more than the 250 ms threshold. */
+  readonly loading: boolean;
+  /** Commit controls are off (no verified step-up, or access disabled). */
+  readonly commandsDisabled: boolean;
+  /** The island-local person filter is set (its value is never announced). */
+  readonly personFilterActive: boolean;
   readonly retryUrl: string;
   readonly requestId: string;
   readonly onRetry: () => void;
@@ -45,11 +52,36 @@ export default function CmsCapabilityGrantListRegion(
     page: Parameters<typeof CmsCapabilityGrantList>[0]['page'],
     disabled: boolean,
   ) => (
-    <CmsCapabilityGrantList
-      {...props}
-      page={page}
-      commandsDisabled={disabled}
-    />
+    <>
+      {props.loading ? (
+        <div data-list-loading="true" aria-busy="true">
+          <div
+            className="content-schema-registry-loading-skeleton"
+            aria-hidden="true"
+          />
+          <p role="status" aria-live="polite" aria-atomic="true">
+            Loading current grants
+          </p>
+        </div>
+      ) : null}
+      <p
+        data-list-summary="true"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {grantListSummary(
+          page.items.length,
+          props.query,
+          props.personFilterActive,
+        )}
+      </p>
+      <CmsCapabilityGrantList
+        {...props}
+        page={page}
+        commandsDisabled={disabled || props.commandsDisabled}
+      />
+    </>
   );
   switch (state.status) {
     case 'idle':

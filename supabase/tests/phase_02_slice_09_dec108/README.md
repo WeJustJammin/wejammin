@@ -10,9 +10,9 @@ are `../phase_02_slice_09_dec108_*.sql`.
 | -------- | ------- |
 | `00-helpers.sqlinc` | `pg_temp.s09d_*` probes. Every RPC call runs in a sub-transaction so an absent producer is a failed assertion, never an aborted suite. Also catalog checks, session snapshot/restore and the `s09d_timewarp` window shifter. |
 | `01-actors.sqlinc` | Standalone actors: owner via `initialize_cms_owner`, a second designer, three reviewers with no CMS capability, and an other-organization designer. |
-| `02-chain.sqlinc` | One helper per named RPC (create, successor, dry-run, worker seal, submit, assign, decide, activate, read) and compound `s09d_to_review` / `to_approved` / `to_active`. |
+| `02-chain.sqlinc` | One helper per named RPC (create with an optional locale configuration, successor with an optional locale replacement, dry-run, worker seal, submit, assign, decide, activate, read) and compound `s09d_to_review` / `to_approved` / `to_active`. |
 | `03-support.sqlinc` | Side-effect fingerprints, activation request builders, exact-request replay, the worker backfill/switch steps (`s09d_complete_plan`, `s09d_worker_activate`) and `s09d_grant_specialist` (D3 provisioning of a confirmed owner-organization membership plus a capability granted through CMS-03A-15, never a direct `organization_actor_grant` row). |
-| `04-worker.sqlinc` | Migration-worker simulation over the named RPCs only (claim, read rows, apply the registered transform per row, post evidence, finalize, backfill, verify, complete, rollback), `s09w_entry` real entries and `s09w_redefine`/`s09w_tighten` field edits under a ready plan. |
+| `04-worker.sqlinc` | Migration-worker simulation over the named RPCs only (claim, read rows, apply the registered transform per field of the multi-field page, post evidence, finalize, backfill, begin/verify/complete, rollback), `s09w_entry`/`s09w_entry_request` real entries, `s09w_add_field` and `s09w_redefine`/`s09w_tighten` field edits (including a lifecycle change) under a ready plan. |
 
 ## Rules
 

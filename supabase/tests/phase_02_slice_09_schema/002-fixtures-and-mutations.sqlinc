@@ -75,7 +75,7 @@ set active = excluded.active, valid_through = excluded.valid_through;
 create temp table s09_type_request on commit drop as
 select jsonb_build_object(
   'typeKey', 'articlex', 'label', 'Article X', 'ownerCapability', 'cms.schema_designer',
-  'sourceLocale', 'en-US', 'defaultLocale', 'en-US', 'workflowKey', 'editorial',
+  'sourceLocale', 'en-US', 'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb, 'workflowKey', 'editorial',
   'workflowVersion', '1', 'defaultTemplateVersionId', null,
   'fields', jsonb_build_array(jsonb_build_object(
     'stableFieldId', 'a9090000-0000-4000-8000-000000000101',

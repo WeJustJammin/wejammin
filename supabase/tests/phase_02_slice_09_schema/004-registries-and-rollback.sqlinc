@@ -247,7 +247,8 @@ select
   jsonb_build_object(
     'typeKey', 'hashable', 'label', 'Hashable',
     'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
+    'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1',
     'defaultTemplateVersionId', null, 'fields', jsonb_build_array(field_a, field_b),
     'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
     'capabilityBindings', '[]'::jsonb
@@ -255,7 +256,8 @@ select
   jsonb_build_object(
     'typeKey', 'hashable', 'label', 'Hashable',
     'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
+    'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1',
     'defaultTemplateVersionId', null, 'fields', jsonb_build_array(field_b, field_a),
     'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
     'capabilityBindings', '[]'::jsonb

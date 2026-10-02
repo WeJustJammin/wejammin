@@ -270,7 +270,10 @@ const storedEvidence = (versionId) => {
     `select jsonb_build_object('artifactId',artifact.id,'artifactHash',artifact.artifact_hash,
   'recomputed',platform_private.cms_jcs_sha256(jsonb_build_object('compilerVersion',artifact.compiler_version,
     'zodContractRef',artifact.zod_contract_ref,'editorManifest',artifact.editor_manifest,
-    'rendererManifest',artifact.renderer_manifest)),
+    'rendererManifest',artifact.renderer_manifest,
+    'localeConfigHash',(select version_row.locale_config_hash
+      from platform_private.cms_content_type_versions version_row
+      where version_row.id=artifact.content_type_version_id))),
   'fieldCount',jsonb_array_length(artifact.editor_manifest->'schema'->'fields'),
   'bounded',platform_private.cms_compiled_manifest_bounded(artifact.editor_manifest)
     and platform_private.cms_compiled_manifest_bounded(artifact.renderer_manifest))
@@ -352,6 +355,8 @@ const main = async () => {
     ownerCapability: 'cms.schema_designer',
     sourceLocale: 'en-US',
     defaultLocale: 'en-US',
+    supportedLocales: ['en-US'],
+    fallbackChains: {},
     workflowKey: 'editorial',
     workflowVersion: '1',
     defaultTemplateVersionId: null,

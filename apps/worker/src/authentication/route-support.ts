@@ -6,6 +6,7 @@ import { parseClientBindingIdHeader } from './client-binding-header';
 import { isFreshProof, stepUpRequiredError } from './step-up';
 import type {
   AuthenticationDependencies,
+  AuthenticationError,
   AuthenticationResult,
   AuthenticationSession,
 } from './types';
@@ -39,6 +40,10 @@ export const enforceRate = async (
   operationId: AuthOperationId,
   session: AuthenticationSession | null,
   identifierDigest: string | null = null,
+  respond: (
+    context: WorkerContext,
+    error: AuthenticationError,
+  ) => Response = responseForAuthError,
 ): Promise<Response | null> => {
   const policy = policyFor(operationId);
   const controller = new AbortController();
@@ -54,11 +59,11 @@ export const enforceRate = async (
     context.env,
     controller.signal,
   );
-  if (!result.ok) return responseForAuthError(context, result);
+  if (!result.ok) return respond(context, result);
   applyRateHeaders(context, result.value);
   return result.value.allowed
     ? null
-    : responseForAuthError(
+    : respond(
         context,
         authError(429, 'RATE_LIMITED', 'Too many requests.', {
           retryAfterSeconds: Math.max(

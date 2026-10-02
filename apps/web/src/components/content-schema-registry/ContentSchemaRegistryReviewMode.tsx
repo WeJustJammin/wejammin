@@ -26,6 +26,13 @@ export interface ContentSchemaRegistryReviewModeProps {
   readonly stepUpFreshUntil?: string | undefined;
 }
 
+const decisionPrerequisiteCopy = (
+  state: 'open' | 'approved' | 'rejected' | 'invalidated',
+): string =>
+  state === 'open'
+    ? 'You cannot record a decision on this review: your assignment to decide it is missing or has ended.'
+    : `Decisions are recorded only while a review is open; this review is ${state}.`;
+
 /**
  * The protected review route (CMS-03A-13). It renders the exact review and,
  * only when the server's per-review `permittedNextActions` allow, the decision
@@ -44,6 +51,12 @@ export default function ContentSchemaRegistryReviewMode(
     review.state === 'open' &&
     review.permittedNextActions.includes(name);
   const owner = variant === 'ownerFull' && access === 'full';
+  // FE03 reviewState `disabled`: a reviewer without the decision form is told
+  // which prerequisite is missing, from what the server already disclosed.
+  const decisionPrerequisite =
+    reviewOnly && review !== null && !permitted('record_decision')
+      ? decisionPrerequisiteCopy(review.state)
+      : null;
   const candidateUrl =
     review === null || reviewOnly
       ? undefined
@@ -56,6 +69,9 @@ export default function ContentSchemaRegistryReviewMode(
       candidateUrl={candidateUrl}
       decisionReferences
     >
+      {decisionPrerequisite === null ? null : (
+        <p data-decision-prerequisite="true">{decisionPrerequisite}</p>
+      )}
       {review !== null && permitted('record_decision') ? (
         <ContentSchemaRegistryReviewDecisionForm
           action={action}

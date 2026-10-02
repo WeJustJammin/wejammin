@@ -68,13 +68,13 @@ describe('SchemaDryRunResource lifecycle seal', () => {
         ...completedPassedDryRun,
         reportHash: null,
       }),
-    ).toContain('completed_dry_run_requires_sealed_evidence');
+    ).toContain('a completed dry-run must expose sealed report evidence');
   });
 
   it('forbids final evidence before the seal', () => {
     expect(
       messages(SchemaDryRunResourceSchema, { ...queuedDryRun, sourceCount: 0 }),
-    ).toContain('unsealed_dry_run_forbids_final_evidence');
+    ).toContain('an unsealed dry-run cannot carry final report evidence');
   });
 
   it('requires zero row errors for a passed report', () => {
@@ -83,7 +83,7 @@ describe('SchemaDryRunResource lifecycle seal', () => {
         ...completedPassedDryRun,
         rowErrorCount: 1,
       }),
-    ).toContain('passed_dry_run_requires_zero_row_error_count');
+    ).toContain('a passed dry-run requires zero row errors');
   });
 
   it('requires row errors for a sealed failed report', () => {
@@ -93,7 +93,7 @@ describe('SchemaDryRunResource lifecycle seal', () => {
         result: 'failed',
         rowErrorCount: 0,
       }),
-    ).toContain('sealed_failed_dry_run_requires_row_errors');
+    ).toContain('a sealed failing scan must carry the actual scan errors');
   });
 
   it('treats a missing row-error count on a failed seal as zero', () => {
@@ -105,8 +105,8 @@ describe('SchemaDryRunResource lifecycle seal', () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        'completed_dry_run_requires_sealed_evidence',
-        'sealed_failed_dry_run_requires_row_errors',
+        'a completed dry-run must expose sealed report evidence',
+        'a sealed failing scan must carry the actual scan errors',
       ]),
     );
   });
@@ -117,13 +117,13 @@ describe('SchemaDryRunResource lifecycle seal', () => {
         ...queuedDryRun,
         state: 'failed',
       }),
-    ).toContain('unsealed_failed_dry_run_requires_failure_code');
+    ).toContain('an unsealed failed dry-run requires a safe failure code');
     expect(
       messages(SchemaDryRunResourceSchema, {
         ...queuedDryRun,
         failureCode: 'SCAN_ABORTED',
       }),
-    ).toContain('only_failed_dry_run_carries_failure_code');
+    ).toContain('only a failed dry-run carries a failure code');
   });
 });
 
@@ -144,13 +144,13 @@ describe('SchemaReviewResource decision accounting', () => {
         distinctApprovalCount: 2,
         requiredDecisionCount: 2,
       }),
-    ).toContain('review_decision_references_must_be_unique');
+    ).toContain('decision references must be unique');
     expect(
       messages(SchemaReviewResourceSchema, {
         ...approvedReview,
         recordedDecisionCount: 2,
       }),
-    ).toContain('recorded_decision_count_must_equal_references');
+    ).toContain('recorded decision count must equal the decision references');
   });
 
   it('bounds the decision history at eight', () => {
@@ -173,7 +173,7 @@ describe('SchemaReviewResource decision accounting', () => {
         ...openReview,
         distinctApprovalCount: 1,
       }),
-    ).toContain('distinct_approvers_cannot_exceed_recorded_approvals');
+    ).toContain('distinct qualifying approvers cannot exceed recorded approvals');
   });
 
   it('requires the exact policy count for an approved review', () => {
@@ -182,7 +182,7 @@ describe('SchemaReviewResource decision accounting', () => {
         ...approvedReview,
         requiredDecisionCount: 2,
       }),
-    ).toContain('approved_review_requires_exact_policy_count');
+    ).toContain('an approved review requires exactly the policy decision count');
   });
 
   it('never approves a review holding a rejection', () => {
@@ -197,7 +197,7 @@ describe('SchemaReviewResource decision accounting', () => {
         recordedDecisionCount: 2,
         decisions: [approveDecision, rejection],
       }),
-    ).toContain('rejected_review_cannot_be_approved');
+    ).toContain('a review with a rejection cannot be approved');
   });
 
   it('carries the evidence hash and decision instant only when approved', () => {
@@ -206,13 +206,13 @@ describe('SchemaReviewResource decision accounting', () => {
         ...openReview,
         approvalEvidenceHash: hash,
       }),
-    ).toContain('approval_evidence_hash_only_when_approved');
+    ).toContain('approval evidence hash exists only when the review is approved');
     expect(
       messages(SchemaReviewResourceSchema, {
         ...openReview,
         decidedAt: instant,
       }),
-    ).toContain('decided_at_only_when_approved');
+    ).toContain('decidedAt exists only when the review is approved');
     expect(
       messages(SchemaReviewResourceSchema, {
         ...approvedReview,
@@ -221,8 +221,8 @@ describe('SchemaReviewResource decision accounting', () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        'approval_evidence_hash_only_when_approved',
-        'decided_at_only_when_approved',
+        'approval evidence hash exists only when the review is approved',
+        'decidedAt exists only when the review is approved',
       ]),
     );
   });

@@ -30,6 +30,9 @@ export interface StepUpChallengeFormProps {
 
 const reloadPage = (): void => window.location.reload();
 
+/** FE01 lost-access entry: the sign-in recovery path, never a step-up bypass. */
+const LOST_ACCESS_LABEL = 'Lost your authenticator? Recover your account';
+
 /** FE01 step-up island: challenge, code entry, and a full navigation back. */
 export function StepUpChallengeForm({
   returnTo,
@@ -124,6 +127,11 @@ export function StepUpChallengeForm({
             {state.phase === 'verifying' ? 'Verifying' : 'Verify'}
           </button>
         </form>
+      )}
+      {state.phase !== 'signed-out' && (
+        <p className="infra-help">
+          <a href={stepUpSignInHref(returnTo)}>{LOST_ACCESS_LABEL}</a>
+        </p>
       )}
     </section>
   );

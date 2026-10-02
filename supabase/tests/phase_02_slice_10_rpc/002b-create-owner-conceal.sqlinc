@@ -25,6 +25,7 @@ from s10_foreign_org;
 insert into platform_private.cms_content_type_versions(
   id, owner_id, state, version, content_type_id, version_no, labels,
   workflow_key, workflow_version, source_locale, default_locale,
+  supported_locales, fallback_chains, locale_config_hash,
   schema_artifact_id, definition_hash, compatibility, created_by,
   activation_workflow_policy_key, activation_workflow_policy_version,
   activation_workflow_policy_hash, activation_required_decision_count,
@@ -33,6 +34,7 @@ insert into platform_private.cms_content_type_versions(
 select 'a9100000-0000-4000-8000-000000000702', organization_id,
   'active', 1, 'a9100000-0000-4000-8000-000000000701', 1,
   '{"label":"Foreign article"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
+  '["en-US"]'::jsonb, '{}'::jsonb, '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
   'a9100000-0000-4000-8000-000000000703', repeat('a', 64), 'additive',
   'a9100000-0000-4000-8000-000000000004',
   'cms.entry.author', 1, repeat('a', 64), 1,

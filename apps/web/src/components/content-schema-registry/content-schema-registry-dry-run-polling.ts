@@ -43,10 +43,18 @@ const unavailableReader: JobStatusReader = () =>
  * It never invents a result: a terminal job only asks the owner of canonical
  * state to refetch the detail so the sealed report is read from the server.
  */
+export interface ContentSchemaRegistryDryRunPolling {
+  /** Last job state read through BE00, or null before any read succeeds. */
+  readonly job: JobState | null;
+  /** A failed job read; retryable only when the read failure is retryable. */
+  readonly failure: { readonly retryable: boolean } | null;
+  readonly retry: () => void;
+}
+
 export const useContentSchemaRegistryDryRunPolling = (input: {
   readonly jobId: string | null;
   readonly onTerminal: () => void;
-}): JobState | null => {
+}): ContentSchemaRegistryDryRunPolling => {
   const { jobId, onTerminal } = input;
   const reader = React.useMemo(() => readerFor(jobId), [jobId]);
   const polling = useJobPolling({
@@ -65,5 +73,12 @@ export const useContentSchemaRegistryDryRunPolling = (input: {
     notified.current = key;
     onTerminal();
   }, [jobId, polled, onTerminal]);
-  return reader === null ? null : polled;
+  return {
+    job: reader === null ? null : polled,
+    failure:
+      reader !== null && polling.state.status === 'error'
+        ? { retryable: polling.state.retryable }
+        : null,
+    retry: polling.start,
+  };
 };

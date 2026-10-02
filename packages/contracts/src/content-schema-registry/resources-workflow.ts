@@ -24,6 +24,7 @@ import {
 import { SchemaReviewAssignmentSummarySchema } from './resources-review-assignments.ts';
 import { resourceMetaShape } from './resources-meta.ts';
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const NullableCountSchema = z.number().int().nonnegative().nullable();
 
 export const SchemaDryRunResourceSchema = z
@@ -66,37 +67,37 @@ export const SchemaDryRunResourceSchema = z
       context.addIssue({
         code: 'custom',
         path: ['state'],
-        message: 'completed_dry_run_requires_sealed_evidence',
+        message: 'a completed dry-run must expose sealed report evidence',
       });
     if (!sealed && sealedFields.some((field) => field !== null))
       context.addIssue({
         code: 'custom',
         path: ['state'],
-        message: 'unsealed_dry_run_forbids_final_evidence',
+        message: 'an unsealed dry-run cannot carry final report evidence',
       });
     if (sealed && value.result === 'passed' && value.rowErrorCount !== 0)
       context.addIssue({
         code: 'custom',
         path: ['rowErrorCount'],
-        message: 'passed_dry_run_requires_zero_row_error_count',
+        message: 'a passed dry-run requires zero row errors',
       });
     if (sealed && value.result === 'failed' && (value.rowErrorCount ?? 0) === 0)
       context.addIssue({
         code: 'custom',
         path: ['rowErrorCount'],
-        message: 'sealed_failed_dry_run_requires_row_errors',
+        message: 'a sealed failing scan must carry the actual scan errors',
       });
     if (value.state === 'failed' && value.failureCode === null)
       context.addIssue({
         code: 'custom',
         path: ['failureCode'],
-        message: 'unsealed_failed_dry_run_requires_failure_code',
+        message: 'an unsealed failed dry-run requires a safe failure code',
       });
     if (value.state !== 'failed' && value.failureCode !== null)
       context.addIssue({
         code: 'custom',
         path: ['failureCode'],
-        message: 'only_failed_dry_run_carries_failure_code',
+        message: 'only a failed dry-run carries a failure code',
       });
   })
   .readonly();
@@ -206,22 +207,27 @@ export const SchemaReviewResourceSchema = z
       context.addIssue({
         code: 'custom',
         path: ['decisions'],
-        message: 'review_decision_references_must_be_unique',
+        message: 'decision references must be unique',
       });
     if (value.recordedDecisionCount !== value.decisions.length)
       context.addIssue({
         code: 'custom',
         path: ['recordedDecisionCount'],
-        message: 'recorded_decision_count_must_equal_references',
+        message: 'recorded decision count must equal the decision references',
       });
     if (
       new Set(value.assignments.map((entry) => entry.assignmentId)).size !==
-      value.assignments.length
+        value.assignments.length ||
+      value.assignments.some((entry) => {
+        const span = Date.parse(entry.endsAt) - Date.parse(entry.startsAt);
+        return !(span > 0 && span <= SEVEN_DAYS_MS);
+      })
     )
       context.addIssue({
         code: 'custom',
         path: ['assignments'],
-        message: 'review_assignment_references_must_be_unique',
+        message:
+          'assignment ids must be unique and each span at most seven days',
       });
     if (value.decisions.length > 8)
       context.addIssue({
@@ -233,7 +239,8 @@ export const SchemaReviewResourceSchema = z
       context.addIssue({
         code: 'custom',
         path: ['distinctApprovalCount'],
-        message: 'distinct_approvers_cannot_exceed_recorded_approvals',
+        message:
+          'distinct qualifying approvers cannot exceed recorded approvals',
       });
     if (
       value.state === 'approved' &&
@@ -242,7 +249,8 @@ export const SchemaReviewResourceSchema = z
       context.addIssue({
         code: 'custom',
         path: ['state'],
-        message: 'approved_review_requires_exact_policy_count',
+        message:
+          'an approved review requires exactly the policy decision count',
       });
     if (
       value.state === 'approved' &&
@@ -251,19 +259,20 @@ export const SchemaReviewResourceSchema = z
       context.addIssue({
         code: 'custom',
         path: ['state'],
-        message: 'rejected_review_cannot_be_approved',
+        message: 'a review with a rejection cannot be approved',
       });
     if ((value.state === 'approved') !== (value.approvalEvidenceHash !== null))
       context.addIssue({
         code: 'custom',
         path: ['approvalEvidenceHash'],
-        message: 'approval_evidence_hash_only_when_approved',
+        message:
+          'approval evidence hash exists only when the review is approved',
       });
     if ((value.state === 'approved') !== (value.decidedAt !== null))
       context.addIssue({
         code: 'custom',
         path: ['decidedAt'],
-        message: 'decided_at_only_when_approved',
+        message: 'decidedAt exists only when the review is approved',
       });
   })
   .readonly();
@@ -316,7 +325,7 @@ export const SchemaActivationPreparationSchema = z
           context.addIssue({
             code: 'custom',
             path: ['failureCode'],
-            message: 'only_failed_dry_run_carries_failure_code',
+            message: 'only a failed dry-run carries a failure code',
           });
       })
       .nullable(),

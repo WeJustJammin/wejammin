@@ -44,7 +44,7 @@ This deep dive makes Shard 01's high-risk mechanics deterministic without moving
 | Identifier procurement | Record/verify/resolve only; helping obtain identifiers requires provider/legal evolution. |
 | Estate without nomination | No automatic successor. Verified legal authority is required through a counsel-approved case before administration. |
 | Estate profile removal | Approved suppression removes optional public biography/discovery while preserving minimal citation and third-party provenance. |
-| Step-up surface (DEC-111) | Server-mediated: the Worker calls Supabase MFA on the caller's behalf and rotates the first-party session to `aal2`; a protected step-up page with a safe relative return target is the single browser entry. The browser never holds a Supabase token or runs an MFA client. |
+| Step-up surface (DEC-111) | Server-mediated: the Worker calls Supabase MFA on the caller's behalf and rotates the first-party session to `aal2`, settling the verification and rotating the session in one transaction so neither commits alone; a protected step-up page with a safe relative return target is the single browser entry. The browser never holds a Supabase token or runs an MFA client. |
 | TOTP enrollment (DEC-111) | A TOTP enrollment surface exists for the signed-in person: enroll, verify, list, remove. The secret is shown once and never stored. Launch enables TOTP only. |
 | Lost second factor | No account recovery codes. Recovery uses the existing account recovery flow plus an administrative factor reset by an operator holding the named capability (recent step-up, reason, audit; never self-reset); the only administrator uses the audited runbook; there is no self-service bypass. |
 | First factor | Requires recent primary authentication in the same 600-second window as step-up, else the person signs in again; the last verified factor cannot be removed while the person holds a capability whose operations require step-up. |
@@ -241,6 +241,7 @@ Every downstream command stores the `actingPartyId`, human actor, authority sour
 | 2026-08-28 | F10 P-06/P-07 — made consumer-owned purpose capability conjunctive and documented the reciprocal Shard-30 exact-booking/precondition `announce_waive` boundary with P-07 policy owned by Shard 30. | /resolve-ambiguity | Authority Resolution, Cross-Shard Contracts, Verification Questions |
 | 2026-10-02 | DEC-111: added server-mediated step-up and TOTP enrollment choices, freshness/bound/limit policy values, `mfa_factor`/`step_up_challenge` field contracts and state machines, concurrency rules, and abuse/recovery proofs | /propagate-decision | Resolved Choices, Deterministic Policy Values, Canonical Field Contracts, State Machines, Concurrency, Abuse and Recovery |
 | 2026-10-02 | DEC-111 follow-ups: recent primary authentication for the first factor, last-verified-factor refusal while step-up-gated capabilities are held, administrative factor reset and sole-administrator runbook | /propagate-decision | Resolved choices, Abuse |
+| 2026-10-02 | Slice 09 implementation reconciliation: the step-up surface settles the verification and rotates the session in one transaction. |
 
 ## Dependency References
 

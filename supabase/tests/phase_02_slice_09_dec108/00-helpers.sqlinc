@@ -6,7 +6,7 @@
 -- or completed-plan row is ever written here.
 
 create temp table if not exists s09d_probe(
-  label text primary key, state text, message text, response jsonb
+  label text primary key, state text, message text, response jsonb, detail text
 ) on commit drop;
 create temp table if not exists s09d_ids(name text primary key, id uuid) on commit drop;
 create temp table if not exists s09d_sql_errors(statement text, message text) on commit drop;
@@ -18,18 +18,21 @@ create temp table if not exists s09d_actor(
 -- Calls one RPC, records SQLSTATE/message/response under p_label.
 create or replace function pg_temp.s09d_call(p_label text, p_function text, p_request jsonb)
 returns jsonb language plpgsql as $body$
-declare result jsonb;
+declare result jsonb; error_detail text;
 begin
   begin
     execute format('select %s($1)', p_function) into result using p_request;
-    insert into s09d_probe values (p_label, '00000', null, result)
+    insert into s09d_probe values (p_label, '00000', null, result, null)
     on conflict (label) do update
-      set state = excluded.state, message = excluded.message, response = excluded.response;
+      set state = excluded.state, message = excluded.message, response = excluded.response,
+          detail = excluded.detail;
     return result;
   exception when others then
-    insert into s09d_probe values (p_label, sqlstate, sqlerrm, null)
+    get stacked diagnostics error_detail = pg_exception_detail;
+    insert into s09d_probe values (p_label, sqlstate, sqlerrm, null, error_detail)
     on conflict (label) do update
-      set state = excluded.state, message = excluded.message, response = excluded.response;
+      set state = excluded.state, message = excluded.message, response = excluded.response,
+          detail = excluded.detail;
     return null;
   end;
 end;
@@ -42,6 +45,9 @@ language sql stable as $body$
   select coalesce((select case when state = '00000' then 'OK' else message end
                    from s09d_probe where label = p_label), 'MISSING')
 $body$;
+-- Machine DETAIL of the last failed call under p_label (null when none).
+create or replace function pg_temp.s09d_detail(p_label text) returns text
+language sql stable as $body$ select detail from s09d_probe where label = p_label $body$;
 create or replace function pg_temp.s09d_resp(p_label text) returns jsonb
 language sql stable as $body$ select response from s09d_probe where label = p_label $body$;
 create or replace function pg_temp.s09d_id(p_name text) returns uuid

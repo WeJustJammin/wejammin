@@ -15,10 +15,24 @@ export interface ContentSchemaRegistryActivationPreparationProps {
   readonly preparation: SchemaActivationPreparation;
   readonly review: ContentSchemaRegistryReviewState | null;
   readonly onCanonicalRefetch: () => void;
+  /**
+   * Set when the preparation is the last verified one held while the detail
+   * read is degraded: it is shown with its time, never polled, and every
+   * command that would consume it stays unavailable.
+   */
+  readonly degraded?: { readonly lastVerifiedAt: string | null } | undefined;
 }
 
 const UNSEALED_FAILURE =
   'The dry run did not complete and produced no sealed report. Start a new dry run when the server allows it.';
+
+/** The safe failure code of an unsealed failed dry run, if the server sent one. */
+const failureCodeOf = (
+  preparation: SchemaActivationPreparation,
+): string | null => {
+  const dryRun = preparation.dryRunRef;
+  return dryRun?.state === 'failed' ? (dryRun.failureCode ?? null) : null;
+};
 
 /** Plain status sentence; a job state alone never reads as a result. */
 const statusSentence = (
@@ -31,8 +45,12 @@ const statusSentence = (
     return dryRun.result === 'passed'
       ? 'The sealed dry run passed.'
       : 'The sealed dry run failed; its report lists the row errors.';
-  if (dryRun.state === 'failed' || job === 'failed' || job === 'cancelled')
-    return UNSEALED_FAILURE;
+  if (dryRun.state === 'failed' || job === 'failed' || job === 'cancelled') {
+    const code = failureCodeOf(preparation);
+    return code === null
+      ? UNSEALED_FAILURE
+      : `The dry run did not complete and produced no sealed report (failure code ${code}). Start a new dry run when the server allows it.`;
+  }
   if (job === 'succeeded')
     return 'The job finished; the sealed report is being read from the server.';
   return `The dry run is ${job ?? dryRun.state}.`;
@@ -78,11 +96,13 @@ export default function ContentSchemaRegistryActivationPreparation({
   preparation,
   review,
   onCanonicalRefetch,
+  degraded,
 }: ContentSchemaRegistryActivationPreparationProps): React.ReactElement {
-  const polled = useContentSchemaRegistryDryRunPolling({
-    jobId: pollableJobId(preparation),
+  const { job: polled, failure, retry } = useContentSchemaRegistryDryRunPolling({
+    jobId: degraded === undefined ? pollableJobId(preparation) : null,
     onTerminal: onCanonicalRefetch,
   });
+  const failureCode = failureCodeOf(preparation);
   const job = polled ?? preparation.jobRef?.state ?? null;
   const result = sealedResult(preparation);
   const compatibility = preparation.templateCompatibility ?? null;
@@ -104,6 +124,32 @@ export default function ContentSchemaRegistryActivationPreparation({
       >
         {statusSentence(preparation, job)}
       </p>
+      {failure === null ? null : (
+        <div data-dry-run-poll-error="true" role="alert" aria-atomic="true">
+          <p>The dry-run status could not be read from the server.</p>
+          {failure.retryable ? (
+            <button type="button" data-cms-retry-control="enabled" onClick={retry}>
+              Retry
+            </button>
+          ) : null}
+        </div>
+      )}
+      {degraded === undefined ? null : (
+        <p role="status" aria-live="polite" aria-atomic="true">
+          Showing the last verified dry run
+          {degraded.lastVerifiedAt === null ? null : (
+            <>
+              {' '}
+              (last verified{' '}
+              <time dateTime={degraded.lastVerifiedAt}>
+                {degraded.lastVerifiedAt}
+              </time>
+              )
+            </>
+          )}
+          . Submit review is disabled until the server read succeeds again.
+        </p>
+      )}
       <dl>
         <dt>Dry run</dt>
         <dd>{preparation.dryRunRef?.state ?? 'none'}</dd>
@@ -111,6 +157,14 @@ export default function ContentSchemaRegistryActivationPreparation({
           <>
             <dt>Result</dt>
             <dd>{result}</dd>
+          </>
+        )}
+        {failureCode === null ? null : (
+          <>
+            <dt>Failure code</dt>
+            <dd>
+              <code>{failureCode}</code>
+            </dd>
           </>
         )}
         {job === null ? null : (

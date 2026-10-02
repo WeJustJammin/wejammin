@@ -26,7 +26,9 @@ create or replace function pg_temp.s09d_recomputed_hash(p_tag text) returns text
 language sql stable as $body$
   select pg_temp.s09d_scalar(format($q$select platform_private.cms_jcs_sha256(jsonb_build_object(
       'compilerVersion', compiler_version, 'zodContractRef', zod_contract_ref,
-      'editorManifest', editor_manifest, 'rendererManifest', renderer_manifest))
+      'editorManifest', editor_manifest, 'rendererManifest', renderer_manifest,
+      'localeConfigHash', (select locale_config_hash from platform_private.cms_content_type_versions
+                            where id = content_type_version_id)))
     from platform_private.cms_schema_artifacts where content_type_version_id = %L$q$,
     pg_temp.s09d_id(p_tag || ':version')))
 $body$;
@@ -51,7 +53,7 @@ select ok(pg_temp.s09d_artifact('b', 'artifact_hash') ~ '^[a-f0-9]{64}$'
   and pg_temp.s09d_artifact('b', 'artifact_hash') <> pg_temp.s09d_artifact('a', 'artifact_hash'),
   'an unchanged clone has a DISTINCT artifact hash from its source (no identical-artifact claim)');
 select ok(pg_temp.s09d_artifact('b', 'artifact_hash') = pg_temp.s09d_recomputed_hash('b'),
-  'the v2 hash is exactly the canonical SHA-256 of compilerVersion, versioned zodContractRef and both manifests (no salt)');
+  'the v2 hash is exactly the canonical SHA-256 of compilerVersion, versioned zodContractRef, both manifests and localeConfigHash (no salt)');
 select ok(pg_temp.s09d_artifact('b', 'artifact_hash') is not null
   and pg_temp.s09d_artifact('b', 'artifact_hash') = pg_temp.s09d_read('cms_content_type_versions', 'definition_hash', pg_temp.s09d_id('b:version')),
   'the successor row''s definition hash is its own artifact hash');

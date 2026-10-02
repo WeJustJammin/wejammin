@@ -8,6 +8,7 @@ select set_config('app.cfg_rpc', 'true', true);
 insert into platform_private.cms_content_type_versions(
   id, owner_id, state, version, content_type_id, version_no, labels,
   workflow_key, workflow_version, source_locale, default_locale,
+  supported_locales, fallback_chains, locale_config_hash,
   schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
 ) values (
   'a9090000-0000-4000-8000-000000000150',
@@ -15,6 +16,7 @@ insert into platform_private.cms_content_type_versions(
    where id = (select version_id from s09_type_ids)),
   'review', 1, (select content_type_id from s09_type_ids), 5,
   '{"label":"Article X exact"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
+  '["en-US"]'::jsonb, '{}'::jsonb, '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
   'a9090000-0000-4000-8000-000000000151', repeat('9', 64), 'conditional',
   'a9090000-0000-4000-8000-000000000405',
   'a9090000-0000-4000-8000-000000000001'

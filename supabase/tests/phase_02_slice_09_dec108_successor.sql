@@ -76,7 +76,8 @@ select ok(pg_temp.s09d_id('b:version') is not null and coalesce(pg_temp.s09d_sca
 select ok(pg_temp.s09d_outcome('b:successor') = 'OK'
   and pg_temp.s09d_rpc('b:replay', 'platform_api.cms_create_schema_successor', 'owner',
     jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
-      'expectedVersion', pg_temp.s09d_version('a'), 'idempotencyKey', 's09d-successor-replay-0001'))
+      'expectedVersion', pg_temp.s09d_version('a'), 'supportedLocales', null, 'fallbackChains', null,
+      'idempotencyKey', 's09d-successor-replay-0001'))
     = pg_temp.s09d_resp('b:successor'),
   'a same-key replay returns the exact original successor resource');
 select is(pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_content_type_versions where content_type_id = %L',

@@ -66,7 +66,8 @@ select ok(
       ('platform_private.cms_content_type_versions', array[
         'id','owner_id','state','version','created_at','updated_at',
         'content_type_id','version_no','labels','workflow_key','workflow_version',
-        'source_locale','default_locale','default_template_version_id',
+        'source_locale','default_locale','supported_locales','fallback_chains',
+        'locale_config_hash','default_template_version_id',
         'schema_artifact_id','definition_hash','compatibility','supersedes_id',
         'dry_run_id','created_by','approved_at','activation_workflow_policy_key',
         'activation_workflow_policy_version','activation_workflow_policy_hash',

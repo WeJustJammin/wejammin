@@ -81,12 +81,12 @@ describe('AUTH-API-18 TOTP enrollment verify route', () => {
     ).toBe(403);
   });
 
-  it('uses the 10 per 15 minute verification bucket', async () => {
+  it('uses the 10 per 15 minute verification bucket shared with AUTH-API-21', async () => {
     const { app, auth } = createMfaApp();
     await verify(app);
     expect(auth.rateLimit).toHaveBeenCalledWith(
       expect.objectContaining({
-        operationId: 'AUTH-API-18',
+        operationId: 'AUTH-API-21',
         limit: 10,
         windowSeconds: 900,
       }),

@@ -20,6 +20,39 @@ import {
   validatePortInput,
 } from './route-response';
 
+const UUID_TEXT =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+/**
+ * Location names the created resource. A successor (CMS-03A-09) is a new draft
+ * version readable at the protected detail route; every other command keeps
+ * the request path.
+ */
+const locationFor = (
+  operationId: ContentSchemaRegistryOperationId,
+  requestPath: string,
+  value: unknown,
+): string => {
+  if (
+    operationId === 'CMS-03A-09' &&
+    typeof value === 'object' &&
+    value !== null
+  ) {
+    const { id, contentTypeId } = value as {
+      id?: unknown;
+      contentTypeId?: unknown;
+    };
+    if (
+      typeof id === 'string' &&
+      typeof contentTypeId === 'string' &&
+      UUID_TEXT.test(id) &&
+      UUID_TEXT.test(contentTypeId)
+    )
+      return `/api/v1/cms/content-types/${contentTypeId}/versions/${id}`;
+  }
+  return requestPath;
+};
+
 export type ContentSchemaRegistryDomain = Readonly<{
   execute: (
     input: ContentSchemaRegistryPortInput,
@@ -118,7 +151,11 @@ export const createExecutor =
     context.header('cache-control', 'no-store');
     const etag = etagFor(result.value);
     if (etag !== null && !isRead) context.header('etag', etag);
-    if (!isRead) context.header('location', context.req.path);
+    if (!isRead)
+      context.header(
+        'location',
+        locationFor(operationId, context.req.path, result.value),
+      );
     return context.json(
       result.value,
       successStatusFor(operationId, result.value),

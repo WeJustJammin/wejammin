@@ -80,7 +80,7 @@ export const daysBetweenUtcDates = (
 export const CmsUtcDateSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/u, 'utc_date_invalid')
-  .refine((value) => utcDateToEpochMs(value) !== null, 'utc_date_not_real');
+  .refine((value) => utcDateToEpochMs(value) !== null, 'not a real calendar date');
 
 export type GrantableCmsCapability = z.infer<
   typeof GrantableCmsCapabilitySchema

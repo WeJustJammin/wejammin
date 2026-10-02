@@ -7,7 +7,9 @@ import CmsCapabilityGrantListRegion from './CmsCapabilityGrantListRegion';
 import CmsCapabilityGrantContextEvidence from './CmsCapabilityGrantContextEvidence';
 import CmsCapabilityGrantRowForm from './CmsCapabilityGrantRowForm';
 import { COMMAND_COPY } from './cms-capability-grant-commands';
+import { stepUpHref } from './cms-capability-grant-navigation';
 import { cmsCapabilityGrantConsoleUrl } from './cms-capability-grant-url';
+import { useStepUpFreshness } from '../content-schema-registry/use-step-up-freshness';
 import type { GrantFieldErrors } from './cms-capability-grant-validation';
 import type {
   CmsCapabilityGrantConsoleProps,
@@ -35,6 +37,7 @@ export default function CmsCapabilityGrantConsole(
   props: CmsCapabilityGrantConsoleProps,
 ): React.ReactElement {
   const state = useCmsCapabilityGrants(props);
+  const freshness = useStepUpFreshness(props.contextEvidence.stepUpFreshUntil);
   const trigger = React.useRef<HTMLButtonElement | null>(null);
   if (props.access === 'not-rendered')
     return (
@@ -47,7 +50,11 @@ export default function CmsCapabilityGrantConsole(
     );
   const disabledAccess = props.access === 'disabled';
   const degraded = state.list.status === 'degraded';
-  const commandsDisabled = disabledAccess || degraded;
+  // FE03 role matrix: commit controls are enabled only while the step-up
+  // disclosure is verified; otherwise they are disabled with the recovery.
+  const stepUpVerified =
+    props.contextEvidence.stepUpState === 'verified' && freshness.fresh;
+  const commandsDisabled = disabledAccess || degraded || !stepUpVerified;
   const returnTo = cmsCapabilityGrantConsoleUrl(state.query);
   const failure =
     state.result?.state.status === 'failure' ? state.result : null;
@@ -80,6 +87,12 @@ export default function CmsCapabilityGrantConsole(
           organization. Each grant ends on a date you choose, within 90 days.
         </p>
         <CmsCapabilityGrantContextEvidence evidence={props.contextEvidence} />
+        {stepUpVerified || disabledAccess ? null : (
+          <p data-step-up-recovery="true">
+            {COMMAND_COPY.stepUp}{' '}
+            <a href={stepUpHref(returnTo)}>Verify identity</a>
+          </p>
+        )}
       </header>
       <div role="status" aria-live="polite" aria-atomic="true">
         {state.result?.state.status === 'success'
@@ -113,6 +126,9 @@ export default function CmsCapabilityGrantConsole(
             query={state.query}
             retryUrl={props.retryUrl}
             requestId={props.requestId}
+            loading={state.listLoading}
+            commandsDisabled={commandsDisabled}
+            personFilterActive={state.person.trim() !== ''}
             openGrantId={state.openRow?.grantId ?? null}
             onSort={state.sortBy}
             onRenew={(grant, button) => {

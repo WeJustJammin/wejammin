@@ -72,7 +72,7 @@ describe('DEC-108 producer request contracts', () => {
     });
     expect(half.success).toBe(false);
     expect(half.error?.issues[0]?.message).toBe(
-      'transform_pair_must_be_both_present_or_both_absent',
+      'transform key and version must be both null or both present',
     );
     expect(
       ok(SchemaDryRunRequestSchema, { ...base, transformVersion: '1' }),

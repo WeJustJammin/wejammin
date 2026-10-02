@@ -58,7 +58,8 @@ export const consoleProps = (
   contextEvidence: {
     actingContextLabel: 'Northwind Collective',
     stepUpState: 'verified',
-    stepUpFreshUntil: '2026-10-02T12:05:00.000Z',
+    // Relative to now so the verified window is genuinely fresh in any run.
+    stepUpFreshUntil: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   },
   query: { limit: 25, sort: 'updatedAt', direction: 'desc' },
   termWindow: { minDate: '2026-10-02', maxDate: '2026-12-30' },

@@ -7,7 +7,8 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerApp, WorkerContext } from '../index';
-import { appendCookies, authError, responseForAuthError } from './boundary';
+import { appendCookies, authError } from './boundary';
+import { responseForMfaError, withRouteDeadline } from './mfa-error-boundary';
 import { jsonSuccess } from './route-support';
 import { admitMfaMutation, parsePathId } from './route-support-mfa';
 import {
@@ -16,9 +17,13 @@ import {
 } from './routes-provider-access';
 import type { AuthenticationDependencies } from './types';
 
-const invalidPersistence = (context: WorkerContext): Response =>
-  responseForAuthError(
+const invalidPersistence = (
+  context: WorkerContext,
+  operationId: 'AUTH-API-20' | 'AUTH-API-21',
+): Response =>
+  responseForMfaError(
     context,
+    operationId,
     authError(
       502,
       'DEPENDENCY_INVALID_RESPONSE',
@@ -43,23 +48,25 @@ export const registerStepUpRoutes = (
       },
     );
     if (admitted instanceof Response) return admitted;
-    if (dependencies.createStepUpChallenge === undefined)
-      return missingSliceDependency(context);
-    const result = await dependencies.createStepUpChallenge(
-      {
-        session: admitted.session,
-        request: context.req.raw,
-        method: admitted.body.method,
-        factorId: admitted.body.factorId ?? null,
-      },
-      context.env,
-      new AbortController().signal,
+    const create = dependencies.createStepUpChallenge;
+    if (create === undefined) return missingSliceDependency(context);
+    const result = await withRouteDeadline('AUTH-API-20', (signal) =>
+      create(
+        {
+          session: admitted.session,
+          request: context.req.raw,
+          method: admitted.body.method,
+          factorId: admitted.body.factorId ?? null,
+        },
+        context.env,
+        signal,
+      ),
     );
-    if (!result.ok) return responseForAuthError(context, result);
+    if (!result.ok) return responseForMfaError(context, 'AUTH-API-20', result);
     const parsed = StepUpChallengeSchema.safeParse(result.value);
     return parsed.success
       ? jsonSuccess(context, parsed.data, 201, 'no-store')
-      : invalidPersistence(context);
+      : invalidPersistence(context, 'AUTH-API-20');
   });
 
   app.post(
@@ -71,7 +78,8 @@ export const registerStepUpRoutes = (
         AuthStepUpChallengePathSchema.shape.challengeId,
         context.req.param('challengeId') ?? '',
       );
-      if (!challengeId.ok) return responseForAuthError(context, challengeId);
+      if (!challengeId.ok)
+        return responseForMfaError(context, 'AUTH-API-21', challengeId);
       const admitted = await admitMfaMutation(
         context,
         dependencies,
@@ -83,21 +91,24 @@ export const registerStepUpRoutes = (
         },
       );
       if (admitted instanceof Response) return admitted;
-      if (dependencies.verifyStepUpChallenge === undefined)
-        return missingSliceDependency(context);
-      const result = await dependencies.verifyStepUpChallenge(
-        {
-          session: admitted.session,
-          request: context.req.raw,
-          challengeId: challengeId.value,
-          code: admitted.body.code,
-        },
-        context.env,
-        new AbortController().signal,
+      const verify = dependencies.verifyStepUpChallenge;
+      if (verify === undefined) return missingSliceDependency(context);
+      const result = await withRouteDeadline('AUTH-API-21', (signal) =>
+        verify(
+          {
+            session: admitted.session,
+            request: context.req.raw,
+            challengeId: challengeId.value,
+            code: admitted.body.code,
+          },
+          context.env,
+          signal,
+        ),
       );
-      if (!result.ok) return responseForAuthError(context, result);
+      if (!result.ok)
+        return responseForMfaError(context, 'AUTH-API-21', result);
       const parsed = StepUpResultSchema.safeParse(result.value.resource);
-      if (!parsed.success) return invalidPersistence(context);
+      if (!parsed.success) return invalidPersistence(context, 'AUTH-API-21');
       const response = jsonSuccess(context, parsed.data, 200, 'no-store');
       appendCookies(response, result.value.cookies);
       return response;

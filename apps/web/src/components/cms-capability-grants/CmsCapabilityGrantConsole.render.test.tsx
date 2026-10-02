@@ -323,7 +323,7 @@ describe('[DEC-119] list and console states', () => {
     const doc = renderConsoleDocument(consoleProps());
     expect(text(doc)).toContain('Northwind Collective');
     expect(text(doc)).toMatch(
-      /Verified until 12:05 UTC|Step-up required before commit/u,
+      /Verified until \d{2}:\d{2} UTC/u,
     );
     const required = renderConsoleDocument(
       consoleProps({ contextEvidence: { stepUpState: 'required' } }),

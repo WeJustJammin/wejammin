@@ -37,6 +37,7 @@ export const OPERATION_FOR_KIND: Readonly<Record<GrantCommandKind, string>> = {
 };
 
 const PROXY = '/api/v1/cms/capability-grants';
+const LIST_LOADING_DELAY_MS = 250;
 
 const actionFor = (kind: GrantCommandKind, grantId: string | null): string =>
   kind === 'grant'
@@ -111,6 +112,7 @@ export const useCmsCapabilityGrants = (
   const [prefill, setPrefill] = React.useState<GrantPrefill | null>(null);
   const [epoch, setEpoch] = React.useState(0);
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [listLoading, setListLoading] = React.useState(false);
   const busy = React.useRef(false);
   const attempted = React.useRef('');
 
@@ -118,11 +120,29 @@ export const useCmsCapabilityGrants = (
     if (consumeStepUpDetour()) setNotice(COMMAND_COPY.entriesNotSaved);
   }, []);
 
+  // FE03 URL state: an invalid address was normalized by the server, so the
+  // address bar is replaced (never pushed) with the validated query.
+  const initialQuery = React.useRef(props.query);
+  React.useEffect(() => {
+    const canonical = cmsCapabilityGrantConsoleUrl(initialQuery.current);
+    if (`${window.location.pathname}${window.location.search}` !== canonical)
+      recordConsoleUrl(canonical, 'replace');
+  }, []);
+
   const refetch = React.useCallback(
     async (nextQuery = query, nextPerson = person): Promise<void> => {
+      // FE03 loading: the skeleton appears only after 250 ms; the last
+      // verified rows stay visible beneath it.
+      const skeleton = window.setTimeout(
+        () => setListLoading(true),
+        LIST_LOADING_DELAY_MS,
+      );
       const read = await readGrantList({
         query: nextQuery,
         subjectPersonId: nextPerson,
+      }).finally(() => {
+        window.clearTimeout(skeleton);
+        setListLoading(false);
       });
       if (read.kind === 'unauthenticated') {
         navigateTo(signInHref(cmsCapabilityGrantConsoleUrl(nextQuery)));
@@ -250,6 +270,7 @@ export const useCmsCapabilityGrants = (
     prefill,
     epoch,
     notice,
+    listLoading,
     setOpenRow,
     setPrefill,
     setResult,

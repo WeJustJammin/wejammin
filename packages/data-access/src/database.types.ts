@@ -786,6 +786,15 @@ export type Database = {
       cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_template_context: { Args: { p_request: Json }; Returns: Json }
       cms_template_latest: { Args: { p_request: Json }; Returns: Json }
+      cms_validate_locale_config: {
+        Args: {
+          p_chains: Json
+          p_default: string
+          p_source: string
+          p_supported: Json
+        }
+        Returns: Json
+      }
       cms_verify_operational_alert_delivery: {
         Args: { p_request: Json }
         Returns: Json
@@ -4721,13 +4730,16 @@ export type Database = {
           default_template_version_id: string | null
           definition_hash: string
           dry_run_id: string | null
+          fallback_chains: Json
           id: string
           labels: Json
+          locale_config_hash: string
           owner_id: string
           schema_artifact_id: string
           source_locale: string
           state: Database["platform_private"]["Enums"]["cms_definition_state"]
           supersedes_id: string | null
+          supported_locales: Json
           updated_at: string
           version: number
           version_no: number
@@ -4750,13 +4762,16 @@ export type Database = {
           default_template_version_id?: string | null
           definition_hash: string
           dry_run_id?: string | null
+          fallback_chains: Json
           id?: string
           labels: Json
+          locale_config_hash: string
           owner_id: string
           schema_artifact_id: string
           source_locale: string
           state?: Database["platform_private"]["Enums"]["cms_definition_state"]
           supersedes_id?: string | null
+          supported_locales: Json
           updated_at?: string
           version?: number
           version_no: number
@@ -4779,13 +4794,16 @@ export type Database = {
           default_template_version_id?: string | null
           definition_hash?: string
           dry_run_id?: string | null
+          fallback_chains?: Json
           id?: string
           labels?: Json
+          locale_config_hash?: string
           owner_id?: string
           schema_artifact_id?: string
           source_locale?: string
           state?: Database["platform_private"]["Enums"]["cms_definition_state"]
           supersedes_id?: string | null
+          supported_locales?: Json
           updated_at?: string
           version?: number
           version_no?: number
@@ -6880,6 +6898,7 @@ export type Database = {
           dry_run_id: string
           dry_run_report_hash: string
           id: string
+          locale_config_hash: string
           owner_id: string
           policy_hash: string
           policy_key: string
@@ -6911,6 +6930,7 @@ export type Database = {
           dry_run_id: string
           dry_run_report_hash: string
           id?: string
+          locale_config_hash: string
           owner_id: string
           policy_hash: string
           policy_key: string
@@ -6942,6 +6962,7 @@ export type Database = {
           dry_run_id?: string
           dry_run_report_hash?: string
           id?: string
+          locale_config_hash?: string
           owner_id?: string
           policy_hash?: string
           policy_key?: string
@@ -9267,6 +9288,10 @@ export type Database = {
         Args: { p_source_id: string; p_target_id: string }
         Returns: string
       }
+      cms_derive_schema_field_classification: {
+        Args: { p_source_id: string; p_target_id: string }
+        Returns: string
+      }
       cms_draft_content_hash: {
         Args: { p_locale: string; p_revision_id: string }
         Returns: string
@@ -9383,6 +9408,31 @@ export type Database = {
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions_signed: { Args: { p_request: Json }; Returns: Json }
+      cms_locale_canonical_valid: { Args: { p_tag: string }; Returns: boolean }
+      cms_locale_config_hash: {
+        Args: {
+          p_chains: Json
+          p_default: string
+          p_source: string
+          p_supported: Json
+        }
+        Returns: string
+      }
+      cms_locale_config_shape_valid: {
+        Args: { p_chains: Json; p_supported: Json }
+        Returns: boolean
+      }
+      cms_locale_config_violations: {
+        Args: {
+          p_chains: Json
+          p_default: string
+          p_source: string
+          p_supported: Json
+        }
+        Returns: Json
+      }
+      cms_locale_sorted: { Args: { p_supported: Json }; Returns: Json }
+      cms_locale_violation_detail: { Args: { p_issues: Json }; Returns: string }
       cms_lock_activation_authority: {
         Args: {
           p_actor_id: string
@@ -9450,6 +9500,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cms_migration_retired_fields: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       cms_migration_revision_document: {
         Args: { p_revision_id: string }
         Returns: Json
@@ -9470,7 +9524,11 @@ export type Database = {
         }
         Returns: boolean
       }
-      cms_migration_target_field_spec: {
+      cms_migration_spec_kinds_accepted: {
+        Args: { p_member: Json; p_spec: Json }
+        Returns: boolean
+      }
+      cms_migration_target_fields_spec: {
         Args: { p_plan_id: string }
         Returns: Json
       }

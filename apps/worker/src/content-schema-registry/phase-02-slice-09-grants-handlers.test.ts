@@ -213,7 +213,14 @@ describe('grant handler idempotency (BE03a: same key replays, changed body confl
           ? { ...spec.body, capability: 'cms.editor' }
           : { ...spec.body, expectedVersion: '2' };
       const conflict = await harness.app.request(
-        grantRequestFor(spec, { body: changed }),
+        grantRequestFor(spec, {
+          body: changed,
+          ...(spec.ifMatch &&
+          'expectedVersion' in changed &&
+          changed.expectedVersion === '2'
+            ? { headers: { 'if-match': '"2"' } }
+            : {}),
+        }),
       );
       expect(conflict.status).toBe(409);
       expect(((await conflict.json()) as { code: string }).code).toBe(

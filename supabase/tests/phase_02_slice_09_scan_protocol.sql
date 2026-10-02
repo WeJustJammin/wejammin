@@ -51,10 +51,10 @@ select ok(pg_temp.s09d_service_only('platform_api.cms_read_schema_migration_sour
   and not has_function_privilege('service_role', 'platform_private.cms_read_schema_migration_source_rows(jsonb)', 'execute'),
   'the source-row read RPC is service-role only; its private implementation is not directly executable');
 select pg_temp.s09w_read('b', 'b:read.p1', '2');
-select ok((select r ?& array['rows','nextCursor','done','targetField'] and (select count(*) = 4 from jsonb_object_keys(r))
+select ok((select r ?& array['rows','nextCursor','done','targetFields','retiredFields'] and (select count(*) = 5 from jsonb_object_keys(r))
     and jsonb_array_length(r->'rows') = 2 and r->>'nextCursor' = '2' and (r->>'done')::boolean = false
     from (select pg_temp.s09d_resp('b:read.p1') r) s),
-  'a read page has exactly rows, nextCursor, done, targetField; limit 2 returns two rows and done = false');
+  'a read page has exactly rows, nextCursor, done, targetFields, retiredFields; limit 2 returns two rows and done = false (rows.length = limit)');
 select ok((select bool_and((row_json ?& array['sourceTable','sourceRowId','sourceHash','document'])
       and (select count(*) = 4 from jsonb_object_keys(row_json))
       and row_json->>'sourceHash' ~ '^[a-f0-9]{64}$' and row_json->>'sourceTable' = 'cms_entry_revisions')
@@ -67,10 +67,11 @@ select ok((select bool_and(row_json->>'sourceHash' = platform_private.cms_jcs_sh
 select ok((select (select array_agg(row_json->>'sourceRowId' order by ord) = array_agg(row_json->>'sourceRowId' order by row_json->>'sourceRowId')
     from jsonb_array_elements(r->'rows') with ordinality as t(row_json, ord)) from (select pg_temp.s09d_resp('b:read.p1') r) s),
   'rows are served in the total (source_table, source_row_id) order');
-select ok((select r->'targetField' = jsonb_build_object('fieldKey', 'title', 'kind', 'short_text', 'required', true,
-      'defaultMode', 'none', 'defaultValue', null, 'constraints', jsonb_build_object('maxLength', 12))
+select ok((select r->'targetFields' = jsonb_build_array(jsonb_build_object('fieldKey', 'title', 'kind', 'short_text', 'required', true,
+        'defaultMode', 'none', 'defaultValue', null, 'constraints', jsonb_build_object('maxLength', 12)))
+      and r->'retiredFields' = '[]'::jsonb
     from (select pg_temp.s09d_resp('b:read.p1') r) s),
-  'targetField is the compiled target field (key, kind, required, default, compiled constraints) and leaks no internal id');
+  'targetFields lists the compiled changed field (key, kind, required, default, compiled constraints, no internal id); retiredFields is empty');
 select is(pg_temp.s09p_state('b'), (select state from s09p_before), 'reading rows has no side effect on the plan, evidence or target rows');
 select pg_temp.s09w_read('b', 'b:read.all');
 select ok((select jsonb_array_length(r->'rows') = 3 and r->>'nextCursor' = '3' and (r->>'done')::boolean

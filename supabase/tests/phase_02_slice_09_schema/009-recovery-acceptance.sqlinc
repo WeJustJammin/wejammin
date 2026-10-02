@@ -27,7 +27,8 @@ select pg_temp.s09d_rpc('big:create', 'platform_api.cms_create_type_draft', 'own
   jsonb_build_object(
     'typeKey', 'articlebig', 'label', 'Article X recovery 128',
     'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
+    'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1',
     'defaultTemplateVersionId', null,
     'fields', (select fields from s09_ac217_field_manifest),
     'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,

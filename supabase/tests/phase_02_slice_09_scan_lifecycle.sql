@@ -46,10 +46,11 @@ select is((select classification from platform_private.cms_schema_migration_plan
   'tightening the summary to required derives a conditional classification');
 select pg_temp.s09w_claim('g');
 select pg_temp.s09w_read('g', 'g:read');
-select ok((select r->'targetField' = jsonb_build_object('fieldKey', 'summary', 'kind', 'short_text', 'required', true,
-      'defaultMode', 'literal', 'defaultValue', 'n/a', 'constraints', '{}'::jsonb)
+select ok((select r->'targetFields' = jsonb_build_array(jsonb_build_object('fieldKey', 'summary', 'kind', 'short_text', 'required', true,
+        'defaultMode', 'literal', 'defaultValue', 'n/a', 'constraints', '{}'::jsonb))
+      and r->'retiredFields' = '[]'::jsonb
     from (select pg_temp.s09d_resp('g:read') r) s),
-  'the read page names the changed summary field with its literal default as the single target field');
+  'the read page names the changed summary field with its literal default as the only target field');
 create temp table s09l_good on commit drop as
 select pg_temp.s09w_evidence('default.fill_literal', pg_temp.s09d_resp('g:read')) as evidence;
 select ok((select jsonb_array_length(evidence) = 3 and (select count(*) = 3 from jsonb_array_elements(evidence) e where e->>'errorCode' is null)

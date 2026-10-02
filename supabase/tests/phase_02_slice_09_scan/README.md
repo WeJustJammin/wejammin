@@ -17,4 +17,15 @@ include, not a Supabase-discovered test file.
 3. End with a positive `s09x_via_rpc(...) > 0` precondition and a
    `s09x_direct() = 0` assertion so zero is never vacuous.
 
+## Two-session race runner
+
+`010-entry-lock-race.mjs` proves, across two committed `psql` sessions, that an
+entry write and the activation switch serialize on the source version row (an
+in-flight entry makes the switch block and then refuse with
+`MIGRATION_SOURCE_DRIFT`; an in-flight switch makes the entry block and then be
+refused with CONFLICT by the version-lock guard). Run it only right after
+`pnpm db:reset` and run `pnpm db:reset` again afterwards: it commits the owner
+initialization and immutable rows, which would break the pgTAP suites. It is not a
+Supabase-discovered test.
+
 Related: `../phase_02_slice_09_dec108/README.md`, `../phase_02_slice_09_schema/README.md`.

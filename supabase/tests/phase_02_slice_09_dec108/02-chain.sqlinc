@@ -16,15 +16,18 @@ $body$;
 
 -- CMS-03A-01: draft type with one required title field, as the owner designer.
 create or replace function pg_temp.s09d_create_type(
-  p_tag text, p_type_key text, p_workflow text default 'editorial', p_actor text default 'owner'
+  p_tag text, p_type_key text, p_workflow text default 'editorial', p_actor text default 'owner',
+  p_supported jsonb default '["en-US"]'::jsonb, p_chains jsonb default '{}'::jsonb,
+  p_source text default 'en-US', p_default text default 'en-US'
 ) returns jsonb language plpgsql as $body$
 declare resource jsonb;
 begin
   resource := pg_temp.s09d_rpc(p_tag || ':create', 'platform_api.cms_create_type_draft', p_actor,
     jsonb_build_object(
       'typeKey', p_type_key, 'label', 'DEC-108 ' || p_type_key,
-      'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-      'defaultLocale', 'en-US', 'workflowKey', p_workflow, 'workflowVersion', '1',
+      'ownerCapability', 'cms.schema_designer', 'sourceLocale', p_source,
+      'defaultLocale', p_default, 'supportedLocales', p_supported, 'fallbackChains', p_chains,
+      'workflowKey', p_workflow, 'workflowVersion', '1',
       'defaultTemplateVersionId', null,
       'fields', jsonb_build_array(jsonb_build_object(
         'stableFieldId', extensions.gen_random_uuid(), 'key', 'title', 'kind', 'short_text',
@@ -42,7 +45,8 @@ $body$;
 
 -- CMS-03A-09: successor draft of an immutable source version.
 create or replace function pg_temp.s09d_successor(
-  p_tag text, p_source_tag text, p_actor text default 'owner', p_idem text default null
+  p_tag text, p_source_tag text, p_actor text default 'owner', p_idem text default null,
+  p_supported jsonb default null, p_chains jsonb default null
 ) returns jsonb language plpgsql as $body$
 declare resource jsonb;
 begin
@@ -51,6 +55,7 @@ begin
       'contentTypeId', pg_temp.s09d_id(p_source_tag || ':type'),
       'versionId', pg_temp.s09d_id(p_source_tag || ':version'),
       'expectedVersion', pg_temp.s09d_version(p_source_tag),
+      'supportedLocales', p_supported, 'fallbackChains', p_chains,
       'idempotencyKey', coalesce(p_idem, pg_temp.s09d_idem(p_tag, 'successor'))));
   perform pg_temp.s09d_remember(p_tag || ':type', pg_temp.s09d_id(p_source_tag || ':type'));
   if resource is not null then

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { REQUEST_ID, error, ok } from './phase-02-slice-09-test-values';
+import {
+  REQUEST_ID,
+  TYPE_ID,
+  error,
+  ok,
+} from './phase-02-slice-09-test-values';
 import {
   assignRevokeBody,
   assignmentRevoked,
@@ -40,7 +45,11 @@ describe('DEC-108 handler success mapping (BE03a Route Registry and invariants)'
       const response = await harness.app.request(requestFor(spec));
       const output = spec.output as { version: string };
       expect(response.headers.get('etag')).toBe(`"${output.version}"`);
-      expect(response.headers.get('location')).toBe(spec.path);
+      expect(response.headers.get('location')).toBe(
+        spec.operationId === 'CMS-03A-09'
+          ? `/api/v1/cms/content-types/${TYPE_ID}/versions/${(spec.output as { id: string }).id}`
+          : spec.path,
+      );
     },
   );
 
@@ -239,7 +248,12 @@ describe('DEC-108 handler idempotency (BE03a Idempotency / concurrency column)',
             ? assignRevokeBody
             : { ...spec.body, expectedVersion: '2' };
       const conflict = await harness.app.request(
-        requestFor(spec, { body: changed }),
+        requestFor(spec, {
+          body: changed,
+          ...('expectedVersion' in changed && changed.expectedVersion === '2'
+            ? { headers: { 'if-match': '"2"' } }
+            : {}),
+        }),
       );
       expect(conflict.status).toBe(409);
       expect(((await conflict.json()) as { code: string }).code).toBe(

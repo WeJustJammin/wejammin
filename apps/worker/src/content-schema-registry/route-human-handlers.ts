@@ -16,6 +16,7 @@ import type {
   HumanReadOperationId,
 } from './types';
 import type { FeatureContext } from './route-types';
+import { invalid } from './admission-common';
 import { errorResponse } from './route-response';
 import { createHumanAuthority } from './route-human-authority';
 import type { RouteExecutor } from './route-execution';
@@ -54,6 +55,20 @@ export const createHumanHandlers = (
     if (!body.ok) return errorResponse(context, body, requestId);
     const headers = parseMutationHeaders(context.req.raw, operationId);
     if (!headers.ok) return errorResponse(context, headers, requestId);
+    // The body expectedVersion and the strong If-Match name one version; a
+    // disagreement is a malformed request, never silently resolved.
+    const bodyVersion = (body.value as { expectedVersion?: unknown })
+      .expectedVersion;
+    if (
+      typeof bodyVersion === 'string' &&
+      headers.value.ifMatch !== undefined &&
+      bodyVersion !== headers.value.ifMatch
+    )
+      return errorResponse(
+        context,
+        invalid('expectedVersion must equal the If-Match version.'),
+        requestId,
+      );
     const authority = await authorize(context, operationId);
     if (!authority.ok) return authority.response;
     return execute(context, operationId, 'human', {

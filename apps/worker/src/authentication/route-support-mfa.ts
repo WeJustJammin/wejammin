@@ -6,9 +6,9 @@ import {
   parseIdempotencyKey,
   parseIfMatch,
   parseJsonBody,
-  responseForAuthError,
   verifySameOriginCsrf,
 } from './boundary';
+import { responseForMfaError } from './mfa-error-boundary';
 import { enforceRate, requireSession } from './route-support';
 import type {
   AuthenticationDependencies,
@@ -110,28 +110,31 @@ export const admitMfaMutation = async <B>(
   options: MutationOptions<B>,
 ): Promise<AdmittedMutation<B> | Response> => {
   const body = await parseMfaBody(context.req.raw, options.schema);
-  if (!body.ok) return responseForAuthError(context, body);
+  if (!body.ok) return responseForMfaError(context, operationId, body);
   let idempotencyKey = '';
   if (options.idempotency) {
     const key = parseIdempotencyKey(context.req.raw);
-    if (!key.ok) return responseForAuthError(context, key);
+    if (!key.ok) return responseForMfaError(context, operationId, key);
     idempotencyKey = key.value;
   }
   let ifMatch = '';
   if (options.ifMatch) {
     const version = parseIfMatch(context.req.raw);
-    if (!version.ok) return responseForAuthError(context, version);
+    if (!version.ok) return responseForMfaError(context, operationId, version);
     ifMatch = version.value;
   }
   const csrfError = await verifySameOriginCsrf(context.req.raw);
-  if (csrfError !== null) return responseForAuthError(context, csrfError);
+  if (csrfError !== null)
+    return responseForMfaError(context, operationId, csrfError);
   const resolved = await requireSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  if (!resolved.ok) return responseForMfaError(context, operationId, resolved);
   const rateError = await enforceRate(
     context,
     dependencies,
     options.rateOperation ?? operationId,
     resolved.value,
+    null,
+    (target, error) => responseForMfaError(target, operationId, error),
   );
   if (rateError !== null) return rateError;
   return {

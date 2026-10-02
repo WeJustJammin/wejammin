@@ -37,7 +37,7 @@ export const SchemaReviewAssignmentSummarySchema = z
       context.addIssue({
         code: 'custom',
         path: ['endsAt'],
-        message: 'assignment_span_must_be_positive_and_at_most_seven_days',
+        message: 'assignment ids must be unique and each span at most seven days',
       });
   })
   .readonly();

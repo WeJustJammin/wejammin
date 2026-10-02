@@ -88,7 +88,15 @@ export default function ContentSchemaRegistryVersionCommands(
           {...path}
           idempotencyKey={idempotencyKey('CMS-03A-10')}
         />
-      ) : null}
+      ) : (
+        <p
+          className="content-schema-registry-help"
+          data-dry-run-prerequisite="true"
+        >
+          Starting a dry run is unavailable: the server does not currently
+          permit it for this version.
+        </p>
+      )}
       {dryRunId === null ? null : (
         <ContentSchemaRegistrySubmitReviewForm
           {...path}

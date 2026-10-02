@@ -202,6 +202,9 @@ select jsonb_build_object(
   'typeKey', 'article', 'label', 'Article',
   'ownerCapability', 'cms.schema_designer',
   'sourceLocale', 'en-US', 'defaultLocale', 'en-US',
+  'supportedLocales', jsonb_build_array('de-DE', 'en-US', 'fr-FR'),
+  'fallbackChains', jsonb_build_object('de-DE', jsonb_build_array('en-US'),
+    'fr-FR', jsonb_build_array('en-US')),
   'workflowKey', 'editorial', 'workflowVersion', '1',
   'defaultTemplateVersionId', null,
   'fields', jsonb_build_array(

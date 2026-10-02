@@ -222,6 +222,21 @@ select platform_private.cfg_change_action(jsonb_build_object(
 select is((select response->>'resultingState' from p2_s07_activated), 'active',
   'P2-S07-AC-028 activation commits approved value, snapshot intent, audit, and outbox');
 
+create temp table p2_s07_effective as
+select platform_private.cfg_resolve_effective_value(jsonb_build_object(
+  'key', 'profile.visibility', 'consumerKey', 'web.profile',
+  'supportedDefinitionVersions', jsonb_build_array('1'),
+  'partyId', (select organization_id from p2_s07_org),
+  'context', jsonb_build_object(
+    'authUserId', 'a7010000-0000-4000-8000-000000000002',
+    'actingPartyId', (select organization_id from p2_s07_org))
+)) as response;
+select is((select response->>'ownerCapability' from p2_s07_effective),
+  'settings.profile.write',
+  'P2-S07 effective read returns the owner capability of the resolved definition version');
+select is((select response->'typedValue' from p2_s07_effective), 'true'::jsonb,
+  'P2-S07 effective read still returns the activated party value');
+
 select throws_ok($$select platform_private.cfg_change_action(jsonb_build_object(
   'reviewId',(select review_id from p2_s07_proposal),'action','rollback',
   'expectedReviewVersion','3','candidateHash',(select candidate_hash from p2_s07_proposal),

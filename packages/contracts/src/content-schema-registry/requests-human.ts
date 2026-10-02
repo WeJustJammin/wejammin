@@ -166,7 +166,7 @@ export const SchemaDryRunRequestSchema = z
       context.addIssue({
         code: 'custom',
         path: ['transformVersion'],
-        message: 'transform_pair_must_be_both_present_or_both_absent',
+        message: 'transform key and version must be both null or both present',
       });
   })
   .readonly();

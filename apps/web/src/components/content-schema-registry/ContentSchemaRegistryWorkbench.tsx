@@ -68,6 +68,13 @@ export default function ContentSchemaRegistryWorkbench({
     onCanonicalRefetch === undefined ? 'unbound' : 'bound';
   const ready = initialDetail?.status === 'success' ? initialDetail : null;
   const detail = ready?.data ?? null;
+  // FE03 dry-run `degraded`: the last verified detail keeps its preparation
+  // visible with its time, while no command consumes it.
+  const degradedDetail =
+    initialDetail?.status === 'degraded' && initialDetail.data !== null
+      ? initialDetail
+      : null;
+  const prepared = detail ?? degradedDetail?.data ?? null;
 
   return (
     <section
@@ -159,11 +166,18 @@ export default function ContentSchemaRegistryWorkbench({
             retryUrl={retryUrl}
             supportReference={supportReference}
           />
-          {detail === null ? null : (
+          {prepared === null ? null : (
             <div className="content-schema-registry-version-side">
               <ContentSchemaRegistryActivationPreparation
-                preparation={detail.activationPreparation}
+                preparation={prepared.activationPreparation}
                 review={initialReview}
+                {...(degradedDetail === null
+                  ? {}
+                  : {
+                      degraded: {
+                        lastVerifiedAt: degradedDetail.lastVerifiedAt,
+                      },
+                    })}
                 onCanonicalRefetch={() => {
                   void onCanonicalRefetch('detail-read');
                 }}

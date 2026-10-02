@@ -79,6 +79,57 @@ completed plan whose scanned source has since drifted. pgTAP coverage is
 `../tests/phase_02_slice_09_scan_*.sql` and the rewritten
 `../tests/phase_02_slice_09_schema/` fragments.
 
+## Slice 09 OD-4 locale configuration, multi-field scan, drift recovery, version lock
+
+`20261002162000` adds `ownerCapability` (the resolved definition version's
+`owner_capability`) to the CFG-05A-02 effective-value result. `20261002163000`
+adds the immutable locale configuration of a content-type version
+(`supported_locales`, `fallback_chains`, `locale_config_hash`, an immutability
+trigger, and the pure validator `platform_api.cms_validate_locale_config` plus
+`cms_locale_config_hash`, whose JCS SHA-256 matches the contract vectors).
+Existing versions were backfilled deterministically from their own
+`source_locale`/`default_locale`: `supported_locales` is the unique set
+`{source, default}` sorted by UTF-8 bytes and every supported locale other than
+the default gets the chain `[default]`; existing `definition_hash` values are
+immutable evidence and are not rewritten, only versions compiled afterwards
+compose `localeConfigHash` into `definition_hash`. `20261002164000` carries the
+configuration through CMS-03A-01 (required request keys, exact 422 violations as
+machine DETAIL `{"violations":[{"pointer","message"}]}`), CMS-03A-09 (both null
+clones, both present replaces under the inherited source/default), the candidate
+definition request, the artifact hash and every `ContentTypeVersionResource`.
+`20261002165000` freezes `locale_config_hash` on the schema review and has both
+switch paths refuse with CONFLICT when the candidate no longer recomputes to it;
+the activation resource and the `cms.schema.activated.v1` payload carry it.
+`20261002166000` makes a removed supported locale or a changed retained chain
+`breaking` (a new locale is additive); `20261002167000` makes CMS-03C-04 enforce
+the active version's supported locales (422) and exact fallback chain (409
+`VERSION_MISMATCH` with DETAIL `{"reasonCode":"FALLBACK_CHAIN_MISMATCH",
+"activeFallbackChain":[...]}`).
+
+`20261002168000` is the multi-field scan protocol: the source-row read RPC returns
+`{rows, nextCursor, done, targetFields[], retiredFields[]}` (a page with
+`done = false` holds exactly `limit` rows), several changed fields are admitted
+(`MIGRATION_TARGET_FIELD_AMBIGUOUS` is gone), retired fields are carried
+unvalidated, a retire-only plan seals clean, and the batch, backfill and verify
+recomputation use the same per-field semantics. `20261002169000` is drift
+recovery: a raised error rolls its transaction back, so the invalidation rides
+on the recovery command instead of the refusal. A new dry run is admitted for a
+review/approved candidate whose scanned source drifted and atomically
+invalidates the review (decisions stay as history), returns the candidate to
+draft and starts the fresh attempt; the non-raising verify verdict
+`MIGRATION_SOURCE_DRIFT` does the same eagerly. Without drift a frozen candidate
+still refuses with CONFLICT. `20261002170000` closes the entry/switch race with
+a `BEFORE INSERT` guard on `cms_entry_revisions` and `cms_publication_versions`
+that takes `FOR SHARE` on the target version row and refuses a write that waited
+behind a switch (superseded version) with CONFLICT; both switch paths already
+lock the source version `FOR UPDATE` before the final unchanged check. pgTAP
+coverage is `../tests/phase_02_slice_09_od4_locale_config.sql`,
+`../tests/phase_02_slice_12_locale_config_enforcement.sql`,
+`../tests/phase_02_slice_09_scan_multifield.sql`,
+`../tests/phase_02_slice_09_scan_drift_recovery.sql` and
+`../tests/phase_02_slice_09_entry_version_lock.sql`; the two-session race is
+`../tests/phase_02_slice_09_scan/010-entry-lock-race.mjs`.
+
 ## Slice 09 DEC-111 step-up MFA identity state
 
 `20261002154000` adds `identity.auth_user_bindings.mfa_version` (the per-account
