@@ -168,6 +168,11 @@ export type Database = {
       admin_capability_action: { Args: { p_request: Json }; Returns: Json }
       admin_context_capabilities: { Args: { p_request: Json }; Returns: Json }
       admin_inbox: { Args: { p_request: Json }; Returns: Json }
+      admin_mfa_factor_reset: { Args: { p_request: Json }; Returns: Json }
+      admin_mfa_factor_reset_settle: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       apply_job_outcome:
         | {
             Args: {
@@ -438,6 +443,105 @@ export type Database = {
         }
         Returns: Json
       }
+      auth_mfa_enrollment_begin: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_expected_version: string
+          p_friendly_name: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_enrollment_finish: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_expected_version: string
+          p_friendly_name: string
+          p_provider_factor_id: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_enrollment_verify_prepare: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_expected_version: string
+          p_factor_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_enrollment_verify_settle: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_expected_version: string
+          p_factor_id: string
+          p_issued_at: string
+          p_new_session_id: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_factor_mark_reconciling: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_factor_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_factor_reconcile: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_factor_id: string
+          p_outcome: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_factors_read: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_registry_sweep: { Args: { p_batch: number }; Returns: Json }
+      auth_mfa_removal_begin: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_expected_version: string
+          p_factor_id: string
+          p_key_hash: string
+          p_reason: string
+          p_request_hash: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_removal_finish: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_factor_id: string
+          p_key_hash: string
+          p_reason: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       auth_provider_catalog: { Args: never; Returns: Json }
       auth_rate_limit: {
         Args: {
@@ -457,6 +561,62 @@ export type Database = {
           p_auth_user_id: string
           p_correlation_id: string
           p_issued_at: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_step_up_challenge_begin: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_factor_id: string
+          p_method: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_step_up_challenge_failure_record: {
+        Args: {
+          p_auth_user_id: string
+          p_challenge_id: string
+          p_correlation_id: string
+          p_outcome: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_step_up_challenge_finish: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_expires_at: string
+          p_factor_id: string
+          p_provider_challenge_id: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_step_up_challenge_verify_prepare: {
+        Args: {
+          p_auth_user_id: string
+          p_challenge_id: string
+          p_correlation_id: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_step_up_challenge_verify_settle: {
+        Args: {
+          p_auth_user_id: string
+          p_challenge_id: string
+          p_correlation_id: string
+          p_issued_at: string
+          p_new_session_id: string
           p_request_id: string
           p_session_id: string
         }
@@ -582,10 +742,12 @@ export type Database = {
         Returns: Json
       }
       cms_get_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_grant_capability: { Args: { p_request: Json }; Returns: Json }
       cms_heartbeat_schema_migration_lease: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_process_schema_migration_batch: {
@@ -593,6 +755,10 @@ export type Database = {
         Returns: Json
       }
       cms_process_schema_migration_dry_run_batch: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_read_schema_migration_source_rows: {
         Args: { p_request: Json }
         Returns: Json
       }
@@ -605,11 +771,13 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_renew_capability_grant: { Args: { p_request: Json }; Returns: Json }
       cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
       cms_resolve_template_compatibility: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_revoke_capability_grant: { Args: { p_request: Json }; Returns: Json }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
         Returns: Json
@@ -2783,6 +2951,114 @@ export type Database = {
           },
         ]
       }
+      admin_mfa_factor_resets: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          grant_id: string
+          id: string
+          idempotency_key: string
+          moved_factor_ids: string[]
+          operator_person_id: string
+          organization_id: string
+          outbox_event_id: string
+          reason: string
+          removed_factor_count: number
+          state: string
+          target_person_id: string
+          version_no: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          grant_id: string
+          id?: string
+          idempotency_key: string
+          moved_factor_ids?: string[]
+          operator_person_id: string
+          organization_id: string
+          outbox_event_id: string
+          reason: string
+          removed_factor_count?: number
+          state: string
+          target_person_id: string
+          version_no?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          grant_id?: string
+          id?: string
+          idempotency_key?: string
+          moved_factor_ids?: string[]
+          operator_person_id?: string
+          organization_id?: string
+          outbox_event_id?: string
+          reason?: string
+          removed_factor_count?: number
+          state?: string
+          target_person_id?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_mfa_factor_resets_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "admin_capability_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_operator_person_id_fkey"
+            columns: ["operator_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_operator_person_id_fkey"
+            columns: ["operator_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_operator_person_id_fkey"
+            columns: ["operator_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_target_person_id_fkey"
+            columns: ["target_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_target_person_id_fkey"
+            columns: ["target_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "admin_mfa_factor_resets_target_person_id_fkey"
+            columns: ["target_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
       admin_task_projections: {
         Row: {
           assignee_person_id: string | null
@@ -3847,6 +4123,168 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      cms_capability_grant_events: {
+        Row: {
+          action: string
+          aggregate_version: number
+          binding_context_hash: string
+          capability_code: string
+          created_at: string
+          grant_id: string
+          grantor_person_ref: string
+          id: string
+          mfa_verified_at: string
+          owner_id: string
+          prior_valid_through: string | null
+          reason: string | null
+          state: string
+          subject_person_ref: string
+          updated_at: string
+          valid_from: string
+          valid_through: string
+          version: number
+        }
+        Insert: {
+          action: string
+          aggregate_version: number
+          binding_context_hash: string
+          capability_code: string
+          created_at?: string
+          grant_id: string
+          grantor_person_ref: string
+          id?: string
+          mfa_verified_at: string
+          owner_id: string
+          prior_valid_through?: string | null
+          reason?: string | null
+          state?: string
+          subject_person_ref: string
+          updated_at?: string
+          valid_from: string
+          valid_through: string
+          version?: number
+        }
+        Update: {
+          action?: string
+          aggregate_version?: number
+          binding_context_hash?: string
+          capability_code?: string
+          created_at?: string
+          grant_id?: string
+          grantor_person_ref?: string
+          id?: string
+          mfa_verified_at?: string
+          owner_id?: string
+          prior_valid_through?: string | null
+          reason?: string | null
+          state?: string
+          subject_person_ref?: string
+          updated_at?: string
+          valid_from?: string
+          valid_through?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_capability_grant_events_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "cms_capability_grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_capability_grants: {
+        Row: {
+          capability_code: string
+          created_at: string
+          grantor_person_ref: string
+          id: string
+          last_action: string
+          owner_id: string
+          reason: string | null
+          state: string
+          subject_person_ref: string
+          updated_at: string
+          valid_from: string
+          valid_through: string
+          version: number
+        }
+        Insert: {
+          capability_code: string
+          created_at?: string
+          grantor_person_ref: string
+          id?: string
+          last_action: string
+          owner_id: string
+          reason?: string | null
+          state?: string
+          subject_person_ref: string
+          updated_at?: string
+          valid_from: string
+          valid_through: string
+          version?: number
+        }
+        Update: {
+          capability_code?: string
+          created_at?: string
+          grantor_person_ref?: string
+          id?: string
+          last_action?: string
+          owner_id?: string
+          reason?: string | null
+          state?: string
+          subject_person_ref?: string
+          updated_at?: string
+          valid_from?: string
+          valid_through?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_capability_grants_grantor_person_ref_fkey"
+            columns: ["grantor_person_ref"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_capability_grants_grantor_person_ref_fkey"
+            columns: ["grantor_person_ref"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_capability_grants_grantor_person_ref_fkey"
+            columns: ["grantor_person_ref"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_capability_grants_subject_person_ref_fkey"
+            columns: ["subject_person_ref"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_capability_grants_subject_person_ref_fkey"
+            columns: ["subject_person_ref"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_capability_grants_subject_person_ref_fkey"
+            columns: ["subject_person_ref"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
       }
       cms_composition_instances: {
         Row: {
@@ -6242,6 +6680,60 @@ export type Database = {
           },
         ]
       }
+      cms_schema_migration_target_rows: {
+        Row: {
+          id: string
+          output_hash: string
+          owner_id: string
+          plan_id: string
+          source_hash: string
+          source_row_id: string
+          source_table: string
+          target_document: Json
+          target_version_id: string
+          written_at: string
+        }
+        Insert: {
+          id?: string
+          output_hash: string
+          owner_id: string
+          plan_id: string
+          source_hash: string
+          source_row_id: string
+          source_table: string
+          target_document: Json
+          target_version_id: string
+          written_at?: string
+        }
+        Update: {
+          id?: string
+          output_hash?: string
+          owner_id?: string
+          plan_id?: string
+          source_hash?: string
+          source_row_id?: string
+          source_table?: string
+          target_document?: Json
+          target_version_id?: string
+          written_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_schema_migration_target_rows_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_migration_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_schema_migration_target_rows_target_version_id_fkey"
+            columns: ["target_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cms_schema_review_assignments: {
         Row: {
           actions: string[]
@@ -6490,6 +6982,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cms_schema_transform_registry: {
+        Row: {
+          accepted_field_kinds: Json
+          behavior: string
+          created_at: string
+          digest: string
+          id: string
+          owner_id: string
+          source_constraints: Json
+          state: string
+          target_constraints: Json
+          transform_key: string
+          transform_version: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          accepted_field_kinds: Json
+          behavior: string
+          created_at?: string
+          digest: string
+          id?: string
+          owner_id: string
+          source_constraints: Json
+          state?: string
+          target_constraints: Json
+          transform_key: string
+          transform_version: number
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          accepted_field_kinds?: Json
+          behavior?: string
+          created_at?: string
+          digest?: string
+          id?: string
+          owner_id?: string
+          source_constraints?: Json
+          state?: string
+          target_constraints?: Json
+          transform_key?: string
+          transform_version?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
       }
       cms_taxonomy_versions: {
         Row: {
@@ -8180,6 +8720,10 @@ export type Database = {
         Args: { p_due_at: string; p_task_id: string }
         Returns: string
       }
+      admin_mfa_factor_reset_view: {
+        Args: { p_reset_id: string }
+        Returns: Json
+      }
       admin_request_reserve: {
         Args: { p_acting_party_id: string; p_actor_id: string; p_request: Json }
         Returns: {
@@ -8602,6 +9146,10 @@ export type Database = {
         }
         Returns: string
       }
+      cms_backfill_owner_capability_grants: {
+        Args: { p_organization_id: string }
+        Returns: number
+      }
       cms_begin_schema_migration_verification: {
         Args: { p_request: Json }
         Returns: Json
@@ -8626,6 +9174,37 @@ export type Database = {
       cms_canonical_type_definition: {
         Args: { p_request: Json }
         Returns: Json
+      }
+      cms_capability_grant_project: {
+        Args: {
+          p_active: boolean
+          p_capability: string
+          p_organization_id: string
+          p_person_id: string
+          p_valid_from: string
+          p_valid_through: string
+        }
+        Returns: undefined
+      }
+      cms_capability_grant_record_event: {
+        Args: {
+          p_acting_party_id: string
+          p_action: string
+          p_actor_id: string
+          p_binding_id: string
+          p_grant_id: string
+          p_mfa_verified_at: string
+          p_prior_valid_through: string
+        }
+        Returns: undefined
+      }
+      cms_capability_grant_resource: {
+        Args: { p_grant_id: string }
+        Returns: Json
+      }
+      cms_capability_grant_state: {
+        Args: { p_state: string; p_valid_through: string }
+        Returns: string
       }
       cms_capability_registry_valid: {
         Args: { p_key: string; p_version?: number }
@@ -8756,6 +9335,19 @@ export type Database = {
         Returns: Json
       }
       cms_get_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_grant_capability: { Args: { p_request: Json }; Returns: Json }
+      cms_grant_owner: {
+        Args: { p_acting_party_id: string; p_actor_id: string }
+        Returns: string
+      }
+      cms_grant_reason: { Args: { p_request: Json }; Returns: string }
+      cms_grant_subject_eligible: {
+        Args: { p_organization_id: string; p_person_id: string }
+        Returns: boolean
+      }
+      cms_grant_today: { Args: never; Returns: string }
+      cms_grant_valid_through: { Args: { p_value: Json }; Returns: string }
+      cms_grantable_capability: { Args: { p_key: string }; Returns: boolean }
       cms_heartbeat_schema_migration_lease: {
         Args: { p_request: Json }
         Returns: Json
@@ -8787,6 +9379,7 @@ export type Database = {
       }
       cms_json_depth: { Args: { p_value: Json }; Returns: number }
       cms_key_hash: { Args: { p_key: string }; Returns: string }
+      cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions_signed: { Args: { p_request: Json }; Returns: Json }
@@ -8802,6 +9395,53 @@ export type Database = {
         Args: { p_version_id: string }
         Returns: undefined
       }
+      cms_migration_changed_fields: {
+        Args: { p_plan_id: string }
+        Returns: {
+          constraints: Json
+          content_type_version_id: string
+          created_at: string
+          created_by: string
+          default_mode: string
+          default_value: Json | null
+          editor_config: Json
+          field_key: string
+          id: string
+          kind: string
+          localization_mode: string
+          owner_id: string
+          required: boolean
+          stable_field_id: string
+          state: string
+          updated_at: string
+          validator_key: string | null
+          validator_version: number | null
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cms_field_definition_versions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cms_migration_expected_output: {
+        Args: {
+          p_document: Json
+          p_key: string
+          p_spec: Json
+          p_target_version_id: string
+        }
+        Returns: Json
+      }
+      cms_migration_live_rows: {
+        Args: { p_version_id: string }
+        Returns: {
+          revision_id: string
+          source_row_id: string
+          source_table: string
+        }[]
+      }
       cms_migration_plan_ready: {
         Args: {
           p_content_type_id: string
@@ -8810,11 +9450,29 @@ export type Database = {
         }
         Returns: boolean
       }
+      cms_migration_revision_document: {
+        Args: { p_revision_id: string }
+        Returns: Json
+      }
+      cms_migration_scan_preflight: {
+        Args: { p_plan_id: string }
+        Returns: undefined
+      }
       cms_migration_source_evidence_valid: {
         Args: {
           p_plan: Database["platform_private"]["Tables"]["cms_schema_migration_plans"]["Row"]
         }
         Returns: boolean
+      }
+      cms_migration_source_unchanged: {
+        Args: {
+          p_plan: Database["platform_private"]["Tables"]["cms_schema_migration_plans"]["Row"]
+        }
+        Returns: boolean
+      }
+      cms_migration_target_field_spec: {
+        Args: { p_plan_id: string }
+        Returns: Json
       }
       cms_migration_transform_hash: {
         Args: {
@@ -8825,6 +9483,16 @@ export type Database = {
           p_target_hash: string
           p_transform_key: string
           p_transform_version: number
+        }
+        Returns: string
+      }
+      cms_migration_value_valid: {
+        Args: { p_document: Json; p_spec: Json; p_target_version_id: string }
+        Returns: boolean
+      }
+      cms_migration_verify_reason: {
+        Args: {
+          p_plan: Database["platform_private"]["Tables"]["cms_schema_migration_plans"]["Row"]
         }
         Returns: string
       }
@@ -8874,6 +9542,10 @@ export type Database = {
         Args: { p_request: Json }
         Returns: string
       }
+      cms_read_schema_migration_source_rows: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_reconcile_schema_activation: {
         Args: { p_request: Json }
         Returns: Json
@@ -8918,6 +9590,7 @@ export type Database = {
         Returns: string
       }
       cms_renderer_registry_valid: { Args: { p_ref: string }; Returns: boolean }
+      cms_renew_capability_grant: { Args: { p_request: Json }; Returns: Json }
       cms_request_hash: { Args: { p_request: Json }; Returns: string }
       cms_require_capability: {
         Args: {
@@ -9087,6 +9760,7 @@ export type Database = {
         Returns: string
       }
       cms_revision_reader_capabilities: { Args: never; Returns: string[] }
+      cms_revoke_capability_grant: { Args: { p_request: Json }; Returns: Json }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
         Returns: Json
@@ -9154,6 +9828,21 @@ export type Database = {
         Returns: boolean
       }
       cms_template_registry_valid: { Args: { p_id: string }; Returns: boolean }
+      cms_transform_registry_digest: {
+        Args: {
+          p_accepted_field_kinds: Json
+          p_behavior: string
+          p_key: string
+          p_source_constraints: Json
+          p_target_constraints: Json
+          p_version: number
+        }
+        Returns: string
+      }
+      cms_transform_registry_member: {
+        Args: { p_key: string; p_version: number }
+        Returns: Json
+      }
       cms_transform_registry_member_valid: {
         Args: { p_key: string; p_version: number }
         Returns: boolean
@@ -9208,6 +9897,10 @@ export type Database = {
       }
       cms_worker_require_request: {
         Args: { p_allowed: string[]; p_request: Json; p_required: string[] }
+        Returns: undefined
+      }
+      cms_worker_require_scan_request: {
+        Args: { p_keys: string[]; p_request: Json }
         Returns: undefined
       }
       cms_worker_set_report: {
@@ -9532,6 +10225,89 @@ export type Database = {
         }
         Returns: Json
       }
+      mfa_audit: {
+        Args: {
+          p_acting_party_id: string
+          p_action: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_reason_code: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: undefined
+      }
+      mfa_bump: { Args: { p_binding_id: string }; Returns: number }
+      mfa_factor_changed_event: {
+        Args: {
+          p_binding_id: string
+          p_correlation_id: string
+          p_factor_id: string
+          p_factor_version: number
+        }
+        Returns: undefined
+      }
+      mfa_lock_binding: {
+        Args: { p_auth_user_id: string; p_lock?: boolean }
+        Returns: unknown
+        SetofOptions: {
+          from: "*"
+          to: "auth_user_bindings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mfa_notification_request: {
+        Args: {
+          p_binding_id: string
+          p_correlation_id: string
+          p_security_event_id: string
+        }
+        Returns: undefined
+      }
+      mfa_parse_version: { Args: { p_version: string }; Returns: number }
+      mfa_projection: { Args: { p_auth_user_id: string }; Returns: Json }
+      mfa_require_name: { Args: { p_name: string }; Returns: undefined }
+      mfa_require_not_last_factor: {
+        Args: { p_person_id: string }
+        Returns: undefined
+      }
+      mfa_require_session: {
+        Args: { p_auth_user_id: string; p_session_id: string }
+        Returns: undefined
+      }
+      mfa_require_version: {
+        Args: { p_expected: string; p_mfa_version: number }
+        Returns: undefined
+      }
+      mfa_rotate_session: {
+        Args: {
+          p_auth_user_id: string
+          p_binding_id: string
+          p_correlation_id: string
+          p_issued_at: string
+          p_new_session_id: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: undefined
+      }
+      mfa_security_event: {
+        Args: {
+          p_action: string
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_outcome: string
+          p_reason_code: string
+          p_request_id: string
+          p_session_id: string
+        }
+        Returns: string
+      }
+      mfa_step_up_capability_held: {
+        Args: { p_person_id: string }
+        Returns: boolean
+      }
       normalize_identity_handle: { Args: { p_handle: string }; Returns: string }
       protected_writes_allowed: { Args: never; Returns: boolean }
       read_authorized_job: {
@@ -9779,6 +10555,25 @@ export type Database = {
           schema_version: number
           state: Database["platform_private"]["Enums"]["webhook_receipt_state"]
         }[]
+      }
+      step_up_capability_designated: {
+        Args: { p_key: string }
+        Returns: boolean
+      }
+      step_up_usable_challenge: {
+        Args: {
+          p_auth_user_id: string
+          p_challenge_id: string
+          p_lock?: boolean
+          p_session_id: string
+        }
+        Returns: unknown
+        SetofOptions: {
+          from: "*"
+          to: "step_up_challenges"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       valid_attempts: { Args: { value: Json }; Returns: boolean }
       valid_base_event_payload: {

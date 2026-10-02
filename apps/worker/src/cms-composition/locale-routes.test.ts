@@ -466,6 +466,75 @@ describe('CMS-03C-04 locale authoring route', () => {
     expect(await invalidRateDetail.json()).toMatchObject({ details: {} });
   });
 
+  it('returns the active chain on a fallback-chain mismatch and nothing else', async () => {
+    const respond = async (details: Readonly<Record<string, unknown>>) => {
+      const response = await createCmsLocaleApp(
+        deps({ authorLocale: async () => portError(409, details) }),
+      ).request(request());
+      expect(response.status).toBe(409);
+      const payload = (await response.json()) as {
+        code: string;
+        details: Record<string, unknown>;
+      };
+      expect(payload.code).toBe('LOCALE_VERSION_CONFLICT');
+      return payload.details;
+    };
+    expect(
+      await respond({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: ['fr-FR', 'en-US'],
+        expectedVersion: '1',
+        currentVersion: '2',
+        secret: 'never-leak',
+      }),
+    ).toEqual({
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['fr-FR', 'en-US'],
+      expectedVersion: '1',
+      currentVersion: '2',
+    });
+    expect(
+      await respond({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: [],
+      }),
+    ).toEqual({
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: [],
+    });
+    for (const unsafe of [
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH' },
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: 'en-US' },
+      {
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: Array.from({ length: 17 }, () => 'fr'),
+      },
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en_US'] },
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en-us'] },
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: [7] },
+      { reasonCode: 'SOMETHING_ELSE', activeFallbackChain: ['en-US'] },
+      { activeFallbackChain: ['en-US'] },
+    ])
+      expect(await respond(unsafe)).toEqual({});
+  });
+
+  it('never returns the active chain on a non-409 status', async () => {
+    for (const status of [400, 403, 404, 422, 503] as const) {
+      const response = await createCmsLocaleApp(
+        deps({
+          authorLocale: async () =>
+            portError(status, {
+              reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+              activeFallbackChain: ['en-US'],
+            }),
+        }),
+      ).request(request());
+      expect(JSON.stringify(await response.json())).not.toContain(
+        'activeFallbackChain',
+      );
+    }
+  });
+
   it('publishes the BE00 429 contract with second-granularity reset and matching headers', async () => {
     const response = await createCmsLocaleApp(
       deps({

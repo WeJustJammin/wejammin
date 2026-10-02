@@ -1,3 +1,5 @@
+import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
+
 import {
   isAuthoritativeContentSchemaRegistryMutationResponse,
   reconcileContentSchemaRegistryMutation,
@@ -43,6 +45,8 @@ export interface ContentSchemaRegistryMutationResult {
   /** Number of same-key mutation replays used to reconcile an ambiguity. */
   readonly statusChecks: number;
   readonly errorDetails: readonly string[];
+  /** OD-4 locale refusals: exact server-owned messages with their pointers. */
+  readonly localeIssues?: readonly ContentSchemaRegistryLocaleIssue[];
   readonly serverVersion: string | null;
   readonly formData: FormData;
 }
@@ -65,6 +69,45 @@ const safeVersion = (value: string | null): string | null => {
   if (value === null) return null;
   const normalized = value.trim().replace(/^"|"$/gu, '');
   return /^\d{1,19}$/u.test(normalized) ? normalized : null;
+};
+
+export interface ContentSchemaRegistryLocaleIssue {
+  readonly pointer: string;
+  readonly message: string;
+}
+
+const LOCALE_MESSAGES: ReadonlySet<string> = new Set(
+  Object.values(LOCALE_CONFIG_MESSAGES),
+);
+
+/** Only the fixed BE03a OD-4 strings may be rendered; all else stays opaque. */
+const mutationLocaleIssues = async (
+  response: Response,
+): Promise<readonly ContentSchemaRegistryLocaleIssue[]> => {
+  if (response.status !== 422) return [];
+  try {
+    const body: unknown = await response.clone().json();
+    const details = (body as { readonly details?: unknown } | null)?.details;
+    const violations = (details as { readonly violations?: unknown } | null)
+      ?.violations;
+    if (!Array.isArray(violations)) return [];
+    return violations
+      .flatMap((violation): ContentSchemaRegistryLocaleIssue[] => {
+        const { pointer, message } = (violation ?? {}) as {
+          readonly pointer?: unknown;
+          readonly message?: unknown;
+        };
+        return typeof pointer === 'string' &&
+          pointer.length <= 256 &&
+          typeof message === 'string' &&
+          LOCALE_MESSAGES.has(message)
+          ? [{ pointer, message }]
+          : [];
+      })
+      .slice(0, 50);
+  } catch {
+    return [];
+  }
 };
 
 const mutationErrorDetails = async (
@@ -202,6 +245,8 @@ export const executeContentSchemaRegistryMutation = async (input: {
       statusChecks,
       errorDetails:
         response === null ? [] : await mutationErrorDetails(response),
+      localeIssues:
+        response === null ? [] : await mutationLocaleIssues(response),
       serverVersion:
         response === null ? null : await mutationServerVersion(response),
       formData: input.formData,

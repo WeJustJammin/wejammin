@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  LOCALE_FALLBACK_CHAIN_MISMATCH,
+  LocaleFallbackChainMismatchDetailsSchema,
   LocaleVariantHeadersSchema,
   LocaleVariantPathSchema,
   LocaleVariantRequestSchema,
@@ -166,5 +168,58 @@ describe('CMS-03C-04 locale-variant wire contract', () => {
       expect(LocaleVariantResourceSchema.safeParse(candidate).success).toBe(
         false,
       );
+  });
+});
+
+describe('CMS-03C-04 fallback-chain equality conflict (OD-4)', () => {
+  it('pins the machine reason code', () => {
+    expect(LOCALE_FALLBACK_CHAIN_MISMATCH).toBe('FALLBACK_CHAIN_MISMATCH');
+  });
+
+  it('accepts the active chain, bounded at sixteen canonical tags', () => {
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.parse({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: ['fr', 'en-US'],
+      }),
+    ).toEqual({
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['fr', 'en-US'],
+    });
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.safeParse({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.safeParse({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: Array.from({ length: 16 }, (_unused, i) =>
+          String.fromCharCode(97 + i).repeat(2),
+        ),
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    { reasonCode: 'FALLBACK_CHAIN_MISMATCH' },
+    { activeFallbackChain: ['en-US'] },
+    { reasonCode: 'SOURCE_HASH_CONFLICT', activeFallbackChain: ['en-US'] },
+    { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en-us'] },
+    { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en_US'] },
+    {
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: Array.from({ length: 17 }, () => 'fr'),
+    },
+    {
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['en-US'],
+      extra: true,
+    },
+  ])('refuses %j', (candidate) => {
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.safeParse(candidate).success,
+    ).toBe(false);
   });
 });

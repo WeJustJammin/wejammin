@@ -18,7 +18,7 @@ export interface ContentSchemaRegistryReviewModeProps {
   readonly variant: ContentSchemaRegistryVariant;
   readonly access: ContentSchemaRegistryAccess;
   readonly retryUrl: string;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly csrfToken: string;
   readonly idempotencyKey: (operationId: string) => string;
   readonly actingContextLabel?: string | undefined;
@@ -52,7 +52,7 @@ export default function ContentSchemaRegistryReviewMode(
     <ContentSchemaRegistryReviewPanel
       state={state}
       retryUrl={props.retryUrl}
-      requestId={props.requestId}
+      supportReference={props.supportReference}
       candidateUrl={candidateUrl}
       decisionReferences
     >

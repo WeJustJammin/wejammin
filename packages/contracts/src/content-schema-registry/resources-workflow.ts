@@ -106,6 +106,7 @@ export const SchemaReviewFrozenEvidenceSchema = z
     contentTypeVersionId: CmsUuidSchema,
     contentTypeVersionNo: CmsVersionSchema,
     definitionHash: CmsHashSchema,
+    localeConfigHash: CmsHashSchema,
     schemaArtifact: z
       .strictObject({
         id: CmsUuidSchema,

@@ -53,6 +53,7 @@ export const frozenEvidence = {
   contentTypeVersionId: uuid2,
   contentTypeVersionNo: '2',
   definitionHash: hash,
+  localeConfigHash: hash2,
   schemaArtifact: {
     id: uuid3,
     state: 'compiled' as const,

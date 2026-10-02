@@ -88,6 +88,37 @@ it does not change CFG-11 or any CFG-08 through CFG-12 behavior.
   Supabase dashboard and recorded by an audit note; no HTTP route, grant or
   support bypass substitutes for it.
 
+## Capability snapshot (CFG-05B-07, 2026-10-02)
+
+`CFG-05B-07` is the one server-truthful source the web tier uses to decide
+which settings and admin affordances to render. It is a protected,
+service-binding-only read: the web server calls it with the verified session
+cookies and trace headers, never from the browser, and never with a caller role,
+capability, query or identifier.
+
+- **Authority.** There is no capability key. Any session that the shared admin
+  admission accepts may read its own projection, and the response adds no
+  authority: it is the same server-derived request-context capability list the
+  Worker already admits every admin route on.
+- **Response.** `{ capabilities: string[] }`, strict, at most 32 unique keys.
+  Only keys in the `admin.*` namespace (admin workspace tabs) and the
+  `settings.*` namespace (the keys BE05a command RPCs authorize against:
+  `settings.approve`, `settings.release`, `settings.rollback` and each
+  definition's `ownerCapability`) leave the Worker. Every other domain
+  capability is dropped, never echoed. The list carries names only: no person,
+  party, session, grant or provider identifier crosses it.
+- **Transport.** Capability is never transported as a response header. The web
+  tier ignores and strips any `x-configuration-capabilities` or
+  `x-configuration-capability` header from an upstream response, and no Worker
+  route emits one. Any failure to read the snapshot (no binding, no session,
+  non-200, non-JSON, contract mismatch) resolves to an empty list, so every
+  affordance fails closed to read-only.
+- **Use, not enforcement.** The snapshot only selects UI affordances. The Worker
+  and the database re-check authority on every command regardless of what any
+  client rendered.
+- **Cache and rate.** `Cache-Control: no-store`; no query string is accepted
+  (400 `INVALID_REQUEST`); 120/min per user; 8s deadline.
+
 ## Split Group
 
 This companion is the backend contract for Shard 05 administration and
@@ -217,6 +248,7 @@ impersonate a human or grant themselves capability.
 | CFG-05B-04   | CFG-11 Grant/revoke admin capability | POST /api/v1/admin/capability-grants/actions  | Grantor with every named action/resource; MFA and distinct approver for elevated/purpose grant                 | Cfg05b04CapabilityActionRequest | Cfg05b04CapabilityActionResponse 200 or 201 | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 422        | Idempotency-Key required; 20/min user and 40/min party; 15s deadline                                                                                                                                                                                                | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization        |
 | CFG-05B-05   | CFG-12 Inspect audit/diagnostics     | POST /api/v1/admin/audit-diagnostics/actions  | Admin audit capability or diagnostic capability for exact scope and definition                                 | Cfg05b05AuditDiagnosticRequest  | Cfg05b05AuditDiagnosticResponse 200 or 202  | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 503        | Read action 120/min; run action Idempotency-Key and 30/min; 8s read or 15s queued                                                                                                                                                                                   | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, capability, rate and ApiError normalization                      |
 | CFG-05B-06   | None (DEC-111 recovery)              | POST /api/v1/admin/identity/mfa-factor-resets | Admin operator holding `admin.identity.mfa_reset` action `reset` for the target's organization; recent step-up | Cfg05b06MfaFactorResetRequest   | Cfg05b06MfaFactorResetResponse 200 or 202   | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 422 or 429 or 503 | Idempotency-Key required; 5/hour user and 10/hour party; 15s deadline                                                                                                                                                                                               | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization        |
+| CFG-05B-07   | None (web affordance projection)     | GET /api/v1/admin/capability-snapshot         | Any admitted session; service binding only; no capability key; reads only the actor's own `admin.*` and `settings.*` capabilities | None (no body, no query)        | Cfg05b07CapabilitySnapshotResponse 200      | ApiError { code, message, requestId, details }; 400 or 401 or 403 or 429 or 500        | No mutation key; 120/min user; 8s deadline; `Cache-Control: no-store`                                                                                                                                                                                               | CORS none (service binding only); BE00 session, same-origin, strict empty query, rate and ApiError normalization                    |
 
 ### Registry invariants
 
@@ -250,6 +282,7 @@ impersonate a human or grant themselves capability.
 | CFG-05B-04   | CapabilityActionRequest to CapabilityActionResponse with current grant state              | UNAUTHENTICATED 401; FORBIDDEN 403; GRANT_NOT_FOUND 404; GRANT_VERSION_CONFLICT 409; GRANT_INVALID 422                                                                                                                          | Hidden grant or subject is 404; visible resource outside grantor authority is 403; no grant payload is exposed on denial.                                                                       |
 | CFG-05B-05   | AuditDiagnosticRequest to AuditDiagnosticResponse with minimal links or evidence state    | UNAUTHENTICATED 401; FORBIDDEN 403; AUDIT_TARGET_NOT_FOUND 404; DIAGNOSTIC_VERSION_CONFLICT 409; DIAGNOSTIC_UNAVAILABLE 503                                                                                                     | Hidden audit target and diagnostic definition are 404; visible target outside audit or diagnostic capability is 403; timeout is 503 unknown, never healthy.                                     |
 | CFG-05B-06   | MfaFactorResetRequest to MfaFactorResetResponse with reset state and removed-factor count | INVALID_REQUEST 400; UNAUTHENTICATED 401 or STEP_UP_REQUIRED 401; FORBIDDEN 403; TARGET_NOT_FOUND 404; IDEMPOTENCY_CONFLICT 409 or MFA_RESET_IN_PROGRESS 409; MFA_RESET_INVALID 422; RATE_LIMITED 429; IDENTITY_UNAVAILABLE 503 | Hidden or non-member target is 404; a visible organization without the capability is 403; self-target is 422; no factor, session or target detail is exposed on denial.                         |
+| CFG-05B-07   | No input to CapabilitySnapshotResponse with named `admin.*` and `settings.*` capabilities | INVALID_REQUEST 400; UNAUTHENTICATED 401; FORBIDDEN 403; RATE_LIMITED 429; INTERNAL_ERROR 500 | A visible session only ever receives its own projection; there is no hidden-record case. Capabilities outside `admin.*` and `settings.*` are dropped, never echoed. |
 
 ## Request/Response Contracts (Zod 4 schemas)
 
@@ -621,6 +654,16 @@ export const Cfg05b06MfaFactorResetResponse = z.strictObject({
 });
 
 export type Cfg05bApiError = z.infer<typeof ApiError>;
+
+export const Cfg05b07CapabilityKey = z
+  .string()
+  .regex(/^(?:admin|settings)\.[a-z][a-z0-9_.-]{0,90}$/);
+export const Cfg05b07CapabilitySnapshotResponse = z.strictObject({
+  capabilities: z
+    .array(Cfg05b07CapabilityKey)
+    .max(32)
+    .refine(v => new Set(v).size === v.length, "capabilities_duplicate")
+});
 ```
 
 ### Contract and policy rules
@@ -644,6 +687,11 @@ export type Cfg05bApiError = z.infer<typeof ApiError>;
   are server-derived and never accepted from JSON. `removedFactorCount` is at
   most 10, the BE01a live-factor bound; `state` is `completed` only when every
   provider removal is confirmed and `reconciling` (HTTP 202) otherwise.
+- The capability snapshot is a server-to-server read bound to the verified
+  session and acting party. It accepts no body, query, path or header claim,
+  returns only validated `admin.*` and `settings.*` names (at most 32), is
+  `no-store`, and is never mirrored into a response header. The web tier fails
+  closed to an empty list on any error.
 - Diagnostics execute only a code-owned definition version with bounded input,
   timeout and freshness policy. Timeout, unavailable dependency or stale
   input is unknown or stale, never healthy and never an automatic repair.
@@ -710,6 +758,7 @@ Bulk item policy runs again inside each lease transaction.
 | CFG-05B-04   | Grantor capable of all requested actions/resources; distinct approver for elevated grant                      | Named subject, resource UUID, scope, term and purpose are within grantor authority            | Lock grant; recheck grantor, approver, MFA and target before insert/revoke                                              | Hidden grant 404; overreach, wildcard or stale grant 403/422                                                                        |
 | CFG-05B-05   | Audit operator or diagnostic operator for exact target/definition                                             | Audit link or diagnostic version and target are in capability scope                           | Recheck link owner and definition version; dependency freshness before healthy result                                   | Hidden target/definition 404; visible but unauthorized 403; unavailable 503 unknown                                                 |
 | CFG-05B-06   | Admin operator with `admin.identity.mfa_reset` action `reset` on the target's organization and recent step-up | Target is a confirmed unended member of that organization and is not the operator             | Lock reset and target binding; recheck grant, step-up, membership and no live reconciling reset before the identity RPC | Hidden or non-member target 404; visible organization without capability 403; self-target 422; stale step-up 401 `STEP_UP_REQUIRED` |
+| CFG-05B-07   | Any session admitted by the shared admin admission; no capability key                                         | The acting party and capability list are server-derived from the verified request context      | None: read-only projection with no side effect; the response never grants authority | Hidden-record cases do not exist; unauthenticated 401 |
 
 ### Security and abuse controls
 
@@ -964,6 +1013,7 @@ None.
 | 2026-08-28 | Authored 05b backend contracts from approved Shard 05 IA and deep dive; reconciled 25.08.01 through 25.08.05                                                                                                                                                                             | /write-be-spec       | All                                                                                                                                        |
 | 2026-08-28 | Added strict admin projections, manifest-bound bulk, least-privilege grants, diagnostic evidence and recovery tests                                                                                                                                                                      | /write-be-spec-write | API, database, middleware, events, tests                                                                                                   |
 | 2026-10-02 | DEC-111 follow-up: authored CFG-05B-06 admin MFA factor reset (named `admin.identity.mfa_reset` capability on the target's organization, recent step-up, reason, audit, operator-only provider adapter via the BE01a identity RPC) and referenced the sole-administrator lockout runbook | /propagate-decision  | Admin MFA factor reset, Classification, Route Registry, Contracts, Database, Middleware, Data Flow, Events, Errors, Observability, Testing |
+| 2026-10-02 | FX-E: documented CFG-05B-07 capability snapshot exactly as implemented (no capability key, service-binding only, `admin.*` and `settings.*` keys, at most 32, strict, `no-store`) and stated that capability is never transported as a response header; FE05 settings and admin affordances derive from this snapshot | /propagate-decision | Capability snapshot, Route Registry, Operation contract, Contracts, Authorization matrix, Security controls |
 
 ## Dependency References
 

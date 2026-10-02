@@ -346,6 +346,93 @@ describe('CMS-03C-04 production locale adapter', () => {
     });
   });
 
+  it('carries the active fallback chain on a chain-equality conflict (OD-4)', async () => {
+    const mismatch = {
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['fr-FR', 'en-US'],
+    };
+    const rpcError = (message: string, details: unknown) =>
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ code: 'P0001', message, details }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ) as typeof fetch;
+    for (const [message, details] of [
+      ['VERSION_MISMATCH', JSON.stringify(mismatch)],
+      ['CONFLICT', mismatch],
+    ] as const) {
+      const result = await create(rpcError(message, details)).authorLocale(
+        input(),
+        new AbortController().signal,
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        code: 'LOCALE_VERSION_CONFLICT',
+        details: mismatch,
+      });
+    }
+    for (const unsafe of [
+      'not json',
+      '7',
+      'null',
+      JSON.stringify({ ...mismatch, activeFallbackChain: ['en_US'] }),
+      JSON.stringify({
+        ...mismatch,
+        activeFallbackChain: Array.from({ length: 17 }, () => 'fr'),
+      }),
+      JSON.stringify({ reasonCode: 'FALLBACK_CHAIN_MISMATCH' }),
+    ]) {
+      const result = await create(
+        rpcError('VERSION_MISMATCH', unsafe),
+      ).authorLocale(input(), new AbortController().signal);
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        code: 'LOCALE_VERSION_CONFLICT',
+      });
+      expect(
+        (result as { details?: Record<string, unknown> }).details
+          ?.activeFallbackChain,
+      ).toBeUndefined();
+    }
+    const withExtra = await create(
+      rpcError(
+        'VERSION_MISMATCH',
+        JSON.stringify({ ...mismatch, secret: 'never-leak' }),
+      ),
+    ).authorLocale(input(), new AbortController().signal);
+    expect(JSON.stringify(withExtra)).not.toContain('never-leak');
+    expect(withExtra).toMatchObject({ details: mismatch });
+  });
+
+  it('maps a locale outside supportedLocales to the 422 catalog code without a chain', async () => {
+    const result = await create(
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'P0001',
+              message: 'VALIDATION_FAILED',
+              details: JSON.stringify({
+                reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+                activeFallbackChain: ['en-US'],
+              }),
+            }),
+            { status: 400, headers: { 'content-type': 'application/json' } },
+          ),
+      ) as typeof fetch,
+    ).authorLocale(input(), new AbortController().signal);
+    expect(result).toMatchObject({
+      ok: false,
+      status: 422,
+      code: 'LOCALE_VALIDATION_FAILED',
+    });
+    expect(JSON.stringify(result)).not.toContain('activeFallbackChain');
+  });
+
   it('emits scrubbed telemetry for every outcome class', async () => {
     const dependencies = create(
       vi.fn(async () => Response.json(resource)) as typeof fetch,

@@ -69,6 +69,8 @@ const allowed = (
 export type ResetHarnessOptions = Readonly<{
   session?: AuthenticationSession;
   context?: ReturnType<typeof contextFor>;
+  /** Replaces the request-context authority, e.g. to make it fail. */
+  resolveContext?: () => Promise<unknown>;
   port?: AdminMfaFactorResetPort | null;
   rateLimits?: ReadonlyArray<AuthenticationResult<AuthRateLimitDecision>>;
 }>;
@@ -92,7 +94,8 @@ export const makeResetHarness = (options: ResetHarnessOptions = {}) => {
     }),
   };
   const resolveRequestContext = vi.fn(
-    async () => options.context ?? operatorContext(),
+    options.resolveContext ??
+      (async () => options.context ?? operatorContext()),
   );
   const resetMfaFactors =
     options.port === null ? undefined : (options.port ?? port);

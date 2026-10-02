@@ -21,7 +21,11 @@ import {
  */
 
 const bodies = {
-  'CMS-03A-09': { expectedVersion: '4' },
+  'CMS-03A-09': {
+    expectedVersion: '4',
+    supportedLocales: null,
+    fallbackChains: null,
+  },
   'CMS-03A-10': {
     expectedVersion: '4',
     transformKey: null,

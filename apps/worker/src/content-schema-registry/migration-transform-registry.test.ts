@@ -16,6 +16,7 @@ import {
 } from './migration-transform-registry';
 import type {
   TargetFieldSpec,
+  TransformContext,
   TransformRegistryEntry,
 } from './migration-transform-types';
 
@@ -31,7 +32,13 @@ const field = (overrides: Partial<TargetFieldSpec> = {}): TargetFieldSpec => ({
   required: true,
   defaultMode: 'literal',
   defaultValue: 'untitled',
+  constraints: {},
   ...overrides,
+});
+
+const ctx = (...fields: readonly TargetFieldSpec[]): TransformContext => ({
+  targetFields: fields,
+  retiredFields: [],
 });
 
 const rowCode = (run: () => unknown): string | null => {
@@ -87,12 +94,14 @@ describe('identity.revalidate', () => {
   const apply = member(IDENTITY_REVALIDATE_KEY).apply;
   const document = { title: 'a', rank: 2 };
 
-  it('carries the document unchanged without a target field', () => {
-    expect(apply(document, { targetField: null })).toBe(document);
+  it('refuses to seal a row when no target field was supplied', () => {
+    expect(
+      rowCode(() => apply(document, { targetFields: [], retiredFields: [] })),
+    ).toBe('TRANSFORM_TARGET_CONSTRAINTS_MISSING');
   });
 
   it('passes a present value of the right kind', () => {
-    expect(apply(document, { targetField: field() })).toBe(document);
+    expect(apply(document, ctx(field()))).toBe(document);
   });
 
   it.each([
@@ -105,16 +114,14 @@ describe('identity.revalidate', () => {
       field({ fieldKey: 'n', kind: 'integer' }),
     ],
   ])('records TRANSFORM_TARGET_VIOLATION for %s', (_label, source, target) => {
-    expect(rowCode(() => apply(source, { targetField: target }))).toBe(
+    expect(rowCode(() => apply(source, ctx(target)))).toBe(
       'TRANSFORM_TARGET_VIOLATION',
     );
   });
 
   it('accepts an absent value for an optional target field', () => {
     const source = { rank: 1 };
-    expect(apply(source, { targetField: field({ required: false }) })).toBe(
-      source,
-    );
+    expect(apply(source, ctx(field({ required: false })))).toBe(source);
   });
 });
 
@@ -122,29 +129,29 @@ describe('default.fill_literal', () => {
   const apply = member(DEFAULT_FILL_LITERAL_KEY).apply;
 
   it('writes the declared literal default when the value is absent or null', () => {
-    expect(apply({ rank: 1 }, { targetField: field() })).toEqual({
+    expect(apply({ rank: 1 }, ctx(field()))).toEqual({
       rank: 1,
       title: 'untitled',
     });
-    expect(apply({ title: null }, { targetField: field() })).toEqual({
+    expect(apply({ title: null }, ctx(field()))).toEqual({
       title: 'untitled',
     });
   });
 
   it('passes a row that already holds a value unchanged and never mutates input', () => {
     const source = { title: 'kept' };
-    expect(apply(source, { targetField: field() })).toBe(source);
+    expect(apply(source, ctx(field()))).toBe(source);
     const sparse = { rank: 1 };
-    apply(sparse, { targetField: field() });
+    apply(sparse, ctx(field()));
     expect(sparse).toEqual({ rank: 1 });
   });
 
   it.each([
-    ['no target field', null],
-    ['a non-literal default mode', field({ defaultMode: 'computed' })],
-    ['a literal mode without a value', field({ defaultValue: null })],
-  ])('records TRANSFORM_DEFAULT_UNAVAILABLE for %s', (_label, target) => {
-    expect(rowCode(() => apply({ rank: 1 }, { targetField: target }))).toBe(
+    ['no target fields', []],
+    ['a non-literal default mode', [field({ defaultMode: 'computed' })]],
+    ['a literal mode without a value', [field({ defaultValue: null })]],
+  ])('records TRANSFORM_DEFAULT_UNAVAILABLE for %s', (_label, targets) => {
+    expect(rowCode(() => apply({ rank: 1 }, ctx(...targets)))).toBe(
       'TRANSFORM_DEFAULT_UNAVAILABLE',
     );
   });

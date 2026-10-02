@@ -69,7 +69,7 @@ const submitForm = async (
 };
 
 describe('[DEC-108] rendered form -> facade -> upstream', () => {
-  it('CMS-03A-09: successor sends { expectedVersion } with the form idempotency key and ETag', async () => {
+  it('CMS-03A-09: successor keeps the locale configuration (both null) with the form idempotency key and ETag', async () => {
     const doc = render(
       activationPreparation({ permittedNextActions: ['create_successor'] }),
     );
@@ -80,7 +80,11 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
       { status: 201, body: draftDetail().resource },
     );
     expect(response.status).toBe(201);
-    expect(forwardedBody).toStrictEqual({ expectedVersion: '4' });
+    expect(forwardedBody).toStrictEqual({
+      expectedVersion: '4',
+      supportedLocales: null,
+      fallbackChains: null,
+    });
     expect(forwarded?.headers.get('idempotency-key')).toBe(
       fields['idempotency-key'],
     );

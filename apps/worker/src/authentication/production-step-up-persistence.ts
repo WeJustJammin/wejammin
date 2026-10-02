@@ -109,7 +109,12 @@ export const createStepUpPersistence = (invoke: Invoke): StepUpMethods => ({
     invoke(
       MFA_PERSISTENCE_RPC.settleChallengeVerify,
       input,
-      { p_session_id: input.sessionId, p_challenge_id: input.challengeId },
+      {
+        p_session_id: input.sessionId,
+        p_challenge_id: input.challengeId,
+        p_new_session_id: input.rotation.sessionId,
+        p_issued_at: input.rotation.issuedAt,
+      },
       signal,
       nothing,
     ),

@@ -117,6 +117,33 @@ describe('CFG-05B-06 production port', () => {
     });
   });
 
+  it('forwards CFG-05B-06 as the X-Operation-Id on both the reservation and the settlement', async () => {
+    const { port, fetchImpl } = build(standard);
+    await port(input(), bindings, signal);
+    const operations = fetchImpl.mock.calls
+      .filter(([url]) => String(url).includes('/rpc/'))
+      .map(([url, init]) => ({
+        rpc: String(url).split('/rpc/')[1],
+        operation: new Headers(init?.headers).get('x-operation-id'),
+      }));
+    expect(operations).toEqual([
+      { rpc: 'admin_mfa_factor_reset', operation: 'CFG-05B-06' },
+      { rpc: 'admin_mfa_factor_reset_settle', operation: 'CFG-05B-06' },
+    ]);
+  });
+
+  it('forwards CFG-05B-06 when the reservation has nothing to remove', async () => {
+    const { port, fetchImpl } = build((url) =>
+      url.endsWith('/rpc/admin_mfa_factor_reset')
+        ? json(begun({ pendingProviderFactorIds: [] }))
+        : json({}),
+    );
+    await port(input(), bindings, signal);
+    expect(
+      new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('x-operation-id'),
+    ).toBe('CFG-05B-06');
+  });
+
   it('uses only the service credential at the provider, never the caller token', async () => {
     const { port, fetchImpl, calls } = build(standard);
     await port(input(), bindings, signal);

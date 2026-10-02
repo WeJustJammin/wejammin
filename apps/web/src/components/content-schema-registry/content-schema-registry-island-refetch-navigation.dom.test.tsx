@@ -88,7 +88,7 @@ describe('[P2-S09-AC-250] island refresh ownership and navigation commit', () =>
     // start an overlapping read.
     await act(async () => {
       pending[0]?.resolve(
-        new Response(okBody({ requestId: 'stale' }), { status: 200 }),
+        new Response(okBody({ supportReference: 'stale' }), { status: 200 }),
       );
       await Promise.resolve();
     });

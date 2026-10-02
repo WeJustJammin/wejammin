@@ -86,6 +86,24 @@ interface PlatformConfigurationAdminRouteProps {
 - Renders useful semantic HTML before hydration. React is used only for bounded filtering, commands, realtime invalidation, media controls, or rich editing.
 - **A11y inline contract**: skip link targets `<main tabindex="-1">`; one `h1`; landmarks have unique names; route changes focus the `h1`; title includes record and state; 200% zoom and 320 CSS px reflow preserve reading/action order.
 
+### Capability projection for settings and admin affordances
+
+- Settings and admin affordances derive only from the server capability snapshot
+  (BE05b `CFG-05B-07`, `GET /api/v1/admin/capability-snapshot`): the Astro
+  server reads it through the private Worker service binding with the verified
+  session cookies, and passes the resulting `capabilitySnapshot` to the route.
+  A browser never calls it. Any failure yields an empty snapshot and every
+  affordance falls to `read-only`.
+- Capability is never read from a response header, a role label, a URL
+  parameter or a client alias list.
+- Admin tabs render from `admin.*` keys in the snapshot (for example
+  `admin.inbox.read`, `admin.capability.grant`, `admin.audit.read`). The
+  settings editor affordance is enabled when the effective-value response's
+  `ownerCapability` (BE05a `CFG-05A-02`) is in the snapshot. Approve, release and
+  rollback are enabled by `settings.approve`, `settings.release` and
+  `settings.rollback`. These only select what renders; the Worker and database
+  enforce every command, so a stale or forged affordance returns 403.
+
 ### `SettingsFlagsRuntimeWorkbench` (bounded React island)
 
 **BE owner**: `05a-settings-flags-runtime.md`
@@ -871,6 +889,7 @@ None. New product or architecture choices must re-open their originating locked 
 | 2026-08-29 | Initial complete FE specification, source mapping, mandatory deepening, and convergence review | `/write-fe-spec` | All |
 | 2026-10-02 | DEC-114 Phase 2 scope: specified the portability, quality and lifecycle workbench views, forms, action contracts, capability variants, download, restore and findings behavior, contract field and error ownership for CFG-05C-01 to CFG-05C-07 | `/propagate-decision` | Component inventory, interactions, state registry, conditional rendering, accessibility, data mapping, testing |
 | 2026-10-02 | DEC-111 follow-up: specified the admin MFA factor-reset form (`CFG-05B-06`) with fields, confirmation, exact states and error copy, step-up recovery to `/step-up?returnTo=`, capability variant and a11y; split 401 `STEP_UP_REQUIRED` from 403 in the error-class table | `/write-fe-spec` | Component Inventory, Interaction Specification, FE Rubric Closure, Data Mapping |
+| 2026-10-02 | FX-E: specified that settings and admin affordances derive from the CFG-05B-07 capability snapshot (never a response header or alias), and that the settings editor affordance derives from the CFG-05A-02 `ownerCapability` being in that snapshot | `/propagate-decision` | Capability projection, Conditional Rendering |
 
 ## Quality Gates Checklist
 

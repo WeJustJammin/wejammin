@@ -199,6 +199,31 @@ const amendmentMigrationSource = migrationFiles
   .map(({ source }) => source)
   .join('\n');
 
+const expectForcedRls = (tables: readonly string[]): void => {
+  const tableNames = distinctSorted(
+    [
+      ...amendmentMigrationSource.matchAll(
+        /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:[a-z0-9_]+\.)?["']?(cms_[a-z0-9_]+)["']?/giu,
+      ),
+    ].map(([, name]) => name),
+  );
+  expect(tableNames).toEqual(
+    expect.arrayContaining(distinctSorted([...tables])),
+  );
+  for (const table of tables) {
+    const creator = migrationFiles.find(({ source }) =>
+      new RegExp(`create\\s+table[^;]*\\b${table}\\b`, 'iu').test(source),
+    );
+    expect(creator, `${table} must be created by a migration`).toBeDefined();
+    expect(creator?.source ?? '', `${table} must enable RLS`).toMatch(
+      /enable\s+row\s+level\s+security/iu,
+    );
+    expect(creator?.source ?? '', `${table} must force RLS`).toMatch(
+      /force\s+row\s+level\s+security/iu,
+    );
+  }
+};
+
 const acceptanceIds = (source: string): string[] =>
   [...source.matchAll(/P2-S09-AC-(\d{3,4})/gu)].map(
     (match) => `P2-S09-AC-${match[1]}`,
@@ -391,14 +416,16 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
         ),
       ].map(([, name]) => name),
     );
-    expect(authenticatedRpcNames).toEqual(
-      expect.arrayContaining(distinctSorted([...expectedRpcs])),
-    );
+    expect(
+      authenticatedRpcNames.filter(
+        (name) => !(expectedAmendmentRpcs as readonly string[]).includes(name),
+      ),
+    ).toEqual(distinctSorted([...expectedRpcs]));
   });
 
   it('[P2-S09-AC-267, P2-S09-AC-269, P2-S09-AC-273, P2-S09-AC-275] keeps the phase plan, tracker, runbook, and source anchors traceable', () => {
     const expectedIds = Array.from(
-      { length: 1200 },
+      { length: 1239 },
       (_, index) => `P2-S09-AC-${String(index + 1).padStart(3, '0')}`,
     ).sort();
     expect(distinctSorted(acceptanceIds(phasePlan))).toEqual(expectedIds);
@@ -427,22 +454,22 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-267] separates the 1200 authored IDs from the 1196-item active completion policy after the 2026-09-30 activation, AC250 and 2026-10-02 DEC-108 reopens', () => {
-    expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(1200);
+  it('[P2-S09-AC-267] separates the 1239 authored IDs from the 1235-item active completion policy after the 2026-09-30 activation, AC250 and 2026-10-02 DEC-108 reopens', () => {
+    expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(1239);
     expect(sliceTracker).toMatch(
-      /\*\*Acceptance criteria \(authored\)\*\*:\s*1200\b/iu,
+      /\*\*Acceptance criteria \(authored\)\*\*:\s*1239\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Active release denominator\*\*:\s*1196\b/iu,
+      /\*\*Active release denominator\*\*:\s*1235\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Slice 09 implementation-completion denominator\*\*:\s*1196\b/iu,
+      /\*\*Slice 09 implementation-completion denominator\*\*:\s*1235\b/iu,
     );
     expect(sliceTracker).toMatch(
       /\*\*Local QA-GREEN \(historical, 2026-09-26\)\*\*:\s*279\/279\s+verified at that checkpoint;\s*283\s+authored IDs remain/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Current active verification\*\*:\s*260\/1196\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+      /\*\*Current active verification\*\*:\s*249\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
     );
 
     const ac266Row = sliceTracker
@@ -453,7 +480,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /AC266[\s\S]{0,500}owner-deferred[\s\S]{0,500}remains unchecked and excluded from active Phase 2/iu,
     );
     expect(sliceTracker).toMatch(
-      /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019 and AC259 reopened under the DEC-108 accounting,\s*and the 917 open DEC-108\/109\/110\/111\/119\/120 criteria AC284-AC1200;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
+      /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened under the DEC-108 accounting,\s*and the 956 open DEC-108\/109\/110\/111\/119\/120 criteria AC284-AC1239;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
     );
     expect(sliceTracker).toMatch(
       /AC266[\s\S]{0,300}mandatory[\s\S]{0,100}pre-release[\s\S]{0,100}production-readiness\/release/iu,
@@ -485,32 +512,19 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     expect(missingRoutes).toEqual([]);
   });
 
-  it('[P2-S09-AC-734] creates the DEC-108, DEC-109, DEC-110 and DEC-119 private tables with forced RLS', () => {
-    const tableNames = distinctSorted(
-      [
-        ...amendmentMigrationSource.matchAll(
-          /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:[a-z0-9_]+\.)?["']?(cms_[a-z0-9_]+)["']?/giu,
-        ),
-      ].map(([, name]) => name),
-    );
-    expect(tableNames).toEqual(
-      expect.arrayContaining(distinctSorted([...expectedAmendmentTables])),
-    );
-    for (const table of expectedAmendmentTables) {
-      const creator = migrationFiles.find(({ source }) =>
-        new RegExp(`create\\s+table[^;]*\\b${table}\\b`, 'iu').test(source),
-      );
-      expect(creator, `${table} must be created by a migration`).toBeDefined();
-      expect(creator?.source ?? '', `${table} must enable RLS`).toMatch(
-        /enable\s+row\s+level\s+security/iu,
-      );
-      expect(creator?.source ?? '', `${table} must force RLS`).toMatch(
-        /force\s+row\s+level\s+security/iu,
-      );
-    }
+  it('[P2-S09-AC-686] creates cms_workflow_policies with forced RLS', () => {
+    expectForcedRls(['cms_workflow_policies']);
   });
 
-  it('[P2-S09-AC-732] exposes the eighteen named registry RPCs plus the service-only template resolver', () => {
+  it('[P2-S09-AC-181] creates the review, row-evidence and capability-grant tables with forced RLS', () => {
+    expectForcedRls(
+      expectedAmendmentTables.filter(
+        (table) => table !== 'cms_workflow_policies',
+      ),
+    );
+  });
+
+  it('[P2-S09-AC-685] exposes the eighteen named registry RPCs plus the service-only template resolver', () => {
     const rpcNames = distinctSorted(
       [
         ...amendmentMigrationSource.matchAll(

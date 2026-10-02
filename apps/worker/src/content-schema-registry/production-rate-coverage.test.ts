@@ -192,12 +192,14 @@ describe('content registry rate limiter adapter', () => {
     ).resolves.toMatchObject({ ok: true });
     expect(authRateLimit).toHaveBeenCalledTimes(2);
     expect(authRateLimit.mock.calls[0]?.[0]).toMatchObject({
+      scope: 'user',
       authUserId: USER_ID,
-      actingPartyId: PARTY_ID,
+      actingPartyId: null,
     });
     expect(authRateLimit.mock.calls[1]?.[0]).toMatchObject({
+      scope: 'user',
       authUserId: null,
-      actingPartyId: PARTY_ID,
+      actingPartyId: null,
     });
   });
 

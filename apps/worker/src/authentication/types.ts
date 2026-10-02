@@ -34,6 +34,15 @@ export type AuthRateLimitInput = Readonly<{
   identifierDigest: string | null;
   limit: number;
   windowSeconds: number;
+  /**
+   * Explicit bucket scope. `user` keys the bucket by operation plus the
+   * server-derived auth user only (the identifier digest stands in for a
+   * non-human principal); `party` by operation plus the server-derived acting
+   * party only. Neither is partitioned by client address or by the other
+   * identity. Omitted (`client`) keeps the client-address-scoped buckets that
+   * the login and flow limits intentionally use.
+   */
+  scope?: 'client' | 'party' | 'user';
 }>;
 
 export type AuthRateLimitDecision = Readonly<{

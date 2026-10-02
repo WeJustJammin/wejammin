@@ -17,6 +17,7 @@ import { job, NOW, PLAN_ID } from './migration-worker-test-support';
 import {
   ERROR_CODE,
   HEX64,
+  NO_FIELDS,
   READ_SOURCE_ROWS_RPC,
   makeRows,
   makeScanDatabase,
@@ -318,6 +319,7 @@ describe('registered pure transform executor (BE03a transform registry)', () => 
         rows: makeRows(129),
         nextCursor: '129',
         done: false,
+        ...NO_FIELDS,
       }),
     });
     const result = await run(database);
@@ -345,6 +347,7 @@ describe('registered pure transform executor (BE03a transform registry)', () => 
         rows: page(rows),
         nextCursor: '2',
         done: true,
+        ...NO_FIELDS,
       }),
     });
     const result = await run(database);

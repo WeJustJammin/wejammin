@@ -65,7 +65,7 @@ const criterionRows = tracker
 
 describe('Slice 09 tracker local source links', () => {
   it('keeps every authored criterion row present', () => {
-    expect(criterionRows).toHaveLength(1200);
+    expect(criterionRows).toHaveLength(1239);
   });
 
   it('includes a local file citation for every authored criterion', () => {

@@ -195,6 +195,7 @@ describe('closed platform registries', () => {
       'CMS-03C-04',
       'CMS-03C-05',
       'CFG-05B-06',
+      'CFG-05B-07',
     ]);
     expect(
       platformRegistrySet.consumers.map(({ consumerId }) => consumerId),

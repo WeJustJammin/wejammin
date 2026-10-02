@@ -30,6 +30,9 @@ const RESOURCE = {
   ownerCapability: 'cms.content.article',
   sourceLocale: 'en-US',
   defaultLocale: 'en-US',
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
+  localeConfigHash: 'c'.repeat(64),
   workflowKey: 'editorial.default',
   workflowVersion: '1',
   defaultTemplateVersionId: null,
@@ -79,7 +82,7 @@ const propsPayload = (overrides: Record<string, unknown> = {}) => ({
   stepUpState: 'verified',
   stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
   query: { limit: 25, sort: 'key', direction: 'asc' },
-  requestId: '6a3173d9-f113-4aa4-91c3-3fbc137ea258',
+  supportReference: '6a3173d9-f113-4aa4-91c3-3fbc137ea258',
   initialList: { status: 'empty', reason: 'no-records' },
   initialDetail: {
     status: 'success',

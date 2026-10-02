@@ -192,6 +192,7 @@ const seal = (planId, versionId) => {
     expectedVersion: planVersion(planId),
     limit: '128',
     leaseToken: claim.leaseToken,
+    rowEvidence: [],
     correlationId,
     causationId: null,
   });
@@ -474,6 +475,7 @@ commit;`);
     cursor: '0',
     limit: '128',
     leaseToken: claimTwo.leaseToken,
+    rowEvidence: [],
     transformKey: null,
     transformVersion: null,
     correlationId,

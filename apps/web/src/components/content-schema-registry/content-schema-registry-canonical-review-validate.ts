@@ -23,7 +23,6 @@ const ERROR_KEYS = new Set([
 const DEGRADED_KEYS = new Set([
   'status',
   'data',
-  'requestId',
   'lastVerifiedAt',
   'retryable',
   'httpStatus',
@@ -68,7 +67,6 @@ export const validateReviewState = (
   } else if (status === 'degraded') {
     rejectUnknownKeys(value, DEGRADED_KEYS);
     if (value.data !== null) requireReview(value.data, 'review degraded data');
-    requireString(value, 'requestId');
     if (
       value.lastVerifiedAt !== null &&
       typeof value.lastVerifiedAt !== 'string'

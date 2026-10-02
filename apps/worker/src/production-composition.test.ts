@@ -252,6 +252,7 @@ describe('production Worker composition', () => {
             evaluatorVersion: '1',
             isDefault: true,
             key: 'profile.visibility',
+            ownerCapability: 'settings.profile.write',
             sourceScope: 'platform',
             sourceSubjectId: null,
             sourceValueVersionId: null,

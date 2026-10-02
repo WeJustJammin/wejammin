@@ -23,6 +23,7 @@ const effective = {
   definitionVersionId: '018f0c45-73fe-7dc2-9c09-68f7ecf132d9',
   key: 'web.theme',
   valueKind: 'short_text',
+  ownerCapability: 'settings.web.write',
   typedValue: 'jam',
   sourceScope: 'platform',
   sourceSubjectId: null,

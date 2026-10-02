@@ -92,7 +92,12 @@ export const CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS = {
 export interface ContentSchemaRegistryUiError {
   readonly code: ContentSchemaRegistryErrorCode;
   readonly message: string;
-  readonly requestId: string;
+  /**
+   * Server-side only. Removed before hydration (see
+   * `content-schema-registry-diagnostic-ids.ts`); the browser shows the
+   * island's `supportReference` instead.
+   */
+  readonly requestId?: string;
 }
 
 export type ContentSchemaRegistryErrorCode =
@@ -157,7 +162,8 @@ export type ContentSchemaRegistryListState =
         | 'DEPENDENCY_INVALID_RESPONSE'
         | 'DEPENDENCY_UNAVAILABLE'
         | 'DEPENDENCY_DEADLINE_EXCEEDED';
-      readonly requestId: string;
+      /** Server-side only; removed before hydration. */
+      readonly requestId?: string;
       readonly lastVerifiedAt: string | null;
       /** Server-declared dependency retry proof; absent means fail closed. */
       readonly retryable?: boolean;
@@ -199,7 +205,8 @@ export type ContentSchemaRegistryDetailState =
         | 'DEPENDENCY_INVALID_RESPONSE'
         | 'DEPENDENCY_UNAVAILABLE'
         | 'DEPENDENCY_DEADLINE_EXCEEDED';
-      readonly requestId: string;
+      /** Server-side only; removed before hydration. */
+      readonly requestId?: string;
       readonly lastVerifiedAt: string | null;
       /** Server-declared dependency retry proof; absent means fail closed. */
       readonly retryable?: boolean;
@@ -234,7 +241,11 @@ export interface ContentSchemaRegistryWorkbenchProps {
   readonly initialReview?: ContentSchemaRegistryReviewState | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
-  readonly requestId: string;
+  /**
+   * User-facing support reference with no relationship to any request,
+   * trace or correlation identifier (none of those cross into the island).
+   */
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly listUrl: string;
   readonly retryUrl: string;
@@ -266,7 +277,7 @@ export interface ContentSchemaRegistryPage {
   readonly reviewId: string | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly listUrl: string;
   readonly retryUrl: string;

@@ -231,4 +231,49 @@ describe('CMS-03C-04 first-party locale authoring proxy', () => {
     expect(JSON.stringify(error)).not.toContain('private provider text');
     expect(JSON.stringify(error)).not.toContain('do-not-disclose');
   });
+
+  it('carries the active fallback chain on a chain mismatch and nothing malformed', async () => {
+    const respond = async (details: Record<string, unknown>) => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'LOCALE_VERSION_CONFLICT',
+              message: 'private provider text',
+              requestId: 'd1000000-0000-4000-8000-000000000006',
+              details,
+            }),
+            { status: 409, headers: { 'content-type': 'application/json' } },
+          ),
+      );
+      const response = await forwardCmsLocaleVariantMutation(
+        request(),
+        entryId,
+        'fr-FR',
+        { fetch },
+      );
+      expect(response.status).toBe(409);
+      return ((await response.json()) as { details: unknown }).details;
+    };
+    expect(
+      await respond({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: ['fr', 'en-US'],
+        secret: 'do-not-disclose',
+      }),
+    ).toEqual({
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['fr', 'en-US'],
+    });
+    for (const unsafe of [
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH' },
+      { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en_US'] },
+      {
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: Array.from({ length: 17 }, () => 'fr'),
+      },
+      { reasonCode: 'OTHER', activeFallbackChain: ['en-US'] },
+    ])
+      expect(await respond(unsafe)).toEqual({});
+  });
 });

@@ -79,6 +79,9 @@ export const resolveAdminMfaResetPage = async (
     key: null,
     requestId: input.requestId,
     surface: 'index',
+    // The keyless index read returns an empty snapshot unless the dedicated,
+    // acting-party-bound capability projection is requested.
+    projectCapabilities: true,
   });
   const refused = configurationOutcome(configuration, input.requestId);
   if (refused !== null) return refused;

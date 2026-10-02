@@ -17,6 +17,8 @@ import type {
   ContentSchemaRegistryWorkbenchProps,
 } from './content-schema-registry-types';
 
+const SUPPORT_REFERENCE = 'SR-0A1B-2C3D-4E5F-6A7B';
+
 const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
 const VERSION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132db';
 const HASH = 'c'.repeat(64);
@@ -47,6 +49,9 @@ const list = {
       ownerCapability: 'cms.schema_registry.read',
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',
+      supportedLocales: ['en-US'],
+      fallbackChains: {},
+      localeConfigHash: 'c'.repeat(64),
       workflowKey: 'cms.content.workflow',
       workflowVersion: '1',
       defaultTemplateVersionId: null,
@@ -90,6 +95,9 @@ const detail = {
     ownerCapability: 'cms.schema_registry.read',
     sourceLocale: 'en-US',
     defaultLocale: 'en-US',
+    supportedLocales: ['en-US'],
+    fallbackChains: {},
+    localeConfigHash: 'c'.repeat(64),
     workflowKey: 'cms.content.workflow',
     workflowVersion: '1',
     defaultTemplateVersionId: null,
@@ -153,7 +161,7 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   versionId: VERSION_ID,
   cursor: null,
   expectedVersion: '4',
-  requestId: TYPE_ID,
+  supportReference: SUPPORT_REFERENCE,
   canonicalUrl: '/app/cms-content-modeling',
   listUrl:
     '/app/cms-content-modeling?resourceKind=content_type&limit=25&sort=key&direction=asc',
@@ -236,7 +244,7 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
     expect(disclosureSection).toContain('Northwind Collective');
     expect(disclosureSection).not.toContain(VERSION_ID);
     expect(disclosureSection).not.toContain(TYPE_ID);
-    // The idempotency key legitimately embeds the request id; assert the
+    // The idempotency key legitimately embeds the support reference; assert the
     // boundary adds no private binding or session material beyond it.
     expect(boundary).not.toContain('actingContextId');
     expect(boundary).not.toContain('bindingId');
@@ -325,7 +333,6 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
       initialDetail: {
         status: 'degraded',
         data: null,
-        requestId: TYPE_ID,
         lastVerifiedAt: null,
       },
       listUrl:
@@ -347,7 +354,6 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
         error: {
           code: 'INTERNAL_ERROR',
           message: 'provider secret must never reach the browser',
-          requestId: TYPE_ID,
         },
         retryable: false,
       },
@@ -371,13 +377,12 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
       initialList: {
         status: 'degraded',
         data: null,
-        requestId: TYPE_ID,
         lastVerifiedAt: null,
       },
       initialDetail: null,
     });
     expect(degraded).toContain('temporarily unavailable');
-    expect(degraded).toContain(TYPE_ID);
+    expect(degraded).toContain(SUPPORT_REFERENCE);
     expect(degraded).toContain('Retry');
 
     const disabled = render({

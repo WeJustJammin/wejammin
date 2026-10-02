@@ -33,7 +33,6 @@ import { validateReviewState } from './content-schema-registry-canonical-review-
 export interface ContentSchemaRegistryWorkbenchProjection {
   readonly access: ContentSchemaRegistryAccess;
   readonly variant: ContentSchemaRegistryVariant;
-  readonly requestId: string;
   readonly initialList: ContentSchemaRegistryListState;
   readonly initialDetail: ContentSchemaRegistryDetailState | null;
   readonly initialReview: ContentSchemaRegistryReviewState | null;
@@ -89,7 +88,6 @@ const DEGRADED_KEYS = new Set([
   'status',
   'data',
   'code',
-  'requestId',
   'lastVerifiedAt',
   'retryable',
   'httpStatus',
@@ -128,7 +126,6 @@ const validateListState = (value: unknown): ContentSchemaRegistryListState => {
       throw new CanonicalStateError('list degraded data');
     if (value.code !== undefined && !DEGRADED_CODES.has(String(value.code)))
       throw new CanonicalStateError('list degraded code');
-    requireString(value, 'requestId');
     if (typeof value.lastVerifiedAt !== 'string')
       throw new CanonicalStateError('lastVerifiedAt');
     if (value.retryable !== undefined && typeof value.retryable !== 'boolean')
@@ -177,7 +174,6 @@ const validateDetailState = (
       throw new CanonicalStateError('detail degraded data');
     if (value.code !== undefined && !DEGRADED_CODES.has(String(value.code)))
       throw new CanonicalStateError('detail degraded code');
-    requireString(value, 'requestId');
     if (typeof value.lastVerifiedAt !== 'string')
       throw new CanonicalStateError('lastVerifiedAt');
     if (value.retryable !== undefined && typeof value.retryable !== 'boolean')
@@ -201,7 +197,6 @@ export const buildProjection = (
   if (!ACCESS_VALUES.has(access)) throw new CanonicalStateError('access');
   const variant = requireString(props, 'variant');
   if (!VARIANT_VALUES.has(variant)) throw new CanonicalStateError('variant');
-  const requestId = requireString(props, 'requestId');
   const actingContextLabel = optionalString(props, 'actingContextLabel');
   const stepUpState = optionalString(props, 'stepUpState');
   if (stepUpState !== undefined && !STEP_UP_VALUES.has(stepUpState))
@@ -210,7 +205,6 @@ export const buildProjection = (
   return {
     access: access as ContentSchemaRegistryAccess,
     variant: variant as ContentSchemaRegistryVariant,
-    requestId,
     initialList: validateListState(props.initialList),
     initialDetail: validateDetailState(props.initialDetail),
     initialReview: validateReviewState(props.initialReview),

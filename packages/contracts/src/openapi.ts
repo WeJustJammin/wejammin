@@ -84,6 +84,7 @@ import {
   Cfg05b06MfaFactorResetRequestSchema,
   Cfg05b06MfaFactorResetResponseSchema,
 } from './platform-configuration/admin-mfa-reset.ts';
+import { Cfg05b07CapabilitySnapshotResponseSchema } from './platform-configuration/admin-capability-snapshot.ts';
 import { JobIdPathSchema, JobStatusSchema } from './job-status.ts';
 import {
   ChallengeApiRequestSchema,
@@ -298,6 +299,7 @@ const schemaContracts = {
   CompositionInstanceResourceSchema,
   Cfg05b06MfaFactorResetRequestSchema,
   Cfg05b06MfaFactorResetResponseSchema,
+  Cfg05b07CapabilitySnapshotResponseSchema,
 } as const;
 
 const schemaIo = {

@@ -1,129 +1,62 @@
--- A non-zero conditional migration proves the worker hand-off carries the
--- producer's independent transform report into bounded execution.  The
--- worker helpers model two source rows without touching application content;
--- cursor/CAS/count transitions remain the contract under test.
+-- A non-zero CONDITIONAL migration through the real producer and worker
+-- protocol.  Article NZ is activated by the named producers, three real entries
+-- are created under its bound editorial policy, and its successor tightens the
+-- title constraint.  The worker pages the affected rows, posts per-row evidence
+-- and the database derives every counter; a row the stricter constraint refuses
+-- blocks the plan.  Nothing is inserted by hand.
+\ir ../phase_02_slice_09_dec108/04-worker.sqlinc
+\ir ../phase_02_slice_09_dec119/00-support.sqlinc
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('nz', 'articlenz');
+select pg_temp.s09d_to_active('nz');
+select pg_temp.s09g_grant('nz:author', 'owner', 'owner', 'cms.author', pg_temp.s09g_day(5));
+select pg_temp.s09w_entry('nz:e1', 'nz', 'Short');
+select pg_temp.s09w_entry('nz:e2', 'nz', 'A title that clearly exceeds twelve characters');
+select pg_temp.s09w_entry('nz:e3', 'nz', 'Mid title');
+select pg_temp.s09d_successor('nzb', 'nz');
+select pg_temp.s09d_dry_run('nzb');
+select pg_temp.s09w_dry_run('nzb');
+select pg_temp.s09w_tighten('nzb', 12);
+select pg_temp.s09d_dry_run('nzb', 'owner', 'identity.revalidate', '1');
+select pg_temp.s09w_dry_run('nzb');
+select pg_temp.s09d_guc_restore();
 select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('app.cms_rpc', 'true', true);
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  default_template_version_id, schema_artifact_id, definition_hash,
-  compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000501', (select organization_id from s09_fixture_org),
-  -- Version number 50 is reserved for this isolated worker target; the
-  -- activation-remediation fixtures use the lower 5-10 range.
-  'approved', 1, (select content_type_id from s09_type_ids), 50,
-  jsonb_build_object('label', 'Article X conditional v50'), 'editorial', 1,
-  'en-US', 'en-US', null, 'a9090000-0000-4000-8000-000000000502', repeat('c', 64),
-  'conditional', 'a9090000-0000-4000-8000-000000000504',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000502', (select organization_id from s09_fixture_org),
-  'compiled', 1, 'a9090000-0000-4000-8000-000000000501', '1',
-  'cms/content-type/articlex/v50',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey', 'articlex', 'fields', '[]'::jsonb, 'relations', '[]'::jsonb,
-    'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb
-  )),
-  jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb),
-  repeat('c', 64), clock_timestamp()
-);
-select platform_private.cms_record_dry_run_report(
-  'a9090000-0000-4000-8000-000000000504',
-  (select organization_id from s09_fixture_org),
-  (select content_type_id from s09_type_ids),
-  (select version_id from s09_type_ids),
-  'a9090000-0000-4000-8000-000000000501', 'conditional',
-  'cms.schema.migrate', 1,
-  (select definition_hash from platform_private.cms_content_type_versions
-   where id = (select version_id from s09_type_ids)),
-  repeat('c', 64), repeat('c', 64), '1',
-  jsonb_build_object(
-    'dryRunId', 'a9090000-0000-4000-8000-000000000504', 'result', 'pass',
-    'sourceHash', (select definition_hash from platform_private.cms_content_type_versions
-                   where id = (select version_id from s09_type_ids)),
-    'targetHash', repeat('c', 64),
-    'transformKey', 'cms.schema.migrate', 'transformVersion', '1',
-    'transformHash', platform_private.cms_migration_transform_hash(
-      'conditional', 'cms.schema.migrate', 1,
-      (select definition_hash from platform_private.cms_content_type_versions
-       where id = (select version_id from s09_type_ids)),
-      repeat('c', 64), repeat('c', 64), '1'
-    ),
-    'compilerHash', repeat('c', 64), 'compilerVersion', '1',
-    'sourceCount', '2', 'targetCount', '2', 'rowErrorCount', '0',
-    'migratedCount', '0', 'failedCount', '0',
-    'lease', jsonb_build_object(
-      'state', 'ready', 'owner', null, 'token', null,
-      'expiresAt', (clock_timestamp() + interval '15 minutes')::text
-    )
-  ),
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_migration_plans(
-  id, owner_id, state, version, content_type_id, from_version_id, to_version_id,
-  classification, transform_key, transform_version, dry_run_report, cursor,
-  progress, source_count, target_count, row_error_count, migrated_count,
-  failed_count, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000503', (select organization_id from s09_fixture_org),
-  'ready', 1, (select content_type_id from s09_type_ids),
-  (select version_id from s09_type_ids), 'a9090000-0000-4000-8000-000000000501',
-  'conditional', 'cms.schema.migrate', 1,
-  jsonb_build_object(
-    'dryRunId', 'a9090000-0000-4000-8000-000000000504', 'result', 'pass',
-    'sourceHash', (select definition_hash from platform_private.cms_content_type_versions
-                   where id = (select version_id from s09_type_ids)),
-    'targetHash', repeat('c', 64), 'transformKey', 'cms.schema.migrate',
-    'transformVersion', '1',
-    'transformHash', platform_private.cms_migration_transform_hash(
-      'conditional', 'cms.schema.migrate', 1,
-      (select definition_hash from platform_private.cms_content_type_versions
-       where id = (select version_id from s09_type_ids)),
-      repeat('c', 64), repeat('c', 64), '1'
-    ),
-    'compilerHash', repeat('c', 64), 'compilerVersion', '1',
-    'sourceCount', '2', 'targetCount', '2', 'rowErrorCount', '0',
-    'migratedCount', '0', 'failedCount', '0',
-    'lease', jsonb_build_object(
-      'state', 'ready', 'owner', null, 'token', null,
-      -- The immutable producer report above keeps a future evidence lease.
-      -- This mutable plan starts unleased so the worker can claim it; a
-      -- future expiry with no owner is treated as another worker's lease.
-      'expiresAt', (clock_timestamp() - interval '1 minute')::text
-    )
-  ), 0, 0, 2, 2, 0, 0, 0,
-  'a9090000-0000-4000-8000-000000000001'
-);
--- S09 has no application-content source adapter.  It must reject a non-zero
--- plan before leasing it rather than fabricate migrated counts; S10 supplies
--- the first real adapter and its independently attested source evidence.
-select throws_ok(
-  $$select platform_api.cms_claim_schema_migration_lease(jsonb_build_object(
-    'migrationPlanId', 'a9090000-0000-4000-8000-000000000503',
-    'schemaVersionId', 'a9090000-0000-4000-8000-000000000501',
-    'expectedVersion', '1', 'cursor', '0', 'leaseOwner', 's09-worker-conditional',
-    'workerId', 's09-worker-conditional', 'leaseDurationMs', '30000',
-    'now', clock_timestamp()::text, 'transformKey', 'cms.schema.migrate',
-    'transformVersion', '1', 'compilerHash', repeat('c', 64),
-    'sourceHash', (select definition_hash from platform_private.cms_content_type_versions
-                   where id = (select version_id from s09_type_ids)),
-    'targetHash', repeat('c', 64)
-  ))$$,
-  'P0001', 'VALIDATION_FAILED',
-  'S09 rejects non-zero migration execution without independent source evidence'
+select is(pg_temp.s09d_outcome('nz:e1') || pg_temp.s09d_outcome('nz:e2') || pg_temp.s09d_outcome('nz:e3'), 'OKOKOK',
+  'S09 non-zero fixture: three real entries exist on the active source version');
+select ok(
+  (select state = 'blocked' and classification = 'conditional' and transform_key = 'identity.revalidate'
+          and source_count = 3 and target_count = 2 and row_error_count = 1 and cursor = 3
+          and migrated_count = 0 and failed_count = 0
+   from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('nzb:plan')),
+  'S09 non-zero scan derives 3 source, 2 passing and 1 refused row from posted evidence and blocks the plan'
 );
 select ok(
-  (select state = 'ready'
-          and version = 1 and cursor = 0 and migrated_count = 0
-          and failed_count = 0
-   from platform_private.cms_schema_migration_plans
-   where id = 'a9090000-0000-4000-8000-000000000503'),
-  'S09 non-zero boundary leaves the migration plan unleased and unchanged'
+  (select count(*) = 3 and count(*) filter (where error_code is not null) = 1
+          and bool_and(error_code is null or error_code = 'TRANSFORM_TARGET_VIOLATION')
+   from platform_private.cms_schema_dry_run_row_evidence where plan_id = pg_temp.s09d_id('nzb:plan')),
+  'S09 non-zero scan stores one evidence row per source row with the refused row''s typed error code'
+);
+select ok(
+  (select report.state = 'completed' and report.result = 'fail' and report.row_error_count = 1
+          and report.source_count = 3 and report.sealed_at is not null
+   from platform_private.cms_schema_dry_run_reports report where report.id = pg_temp.s09d_id('nzb:dryRun')),
+  'S09 non-zero scan seals a failing report whose row-error count equals the error evidence rows'
+);
+create temp table s09_nz_claim on commit drop as
+select pg_temp.s09w_claim('nzb') as response;
+select ok(
+  (select (response->>'acquired')::boolean is not true
+   from s09_nz_claim)
+  and (select state = 'blocked' and cursor = 3 and migrated_count = 0
+       from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('nzb:plan')),
+  'S09 a blocked non-zero plan cannot be leased for backfill and stays unchanged'
+);
+select ok(
+  not platform_private.cms_migration_plan_ready(pg_temp.s09d_id('nzb:plan'),
+    pg_temp.s09d_id('nzb:type'), pg_temp.s09d_id('nzb:version')),
+  'S09 a blocked plan is never ready for activation'
+);
+select ok(
+  (select state = 'active' from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('nz:version')),
+  'S09 the old active version keeps serving while its successor plan is blocked'
 );

@@ -113,7 +113,7 @@ begin
   perform pg_temp.s09d_call(p_tag || ':plan.batch', 'platform_api.cms_process_schema_migration_dry_run_batch',
     base || jsonb_build_object(
       'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
-      'limit', '1', 'leaseToken', claim->>'leaseToken',
+      'limit', '1', 'leaseToken', claim->>'leaseToken', 'rowEvidence', '[]'::jsonb,
       'correlationId', extensions.gen_random_uuid(), 'causationId', null));
   sealed := pg_temp.s09d_call(p_tag || ':plan.seal', 'platform_api.cms_finalize_schema_migration_dry_run',
     (base - 'schemaVersionId') || jsonb_build_object(

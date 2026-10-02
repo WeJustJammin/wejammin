@@ -1,0 +1,327 @@
+-- DEC-108 migration-worker simulation (BE03a real scan, migration worker <-> DB
+-- protocol).  Plays the service-role worker through the named RPCs only: claim
+-- the lease, page the source rows (cms_read_schema_migration_source_rows), apply
+-- the registered pure transform per row, post per-row evidence on the batch RPC
+-- and finalize / verify / complete.  The row verdicts are computed here
+-- independently of the database's own executor contract; the database must
+-- accept only evidence it can reproduce.  Requires 00..03 fragments.
+
+-- Minimal worker-side registered transform: returns {"out": doc|null, "err": code|null}.
+create or replace function pg_temp.s09w_apply(p_key text, p_doc jsonb, p_field jsonb) returns jsonb
+language plpgsql as $body$
+declare
+  fkey text := p_field->>'fieldKey';
+  value jsonb := p_doc -> (p_field->>'fieldKey');
+  kind text := p_field->>'kind';
+  c jsonb := coalesce(p_field->'constraints', '{}'::jsonb);
+  absent boolean;
+begin
+  if p_key is null then
+    return jsonb_build_object('out', p_doc, 'err', null);
+  end if;
+  absent := value is null or jsonb_typeof(value) = 'null';
+  if p_key = 'default.fill_literal' then
+    if p_field is null or p_field->>'defaultMode' <> 'literal'
+       or p_field->'defaultValue' is null or jsonb_typeof(p_field->'defaultValue') = 'null' then
+      return jsonb_build_object('out', null, 'err', 'TRANSFORM_DEFAULT_UNAVAILABLE');
+    end if;
+    if not absent then return jsonb_build_object('out', p_doc, 'err', null); end if;
+    return jsonb_build_object('out', p_doc || jsonb_build_object(fkey, p_field->'defaultValue'), 'err', null);
+  end if;
+  if p_key <> 'identity.revalidate' then
+    return jsonb_build_object('out', null, 'err', 'TRANSFORM_ROW_FAILED');
+  end if;
+  if p_field is null then
+    return jsonb_build_object('out', null, 'err', 'TRANSFORM_TARGET_CONSTRAINTS_MISSING');
+  end if;
+  if absent then
+    if (p_field->>'required')::boolean then
+      return jsonb_build_object('out', null, 'err', 'TRANSFORM_TARGET_VIOLATION');
+    end if;
+    return jsonb_build_object('out', p_doc, 'err', null);
+  end if;
+  if jsonb_typeof(value) = 'string' then
+    if (c ? 'minLength' and char_length(value #>> '{}') < (c->>'minLength')::int)
+       or (c ? 'maxLength' and char_length(value #>> '{}') > (c->>'maxLength')::int)
+       or (c ? 'enumValues' and not (c->'enumValues' @> jsonb_build_array(value #>> '{}'))) then
+      return jsonb_build_object('out', null, 'err', 'TRANSFORM_TARGET_VIOLATION');
+    end if;
+  elsif jsonb_typeof(value) = 'number' then
+    if (c ? 'minimum' and (value::text)::numeric < (c->>'minimum')::numeric)
+       or (c ? 'maximum' and (value::text)::numeric > (c->>'maximum')::numeric) then
+      return jsonb_build_object('out', null, 'err', 'TRANSFORM_TARGET_VIOLATION');
+    end if;
+  end if;
+  return jsonb_build_object('out', p_doc, 'err', null);
+end;
+$body$;
+
+-- Evidence entries for one read page, in source order.
+create or replace function pg_temp.s09w_evidence(p_key text, p_page jsonb) returns jsonb
+language plpgsql as $body$
+declare
+  result jsonb := '[]'::jsonb; row_json jsonb; verdict jsonb;
+begin
+  for row_json in select value from jsonb_array_elements(p_page->'rows') loop
+    verdict := pg_temp.s09w_apply(p_key, row_json->'document', p_page->'targetField');
+    result := result || jsonb_build_array(jsonb_build_object(
+      'sourceTable', row_json->'sourceTable', 'sourceRowId', row_json->'sourceRowId',
+      'sourceHash', row_json->'sourceHash',
+      'outputHash', case when verdict->>'err' is null
+        then to_jsonb(platform_private.cms_jcs_sha256(verdict->'out')) else 'null'::jsonb end,
+      'errorCode', verdict->'err'));
+  end loop;
+  return result;
+end;
+$body$;
+
+create or replace function pg_temp.s09w_plan_version(p_tag text) returns text
+language sql stable as $body$
+  select pg_temp.s09d_read('cms_schema_migration_plans', 'version', pg_temp.s09d_id(p_tag || ':plan')) $body$;
+create or replace function pg_temp.s09w_plan_cursor(p_tag text) returns text
+language sql stable as $body$
+  select pg_temp.s09d_read('cms_schema_migration_plans', 'cursor', pg_temp.s09d_id(p_tag || ':plan')) $body$;
+
+-- The fingerprint envelope every worker call after the claim carries.
+create or replace function pg_temp.s09w_base(p_tag text) returns jsonb language plpgsql as $body$
+declare plan_json jsonb;
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  plan_json := pg_temp.s09d_call(p_tag || ':w.get', 'platform_api.cms_get_schema_migration_plan',
+    jsonb_build_object('migrationPlanId', pg_temp.s09d_id(p_tag || ':plan'),
+      'schemaVersionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag)));
+  return jsonb_build_object('migrationPlanId', pg_temp.s09d_id(p_tag || ':plan'),
+    'schemaVersionId', pg_temp.s09d_id(p_tag || ':version'),
+    'transformKey', plan_json->'transformKey', 'transformVersion', plan_json->'transformVersion',
+    'compilerHash', plan_json->'compilerHash', 'sourceHash', plan_json->'sourceHash',
+    'targetHash', plan_json->'targetHash');
+end;
+$body$;
+
+-- Claims the plan's lease; remembers the token under '<tag>:lease'.
+create or replace function pg_temp.s09w_claim(
+  p_tag text, p_owner text default 's09w-worker', p_now timestamptz default null
+) returns jsonb
+language plpgsql as $body$
+declare claim jsonb; base jsonb := pg_temp.s09w_base(p_tag);
+begin
+  claim := pg_temp.s09d_call(p_tag || ':w.claim', 'platform_api.cms_claim_schema_migration_lease',
+    (base - 'schemaVersionId') || jsonb_build_object('schemaVersionId', base->'schemaVersionId',
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag),
+      'leaseOwner', p_owner, 'workerId', p_owner, 'leaseDurationMs', '600000',
+      'now', coalesce(p_now, clock_timestamp())::text));
+  perform set_config('s09w.lease.' || p_tag, coalesce(claim->>'leaseToken', ''), true);
+  return claim;
+end;
+$body$;
+create or replace function pg_temp.s09w_lease(p_tag text) returns text language sql stable as $body$
+  select current_setting('s09w.lease.' || p_tag, true) $body$;
+
+create or replace function pg_temp.s09w_read(p_tag text, p_label text, p_limit text default '128') returns jsonb
+language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  return pg_temp.s09d_call(p_label, 'platform_api.cms_read_schema_migration_source_rows',
+    jsonb_build_object('migrationPlanId', pg_temp.s09d_id(p_tag || ':plan'),
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag),
+      'limit', p_limit, 'leaseToken', pg_temp.s09w_lease(p_tag)));
+end;
+$body$;
+
+create or replace function pg_temp.s09w_batch_request(
+  p_tag text, p_evidence jsonb, p_limit text default '128'
+) returns jsonb language plpgsql as $body$
+declare base jsonb := pg_temp.s09w_base(p_tag);
+begin
+  return base || jsonb_build_object('expectedVersion', pg_temp.s09w_plan_version(p_tag),
+    'cursor', pg_temp.s09w_plan_cursor(p_tag), 'limit', p_limit,
+    'leaseToken', pg_temp.s09w_lease(p_tag), 'rowEvidence', p_evidence,
+    'correlationId', extensions.gen_random_uuid(), 'causationId', null);
+end;
+$body$;
+
+create or replace function pg_temp.s09w_batch(
+  p_tag text, p_label text, p_evidence jsonb, p_dry boolean, p_limit text default '128'
+) returns jsonb language plpgsql as $body$
+begin
+  return pg_temp.s09d_call(p_label,
+    case when p_dry then 'platform_api.cms_process_schema_migration_dry_run_batch'
+         else 'platform_api.cms_process_schema_migration_batch' end,
+    pg_temp.s09w_batch_request(p_tag, p_evidence, p_limit));
+end;
+$body$;
+
+-- Full read -> scan -> batch loop of one pass ('dry' or 'run').  Returns the last
+-- batch response (null if the first call failed); p_limit bounds page size.
+create or replace function pg_temp.s09w_pass(p_tag text, p_dry boolean, p_limit text default '128')
+returns jsonb language plpgsql as $body$
+declare
+  base jsonb := pg_temp.s09w_base(p_tag);
+  plan_row jsonb := base;
+  page jsonb; batch jsonb; step integer := 0; tag text := p_tag || case when p_dry then ':d' else ':r' end;
+begin
+  loop
+    step := step + 1;
+    page := pg_temp.s09w_read(p_tag, tag || '.read.' || step, p_limit);
+    exit when page is null;
+    batch := pg_temp.s09w_batch(p_tag, tag || '.batch.' || step,
+      pg_temp.s09w_evidence(base->>'transformKey', page), p_dry, p_limit);
+    exit when batch is null or (batch->>'done')::boolean or step > 40;
+  end loop;
+  return batch;
+end;
+$body$;
+
+-- Worker dry run: claim -> scan -> finalize (seal).  Returns the sealed plan json.
+create or replace function pg_temp.s09w_dry_run(p_tag text, p_limit text default '128') returns jsonb
+language plpgsql as $body$
+declare base jsonb; batch jsonb; sealed jsonb;
+begin
+  perform pg_temp.s09w_claim(p_tag);
+  batch := pg_temp.s09w_pass(p_tag, true, p_limit);
+  if batch is null then return null; end if;
+  base := pg_temp.s09w_base(p_tag);
+  sealed := pg_temp.s09d_call(p_tag || ':w.seal', 'platform_api.cms_finalize_schema_migration_dry_run',
+    (base - 'schemaVersionId') || jsonb_build_object(
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag),
+      'sourceCount', batch->>'sourceCount', 'targetCount', batch->>'targetCount',
+      'rowErrorCount', batch->>'rowErrorCount'));
+  return sealed;
+end;
+$body$;
+
+-- Worker verification tail: begin verification -> verify -> complete, with the
+-- counters read back from the plan the way the worker echoes the batch result.
+create or replace function pg_temp.s09w_finish(p_tag text) returns jsonb language plpgsql as $body$
+declare base jsonb; counts jsonb; verified jsonb; plan_id uuid := pg_temp.s09d_id(p_tag || ':plan');
+begin
+  base := pg_temp.s09w_base(p_tag);
+  select jsonb_build_object('sourceCount', source_count::text, 'targetCount', target_count::text,
+    'rowErrorCount', row_error_count::text, 'migratedCount', migrated_count::text,
+    'failedCount', failed_count::text) into counts
+  from platform_private.cms_schema_migration_plans where id = plan_id;
+  perform pg_temp.s09d_call(p_tag || ':w.begin', 'platform_api.cms_begin_schema_migration_verification',
+    (base - 'schemaVersionId') || counts || jsonb_build_object(
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag)));
+  verified := pg_temp.s09d_call(p_tag || ':w.verify', 'platform_api.cms_verify_schema_migration',
+    base || counts || jsonb_build_object('expectedVersion', pg_temp.s09w_plan_version(p_tag),
+      'cursor', pg_temp.s09w_plan_cursor(p_tag), 'leaseToken', pg_temp.s09w_lease(p_tag)));
+  if verified is null or not (verified->>'valid')::boolean then return verified; end if;
+  return pg_temp.s09d_call(p_tag || ':w.complete', 'platform_api.cms_complete_schema_migration',
+    jsonb_build_object('migrationPlanId', plan_id,
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'leaseToken', pg_temp.s09w_lease(p_tag)));
+end;
+$body$;
+
+-- Worker backfill: claim -> re-scan -> begin verification -> verify -> complete.
+create or replace function pg_temp.s09w_backfill(p_tag text, p_limit text default '128') returns jsonb
+language plpgsql as $body$
+declare batch jsonb;
+begin
+  perform pg_temp.s09w_claim(p_tag);
+  batch := pg_temp.s09w_pass(p_tag, false, p_limit);
+  if batch is null then return null; end if;
+  return pg_temp.s09w_finish(p_tag);
+end;
+$body$;
+
+-- Real entries under the bound editorial policy (CMS-03B-10) for an activated type;
+-- an optional `summary` value is written when the type has that field.
+create or replace function pg_temp.s09w_entry(
+  p_label text, p_tag text, p_title text, p_summary text default null
+) returns jsonb
+language plpgsql as $body$
+declare request jsonb; summary_id uuid;
+begin
+  select stable_field_id into summary_id from platform_private.cms_field_definition_versions
+   where content_type_version_id = pg_temp.s09d_id(p_tag || ':version') and field_key = 'summary';
+  select jsonb_build_object(
+    'contentTypeId', version_row.content_type_id, 'contentTypeVersionId', version_row.id,
+    'locale', 'en-US',
+    'changedPaths', jsonb_build_array('/fields/' || field.stable_field_id)
+      || case when p_summary is not null and summary_id is not null
+           then jsonb_build_array('/fields/' || summary_id) else '[]'::jsonb end,
+    'values', jsonb_build_object(field.stable_field_id::text, p_title)
+      || case when p_summary is not null and summary_id is not null
+           then jsonb_build_object(summary_id::text, p_summary) else '{}'::jsonb end,
+    'schemaArtifact', jsonb_build_object('id', artifact.id, 'contentTypeVersionId', version_row.id,
+      'artifactHash', artifact.artifact_hash, 'compilerVersion', artifact.compiler_version,
+      'zodContractRef', artifact.zod_contract_ref),
+    'validatorRefs', '[]'::jsonb,
+    'workflowPolicy', (platform_private.cms_editorial_workflow_policy_evidence(version_row.id)),
+    'activationEvidence', platform_private.cms_type_version_resource(version_row.id)->'activationEvidence',
+    'idempotencyKey', pg_temp.s09d_idem(p_tag, 'entry-' || p_label))
+  into request
+  from platform_private.cms_content_type_versions version_row
+  join platform_private.cms_schema_artifacts artifact on artifact.id = version_row.schema_artifact_id
+  join platform_private.cms_field_definition_versions field on field.content_type_version_id = version_row.id
+  where version_row.id = pg_temp.s09d_id(p_tag || ':version') and field.field_key = 'title';
+  return pg_temp.s09d_rpc(p_label, 'platform_api.cms_create_entry', 'owner', request);
+end;
+$body$;
+
+-- CMS-03A-02: an OPTIONAL `summary` short_text field on a draft candidate (first version).
+create or replace function pg_temp.s09w_add_summary(p_tag text) returns jsonb language plpgsql as $body$
+begin
+  return pg_temp.s09d_rpc(p_tag || ':summary', 'platform_api.cms_add_field_definition', 'owner',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'field', jsonb_build_object('key', 'summary', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null, 'defaultMode', 'none',
+        'localizationMode', 'none', 'editorConfig', jsonb_build_object('label', 'Summary', 'order', 1),
+        'lifecycle', 'active'),
+      'migrationPlanId', null, 'expectedVersion', pg_temp.s09d_version(p_tag),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'summary')));
+end;
+$body$;
+
+-- CMS-03A-02: redefines one field of the candidate (default: `title`) under a
+-- READY plan of the same candidate version (the producer's own gate for a
+-- breaking/conditional edit).  Returns the field resource.
+create or replace function pg_temp.s09w_redefine(
+  p_tag text, p_kind text, p_constraints jsonb, p_plan_tag text default null, p_label text default null,
+  p_key text default 'title', p_required boolean default true, p_default_mode text default 'none',
+  p_default_value jsonb default null
+) returns jsonb language plpgsql as $body$
+declare field_row platform_private.cms_field_definition_versions%rowtype;
+begin
+  select * into field_row from platform_private.cms_field_definition_versions
+   where content_type_version_id = pg_temp.s09d_id(p_tag || ':version') and field_key = p_key;
+  return pg_temp.s09d_rpc(coalesce(p_label, p_tag || ':redefine'), 'platform_api.cms_add_field_definition', 'owner',
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'field', jsonb_build_object('stableFieldId', field_row.stable_field_id, 'key', p_key,
+        'kind', p_kind, 'constraints', p_constraints,
+        'required', p_required, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', p_default_mode, 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', initcap(p_key), 'order', 0), 'lifecycle', 'active')
+        || case when p_default_value is not null then jsonb_build_object('defaultValue', p_default_value) else '{}'::jsonb end,
+      'migrationPlanId', pg_temp.s09d_id(coalesce(p_plan_tag, p_tag) || ':plan'),
+      'expectedVersion', pg_temp.s09d_version(p_tag),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'redefine')));
+end;
+$body$;
+
+create or replace function pg_temp.s09w_tighten(
+  p_tag text, p_max_length integer, p_plan_tag text default null, p_label text default null
+) returns jsonb language sql as $body$
+  select pg_temp.s09w_redefine(p_tag, 'short_text', jsonb_build_object('maxLength', p_max_length),
+    p_plan_tag, coalesce(p_label, p_tag || ':tighten'))
+$body$;
+
+-- Worker rollback (cms_rollback_schema_migration) of the claimed plan.
+create or replace function pg_temp.s09w_rollback(
+  p_tag text, p_fallback_tag text, p_retryable boolean, p_label text default null
+) returns jsonb language plpgsql as $body$
+declare base jsonb := pg_temp.s09w_base(p_tag);
+begin
+  return pg_temp.s09d_call(coalesce(p_label, p_tag || ':w.rollback'), 'platform_api.cms_rollback_schema_migration',
+    base || jsonb_build_object('expectedVersion', pg_temp.s09w_plan_version(p_tag),
+      'cursor', pg_temp.s09w_plan_cursor(p_tag), 'leaseToken', pg_temp.s09w_lease(p_tag),
+      'reasonCode', 'TEST_FAILURE', 'retryable', p_retryable,
+      'fallbackVersionId', pg_temp.s09d_id(p_fallback_tag || ':version'),
+      'preserveOldActive', true, 'deleteRows', false));
+end;
+$body$;

@@ -10,6 +10,7 @@ import {
   AUTH_USER_ID,
   CHALLENGE_ID,
   FACTOR_ID,
+  NEW_SESSION_ID,
   NOW,
   OTHER_FACTOR_ID,
   PROVIDER_CHALLENGE_ID,
@@ -48,6 +49,7 @@ const build = (reply: () => Response) => {
 
 const signal = new AbortController().signal;
 const caller = { authUserId: AUTH_USER_ID, request: requestFor() };
+const ROTATION = { sessionId: NEW_SESSION_ID, issuedAt: iso(0) };
 const snapshot = { factors: [verifiedRow()], version: '3' };
 
 type Call = Readonly<{
@@ -125,6 +127,7 @@ const calls: readonly Call[] = [
           factorId: FACTOR_ID,
           expectedVersion: '5',
           sessionId: SESSION_ID,
+          rotation: ROTATION,
         },
         signal,
       ),
@@ -134,6 +137,8 @@ const calls: readonly Call[] = [
       p_factor_id: FACTOR_ID,
       p_expected_version: '5',
       p_session_id: SESSION_ID,
+      p_new_session_id: NEW_SESSION_ID,
+      p_issued_at: iso(0),
     },
   },
   {
@@ -282,12 +287,22 @@ const calls: readonly Call[] = [
     rpc: 'auth_step_up_challenge_verify_settle',
     invoke: (port) =>
       port.settleChallengeVerify(
-        { ...caller, sessionId: SESSION_ID, challengeId: CHALLENGE_ID },
+        {
+          ...caller,
+          sessionId: SESSION_ID,
+          challengeId: CHALLENGE_ID,
+          rotation: ROTATION,
+        },
         signal,
       ),
     reply: {},
     expected: null,
-    params: { p_session_id: SESSION_ID, p_challenge_id: CHALLENGE_ID },
+    params: {
+      p_session_id: SESSION_ID,
+      p_challenge_id: CHALLENGE_ID,
+      p_new_session_id: NEW_SESSION_ID,
+      p_issued_at: iso(0),
+    },
   },
 ];
 

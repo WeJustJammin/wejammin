@@ -4,7 +4,6 @@ import type { PlatformConfigurationPlatformApiBinding } from './platform-configu
 import {
   forwardPlatformConfigurationRequest,
   parsePlatformConfigurationCapabilities,
-  platformConfigurationResponseCapabilities,
   resolvePlatformConfigurationBinding,
 } from './platform-configuration-platform-api.ts';
 import {
@@ -51,6 +50,7 @@ const effective = {
   definitionVersionId: VERSION_ID,
   key: 'web.theme',
   valueKind: 'json_object',
+  ownerCapability: 'settings.theme.write',
   typedValue: {
     theme: 'dark',
     secretToken: 'must-not-reach-the-browser',
@@ -79,7 +79,10 @@ const json = (
 
 const makeBinding = (
   options: {
-    readonly capabilityHeader?: string;
+    /** CFG-05B-07 answer; `unavailable` is a 503, omitted is an unrouted 404. */
+    readonly snapshot?: readonly string[] | 'unavailable';
+    /** A capability claim on the effective response, which is never authority. */
+    readonly hostileHeader?: string;
     readonly resolveCapabilities?: PlatformConfigurationPlatformApiBinding['resolveCapabilities'];
     readonly effectiveStatus?: number;
   } = {},
@@ -91,13 +94,20 @@ const makeBinding = (
     const pathname = new URL(request.url).pathname;
     if (pathname === '/api/v1/me/identity') return json(identity);
     if (pathname === '/api/v1/me/acting-contexts') return json(contexts);
+    if (pathname === '/api/v1/admin/capability-snapshot') {
+      if (options.snapshot === undefined)
+        return json({ code: 'NOT_FOUND', details: {}, message: 'n/a' }, 404);
+      return options.snapshot === 'unavailable'
+        ? json({ code: 'DEPENDENCY_UNAVAILABLE' }, 503)
+        : json({ capabilities: options.snapshot });
+    }
     if (pathname === '/api/v1/config/web.theme/effective') {
       return json(
         effective,
         options.effectiveStatus ?? 200,
-        options.capabilityHeader === undefined
+        options.hostileHeader === undefined
           ? {}
-          : { 'x-configuration-capabilities': options.capabilityHeader },
+          : { 'x-configuration-capabilities': options.hostileHeader },
       );
     }
     return json({ code: 'NOT_FOUND', details: {}, message: 'not found' }, 404);
@@ -151,9 +161,9 @@ describe('platform configuration SSR authority boundary', () => {
         request.headers.get('x-provider-role') === 'admin' ||
         request.headers.get('x-configuration-capabilities') !== null ||
         request.headers.get('x-role') === 'admin' ||
-        request.headers.get('x-capability') === 'configuration.editor'
-          ? ['configuration.editor']
-          : ['configuration.read'],
+        request.headers.get('x-capability') === 'settings.theme.write'
+          ? ['settings.theme.write']
+          : ['settings.read'],
     });
     const result = await resolvePlatformConfigurationPage({
       request: new Request(
@@ -161,11 +171,11 @@ describe('platform configuration SSR authority boundary', () => {
         {
           headers: {
             cookie: 'wj_session_ref=verified; wj_csrf=csrf; tracking=ignored',
-            'x-configuration-capability': 'configuration.editor',
-            'x-configuration-capabilities': 'configuration.editor',
+            'x-configuration-capability': 'settings.theme.write',
+            'x-configuration-capabilities': 'settings.theme.write',
             'x-provider-role': 'admin',
             'x-role': 'admin',
-            'x-capability': 'configuration.editor',
+            'x-capability': 'settings.theme.write',
           },
         },
       ),
@@ -178,19 +188,19 @@ describe('platform configuration SSR authority boundary', () => {
     expect(result.kind).toBe('ready');
     if (result.kind !== 'ready') return;
     expect(result.page.access).toBe('read-only');
-    expect(result.page.capabilitySnapshot).toEqual(['configuration.read']);
+    expect(result.page.capabilitySnapshot).toEqual(['settings.read']);
   });
 
   it.each([
-    'configuration.editor',
-    'configuration.approver',
-    'configuration.release-manager',
-    'configuration.rollback-authority',
+    'settings.theme.write',
+    'settings.approve',
+    'settings.release',
+    'settings.rollback',
   ])(
-    'uses the verified %s grant for full command projection',
+    'uses the Worker-projected %s grant for full command projection',
     async (capability) => {
       const result = await resolve(
-        makeBinding({ capabilityHeader: capability }),
+        makeBinding({ snapshot: [capability] }),
         '?key=web.theme&role=free',
       );
 
@@ -208,6 +218,70 @@ describe('platform configuration SSR authority boundary', () => {
       );
     },
   );
+
+  it.each([
+    'settings.editor',
+    'settings.write',
+    'settings.manage',
+    'settings.other.write',
+    'configuration.editor',
+  ])(
+    'does not treat %s as editor authority on a definition it does not own',
+    async (capability) => {
+      const result = await resolve(
+        makeBinding({ snapshot: [capability] }),
+        '?key=web.theme',
+      );
+      expect(result.kind).toBe('ready');
+      if (result.kind !== 'ready') return;
+      expect(result.page.access).toBe('read-only');
+    },
+  );
+
+  it.each([
+    ['unavailable', 'unavailable' as const],
+    ['unrouted', undefined],
+  ])(
+    'fails closed to read-only with an empty snapshot when the Worker projection is %s',
+    async (_label, snapshot) => {
+      const result = await resolve(
+        makeBinding({
+          ...(snapshot === undefined ? {} : { snapshot }),
+          hostileHeader: 'settings.rollback',
+        }),
+      );
+      expect(result.kind).toBe('ready');
+      if (result.kind !== 'ready') return;
+      expect(result.page.access).toBe('read-only');
+      expect(result.page.capabilitySnapshot).toEqual([]);
+    },
+  );
+
+  it('ignores a capability header on the effective response and merges nothing from it', async () => {
+    const result = await resolve(
+      makeBinding({
+        snapshot: ['settings.approve'],
+        hostileHeader: 'settings.rollback,settings.theme.write',
+      }),
+    );
+    expect(result.kind).toBe('ready');
+    if (result.kind !== 'ready') return;
+    expect(result.page.capabilitySnapshot).toEqual(['settings.approve']);
+  });
+
+  it('forwards the session cookies, never the query or a caller claim, to the Worker projection', async () => {
+    const binding = makeBinding({ snapshot: ['settings.approve'] });
+    await resolve(binding, '?key=web.theme&role=admin&capabilities=x');
+    const snapshotCall = binding.fetch.mock.calls
+      .map(([value]) => value as Request)
+      .find(
+        (request) =>
+          new URL(request.url).pathname === '/api/v1/admin/capability-snapshot',
+      );
+    expect(snapshotCall?.method).toBe('GET');
+    expect(new URL(snapshotCall?.url ?? 'https://x').search).toBe('');
+    expect(snapshotCall?.headers.get('cookie')).toContain('wj_session_ref');
+  });
 
   it('does not disclose a response when an explicitly verified capability snapshot has no read grant', async () => {
     const binding = makeBinding({
@@ -272,26 +346,16 @@ describe('platform configuration SSR authority boundary', () => {
     expect(
       parsePlatformConfigurationCapabilities(['role=editor', 'Admin']),
     ).toEqual([]);
-    expect(
-      platformConfigurationResponseCapabilities(
-        new Response(null, {
-          headers: {
-            'x-configuration-capability': 'configuration.read',
-            'x-configuration-capabilities': 'configuration.editor',
-            'x-provider-role': 'admin',
-          },
-        }),
-      ),
-    ).toEqual(['configuration.editor', 'configuration.read']);
   });
 
-  it('forwards only the trusted capability metadata header through the API boundary', async () => {
+  it('strips every capability header at the API boundary', async () => {
     const fetch = vi.fn(
       async () =>
         new Response(JSON.stringify({ ok: true }), {
           headers: {
             'content-type': 'application/json',
             'x-configuration-capabilities': 'configuration.read',
+            'x-configuration-capability': 'configuration.read',
             'x-provider-role': 'admin',
           },
         }),
@@ -305,9 +369,8 @@ describe('platform configuration SSR authority boundary', () => {
       'GET',
     );
 
-    expect(response.headers.get('x-configuration-capabilities')).toBe(
-      'configuration.read',
-    );
+    expect(response.headers.get('x-configuration-capabilities')).toBeNull();
+    expect(response.headers.get('x-configuration-capability')).toBeNull();
     expect(response.headers.get('x-provider-role')).toBeNull();
   });
 

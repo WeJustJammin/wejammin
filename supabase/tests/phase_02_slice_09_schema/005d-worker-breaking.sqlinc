@@ -1,177 +1,74 @@
--- A real non-zero BREAKING migration keeps the existing Article X v2 active
--- while proving producer evidence, worker lease recovery, bounded execution,
--- retryable rollback, and completion.  Worker activation itself is covered by
--- 005b; this fragment intentionally leaves v51 approved so later rollback
--- fixtures retain their v2 active fallback.
+-- A real non-zero BREAKING migration (title kind change) keeps its source
+-- version active while proving worker lease recovery, bounded execution (one row
+-- per page), retryable rollback with a durable cursor, resume and completion.
+-- Worker activation itself is covered by 005b.  Every row comes from a named
+-- producer; the target rows are written by the database from the registered
+-- executor contract and verified against the sealed evidence.
+\ir ../phase_02_slice_09_dec108/04-worker.sqlinc
+\ir ../phase_02_slice_09_dec119/00-support.sqlinc
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('bk', 'articlebk');
+select pg_temp.s09d_to_active('bk');
+select pg_temp.s09w_entry('bk:e1', 'bk', 'Alpha');
+select pg_temp.s09w_entry('bk:e2', 'bk', 'Beta');
+select pg_temp.s09w_entry('bk:e3', 'bk', 'Gamma');
+select pg_temp.s09d_successor('bkb', 'bk');
+select pg_temp.s09d_dry_run('bkb');
+select pg_temp.s09w_dry_run('bkb');
+select pg_temp.s09w_redefine('bkb', 'long_text', '{}'::jsonb);
+select pg_temp.s09d_dry_run('bkb', 'owner', 'identity.revalidate', '1');
+select pg_temp.s09w_dry_run('bkb', '1');
+select pg_temp.s09d_guc_restore();
 select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('app.cms_rpc', 'true', true);
-
-create temp table s09_breaking_ids on commit drop as
-select active.id as source_version_id,
-       active.content_type_id,
-       active.owner_id,
-       'a9090000-0000-4000-8000-000000000801'::uuid as target_version_id,
-       'a9090000-0000-4000-8000-000000000802'::uuid as artifact_id,
-       'a9090000-0000-4000-8000-000000000803'::uuid as dry_run_id,
-       'a9090000-0000-4000-8000-000000000804'::uuid as migration_plan_id,
-       'a9090000-0000-4000-8000-000000000805'::uuid as correlation_id
-from platform_private.cms_content_type_versions active
-join s09_type_ids fixture on fixture.content_type_id = active.content_type_id
-where active.state = 'active';
-
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  default_template_version_id, schema_artifact_id, definition_hash,
-  compatibility, supersedes_id, dry_run_id, created_by
-)
-select ids.target_version_id, ids.owner_id, 'approved', 1, ids.content_type_id,
-  51, jsonb_build_object('label', 'Article X breaking v51'), 'editorial', 1,
-  'en-US', 'en-US', null, ids.artifact_id, repeat('7', 64), 'breaking',
-  ids.source_version_id, ids.dry_run_id,
-  'a9090000-0000-4000-8000-000000000001'
-from s09_breaking_ids ids;
-
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-)
-select ids.artifact_id, ids.owner_id, 'compiled', 1, ids.target_version_id, '1',
-  'cms/content-type/articlex/v51',
-  jsonb_build_object(
-    'schema', jsonb_build_object(
-      'typeKey', 'articlex', 'label', 'Article X breaking v51',
-      'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-      'defaultLocale', 'en-US', 'workflowKey', 'editorial',
-      'workflowVersion', '1', 'defaultTemplateVersionId', null,
-      'fields', '[]'::jsonb, 'relations', '[]'::jsonb,
-      'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb
-    ),
-    'fields', '[]'::jsonb
-  ),
-  jsonb_build_object(
-    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb
-  ),
-  repeat('7', 64), clock_timestamp()
-from s09_breaking_ids ids;
-
-create temp table s09_breaking_report on commit drop as
-select ids.*,
-       source.definition_hash as source_hash,
-       target.definition_hash as target_hash,
-       artifact.artifact_hash as compiler_hash,
-       artifact.compiler_version,
-       platform_private.cms_migration_transform_hash(
-         'breaking', 'cms.schema.breaking', 1,
-         source.definition_hash, target.definition_hash,
-         artifact.artifact_hash, artifact.compiler_version
-       ) as transform_hash,
-       jsonb_build_object(
-         'dryRunId', ids.dry_run_id, 'result', 'pass',
-         'sourceHash', source.definition_hash, 'targetHash', target.definition_hash,
-         'transformKey', 'cms.schema.breaking', 'transformVersion', '1',
-         'transformHash', platform_private.cms_migration_transform_hash(
-           'breaking', 'cms.schema.breaking', 1,
-           source.definition_hash, target.definition_hash,
-           artifact.artifact_hash, artifact.compiler_version
-         ),
-         'compilerHash', artifact.artifact_hash,
-         'compilerVersion', artifact.compiler_version,
-         'sourceCount', '3', 'targetCount', '3', 'rowErrorCount', '0',
-         'migratedCount', '0', 'failedCount', '0',
-         'lease', jsonb_build_object(
-           'state', 'completed', 'owner', null, 'token', null,
-           'expiresAt', (clock_timestamp() + interval '15 minutes')::text
-         )
-       ) as producer_report
-from s09_breaking_ids ids
-join platform_private.cms_content_type_versions source
-  on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join platform_private.cms_schema_artifacts artifact
-  on artifact.id = ids.artifact_id;
-
-select platform_private.cms_record_dry_run_report(
-  report.dry_run_id, report.owner_id, report.content_type_id,
-  report.source_version_id, report.target_version_id, 'breaking',
-  'cms.schema.breaking', 1, report.source_hash, report.target_hash,
-  report.compiler_hash, report.compiler_version, report.producer_report,
-  'a9090000-0000-4000-8000-000000000001'
-)
-from s09_breaking_report report;
-
-insert into platform_private.cms_schema_migration_plans(
-  id, owner_id, state, version, content_type_id, from_version_id,
-  to_version_id, classification, transform_key, transform_version,
-  dry_run_report, cursor, progress, source_count, target_count,
-  row_error_count, migrated_count, failed_count, created_by
-)
-select report.migration_plan_id, report.owner_id, 'ready', 1,
-  report.content_type_id, report.source_version_id, report.target_version_id,
-  'breaking', 'cms.schema.breaking', 1,
-  report.producer_report || jsonb_build_object(
-    'lease', jsonb_build_object(
-      'state', 'ready', 'owner', null, 'token', null,
-      'expiresAt', (clock_timestamp() - interval '1 minute')::text
-    )
-  ), 0, 0, 3, 3, 0, 0, 0,
-  'a9090000-0000-4000-8000-000000000001'
-from s09_breaking_report report;
-
 select ok(
-  (select classification = 'breaking'
-      and transform_key = 'cms.schema.breaking'
-      and transform_version = 1
-      and source_count = 3 and target_count = 3
-   from platform_private.cms_schema_migration_plans
-   where id = (select migration_plan_id from s09_breaking_ids))
-  and (select platform_private.cms_persisted_dry_run_report_valid(
-    report.dry_run_id, report.owner_id, report.content_type_id,
-    report.source_version_id, report.target_version_id, 'breaking',
-    'cms.schema.breaking', 1, report.source_hash, report.target_hash,
-    report.compiler_hash, report.compiler_version
-  ) from s09_breaking_report report),
-  'S09 BREAKING worker persists an independent non-zero producer report and exact fingerprints'
-);
-
--- The producer report is valid planning evidence, but S09 has no real
--- application-content source adapter.  Reject execution before acquiring a
--- lease; S10 owns the first non-zero transform and source attestation.
-select throws_ok(
-  $$select platform_api.cms_claim_schema_migration_lease(jsonb_build_object(
-    'migrationPlanId', report.migration_plan_id,
-    'schemaVersionId', report.target_version_id,
-    'expectedVersion', '1', 'cursor', '0',
-    'leaseOwner', 's09-breaking-worker', 'workerId', 's09-breaking-worker',
-    'leaseDurationMs', '30000', 'now', clock_timestamp()::text,
-    'transformKey', 'cms.schema.breaking', 'transformVersion', '1',
-    'compilerHash', report.compiler_hash, 'sourceHash', report.source_hash,
-    'targetHash', report.target_hash
-  )) from s09_breaking_report report$$,
-  'P0001', 'VALIDATION_FAILED',
-  'S09 rejects BREAKING execution without independent source evidence'
+  (select classification = 'breaking' and transform_key = 'identity.revalidate' and transform_version = 1
+          and state = 'ready' and source_count = 3 and target_count = 3 and row_error_count = 0 and cursor = 3
+   from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('bkb:plan')),
+  'S09 BREAKING worker scans three real rows in one-row pages and seals the plan ready'
 );
 select ok(
-  (select state = 'ready' and version = 1 and cursor = 0
-          and migrated_count = 0 and failed_count = 0
-   from platform_private.cms_schema_migration_plans
-   where id = (select migration_plan_id from s09_breaking_ids)),
-  'S09 BREAKING boundary leaves the non-zero plan unleased and unchanged'
+  (select platform_private.cms_persisted_dry_run_report_valid(
+    report.id, report.owner_id, report.content_type_id, report.source_version_id,
+    report.target_version_id, 'breaking', 'identity.revalidate', 1, report.source_hash,
+    report.target_hash, report.compiler_hash, report.compiler_version)
+   from platform_private.cms_schema_dry_run_reports report where report.id = pg_temp.s09d_id('bkb:dryRun')),
+  'S09 BREAKING worker persists an independent producer report with exact fingerprints'
 );
-select ok(
-  (select source.state = 'active'::platform_private.cms_definition_state
-          and target.state = 'approved'::platform_private.cms_definition_state
-          and exists (
-            select 1
-            from platform_private.cms_schema_dry_run_reports evidence
-            where evidence.id = report.dry_run_id
-          )
-   from s09_breaking_report report
-   join platform_private.cms_content_type_versions source
-     on source.id = report.source_version_id
-   join platform_private.cms_content_type_versions target
-     on target.id = report.target_version_id),
-  'S09 BREAKING boundary preserves the old active version and producer evidence'
-);
+
+-- Backfill: one bounded page, then a retryable rollback keeps the cursor and rows.
+select pg_temp.s09w_claim('bkb');
+select ok((select state = 'running' and cursor = 0 from platform_private.cms_schema_migration_plans
+           where id = pg_temp.s09d_id('bkb:plan')),
+  'S09 BREAKING backfill restarts the cursor at the first row after the sealed dry run');
+select pg_temp.s09w_batch('bkb', 'bkb:first', pg_temp.s09w_evidence('identity.revalidate',
+  pg_temp.s09w_read('bkb', 'bkb:first.read', '1')), false, '1');
+select ok((select cursor = 1 and migrated_count = 1 and target_count = 3
+           from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('bkb:plan'))
+  and (select count(*) = 1 from platform_private.cms_schema_migration_target_rows
+       where plan_id = pg_temp.s09d_id('bkb:plan')),
+  'S09 BREAKING bounded page writes exactly one target row and advances the cursor to 1');
+select pg_temp.s09w_rollback('bkb', 'bk', true);
+select ok((select state = 'failed_retryable' and cursor = 1 and migrated_count = 1
+           from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('bkb:plan'))
+  and (select count(*) = 1 from platform_private.cms_schema_migration_target_rows
+       where plan_id = pg_temp.s09d_id('bkb:plan'))
+  and (select state = 'active' from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('bk:version')),
+  'S09 BREAKING retryable rollback keeps the cursor, the written row and the active fallback version');
+
+-- Resume from the durable cursor with a replacement worker and complete.
+-- The rolled-back lease is fenced for 15 minutes; the replacement worker's clock is past it.
+select pg_temp.s09w_claim('bkb', 's09w-worker-2', clock_timestamp() + interval '1 hour');
+select ok((select state = 'running' and cursor = 1 from platform_private.cms_schema_migration_plans
+           where id = pg_temp.s09d_id('bkb:plan')),
+  'S09 BREAKING replacement worker resumes the failed plan at its durable cursor');
+select pg_temp.s09w_pass('bkb', false, '1');
+select ok((select cursor = 3 and migrated_count = 3 and failed_count = 0
+           from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('bkb:plan'))
+  and (select count(*) = 3 and count(distinct source_row_id) = 3
+       from platform_private.cms_schema_migration_target_rows where plan_id = pg_temp.s09d_id('bkb:plan')),
+  'S09 BREAKING resume finishes the remaining rows without duplicating the written row');
+select pg_temp.s09w_finish('bkb');
+select ok((select state = 'completed' and migrated_count = 3 and cursor = 3
+           from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('bkb:plan'))
+  and (select state = 'active' from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('bk:version')),
+  'S09 BREAKING verification proves the target rows and completes the plan; the source stays active until the switch');

@@ -21,7 +21,7 @@ export default function ContentSchemaRegistryWorkbench({
   access,
   query,
   contractFields,
-  requestId,
+  supportReference,
   canonicalUrl,
   listUrl,
   retryUrl,
@@ -43,7 +43,7 @@ export default function ContentSchemaRegistryWorkbench({
     initialList,
     initialDetail,
     initialReview,
-    requestId,
+    supportReference,
     retryUrl,
     canonicalUrl,
   });
@@ -62,7 +62,7 @@ export default function ContentSchemaRegistryWorkbench({
       : undefined;
   const detailAction = retryUrl.split('?')[0] ?? retryUrl;
   const idempotencyKey = (operationId: string): string =>
-    `cms-schema-${operationId.toLowerCase()}-${requestId}`;
+    `cms-schema-${operationId.toLowerCase()}-${supportReference}`;
   // Event payloads never become registry state; the server refetch does.
   const canonicalRefetchBinding =
     onCanonicalRefetch === undefined ? 'unbound' : 'bound';
@@ -114,7 +114,7 @@ export default function ContentSchemaRegistryWorkbench({
         <ContentSchemaRegistryStatus
           state={initialList}
           regionLabel="Registry list"
-          requestId={requestId}
+          supportReference={supportReference}
           canonicalUrl={retryUrl}
           resetUrl={canonicalUrl}
           {...(resultCount === undefined ? {} : { resultCount })}
@@ -128,7 +128,7 @@ export default function ContentSchemaRegistryWorkbench({
           variant={variant}
           access={access}
           retryUrl={retryUrl}
-          requestId={requestId}
+          supportReference={supportReference}
           csrfToken={csrfToken}
           idempotencyKey={idempotencyKey}
           stepUpState={stepUpState ?? 'required'}
@@ -157,7 +157,7 @@ export default function ContentSchemaRegistryWorkbench({
             state={initialDetail}
             backUrl={listUrl}
             retryUrl={retryUrl}
-            requestId={requestId}
+            supportReference={supportReference}
           />
           {detail === null ? null : (
             <div className="content-schema-registry-version-side">
@@ -171,7 +171,7 @@ export default function ContentSchemaRegistryWorkbench({
               <ContentSchemaRegistryReviewPanel
                 state={initialReview}
                 retryUrl={retryUrl}
-                requestId={requestId}
+                supportReference={supportReference}
               />
             </div>
           )}

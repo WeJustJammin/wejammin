@@ -5,6 +5,13 @@
 Strict request, response, event, and release-evidence schemas for the CMS
 content schema registry and their Slice 09 contract tests.
 
+`locale-config.ts` and `locale-canonical.ts` own the BE03a OD-4 locale
+configuration: the canonical-case BCP 47 mapper, the exact 422 messages, the
+single ordered `refineLocaleConfig` pass shared by CMS-03A-01 (source/default
+from the request) and CMS-03A-09 (inherited, so `null`), and the JCS canonical
+JSON that `localeConfigHash` binds. The database validator must reproduce the
+same rules, messages and hash vector (see `locale-config.test.ts`).
+
 The operational release-evidence sidecar is structural and fail-closed. It
 binds production alerts/SLOs, hosted Auth/RLS/IdP E2E, and both manual screen-
 reader platform reports to one immutable artifact without storing raw provider

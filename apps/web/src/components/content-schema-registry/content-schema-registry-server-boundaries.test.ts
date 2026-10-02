@@ -150,10 +150,12 @@ describe('content schema registry server boundaries', () => {
         initialList: {
           status: 'error',
           httpStatus: 422,
-          error: { requestId: upstreamRequestId },
         },
       },
     });
+    // The upstream request id never survives into hydrated page state.
+    if (result.kind !== 'error') throw new Error('expected an error result');
+    expect(JSON.stringify(result.page)).not.toContain(upstreamRequestId);
   });
 
   it('keeps a platform outage during session verification degraded', async () => {

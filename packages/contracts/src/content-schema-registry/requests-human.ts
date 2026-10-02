@@ -19,20 +19,28 @@ import {
   CmsFieldKeySchema,
   CmsHashSchema,
   CmsInstantSchema,
-  CmsLocaleSchema,
   CmsUuidSchema,
   CmsValidatorKeySchema,
   CmsWorkflowKeySchema,
   CmsVersionSchema,
 } from './primitives.ts';
+import {
+  CmsCanonicalLocaleSchema,
+  CmsFallbackChainsSchema,
+  CmsSupportedLocalesSchema,
+  LOCALE_CONFIG_MESSAGES,
+  refineLocaleConfig,
+} from './locale-config.ts';
 
 export const ContentTypeDraftRequestSchema = z
   .strictObject({
     typeKey: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/u),
     label: z.string().trim().min(2).max(120),
     ownerCapability: CmsCapabilityKeySchema,
-    sourceLocale: CmsLocaleSchema,
-    defaultLocale: CmsLocaleSchema,
+    sourceLocale: CmsCanonicalLocaleSchema,
+    defaultLocale: CmsCanonicalLocaleSchema,
+    supportedLocales: CmsSupportedLocalesSchema,
+    fallbackChains: CmsFallbackChainsSchema,
     workflowKey: CmsWorkflowKeySchema,
     workflowVersion: CmsVersionSchema,
     defaultTemplateVersionId: CmsUuidSchema.nullable(),
@@ -43,6 +51,9 @@ export const ContentTypeDraftRequestSchema = z
       .array(CapabilityBindingInputSchema)
       .max(32)
       .readonly(),
+  })
+  .superRefine((value, context) => {
+    refineLocaleConfig(value, context);
   })
   .readonly();
 
@@ -109,9 +120,38 @@ export const SchemaActivationRequestSchema = z
   })
   .readonly();
 
+/**
+ * CMS-03A-09 clones the source locale configuration (both fields null) or
+ * replaces it (both present). `sourceLocale` and `defaultLocale` are always
+ * inherited from the immutable source version, so the Worker validates only
+ * what it can see; the database validator owns the inherited-locale rules.
+ */
 export const SchemaSuccessorRequestSchema = z
   .strictObject({
     expectedVersion: CmsVersionSchema,
+    supportedLocales: CmsSupportedLocalesSchema.nullable(),
+    fallbackChains: CmsFallbackChainsSchema.nullable(),
+  })
+  .superRefine((value, context) => {
+    const { supportedLocales, fallbackChains } = value;
+    if ((supportedLocales === null) !== (fallbackChains === null)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['fallbackChains'],
+        message: LOCALE_CONFIG_MESSAGES.pair,
+      });
+      return;
+    }
+    if (supportedLocales !== null && fallbackChains !== null)
+      refineLocaleConfig(
+        {
+          sourceLocale: null,
+          defaultLocale: null,
+          supportedLocales,
+          fallbackChains,
+        },
+        context,
+      );
   })
   .readonly();
 

@@ -21,7 +21,7 @@ export type ContentSchemaRegistryReviewState =
   | {
       readonly status: 'degraded';
       readonly data: SchemaReviewResource | null;
-      readonly requestId: string;
+      readonly requestId?: string;
       readonly lastVerifiedAt: string | null;
       readonly retryable?: boolean;
       readonly httpStatus?: number;

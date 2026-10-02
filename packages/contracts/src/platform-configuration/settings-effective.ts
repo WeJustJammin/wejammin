@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  ConfigurationCapabilitySchema,
   ConfigurationInstantSchema,
   ConfigurationJsonValueSchema,
   ConfigurationKeySchema,
@@ -34,6 +35,12 @@ export const Cfg05a02EffectiveValueResponseSchema = z.strictObject({
   definitionVersionId: ConfigurationUuidSchema,
   key: ConfigurationKeySchema,
   valueKind: ConfigurationValueKindSchema,
+  /**
+   * The definition version's owner capability (BE05a CFG-05A-02). A name only:
+   * the web tier derives the edit affordance from its presence in the
+   * CFG-05B-07 capability snapshot; the Worker and database enforce it on write.
+   */
+  ownerCapability: ConfigurationCapabilitySchema,
   typedValue: ConfigurationJsonValueSchema,
   sourceScope: ConfigurationScopeTypeSchema,
   sourceSubjectId: ConfigurationUuidSchema.nullable(),

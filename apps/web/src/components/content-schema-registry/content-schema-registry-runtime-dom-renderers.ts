@@ -1,4 +1,12 @@
-import type { ContentSchemaRegistryMutationResult } from './content-schema-registry-runtime';
+import type {
+  ContentSchemaRegistryLocaleIssue,
+  ContentSchemaRegistryMutationResult,
+} from './content-schema-registry-runtime';
+import {
+  issueControlTarget,
+  localeControlId,
+  pathFromPointer,
+} from './content-schema-registry-locale-config';
 import {
   announce,
   clearDynamicFeedback,
@@ -14,9 +22,44 @@ const fieldNameFromPointer = (pointer: string): string | null => {
     : name;
 };
 
+const appendLocaleIssues = (
+  form: HTMLFormElement,
+  list: HTMLElement,
+  issues: readonly ContentSchemaRegistryLocaleIssue[],
+  summaryId: string,
+): void => {
+  for (const issue of issues) {
+    const path = pathFromPointer(issue.pointer);
+    const id = localeControlId(form.id, issueControlTarget(path));
+    const element = form.ownerDocument.getElementById(id);
+    const item = form.ownerDocument.createElement('li');
+    const text = `${path.join(' / ')}: ${issue.message}`;
+    if (element !== null && !id.endsWith('-locale-summary')) {
+      element.setAttribute('aria-invalid', 'true');
+      const describedBy = new Set(
+        (element.getAttribute('aria-describedby') ?? '')
+          .split(' ')
+          .filter(Boolean),
+      );
+      describedBy.add(summaryId);
+      element.setAttribute('aria-describedby', [...describedBy].join(' '));
+      const link = form.ownerDocument.createElement('a');
+      link.href = `#${id}`;
+      link.textContent = text;
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        element.focus();
+      });
+      item.appendChild(link);
+    } else item.textContent = text;
+    list.appendChild(item);
+  }
+};
+
 export const renderValidationSummary = (
   form: HTMLFormElement,
   pointers: readonly string[],
+  localeIssues: readonly ContentSchemaRegistryLocaleIssue[] = [],
 ): HTMLElement => {
   const summary = form.ownerDocument.createElement('section');
   summary.id = `${form.id}-validation-summary`;
@@ -31,7 +74,9 @@ export const renderValidationSummary = (
   heading.textContent = 'Review the highlighted schema fields';
   summary.appendChild(heading);
   const list = form.ownerDocument.createElement('ul');
+  const localePointers = new Set(localeIssues.map((issue) => issue.pointer));
   const names = pointers
+    .filter((pointer) => !localePointers.has(pointer))
     .map(fieldNameFromPointer)
     .filter((name): name is string => name !== null);
   for (const name of names) {
@@ -59,7 +104,8 @@ export const renderValidationSummary = (
     } else item.textContent = `Review ${name}`;
     list.appendChild(item);
   }
-  if (names.length === 0) {
+  appendLocaleIssues(form, list, localeIssues, summary.id);
+  if (names.length === 0 && localeIssues.length === 0) {
     const item = form.ownerDocument.createElement('li');
     item.textContent = 'Review the submitted schema values.';
     list.appendChild(item);

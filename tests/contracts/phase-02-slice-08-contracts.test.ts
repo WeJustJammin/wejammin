@@ -317,7 +317,7 @@ describe('Phase 2 Slice 08 strict admin operation contracts', () => {
     }
   });
 
-  it('[P2-S08-AC-006, P2-S08-AC-012, P2-S08-AC-018] mounts only 01, 04, 05, and 06', () => {
+  it('[P2-S08-AC-006, P2-S08-AC-012, P2-S08-AC-018] mounts only 01, 04, 05, 06, and 07', () => {
     const policy = requireSchema('AdminWorkspaceRoutePolicySchema');
     const registry = requireSchema('AdminWorkspaceRouteRegistrySchema');
     const activeRegistry = requireSchema(
@@ -326,7 +326,7 @@ describe('Phase 2 Slice 08 strict admin operation contracts', () => {
     const routes = requireArray('adminWorkspaceRoutePolicies');
     const active = requireArray('activeAdminWorkspaceRoutePolicies');
     const deferred = requireArray('deferredAdminWorkspaceRoutePolicies');
-    expect(routes).toHaveLength(6);
+    expect(routes).toHaveLength(7);
     expect(routes.map((route) => route.operationId)).toEqual(
       s08ExpectedRoutes.map(({ operationId }) => operationId),
     );
@@ -338,6 +338,7 @@ describe('Phase 2 Slice 08 strict admin operation contracts', () => {
       'CFG-05B-04',
       'CFG-05B-05',
       'CFG-05B-06',
+      'CFG-05B-07',
     ]);
     expect(deferred.map((route) => route.operationId)).toEqual([
       'CFG-05B-02',

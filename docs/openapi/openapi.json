@@ -23304,7 +23304,7 @@
             }
           },
           "409": {
-            "description": "Source, version, or idempotency conflicts",
+            "description": "Source, version, or idempotency conflicts; LOCALE_VERSION_CONFLICT with reasonCode FALLBACK_CHAIN_MISMATCH and details.activeFallbackChain when fallbackChain differs from the active content type version chain",
             "content": {
               "application/json": {
                 "schema": {
@@ -23324,7 +23324,7 @@
             }
           },
           "422": {
-            "description": "Locale fields or fallback fail validation",
+            "description": "Locale fields fail validation, or locale is not in the active content type version supportedLocales",
             "content": {
               "application/json": {
                 "schema": {
@@ -23996,6 +23996,140 @@
           },
           "504": {
             "description": "Identity dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/capability-snapshot": {
+      "get": {
+        "operationId": "CFG-05B-07",
+        "deprecated": false,
+        "x-auth-class": "authenticated",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "admin_capability_snapshot_read",
+        "x-rate-limit": {
+          "class": "admin_capability_snapshot_read",
+          "limit": 120,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "EmptyRequestSchema",
+        "x-success-schema": "Cfg05b07CapabilitySnapshotResponseSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller receives only the named admin capabilities of its own verified session and acting party",
+        "responses": {
+          "200": {
+            "description": "Named admin capabilities of the verified session and acting party",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cfg05b07CapabilitySnapshotResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acting context is not allowed or CSRF is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Capability snapshot rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Capability snapshot failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorization context unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Authorization context timed out",
             "content": {
               "application/json": {
                 "schema": {
@@ -33132,6 +33266,24 @@
         ],
         "additionalProperties": false
       },
+      "Cfg05b07CapabilitySnapshotResponse": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(?:admin|settings)\\.[a-z][a-z0-9_.-]{0,90}$"
+            }
+          }
+        },
+        "required": [
+          "capabilities"
+        ],
+        "additionalProperties": false
+      },
       "CmsArtifactRef": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
@@ -34860,11 +35012,49 @@
           },
           "sourceLocale": {
             "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
           },
           "defaultLocale": {
             "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+          },
+          "supportedLocales": {
+            "readOnly": true,
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 35,
+              "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+            },
+            "type": "array"
+          },
+          "fallbackChains": {
+            "readOnly": true,
+            "maxProperties": 31,
+            "propertyNames": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 35,
+              "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 35,
+                "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+              }
+            },
+            "type": "object"
           },
           "workflowKey": {
             "type": "string",
@@ -35199,6 +35389,8 @@
           "ownerCapability",
           "sourceLocale",
           "defaultLocale",
+          "supportedLocales",
+          "fallbackChains",
           "workflowKey",
           "workflowVersion",
           "defaultTemplateVersionId",
@@ -35735,10 +35927,60 @@
           "expectedVersion": {
             "type": "string",
             "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "supportedLocales": {
+            "anyOf": [
+              {
+                "readOnly": true,
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 35,
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fallbackChains": {
+            "anyOf": [
+              {
+                "readOnly": true,
+                "maxProperties": 31,
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 35,
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 35,
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "expectedVersion"
+          "expectedVersion",
+          "supportedLocales",
+          "fallbackChains"
         ],
         "additionalProperties": false
       },
@@ -36284,11 +36526,53 @@
               },
               "sourceLocale": {
                 "type": "string",
+                "minLength": 2,
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
               },
               "defaultLocale": {
                 "type": "string",
+                "minLength": 2,
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+              },
+              "supportedLocales": {
+                "readOnly": true,
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 35,
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "type": "array"
+              },
+              "fallbackChains": {
+                "readOnly": true,
+                "maxProperties": 31,
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 35,
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 35,
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  }
+                },
+                "type": "object"
+              },
+              "localeConfigHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
               },
               "workflowKey": {
                 "type": "string",
@@ -36426,6 +36710,9 @@
               "ownerCapability",
               "sourceLocale",
               "defaultLocale",
+              "supportedLocales",
+              "fallbackChains",
+              "localeConfigHash",
               "workflowKey",
               "workflowVersion",
               "defaultTemplateVersionId",
@@ -37355,11 +37642,53 @@
                     },
                     "sourceLocale": {
                       "type": "string",
+                      "minLength": 2,
+                      "maxLength": 35,
                       "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                     },
                     "defaultLocale": {
                       "type": "string",
+                      "minLength": 2,
+                      "maxLength": 35,
                       "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                    },
+                    "supportedLocales": {
+                      "readOnly": true,
+                      "minItems": 1,
+                      "maxItems": 32,
+                      "items": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 35,
+                        "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                      },
+                      "type": "array"
+                    },
+                    "fallbackChains": {
+                      "readOnly": true,
+                      "maxProperties": 31,
+                      "propertyNames": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 35,
+                        "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 35,
+                          "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "localeConfigHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
                     },
                     "workflowKey": {
                       "type": "string",
@@ -37497,6 +37826,9 @@
                     "ownerCapability",
                     "sourceLocale",
                     "defaultLocale",
+                    "supportedLocales",
+                    "fallbackChains",
+                    "localeConfigHash",
                     "workflowKey",
                     "workflowVersion",
                     "defaultTemplateVersionId",
@@ -38168,11 +38500,53 @@
               },
               "sourceLocale": {
                 "type": "string",
+                "minLength": 2,
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
               },
               "defaultLocale": {
                 "type": "string",
+                "minLength": 2,
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+              },
+              "supportedLocales": {
+                "readOnly": true,
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 35,
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "type": "array"
+              },
+              "fallbackChains": {
+                "readOnly": true,
+                "maxProperties": 31,
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 35,
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 35,
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  }
+                },
+                "type": "object"
+              },
+              "localeConfigHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
               },
               "workflowKey": {
                 "type": "string",
@@ -38310,6 +38684,9 @@
               "ownerCapability",
               "sourceLocale",
               "defaultLocale",
+              "supportedLocales",
+              "fallbackChains",
+              "localeConfigHash",
               "workflowKey",
               "workflowVersion",
               "defaultTemplateVersionId",
@@ -38960,11 +39337,53 @@
           },
           "sourceLocale": {
             "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
           },
           "defaultLocale": {
             "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+          },
+          "supportedLocales": {
+            "readOnly": true,
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 35,
+              "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+            },
+            "type": "array"
+          },
+          "fallbackChains": {
+            "readOnly": true,
+            "maxProperties": 31,
+            "propertyNames": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 35,
+              "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 35,
+                "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+              }
+            },
+            "type": "object"
+          },
+          "localeConfigHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           },
           "workflowKey": {
             "type": "string",
@@ -39102,6 +39521,9 @@
           "ownerCapability",
           "sourceLocale",
           "defaultLocale",
+          "supportedLocales",
+          "fallbackChains",
+          "localeConfigHash",
           "workflowKey",
           "workflowVersion",
           "defaultTemplateVersionId",
@@ -39394,6 +39816,100 @@
           "max",
           "ordered",
           "onUnavailable"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaActivatedEventPayload": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "contentTypeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "schemaVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "migrationPlanId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "localeConfigHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "activationEvidence": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "policyHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "riskClass": {
+                "type": "string",
+                "enum": [
+                  "ordinary",
+                  "protected"
+                ]
+              },
+              "requiredDecisionCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "requiredCapabilities": {
+                "readOnly": true,
+                "maxItems": 16,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                }
+              },
+              "approvalEvidenceHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "key",
+              "version",
+              "policyHash",
+              "riskClass",
+              "requiredDecisionCount",
+              "requiredCapabilities",
+              "approvalEvidenceHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contentTypeId",
+          "schemaVersionId",
+          "migrationPlanId",
+          "localeConfigHash",
+          "activationEvidence"
         ],
         "additionalProperties": false
       },
@@ -39692,6 +40208,10 @@
               }
             ]
           },
+          "localeConfigHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
           "activationEvidence": {
             "readOnly": true,
             "type": "object",
@@ -39772,6 +40292,7 @@
           "contentTypeVersionId",
           "activatedAt",
           "migrationPlanId",
+          "localeConfigHash",
           "activationEvidence",
           "jobId",
           "eventType"
@@ -40339,6 +40860,10 @@
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
           },
+          "localeConfigHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
           "schemaArtifact": {
             "readOnly": true,
             "type": "object",
@@ -40437,6 +40962,7 @@
           "contentTypeVersionId",
           "contentTypeVersionNo",
           "definitionHash",
+          "localeConfigHash",
           "schemaArtifact",
           "dependencyManifestHash",
           "dryRun"
@@ -40547,6 +41073,10 @@
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
               },
+              "localeConfigHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
               "schemaArtifact": {
                 "readOnly": true,
                 "type": "object",
@@ -40645,6 +41175,7 @@
               "contentTypeVersionId",
               "contentTypeVersionNo",
               "definitionHash",
+              "localeConfigHash",
               "schemaArtifact",
               "dependencyManifestHash",
               "dryRun"

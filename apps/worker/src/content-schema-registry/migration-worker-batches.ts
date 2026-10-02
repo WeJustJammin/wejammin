@@ -56,6 +56,9 @@ export const runMigrationBatches = async (
     return stopped(current, 'failure', 'TRANSFORM_NOT_REGISTERED');
   const entry = transform.kind === 'entry' ? transform.entry : null;
   for (let batch = 0; batch < batchLimit; batch += 1) {
+    // One page limit per request: the read and the batch RPC carrying its
+    // evidence must agree on it (the DB asserts evidence count against it).
+    const pageLimit = runtime.maxBatchRows;
     const heartbeat = await runtime.call(
       SCHEMA_MIGRATION_RPC.heartbeatLease,
       {
@@ -102,6 +105,7 @@ export const runMigrationBatches = async (
       current,
       leaseToken,
       entry,
+      pageLimit,
       signal,
     );
     if (!scan.ok)
@@ -120,7 +124,7 @@ export const runMigrationBatches = async (
         schemaVersionId: job.schemaVersionId,
         expectedVersion: current.version,
         cursor: current.cursor,
-        limit: runtime.maxBatchRows,
+        limit: pageLimit,
         leaseToken,
         rowEvidence: scan.evidence,
         transformKey: current.transformKey,

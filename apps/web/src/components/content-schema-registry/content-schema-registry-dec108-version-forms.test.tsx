@@ -133,9 +133,16 @@ describe('[DEC-108] CMS-03A-09 successor form', () => {
           // Path identifiers the page already posts as transport fields.
           'contentTypeId',
           'versionId',
+          // OD-4 replacement choice radio: transport only, never a payload key.
+          'localeChoice',
         ].includes(name),
     );
-    expect(names.sort()).toStrictEqual(['expectedVersion']);
+    // The default choice keeps the source locale configuration (both null).
+    expect(names.sort()).toStrictEqual([
+      'expectedVersion',
+      'fallbackChains',
+      'supportedLocales',
+    ]);
   });
 
   it('uses an idempotency key distinct from every other form on the page', () => {

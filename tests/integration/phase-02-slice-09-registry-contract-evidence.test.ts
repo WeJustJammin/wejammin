@@ -32,21 +32,36 @@ import {
   createContentSchemaRegistryInvalidationHint,
 } from '../../apps/web/src/components/content-schema-registry/content-schema-registry-invalidation';
 import {
-  activation,
+  activation as sharedActivation,
   block,
-  detail,
+  detail as sharedDetail,
   field,
   lifecycleEvent,
   relation,
-  resource,
+  resource as sharedResource,
   safeBlock,
   validActivation,
   validBlock,
-  validDraft,
+  validDraft as sharedValidDraft,
   validField,
   validLifecycle,
   validRelation,
 } from '../../apps/worker/src/content-schema-registry/phase-02-slice-09-test-values';
+
+// BE03a OD-4 (2026-10-02) added the locale configuration to
+// ContentTypeDraftRequest, ContentTypeVersionResource and SchemaActivationResource.
+// The shared fixtures predate it, so this file supplies a valid configuration; the
+// shared worker fixtures and the producers that must emit these members stay tracked
+// by the reopened P2-S09-AC-264.
+const localeConfig = {
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
+} as const;
+const localeConfigHash = 'a'.repeat(64);
+const validDraft = { ...sharedValidDraft, ...localeConfig };
+const resource = { ...sharedResource, ...localeConfig, localeConfigHash };
+const activation = { ...sharedActivation, localeConfigHash };
+const detail = { ...sharedDetail, resource };
 
 const REQUEST_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';

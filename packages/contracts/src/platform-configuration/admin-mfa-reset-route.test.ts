@@ -66,10 +66,16 @@ describe('CFG-05B-06 route policy registration', () => {
     });
   });
 
-  it('mounts CFG-05B-06 in the active registry after 01, 04 and 05', () => {
+  it('mounts CFG-05B-06 in the active registry after 01, 04 and 05, then 07', () => {
     expect(
       activeAdminWorkspaceRoutePolicies.map(({ operationId }) => operationId),
-    ).toEqual(['CFG-05B-01', 'CFG-05B-04', 'CFG-05B-05', 'CFG-05B-06']);
+    ).toEqual([
+      'CFG-05B-01',
+      'CFG-05B-04',
+      'CFG-05B-05',
+      'CFG-05B-06',
+      'CFG-05B-07',
+    ]);
     expect(
       AdminWorkspaceActiveRouteRegistrySchema.safeParse(
         activeAdminWorkspaceRoutePolicies,
@@ -79,7 +85,7 @@ describe('CFG-05B-06 route policy registration', () => {
       AdminWorkspaceRouteRegistrySchema.safeParse(adminWorkspaceRoutePolicies)
         .success,
     ).toBe(true);
-    expect(adminWorkspaceRoutePolicies).toHaveLength(6);
+    expect(adminWorkspaceRoutePolicies).toHaveLength(7);
   });
 
   it.each([

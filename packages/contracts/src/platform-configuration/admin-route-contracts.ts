@@ -22,6 +22,8 @@ import {
   Cfg05b06MfaFactorResetRequestSchema,
   Cfg05b06MfaFactorResetResponseSchema,
 } from './admin-mfa-reset.ts';
+import { Cfg05b07CapabilitySnapshotResponseSchema } from './admin-capability-snapshot.ts';
+import { z } from 'zod';
 
 export const ADMIN_WORKSPACE_ROUTE_CONTRACTS = [
   {
@@ -76,6 +78,16 @@ export const ADMIN_WORKSPACE_ROUTE_CONTRACTS = [
     request: Cfg05b06MfaFactorResetRequestSchema,
     response: Cfg05b06MfaFactorResetResponseSchema,
     // 200 `completed`; the Worker answers 202 while the reset is `reconciling`.
+    successStatus: 200,
+    active: true,
+  },
+  {
+    operationId: 'CFG-05B-07',
+    method: 'GET',
+    path: '/api/v1/admin/capability-snapshot',
+    // No caller input: actor, party and capabilities are server-derived.
+    request: z.strictObject({}),
+    response: Cfg05b07CapabilitySnapshotResponseSchema,
     successStatus: 200,
     active: true,
   },

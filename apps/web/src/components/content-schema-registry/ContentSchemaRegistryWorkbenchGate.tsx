@@ -12,7 +12,7 @@ type GateInput = Pick<
   | 'initialList'
   | 'initialDetail'
   | 'initialReview'
-  | 'requestId'
+  | 'supportReference'
   | 'retryUrl'
   | 'canonicalUrl'
 >;
@@ -28,7 +28,7 @@ export function contentSchemaRegistryWorkbenchGate({
   initialList,
   initialDetail,
   initialReview,
-  requestId,
+  supportReference,
   retryUrl,
   canonicalUrl,
 }: GateInput): React.ReactElement | null {
@@ -52,7 +52,7 @@ export function contentSchemaRegistryWorkbenchGate({
         failure={initialFailure}
         access="disabled"
         variant={variant}
-        requestId={requestId}
+        supportReference={supportReference}
         retryUrl={retryUrl}
       />
     );

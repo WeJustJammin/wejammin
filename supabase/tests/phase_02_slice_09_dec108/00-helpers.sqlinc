@@ -269,3 +269,60 @@ begin
     clock_timestamp() + interval '3 days');
 end;
 $body$;
+
+
+-- Test-human provisioning through the real owner grant command (CMS-03A-15):
+-- a confirmed owner-organization membership (provisioning only) plus the
+-- capability granted by the receipt-derived owner with recent binding-bound MFA.
+-- A still-active aggregate is left as is; a revoked one is re-established.
+-- Returns the grant outcome token ('OK', an ApiError code, or 'EXISTS').
+create or replace function pg_temp.s09d_grant_via_rpc(
+  p_actor text, p_capability text, p_days integer default 1
+) returns text language plpgsql as $body$
+declare
+  subject_person uuid := (select person_id from s09d_actor where key = p_actor);
+  label text := 's09d-grant:' || p_actor || ':' || p_capability || ':' || substr(extensions.gen_random_uuid()::text, 1, 6);
+  existing_state text;
+begin
+  insert into identity_private.membership_tenure(
+    organization_id, person_id, state, provenance, governance_mode,
+    starts_on, accepted_at, actor_id, version)
+  select pg_temp.s09d_id('ownerOrg'), subject_person, 'confirmed', 'invitation',
+         'ungoverned', current_date, clock_timestamp(), owner.person_id, 1
+  from s09d_actor owner
+  where owner.key = 'owner'
+    and not exists (
+      select 1 from identity_private.membership_tenure existing
+       where existing.organization_id = pg_temp.s09d_id('ownerOrg')
+         and existing.person_id = subject_person and existing.state = 'confirmed');
+  select grant_row.state into existing_state from platform_private.cms_capability_grants grant_row
+   where grant_row.owner_id = pg_temp.s09d_id('ownerOrg')
+     and grant_row.subject_person_ref = subject_person and grant_row.capability_code = p_capability;
+  if existing_state = 'active' then
+    return 'EXISTS';
+  end if;
+  perform pg_temp.s09d_rpc(label, 'platform_api.cms_grant_capability', 'owner',
+    jsonb_build_object('subjectPersonId', subject_person, 'capability', p_capability,
+      'validThrough', to_char((now() at time zone 'UTC')::date + p_days, 'YYYY-MM-DD'),
+      'reason', 'dec108 test human', 'idempotencyKey', label), true);
+  return pg_temp.s09d_outcome(label);
+end;
+$body$;
+
+-- Revokes a granted capability through CMS-03A-17 (the real loss-of-authority path).
+create or replace function pg_temp.s09d_revoke_via_rpc(p_actor text, p_capability text)
+returns text language plpgsql as $body$
+declare
+  grant_row platform_private.cms_capability_grants%rowtype;
+  label text := 's09d-revoke:' || p_actor || ':' || p_capability || ':' || substr(extensions.gen_random_uuid()::text, 1, 6);
+begin
+  select * into grant_row from platform_private.cms_capability_grants g
+   where g.owner_id = pg_temp.s09d_id('ownerOrg')
+     and g.subject_person_ref = (select person_id from s09d_actor where key = p_actor)
+     and g.capability_code = p_capability;
+  perform pg_temp.s09d_rpc(label, 'platform_api.cms_revoke_capability_grant', 'owner',
+    jsonb_build_object('grantId', grant_row.id, 'expectedVersion', grant_row.version::text,
+      'idempotencyKey', label), true);
+  return pg_temp.s09d_outcome(label);
+end;
+$body$;

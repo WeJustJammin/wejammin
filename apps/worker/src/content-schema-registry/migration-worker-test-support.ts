@@ -90,10 +90,18 @@ type Handler = (
 /** The worker reads source rows before every batch; a port without rows serves an empty finished page. */
 export const emptySourcePage = (
   request: unknown,
-): Readonly<{ rows: []; nextCursor: string; done: true }> => ({
+): Readonly<{
+  rows: [];
+  nextCursor: string;
+  done: true;
+  targetFields: [];
+  retiredFields: [];
+}> => ({
   rows: [],
-  nextCursor: String((request as { cursor?: unknown }).cursor ?? '0'),
+  nextCursor: String((request as { cursor: unknown }).cursor),
   done: true,
+  targetFields: [],
+  retiredFields: [],
 });
 
 export const makePort = (

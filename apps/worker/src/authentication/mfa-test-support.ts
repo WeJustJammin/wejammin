@@ -182,24 +182,16 @@ export const ROTATED_COOKIES = [
   'wj_csrf=rotated-csrf; Path=/',
 ] as const;
 
-export const fakeRotation = (
-  stepUpAt = iso(0),
-  commit?: ReturnType<typeof vi.fn>,
-) => {
-  const committer =
-    commit ?? vi.fn(async () => ok({ cookies: [...ROTATED_COOKIES] }));
+export const fakeRotation = (stepUpAt = iso(0)) => {
   const validate = vi.fn(async () =>
     ok({
       stepUpAt,
       freshUntil: new Date(Date.parse(stepUpAt) + 600_000).toISOString(),
-      commit: committer,
+      rotation: { sessionId: NEW_SESSION_ID, issuedAt: iso(0) },
+      cookies: [...ROTATED_COOKIES],
     }),
   );
-  return {
-    port: { validate } as SessionRotationPort,
-    validate,
-    commit: committer,
-  };
+  return { port: { validate } as SessionRotationPort, validate };
 };
 
 export const factorsResource = (

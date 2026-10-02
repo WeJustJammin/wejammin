@@ -90,7 +90,10 @@ describe('[P2-S09-AC-250] island canonical refresh success and transport', () =>
   });
 
   it('issues exactly one protected GET carrying the binding header', async () => {
-    const bodies = [okBody({ requestId: 'a' }), okBody({ requestId: 'b' })];
+    const bodies = [
+      okBody({ supportReference: 'a' }),
+      okBody({ supportReference: 'b' }),
+    ];
     let call = 0;
     Object.defineProperty(globalThis.navigator, 'locks', {
       configurable: true,

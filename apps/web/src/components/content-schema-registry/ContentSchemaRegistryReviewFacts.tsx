@@ -74,6 +74,10 @@ export default function ContentSchemaRegistryReviewFacts({
           <dd>
             <code>{frozen.definitionHash}</code>
           </dd>
+          <dt>Locale configuration hash</dt>
+          <dd>
+            <code>{frozen.localeConfigHash}</code>
+          </dd>
           <dt>Compiled artifact</dt>
           <dd>
             <code>{frozen.schemaArtifact.zodContractRef}</code> · compiler{' '}

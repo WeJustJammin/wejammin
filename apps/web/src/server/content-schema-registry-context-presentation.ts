@@ -22,6 +22,10 @@ import type {
   ContentSchemaRegistrySession,
 } from './content-schema-registry-context-types';
 import { contentSchemaRegistryStepUpStateFor } from './content-schema-registry-acting-context';
+import {
+  createSupportReference,
+  withoutDiagnosticIdentifiers,
+} from './content-schema-registry-diagnostic-ids';
 
 export type ContentSchemaRegistryResult =
   | { readonly kind: 'authorized'; readonly page: ContentSchemaRegistryPage }
@@ -204,7 +208,7 @@ export const pageFor = (input: {
     cursor: input.query.cursor ?? null,
     expectedVersion:
       input.detail?.status === 'success' ? input.detail.version : null,
-    requestId: input.requestId,
+    supportReference: createSupportReference(),
     canonicalUrl: input.canonicalUrl ?? '/app/cms-content-modeling',
     listUrl: contentSchemaRegistryListUrl(input.query),
     retryUrl:
@@ -223,9 +227,11 @@ export const pageFor = (input: {
         .find((part) => part.startsWith('wj_csrf='));
       return token === undefined ? '' : token.slice('wj_csrf='.length);
     })(),
-    initialList: input.list,
-    initialDetail: input.detail,
-    initialReview: input.review ?? null,
+    // Server builders may carry the request id inside failure states; this is
+    // the only exit to hydration, so every diagnostic id is removed here.
+    initialList: withoutDiagnosticIdentifiers(input.list),
+    initialDetail: withoutDiagnosticIdentifiers(input.detail),
+    initialReview: withoutDiagnosticIdentifiers(input.review ?? null),
     contractFields: CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
     ...(input.actingContextLabel === undefined
       ? {}

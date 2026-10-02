@@ -74,6 +74,7 @@ export const PLATFORM_CONFIGURATION_CONTRACT_FIELDS: PlatformConfigurationContra
         'definitionVersionId',
         'key',
         'valueKind',
+        'ownerCapability',
         'typedValue',
         'sourceScope',
         'sourceSubjectId',

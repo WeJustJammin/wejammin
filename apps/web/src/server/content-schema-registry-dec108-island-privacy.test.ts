@@ -23,6 +23,11 @@ import {
 } from '../components/content-schema-registry/content-schema-review-dec108.test-support';
 import { approvedReviewPreparation } from '../components/content-schema-registry/content-schema-registry-activation-preparation.test-support';
 import { resolveContentSchemaRegistryPage } from './content-schema-registry-context';
+import {
+  degradedDetailState,
+  degradedListState,
+  pageFor,
+} from './content-schema-registry-context-presentation';
 import { createContentSchemaRegistryPlatformPorts } from './content-schema-registry-platform-api';
 import { resolveReview } from './content-schema-review-dec108.test-support';
 
@@ -39,6 +44,15 @@ const CORRELATION = 'corr-7f3a9c21-b84d-4e06-a1f5-d2c93b7e0a64';
 const BINDING = 'binding.9d4f1c2e:7b3a8e05';
 const FORBIDDEN_KEY =
   /(^|[a-z])(actor|actingParty|acting_party|actingContext|person|binding|session|correlation|owner|grantor|submitter|reviewer)(Id|Ref|Token|Hash)?$/u;
+/**
+ * Diagnostic identifiers in any spelling: requestId, requestID, request_id,
+ * x-request-id, traceId, spanId, causationId and the correlation family.
+ * Normalized so case and separators cannot dodge the check.
+ */
+const DIAGNOSTIC_KEY =
+  /^(x)?(request|req|trace|span|causation|correlation)(id|ref|token|hash)$/u;
+const isDiagnosticKey = (key: string): boolean =>
+  DIAGNOSTIC_KEY.test(key.toLowerCase().replaceAll(/[^a-z0-9]/gu, ''));
 const ALLOWED_KEYS = new Set(['actingContextLabel']);
 
 /** Raw, compact, hashed and truncated spellings of one private identifier. */
@@ -65,6 +79,7 @@ const PRIVATE_VALUES = [
   SESSION_SECRET,
   CORRELATION,
   BINDING,
+  REQUEST_ID,
 ];
 
 const keyPaths = (value: unknown, prefix = ''): string[] =>
@@ -90,7 +105,10 @@ const expectNoPrivateIdentifiers = (props: unknown): void => {
       );
   const offending = keyPaths(props).filter((path) => {
     const key = path.split('.').at(-1) ?? path;
-    return FORBIDDEN_KEY.test(key) && !ALLOWED_KEYS.has(key);
+    return (
+      (FORBIDDEN_KEY.test(key) || isDiagnosticKey(key)) &&
+      !ALLOWED_KEYS.has(key)
+    );
   });
   expect(offending).toStrictEqual([]);
 };
@@ -155,6 +173,15 @@ describe('[DEC-108] version page island props carry no private identifier', () =
     expectNoPrivateIdentifiers(await versionPage());
   });
 
+  it('carries a support reference that is not derived from the request id', async () => {
+    const first = (await versionPage()) as unknown as Record<string, unknown>;
+    const second = (await versionPage()) as unknown as Record<string, unknown>;
+    expect(typeof first.supportReference).toBe('string');
+    expect(first.supportReference).not.toBe(second.supportReference);
+    for (const spelling of spellings(REQUEST_ID))
+      expect(String(first.supportReference)).not.toContain(spelling);
+  });
+
   it('keeps the safe display evidence the island is allowed to carry', async () => {
     const page = (await versionPage()) as unknown as Record<string, unknown>;
     expect(page.stepUpState).toBe('verified');
@@ -208,5 +235,45 @@ describe('[DEC-108] review page island props carry no private identifier', () =>
     const page = (await reviewPage()) as unknown as Record<string, unknown>;
     expect(Object.keys(page)).not.toContain('actorId');
     expect(Object.keys(page)).not.toContain('actingPartyId');
+  });
+});
+
+describe('[DEC-108] diagnostic identifiers never reach hydrated state', () => {
+  const page = () =>
+    pageFor({
+      request: new Request('https://app.example.test/app/cms-content-modeling'),
+      requestId: REQUEST_ID,
+      query: {} as never,
+      list: degradedListState(REQUEST_ID),
+      detail: degradedDetailState(REQUEST_ID),
+      contentTypeId: null,
+      versionId: null,
+      state: 'degraded',
+    });
+
+  it('strips the request id from the top level and from nested degraded states', () => {
+    const serialized = serializeIslandProps(page());
+    for (const spelling of spellings(REQUEST_ID))
+      expect(serialized).not.toContain(spelling);
+    expect(
+      keyPaths(page()).filter((path) =>
+        isDiagnosticKey(path.split('.').at(-1) ?? path),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    'requestId',
+    'requestID',
+    'request_id',
+    'x-request-id',
+    'traceId',
+    'traceID',
+    'spanId',
+    'correlationId',
+    'causationId',
+  ])('the privacy check rejects a hydrated %s key', (key) => {
+    expect(isDiagnosticKey(key)).toBe(true);
+    expect(() => expectNoPrivateIdentifiers({ [key]: 'opaque' })).toThrow();
   });
 });

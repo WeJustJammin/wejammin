@@ -1576,6 +1576,30 @@ export const platformRegistrySet = createRegistrySet({
       bolaTest:
         'operator resets only a confirmed member of its capability organization, never itself',
     },
+    {
+      ...identityReadRouteDefaults,
+      method: 'GET',
+      path: '/api/v1/admin/capability-snapshot',
+      operationId: 'CFG-05B-07',
+      owner: 'Identity',
+      audience: 'browser',
+      csrf: 'none',
+      rawBodySignature: 'none',
+      idempotency: 'none',
+      ifMatch: 'none',
+      cacheControl: 'no-store',
+      rateClass: 'admin_capability_snapshot_read',
+      rateLimit: 120,
+      rateWindowSeconds: 60,
+      rateScope: 'user',
+      timeoutMs: 8_000,
+      sloTier: 'tier_1',
+      criticality: 'high',
+      requestSchema: 'EmptyRequestSchema',
+      successSchema: 'Cfg05b07CapabilitySnapshotResponseSchema',
+      bolaTest:
+        'caller receives only the named admin capabilities of its own verified session and acting party',
+    },
   ],
   consumers: [
     {

@@ -24,15 +24,23 @@ const ok = (
 
 describe('DEC-108 producer request contracts', () => {
   it('accepts strict successor and submission bodies only', () => {
-    expect(ok(SchemaSuccessorRequestSchema, { expectedVersion: '3' })).toBe(
-      true,
-    );
+    const clone = {
+      supportedLocales: null,
+      fallbackChains: null,
+    };
     expect(
-      ok(SchemaSuccessorRequestSchema, { expectedVersion: '3', extra: 1 }),
+      ok(SchemaSuccessorRequestSchema, { expectedVersion: '3', ...clone }),
+    ).toBe(true);
+    expect(
+      ok(SchemaSuccessorRequestSchema, {
+        expectedVersion: '3',
+        ...clone,
+        extra: 1,
+      }),
     ).toBe(false);
-    expect(ok(SchemaSuccessorRequestSchema, { expectedVersion: '0' })).toBe(
-      false,
-    );
+    expect(
+      ok(SchemaSuccessorRequestSchema, { expectedVersion: '0', ...clone }),
+    ).toBe(false);
     expect(
       ok(SchemaReviewSubmissionRequestSchema, {
         expectedVersion: '3',

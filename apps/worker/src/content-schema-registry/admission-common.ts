@@ -1,3 +1,5 @@
+import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
+
 import type {
   ContentSchemaRegistryError,
   ContentSchemaRegistryResult,
@@ -70,14 +72,34 @@ export const invalid = (
   details,
 });
 
+const LOCALE_CONFIG_MESSAGE_SET: ReadonlySet<string> = new Set(
+  Object.values(LOCALE_CONFIG_MESSAGES),
+);
+
+const jsonPointer = (path: readonly PropertyKey[]): string =>
+  `/${path
+    .map((segment) =>
+      String(segment).replaceAll('~', '~0').replaceAll('/', '~1'),
+    )
+    .join('/')}`;
+
+/**
+ * Zod issues become BE00 `violations`. Generic issues expose no client text.
+ * The fixed locale-configuration messages of BE03a OD-4 are server-owned
+ * constants (never echoed input), so they travel verbatim with their pointer.
+ */
 export const issues = (error: {
   issues: readonly { path: readonly PropertyKey[]; message: string }[];
 }): Record<string, unknown> => ({
-  violations: error.issues.slice(0, 50).map((issue) => ({
-    path: `/${issue.path.map(String).join('/')}`,
-    code: issue.message,
-    message: 'The value is invalid.',
-  })),
+  violations: error.issues.slice(0, 50).map((issue) =>
+    LOCALE_CONFIG_MESSAGE_SET.has(issue.message)
+      ? { pointer: jsonPointer(issue.path), message: issue.message }
+      : {
+          path: `/${issue.path.map(String).join('/')}`,
+          code: issue.message,
+          message: 'The value is invalid.',
+        },
+  ),
 });
 
 export type Result<T> = ContentSchemaRegistryResult<T>;

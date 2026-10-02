@@ -19,6 +19,7 @@ const targetField = {
   required: true,
   defaultMode: 'literal',
   defaultValue: 'none',
+  constraints: {},
 };
 
 const runDefault = (
@@ -41,7 +42,11 @@ const withTarget = (database: ReturnType<typeof makeScanDatabase>) => {
     ) => {
       const value = await read(rpc, request, signal);
       return rpc === READ_SOURCE_ROWS_RPC
-        ? { ...(value as Record<string, unknown>), targetField }
+        ? {
+            ...(value as Record<string, unknown>),
+            targetFields: [targetField],
+            retiredFields: [],
+          }
         : value;
     },
   };
@@ -101,7 +106,7 @@ describe('default registry through the worker', () => {
           return rpc === READ_SOURCE_ROWS_RPC
             ? {
                 ...(value as Record<string, unknown>),
-                targetField: { ...targetField, kind: 'relation' },
+                targetFields: [{ ...targetField, kind: 'relation' }],
               }
             : value;
         },
@@ -118,7 +123,7 @@ describe('default registry through the worker', () => {
     ).toHaveLength(0);
   });
 
-  it('refuses a malformed targetField on the read page', async () => {
+  it('refuses a malformed targetFields entry on the read page', async () => {
     const database = makeScanDatabase({
       rows: makeRows(1),
       plan: {
@@ -134,7 +139,7 @@ describe('default registry through the worker', () => {
           return rpc === READ_SOURCE_ROWS_RPC
             ? {
                 ...(value as Record<string, unknown>),
-                targetField: { fieldKey: 'x' },
+                targetFields: [{ fieldKey: 'x' }],
               }
             : value;
         },

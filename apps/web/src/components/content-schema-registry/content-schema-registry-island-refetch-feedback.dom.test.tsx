@@ -58,9 +58,9 @@ const detailWithLabel = (label: string) => ({
   stale: false,
 });
 
-const rateLimitedList = (requestId: string, retryAfterSeconds: number) => ({
+const rateLimitedList = (retryAfterSeconds: number) => ({
   status: 'error',
-  error: { code: 'RATE_LIMITED', message: 'Too many requests.', requestId },
+  error: { code: 'RATE_LIMITED', message: 'Too many requests.' },
   retryable: true,
   httpStatus: 429,
   retryAfterSeconds,
@@ -74,7 +74,7 @@ const readyMarkup = (overrides: Record<string, unknown>): string =>
     actingContextLabel: 'Northwind Collective',
     stepUpState: 'verified',
     stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
-    requestId: 'r',
+    supportReference: 'r',
     initialList: emptyList,
     initialDetail: detailSuccess,
     initialReview: REVIEW,
@@ -109,11 +109,11 @@ describe('[P2-S09-AC-250] island canonical refetch actual DOM feedback', () => {
     const fetcher = sequentialFetch([
       readyMarkup({
         initialDetail: detailWithLabel('Before refresh'),
-        requestId: 'before',
+        supportReference: 'before',
       }),
       readyMarkup({
         initialDetail: detailWithLabel('After refresh'),
-        requestId: 'after',
+        supportReference: 'after',
       }),
     ]);
     vi.stubGlobal('fetch', fetcher);
@@ -200,14 +200,14 @@ describe('[P2-S09-AC-250] island canonical refetch actual DOM feedback', () => {
     vi.setSystemTime(new Date('2026-10-01T12:00:00.000Z'));
     const fetcher = sequentialFetch([
       readyMarkup({
-        initialList: rateLimitedList('a', 3),
+        initialList: rateLimitedList(3),
         initialDetail: null,
-        requestId: 'a',
+        supportReference: 'a',
       }),
       readyMarkup({
-        initialList: rateLimitedList('b', 3),
+        initialList: rateLimitedList(3),
         initialDetail: null,
-        requestId: 'b',
+        supportReference: 'b',
       }),
     ]);
     vi.stubGlobal('fetch', fetcher);

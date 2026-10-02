@@ -50,149 +50,85 @@ update platform_private.cms_content_types
 set owner_capability = 'cms.schema_designer'
 where id = pg_temp.s09d_id('dep:type');
 
--- An active source requires a durable plan even for a zero-row additive
--- switch.  The target artifact is intentionally minimal but fully immutable.
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000130',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = (select version_id from s09_type_ids)),
-  'approved', 1, (select content_type_id from s09_type_ids), 4,
-  '{"label":"Article X v2"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
-  'a9090000-0000-4000-8000-000000000131', repeat('d', 64), 'additive',
-  'a9090000-0000-4000-8000-000000000402',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000131',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = (select version_id from s09_type_ids)),
-  'compiled', 1, 'a9090000-0000-4000-8000-000000000130', '1',
-  'cms/content-type/articlex/v1',
-  jsonb_build_object(
-    'schema', jsonb_build_object(
-      'typeKey', 'articlex', 'label', 'Article X v2',
-      'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-      'defaultLocale', 'en-US', 'workflowKey', 'editorial',
-      'workflowVersion', '1', 'defaultTemplateVersionId', null,
-      'fields', '[]'::jsonb, 'relations', '[]'::jsonb,
-      'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb
-    ),
-    'fields', '[]'::jsonb
-  ),
-  jsonb_build_object(
-    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb,
-    'blockDefinitions', jsonb_build_array(jsonb_build_object(
-      'blockKey', 'hero', 'blockVersion', 2, 'lifecycle', 'supported'
-    ))
-  ),
-  repeat('d', 64), clock_timestamp()
-);
+-- Plan creation belongs to CMS-03A-10 and activation only advances the bound
+-- plan (G1).  The candidate is the real additive successor of an active
+-- version with no live successor draft (Article AD0); its plan and sealed
+-- report come from the named producers.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('ad0', 'articlead0');
+select pg_temp.s09d_to_active('ad0');
+select pg_temp.s09d_successor('adv', 'ad0');
+select pg_temp.s09d_dry_run('adv');
+select pg_temp.s09d_seal('adv');
+select pg_temp.s09d_guc_restore();
+select pg_temp.s09d_id('adv:version') as adv_version, pg_temp.s09d_id('adv:plan') as adv_plan,
+       pg_temp.s09d_id('adv:dryRun') as adv_dry_run, pg_temp.s09d_id('ad0:version') as adv_source \gset
+select set_config('app.cms_rpc', 'true', true);
 select ok(
-  platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000130'
-  ),
-  'AC095 resolves blockDefinitions fallback entries through the protected block registry'
+  platform_private.cms_activation_references_valid(:'adv_version'),
+  'AC095 accepts the persisted reference graph of a real successor clone'
 );
 select throws_ok(
-  $$select platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000130',
-    'a9090000-0000-4000-8000-000000000103'::uuid, null,
-    'a9090000-0000-4000-8000-000000000402'
-  )$$,
+  format($q$select platform_private.cms_advance_activation_plan(%1$L::uuid, %2$L::uuid, null, %1$L::uuid)$q$,
+    :'adv_version', :'adv_source'),
   'P0001', 'VALIDATION_FAILED',
-  'AC096 additive no-plan activation rejects a missing independent dry-run report'
+  'AC096 additive activation rejects a candidate UUID standing in for the independent dry-run report'
+);
+select throws_ok(
+  format($q$select platform_private.cms_advance_activation_plan(%1$L::uuid, %2$L::uuid,
+    extensions.gen_random_uuid(), %3$L::uuid)$q$, :'adv_version', :'adv_source', :'adv_dry_run'),
+  'P0001', 'VALIDATION_FAILED',
+  'AC096 additive activation rejects a plan that is not the dry-run attempt''s own plan'
 );
 select is(
-  platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000130',
-    'a9090000-0000-4000-8000-000000000103'::uuid,
-    null, 'a9090000-0000-4000-8000-000000000402', null, null,
-    jsonb_build_object(
-      'dryRunId', 'a9090000-0000-4000-8000-000000000402', 'result', 'pass',
-      'sourceHash', repeat('b', 64), 'targetHash', repeat('d', 64),
-      'transformHash', platform_private.cms_migration_transform_hash(
-        'additive', null, null, repeat('b', 64), repeat('d', 64), repeat('d', 64), '1'
-      ),
-      'compilerHash', repeat('d', 64), 'compilerVersion', '1',
-      'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0',
-      'migratedCount', '0', 'failedCount', '0',
-      'lease', jsonb_build_object(
-        'state', 'completed', 'expiresAt', (clock_timestamp() + interval '10 minutes')::text
-      )
-    )
-  ),
-  'a9090000-0000-4000-8000-000000000402'::uuid,
-  'AC099 A04 creates a durable completed plan only after independent additive evidence'
+  platform_private.cms_advance_activation_plan(:'adv_version', :'adv_source', :'adv_plan', :'adv_dry_run'),
+  :'adv_plan'::uuid,
+  'AC099 A04 advances the CMS-03A-10 plan only after independent sealed additive evidence'
 );
 select is(
-  (select state from platform_private.cms_schema_migration_plans
-   where id = 'a9090000-0000-4000-8000-000000000402'),
+  (select state from platform_private.cms_schema_migration_plans where id = :'adv_plan'),
   'completed',
-  'AC099 auto-created plan is advanced only after exact zero-row evidence'
+  'AC099 the advanced plan completes only after exact zero-row evidence'
 );
 select ok(
   platform_private.cms_migration_plan_ready(
-    'a9090000-0000-4000-8000-000000000402',
-    (select content_type_id from s09_type_ids),
-    'a9090000-0000-4000-8000-000000000130'
+    :'adv_plan', pg_temp.s09d_id('adv:type'), :'adv_version'
   ),
   'AC096 durable plan carries matching source/target/artifact/compiler evidence'
 );
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_dry_run('adv', 'owner', null, null, 's09d-adv-redry-0001');
+select pg_temp.s09d_guc_restore();
+select is(pg_temp.s09d_outcome('adv:dryRun'), 'CONFLICT',
+  'AC096 a completed attempt is immutable evidence: a new dry-run cannot supersede it');
+select set_config('app.cms_rpc', 'true', true);
 select throws_ok(
-  $$select platform_private.cms_record_dry_run_report(
-    'a9090000-0000-4000-8000-000000000402'::uuid,
-    (select owner_id from platform_private.cms_content_type_versions
-     where id = (select version_id from s09_type_ids)),
-    (select content_type_id from s09_type_ids), null,
-    'a9090000-0000-4000-8000-000000000130'::uuid, 'additive', null, null,
-    repeat('b', 64), repeat('d', 64), repeat('d', 64), '1',
-    report.report || jsonb_build_object(
-      'lease', report.report->'lease' || jsonb_build_object('token', 'replayed')
-    ), 'a9090000-0000-4000-8000-000000000001'::uuid
-  ) from platform_private.cms_schema_dry_run_reports report
-  where report.id = 'a9090000-0000-4000-8000-000000000402'$$,
-  'P0001', 'VALIDATION_FAILED',
-  'AC096 rejects a different valid replay for an immutable dry-run UUID'
-);
-select throws_ok(
-  $$update platform_private.cms_schema_migration_plans
+  format($q$update platform_private.cms_schema_migration_plans
     set dry_run_report = dry_run_report || jsonb_build_object('sourceCount', '1')
-    where id = 'a9090000-0000-4000-8000-000000000402'$$,
+    where id = %L$q$, :'adv_plan'),
   'P0001', 'IMMUTABLE_RECORD',
   'AC096 completed dry-run evidence rejects a counter tamper attempt'
 );
 select throws_ok(
-  $$delete from platform_private.cms_schema_migration_plans
-    where id = 'a9090000-0000-4000-8000-000000000402'$$,
+  format($q$delete from platform_private.cms_schema_migration_plans where id = %L$q$, :'adv_plan'),
   'P0001', 'IMMUTABLE_RECORD',
   'AC096 completed dry-run evidence cannot be deleted'
 );
 select throws_ok(
-  $$update platform_private.cms_schema_dry_run_reports
+  format($q$update platform_private.cms_schema_dry_run_reports
     set report = report || jsonb_build_object('result', 'pass')
-    where id = 'a9090000-0000-4000-8000-000000000402'$$,
+    where id = %L$q$, :'adv_dry_run'),
   'P0001', 'IMMUTABLE_RECORD',
   'AC096 independent dry-run report rejects an evidence tamper attempt'
 );
 select throws_ok(
-  $$delete from platform_private.cms_schema_dry_run_reports
-    where id = 'a9090000-0000-4000-8000-000000000402'$$,
+  format($q$delete from platform_private.cms_schema_dry_run_reports where id = %L$q$, :'adv_dry_run'),
   'P0001', 'IMMUTABLE_RECORD',
   'AC096 independent dry-run report cannot be deleted'
 );
 select ok(
   platform_private.cms_migration_plan_ready(
-    'a9090000-0000-4000-8000-000000000402',
-    (select content_type_id from s09_type_ids),
-    'a9090000-0000-4000-8000-000000000130'
+    :'adv_plan', pg_temp.s09d_id('adv:type'), :'adv_version'
   ),
   'AC096 tamper attempts leave the immutable completed evidence ready'
 );

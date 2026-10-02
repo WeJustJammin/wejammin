@@ -151,6 +151,88 @@ describe('content schema registry command feedback', () => {
     cleanup();
   });
 
+  it('shows the exact OD-4 locale messages in the summary and links each to its control', async () => {
+    window.history.replaceState({}, '', '/app/cms-content-modeling');
+    document.body.innerHTML = `
+      <main>
+        <section data-workbench="content-schema-registry" data-canonical-refetch-url="/app/cms-content-modeling">
+          <form id="content-schema-registry-create-form" data-cms-command-form="true" data-operation-id="CMS-03A-01" action="/app/cms-content-modeling" method="post">
+            <input type="hidden" name="idempotency-key" value="stable-key-123" />
+            <input id="content-schema-registry-create-form-locale-tags" />
+            <fieldset id="content-schema-registry-create-form-locale-chain-fr-CA" tabindex="-1"><legend>Fallback order for fr-CA</legend></fieldset>
+            <input id="field-key" name="typeKey" value="release_note" />
+            <fieldset><button type="submit">Save</button></fieldset>
+          </form>
+        </section>
+      </main>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'VALIDATION_FAILED',
+              details: {
+                violations: [
+                  {
+                    pointer: '/supportedLocales/1',
+                    message: 'supportedLocales must be unique',
+                  },
+                  {
+                    pointer: '/fallbackChains/fr-CA/0',
+                    message: 'fallback chain locale must be a supported locale',
+                  },
+                  { pointer: '/typeKey', message: 'The value is invalid.' },
+                ],
+              },
+            }),
+            { status: 422, headers: { 'content-type': 'application/json' } },
+          ),
+      ),
+    );
+    const cleanup = installContentSchemaRegistryCommandEnhancement(document);
+
+    await submit(
+      () => document.querySelector('[data-cms-validation-summary]') !== null,
+    );
+
+    const summary = document.querySelector<HTMLElement>(
+      '[data-cms-validation-summary]',
+    ) as HTMLElement;
+    const items = [...summary.querySelectorAll('li')].map(
+      (item) => item.textContent,
+    );
+    expect(items).toContain(
+      'supportedLocales / 1: supportedLocales must be unique',
+    );
+    expect(items).toContain(
+      'fallbackChains / fr-CA / 0: fallback chain locale must be a supported locale',
+    );
+    expect(items).toContain('Review typeKey');
+    expect(summary.textContent).not.toContain('The value is invalid.');
+    const hrefs = [...summary.querySelectorAll('a')].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(hrefs).toContain('#content-schema-registry-create-form-locale-tags');
+    expect(hrefs).toContain(
+      '#content-schema-registry-create-form-locale-chain-fr-CA',
+    );
+    expect(
+      document
+        .getElementById('content-schema-registry-create-form-locale-tags')
+        ?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(
+      document
+        .getElementById(
+          'content-schema-registry-create-form-locale-chain-fr-CA',
+        )
+        ?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(document.activeElement).toBe(summary);
+    cleanup();
+  });
+
   it('keeps a 429 form busy until the server countdown completes', async () => {
     vi.useFakeTimers();
     formMarkup();

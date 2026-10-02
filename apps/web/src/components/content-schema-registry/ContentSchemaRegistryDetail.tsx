@@ -1,3 +1,4 @@
+import ContentSchemaRegistryLocaleSummaryView from './ContentSchemaRegistryLocaleSummaryView';
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
 import type {
   ContentSchemaRegistryDetailState,
@@ -8,7 +9,7 @@ interface Props {
   readonly state: ContentSchemaRegistryDetailState | null;
   readonly backUrl: string;
   readonly retryUrl: string;
-  readonly requestId: string;
+  readonly supportReference: string;
 }
 
 const SafeBlock = ({
@@ -43,7 +44,7 @@ export default function ContentSchemaRegistryDetail({
   state,
   backUrl,
   retryUrl,
-  requestId,
+  supportReference,
 }: Props) {
   if (state === null) {
     return (
@@ -66,7 +67,7 @@ export default function ContentSchemaRegistryDetail({
         <ContentSchemaRegistryStatus
           state={state}
           regionLabel="Version detail"
-          requestId={requestId}
+          supportReference={supportReference}
           canonicalUrl={retryUrl}
         />
       </section>
@@ -109,6 +110,7 @@ export default function ContentSchemaRegistryDetail({
           <time dateTime={resource.updatedAt}>{resource.updatedAt}</time>
         </dd>
       </dl>
+      <ContentSchemaRegistryLocaleSummaryView resource={resource} />
       <section aria-labelledby="content-schema-registry-fields-heading">
         <h4 id="content-schema-registry-fields-heading">Fields</h4>
         {detail.fields.length === 0 ? (

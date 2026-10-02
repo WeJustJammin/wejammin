@@ -1,4 +1,8 @@
-/** Reads one source page for a batch and scans it into per-row evidence. */
+/**
+ * Reads one source page for a batch and scans it into per-row evidence.
+ * `limit` is the single page limit of this request: the caller sends the same
+ * value on the batch RPC that carries the evidence.
+ */
 import { scanSourcePage } from './migration-scan-executor';
 import { parseSourcePage, READ_SOURCE_ROWS_RPC } from './migration-source-read';
 import type {
@@ -17,6 +21,7 @@ export const readAndScanBatch = async (
   plan: MigrationPlanRecord,
   leaseToken: string | null,
   entry: TransformRegistryEntry | null,
+  limit: number,
   signal: AbortSignal,
 ): Promise<BatchScan> => {
   const read = await runtime.call(
@@ -25,7 +30,7 @@ export const readAndScanBatch = async (
       migrationPlanId: plan.id,
       expectedVersion: plan.version,
       cursor: plan.cursor,
-      limit: runtime.maxBatchRows,
+      limit,
       leaseToken,
     },
     signal,
@@ -37,11 +42,12 @@ export const readAndScanBatch = async (
       reasonCode: read.failure.code,
     };
   try {
-    const page = parseSourcePage(read.value, runtime.maxBatchRows);
+    const page = parseSourcePage(read.value, limit);
     if (
       entry !== null &&
-      page.targetField !== null &&
-      !entry.acceptedFieldKinds.includes(page.targetField.kind)
+      page.targetFields.some(
+        (field) => !entry.acceptedFieldKinds.includes(field.kind),
+      )
     )
       return {
         ok: false,

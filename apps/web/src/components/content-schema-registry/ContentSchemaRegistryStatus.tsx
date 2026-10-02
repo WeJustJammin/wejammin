@@ -17,7 +17,7 @@ interface Props {
   readonly state:
     ContentSchemaRegistryListState | ContentSchemaRegistryDetailState;
   readonly regionLabel: string;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly resetUrl?: string;
   readonly resultCount?: number;
@@ -27,7 +27,7 @@ interface Props {
 export default function ContentSchemaRegistryStatus({
   state,
   regionLabel,
-  requestId,
+  supportReference,
   canonicalUrl,
   resetUrl,
   resultCount,
@@ -119,7 +119,7 @@ export default function ContentSchemaRegistryStatus({
         <p>{message}</p>
         {filterSummary !== null ? <p>{filterSummary}</p> : null}
         <p>
-          Request ID: <code>{state.error.requestId || requestId}</code>
+          Support reference: <code>{supportReference}</code>
         </p>
         {httpStatus === null ? null : (
           <p data-http-status={httpStatus}>Status: {httpStatus}</p>
@@ -144,7 +144,7 @@ export default function ContentSchemaRegistryStatus({
         <p>{message}</p>
         {filterSummary !== null ? <p>{filterSummary}</p> : null}
         <p>
-          Request ID: <code>{state.requestId || requestId}</code>.
+          Support reference: <code>{supportReference}</code>.
         </p>
         {httpStatus === null ? null : (
           <p data-http-status={httpStatus}>Status: {httpStatus}</p>

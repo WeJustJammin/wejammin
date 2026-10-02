@@ -7,6 +7,7 @@ import {
   CmsUuidSchema,
   CmsVersionSchema,
 } from '../content-schema-registry/primitives.ts';
+import { CmsCanonicalLocaleSchema } from '../content-schema-registry/locale-config.ts';
 import { resourceMetaShape } from '../content-schema-registry/resources-meta.ts';
 import {
   IdempotencyKeySchema,
@@ -90,3 +91,21 @@ export type LocaleVariantPath = z.infer<typeof LocaleVariantPathSchema>;
 export type LocaleVariantRequest = z.infer<typeof LocaleVariantRequestSchema>;
 export type LocaleVariantHeaders = z.infer<typeof LocaleVariantHeadersSchema>;
 export type LocaleVariantResource = z.infer<typeof LocaleVariantResourceSchema>;
+
+/** Machine reason on 409 LOCALE_VERSION_CONFLICT when the chain differs. */
+export const LOCALE_FALLBACK_CHAIN_MISMATCH = 'FALLBACK_CHAIN_MISMATCH';
+
+/**
+ * CMS-03C-04 treats `fallbackChain` as an equality expectation against the
+ * active content-type version's chain for the target locale (BE03a OD-4). A
+ * difference in membership, order or length is a 409 that returns the active
+ * chain (at most 16 canonical tags) and writes nothing.
+ */
+export const LocaleFallbackChainMismatchDetailsSchema = z.strictObject({
+  reasonCode: z.literal(LOCALE_FALLBACK_CHAIN_MISMATCH),
+  activeFallbackChain: z.array(CmsCanonicalLocaleSchema).max(16).readonly(),
+});
+
+export type LocaleFallbackChainMismatchDetails = z.infer<
+  typeof LocaleFallbackChainMismatchDetailsSchema
+>;

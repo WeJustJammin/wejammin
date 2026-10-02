@@ -172,96 +172,51 @@ select ok(
   'AC095 rejects an unregistered block version and a withdrawn lifecycle'
 );
 
--- A conditional plan can be created only with an independently validated
--- report.  Missing evidence and candidate-ID stand-ins are denied.
+-- A conditional plan exists only because CMS-03A-10 produced it, and activation
+-- only advances it.  A missing or stand-in dry-run report is refused.
 select throws_ok(
-  $$select platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000150',
-    'a9090000-0000-4000-8000-000000000103', null,
-    'a9090000-0000-4000-8000-000000000405', 'cms.schema.migrate', 1, null
-  )$$,
+  format($q$select platform_private.cms_advance_activation_plan(
+    %1$L::uuid, %2$L::uuid, null, 'a9090000-0000-4000-8000-000000000405'::uuid)$q$,
+    'a9090000-0000-4000-8000-000000000150', :'y_version'),
   'P0001', 'VALIDATION_FAILED',
-  'AC099 conditional plan creation requires a supplied dry-run report'
+  'AC099 conditional plan advance requires a persisted independent dry-run report'
 );
 select throws_ok(
-  $$select platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000150',
-    'a9090000-0000-4000-8000-000000000103', null,
-    'a9090000-0000-4000-8000-000000000150'
-  )$$,
+  format($q$select platform_private.cms_advance_activation_plan(
+    %1$L::uuid, %2$L::uuid, null, %1$L::uuid)$q$,
+    'a9090000-0000-4000-8000-000000000150', :'y_version'),
   'P0001', 'VALIDATION_FAILED',
   'AC096 rejects a candidate UUID used as its own dry-run evidence ID'
 );
 
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000155',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000103'),
-  'approved', 1, (select content_type_id from s09_type_ids), 6,
-  '{"label":"Article X conditional"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
-  'a9090000-0000-4000-8000-000000000156', repeat('f', 64), 'conditional',
-  'a9090000-0000-4000-8000-000000000406',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000156',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000155'),
-  'compiled', 1, 'a9090000-0000-4000-8000-000000000155', '1',
-  'cms/content-type/articlex/v1',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey', 'articlex', 'label', 'Article X conditional',
-    'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
-    'defaultTemplateVersionId', null, 'fields', '[]'::jsonb,
-    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb
-  ), 'fields', '[]'::jsonb),
-  jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb), repeat('f', 64), clock_timestamp()
-);
+-- A real conditional successor with no affected rows: the clone is sealed
+-- additively, its title constraint is tightened under that ready plan, and the
+-- conditional attempt names the registered transform.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('cn0', 'articlecn0');
+select pg_temp.s09d_to_active('cn0');
+select pg_temp.s09d_successor('cnd', 'cn0');
+select pg_temp.s09d_dry_run('cnd');
+select pg_temp.s09d_seal('cnd');
+select pg_temp.s09w_tighten('cnd', 100);
+select pg_temp.s09d_dry_run('cnd', 'owner', 'identity.revalidate', '1');
+select pg_temp.s09w_dry_run('cnd');
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
 select is(
-  platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000155',
-    'a9090000-0000-4000-8000-000000000103', null,
-    'a9090000-0000-4000-8000-000000000406', 'cms.schema.migrate', 1,
-    jsonb_build_object(
-      'dryRunId', 'a9090000-0000-4000-8000-000000000406', 'result', 'pass',
-      'sourceHash', (select definition_hash from platform_private.cms_content_type_versions
-                    where id = 'a9090000-0000-4000-8000-000000000103'),
-      'targetHash', repeat('f', 64),
-      'transformHash', platform_private.cms_migration_transform_hash(
-        'conditional', 'cms.schema.migrate', 1,
-        (select definition_hash from platform_private.cms_content_type_versions
-         where id = 'a9090000-0000-4000-8000-000000000103'),
-        repeat('f', 64), repeat('f', 64), '1'
-      ),
-      'transformKey', 'cms.schema.migrate', 'transformVersion', '1',
-      'compilerHash', repeat('f', 64), 'compilerVersion', '1',
-      'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0',
-      'migratedCount', '0', 'failedCount', '0',
-      'lease', jsonb_build_object(
-        'state', 'completed', 'expiresAt', (clock_timestamp() + interval '10 minutes')::text
-      )
-    )
-  ),
-  'a9090000-0000-4000-8000-000000000406'::uuid,
-  'AC099 creates and advances a conditional plan only after exact report evidence'
+  platform_private.cms_advance_activation_plan(
+    pg_temp.s09d_id('cnd:version'), pg_temp.s09d_id('cn0:version'),
+    pg_temp.s09d_id('cnd:plan'), pg_temp.s09d_id('cnd:dryRun')),
+  pg_temp.s09d_id('cnd:plan'),
+  'AC099 advances a conditional plan only after exact sealed report evidence'
 );
 select ok(
   (select classification = 'conditional'
-      and transform_key = 'cms.schema.migrate'
+      and transform_key = 'identity.revalidate'
       and transform_version = 1
       and state = 'completed'
    from platform_private.cms_schema_migration_plans
-   where id = 'a9090000-0000-4000-8000-000000000406'),
+   where id = pg_temp.s09d_id('cnd:plan')),
   'AC099 persists the conditional plan and advances its zero-row state'
 );
 

@@ -4,9 +4,12 @@
 export type SourceDocument = Readonly<Record<string, unknown>>;
 
 /**
- * The single target field a scan evaluates, supplied by the source-read RPC
- * (never by the plan or a caller). `defaultValue` is meaningful only when
- * `defaultMode` is `literal`.
+ * One changed or added target field a scan evaluates, supplied by the
+ * source-read RPC (never by the plan or a caller). `defaultValue` is
+ * meaningful only when
+ * `defaultMode` is `literal`. `constraints` is the compiled target constraint
+ * object for the field (`null` when the page carried none), validated by
+ * `migration-target-validator.ts`.
  */
 export type TargetFieldSpec = Readonly<{
   fieldKey: string;
@@ -14,10 +17,18 @@ export type TargetFieldSpec = Readonly<{
   required: boolean;
   defaultMode: string;
   defaultValue: unknown;
+  constraints: Readonly<Record<string, unknown>> | null;
 }>;
 
+/**
+ * Per-page scan context from the source-read RPC. `targetFields` are every
+ * changed/added field of the candidate (transforms apply per field);
+ * `retiredFields` are field keys the successor removes or deprecates, whose
+ * values are carried unvalidated.
+ */
 export type TransformContext = Readonly<{
-  targetField: TargetFieldSpec | null;
+  targetFields: readonly TargetFieldSpec[];
+  retiredFields: readonly string[];
 }>;
 
 /**
@@ -60,5 +71,6 @@ export type SourcePage = Readonly<{
   rows: readonly SourceRow[];
   nextCursor: string;
   done: boolean;
-  targetField: TargetFieldSpec | null;
+  targetFields: readonly TargetFieldSpec[];
+  retiredFields: readonly string[];
 }>;

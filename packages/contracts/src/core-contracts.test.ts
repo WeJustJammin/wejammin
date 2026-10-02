@@ -175,6 +175,7 @@ describe('foundation wire contracts', () => {
       'CapacityPeriodRequest',
       'Cfg05b06MfaFactorResetRequest',
       'Cfg05b06MfaFactorResetResponse',
+      'Cfg05b07CapabilitySnapshotResponse',
       'ChallengeApiRequest',
       'ChallengeResource',
       'ChangeHandleApiRequest',

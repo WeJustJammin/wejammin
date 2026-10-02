@@ -84,6 +84,7 @@ const frozenEvidence = {
   contentTypeVersionId: VERSION_ID,
   contentTypeVersionNo: '2',
   definitionHash: HASH,
+  localeConfigHash: HASH,
   schemaArtifact: {
     id: ATTEMPT_ID,
     state: 'compiled',

@@ -20,11 +20,22 @@ import {
   signature,
   uuid,
   validBlock,
-  validDraft,
+  validDraft as sharedValidDraft,
   validField,
   validFieldChange,
   validRelation,
 } from './phase-02-slice-09-adversarial-fixtures';
+
+// BE03a OD-4 (2026-10-02) added the locale configuration to
+// ContentTypeDraftRequest, ContentTypeVersionResource and SchemaActivationResource.
+// The shared fixtures predate it, so this file supplies a valid configuration; the
+// shared worker fixtures and the producers that must emit these members stay tracked
+// by the reopened P2-S09-AC-264 (shared fixtures).
+const validDraft = {
+  ...sharedValidDraft,
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
+} as const;
 
 describe('S09 adversarial contract boundaries', () => {
   it('[P2-S09-AC-216] bounds arrays, object keys, strings, signatures, and regex-shaped values', () => {

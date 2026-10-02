@@ -75,6 +75,12 @@ export default function ContentSchemaRegistryVersionCommands(
         <ContentSchemaRegistrySuccessorForm
           {...path}
           idempotencyKey={idempotencyKey('CMS-03A-09')}
+          sourceLocaleConfig={{
+            sourceLocale: detail.resource.sourceLocale,
+            defaultLocale: detail.resource.defaultLocale,
+            supportedLocales: detail.resource.supportedLocales,
+            fallbackChains: detail.resource.fallbackChains,
+          }}
         />
       ) : null}
       {hasNextAction(preparation, 'start_dry_run') ? (

@@ -117,6 +117,8 @@ export const createRegistryPersistence = (invoke: Invoke): RegistryMethods => {
           p_factor_id: input.factorId,
           p_expected_version: input.expectedVersion,
           p_session_id: input.sessionId,
+          p_new_session_id: input.rotation.sessionId,
+          p_issued_at: input.rotation.issuedAt,
         },
         signal,
         snapshotReply,

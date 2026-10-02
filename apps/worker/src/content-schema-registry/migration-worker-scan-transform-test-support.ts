@@ -5,7 +5,8 @@
  * Seam under test (BE03a dry-run/backfill paragraphs; IA03 deep dive):
  * - `cms_read_schema_migration_source_rows` returns at most 128 actual source
  *   rows (`sourceTable`, `sourceRowId`, DB-computed `sourceHash`, `document`)
- *   at the plan cursor.
+ *   at the plan cursor, plus `targetFields[]` (every changed field with its
+ *   compiled constraints) and `retiredFields[]` (removed field keys).
  * - The Worker applies the code-owned registered pure transform to each
  *   `document` and posts per-row evidence (`rowEvidence`, at most 128 entries)
  *   on the existing batch RPCs. The DB derives every counter from that evidence;
@@ -30,7 +31,7 @@ export type SourceRow = Readonly<{
   sourceTable: string;
   sourceRowId: string;
   sourceHash: string;
-  document: Readonly<Record<string, string | number>>;
+  document: Readonly<Record<string, unknown>>;
 }>;
 
 export type RowEvidence = Readonly<{
@@ -48,8 +49,11 @@ export type RegistryEntry = Readonly<{
   sourceConstraints: Readonly<Record<string, unknown>>;
   targetConstraints: Readonly<Record<string, unknown>>;
   acceptedFieldKinds: readonly string[];
-  apply: (row: Readonly<Record<string, string | number>>) => unknown;
+  apply: (row: Readonly<Record<string, unknown>>) => unknown;
 }>;
+
+/** The two field members of an empty candidate diff on a read page. */
+export const NO_FIELDS = { targetFields: [], retiredFields: [] } as const;
 
 export const makeRows = (count: number): readonly SourceRow[] =>
   Array.from({ length: count }, (_, index) => ({
@@ -82,6 +86,9 @@ export const registryEntry = (
 type DbOptions = Readonly<{
   rows: readonly SourceRow[];
   plan?: Partial<MigrationPlanRecord>;
+  /** Field specs the read page carries (the DB's compiled candidate fields). */
+  targetFields?: readonly Record<string, unknown>[];
+  retiredFields?: readonly string[];
   readPageOverride?: (cursor: number, limit: number) => unknown;
   readFailure?: Error;
 }>;
@@ -104,9 +111,7 @@ export const makeScanDatabase = (options: DbOptions): ScanDatabase => {
       ...overrides,
     });
   const batch = (request: Record<string, unknown>) => {
-    const evidence = Array.isArray(request.rowEvidence)
-      ? (request.rowEvidence as RowEvidence[])
-      : [];
+    const evidence = request.rowEvidence as RowEvidence[];
     totals.source += evidence.length;
     totals.target += evidence.filter(
       (entry) => entry.outputHash !== null,
@@ -152,6 +157,8 @@ export const makeScanDatabase = (options: DbOptions): ScanDatabase => {
         rows: page,
         nextCursor: String(next),
         done: next >= options.rows.length,
+        targetFields: options.targetFields ?? [],
+        retiredFields: options.retiredFields ?? [],
       };
     },
     [SCHEMA_MIGRATION_RPC.processDryRunBatch]: batch,
@@ -196,7 +203,7 @@ export const makeScanDatabase = (options: DbOptions): ScanDatabase => {
   const call = vi.fn(async (rpc: SchemaMigrationRpcName, request: unknown) => {
     const body = request as Record<string, unknown>;
     calls.push({ rpc, request: body });
-    return handlers[rpc]?.(body) ?? {};
+    return handlers[rpc]?.(body);
   });
   return {
     call,
@@ -206,10 +213,6 @@ export const makeScanDatabase = (options: DbOptions): ScanDatabase => {
     evidenceBatches: (rpc) =>
       calls
         .filter((entry) => entry.rpc === rpc)
-        .map((entry) =>
-          Array.isArray(entry.request.rowEvidence)
-            ? (entry.request.rowEvidence as RowEvidence[])
-            : [],
-        ),
+        .map((entry) => entry.request.rowEvidence as RowEvidence[]),
   };
 };

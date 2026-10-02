@@ -7,6 +7,7 @@ export const AdminWorkspaceOperationIdSchema = z.enum([
   'CFG-05B-04',
   'CFG-05B-05',
   'CFG-05B-06',
+  'CFG-05B-07',
 ]);
 
 export const AdminWorkspaceRouteErrorCodeSchema = z.enum([
@@ -140,6 +141,13 @@ export const mfaResetRouteErrors = [
   'MFA_RESET_INVALID',
   'RATE_LIMITED',
   'IDENTITY_UNAVAILABLE',
+  'INTERNAL_ERROR',
+] as const satisfies readonly AdminWorkspaceRouteErrorCode[];
+
+export const capabilitySnapshotRouteErrors = [
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
+  'RATE_LIMITED',
   'INTERNAL_ERROR',
 ] as const satisfies readonly AdminWorkspaceRouteErrorCode[];
 

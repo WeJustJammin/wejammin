@@ -99,9 +99,6 @@ export default function ContentSchemaRegistryCommandForm({
         >
           <h3>Schema change needs attention</h3>
           <p>{safeErrorMessage(error)}</p>
-          <p>
-            Request ID: <code>{error.requestId}</code>
-          </p>
         </section>
       )}
       <fieldset disabled={state === 'pending'}>{children}</fieldset>

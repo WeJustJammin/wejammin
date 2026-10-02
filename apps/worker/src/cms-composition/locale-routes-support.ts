@@ -2,7 +2,10 @@ import type {
   LocaleVariantRequest,
   LocaleVariantResource,
 } from '@wejammin/contracts';
-import { LocaleVariantResourceSchema } from '@wejammin/contracts';
+import {
+  LocaleFallbackChainMismatchDetailsSchema,
+  LocaleVariantResourceSchema,
+} from '@wejammin/contracts';
 
 import type {
   CmsLocaleError,
@@ -72,6 +75,15 @@ export const safeDetails = (
         /^[1-9]\d{0,18}$/u.test(details[key])
       )
         output[key] = details[key];
+    // OD-4: only a well-formed, bounded active chain may accompany the reason.
+    const mismatch = LocaleFallbackChainMismatchDetailsSchema.safeParse({
+      reasonCode: details.reasonCode,
+      activeFallbackChain: details.activeFallbackChain,
+    });
+    if (mismatch.success) {
+      output.reasonCode = mismatch.data.reasonCode;
+      output.activeFallbackChain = [...mismatch.data.activeFallbackChain];
+    }
     return output;
   }
   if (status === 429) {

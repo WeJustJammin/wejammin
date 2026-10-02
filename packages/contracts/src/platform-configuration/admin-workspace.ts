@@ -5,3 +5,4 @@ export * from './admin-bulk.ts';
 export * from './admin-capability.ts';
 export * from './admin-diagnostic.ts';
 export * from './admin-mfa-reset.ts';
+export * from './admin-capability-snapshot.ts';

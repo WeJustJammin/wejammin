@@ -139,7 +139,7 @@ begin
       'now', clock_timestamp()::text));
   perform pg_temp.s09d_call(p_tag || ':run.batch', 'platform_api.cms_process_schema_migration_batch',
     base || jsonb_build_object('expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
-      'limit', '128', 'leaseToken', claim->>'leaseToken',
+      'limit', '128', 'leaseToken', claim->>'leaseToken', 'rowEvidence', '[]'::jsonb,
       'correlationId', extensions.gen_random_uuid(), 'causationId', null));
   perform pg_temp.s09d_call(p_tag || ':run.begin', 'platform_api.cms_begin_schema_migration_verification',
     (base - 'schemaVersionId') || counts || jsonb_build_object('expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id)));
@@ -190,28 +190,17 @@ end;
 $body$;
 
 -- Test-human provisioning (D3): a confirmed membership of the owner organization
--- and an effective specialist reviewer grant, so a protected review's specialist
--- slot can be satisfied.  This provisions authority only; it never writes a
--- review, decision, dry-run, approved or completed-plan row.
+-- and an effective capability (a specialist reviewer slot, a template designer)
+-- granted through the owner command CMS-03A-15.  This provisions authority only;
+-- it never writes a review, decision, dry-run, approved or completed-plan row and
+-- never inserts an organization_actor_grant row by hand.
 create or replace function pg_temp.s09d_grant_specialist(p_actor text, p_capability text)
 returns void language plpgsql as $body$
+declare outcome text;
 begin
-  insert into identity_private.membership_tenure(
-    organization_id, person_id, state, provenance, governance_mode,
-    starts_on, accepted_at, actor_id, version)
-  select pg_temp.s09d_id('ownerOrg'), subject.person_id, 'confirmed', 'invitation',
-         'ungoverned', current_date, clock_timestamp(), owner.person_id, 1
-  from s09d_actor subject, s09d_actor owner
-  where subject.key = p_actor and owner.key = 'owner'
-    and not exists (
-      select 1 from identity_private.membership_tenure existing
-       where existing.organization_id = pg_temp.s09d_id('ownerOrg')
-         and existing.person_id = subject.person_id);
-  insert into identity_private.organization_actor_grant(
-    organization_id, person_id, capability_code, valid_from, valid_through, active)
-  select pg_temp.s09d_id('ownerOrg'), person_id, p_capability, current_date, current_date + 1, true
-  from s09d_actor where key = p_actor
-  on conflict (organization_id, person_id, capability_code) do update
-    set active = true, valid_from = excluded.valid_from, valid_through = excluded.valid_through;
+  outcome := pg_temp.s09d_grant_via_rpc(p_actor, p_capability, 1);
+  if outcome not in ('OK', 'EXISTS') then
+    raise exception 'owner grant of % to % failed: %', p_capability, p_actor, outcome;
+  end if;
 end;
 $body$;

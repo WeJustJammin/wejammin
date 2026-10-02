@@ -2,6 +2,7 @@ import {
   ApiErrorSchema,
   CmsVersionSchema,
   createRequestId,
+  LocaleFallbackChainMismatchDetailsSchema,
   LocaleVariantHeadersSchema,
   LocaleVariantPathSchema,
   LocaleVariantRequestSchema,
@@ -84,6 +85,15 @@ const safeErrorDetails = (
     for (const key of ['expectedVersion', 'currentVersion'] as const)
       if (CmsVersionSchema.safeParse(value[key]).success)
         details[key] = value[key];
+    // OD-4: the active chain accompanies only the exact mismatch reason.
+    const mismatch = LocaleFallbackChainMismatchDetailsSchema.safeParse({
+      reasonCode: value.reasonCode,
+      activeFallbackChain: value.activeFallbackChain,
+    });
+    if (mismatch.success) {
+      details.reasonCode = mismatch.data.reasonCode;
+      details.activeFallbackChain = [...mismatch.data.activeFallbackChain];
+    }
     return details;
   }
   if (status === 429) {

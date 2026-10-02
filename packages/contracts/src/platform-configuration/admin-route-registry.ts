@@ -14,6 +14,7 @@ export const adminWorkspaceRoutePolicies = [
   activeAdminWorkspaceRoutePolicies[1],
   activeAdminWorkspaceRoutePolicies[2],
   activeAdminWorkspaceRoutePolicies[3],
+  activeAdminWorkspaceRoutePolicies[4],
 ] as const satisfies readonly AdminWorkspaceRoutePolicy[];
 
 const activeOperationIds = new Set(

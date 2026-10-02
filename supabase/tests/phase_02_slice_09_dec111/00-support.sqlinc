@@ -1,0 +1,237 @@
+-- DEC-111 shared helpers (BE01a AUTH-API-16..21, BE05b CFG-05B-06).  Every
+-- RPC call runs inside a plpgsql sub-transaction so an absent or refusing
+-- producer yields a captured error token instead of aborting the suite, and a
+-- refused call rolls back every partial effect it attempted.  Helpers only
+-- ever call the named platform_api RPCs (as the service-role Worker does) and
+-- read private tables; the one exception is m_warp, which time-warps a REAL
+-- row (never inserts one) with the guard triggers disabled for that statement.
+
+create temp table if not exists m_probe(
+  label text primary key, state text, message text, response jsonb
+) on commit drop;
+
+-- Calls platform_api.<fn> with named arguments; request/correlation ids are
+-- generated unless supplied (or suppressed with an '_notrace' key).  Records SQLSTATE/message/response under p_label.
+create or replace function pg_temp.m(p_label text, p_fn text, p_args jsonb)
+returns jsonb language plpgsql as $body$
+declare
+  full_args jsonb := case when p_args ? '_notrace' then p_args - '_notrace'
+    else jsonb_build_object('p_request_id', extensions.gen_random_uuid(),
+      'p_correlation_id', extensions.gen_random_uuid()) || p_args end;
+  parts text[] := '{}';
+  arg record;
+  result jsonb;
+begin
+  for arg in select key, value from jsonb_each(full_args) loop
+    parts := parts || format('%I => %s', arg.key,
+      case when jsonb_typeof(arg.value) = 'null' then 'NULL'
+           else quote_literal(arg.value #>> '{}') end);
+  end loop;
+  begin
+    execute format('select to_jsonb(platform_api.%I(%s))', p_fn, array_to_string(parts, ', '))
+      into result;
+    insert into m_probe values (p_label, '00000', null, result)
+    on conflict (label) do update
+      set state = excluded.state, message = excluded.message, response = excluded.response;
+  exception when others then
+    insert into m_probe values (p_label, sqlstate, sqlerrm, null)
+    on conflict (label) do update
+      set state = excluded.state, message = excluded.message, response = excluded.response;
+    result := null;
+  end;
+  return result;
+end;
+$body$;
+
+-- Single-jsonb RPCs (admin reset): the request travels as p_request.
+create or replace function pg_temp.mj(p_label text, p_fn text, p_request jsonb)
+returns jsonb language plpgsql as $body$
+declare result jsonb;
+begin
+  begin
+    execute format('select platform_api.%I($1)', p_fn) into result using p_request;
+    insert into m_probe values (p_label, '00000', null, result)
+    on conflict (label) do update
+      set state = excluded.state, message = excluded.message, response = excluded.response;
+  exception when others then
+    insert into m_probe values (p_label, sqlstate, sqlerrm, null)
+    on conflict (label) do update
+      set state = excluded.state, message = excluded.message, response = excluded.response;
+    result := null;
+  end;
+  return result;
+end;
+$body$;
+
+-- Contract token of the last call under p_label: 'OK', the raised message, or
+-- 'MISSING' when never run (never satisfies an assertion).
+create or replace function pg_temp.m_out(p_label text) returns text
+language sql stable as $body$
+  select coalesce((select case when state = '00000' then 'OK' else message end
+                   from m_probe where label = p_label), 'MISSING') $body$;
+create or replace function pg_temp.m_resp(p_label text) returns jsonb
+language sql stable as $body$ select response from m_probe where label = p_label $body$;
+
+-- Deterministic fixture humans: auth user, real bootstrap, one active session.
+-- m_alias maps a fixture number onto an existing human (the DEC-108 actors).
+create temp table if not exists m_alias(n integer primary key, uid uuid not null) on commit drop;
+create or replace function pg_temp.m_uid(p_n integer) returns uuid language sql stable as $body$
+  select coalesce((select uid from m_alias where n = p_n),
+                  ('b1110000-0000-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid) $body$;
+create or replace function pg_temp.m_sid(p_n integer, p_k integer default 1) returns uuid
+language sql immutable as $body$
+  select ('c1110000-0000-4000-8000-' || lpad((p_n * 100 + p_k)::text, 12, '0'))::uuid $body$;
+-- Registers the first session of an aliased human (m_user does it for new ones).
+create or replace function pg_temp.m_session(p_n integer, p_k integer default 1) returns void
+language plpgsql as $body$
+begin
+  perform platform_api.auth_session_register(pg_temp.m_uid(p_n), pg_temp.m_sid(p_n, p_k),
+    clock_timestamp(), extensions.gen_random_uuid(), extensions.gen_random_uuid());
+end;
+$body$;
+
+create or replace function pg_temp.m_user(p_n integer) returns void language plpgsql as $body$
+begin
+  insert into auth.users(id, email, email_confirmed_at)
+  values (pg_temp.m_uid(p_n), 'dec111-u' || p_n || '@example.test', clock_timestamp());
+  perform platform_api.auth_bootstrap(pg_temp.m_uid(p_n), decode(repeat('a1', 32), 'hex'),
+    decode(repeat('b2', 32), 'hex'), extensions.gen_random_uuid(), extensions.gen_random_uuid());
+  perform platform_api.auth_session_register(pg_temp.m_uid(p_n), pg_temp.m_sid(p_n),
+    clock_timestamp(), extensions.gen_random_uuid(), extensions.gen_random_uuid());
+end;
+$body$;
+
+create or replace function pg_temp.m_ver(p_n integer) returns text language plpgsql stable as $body$
+declare result text;
+begin
+  execute 'select mfa_version::text from identity.auth_user_bindings where auth_user_id = $1'
+    into result using pg_temp.m_uid(p_n);
+  return result;
+exception when others then
+  return null;
+end;
+$body$;
+create or replace function pg_temp.m_person(p_n integer) returns uuid language sql stable as $body$
+  select person_id from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(p_n) $body$;
+
+-- Enrollment steps as one user, each through the real RPC.
+create or replace function pg_temp.m_begin(p_label text, p_n integer, p_name text, p_ver text default null)
+returns jsonb language sql as $body$
+  select pg_temp.m(p_label, 'auth_mfa_enrollment_begin', jsonb_build_object(
+    'p_auth_user_id', pg_temp.m_uid(p_n), 'p_friendly_name', p_name,
+    'p_expected_version', coalesce(p_ver, pg_temp.m_ver(p_n)))) $body$;
+create or replace function pg_temp.m_finish(
+  p_label text, p_n integer, p_name text, p_ver text, p_provider uuid default extensions.gen_random_uuid())
+returns jsonb language sql as $body$
+  select pg_temp.m(p_label, 'auth_mfa_enrollment_finish', jsonb_build_object(
+    'p_auth_user_id', pg_temp.m_uid(p_n), 'p_provider_factor_id', p_provider,
+    'p_friendly_name', p_name, 'p_expected_version', p_ver, 'p_session_id', pg_temp.m_sid(p_n))) $body$;
+create or replace function pg_temp.m_prepare(p_label text, p_n integer, p_factor uuid, p_ver text)
+returns jsonb language sql as $body$
+  select pg_temp.m(p_label, 'auth_mfa_enrollment_verify_prepare', jsonb_build_object(
+    'p_auth_user_id', pg_temp.m_uid(p_n), 'p_factor_id', p_factor, 'p_expected_version', p_ver)) $body$;
+create or replace function pg_temp.m_settle(
+  p_label text, p_n integer, p_factor uuid, p_ver text, p_new_session uuid default null,
+  p_session uuid default null)
+returns jsonb language sql as $body$
+  select pg_temp.m(p_label, 'auth_mfa_enrollment_verify_settle', jsonb_build_object(
+    'p_auth_user_id', pg_temp.m_uid(p_n), 'p_factor_id', p_factor, 'p_expected_version', p_ver,
+    'p_session_id', coalesce(p_session, pg_temp.m_sid(p_n)),
+    'p_new_session_id', coalesce(p_new_session, p_session, pg_temp.m_sid(p_n)),
+    'p_issued_at', clock_timestamp())) $body$;
+
+-- Full enrollment to a verified factor; returns the application factor id.
+create or replace function pg_temp.m_enroll(p_n integer, p_name text) returns uuid
+language plpgsql as $body$
+declare v text; factor uuid;
+begin
+  perform pg_temp.m_begin('en:b', p_n, p_name);
+  v := pg_temp.m_resp('en:b')->>'version';
+  perform pg_temp.m_finish('en:f', p_n, p_name, v);
+  factor := (pg_temp.m_resp('en:f')->>'factorId')::uuid;
+  v := pg_temp.m_resp('en:f')->>'version';
+  perform pg_temp.m_prepare('en:p', p_n, factor, v);
+  perform pg_temp.m_settle('en:s', p_n, factor, v);
+  return factor;
+end;
+$body$;
+
+-- Starts (but does not verify) an enrollment; returns the pending factor id.
+create or replace function pg_temp.m_pending(p_n integer, p_name text) returns uuid
+language plpgsql as $body$
+declare v text;
+begin
+  perform pg_temp.m_begin('pe:b', p_n, p_name);
+  v := pg_temp.m_resp('pe:b')->>'version';
+  perform pg_temp.m_finish('pe:f', p_n, p_name, v);
+  return (pg_temp.m_resp('pe:f')->>'factorId')::uuid;
+end;
+$body$;
+
+create or replace function pg_temp.m_fstate(p_factor uuid) returns text language plpgsql stable as $body$
+declare result text;
+begin
+  execute 'select state::text from identity.mfa_factor_registry where id = $1' into result using p_factor;
+  return result;
+exception when others then
+  return null;
+end;
+$body$;
+
+-- Time-warp of a REAL row: guard triggers off for the one statement.
+create or replace function pg_temp.m_warp(p_table text, p_set text, p_where text) returns void
+language plpgsql as $body$
+declare qualified text := case when position('.' in p_table) > 0 then p_table else 'identity.' || p_table end;
+begin
+  execute format('alter table %s disable trigger user', qualified);
+  execute format('update %s set %s where %s', qualified, p_set, p_where);
+  execute format('alter table %s enable trigger user', qualified);
+end;
+$body$;
+
+create or replace function pg_temp.m_events(p_n integer, p_action text) returns integer
+language sql stable as $body$
+  select count(*)::integer from identity.security_events
+   where actor_auth_user_id = pg_temp.m_uid(p_n) and action = p_action $body$;
+create or replace function pg_temp.m_outbox(p_type text, p_aggregate uuid default null) returns integer
+language sql stable as $body$
+  select count(*)::integer from platform_private.outbox_events
+   where event_type = p_type and (p_aggregate is null or aggregate_id = p_aggregate) $body$;
+
+create or replace function pg_temp.m_rls(p_table text) returns boolean language sql stable as $body$
+  select coalesce((select c.relrowsecurity and c.relforcerowsecurity from pg_class c
+                   where c.oid = to_regclass('identity.' || p_table)), false) $body$;
+create or replace function pg_temp.m_no_grants(p_table text) returns boolean language sql stable as $body$
+  select to_regclass('identity.' || p_table) is not null
+     and not exists (select 1 from unnest(array['anon', 'authenticated', 'service_role']) r,
+                            unnest(array['select', 'insert', 'update', 'delete', 'truncate', 'references']) p
+                      where has_table_privilege(r, 'identity.' || p_table, p)) $body$;
+create or replace function pg_temp.m_service_only(p_function text) returns boolean language sql stable as $body$
+  select to_regprocedure(p_function) is not null
+     and has_function_privilege('service_role', to_regprocedure(p_function), 'execute')
+     and not has_function_privilege('anon', to_regprocedure(p_function), 'execute')
+     and not has_function_privilege('authenticated', to_regprocedure(p_function), 'execute') $body$;
+create or replace function pg_temp.m_try(p_sql text) returns boolean language plpgsql as $body$
+begin
+  execute p_sql;
+  return true;
+exception when others then
+  return false;
+end;
+$body$;
+
+-- Exception-safe scalar read (null when the relation or column is absent).
+create or replace function pg_temp.m_one(p_sql text) returns text language plpgsql as $body$
+declare result text;
+begin
+  execute p_sql into result;
+  return result;
+exception when others then
+  return null;
+end;
+$body$;
+-- The (single, or oldest) factor of user n: application id and provider id.
+create or replace function pg_temp.m_fid(p_n integer) returns uuid language sql as $body$
+  select pg_temp.m_one(format('select id::text from identity.mfa_factor_registry where auth_user_id = %L order by created_at, id limit 1', pg_temp.m_uid(p_n)))::uuid $body$;
+create or replace function pg_temp.m_pfid(p_n integer) returns uuid language sql as $body$
+  select pg_temp.m_one(format('select provider_factor_id::text from identity.mfa_factor_registry where auth_user_id = %L order by created_at, id limit 1', pg_temp.m_uid(p_n)))::uuid $body$;

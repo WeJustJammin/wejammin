@@ -44,7 +44,7 @@ const ERROR_CODES = new Set([
   'INTERNAL_ERROR',
 ]);
 
-const ERROR_DETAIL_KEYS = new Set(['code', 'message', 'requestId']);
+const ERROR_DETAIL_KEYS = new Set(['code', 'message']);
 
 export const validateError = (value: unknown): void => {
   if (!isRecord(value)) throw new CanonicalStateError('error');
@@ -52,7 +52,6 @@ export const validateError = (value: unknown): void => {
   if (!ERROR_CODES.has(requireString(value, 'code')))
     throw new CanonicalStateError('error code');
   requireString(value, 'message');
-  requireString(value, 'requestId');
 };
 
 export const validateRouteMeta = (value: Record<string, unknown>): void => {

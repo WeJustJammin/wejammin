@@ -95,6 +95,22 @@ authority from browser headers or query parameters.
   consumers; it is not the React Island path above. The barrel and its
   colocated tests still exercise it, and it must not import the Island path.
 
+## Locale configuration controls (BE03a OD-4, FE03)
+
+- `content-schema-registry-locale-draft.ts` / `content-schema-registry-locale-config.ts` —
+  pure editing model (tag list, source/default, intermediate-only fallback
+  groups), client validation through the contracts `refineLocaleConfig`, pointer
+  and control-id mapping, and the review diff. No React, no DOM.
+- `use-locale-config-draft.ts` — the state hook (reveal-on-blur validation,
+  focus requests, live announcements, submit guard).
+- `ContentSchemaRegistryLocale{Tags,Selects,Chains,Review,Fields}.tsx` — the
+  controls. The submitted pair travels as JSON text in the hidden fields
+  `supportedLocales` and `fallbackChains`; the successor form submits `null` for
+  both unless "Change languages and fallback orders" is chosen.
+- `ContentSchemaRegistryLocaleSummaryView.tsx` — read-only protected detail.
+- Server 422 locale messages are fixed BE03a strings; the DOM runtime shows
+  only those (never other server text) and links each to its control by id.
+
 ## Extension rules
 
 Keep browser code free of server secrets and private evidence. Add new commands

@@ -6,7 +6,6 @@ import type { SchemaReviewResource } from '@wejammin/contracts';
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import type { ContentSchemaRegistryDetail } from '../../server/content-schema-registry-contracts';
 import {
-  REQUEST_ID,
   REVIEW_ID,
   REVIEW_PATH,
   TYPE_ID,
@@ -20,6 +19,9 @@ import {
 // ---------------------------------------------------------------------------
 
 /** AsyncState<SchemaReviewResource> for the CMS-03A-13 read (FE03 reviewState). */
+/** The island's non-correlatable support reference; never a request id. */
+export const SUPPORT_REFERENCE = 'SR-0A1B-2C3D-4E5F-6A7B';
+
 export type Dec108ReviewState =
   | { readonly status: 'idle' | 'loading' }
   | {
@@ -34,7 +36,6 @@ export type Dec108ReviewState =
       readonly error: {
         readonly code: string;
         readonly message: string;
-        readonly requestId: string;
       };
       readonly retryable: boolean;
       readonly httpStatus?: number;
@@ -42,7 +43,6 @@ export type Dec108ReviewState =
   | {
       readonly status: 'degraded';
       readonly data: SchemaReviewResource | null;
-      readonly requestId: string;
       readonly lastVerifiedAt: string | null;
     }
   | { readonly status: 'disabled'; readonly reason: string };
@@ -64,7 +64,7 @@ export interface Dec108WorkbenchProps {
   readonly reviewId?: string | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly listUrl: string;
   readonly retryUrl: string;
@@ -111,7 +111,7 @@ export const versionPageProps = (
   reviewId: null,
   cursor: null,
   expectedVersion: '4',
-  requestId: REQUEST_ID,
+  supportReference: SUPPORT_REFERENCE,
   canonicalUrl: '/app/cms-content-modeling',
   listUrl: '/app/cms-content-modeling?limit=25&sort=key&direction=asc',
   retryUrl: VERSION_PATH,

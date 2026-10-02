@@ -11,6 +11,7 @@ import {
   fakeProvider,
   fakeRotation,
   iso,
+  NEW_SESSION_ID,
   ok,
   OTHER_FACTOR_ID,
   pendingRow,
@@ -38,7 +39,7 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
     ...overrides,
   });
 
-  it('validates, settles, then commits the aal2 rotation and returns a fresh proof', async () => {
+  it('validates, then settles factor and rotation in one transaction and returns a fresh proof', async () => {
     const order: string[] = [];
     const persistence = fakePersistence();
     const provider = fakeProvider();
@@ -60,7 +61,8 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
       return ok({
         stepUpAt: iso(0),
         freshUntil: iso(600),
-        commit: rotation.commit,
+        rotation: { sessionId: NEW_SESSION_ID, issuedAt: iso(0) },
+        cookies: [...ROTATED_COOKIES],
       });
     });
     persistence.settleEnrollmentVerify.mockImplementation(async () => {
@@ -68,10 +70,6 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
       return ok(
         snapshotOf([verifiedRow(), pendingRow({ state: 'verified' })], '6'),
       );
-    });
-    rotation.commit.mockImplementation(async () => {
-      order.push('commit');
-      return ok({ cookies: [...ROTATED_COOKIES] });
     });
     const { service } = build(persistence, provider, rotation);
     const result = await service.verifyTotpEnrollment(
@@ -85,7 +83,6 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
       'verify',
       'validate',
       'settle',
-      'commit',
     ]);
     expect(result).toEqual(
       ok({
@@ -187,10 +184,7 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
       const provider = fakeProvider({
         verify: async () => authError(status, 'PROVIDER_AMBIGUOUS', 'unknown'),
       });
-      const { service, persistence, rotation } = build(
-        fakePersistence(),
-        provider,
-      );
+      const { service, persistence } = build(fakePersistence(), provider);
       const result = await service.verifyTotpEnrollment(
         verifyInput(),
         env,
@@ -201,7 +195,6 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
         expect.objectContaining({ factorId: OTHER_FACTOR_ID }),
         expect.anything(),
       );
-      expect(rotation.commit).not.toHaveBeenCalled();
     },
   );
 
@@ -223,7 +216,6 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
     expect(result).toMatchObject({ ok: false, status: 502 });
     expect(persistence.markFactorReconciling).toHaveBeenCalled();
     expect(persistence.settleEnrollmentVerify).not.toHaveBeenCalled();
-    expect(rotation.commit).not.toHaveBeenCalled();
   });
 
   it('answers 500 and marks reconciling when local finalization fails, with no cookie', async () => {
@@ -231,7 +223,7 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
       settleEnrollmentVerify: async () =>
         authError(503, 'DEPENDENCY_UNAVAILABLE', 'down'),
     });
-    const { service, rotation } = build(persistence);
+    const { service } = build(persistence);
     const result = await service.verifyTotpEnrollment(
       verifyInput(),
       env,
@@ -239,26 +231,18 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
     );
     expect(result).toMatchObject({ ok: false, status: 500 });
     expect(persistence.markFactorReconciling).toHaveBeenCalled();
-    expect(rotation.commit).not.toHaveBeenCalled();
   });
 
-  it('returns a rotation commit failure without undoing the verified factor', async () => {
-    const rotation = fakeRotation();
-    rotation.commit.mockResolvedValue(
-      authError(503, 'DEPENDENCY_UNAVAILABLE', 'down'),
-    );
-    const { service, persistence } = build(
-      fakePersistence(),
-      fakeProvider(),
-      rotation,
-    );
-    const result = await service.verifyTotpEnrollment(
-      verifyInput(),
-      env,
+  it('hands the settle transaction the rotation target so rotation is atomic with verification', async () => {
+    const { service, persistence } = build();
+    await service.verifyTotpEnrollment(verifyInput(), env, signal);
+    expect(persistence.settleEnrollmentVerify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        rotation: { sessionId: NEW_SESSION_ID, issuedAt: iso(0) },
+      }),
       signal,
     );
-    expect(result).toMatchObject({ ok: false, status: 503 });
-    expect(persistence.markFactorReconciling).not.toHaveBeenCalled();
   });
 
   it('uses the factor identity from the path, never from the body or session', async () => {

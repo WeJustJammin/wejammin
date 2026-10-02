@@ -10,7 +10,7 @@ import type {
 export interface ContentSchemaRegistryReviewPanelProps {
   readonly state: ContentSchemaRegistryReviewState | null;
   readonly retryUrl: string;
-  readonly requestId: string;
+  readonly supportReference: string;
   /** Where the submitter continues; absent for a review-only reader. */
   readonly candidateUrl?: string | undefined;
   /** List the recorded decision references (review route only). */
@@ -39,7 +39,7 @@ const Retry = ({ href }: { readonly href: string }): React.ReactElement => (
 const Body = ({
   state,
   retryUrl,
-  requestId,
+  supportReference,
   decisionReferences = false,
   children,
 }: Omit<ContentSchemaRegistryReviewPanelProps, 'candidateUrl'> & {
@@ -57,7 +57,7 @@ const Body = ({
         <div role="alert" aria-live="assertive" aria-atomic="true">
           <p>{safeContentSchemaRegistryErrorMessage(state.error.code)}</p>
           <p>
-            Request ID: <code>{state.error.requestId || requestId}</code>
+            Support reference: <code>{supportReference}</code>
           </p>
           {state.retryable ? <Retry href={retryUrl} /> : null}
         </div>
@@ -82,7 +82,7 @@ const Body = ({
             )}
           </p>
           <p>
-            Request ID: <code>{state.requestId || requestId}</code>
+            Support reference: <code>{supportReference}</code>
           </p>
           {state.data === null ? null : (
             <ContentSchemaRegistryReviewFacts

@@ -7,11 +7,10 @@ import type {
   AdminWorkspaceAsyncState,
   AdminWorkspaceRecord,
 } from '../components/platform-configuration/admin-workspace-types';
+import { readWorkerCapabilitySnapshot } from './platform-configuration-capability-snapshot';
 import {
   forwardPlatformConfigurationRequest,
-  parsePlatformConfigurationCapabilities,
   resolvePlatformConfigurationBinding,
-  platformConfigurationResponseCapabilities,
 } from './platform-configuration-platform-api';
 
 export type AdminWorkspaceTab = 'inbox' | 'capabilities' | 'audit';
@@ -227,12 +226,12 @@ export const resolveAdminWorkspace = async (input: {
       },
       capabilities: [],
     };
+  // The Worker's CFG-05B-07 projection is the capability source. Any failure
+  // reads as an empty list, so the grant affordance fails closed.
   const capabilities = [
     ...new Set([
       ...(input.capabilitySnapshot ?? []),
-      ...parsePlatformConfigurationCapabilities(
-        platformConfigurationResponseCapabilities(response),
-      ),
+      ...(await readWorkerCapabilitySnapshot(input.request, binding)),
     ]),
   ];
   const aggregateFreshness = parsed.data.aggregateFreshness;

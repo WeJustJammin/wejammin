@@ -19,14 +19,19 @@ import {
 } from './route-support';
 import type { AdminOperationId } from './types';
 
-/** Admin routes that share admission; CFG-05B-06 has no legacy port name. */
-export type AdminRouteOperationId = AdminOperationId | 'CFG-05B-06';
+/** Admin routes that share admission; 06 and 07 have no legacy port name. */
+export type AdminRouteOperationId =
+  AdminOperationId | 'CFG-05B-06' | 'CFG-05B-07';
 
-const requiredCapability: Readonly<Record<AdminRouteOperationId, string>> = {
+/** `null`: any admitted session may read its own projection (CFG-05B-07). */
+const requiredCapability: Readonly<
+  Record<AdminRouteOperationId, string | null>
+> = {
   'CFG-05B-01': 'admin.inbox.read',
   'CFG-05B-04': 'admin.capability.grant',
   'CFG-05B-05': 'admin.audit.read',
   'CFG-05B-06': 'admin.identity.mfa_reset',
+  'CFG-05B-07': null,
 };
 
 const deadlines: Readonly<Record<AdminRouteOperationId, number>> = {
@@ -34,6 +39,7 @@ const deadlines: Readonly<Record<AdminRouteOperationId, number>> = {
   'CFG-05B-04': 15_000,
   'CFG-05B-05': 8_000,
   'CFG-05B-06': 15_000,
+  'CFG-05B-07': 8_000,
 };
 
 type TimedAdminHandler = (signal: AbortSignal) => Promise<Response>;
@@ -213,8 +219,10 @@ export const admit = async (
   );
   if (!requestContext.ok)
     return { response: responseForAuthError(context, requestContext) };
+  const required = requiredCapability[operationId];
   if (
-    !requestContext.value.capabilities.includes(requiredCapability[operationId])
+    required !== null &&
+    !requestContext.value.capabilities.includes(required)
   )
     return {
       response: responseForAuthError(

@@ -1767,6 +1767,26 @@ export const routeDefinitions = {
       })),
     ],
   },
+  'CFG-05B-07': {
+    responses: identityResponse(
+      '200',
+      'Named admin capabilities of the verified session and acting party',
+      [
+        { status: '401', description: 'Verified session is required' },
+        {
+          status: '403',
+          description: 'Acting context is not allowed or CSRF is forbidden',
+        },
+        {
+          status: '429',
+          description: 'Capability snapshot rate limit exceeded',
+        },
+        { status: '500', description: 'Capability snapshot failed safely' },
+        { status: '503', description: 'Authorization context unavailable' },
+        { status: '504', description: 'Authorization context timed out' },
+      ],
+    ),
+  },
   'CMS-03A-05': {
     responses: contentSchemaRegistryResponses(
       [201],
@@ -2121,12 +2141,14 @@ export const routeDefinitions = {
         },
         {
           status: 409,
-          description: 'Source, version, or idempotency conflicts',
+          description:
+            'Source, version, or idempotency conflicts; LOCALE_VERSION_CONFLICT with reasonCode FALLBACK_CHAIN_MISMATCH and details.activeFallbackChain when fallbackChain differs from the active content type version chain',
         },
         { status: 415, description: 'Request media type is unsupported' },
         {
           status: 422,
-          description: 'Locale fields or fallback fail validation',
+          description:
+            'Locale fields fail validation, or locale is not in the active content type version supportedLocales',
         },
         { status: 429, description: 'Locale authoring rate limit exceeded' },
         { status: 500, description: 'Locale authoring failed safely' },

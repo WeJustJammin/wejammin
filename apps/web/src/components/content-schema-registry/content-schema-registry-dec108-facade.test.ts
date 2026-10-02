@@ -26,14 +26,15 @@ import {
 
 const versionPath = `/api/v1/cms/content-types/${TYPE_ID}/versions/${VERSION_ID}`;
 const reviewPath = `/api/v1/cms/schema-reviews/${REVIEW_ID}`;
+const clone = { supportedLocales: null, fallbackChains: null } as const;
 const transportKeys = ['csrf', 'idempotency-key', 'if-match', 'operationId'];
 
 describe('[DEC-108] CMS-03A-09 successor facade', () => {
-  it('forwards { expectedVersion } only, as POST .../successors, expecting 201', async () => {
+  it('forwards the source version and the locale pair only, as POST .../successors, expecting 201', async () => {
     // BE03a CMS-03A-09: the caller never supplies version, row ids or identities.
     const { response, forwarded, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-09'),
-      payload: { expectedVersion: '4' },
+      payload: { ...clone, expectedVersion: '4' },
       upstream: { status: 201, body: draftDetail().resource },
     });
     expect(response.status).toBe(201);
@@ -41,14 +42,72 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
     expect(new URL(forwarded?.url ?? '').pathname).toBe(
       `${versionPath}/successors`,
     );
-    expect(forwardedBody).toStrictEqual({ expectedVersion: '4' });
+    expect(forwardedBody).toStrictEqual({ ...clone, expectedVersion: '4' });
     expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('forwards a replacement pair verbatim', async () => {
+    const replacement = {
+      expectedVersion: '4',
+      supportedLocales: ['fr', 'en-US'],
+      fallbackChains: { fr: ['en-US'] },
+    };
+    const { response, forwardedBody } = await callFacade({
+      target: versionTarget('CMS-03A-09'),
+      payload: replacement,
+      upstream: { status: 201, body: draftDetail().resource },
+    });
+    expect(response.status).toBe(201);
+    expect(forwardedBody).toStrictEqual(replacement);
+  });
+
+  it('refuses half a pair with the exact BE03a message and no upstream call', async () => {
+    const { response, fetch } = await callFacade({
+      target: versionTarget('CMS-03A-09'),
+      payload: {
+        expectedVersion: '4',
+        supportedLocales: ['en-US'],
+        fallbackChains: null,
+      },
+      upstream: { status: 201, body: draftDetail().resource },
+    });
+    expect(response.status).toBe(422);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        violations: [
+          {
+            pointer: '/fallbackChains',
+            message:
+              'supportedLocales and fallbackChains must be both null or both present',
+          },
+        ],
+      },
+    });
+  });
+
+  it('carries the exact message for an invalid replacement and nothing client-controlled', async () => {
+    const { response } = await callFacade({
+      target: versionTarget('CMS-03A-09'),
+      payload: {
+        expectedVersion: '4',
+        supportedLocales: ['en-US', 'fr'],
+        fallbackChains: { fr: ['secret-locale'] },
+      },
+      upstream: { status: 201, body: draftDetail().resource },
+    });
+    expect(response.status).toBe(422);
+    const text = await response.text();
+    expect(text).toContain('fallback chain locale must be a supported locale');
+    expect(text).toContain('/fallbackChains/fr/0');
+    expect(text).not.toContain('secret-locale');
   });
 
   it('sends Idempotency-Key and the exact strong If-Match as headers, never in the body', async () => {
     const { forwarded, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-09'),
-      payload: { expectedVersion: '4' },
+      payload: { ...clone, expectedVersion: '4' },
       upstream: { status: 201, body: draftDetail().resource },
     });
     expect(forwarded?.headers.get('idempotency-key')).toBe(
@@ -65,7 +124,7 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
     for (const extra of [{ versionNo: '5' }, { stableFieldId: TYPE_ID }]) {
       const { response, fetch } = await callFacade({
         target: versionTarget('CMS-03A-09'),
-        payload: { expectedVersion: '4', ...extra },
+        payload: { ...clone, expectedVersion: '4', ...extra },
         upstream: { status: 201, body: draftDetail().resource },
       });
       expect(response.status).toBe(422);

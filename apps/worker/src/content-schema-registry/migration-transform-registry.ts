@@ -9,6 +9,11 @@
  */
 import { CmsFieldKindSchema } from '@wejammin/contracts';
 
+import {
+  refuseMissingTarget,
+  TARGET_ROW_ERROR,
+  validateTargetValue,
+} from './migration-target-validator';
 import type {
   SourceDocument,
   TargetFieldSpec,
@@ -22,7 +27,7 @@ export const DEFAULT_FILL_LITERAL_KEY = 'default.fill_literal';
 
 export const TRANSFORM_BEHAVIOR = {
   [IDENTITY_REVALIDATE_KEY]:
-    'carry-row-unchanged;require-present-when-target-required;check-scalar-kind',
+    'carry-row-unchanged;validate-target-constraints-per-ia-field-kind;refuse-unsupported-kind-validator-or-missing-constraints',
   [DEFAULT_FILL_LITERAL_KEY]:
     'write-declared-literal-default-when-value-absent-or-null;pass-present-value-unchanged',
 } as const;
@@ -41,7 +46,7 @@ export const FILL_LITERAL_FIELD_KINDS = [
 ] as const;
 
 export const TRANSFORM_ROW_ERROR = {
-  targetViolation: 'TRANSFORM_TARGET_VIOLATION',
+  targetViolation: TARGET_ROW_ERROR.violation,
   defaultUnavailable: 'TRANSFORM_DEFAULT_UNAVAILABLE',
 } as const;
 
@@ -50,22 +55,6 @@ const rowError = (code: string): Error =>
 
 const isAbsent = (value: unknown): boolean =>
   value === undefined || value === null;
-
-const SCALAR_KIND_CHECKS: Readonly<
-  Record<string, (value: unknown) => boolean>
-> = {
-  short_text: (value) => typeof value === 'string',
-  long_text: (value) => typeof value === 'string',
-  rich_text: (value) => typeof value === 'string',
-  date: (value) => typeof value === 'string',
-  datetime: (value) => typeof value === 'string',
-  enum: (value) => typeof value === 'string',
-  boolean: (value) => typeof value === 'boolean',
-  integer: (value) => Number.isSafeInteger(value),
-  decimal: (value) =>
-    typeof value === 'string' ||
-    (typeof value === 'number' && Number.isFinite(value)),
-};
 
 const valueOf = (document: SourceDocument, field: TargetFieldSpec): unknown =>
   Object.hasOwn(document, field.fieldKey)
@@ -76,16 +65,15 @@ const identityRevalidate = (
   document: SourceDocument,
   context: TransformContext,
 ): unknown => {
-  const field = context.targetField;
-  if (field === null) return document;
-  const value = valueOf(document, field);
-  if (isAbsent(value)) {
-    if (field.required) throw rowError(TRANSFORM_ROW_ERROR.targetViolation);
-    return document;
-  }
-  const check = SCALAR_KIND_CHECKS[field.kind];
-  if (check !== undefined && !check(value))
-    throw rowError(TRANSFORM_ROW_ERROR.targetViolation);
+  const { targetFields, retiredFields } = context;
+  // With neither a target field to prove nor a retired field to carry there
+  // is nothing the page lets the row be proven against; a clean seal would be
+  // false evidence, so it is refused as a row error. A retire-only page has
+  // no constraint to violate: the row (retired values included) is carried.
+  if (targetFields.length === 0 && retiredFields.length === 0)
+    return refuseMissingTarget();
+  for (const field of targetFields)
+    validateTargetValue(field, valueOf(document, field));
   return document;
 };
 
@@ -93,22 +81,26 @@ const defaultFillLiteral = (
   document: SourceDocument,
   context: TransformContext,
 ): unknown => {
-  const field = context.targetField;
-  if (
-    field === null ||
-    field.defaultMode !== 'literal' ||
-    isAbsent(field.defaultValue)
-  )
+  const { targetFields, retiredFields } = context;
+  if (targetFields.length === 0 && retiredFields.length === 0)
     throw rowError(TRANSFORM_ROW_ERROR.defaultUnavailable);
-  if (!isAbsent(valueOf(document, field))) return document;
-  return { ...document, [field.fieldKey]: field.defaultValue };
+  const filled: Record<string, unknown> = {};
+  for (const field of targetFields) {
+    if (field.defaultMode !== 'literal' || isAbsent(field.defaultValue))
+      throw rowError(TRANSFORM_ROW_ERROR.defaultUnavailable);
+    if (isAbsent(valueOf(document, field)))
+      filled[field.fieldKey] = field.defaultValue;
+  }
+  return Object.keys(filled).length === 0
+    ? document
+    : { ...document, ...filled };
 };
 
 export const DEFAULT_TRANSFORM_REGISTRY: TransformRegistry = [
   {
     key: IDENTITY_REVALIDATE_KEY,
     version: 1,
-    digest: 'b3482ec3e2ada8948bb876d2f37edef3883100a577fc474fec497b40f00ba103',
+    digest: '9088ab84f3c3ec40733e76e1e5a8320da14388e5a1be9272b5259140dc1d7578',
     sourceConstraints: {},
     targetConstraints: {},
     acceptedFieldKinds: IA_FIELD_KINDS,

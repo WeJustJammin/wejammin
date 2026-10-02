@@ -9,6 +9,8 @@ const FORM_JSON_FIELDS = new Set([
   'defaultValue',
   'editorConfig',
   'approvalIds',
+  'supportedLocales',
+  'fallbackChains',
 ]);
 const FORM_BOOLEAN_FIELDS = new Set(['required', 'ordered', 'confirmed']);
 const FORM_NUMBER_FIELDS = new Set(['min', 'max']);
@@ -34,6 +36,7 @@ const FORM_TRANSPORT_FIELDS = new Set([
   'stepUpToken',
   'confirmation',
   'confirmed',
+  'localeChoice',
   'contentTypeId',
   'versionId',
   'reviewId',

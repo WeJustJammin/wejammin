@@ -102,6 +102,13 @@ select ok((select r->>'state' = 'approved' and (r->>'distinctApprovalCount')::in
     and (r->>'recordedDecisionCount')::int = 1
     from (select pg_temp.s09d_get_review('a:get', 'a') r) s),
   'the review projection counts one distinct approving human');
+-- An approved candidate is frozen: the edit commands accept only a draft or a
+-- candidate under review (the latter is drift that invalidates its open review).
+select pg_temp.s09d_add_field_only('a');
+select ok(pg_temp.s09d_outcome('a:field') = 'CONFLICT'
+  and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')) = 'approved'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('a:review')) = 'approved',
+  'an approved candidate cannot be edited and its approval is untouched');
 select pg_temp.s09d_decide('a', 'rev1', 'approve', '{}'::jsonb, 'a:again');
 select is(pg_temp.s09d_outcome('a:again'), 'CONFLICT', 'a decided review accepts no further decision from the same human (409)');
 -- The submitter can never be recorded as a reviewer, even by a direct write
@@ -224,10 +231,8 @@ select pg_temp.s09d_decide('u', 'rev1', 'approve');
 select pg_temp.s09d_decide('u', 'rev2', 'approve');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('u:review')), 'approved',
   'fixture: a protected review with a specialist holder is approved');
-update identity_private.organization_actor_grant set active = false
- where organization_id = pg_temp.s09d_id('ownerOrg')
-   and person_id = pg_temp.s09d_actor_id('rev1', 'person')::uuid
-   and capability_code = 'cms.reviewer.policy';
+select pg_temp.s09d_revoke_via_rpc('rev1', 'cms.reviewer.policy') as revoked_outcome \gset
+select is(:'revoked_outcome'::text, 'OK', 'the owner revokes the specialist capability through CMS-03A-17');
 select ok(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('u:review')) = 'invalidated'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('u:version')) = 'draft',
   'a counted approver losing the specialist capability invalidates the approved review and returns the candidate to draft');

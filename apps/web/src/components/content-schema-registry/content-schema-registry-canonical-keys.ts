@@ -17,7 +17,7 @@ const CONTENT_SCHEMA_REGISTRY_PROJECTION_KEY_LIST = [
   'actingContextLabel',
   'stepUpState',
   'stepUpFreshUntil',
-  'requestId',
+  'supportReference',
   'initialList',
   'initialDetail',
   'initialReview',

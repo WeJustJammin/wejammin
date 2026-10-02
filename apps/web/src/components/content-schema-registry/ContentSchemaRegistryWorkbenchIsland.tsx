@@ -61,7 +61,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
         failure={initialFailure}
         access="disabled"
         variant={projectionState.variant}
-        requestId={props.requestId}
+        supportReference={props.supportReference}
         retryUrl={props.canonicalRefetchUrl}
       />
     );
@@ -85,7 +85,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
       versionId={props.versionId}
       cursor={props.cursor}
       expectedVersion={props.expectedVersion}
-      requestId={props.requestId}
+      supportReference={props.supportReference}
       canonicalUrl={props.canonicalUrl}
       listUrl={props.listUrl}
       retryUrl={props.retryUrl}

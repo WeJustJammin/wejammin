@@ -98,6 +98,7 @@ const effectiveResponse = {
   definitionVersionId: otherId,
   key: 'profile.visibility',
   valueKind: 'boolean',
+  ownerCapability: 'settings.profile.write',
   typedValue: true,
   sourceScope: 'party',
   sourceSubjectId: definitionId,

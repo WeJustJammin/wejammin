@@ -117,6 +117,7 @@ describe('Phase 2 Slice 07 configuration contracts', () => {
       definitionVersionId: otherId,
       key: 'profile.visibility',
       valueKind: 'boolean',
+      ownerCapability: 'settings.profile.write',
       typedValue: true,
       sourceScope: 'party',
       sourceSubjectId: id,
@@ -132,6 +133,18 @@ describe('Phase 2 Slice 07 configuration contracts', () => {
     expect(Cfg05a02EffectiveValueResponseSchema.parse(response)).toEqual(
       response,
     );
+    const withoutOwner: Partial<typeof response> = { ...response };
+    delete withoutOwner.ownerCapability;
+    expect(
+      Cfg05a02EffectiveValueResponseSchema.safeParse(withoutOwner).success,
+    ).toBe(false);
+    for (const invalid of ['', 'Settings.Edit', 'settings edit', 'x'])
+      expect(
+        Cfg05a02EffectiveValueResponseSchema.safeParse({
+          ...response,
+          ownerCapability: invalid,
+        }).success,
+      ).toBe(false);
   });
 
   it('locks proposal, review, schedule, activation and rollback shapes', () => {

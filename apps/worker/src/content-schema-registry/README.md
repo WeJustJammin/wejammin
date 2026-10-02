@@ -25,7 +25,10 @@ Database RPCs remain the transaction and audit authority.
   `validation.ts` own shared parsing and validation.
 - `migration-worker-results.ts` owns result and rollback mapping.
 - `migration-source-read.ts` validates the `cms_read_schema_migration_source_rows`
-  page (at most 128 rows); `migration-batch-read.ts` reads and scans one batch;
+  page (at most 128 rows; `targetFields[]` of changed fields with compiled
+  constraints, `retiredFields[]` of removed keys carried unvalidated; a page
+  that is not last must be full); `migration-batch-read.ts` reads and scans one
+  batch with the one page limit the batch RPC also sends;
   `migration-scan-executor.ts` turns rows into per-row evidence;
   `migration-transform-registry.ts` is the code-owned registry
   (`identity.revalidate` v1, `default.fill_literal` v1) with

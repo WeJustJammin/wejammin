@@ -6,6 +6,11 @@ import type {
   ContentSchemaRegistryUiError,
 } from './content-schema-registry-types';
 import { JsonField, TextField } from './ContentSchemaRegistryCommandForm';
+import ContentSchemaRegistryLocaleFields from './ContentSchemaRegistryLocaleFields';
+import { emptyLocaleDraft } from './content-schema-registry-locale-config';
+import { useLocaleConfigDraft } from './use-locale-config-draft';
+
+const FORM_ID = 'content-schema-registry-create-form';
 
 export interface ContentSchemaRegistryCreateFormProps {
   readonly action: string;
@@ -23,13 +28,17 @@ export default function ContentSchemaRegistryCreateForm({
   state = 'idle',
   error,
 }: ContentSchemaRegistryCreateFormProps): React.ReactElement {
+  const locale = useLocaleConfigDraft(FORM_ID, emptyLocaleDraft());
   return (
     <ContentSchemaRegistryCommandForm
       action={action}
       csrfToken={csrfToken}
       idempotencyKey={idempotencyKey}
       operationId="CMS-03A-01"
-      formId="content-schema-registry-create-form"
+      formId={FORM_ID}
+      onSubmit={(event) => {
+        if (!locale.guardSubmit()) event.preventDefault();
+      }}
       state={state}
       {...(error === undefined ? {} : { error })}
       consequence="A new immutable content type draft and its initial version will be created."
@@ -55,17 +64,11 @@ export default function ContentSchemaRegistryCreateForm({
         maxLength={128}
         help="The server checks this capability against the selected acting context."
       />
-      <TextField
-        id="content-schema-registry-source-locale"
-        name="sourceLocale"
-        label="Source locale"
-        maxLength={32}
-      />
-      <TextField
-        id="content-schema-registry-default-locale"
-        name="defaultLocale"
-        label="Default locale"
-        maxLength={32}
+      <ContentSchemaRegistryLocaleFields
+        controller={locale}
+        mode="create"
+        source={null}
+        pending={state === 'pending'}
       />
       <TextField
         id="content-schema-registry-workflow-key"

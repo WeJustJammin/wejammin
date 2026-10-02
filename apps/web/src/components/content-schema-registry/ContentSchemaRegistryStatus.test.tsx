@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
 
-const requestId = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
+const supportReference = 'SR-0A1B-2C3D-4E5F-6A7B';
 
 const mount = (
   state: React.ComponentProps<typeof ContentSchemaRegistryStatus>['state'],
@@ -20,7 +20,7 @@ const mount = (
       <ContentSchemaRegistryStatus
         state={state}
         regionLabel="Registry list"
-        requestId={requestId}
+        supportReference={supportReference}
         canonicalUrl="/app/cms-content-modeling"
       />,
     ),
@@ -42,7 +42,6 @@ describe('ContentSchemaRegistryStatus recovery controls', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Too many registry requests.',
-          requestId,
         },
         retryable: true,
         httpStatus: 429,

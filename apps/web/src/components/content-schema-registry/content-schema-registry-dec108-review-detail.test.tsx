@@ -18,6 +18,7 @@ import {
   commandForm,
   definitionValue,
   fieldRecord,
+  SUPPORT_REFERENCE,
   renderDocument,
   requireForm,
   requireRegion,
@@ -83,17 +84,17 @@ describe('[DEC-108] reviewState AsyncState (CMS-03A-13)', () => {
     expect(commandForm(doc, 'CMS-03A-12')).toBeNull();
   });
 
-  it('error: shows the request id and offers retry only for a retryable failure', () => {
+  it('error: shows the support reference, never a request id, and offers retry only for a retryable failure', () => {
     const error = {
       code: 'RATE_LIMITED',
       message: 'provider detail must never be shown',
-      requestId: REQUEST_ID,
     };
     const retryable = renderDocument(
       reviewState({ status: 'error', error, retryable: true, httpStatus: 429 }),
     );
     const region = requireRegion(retryable, /schema review/iu);
-    expect(region.textContent).toContain(REQUEST_ID);
+    expect(region.textContent).toContain(SUPPORT_REFERENCE);
+    expect(region.textContent).not.toContain(REQUEST_ID);
     expect(region.textContent).not.toContain('provider detail');
     expect(region.querySelector('[data-cms-retry-control]')).not.toBeNull();
 
@@ -117,7 +118,6 @@ describe('[DEC-108] reviewState AsyncState (CMS-03A-13)', () => {
       reviewState({
         status: 'degraded',
         data: reviewResource(),
-        requestId: REQUEST_ID,
         lastVerifiedAt: '2026-10-02T11:59:00.000Z',
       }),
     );

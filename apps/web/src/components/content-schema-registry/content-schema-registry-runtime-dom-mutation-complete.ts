@@ -58,7 +58,13 @@ export const completeContentSchemaRegistryMutation = (
     return;
   }
   if (result.outcome === 'validation') {
-    focusWithoutScroll(renderValidationSummary(form, result.errorDetails));
+    focusWithoutScroll(
+      renderValidationSummary(
+        form,
+        result.errorDetails,
+        result.localeIssues ?? [],
+      ),
+    );
     return;
   }
   const status = announce(

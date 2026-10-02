@@ -1,0 +1,133 @@
+-- DEC-119/DEC-120 owner CMS capability grant helpers (BE03a CMS-03A-15..18).
+-- Requires ../phase_02_slice_09_dec108/00-helpers.sqlinc and 01-actors.sqlinc.
+-- Every call goes through the named platform_api RPC as the service-role Worker
+-- does; no grant, event or projection row is ever written here by hand except
+-- the time-warp of a REAL aggregate and its projection (s09g_warp).
+
+create or replace function pg_temp.s09g_today() returns date language sql stable as $body$
+  select (pg_catalog.now() at time zone 'UTC')::date $body$;
+create or replace function pg_temp.s09g_day(p_offset integer) returns text language sql stable as $body$
+  select to_char(pg_temp.s09g_today() + p_offset, 'YYYY-MM-DD') $body$;
+create or replace function pg_temp.s09g_key(p_label text) returns text language sql as $body$
+  select 's09g-' || p_label || '-' || substr(extensions.gen_random_uuid()::text, 1, 8) $body$;
+
+-- Confirmed, unended membership of the owner organization (provisioning only,
+-- never a capability): the subject-eligibility precondition of CMS-03A-15.
+create or replace function pg_temp.s09g_member(p_actor text) returns void language plpgsql as $body$
+begin
+  insert into identity_private.membership_tenure(
+    organization_id, person_id, state, provenance, governance_mode,
+    starts_on, accepted_at, actor_id, version)
+  select pg_temp.s09d_id('ownerOrg'), subject.person_id, 'confirmed', 'invitation',
+         'ungoverned', current_date, clock_timestamp(), owner.person_id, 1
+  from s09d_actor subject, s09d_actor owner
+  where subject.key = p_actor and owner.key = 'owner'
+    and not exists (
+      select 1 from identity_private.membership_tenure existing
+       where existing.organization_id = pg_temp.s09d_id('ownerOrg')
+         and existing.person_id = subject.person_id and existing.state = 'confirmed');
+end;
+$body$;
+
+-- CMS-03A-15 as `p_actor` for the subject actor key (or a raw person uuid).
+create or replace function pg_temp.s09g_grant(
+  p_label text, p_actor text, p_subject text, p_capability text, p_through text,
+  p_extra jsonb default '{}'::jsonb, p_key text default null, p_binding boolean default true,
+  p_override jsonb default '{}'::jsonb
+) returns jsonb language sql as $body$
+  select pg_temp.s09d_rpc(p_label, 'platform_api.cms_grant_capability', p_actor,
+    jsonb_build_object(
+      'subjectPersonId', coalesce((select person_id::text from s09d_actor where key = p_subject), p_subject),
+      'capability', p_capability, 'validThrough', p_through,
+      'idempotencyKey', coalesce(p_key, pg_temp.s09g_key(p_label))) || p_extra,
+    p_binding, p_override)
+$body$;
+
+-- CMS-03A-16 renewal.
+create or replace function pg_temp.s09g_renew(
+  p_label text, p_actor text, p_grant_id uuid, p_expected text, p_through text,
+  p_extra jsonb default '{}'::jsonb, p_key text default null, p_binding boolean default true
+) returns jsonb language sql as $body$
+  select pg_temp.s09d_rpc(p_label, 'platform_api.cms_renew_capability_grant', p_actor,
+    jsonb_build_object('grantId', p_grant_id, 'expectedVersion', p_expected,
+      'validThrough', p_through, 'idempotencyKey', coalesce(p_key, pg_temp.s09g_key(p_label))) || p_extra,
+    p_binding)
+$body$;
+
+-- CMS-03A-17 revocation.
+create or replace function pg_temp.s09g_revoke(
+  p_label text, p_actor text, p_grant_id uuid, p_expected text,
+  p_extra jsonb default '{}'::jsonb, p_key text default null, p_binding boolean default true
+) returns jsonb language sql as $body$
+  select pg_temp.s09d_rpc(p_label, 'platform_api.cms_revoke_capability_grant', p_actor,
+    jsonb_build_object('grantId', p_grant_id, 'expectedVersion', p_expected,
+      'idempotencyKey', coalesce(p_key, pg_temp.s09g_key(p_label))) || p_extra,
+    p_binding)
+$body$;
+
+-- CMS-03A-18 protected list (read: a binding is required, recent MFA is not).
+create or replace function pg_temp.s09g_list(
+  p_label text, p_actor text, p_query jsonb default '{}'::jsonb, p_binding boolean default true
+) returns jsonb language sql as $body$
+  select pg_temp.s09d_rpc(p_label, 'platform_api.cms_list_capability_grants', p_actor,
+    p_query, p_binding)
+$body$;
+
+create or replace function pg_temp.s09g_grant_id(p_resource jsonb) returns uuid language sql immutable as $body$
+  select (p_resource->>'id')::uuid $body$;
+
+-- The effective authority every existing CMS capability predicate reads.
+create or replace function pg_temp.s09g_holds(p_actor text, p_capability text) returns boolean
+language sql as $body$
+  select platform_private.cms_person_holds_capability(
+    pg_temp.s09d_id('ownerOrg'), (select person_id from s09d_actor where key = p_actor), p_capability)
+$body$;
+
+-- Projection row of one aggregate (null when absent).
+create or replace function pg_temp.s09g_projection(p_actor text, p_capability text) returns text
+language sql as $body$
+  select format('%s|%s|%s|%s', actor_grant.active::text, actor_grant.valid_from, actor_grant.valid_through,
+                actor_grant.capability_code)
+  from identity_private.organization_actor_grant actor_grant
+  where actor_grant.organization_id = pg_temp.s09d_id('ownerOrg')
+    and actor_grant.person_id = (select person_id from s09d_actor where key = p_actor)
+    and actor_grant.capability_code = p_capability
+$body$;
+
+-- Counts every effect table a rejected or read-only call must leave unchanged.
+create or replace function pg_temp.s09g_fingerprint() returns text language plpgsql as $body$
+begin
+  return md5(
+    coalesce(pg_temp.s09d_scalar('select count(*)::text from audit_private.audit_events'), 'x') || '|' ||
+    coalesce(pg_temp.s09d_scalar('select count(*)::text from platform_private.outbox_events'), 'x') || '|' ||
+    coalesce(pg_temp.s09d_scalar('select count(*)::text from platform_private.idempotency_records'), 'x') || '|' ||
+    coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by id), '''')) from platform_private.cms_capability_grants t'), 'x') || '|' ||
+    coalesce(pg_temp.s09d_scalar('select count(*)::text from platform_private.cms_capability_grant_events'), 'x') || '|' ||
+    coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by organization_id, person_id, capability_code), '''')) from identity_private.organization_actor_grant t'), 'x'));
+end;
+$body$;
+
+-- Time travel of a REAL aggregate and its projection by whole days, so lapse
+-- and "N days later" are observable without sleeping.  Disables only the user
+-- triggers of the two tables inside one sub-transaction.
+create or replace function pg_temp.s09g_warp(p_actor text, p_capability text, p_from integer, p_through integer)
+returns boolean language plpgsql as $body$
+declare person uuid := (select person_id from s09d_actor where key = p_actor);
+begin
+  begin
+    alter table platform_private.cms_capability_grants disable trigger user;
+    alter table identity_private.organization_actor_grant disable trigger user;
+    update platform_private.cms_capability_grants
+       set valid_from = pg_temp.s09g_today() + p_from, valid_through = pg_temp.s09g_today() + p_through
+     where subject_person_ref = person and capability_code = p_capability;
+    update identity_private.organization_actor_grant
+       set valid_from = pg_temp.s09g_today() + p_from, valid_through = pg_temp.s09g_today() + p_through
+     where person_id = person and capability_code = p_capability;
+    alter table platform_private.cms_capability_grants enable trigger user;
+    alter table identity_private.organization_actor_grant enable trigger user;
+  exception when others then
+    return false;
+  end;
+  return true;
+end;
+$body$;

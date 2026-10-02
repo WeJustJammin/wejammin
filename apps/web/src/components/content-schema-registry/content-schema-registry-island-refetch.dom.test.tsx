@@ -145,10 +145,10 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
   it('clears protected controls before a stale response lands, then applies the new context', async () => {
     let call = 0;
     const bodies = [
-      okBody({ requestId: 'old' }),
+      okBody({ supportReference: 'old' }),
       okBody({
         actingContextLabel: 'Other Collective',
-        requestId: 'new',
+        supportReference: 'new',
       }),
     ];
     vi.stubGlobal(
@@ -201,7 +201,9 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
       ),
     ).toBeNull();
     await act(async () => {
-      release(new Response(okBody({ requestId: 'late' }), { status: 200 }));
+      release(
+        new Response(okBody({ supportReference: 'late' }), { status: 200 }),
+      );
       await Promise.resolve();
     });
     expect(
@@ -221,7 +223,7 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
               state: 'ready',
               variant: 'ownerFull',
               access: 'full',
-              requestId: 'omitted',
+              supportReference: 'omitted',
               initialList: { status: 'empty', reason: 'no-records' },
               initialDetail: {
                 status: 'success',
@@ -300,7 +302,6 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
           error: {
             code: 'RATE_LIMITED',
             message: 'Too many requests.',
-            requestId: 'a',
           },
           retryable: true,
           retryAfterSeconds: 3,
@@ -312,7 +313,6 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
           error: {
             code: 'RATE_LIMITED',
             message: 'Too many requests.',
-            requestId: 'b',
           },
           retryable: true,
           retryAfterSeconds: 3,

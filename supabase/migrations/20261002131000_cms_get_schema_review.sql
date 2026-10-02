@@ -17,6 +17,7 @@ declare
   scope text;
   review_id uuid;
 begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
   actor_id := platform_private.cms_actor(p_request);
   acting_party_id := platform_private.cms_acting_party(p_request, actor_id);
   if not platform_private.cms_exact_keys(

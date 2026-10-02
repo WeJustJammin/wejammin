@@ -1,3 +1,4 @@
+export * from './locale-config.ts';
 export * from './models.ts';
 export * from './openapi.ts';
 export * from './operational-release-evidence-hosted-artifact-attestation.ts';

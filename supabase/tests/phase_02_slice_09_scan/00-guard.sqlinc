@@ -1,0 +1,38 @@
+-- In-test direct-write guard.  A BEFORE trigger on every producer-owned table
+-- records the TOP-LEVEL statement that caused the write: a named RPC called by
+-- the suite surfaces as its `select ...` call, a hand-written fixture insert or
+-- update as `insert ...`/`update ...`.  Assertions count the second kind (must
+-- be zero) and the first kind (positive precondition, so zero is never vacuous).
+create temp table if not exists s09x_writes(
+  table_name text, op text, top_level text, at timestamptz default clock_timestamp()
+) on commit drop;
+
+create or replace function pg_temp.s09x_record() returns trigger language plpgsql as $body$
+begin
+  insert into s09x_writes(table_name, op, top_level)
+  values (tg_table_name, tg_op, left(regexp_replace(current_query(), '\s+', ' ', 'g'), 80));
+  return coalesce(new, old);
+end;
+$body$;
+
+create or replace function pg_temp.s09x_arm() returns void language plpgsql as $body$
+declare t text;
+begin
+  foreach t in array array['cms_schema_reviews', 'cms_schema_review_decisions',
+    'cms_schema_review_assignments', 'cms_schema_dry_run_reports',
+    'cms_schema_dry_run_row_evidence', 'cms_schema_migration_plans',
+    'cms_schema_migration_target_rows'] loop
+    execute format('create trigger s09x_record_%1$s before insert or update or delete on platform_private.%1$s
+      for each row execute function pg_temp.s09x_record()', t);
+  end loop;
+end;
+$body$;
+
+-- Writes made by a statement of the suite itself rather than by a named RPC.
+create or replace function pg_temp.s09x_direct(p_table text default null) returns bigint language sql stable as $body$
+  select count(*) from s09x_writes
+  where (p_table is null or table_name = p_table)
+    and top_level ~* '^\s*(insert|update|delete|with|alter)\y' $body$;
+create or replace function pg_temp.s09x_via_rpc(p_table text) returns bigint language sql stable as $body$
+  select count(*) from s09x_writes
+  where table_name = p_table and top_level !~* '^\s*(insert|update|delete|with|alter)\y' $body$;

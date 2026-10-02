@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { authError } from './boundary';
 import {
@@ -11,6 +11,7 @@ import {
   fakeProvider,
   fakeRotation,
   iso,
+  NEW_SESSION_ID,
   ok,
   PROVIDER_CHALLENGE_ID,
   PROVIDER_FACTOR_ID,
@@ -29,7 +30,7 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
     code: '123456',
   });
 
-  it('verifies, validates, consumes, then commits cookies and returns no token', async () => {
+  it('verifies, validates, then consumes and rotates in one settle and returns no token', async () => {
     const order: string[] = [];
     const persistence = fakePersistence();
     const provider = fakeProvider();
@@ -52,16 +53,13 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
       return ok({
         stepUpAt: iso(0),
         freshUntil: iso(600),
-        commit: rotation.commit,
+        rotation: { sessionId: NEW_SESSION_ID, issuedAt: iso(0) },
+        cookies: [...ROTATED_COOKIES],
       });
     });
     persistence.settleChallengeVerify.mockImplementation(async () => {
       order.push('settle');
       return ok(null);
-    });
-    rotation.commit.mockImplementation(async () => {
-      order.push('commit');
-      return ok({ cookies: [...ROTATED_COOKIES] });
     });
     const { service } = buildService(persistence, provider, rotation);
     const result = await service.verifyStepUpChallenge(
@@ -69,13 +67,7 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
       env,
       signal,
     );
-    expect(order).toEqual([
-      'prepare',
-      'verify',
-      'validate',
-      'settle',
-      'commit',
-    ]);
+    expect(order).toEqual(['prepare', 'verify', 'validate', 'settle']);
     expect(result).toEqual(
       ok({
         resource: {
@@ -158,10 +150,7 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
     const provider = fakeProvider({
       verify: async () => authError(422, 'VALIDATION_FAILED', 'wrong'),
     });
-    const { service, persistence, rotation } = buildService(
-      fakePersistence(),
-      provider,
-    );
+    const { service, persistence } = buildService(fakePersistence(), provider);
     const result = await service.verifyStepUpChallenge(
       verifyInput(),
       env,
@@ -176,7 +165,6 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
       expect.anything(),
     );
     expect(persistence.settleChallengeVerify).not.toHaveBeenCalled();
-    expect(rotation.commit).not.toHaveBeenCalled();
   });
 
   it('returns a provider rate refusal without consuming or failing the challenge', async () => {
@@ -209,7 +197,7 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
       const provider = fakeProvider({
         verify: async () => authError(status, 'PROVIDER_AMBIGUOUS', 'unknown'),
       });
-      const { service, persistence, rotation } = buildService(
+      const { service, persistence } = buildService(
         fakePersistence(),
         provider,
       );
@@ -223,7 +211,6 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
         expect.objectContaining({ outcome: 'ambiguous' }),
         expect.anything(),
       );
-      expect(rotation.commit).not.toHaveBeenCalled();
     },
   );
 
@@ -250,34 +237,115 @@ describe('step-up verification and rotation (AUTH-API-21)', () => {
     expect(persistence.settleChallengeVerify).not.toHaveBeenCalled();
   });
 
-  it('does not commit cookies when consuming the challenge fails', async () => {
+  it('returns no cookies when the combined settle-and-rotate transaction fails', async () => {
     const persistence = fakePersistence({
       settleChallengeVerify: async () =>
         authError(503, 'DEPENDENCY_UNAVAILABLE', 'down'),
     });
-    const { service, rotation } = buildService(persistence);
+    const { service } = buildService(persistence);
     const result = await service.verifyStepUpChallenge(
       verifyInput(),
       env,
       signal,
     );
     expect(result).toMatchObject({ ok: false, status: 503 });
-    expect(rotation.commit).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toContain('wj_access');
   });
 
-  it('returns a cookie commit failure', async () => {
-    const rotation = fakeRotation();
-    rotation.commit.mockResolvedValue(
-      authError(503, 'DEPENDENCY_UNAVAILABLE', 'down'),
+  it('hands the settle transaction the rotation target so rotation is atomic with consumption', async () => {
+    const { service, persistence } = buildService();
+    await service.verifyStepUpChallenge(verifyInput(), env, signal);
+    expect(persistence.settleChallengeVerify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        challengeId: CHALLENGE_ID,
+        rotation: { sessionId: NEW_SESSION_ID, issuedAt: iso(0) },
+      }),
+      signal,
     );
-    const { service } = buildService(
-      fakePersistence(),
-      fakeProvider(),
-      rotation,
-    );
-    expect(
-      await service.verifyStepUpChallenge(verifyInput(), env, signal),
-    ).toMatchObject({ ok: false, status: 503 });
+  });
+
+  describe('failure accounting fails closed', () => {
+    const accountingDown = () =>
+      fakePersistence({
+        recordChallengeFailure: async () =>
+          authError(503, 'DEPENDENCY_UNAVAILABLE', 'accounting down'),
+      });
+    const accountingRefused = () =>
+      fakePersistence({
+        recordChallengeFailure: vi.fn(async () => ({
+          ok: false as const,
+          status: 503,
+          code: 'DEPENDENCY_UNAVAILABLE',
+          message: 'accounting down',
+        })) as never,
+      });
+
+    it('returns the persistence refusal, not the provider 422, when an incorrect attempt cannot be recorded', async () => {
+      const provider = fakeProvider({
+        verify: async () => authError(422, 'VALIDATION_FAILED', 'wrong'),
+      });
+      const { service } = buildService(accountingDown(), provider);
+      const result = await service.verifyStepUpChallenge(
+        verifyInput(),
+        env,
+        signal,
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 503,
+        code: 'DEPENDENCY_UNAVAILABLE',
+      });
+    });
+
+    it('returns the persistence refusal, not the provider result, when an ambiguous attempt cannot be recorded', async () => {
+      const provider = fakeProvider({
+        verify: async () => authError(504, 'PROVIDER_AMBIGUOUS', 'unknown'),
+      });
+      const { service } = buildService(accountingDown(), provider);
+      const result = await service.verifyStepUpChallenge(
+        verifyInput(),
+        env,
+        signal,
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 503,
+        code: 'DEPENDENCY_UNAVAILABLE',
+      });
+    });
+
+    it('returns the persistence refusal when a rotation-validation failure cannot be recorded', async () => {
+      const rotation = fakeRotation();
+      rotation.validate.mockResolvedValue(
+        authError(502, 'PROVIDER_INVALID_RESPONSE', 'bad token'),
+      );
+      const { service } = buildService(
+        accountingDown(),
+        fakeProvider(),
+        rotation,
+      );
+      const result = await service.verifyStepUpChallenge(
+        verifyInput(),
+        env,
+        signal,
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 503,
+        code: 'DEPENDENCY_UNAVAILABLE',
+      });
+    });
+
+    it('never settles or rotates when failure accounting is unavailable', async () => {
+      const persistence = accountingRefused();
+      const provider = fakeProvider({
+        verify: async () => authError(422, 'VALIDATION_FAILED', 'wrong'),
+      });
+      const { service } = buildService(persistence, provider);
+      await service.verifyStepUpChallenge(verifyInput(), env, signal);
+      expect(persistence.settleChallengeVerify).not.toHaveBeenCalled();
+    });
   });
 
   it('refuses an ineligible account before any state change', async () => {

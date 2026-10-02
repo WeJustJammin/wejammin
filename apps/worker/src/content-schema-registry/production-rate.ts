@@ -30,10 +30,12 @@ const stricterDecision = (
 
 /**
  * Enforces the per-user bucket and, for a human with an acting party, the
- * per-party bucket (BE03a rate rows). The party bucket is keyed by party only:
- * no user id, a distinct digest, and the route's party limit. A user refused
- * by their own bucket is not charged to the party. If the party bucket cannot
- * be evaluated the request fails closed.
+ * per-party bucket (BE03a rate rows), each with an explicit rate scope. The
+ * user bucket is keyed by operation plus the server-derived auth user only
+ * (scope `user`: no acting party, no client address). The party bucket is keyed
+ * by operation plus the server-derived party only (scope `party`: no user, no
+ * client address). A user refused by their own bucket is not charged to the
+ * party. If the party bucket cannot be evaluated the request fails closed.
  */
 const authRateLimiter = (
   options: ContentSchemaRegistryProductionOptions,
@@ -42,7 +44,9 @@ const authRateLimiter = (
   if (limiter === undefined) return undefined;
   return async (input, signal) => {
     const bucket = async (
+      scope: 'party' | 'user',
       authUserId: string | null,
+      actingPartyId: string | null,
       identifier: string,
       limit: number,
     ): Promise<ContentSchemaRegistryResult<RateLimitDecision>> =>
@@ -51,8 +55,9 @@ const authRateLimiter = (
           {
             operationId: input.operationId,
             request: input.request,
+            scope,
             authUserId,
-            actingPartyId: input.actingPartyId,
+            actingPartyId,
             identifierDigest: await digestHex(
               new TextEncoder().encode(identifier),
             ),
@@ -64,7 +69,9 @@ const authRateLimiter = (
         ),
       );
     const user = await bucket(
+      'user',
       input.principalClass === 'human' ? input.actorId : null,
+      null,
       `${input.principalClass}:${input.actorId}`,
       input.limit,
     );
@@ -77,7 +84,9 @@ const authRateLimiter = (
     )
       return user;
     const party = await bucket(
+      'party',
       null,
+      input.actingPartyId,
       `party:${input.actingPartyId}`,
       input.partyLimit,
     );

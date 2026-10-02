@@ -178,12 +178,11 @@ export const createEnrollmentService = (
           factorId: input.factorId,
           expectedVersion,
           sessionId: session.sessionId,
+          rotation: validated.value.rotation,
         },
         signal,
       );
       if (!settled.ok) return reconcile(finalizationFailed());
-      const committed = await validated.value.commit(signal);
-      if (!committed.ok) return committed;
       const resource = buildFactorsResource(
         settled.value,
         validated.value.stepUpAt,
@@ -194,7 +193,7 @@ export const createEnrollmentService = (
             ok: true,
             value: {
               resource: resource.value,
-              cookies: committed.value.cookies,
+              cookies: validated.value.cookies,
             },
           }
         : resource;

@@ -23,6 +23,7 @@ import {
   csrfCookie,
   forwardedMutationCookies,
   forwardedMutationError,
+  invalidPayloadError,
   localMutationError,
   mutationPath,
   printableToken,
@@ -128,7 +129,8 @@ export const forwardContentSchemaRegistryMutation = async (
   }
 
   const validated = schemaParseMutation(target.operationId, parsed.payload);
-  if (!validated.success) return localMutationError(request, 422);
+  if (!validated.success)
+    return invalidPayloadError(request, validated.error?.issues ?? []);
 
   const headers = new Headers({
     accept: 'application/json',

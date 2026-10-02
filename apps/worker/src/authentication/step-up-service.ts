@@ -107,34 +107,36 @@ export const createStepUpService = (
       },
       signal,
     );
+    // Fail closed: a failure that cannot be durably counted is never
+    // reported as the provider result, or guesses would go uncounted.
+    const charge = (outcome: 'ambiguous' | 'incorrect') =>
+      persistence.recordChallengeFailure({ ...bound, outcome }, signal);
     if (!verified.ok) {
-      if (verified.status === 422)
-        await persistence.recordChallengeFailure(
-          { ...bound, outcome: 'incorrect' },
-          signal,
-        );
-      else if (isAmbiguousProviderOutcome(verified))
-        await persistence.recordChallengeFailure(
-          { ...bound, outcome: 'ambiguous' },
-          signal,
-        );
-      return verified;
+      const outcome =
+        verified.status === 422
+          ? 'incorrect'
+          : isAmbiguousProviderOutcome(verified)
+            ? 'ambiguous'
+            : null;
+      if (outcome === null) return verified;
+      const recorded = await charge(outcome);
+      return recorded.ok ? verified : recorded;
     }
     const validated = await rotation.validate(
       { session, request, payload: verified.value },
       signal,
     );
     if (!validated.ok) {
-      await persistence.recordChallengeFailure(
-        { ...bound, outcome: 'ambiguous' },
-        signal,
-      );
-      return validated;
+      const recorded = await charge('ambiguous');
+      return recorded.ok ? validated : recorded;
     }
-    const settled = await persistence.settleChallengeVerify(bound, signal);
+    // One transaction: consume the challenge AND rotate the session. A failure
+    // rolls both back, leaving the challenge recoverable and no cookies sent.
+    const settled = await persistence.settleChallengeVerify(
+      { ...bound, rotation: validated.value.rotation },
+      signal,
+    );
     if (!settled.ok) return settled;
-    const committed = await validated.value.commit(signal);
-    if (!committed.ok) return committed;
     return {
       ok: true,
       value: {
@@ -144,7 +146,7 @@ export const createStepUpService = (
           stepUpAt: validated.value.stepUpAt,
           freshUntil: validated.value.freshUntil,
         },
-        cookies: committed.value.cookies,
+        cookies: validated.value.cookies,
       },
     };
   };

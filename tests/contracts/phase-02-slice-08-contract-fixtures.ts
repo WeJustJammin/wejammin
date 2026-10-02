@@ -247,4 +247,16 @@ export const s08ExpectedRoutes = [
     idempotency: 'required',
     ifMatch: 'none',
   },
+  {
+    operationId: 'CFG-05B-07',
+    active: true,
+    method: 'GET',
+    path: '/api/v1/admin/capability-snapshot',
+    requestSchema: 'EmptyRequestSchema',
+    successSchema: 'Cfg05b07CapabilitySnapshotResponseSchema',
+    auth: 'session',
+    timeoutMs: 8_000,
+    idempotency: 'none',
+    ifMatch: 'none',
+  },
 ] as const;

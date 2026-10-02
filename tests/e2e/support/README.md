@@ -4,7 +4,9 @@
 
 - Local API and session-authority fixtures
 - Wrangler configuration and process runner
-- Legacy profile-portfolio fixture
+- Legacy profile-portfolio fixture, whose mock Worker answers the CFG-05B-07
+  capability snapshot per session cookie (never a capability response header);
+  `config-sessions.ts` supplies the read-only session for Slice 07 checks
 
 ## Ownership
 

@@ -9,6 +9,7 @@ import type {
   ContentSchemaRegistryMutationTarget,
 } from './content-schema-registry-platform-shared';
 import { filteredCookieHeader } from './content-schema-registry-platform-shared';
+import { localeViolations } from './content-schema-registry-platform-locale-issues';
 
 const MUTATION_RESPONSE_HEADERS = new Set([
   'allow',
@@ -67,6 +68,12 @@ interface SchemaParser {
     | { readonly success: true; readonly data: unknown }
     | {
         readonly success: false;
+        readonly error?: {
+          readonly issues: readonly {
+            readonly path: readonly PropertyKey[];
+            readonly message: string;
+          }[];
+        };
       };
 }
 
@@ -179,6 +186,7 @@ export const localMutationError = (
   request: Request,
   status: number,
   code = mutationErrorCode(status),
+  details: Readonly<Record<string, unknown>> = {},
 ): Response => {
   const requestId = createRequestId(
     request.headers.get('x-request-id') ?? undefined,
@@ -192,7 +200,7 @@ export const localMutationError = (
   return Response.json(
     ApiErrorSchema.parse({
       code,
-      details: {},
+      details,
       message: mutationErrorMessage(code),
       requestId,
     }),
@@ -235,4 +243,18 @@ export const copyMutationResponseHeaders = (source: Response): Headers => {
   });
   headers.set('cache-control', 'no-store');
   return headers;
+};
+
+/** Local 422 for a browser payload that fails the generated request schema. */
+export const invalidPayloadError = (
+  request: Request,
+  issues: readonly { path: readonly PropertyKey[]; message: string }[],
+): Response => {
+  const violations = localeViolations(issues);
+  return localMutationError(
+    request,
+    422,
+    undefined,
+    violations.length === 0 ? {} : { violations },
+  );
 };

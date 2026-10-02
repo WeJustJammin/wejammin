@@ -21,6 +21,8 @@ const statuses: Readonly<
   'CFG-05B-01': 200,
   'CFG-05B-04': 201,
   'CFG-05B-05': 200,
+  'CFG-05B-06': 200,
+  'CFG-05B-07': 200,
 };
 
 const deadlines: Readonly<Record<PlatformConfigurationOperationId, number>> = {
@@ -31,6 +33,8 @@ const deadlines: Readonly<Record<PlatformConfigurationOperationId, number>> = {
   'CFG-05B-01': 8_000,
   'CFG-05B-04': 15_000,
   'CFG-05B-05': 8_000,
+  'CFG-05B-06': 15_000,
+  'CFG-05B-07': 8_000,
 };
 
 const rates: Readonly<
@@ -46,6 +50,9 @@ const rates: Readonly<
   'CFG-05B-01': { limit: 120, window: 60 },
   'CFG-05B-04': { limit: 20, window: 60 },
   'CFG-05B-05': { limit: 120, window: 60 },
+  // BE05b: 5 per hour per user; the party bucket lives in admin-mfa-reset-rate.ts.
+  'CFG-05B-06': { limit: 5, window: 3600 },
+  'CFG-05B-07': { limit: 120, window: 60 },
 };
 
 export const configurationStatus = (

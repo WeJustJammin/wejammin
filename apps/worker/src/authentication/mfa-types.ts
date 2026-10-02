@@ -26,6 +26,17 @@ export type MfaRegistrySnapshot = Readonly<{
 
 type Caller = Readonly<{ authUserId: string; request: Request }>;
 
+/**
+ * The first-party session the aal2 proof rotates to. The settle RPCs carry it
+ * so the database commits settlement AND rotation in one transaction: a
+ * failed rotation rolls the settlement back, so the challenge or factor stays
+ * recoverable and the caller never holds aal1 cookies beside a consumed proof.
+ */
+export type SessionRotationTarget = Readonly<{
+  sessionId: string;
+  issuedAt: string;
+}>;
+
 /** Protected registry and challenge state, one method per BE01a transaction. */
 export type MfaPersistencePort = Readonly<{
   readFactors: (
@@ -66,6 +77,7 @@ export type MfaPersistencePort = Readonly<{
         factorId: string;
         expectedVersion: string;
         sessionId: string;
+        rotation: SessionRotationTarget;
       }>,
     signal: AbortSignal,
   ) => Promise<AuthenticationResult<MfaRegistrySnapshot>>;
@@ -150,7 +162,12 @@ export type MfaPersistencePort = Readonly<{
     signal: AbortSignal,
   ) => Promise<AuthenticationResult<null>>;
   settleChallengeVerify: (
-    input: Caller & Readonly<{ sessionId: string; challengeId: string }>,
+    input: Caller &
+      Readonly<{
+        sessionId: string;
+        challengeId: string;
+        rotation: SessionRotationTarget;
+      }>,
     signal: AbortSignal,
   ) => Promise<AuthenticationResult<null>>;
 }>;
@@ -194,18 +211,22 @@ export type MfaProviderPort = Readonly<{
   ) => Promise<AuthenticationResult<unknown>>;
 }>;
 
+/**
+ * A verified aal2 session with its replacement cookies already sealed. Nothing
+ * here has a remote effect: the rotation is committed by the settle RPC
+ * (`rotation`), and nothing can fail between that commit and the response.
+ */
 export type ValidatedRotation = Readonly<{
   stepUpAt: string;
   freshUntil: string;
-  commit: (
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<Readonly<{ cookies: readonly string[] }>>>;
+  rotation: SessionRotationTarget;
+  cookies: readonly string[];
 }>;
 
 /**
- * Validates a provider aal2 session against the initiating session, then
- * commits the first-party rotation (index row plus cookies) separately so a
- * failed local transaction can never strand the caller without cookies.
+ * Validates a provider aal2 session against the initiating session and seals
+ * the replacement cookies. It has no persistent effect; the database commits
+ * the index-row rotation inside the settle transaction.
  */
 export type SessionRotationPort = Readonly<{
   validate: (

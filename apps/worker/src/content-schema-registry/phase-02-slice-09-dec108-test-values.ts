@@ -71,6 +71,7 @@ const frozenEvidence = {
   contentTypeVersionId: VERSION_ID,
   contentTypeVersionNo: '2',
   definitionHash: HASH,
+  localeConfigHash: HASH_B,
   schemaArtifact: {
     id: PLAN_ID,
     state: 'compiled' as const,
@@ -169,7 +170,11 @@ export const detailWithPreparation = ContentSchemaRegistryDetailSchema.parse({
   activationPreparation,
 });
 
-export const successorBody = { expectedVersion: '1' };
+export const successorBody = {
+  expectedVersion: '1',
+  supportedLocales: null,
+  fallbackChains: null,
+};
 export const dryRunBody = {
   expectedVersion: '1',
   transformKey: null,

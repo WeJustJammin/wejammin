@@ -18,7 +18,9 @@ export type PlatformConfigurationOperationId =
   | 'CFG-05A-04'
   | 'CFG-05B-01'
   | 'CFG-05B-04'
-  | 'CFG-05B-05';
+  | 'CFG-05B-05'
+  | 'CFG-05B-06'
+  | 'CFG-05B-07';
 
 export type AdminOperationId = 'CFG-05B-01' | 'CFG-05B-04' | 'CFG-05B-05';
 

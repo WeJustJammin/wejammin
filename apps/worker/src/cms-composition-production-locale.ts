@@ -1,4 +1,5 @@
 import {
+  LocaleFallbackChainMismatchDetailsSchema,
   LocaleVariantHeadersSchema,
   LocaleVariantPathSchema,
   LocaleVariantRequestSchema,
@@ -69,11 +70,50 @@ const LOCALE_CATALOG: Readonly<Record<number, string>> = {
   409: 'LOCALE_VERSION_CONFLICT',
   422: 'LOCALE_VALIDATION_FAILED',
 };
+/**
+ * OD-4: the RPC reports a chain-equality conflict as a 409 whose structured
+ * detail (an object, or the JSON text PostgREST returns for `DETAIL`) names
+ * `FALLBACK_CHAIN_MISMATCH` and the active chain. Only that exact, bounded,
+ * canonical shape is carried; anything else is dropped, never repaired.
+ */
+const mismatchDetails = (
+  payload: unknown,
+): Readonly<Record<string, unknown>> => {
+  if (typeof payload !== 'object' || payload === null) return {};
+  let source: unknown = (payload as { details?: unknown }).details ?? payload;
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source) as unknown;
+    } catch {
+      return {};
+    }
+  }
+  if (typeof source !== 'object' || source === null) return {};
+  const parsed = LocaleFallbackChainMismatchDetailsSchema.safeParse({
+    reasonCode: (source as Record<string, unknown>).reasonCode,
+    activeFallbackChain: (source as Record<string, unknown>)
+      .activeFallbackChain,
+  });
+  return parsed.success
+    ? {
+        reasonCode: parsed.data.reasonCode,
+        activeFallbackChain: [...parsed.data.activeFallbackChain],
+      }
+    : {};
+};
 const localeFailure = (
   failure: ReturnType<typeof mapCmsEditorialRpcFailure>,
+  payload: unknown,
 ): ReturnType<typeof mapCmsEditorialRpcFailure> => {
   const code = LOCALE_CATALOG[failure.status];
-  return code === undefined ? failure : { ...failure, code };
+  if (code === undefined) return failure;
+  return failure.status === 409
+    ? {
+        ...failure,
+        code,
+        details: { ...failure.details, ...mismatchDetails(payload) },
+      }
+    : { ...failure, code };
 };
 export const createProductionCmsLocaleDependencies = (
   options: CmsEditorialProductionOptions,
@@ -185,11 +225,15 @@ export const createProductionCmsLocaleDependencies = (
       );
       if (!response.ok) return response;
       if (!response.value.ok) {
-        const failure = mapCmsEditorialRpcFailure(
-          response.value.status,
-          await readRpcError(response.value, maxResponseBytes, deadline.signal),
+        const payload = await readRpcError(
+          response.value,
+          maxResponseBytes,
+          deadline.signal,
         );
-        const error = localeFailure(failure);
+        const error = localeFailure(
+          mapCmsEditorialRpcFailure(response.value.status, payload),
+          payload,
+        );
         return deadline.expired()
           ? {
               ok: false,

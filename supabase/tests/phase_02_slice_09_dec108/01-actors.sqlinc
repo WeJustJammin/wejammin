@@ -40,7 +40,8 @@ select pg_temp.s09d_remember('ownerOrg', (platform_private.initialize_cms_owner(
   'dec108-owner@example.test', clock_timestamp() + interval '3 days',
   'a9d10000-0000-4000-8000-000000000099', false)->>'organizationId')::uuid);
 
--- designer2 joins the owner organization with the schema-designer grant.
+-- designer2 joins the owner organization (its schema-designer grant is issued
+-- through CMS-03A-15 once the owner's acting-context binding exists, below).
 insert into identity_private.membership_tenure(
   organization_id, person_id, state, provenance, governance_mode,
   starts_on, accepted_at, actor_id, version
@@ -49,13 +50,6 @@ select pg_temp.s09d_id('ownerOrg'), designer2.person_id, 'confirmed', 'invitatio
        'ungoverned', current_date, clock_timestamp(), owner.person_id, 1
 from s09d_actor designer2, s09d_actor owner
 where designer2.key = 'designer2' and owner.key = 'owner';
-insert into identity_private.organization_actor_grant(
-  organization_id, person_id, capability_code, valid_from, valid_through, active
-)
-select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.schema_designer',
-       current_date, current_date + 1, true
-from s09d_actor where key = 'designer2';
-
 -- A second organization with its own designer (cross-owner scope).
 select pg_temp.s09d_session('other', 'authenticated');
 select set_config('app.correlation_id', 'a9d10000-0000-4000-8000-000000000091', true);
@@ -89,3 +83,6 @@ update s09d_actor actor set binding_id = binding.id
 from platform_private.acting_context_binding binding
 where binding.client_binding_id = 's09d-' || actor.key
   and binding.person_id = actor.person_id;
+
+-- designer2's schema-designer grant: the real owner grant command, not a direct row.
+select pg_temp.s09d_grant_via_rpc('designer2', 'cms.schema_designer', 1);

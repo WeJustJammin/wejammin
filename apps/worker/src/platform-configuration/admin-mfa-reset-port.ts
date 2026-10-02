@@ -105,7 +105,7 @@ export const createAdminMfaResetPort = (
 
   return async (input, _env, signal) => {
     const portInput = {
-      operationId: 'CFG-05B-05' as const,
+      operationId: 'CFG-05B-06' as const,
       request: input.request,
       session: input.session,
     };

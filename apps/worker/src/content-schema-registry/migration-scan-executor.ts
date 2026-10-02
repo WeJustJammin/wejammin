@@ -43,7 +43,10 @@ const scanRow = async (
   if (entry === null) return evidenceFor(row, row.sourceHash, null);
   let output: unknown;
   try {
-    output = entry.apply(row.document, { targetField: page.targetField });
+    output = entry.apply(row.document, {
+      targetFields: page.targetFields,
+      retiredFields: page.retiredFields,
+    });
   } catch (error) {
     return evidenceFor(row, null, thrownCode(error));
   }

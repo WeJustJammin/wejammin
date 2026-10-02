@@ -33,8 +33,23 @@ export const SchemaActivationResourceSchema = z
     contentTypeVersionId: CmsUuidSchema,
     activatedAt: CmsInstantSchema.nullable(),
     migrationPlanId: CmsUuidSchema.nullable(),
+    localeConfigHash: CmsHashSchema,
     activationEvidence: WorkflowPolicyEvidenceSchema,
     jobId: CmsUuidSchema.nullable(),
     eventType: z.literal('cms.schema.activated.v1'),
+  })
+  .readonly();
+
+/**
+ * `cms.schema.activated.v1` outbox payload. `localeConfigHash` is recomputed
+ * from the activated candidate row (BE03a OD-4), never copied from a request.
+ */
+export const SchemaActivatedEventPayloadSchema = z
+  .strictObject({
+    contentTypeId: CmsUuidSchema,
+    schemaVersionId: CmsUuidSchema,
+    migrationPlanId: CmsUuidSchema.nullable(),
+    localeConfigHash: CmsHashSchema,
+    activationEvidence: WorkflowPolicyEvidenceSchema,
   })
   .readonly();

@@ -7,6 +7,7 @@ change review, activation, rollback, and identifier-only configuration events.
 
 - `admin-workspace.ts` is the request/resource barrel. The focused
   `admin-inbox.ts`, `admin-search.ts`, `admin-bulk.ts`, `admin-capability.ts`,
+  `admin-capability-snapshot.ts` (CFG-05B-07),
   and `admin-diagnostic.ts` modules each own one CFG-05B contract family;
   `admin-common.ts` owns shared bounded primitives and grant scope rules.
 - `admin-events.ts` owns identifier-only admin capability, bulk, and diagnostic

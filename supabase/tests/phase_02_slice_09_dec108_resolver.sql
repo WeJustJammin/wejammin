@@ -16,12 +16,8 @@ select no_plan();
 \ir phase_02_slice_09_dec108/02-chain.sqlinc
 \ir phase_02_slice_09_dec108/03-support.sqlinc
 
--- Test-human provisioning (D3): the owner may design templates locally.
-insert into identity_private.organization_actor_grant(
-  organization_id, person_id, capability_code, valid_from, valid_through, active
-)
-select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.template_designer', current_date, current_date + 1, true
-from s09d_actor where key = 'owner';
+-- Test-human provisioning (D3): the owner grants itself template design through CMS-03A-15.
+select pg_temp.s09d_grant_specialist('owner', 'cms.template_designer');
 
 create or replace function pg_temp.s09d_template(p_tag text, p_key text, p_type_tag text) returns jsonb
 language plpgsql as $body$

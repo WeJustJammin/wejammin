@@ -81,7 +81,7 @@ describe('[P2-S09-AC-269] locked cross-layer traceability', () => {
     );
   });
 
-  it('[P2-S09-AC-1198] maps the amended operations to the plan, BE03a and FE03', () => {
+  it('[P2-S09-AC-1149] maps the amended operations to the plan, BE03a and FE03', () => {
     const amendedOperations = [
       'CMS-03A-09',
       'CMS-03A-10',
