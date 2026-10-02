@@ -1,5 +1,4 @@
 import type {
-  ApiError,
   AuthCallbackQuery,
   AuthorizationStart,
   EmailStartRequest,
@@ -16,7 +15,6 @@ import type {
 import type { WorkerBindings } from '../worker-bindings';
 import type { MfaAuthenticationMethods } from './mfa-types';
 import type {
-  AuthenticationError,
   AuthenticationResult,
   AuthenticationSession,
 } from './result-types';

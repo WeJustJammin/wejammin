@@ -113,14 +113,6 @@ export default function ContentSchemaRegistryActivationForm({
         required={false}
         help="Leave blank to submit the required nullable migrationPlanId as null."
       />
-      <TextField
-        id="content-schema-registry-step-up-token"
-        name="stepUpToken"
-        label="Step-up token"
-        type="password"
-        autoComplete="one-time-code"
-        help="A recent server-issued MFA/step-up token is required; it is never included in the JSON payload."
-      />
       <ContentSchemaRegistryConfirmationStep
         key={confirmationKey}
         consequence="Activation affects the selected content type version and future entry validation."

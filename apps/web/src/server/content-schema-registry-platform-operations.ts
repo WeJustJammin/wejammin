@@ -1,4 +1,8 @@
 import {
+  CapabilityGrantRenewalRequestSchema,
+  CapabilityGrantRequestSchema,
+  CapabilityGrantRevocationRequestSchema,
+  CmsCapabilityGrantResourceSchema,
   ContentTypeDraftRequestSchema,
   ContentTypeVersionResourceSchema,
   FieldDefinitionVersionResourceSchema,
@@ -18,7 +22,10 @@ import {
   SchemaSuccessorRequestSchema,
 } from '@wejammin/contracts';
 
-/** Browser-facing human mutation operations (BE03a CMS-03A-01..04, 09..14). */
+/**
+ * Browser-facing human mutation operations (BE03a CMS-03A-01..04, 09..12, 14
+ * and the owner-only grant commands 15..17).
+ */
 export type ContentSchemaRegistryMutationOperationId =
   | 'CMS-03A-01'
   | 'CMS-03A-02'
@@ -28,7 +35,10 @@ export type ContentSchemaRegistryMutationOperationId =
   | 'CMS-03A-10'
   | 'CMS-03A-11'
   | 'CMS-03A-12'
-  | 'CMS-03A-14';
+  | 'CMS-03A-14'
+  | 'CMS-03A-15'
+  | 'CMS-03A-16'
+  | 'CMS-03A-17';
 
 /**
  * Path identifiers the first-party route supplies. Version-scoped operations
@@ -40,13 +50,16 @@ export interface ContentSchemaRegistryMutationTarget {
   readonly contentTypeId?: string;
   readonly versionId?: string;
   readonly reviewId?: string;
+  readonly grantId?: string;
 }
 
-export type ContentSchemaRegistryMutationScope = 'none' | 'version' | 'review';
+export type ContentSchemaRegistryMutationScope =
+  'none' | 'version' | 'review' | 'grant';
 
 const VERSION =
   '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}';
 const REVIEW = '/api/v1/cms/schema-reviews/{reviewId}';
+const GRANTS = '/api/v1/cms/capability-grants';
 
 /** The browser facade's operation map mirrors the generated BE03a registry. */
 export const CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS = {
@@ -129,6 +142,33 @@ export const CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS = {
     requestSchema: SchemaReviewAssignmentRequestSchema,
     successSchema: SchemaReviewAssignmentResourceSchema,
     successStatuses: [200, 201],
+    requiresIfMatch: true,
+  },
+  'CMS-03A-15': {
+    method: 'POST',
+    scope: 'none',
+    path: GRANTS,
+    requestSchema: CapabilityGrantRequestSchema,
+    successSchema: CmsCapabilityGrantResourceSchema,
+    successStatuses: [201],
+    requiresIfMatch: false,
+  },
+  'CMS-03A-16': {
+    method: 'POST',
+    scope: 'grant',
+    path: `${GRANTS}/{grantId}/renewals`,
+    requestSchema: CapabilityGrantRenewalRequestSchema,
+    successSchema: CmsCapabilityGrantResourceSchema,
+    successStatuses: [200],
+    requiresIfMatch: true,
+  },
+  'CMS-03A-17': {
+    method: 'POST',
+    scope: 'grant',
+    path: `${GRANTS}/{grantId}/revocations`,
+    requestSchema: CapabilityGrantRevocationRequestSchema,
+    successSchema: CmsCapabilityGrantResourceSchema,
+    successStatuses: [200],
     requiresIfMatch: true,
   },
 } as const satisfies Readonly<

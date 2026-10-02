@@ -32,7 +32,7 @@ begin
       -- Artifacts are immutable in normal operation.  Temporarily remove the
       -- cleanup-only guard so this committed probe leaves no registry rows;
       -- the exception path recreates it before returning the error.
-      execute 'drop trigger if exists cms_schema_artifacts_immutable_guard on platform_private.cms_schema_artifacts';
+      execute 'drop trigger if exists cms_schema_artifacts_z_compile_guard on platform_private.cms_schema_artifacts';
       delete from platform_private.cms_schema_artifacts where id = %L::uuid;
       delete from platform_private.cms_content_type_versions where id = %L::uuid;
       delete from platform_private.cms_content_types where id = %L::uuid;
@@ -45,10 +45,10 @@ begin
       delete from identity_private.organization_party where party_id = %L::uuid;
       delete from platform_private.party where id in (%L::uuid, %L::uuid);
       delete from auth.users where id = %L::uuid;
-      execute 'create trigger cms_schema_artifacts_immutable_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_immutable_guard()';
+      execute 'create trigger cms_schema_artifacts_z_compile_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_schema_artifact_guard()';
     exception when others then
       begin
-        execute 'create trigger cms_schema_artifacts_immutable_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_immutable_guard()';
+        execute 'create trigger cms_schema_artifacts_z_compile_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_schema_artifact_guard()';
       exception when duplicate_object then null;
       end;
       raise;

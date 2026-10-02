@@ -7,7 +7,8 @@ export type StepUpDraft = Readonly<{
 }>;
 
 const KEY_PREFIX = 'wj-step-up-draft:';
-const FORBIDDEN_FIELD = /^(?:code|otp|totp|password|token)$|secret|otpauth|manualentry/iu;
+const FORBIDDEN_FIELD =
+  /^(?:code|otp|totp|password|token)$|secret|otpauth|manualentry/iu;
 
 const storageKey = (scope: string): string => `${KEY_PREFIX}${scope}`;
 

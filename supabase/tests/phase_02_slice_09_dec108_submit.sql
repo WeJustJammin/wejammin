@@ -142,6 +142,29 @@ select is(pg_temp.s09d_outcome('a:nokey'), 'INVALID_REQUEST', 'a missing Idempot
 select ok(pg_temp.s09d_outcome('a:submit') = 'OK'
   and pg_temp.s09d_fingerprint(false) = (select fingerprint from s09d_refusal_baseline),
   'every refusal leaves versions, reviews, idempotency and outbox unchanged');
+-- Downgrade guard (strictest-of): a successor whose own workflow key is ordinary is
+-- still reviewed under the protected source policy it supersedes.
+select pg_temp.s09d_create_type('sp', 'dec108subprotected', 'cms.disclosure.policy');
+select pg_temp.s09d_grant_specialist('rev1', 'cms.reviewer.policy');
+select pg_temp.s09d_to_active('sp', array['rev1', 'rev2']);
+select pg_temp.s09d_successor('sq', 'sp');
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_type_versions
+   set workflow_key = 'editorial', workflow_version = 1
+ where id = pg_temp.s09d_id('sq:version');
+select pg_temp.s09d_dry_run('sq');
+select pg_temp.s09d_seal('sq');
+select pg_temp.s09d_submit('sq');
+select ok(pg_temp.s09d_outcome('sp:activate') = 'OK' and pg_temp.s09d_outcome('sq:submit') = 'OK'
+  and (select r->>'riskClass' = 'protected' and (r->>'requiredDecisionCount')::int = 2
+        and r->>'policyKey' = 'editorial'
+        and r->'requiredCapabilities' = '["cms.reviewer", "cms.reviewer.policy"]'::jsonb
+      from (select pg_temp.s09d_resp('sq:submit') r) s)
+  and pg_temp.s09d_scalar(format($q$select (source_policy_key = 'cms.disclosure.policy' and source_policy_version = 1
+      and source_policy_hash ~ '^[a-f0-9]{64}$')::text from platform_private.cms_schema_reviews where id = %L$q$,
+      pg_temp.s09d_id('sq:review')))::boolean,
+  'a successor under an ordinary key keeps the protected source requirement (count, specialist slot) and freezes the source policy');
+
 select ok(pg_temp.s09d_service_only('platform_api.cms_submit_schema_review(jsonb)')
   and to_regprocedure('platform_private.cms_submit_schema_review(jsonb)') is not null
   and not coalesce(has_function_privilege('authenticated', to_regprocedure('platform_private.cms_submit_schema_review(jsonb)'), 'execute'), true),

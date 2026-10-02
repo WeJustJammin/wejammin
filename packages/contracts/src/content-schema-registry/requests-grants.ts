@@ -14,7 +14,7 @@ import {
 
 /**
  * CMS-03A-15. `validThrough` is server-checked against the current UTC date
- * (today through today plus six days); the contract proves shape only.
+ * (today through today plus 89 days, DEC-120); the contract proves shape only.
  */
 export const CapabilityGrantRequestSchema = z
   .strictObject({

@@ -80,6 +80,10 @@ import {
   ProviderCatalogSchema,
   SessionResourceSchema,
 } from './authentication/resources.ts';
+import {
+  Cfg05b06MfaFactorResetRequestSchema,
+  Cfg05b06MfaFactorResetResponseSchema,
+} from './platform-configuration/admin-mfa-reset.ts';
 import { JobIdPathSchema, JobStatusSchema } from './job-status.ts';
 import {
   ChallengeApiRequestSchema,
@@ -292,6 +296,8 @@ const schemaContracts = {
   TaxonomyTermResourceSchema,
   PatternInstanceApiRequestSchema,
   CompositionInstanceResourceSchema,
+  Cfg05b06MfaFactorResetRequestSchema,
+  Cfg05b06MfaFactorResetResponseSchema,
 } as const;
 
 const schemaIo = {
@@ -369,6 +375,7 @@ const schemaIo = {
   RelatedContentApiRequestSchema: 'input',
   TaxonomyTermActionApiRequestSchema: 'input',
   PatternInstanceApiRequestSchema: 'input',
+  Cfg05b06MfaFactorResetRequestSchema: 'input',
   UploadAdmissionRequestSchema: 'input',
   UploadCompletionRequestSchema: 'input',
 } as const satisfies Partial<

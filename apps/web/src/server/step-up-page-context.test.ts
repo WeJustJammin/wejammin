@@ -31,7 +31,9 @@ describe('resolveStepUpPage', () => {
     await resolve(binding);
     const [upstream] = binding.requests();
     expect(upstream?.method).toBe('GET');
-    expect(new URL(upstream?.url ?? '').pathname).toBe('/api/v1/account/mfa/factors');
+    expect(new URL(upstream?.url ?? '').pathname).toBe(
+      '/api/v1/account/mfa/factors',
+    );
     expect(upstream?.headers.get('cookie')).toContain('wj_access=a');
     expect(upstream?.headers.get('if-match')).toBeNull();
     expect(upstream?.headers.get('idempotency-key')).toBeNull();
@@ -41,7 +43,15 @@ describe('resolveStepUpPage', () => {
     const resource = factorsResource({
       factors: [
         ...factorsResource().factors,
-        { id: OTHER_FACTOR_ID, method: 'totp', friendlyName: 'Old', state: 'pending', verifiedAt: null, lastUsedAt: null, pendingExpiresAt: '2026-10-02T12:10:00Z' },
+        {
+          id: OTHER_FACTOR_ID,
+          method: 'totp',
+          friendlyName: 'Old',
+          state: 'pending',
+          verifiedAt: null,
+          lastUsedAt: null,
+          pendingExpiresAt: '2026-10-02T12:10:00Z',
+        },
       ],
     });
     const result = await resolve(bindingStub(jsonResponse(200, resource)));
@@ -60,17 +70,26 @@ describe('resolveStepUpPage', () => {
     ['the step-up page itself', '/step-up?returnTo=%2Fapp'],
     ['an auth path', '/auth/sign-in'],
   ])('falls back to /app for %s', async (_name, param) => {
-    const result = await resolve(bindingStub(jsonResponse(200, factorsResource())), param);
+    const result = await resolve(
+      bindingStub(jsonResponse(200, factorsResource())),
+      param,
+    );
     expect(result.kind === 'ready' && result.page.returnTo).toBe('/app');
   });
 
   it('chooses the no-factor phase when nothing is verified', async () => {
-    const result = await resolve(bindingStub(jsonResponse(200, factorsResource({ factors: [] }))));
-    expect(result.kind === 'ready' && result.page.initialPhase).toBe('no-factor');
+    const result = await resolve(
+      bindingStub(jsonResponse(200, factorsResource({ factors: [] }))),
+    );
+    expect(result.kind === 'ready' && result.page.initialPhase).toBe(
+      'no-factor',
+    );
   });
 
   it('carries a fresh proof for display but never auto-redirects', async () => {
-    const resource = factorsResource({ stepUp: { fresh: true, freshUntil: '2026-10-02T12:10:00Z' } });
+    const resource = factorsResource({
+      stepUp: { fresh: true, freshUntil: '2026-10-02T12:10:00Z' },
+    });
     const result = await resolve(bindingStub(jsonResponse(200, resource)));
     expect(result.kind === 'ready' && result.page.stepUp).toEqual({
       fresh: true,
@@ -80,7 +99,11 @@ describe('resolveStepUpPage', () => {
 
   it('redirects a missing session to sign-in carrying /step-up', async () => {
     const result = await resolve(
-      bindingStub(errorResponse(401, 'UNAUTHENTICATED', { recoveryAction: 'reauthenticate' })),
+      bindingStub(
+        errorResponse(401, 'UNAUTHENTICATED', {
+          recoveryAction: 'reauthenticate',
+        }),
+      ),
     );
     expect(result).toEqual({
       kind: 'unauthenticated',
@@ -89,18 +112,38 @@ describe('resolveStepUpPage', () => {
   });
 
   it.each([
-    ['an upstream outage', () => bindingStub(errorResponse(503, 'DEPENDENCY_UNAVAILABLE', { dependencyClass: 'database', retryable: true }))],
+    [
+      'an upstream outage',
+      () =>
+        bindingStub(
+          errorResponse(503, 'DEPENDENCY_UNAVAILABLE', {
+            dependencyClass: 'database',
+            retryable: true,
+          }),
+        ),
+    ],
     ['a network failure', () => bindingStub(new Error('offline'))],
-    ['an invalid body', () => bindingStub(jsonResponse(200, { factors: 'nope' }))],
+    [
+      'an invalid body',
+      () => bindingStub(jsonResponse(200, { factors: 'nope' })),
+    ],
     ['a missing binding', () => undefined],
   ])('is degraded with the request id for %s', async (_name, make) => {
     const result = await resolve(make());
-    expect(result).toMatchObject({ kind: 'degraded', reason: 'unavailable', requestId: REQUEST_ID });
+    expect(result).toMatchObject({
+      kind: 'degraded',
+      reason: 'unavailable',
+      requestId: REQUEST_ID,
+    });
   });
 
   it('is degraded when no allowlisted method remains', async () => {
     const resource = factorsResource({ allowedMethods: [] });
     const result = await resolve(bindingStub(jsonResponse(200, resource)));
-    expect(result).toMatchObject({ kind: 'degraded', reason: 'no-method', requestId: REQUEST_ID });
+    expect(result).toMatchObject({
+      kind: 'degraded',
+      reason: 'no-method',
+      requestId: REQUEST_ID,
+    });
   });
 });

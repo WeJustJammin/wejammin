@@ -14,7 +14,10 @@ import {
 describe('resolveStepUpReturnTo', () => {
   it.each([
     ['/app', '/app'],
-    ['/app/cms-content-modeling?tab=versions', '/app/cms-content-modeling?tab=versions'],
+    [
+      '/app/cms-content-modeling?tab=versions',
+      '/app/cms-content-modeling?tab=versions',
+    ],
     ['/settings/security', '/settings/security'],
     ['/settings/security/mfa?step=name', '/settings/security/mfa?step=name'],
   ])('keeps the safe path %s', (raw, expected) => {

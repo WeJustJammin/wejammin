@@ -1,4 +1,7 @@
-import { MfaFactorsResourceSchema, type MfaFactorsResource } from '@wejammin/contracts';
+import {
+  MfaFactorsResourceSchema,
+  type MfaFactorsResource,
+} from '@wejammin/contracts';
 
 import { forwardAuthRequest } from './auth-platform-api';
 
@@ -35,7 +38,10 @@ export const readMfaFactorsForPage = async (
   headers.set('x-request-id', requestId);
   try {
     const response = await forwardAuthRequest(
-      new Request(new URL(FACTORS_PATH, request.url), { method: 'GET', headers }),
+      new Request(new URL(FACTORS_PATH, request.url), {
+        method: 'GET',
+        headers,
+      }),
       binding,
       FACTORS_PATH,
       'GET',

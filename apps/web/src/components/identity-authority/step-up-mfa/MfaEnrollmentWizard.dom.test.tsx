@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   FACTOR_A,
@@ -9,7 +9,6 @@ import {
   FRESH_UNTIL,
   OTPAUTH_URI,
   SECRET_KEY,
-  apiError,
   enrollment,
   factor,
   factorsResource,
@@ -17,6 +16,7 @@ import {
   json,
   setValue,
   stubFetch,
+  type StubResponse,
   violation,
 } from './step-up-mfa.test-support';
 import {
@@ -38,8 +38,11 @@ afterEach(() => {
 
 const GROUPED_KEY = SECRET_KEY.match(/.{1,4}/gu)?.join(' ') ?? '';
 
-const toScan = async (...tail: Parameters<typeof stubFetch>) => {
-  const fetchImpl = stubFetch(json(201, enrollment('5'), { etag: '"5"' }), ...tail);
+const toScan = async (...tail: StubResponse[]) => {
+  const fetchImpl = stubFetch(
+    json(201, enrollment('5'), { etag: '"5"' }),
+    ...tail,
+  );
   harness = mountWizard(fetchImpl, { factors: [], expectedVersion: '4' });
   const container = harness.mounted.container;
   pressButton(container, 'Set up an authenticator');
@@ -61,7 +64,9 @@ describe('MfaEnrollmentWizard empty state and name step', () => {
     harness = mountWizard(stubFetch(), { factors: [] });
     const container = harness.mounted.container;
     pressButton(container, 'Set up an authenticator');
-    const input = container.querySelector<HTMLInputElement>('input[name="friendlyName"]');
+    const input = container.querySelector<HTMLInputElement>(
+      'input[name="friendlyName"]',
+    );
     expect(input?.getAttribute('maxlength')).toBe('80');
     expect(input?.getAttribute('autocomplete')).toBe('off');
     expect(container.querySelector(`label[for="${input?.id}"]`)).not.toBeNull();
@@ -75,14 +80,19 @@ describe('MfaEnrollmentWizard empty state and name step', () => {
     fillAndSubmitName(container, '   ');
     await flush();
     expect(fetchImpl.calls).toHaveLength(0);
-    expect(alertText(container)).toContain('Enter a name between 1 and 80 characters.');
+    expect(alertText(container)).toContain(
+      'Enter a name between 1 and 80 characters.',
+    );
   });
 
   it('starts enrollment with the expected version as If-Match', async () => {
     const { fetchImpl } = await toScan();
     expect(fetchImpl.calls[0]?.method).toBe('POST');
     expect(fetchImpl.calls[0]?.headers.get('if-match')).toBe('"4"');
-    expect(fetchImpl.calls[0]?.body).toEqual({ method: 'totp', friendlyName: 'Laptop' });
+    expect(fetchImpl.calls[0]?.body).toEqual({
+      method: 'totp',
+      friendlyName: 'Laptop',
+    });
   });
 });
 
@@ -90,8 +100,12 @@ describe('MfaEnrollmentWizard scan step', () => {
   it('renders a local inline SVG QR with an accessible name and no otpauth link or text', async () => {
     const { container } = await toScan();
     const svg = container.querySelector('svg[role="img"]');
-    expect(svg?.getAttribute('aria-label')).toBe('QR code for adding WeJammin to an authenticator app');
-    expect(svg?.querySelector('path')?.getAttribute('d')).toMatch(/^M\d+ \d+h1v1h-1z/u);
+    expect(svg?.getAttribute('aria-label')).toBe(
+      'QR code for adding WeJammin to an authenticator app',
+    );
+    expect(svg?.querySelector('path')?.getAttribute('d')).toMatch(
+      /^M\d+ \d+h1v1h-1z/u,
+    );
     expect(container.innerHTML).not.toContain('otpauth');
     expect(container.querySelector('a[href^="otpauth"]')).toBeNull();
     expect(container.querySelector('img, iframe, script')).toBeNull();
@@ -105,7 +119,10 @@ describe('MfaEnrollmentWizard scan step', () => {
 
   it('copies the key and announces it politely', async () => {
     const writeText = vi.fn(() => Promise.resolve());
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
     const { container } = await toScan();
     pressButton(container, 'Copy key');
     await flush();
@@ -115,8 +132,11 @@ describe('MfaEnrollmentWizard scan step', () => {
 
   it('verifies with the version returned by enrollment and finishes with a fresh proof', async () => {
     const resource = factorsResource([factor(FACTOR_B)], '6', true);
-    const { fetchImpl, container, h } = await toScan(json(200, resource, { etag: '"6"' }));
-    const input = container.querySelector<HTMLInputElement>('input[name="code"]');
+    const { fetchImpl, container, h } = await toScan(
+      json(200, resource, { etag: '"6"' }),
+    );
+    const input =
+      container.querySelector<HTMLInputElement>('input[name="code"]');
     if (input === null) throw new Error('missing code field');
     setValue(input, '123 456');
     pressButton(container, 'Verify and finish');
@@ -126,8 +146,12 @@ describe('MfaEnrollmentWizard scan step', () => {
     expect(call?.headers.get('if-match')).toBe('"5"');
     expect(call?.body).toEqual({ code: '123456' });
     expect(container.textContent).toContain('Authenticator added');
-    expect(container.querySelector(`time[datetime="${FRESH_UNTIL}"]`)).not.toBeNull();
-    expect(container.querySelector('a[href="/app/x"]')?.textContent).toMatch(/Continue/u);
+    expect(
+      container.querySelector(`time[datetime="${FRESH_UNTIL}"]`),
+    ).not.toBeNull();
+    expect(container.querySelector('a[href="/app/x"]')?.textContent).toMatch(
+      /Continue/u,
+    );
     expect(container.textContent).toContain('account recovery by email');
     expect(container.textContent).not.toContain(GROUPED_KEY);
     expect(container.querySelector('svg[role="img"]')).toBeNull();
@@ -136,14 +160,19 @@ describe('MfaEnrollmentWizard scan step', () => {
 
   it('keeps the secret after an incorrect code so the person can try again', async () => {
     const { container } = await toScan(violation('code_incorrect'));
-    const input = container.querySelector<HTMLInputElement>('input[name="code"]');
+    const input =
+      container.querySelector<HTMLInputElement>('input[name="code"]');
     if (input === null) throw new Error('missing code field');
     setValue(input, '654321');
     pressButton(container, 'Verify and finish');
     await flush();
-    expect(alertText(container)).toContain("That code didn't work. Check the code and try again.");
+    expect(alertText(container)).toContain(
+      "That code didn't work. Check the code and try again.",
+    );
     expect(input.value).toBe('');
-    expect(container.querySelector('code[translate="no"]')?.textContent).toBe(GROUPED_KEY);
+    expect(container.querySelector('code[translate="no"]')?.textContent).toBe(
+      GROUPED_KEY,
+    );
   });
 
   it('clears the secret on pagehide and writes it nowhere', async () => {
@@ -168,25 +197,33 @@ describe('MfaEnrollmentWizard scan step', () => {
 
   it('keeps the continue link on the list when entered without a return target', async () => {
     const resource = factorsResource([factor(FACTOR_B)], '6', true);
-    const fetchImpl = stubFetch(json(201, enrollment('5')), json(200, resource));
+    const fetchImpl = stubFetch(
+      json(201, enrollment('5')),
+      json(200, resource),
+    );
     harness = mountWizard(fetchImpl, { factors: [], returnTo: null });
     const container = harness.mounted.container;
     pressButton(container, 'Set up an authenticator');
     fillAndSubmitName(container, 'Laptop');
     await flush();
-    const input = container.querySelector<HTMLInputElement>('input[name="code"]');
+    const input =
+      container.querySelector<HTMLInputElement>('input[name="code"]');
     if (input !== null) setValue(input, '123456');
     pressButton(container, 'Verify and finish');
     await flush();
     expect(container.textContent).toContain('Authenticator added');
-    expect(container.querySelector('a[href="#mfa-factor-list-heading"]')).not.toBeNull();
+    expect(
+      container.querySelector('a[href="#mfa-factor-list-heading"]'),
+    ).not.toBeNull();
   });
 });
 
 describe('MfaEnrollmentWizard pending and reconciling rows', () => {
   it('shows an unfinished setup with Start again and Cancel setup', async () => {
     const fetchImpl = stubFetch(json(201, enrollment('5')));
-    harness = mountWizard(fetchImpl, { factors: [factor(FACTOR_B, 'pending', 'Laptop')] });
+    harness = mountWizard(fetchImpl, {
+      factors: [factor(FACTOR_B, 'pending', 'Laptop')],
+    });
     const container = harness.mounted.container;
     expect(container.textContent).toContain('Setup not finished');
     pressButton(container, /Start again/u);
@@ -197,8 +234,12 @@ describe('MfaEnrollmentWizard pending and reconciling rows', () => {
   });
 
   it('cancels a pending setup with reason user_request and no step-up confirmation', async () => {
-    const fetchImpl = stubFetch(json(200, factorsResource([]), { etag: '"6"' }));
-    harness = mountWizard(fetchImpl, { factors: [factor(FACTOR_B, 'pending', 'Laptop')] });
+    const fetchImpl = stubFetch(
+      json(200, factorsResource([]), { etag: '"6"' }),
+    );
+    harness = mountWizard(fetchImpl, {
+      factors: [factor(FACTOR_B, 'pending', 'Laptop')],
+    });
     const container = harness.mounted.container;
     pressButton(container, /Cancel setup/u);
     await flush();
@@ -210,7 +251,9 @@ describe('MfaEnrollmentWizard pending and reconciling rows', () => {
   it('shows Checking status with a refresh control that refetches the list', async () => {
     const resource = factorsResource([factor(FACTOR_A)], '9');
     const fetchImpl = stubFetch(json(200, resource, { etag: '"9"' }));
-    harness = mountWizard(fetchImpl, { factors: [factor(FACTOR_A, 'reconciling')] });
+    harness = mountWizard(fetchImpl, {
+      factors: [factor(FACTOR_A, 'reconciling')],
+    });
     const container = harness.mounted.container;
     expect(container.textContent).toContain('Checking status');
     pressButton(container, /Refresh status/u);

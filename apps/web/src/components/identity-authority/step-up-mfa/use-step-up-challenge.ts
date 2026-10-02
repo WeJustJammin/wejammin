@@ -1,6 +1,11 @@
 import * as React from 'react';
 
-import { readMfaFactors, createStepUpChallenge, verifyStepUp, type MfaApiDeps } from './mfa-api';
+import {
+  readMfaFactors,
+  createStepUpChallenge,
+  verifyStepUp,
+  type MfaApiDeps,
+} from './mfa-api';
 import { validateOneTimeCode } from './one-time-code';
 import { stepUpFailureView, type StepUpFailureView } from './step-up-failure';
 import { createStepUpChannel, type StepUpChannelPort } from './step-up-channel';
@@ -44,7 +49,11 @@ const assign = (href: string): void => window.location.assign(href);
 
 export const useStepUpChallenge = (
   options: StepUpChallengeOptions,
-): Readonly<{ state: StepUpUiState; actions: StepUpActions; lockout: Lockout }> => {
+): Readonly<{
+  state: StepUpUiState;
+  actions: StepUpActions;
+  lockout: Lockout;
+}> => {
   const { returnTo, factors, api, initialFreshUntil } = options;
   const navigate = options.navigate ?? assign;
   const lockout = useLockout();
@@ -62,7 +71,8 @@ export const useStepUpChallenge = (
     focus: null,
   });
   const patch = React.useCallback(
-    (next: Partial<StepUpUiState>): void => setState((s) => ({ ...s, ...next })),
+    (next: Partial<StepUpUiState>): void =>
+      setState((s) => ({ ...s, ...next })),
     [],
   );
   const verifying = React.useRef(false);
@@ -94,7 +104,12 @@ export const useStepUpChallenge = (
 
   const begin = React.useCallback(
     async (factorId?: string): Promise<void> => {
-      patch({ phase: 'creating-challenge', failure: null, fieldError: null, code: '' });
+      patch({
+        phase: 'creating-challenge',
+        failure: null,
+        fieldError: null,
+        code: '',
+      });
       const outcome = await createStepUpChallenge(
         factorId === undefined ? {} : { factorId },
         api ?? {},
@@ -108,7 +123,7 @@ export const useStepUpChallenge = (
         });
       else
         applyFailure(
-          stepUpFailureView(outcome.failure, 'challenge'),
+          stepUpFailureView(outcome.failure),
           outcome.failure.requestId,
         );
     },
@@ -117,7 +132,8 @@ export const useStepUpChallenge = (
 
   const started = React.useRef(false);
   React.useEffect(() => {
-    if (started.current || options.initialPhase !== 'creating-challenge') return;
+    if (started.current || options.initialPhase !== 'creating-challenge')
+      return;
     started.current = true;
     void begin();
   }, [begin, options.initialPhase]);
@@ -163,14 +179,25 @@ export const useStepUpChallenge = (
         navigate(returnTo);
       } else
         applyFailure(
-          stepUpFailureView(outcome.failure, 'verify'),
+          stepUpFailureView(outcome.failure),
           outcome.failure.requestId,
         );
     });
-  }, [api, applyFailure, lockout.remainingSeconds, navigate, patch, returnTo, state.challengeId, state.code, state.phase]);
+  }, [
+    api,
+    applyFailure,
+    lockout.remainingSeconds,
+    navigate,
+    patch,
+    returnTo,
+    state.challengeId,
+    state.code,
+    state.phase,
+  ]);
 
   React.useEffect(() => {
-    if (lockout.announcement !== '') patch({ announcement: lockout.announcement });
+    if (lockout.announcement !== '')
+      patch({ announcement: lockout.announcement });
   }, [lockout.announcement, patch]);
 
   const actions: StepUpActions = {

@@ -9,6 +9,7 @@ Safe operational endpoint, job/outbox reconciliation, retention, and SLO procedu
 - [Provider and webhook reconciliation](./provider-webhook-reconciliation.md) — resolve duplicate deliveries and unknown provider outcomes while production providers remain disabled.
 - [Release and recovery gates](./release-recovery-gates.md) — promote immutable artifacts and keep protected writes closed while hosted PITR evidence is unavailable.
 - [Initial CMS owner](./initial-cms-owner.md) — initialize the sole approved staging owner once through the audited operator-only boundary.
+- [Sole administrator MFA lockout](./sole-admin-mfa-lockout.md) — recover the only administrator's authenticators through the Supabase dashboard with an audit note.
 
 ## Ownership
 

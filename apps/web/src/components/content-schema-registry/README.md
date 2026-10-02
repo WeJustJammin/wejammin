@@ -36,6 +36,33 @@ authority from browser headers or query parameters.
 - `ContentSchemaRegistryWorkbenchIsland.tsx` — serializable hydrated boundary;
   owns canonical refresh, loading/offline/status, and focus through React state
   so the protected subtree keeps React event ownership across refreshes.
+  The island carries safe display context only (FE03 island invariant): no
+  actor, person, party, binding, session or correlation identifier in any
+  spelling. The server keeps the authority tuple; a trusted acting-context
+  change bumps a browser-owned `contextEpoch` that resets local confirmation.
+- `use-content-schema-registry-island-runtime.ts` — the island's effects:
+  scheduler, projection state, focus restoration, command enhancement, and the
+  online/offline/acting-context subscriptions.
+- `ContentSchemaRegistryVersionCommands.tsx` — the designer's command stack for
+  one version. Forms for CMS-03A-09/10/11/04 (`ContentSchemaRegistryVersionForms.tsx`,
+  `ContentSchemaRegistryActivationForm.tsx`) render only when the server's
+  `activationPreparation.permittedNextActions` allow them and the prefilled
+  ids exist; `content-schema-registry-version-actions.ts` is that pure mapping
+  (sealed passed dry run, approved review's approve-decision ids as one hidden
+  JSON value). Nothing is typed as an id.
+- `ContentSchemaRegistryActivationPreparation.tsx` and
+  `content-schema-registry-dry-run-polling.ts` — dry-run/job status region and
+  bounded polling that reuses the FE00 job polling hook; a job state alone never
+  reads as a passed dry run.
+- `ContentSchemaRegistryReviewMode.tsx`, `ContentSchemaRegistryReviewPanel.tsx`,
+  `ContentSchemaRegistryReviewFacts.tsx`,
+  `ContentSchemaRegistryReviewDecisionForm.tsx` and
+  `ContentSchemaRegistryReviewAssignmentForm.tsx` — protected review surface
+  (CMS-03A-13/12/14), including the `schemaReviewAssigned` reviewer variant.
+  `ContentSchemaRegistryReviewAssignments.tsx` lists the owner-only
+  `assignments[]` safe summary (display label and window, never a person id)
+  with one revoke form per active assignment (CMS-03A-14 `revoke`).
+  A 401 `STEP_UP_REQUIRED` routes to `/step-up?returnTo=<relative path>`.
 - `content-schema-registry-canonical-refresh-scheduler.ts` — bounded
   one-in-flight refresh: metadata bursts coalesce to a single protected GET, a
   context change forces an immediate read, and the epoch guard discards stale

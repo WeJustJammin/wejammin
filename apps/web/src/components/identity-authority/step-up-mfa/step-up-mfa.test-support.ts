@@ -9,8 +9,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-  true;
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 export const REQUEST_ID = '0195b6f0-0000-7000-8000-000000000001';
 export const FACTOR_A = '0195b6f0-0000-7000-8000-00000000000a';
@@ -114,16 +115,19 @@ export type RecordedCall = Readonly<{
 
 export type FetchStub = ReturnType<typeof stubFetch>;
 
+export type StubResponse =
+  Response | Error | ((call: RecordedCall) => Response);
+
 /** Queues responses (or thrown errors) and records every request. */
-export const stubFetch = (
-  ...queue: readonly (Response | Error | ((call: RecordedCall) => Response))[]
-) => {
+export const stubFetch = (...queue: StubResponse[]) => {
   const calls: RecordedCall[] = [];
   const remaining = [...queue];
   const fetchStub = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     const body =
-      typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      typeof init?.body === 'string'
+        ? (JSON.parse(init.body) as unknown)
+        : null;
     const call: RecordedCall = {
       url: typeof input === 'string' ? input : input.toString(),
       method: init?.method ?? 'GET',
@@ -132,7 +136,8 @@ export const stubFetch = (
     };
     calls.push(call);
     const next = remaining.shift();
-    if (next === undefined) return Promise.reject(new Error('unexpected fetch'));
+    if (next === undefined)
+      return Promise.reject(new Error('unexpected fetch'));
     if (next instanceof Error) return Promise.reject(next);
     return Promise.resolve(typeof next === 'function' ? next(call) : next);
   });
@@ -200,7 +205,7 @@ export const click = (element: Element): void => {
 };
 
 export const byText = (
-  container: ParentNode,
+  container: HTMLElement,
   selector: string,
   text: string | RegExp,
 ): HTMLElement | undefined =>
@@ -211,7 +216,7 @@ export const byText = (
   );
 
 export const requireElement = <T extends Element>(
-  container: ParentNode,
+  container: HTMLElement,
   selector: string,
 ): T => {
   const found = container.querySelector<T>(selector);

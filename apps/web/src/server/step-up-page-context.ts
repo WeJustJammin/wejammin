@@ -46,12 +46,24 @@ export const resolveStepUpPage = async (input: {
   if (read.kind === 'unauthenticated')
     return { kind: 'unauthenticated', location: stepUpSignInHref(returnTo) };
   if (read.kind === 'unavailable')
-    return { kind: 'degraded', reason: 'unavailable', requestId: input.requestId, returnTo };
+    return {
+      kind: 'degraded',
+      reason: 'unavailable',
+      requestId: input.requestId,
+      returnTo,
+    };
   const { resource } = read;
   const allowsTotp = resource.allowedMethods.includes('totp');
   if (!allowsTotp)
-    return { kind: 'degraded', reason: 'no-method', requestId: input.requestId, returnTo };
-  const factors = resource.factors.filter((factor) => factor.state === 'verified');
+    return {
+      kind: 'degraded',
+      reason: 'no-method',
+      requestId: input.requestId,
+      returnTo,
+    };
+  const factors = resource.factors.filter(
+    (factor) => factor.state === 'verified',
+  );
   return {
     kind: 'ready',
     page: {

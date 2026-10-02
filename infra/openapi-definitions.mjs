@@ -348,6 +348,42 @@ const authMfaFactorErrors = {
   rate: 'MFA rate limit exceeded',
 };
 
+const adminMfaFactorResetErrors = [
+  {
+    status: '400',
+    description: 'MFA factor reset request or headers are malformed',
+  },
+  {
+    status: '401',
+    description: 'Verified session or recent step-up verification is required',
+    schema: 'stepUpUnauthorized',
+  },
+  {
+    status: '403',
+    description:
+      'Named admin.identity.mfa_reset capability or CSRF is forbidden',
+  },
+  { status: '404', description: 'Target person is absent or concealed' },
+  {
+    status: '409',
+    description: 'Reset is already in progress or idempotency conflicts',
+  },
+  { status: '413', description: 'MFA factor reset body is too large' },
+  { status: '415', description: 'MFA factor reset media type is unsupported' },
+  {
+    status: '422',
+    description: 'Reset fails validation or targets the operator themselves',
+  },
+  { status: '429', description: 'MFA factor reset rate limit exceeded' },
+  { status: '500', description: 'MFA factor reset failed safely' },
+  {
+    status: '502',
+    description: 'Identity dependency returned an invalid response',
+  },
+  { status: '503', description: 'Identity service unavailable' },
+  { status: '504', description: 'Identity dependency timed out' },
+];
+
 export const routeDefinitions = {
   authProviderCatalogRead: {
     responses: [
@@ -1713,6 +1749,23 @@ export const routeDefinitions = {
       contentSchemaRegistryStepUpMutationErrors,
       'mutation',
     ),
+  },
+  'CFG-05B-06': {
+    responses: [
+      ...['200', '202'].map((status) => ({
+        status,
+        description:
+          status === '200'
+            ? 'MFA factors reset and removed'
+            : 'MFA factor removal is reconciling',
+        schema: 'success',
+      })),
+      ...adminMfaFactorResetErrors.map((error) => ({
+        schema: 'error',
+        ...error,
+        ...(error.status === '429' ? { headers: 'rate' } : {}),
+      })),
+    ],
   },
   'CMS-03A-05': {
     responses: contentSchemaRegistryResponses(

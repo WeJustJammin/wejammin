@@ -18,6 +18,10 @@ import {
   Cfg05b05AuditDiagnosticRequestSchema,
   Cfg05b05AuditDiagnosticResponseSchema,
 } from './admin-diagnostic.ts';
+import {
+  Cfg05b06MfaFactorResetRequestSchema,
+  Cfg05b06MfaFactorResetResponseSchema,
+} from './admin-mfa-reset.ts';
 
 export const ADMIN_WORKSPACE_ROUTE_CONTRACTS = [
   {
@@ -63,6 +67,16 @@ export const ADMIN_WORKSPACE_ROUTE_CONTRACTS = [
     request: Cfg05b05AuditDiagnosticRequestSchema,
     response: Cfg05b05AuditDiagnosticResponseSchema,
     successStatus: 202,
+    active: true,
+  },
+  {
+    operationId: 'CFG-05B-06',
+    method: 'POST',
+    path: '/api/v1/admin/identity/mfa-factor-resets',
+    request: Cfg05b06MfaFactorResetRequestSchema,
+    response: Cfg05b06MfaFactorResetResponseSchema,
+    // 200 `completed`; the Worker answers 202 while the reset is `reconciling`.
+    successStatus: 200,
     active: true,
   },
 ] as const;

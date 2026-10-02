@@ -4,7 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import type { ContentSchemaRegistryWorkbenchIslandProps } from './ContentSchemaRegistryWorkbenchIsland';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
-import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
+import { approvedReviewPreparation } from './content-schema-registry-activation-preparation.test-support';
+import { approvedProtectedReview } from './content-schema-review-dec108.test-support';
 
 /** Shared fixtures/helpers for the island canonical-refetch test suites. */
 
@@ -15,9 +16,6 @@ export const capturedWorkbench: { props: Record<string, unknown>[] } = {
 export const lastWorkbenchProps = (): Record<string, unknown> =>
   (capturedWorkbench.props.at(-1) ?? {}) as Record<string, unknown>;
 
-export const ACTOR_ID = '10000000-0000-4000-8000-000000000001';
-export const PARTY_ID = '20000000-0000-4000-8000-000000000002';
-export const OTHER_PARTY_ID = '20000000-0000-4000-8000-0000000000ff';
 export const TYPE_ID = '30000000-0000-4000-8000-000000000003';
 export const VERSION_ID = '40000000-0000-4000-8000-000000000004';
 
@@ -68,7 +66,16 @@ export const DETAIL = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [],
-  activationPreparation: emptyActivationPreparation,
+  // Activation renders only when the server offers it (FE03 G8), so the shared
+  // fixture is the activatable state: `activate` plus the approved review.
+  activationPreparation: approvedReviewPreparation,
+};
+
+export const REVIEW = {
+  status: 'success' as const,
+  data: approvedProtectedReview(),
+  version: '3',
+  stale: false,
 };
 
 export const workbenchProps = (
@@ -76,8 +83,6 @@ export const workbenchProps = (
 ): ContentSchemaRegistryWorkbenchProps => ({
   variant: 'ownerFull',
   access: 'full',
-  actorId: ACTOR_ID,
-  actingPartyId: PARTY_ID,
   actingContextLabel: 'Northwind Collective',
   stepUpState: 'verified',
   stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
@@ -99,6 +104,7 @@ export const workbenchProps = (
     version: '1',
     stale: false,
   },
+  initialReview: REVIEW,
   onCanonicalRefetch: async () => undefined,
   ...overrides,
 });
@@ -140,8 +146,6 @@ export const okBody = (overrides: Record<string, unknown> = {}): string =>
     state: 'ready',
     variant: 'ownerFull',
     access: 'full',
-    actorId: ACTOR_ID,
-    actingPartyId: PARTY_ID,
     actingContextLabel: 'Northwind Collective',
     stepUpState: 'verified',
     stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
@@ -153,6 +157,7 @@ export const okBody = (overrides: Record<string, unknown> = {}): string =>
       version: '1',
       stale: false,
     },
+    initialReview: REVIEW,
     ...overrides,
   });
 
@@ -161,8 +166,6 @@ export const islandPropsFixture = (
 ): ContentSchemaRegistryWorkbenchIslandProps => ({
   variant: 'ownerFull',
   access: 'full',
-  actorId: ACTOR_ID,
-  actingPartyId: PARTY_ID,
   actingContextLabel: 'Northwind Collective',
   stepUpState: 'verified',
   stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
@@ -184,6 +187,7 @@ export const islandPropsFixture = (
     version: '1',
     stale: false,
   },
+  initialReview: REVIEW,
   canonicalRefetchUrl:
     '/app/cms-content-modeling/' +
     TYPE_ID +

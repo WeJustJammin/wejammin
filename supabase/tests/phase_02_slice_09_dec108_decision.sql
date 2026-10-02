@@ -179,6 +179,7 @@ select ok(pg_temp.s09d_outcome('v:revoke') = 'OK' and pg_temp.s09d_outcome('v:de
 -- Protected policy (G17 / DEC-110): two distinct humans; a repeated human never counts.
 select pg_temp.s09d_create_type('p', 'dec108decprot', 'cms.disclosure.policy');
 select pg_temp.s09d_to_review('p');
+select pg_temp.s09d_grant_specialist('rev1', 'cms.reviewer.policy');
 select pg_temp.s09d_assign('p', 'rev1');
 select pg_temp.s09d_assign('p', 'rev2');
 select ok((select r->>'riskClass' = 'protected' and (r->>'requiredDecisionCount')::int = 2
@@ -195,6 +196,41 @@ select ok(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('p:re
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('p:version')) = 'approved'
   and (select r->>'distinctApprovalCount' = '2' from (select pg_temp.s09d_get_review('p:get', 'p') r) s),
   'approval happens exactly when the second distinct human approves');
+
+-- Specialist slots (BE03a "Workflow policy registry"): a protected review whose
+-- specialist capability no counted approver holds cannot be completed, and a
+-- counted approver who loses the specialist capability is reviewer-authority drift.
+select pg_temp.s09d_create_type('q', 'dec108decspecial', 'cms.disclosure.legal');
+select pg_temp.s09d_to_review('q');
+select pg_temp.s09d_assign('q', 'rev1');
+select pg_temp.s09d_assign('q', 'rev2');
+select pg_temp.s09d_decide('q', 'rev1', 'approve');
+select pg_temp.s09d_decide('q', 'rev2', 'approve', '{}'::jsonb, 'q:completing');
+select ok(pg_temp.s09d_outcome('q:decide:rev1') = 'OK' and pg_temp.s09d_outcome('q:completing') = 'CONFLICT'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('q:review')) = 'open'
+  and pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_schema_review_decisions where review_id = %L',
+      pg_temp.s09d_id('q:review'))) = '1',
+  'the approval that would leave the specialist slot unsatisfiable is a 409 and records nothing');
+select pg_temp.s09d_decide('q', 'rev2', 'reject', '{}'::jsonb, 'q:reject');
+select ok(pg_temp.s09d_outcome('q:reject') = 'OK'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('q:review')) = 'rejected',
+  'a reject decision is never refused on the specialist-slot ground');
+select pg_temp.s09d_create_type('u', 'dec108decspecialdrift', 'cms.disclosure.policy');
+select pg_temp.s09d_to_review('u');
+select pg_temp.s09d_grant_specialist('rev1', 'cms.reviewer.policy');
+select pg_temp.s09d_assign('u', 'rev1');
+select pg_temp.s09d_assign('u', 'rev2');
+select pg_temp.s09d_decide('u', 'rev1', 'approve');
+select pg_temp.s09d_decide('u', 'rev2', 'approve');
+select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('u:review')), 'approved',
+  'fixture: a protected review with a specialist holder is approved');
+update identity_private.organization_actor_grant set active = false
+ where organization_id = pg_temp.s09d_id('ownerOrg')
+   and person_id = pg_temp.s09d_actor_id('rev1', 'person')::uuid
+   and capability_code = 'cms.reviewer.policy';
+select ok(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('u:review')) = 'invalidated'
+  and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('u:version')) = 'draft',
+  'a counted approver losing the specialist capability invalidates the approved review and returns the candidate to draft');
 
 select ok(pg_temp.s09d_service_only('platform_api.cms_decide_schema_review(jsonb)')
   and to_regprocedure('platform_private.cms_decide_schema_review(jsonb)') is not null

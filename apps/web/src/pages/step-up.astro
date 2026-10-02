@@ -60,7 +60,9 @@ if (resolved.kind === 'unauthenticated')
             }))}
             initialPhase={resolved.page.initialPhase}
             initialFreshUntil={
-              resolved.page.stepUp.fresh ? resolved.page.stepUp.freshUntil : null
+              resolved.page.stepUp.fresh
+                ? resolved.page.stepUp.freshUntil
+                : null
             }
             client:load
           />
@@ -80,7 +82,9 @@ if (resolved.kind === 'unauthenticated')
                 ? 'This account cannot verify a protected action right now.'
                 : 'We could not check your verification options. Nothing was changed.'}
             </p>
-            <p><a href={resolved.returnTo}>Go back</a></p>
+            <p>
+              <a href={resolved.returnTo}>Go back</a>
+            </p>
             <p class="infra-request-id">
               Request ID: <code>{resolved.requestId}</code>
             </p>
@@ -88,6 +92,8 @@ if (resolved.kind === 'unauthenticated')
         )
       }
     </main>
-    <script src="../components/identity-authority/step-up-mfa/focus-page-heading.ts"></script>
+    <script
+      src="../components/identity-authority/step-up-mfa/focus-page-heading.ts"
+    ></script>
   </body>
 </html>

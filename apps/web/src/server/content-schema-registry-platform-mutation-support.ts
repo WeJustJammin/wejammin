@@ -28,9 +28,13 @@ const MUTATION_RESPONSE_HEADERS = new Set([
 
 const pathIdentifiers = (
   target: ContentSchemaRegistryMutationTarget,
-  scope: 'none' | 'version' | 'review',
+  scope: 'none' | 'version' | 'review' | 'grant',
 ): Readonly<Record<string, string>> | null => {
   if (scope === 'none') return {};
+  if (scope === 'grant')
+    return target.grantId !== undefined && isSafeUuid(target.grantId)
+      ? { grantId: target.grantId }
+      : null;
   if (scope === 'review')
     return target.reviewId !== undefined && isSafeUuid(target.reviewId)
       ? { reviewId: target.reviewId }

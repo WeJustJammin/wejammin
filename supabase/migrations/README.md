@@ -26,6 +26,18 @@ pair it with pgTAP coverage in `../tests`.
 - Keep `security definer` functions on a fixed, empty `search_path`.
 - Treat destructive rollback as prohibited production behavior.
 
+## Slice 09 DEC-108 schema-review chain
+
+`20261002120000` to `20261002137000` add the CMS-owned activation producers in
+dependency order: capability and workflow-policy registries, the three private
+review tables and their invalidation triggers, attempt-scoped dry-run reports and
+plans, the versioned artifact compiler, shared review authority helpers, then
+one command per migration (successor, dry-run, submit, assign, decide, review
+read, template-compatibility resolver, activation, detail projection), the
+state and edit-in-review fixes, and a final grant sweep. The `platform_api`
+wrappers are service-role only and every `platform_private.cms_*` function stays
+ungranted. pgTAP coverage is `../tests/phase_02_slice_09_dec108_*.sql`.
+
 ## Related links
 
 - `../tests/README.md`

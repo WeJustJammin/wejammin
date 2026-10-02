@@ -142,10 +142,7 @@ export const registerProviderAccessRoutes = (
       if (!resolved.ok) return responseForAuthError(context, resolved);
       session = resolved.value;
       if (!isStepUpFresh(session, Date.now())) {
-        return responseForAuthError(
-          context,
-          stepUpRequiredError(),
-        );
+        return responseForAuthError(context, stepUpRequiredError());
       }
     }
     const rateError = await enforceRate(

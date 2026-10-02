@@ -5,10 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ContentSchemaRegistryWorkbenchIsland from './ContentSchemaRegistryWorkbenchIsland';
 import {
-  ACTOR_ID,
   DETAIL,
-  PARTY_ID,
   RESOURCE,
+  REVIEW,
   capturedWorkbench,
   islandMarkup,
   islandPropsFixture,
@@ -72,14 +71,13 @@ const readyMarkup = (overrides: Record<string, unknown>): string =>
     state: 'ready',
     variant: 'ownerFull',
     access: 'full',
-    actorId: ACTOR_ID,
-    actingPartyId: PARTY_ID,
     actingContextLabel: 'Northwind Collective',
     stepUpState: 'verified',
     stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
     requestId: 'r',
     initialList: emptyList,
     initialDetail: detailSuccess,
+    initialReview: REVIEW,
     ...overrides,
   });
 
@@ -127,7 +125,7 @@ describe('[P2-S09-AC-250] island canonical refetch actual DOM feedback', () => {
 
     // Establish a stable, keyed control inside the protected workbench.
     const field = view.container.querySelector<HTMLInputElement>(
-      '#content-schema-registry-dry-run-id',
+      '#content-schema-registry-activation-evidence-hash',
     );
     expect(field).not.toBeNull();
     field?.focus();
@@ -147,13 +145,13 @@ describe('[P2-S09-AC-250] island canonical refetch actual DOM feedback', () => {
     // field is still the active element, and it is the live node the refreshed
     // tree actually contains (never a detached stale node).
     const refreshed = view.container.querySelector<HTMLInputElement>(
-      '#content-schema-registry-dry-run-id',
+      '#content-schema-registry-activation-evidence-hash',
     );
     expect(refreshed).not.toBeNull();
     expect(view.container.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toBe(refreshed);
     expect(document.activeElement?.id).toBe(
-      'content-schema-registry-dry-run-id',
+      'content-schema-registry-activation-evidence-hash',
     );
     expect(document.activeElement?.tagName).toBe('INPUT');
   });
@@ -179,7 +177,9 @@ describe('[P2-S09-AC-250] island canonical refetch actual DOM feedback', () => {
       view.container.querySelector('#content-schema-registry-activation-form'),
     ).toBeNull();
     expect(
-      view.container.querySelector('#content-schema-registry-dry-run-id'),
+      view.container.querySelector(
+        '#content-schema-registry-activation-evidence-hash',
+      ),
     ).toBeNull();
 
     // The safe capability boundary is the only remaining authority message.

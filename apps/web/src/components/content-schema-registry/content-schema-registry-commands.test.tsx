@@ -116,6 +116,8 @@ describe('content schema registry command forms and interaction primitives', () 
         idempotencyKey: IDEMPOTENCY,
         ifMatch: IF_MATCH,
         expectedVersion: '4',
+        dryRunId: '018f0c45-73fe-7dc2-9c09-68f7ecf132dc',
+        approvalIds: ['018f0c45-73fe-7dc2-9c09-68f7ecf132dd'],
       }),
     );
 
@@ -125,7 +127,6 @@ describe('content schema registry command forms and interaction primitives', () 
       'approvalIds',
       'expectedActivationEvidenceHash',
       'migrationPlanId',
-      'stepUpToken',
       'csrf',
       'idempotency-key',
       'if-match',
@@ -137,6 +138,28 @@ describe('content schema registry command forms and interaction primitives', () 
       'Activation affects the selected content type version',
     );
     expect(markup).not.toContain('X-WeJammin-Release');
+  });
+
+  it('renders no step-up token or password field; step-up is session-based (DEC-111)', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(ContentSchemaRegistryActivationForm, {
+        action: `/app/cms-content-modeling/${TYPE_ID}/versions/${VERSION_ID}`,
+        contentTypeId: TYPE_ID,
+        versionId: VERSION_ID,
+        csrfToken: CSRF,
+        idempotencyKey: IDEMPOTENCY,
+        ifMatch: IF_MATCH,
+        expectedVersion: '4',
+        dryRunId: '018f0c45-73fe-7dc2-9c09-68f7ecf132dc',
+        approvalIds: ['018f0c45-73fe-7dc2-9c09-68f7ecf132dd'],
+      }),
+    );
+    expect(markup).not.toContain('stepUpToken');
+    expect(markup).not.toContain('step-up-token');
+    expect(markup).not.toMatch(/type="password"/u);
+    expect(markup).not.toMatch(
+      /autoComplete="one-time-code"|autocomplete="one-time-code"/u,
+    );
   });
 
   it('keeps capability, pending, confirmation, offline, and conflict semantics explicit', () => {

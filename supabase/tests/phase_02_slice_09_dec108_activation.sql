@@ -104,7 +104,8 @@ select pg_temp.s09d_activate('a', 'owner', jsonb_build_object('requestId', exten
   'correlationId', extensions.gen_random_uuid(), 'stepUpAt', clock_timestamp() - interval '90 seconds'), 'a:activate') as response;
 select is(pg_temp.s09d_outcome('a:activate'), 'OK',
   'DEFECT D/B: a 30-minute-old decision under a different requestId/correlationId/stepUpAt still activates');
-select ok((select response ?& array['id','version','contentTypeVersionId','state','activationEvidence','eventType','eventId']
+select ok((select response ?& array['id','version','contentHash','createdAt','updatedAt','contentTypeVersionId','state','activationEvidence','eventType']
+    and not (response ? 'eventId')
     and response->>'state' = 'active' and response->>'eventType' = 'cms.schema.activated.v1'
     and (response->'activationEvidence'->>'requiredDecisionCount')::int = 1
     and response->'activationEvidence'->>'riskClass' = 'ordinary'

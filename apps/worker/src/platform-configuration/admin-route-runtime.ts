@@ -7,6 +7,7 @@ import type { WorkerApp, WorkerContext, WorkerDependencies } from '../index';
 import { authError, responseForAuthError } from '../authentication/boundary';
 import type { AuthenticationResult } from '../authentication/types';
 import type { Cfg05b05AuditDiagnosticRequest } from '@wejammin/contracts';
+import { registerAdminMfaResetRoute } from './admin-mfa-reset-route';
 import { createAdminWorkspacePortRunner } from './admin-runtime-port';
 import {
   checkConfigurationSameOrigin,
@@ -209,4 +210,5 @@ export const registerAdminWorkspaceRoutes = (
   app.get('/api/v1/admin/inbox', runtime.inbox);
   app.post('/api/v1/admin/capability-grants/actions', runtime.capabilityAction);
   app.post('/api/v1/admin/audit-diagnostics/actions', runtime.auditDiagnostic);
+  registerAdminMfaResetRoute(app, dependencies);
 };

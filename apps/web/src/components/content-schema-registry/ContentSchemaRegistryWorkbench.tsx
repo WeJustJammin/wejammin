@@ -68,7 +68,6 @@ export default function ContentSchemaRegistryWorkbench({
     onCanonicalRefetch === undefined ? 'unbound' : 'bound';
   const ready = initialDetail?.status === 'success' ? initialDetail : null;
   const detail = ready?.data ?? null;
-  const expectedVersion = ready?.version ?? '1';
 
   return (
     <section
@@ -183,7 +182,7 @@ export default function ContentSchemaRegistryWorkbench({
               action={detailAction}
               csrfToken={csrfToken}
               idempotencyKey={idempotencyKey}
-              expectedVersion={expectedVersion}
+              expectedVersion={ready?.version ?? '1'}
               actingContextLabel={actingContextLabel}
               stepUpState={stepUpState}
               stepUpFreshUntil={stepUpFreshUntil}

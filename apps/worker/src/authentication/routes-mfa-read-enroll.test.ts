@@ -8,11 +8,6 @@ import {
   mfaRequest,
 } from './mfa-route-test-support';
 import { failure, success } from './phase-02-slice-02.test-support';
-import {
-  FACTOR_ID,
-  OTHER_FACTOR_ID,
-  ROTATED_COOKIES,
-} from './mfa-test-support';
 
 const LIST = '/api/v1/account/mfa/factors';
 const ENROLL_BODY = { method: 'totp', friendlyName: 'Phone authenticator' };

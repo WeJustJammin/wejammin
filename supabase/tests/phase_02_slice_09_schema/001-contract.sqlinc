@@ -93,7 +93,7 @@ select ok(
         'from_version_id','to_version_id','classification','transform_key',
         'transform_version','dry_run_report','cursor','progress','source_count',
         'target_count','row_error_count','migrated_count','failed_count','created_by',
-        'started_at','completed_at']::name[]),
+        'started_at','completed_at','superseded_at']::name[]),
       ('platform_private.cms_schema_artifacts', array[
         'id','owner_id','state','version','created_at','updated_at',
         'content_type_version_id','compiler_version','zod_contract_ref',

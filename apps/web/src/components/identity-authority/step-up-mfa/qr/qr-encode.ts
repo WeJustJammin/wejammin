@@ -15,8 +15,7 @@ export type { QrMatrix } from './qr-matrix';
 const BYTE_MODE_INDICATOR = 0b0100;
 const PAD_BYTES = [0xec, 0x11] as const;
 
-const characterCountBits = (version: number): number =>
-  version <= 9 ? 8 : 16;
+const characterCountBits = (version: number): number => (version <= 9 ? 8 : 16);
 
 const fitsVersion = (byteLength: number, version: number): boolean =>
   4 + characterCountBits(version) + 8 * byteLength <=
@@ -46,7 +45,9 @@ const dataBits = (bytes: Uint8Array, version: number): number[] => {
 
 const toCodewords = (bits: readonly number[]): number[] =>
   Array.from({ length: bits.length / 8 }, (_unused, index) =>
-    bits.slice(index * 8, index * 8 + 8).reduce((byte, bit) => (byte << 1) | bit, 0),
+    bits
+      .slice(index * 8, index * 8 + 8)
+      .reduce((byte, bit) => (byte << 1) | bit, 0),
   );
 
 /** Splits into blocks, appends Reed-Solomon codewords and interleaves them. */
@@ -82,10 +83,7 @@ const interleave = (data: readonly number[], version: number): number[] => {
 export const encodeQr = (text: string): QrMatrix => {
   const bytes = new TextEncoder().encode(text);
   const version = chooseVersion(bytes.length);
-  const codewords = interleave(
-    toCodewords(dataBits(bytes, version)),
-    version,
-  );
+  const codewords = interleave(toCodewords(dataBits(bytes, version)), version);
   const grid = new QrGrid(version);
   grid.drawCodewords(codewords);
   let best = { mask: 0, penalty: Number.POSITIVE_INFINITY };
@@ -111,7 +109,9 @@ export const qrSvgPath = (
   matrix.modules.forEach((row, y) =>
     row.forEach((dark, x) => {
       if (dark)
-        parts.push(`M${x + QUIET_ZONE_MODULES} ${y + QUIET_ZONE_MODULES}h1v1h-1z`);
+        parts.push(
+          `M${x + QUIET_ZONE_MODULES} ${y + QUIET_ZONE_MODULES}h1v1h-1z`,
+        );
     }),
   );
   return {

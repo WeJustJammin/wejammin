@@ -145,8 +145,62 @@ const expectedWorkerRpcs = [
   'cms_dead_letter_schema_migration_event',
 ] as const;
 
+const expectedAmendmentRoutes = [
+  [
+    'CMS-03A-09',
+    'POST',
+    '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/successors',
+  ],
+  [
+    'CMS-03A-10',
+    'POST',
+    '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/dry-runs',
+  ],
+  [
+    'CMS-03A-11',
+    'POST',
+    '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/reviews',
+  ],
+  ['CMS-03A-12', 'POST', '/api/v1/cms/schema-reviews/{reviewId}/decisions'],
+  ['CMS-03A-13', 'GET', '/api/v1/cms/schema-reviews/{reviewId}'],
+  ['CMS-03A-14', 'POST', '/api/v1/cms/schema-reviews/{reviewId}/assignments'],
+  ['CMS-03A-15', 'POST', '/api/v1/cms/capability-grants'],
+  ['CMS-03A-16', 'POST', '/api/v1/cms/capability-grants/{grantId}/renewals'],
+  ['CMS-03A-17', 'POST', '/api/v1/cms/capability-grants/{grantId}/revocations'],
+  ['CMS-03A-18', 'GET', '/api/v1/cms/capability-grants'],
+] as const;
+
+const expectedAmendmentTables = [
+  'cms_schema_reviews',
+  'cms_schema_review_decisions',
+  'cms_schema_review_assignments',
+  'cms_schema_dry_run_row_evidence',
+  'cms_capability_grants',
+  'cms_capability_grant_events',
+  'cms_workflow_policies',
+] as const;
+
+const expectedAmendmentRpcs = [
+  'cms_create_schema_successor',
+  'cms_start_schema_dry_run',
+  'cms_submit_schema_review',
+  'cms_decide_schema_review',
+  'cms_get_schema_review',
+  'cms_assign_schema_review',
+  'cms_grant_capability',
+  'cms_renew_capability_grant',
+  'cms_revoke_capability_grant',
+  'cms_list_capability_grants',
+  'cms_resolve_template_compatibility',
+] as const;
+
+const amendmentMigrationSource = migrationFiles
+  .filter(({ source }) => /\bcms_[a-z_]+/iu.test(source))
+  .map(({ source }) => source)
+  .join('\n');
+
 const acceptanceIds = (source: string): string[] =>
-  [...source.matchAll(/P2-S09-AC-(\d{3})/gu)].map(
+  [...source.matchAll(/P2-S09-AC-(\d{3,4})/gu)].map(
     (match) => `P2-S09-AC-${match[1]}`,
   );
 
@@ -183,7 +237,7 @@ const hasRouteDeclaration = (
 };
 
 describe('Phase 2 Slice 09 cross-surface traceability', () => {
-  it('[P2-S09-AC-018, P2-S09-AC-019] exposes exactly A01-A08 with the locked method/path pairs', () => {
+  it('[P2-S09-AC-018] keeps the original A01-A08 operations with the locked method/path pairs', () => {
     const routeEvidence = implementationFiles.map(({ source }) => source);
     const operationIds = distinctSorted(
       routeEvidence.flatMap((source) =>
@@ -283,7 +337,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-165, P2-S09-AC-180] keeps the twelve canonical tables and eight named RPCs in the S09 migration', () => {
+  it('[P2-S09-AC-165, P2-S09-AC-180] keeps the twelve original canonical tables and eight original named RPCs in the S09 migration', () => {
     const tableNames = distinctSorted(
       [
         ...s09MigrationSource.matchAll(
@@ -291,7 +345,16 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
         ),
       ].map(([, name]) => name),
     );
-    expect(tableNames).toEqual(distinctSorted([...expectedTables]));
+    expect(tableNames).toEqual(
+      expect.arrayContaining(distinctSorted([...expectedTables])),
+    );
+    expect(
+      tableNames.filter(
+        (name) =>
+          !(expectedTables as readonly string[]).includes(name) &&
+          !(expectedAmendmentTables as readonly string[]).includes(name),
+      ),
+    ).toEqual([]);
 
     const rpcNames = distinctSorted(
       [
@@ -301,8 +364,18 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       ].map(([, name]) => name),
     );
     expect(rpcNames).toEqual(
-      distinctSorted([...expectedRpcs, ...expectedWorkerRpcs]),
+      expect.arrayContaining(
+        distinctSorted([...expectedRpcs, ...expectedWorkerRpcs]),
+      ),
     );
+    expect(
+      rpcNames.filter(
+        (name) =>
+          ![...expectedRpcs, ...expectedWorkerRpcs].includes(
+            name as (typeof expectedRpcs)[number],
+          ) && !(expectedAmendmentRpcs as readonly string[]).includes(name),
+      ),
+    ).toEqual([]);
 
     const authenticatedGrantSource = [
       ...s09MigrationSource.matchAll(
@@ -318,19 +391,23 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
         ),
       ].map(([, name]) => name),
     );
-    expect(authenticatedRpcNames).toEqual(distinctSorted([...expectedRpcs]));
+    expect(authenticatedRpcNames).toEqual(
+      expect.arrayContaining(distinctSorted([...expectedRpcs])),
+    );
   });
 
   it('[P2-S09-AC-267, P2-S09-AC-269, P2-S09-AC-273, P2-S09-AC-275] keeps the phase plan, tracker, runbook, and source anchors traceable', () => {
     const expectedIds = Array.from(
-      { length: 283 },
+      { length: 1200 },
       (_, index) => `P2-S09-AC-${String(index + 1).padStart(3, '0')}`,
-    );
+    ).sort();
     expect(distinctSorted(acceptanceIds(phasePlan))).toEqual(expectedIds);
     expect(distinctSorted(acceptanceIds(sliceTracker))).toEqual(expectedIds);
-    expect(implementationEvidence).toMatch(/CMS-03A-01[\s\S]*CMS-03A-08/iu);
-    expect(implementationEvidence).toMatch(/twelve private registry tables/iu);
-    expect(implementationEvidence).toMatch(/eight named .*RPCs/iu);
+    expect(implementationEvidence).toMatch(/CMS-03A-01[\s\S]*CMS-03A-18/iu);
+    expect(implementationEvidence).toMatch(
+      /nineteen private registry tables/iu,
+    );
+    expect(implementationEvidence).toMatch(/eighteen named .*RPCs/iu);
 
     const sourceRows = [
       ['P2-S09-AC-018', 'BE03a', 'Route Registry'],
@@ -350,22 +427,22 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-267] separates the 283 authored IDs from the 279-item active completion policy after the 2026-09-30 activation and AC250 reopens', () => {
-    expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(283);
+  it('[P2-S09-AC-267] separates the 1200 authored IDs from the 1196-item active completion policy after the 2026-09-30 activation, AC250 and 2026-10-02 DEC-108 reopens', () => {
+    expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(1200);
     expect(sliceTracker).toMatch(
-      /\*\*Acceptance criteria \(authored\)\*\*:\s*283\b/iu,
+      /\*\*Acceptance criteria \(authored\)\*\*:\s*1200\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Active release denominator\*\*:\s*279\b/iu,
+      /\*\*Active release denominator\*\*:\s*1196\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Slice 09 implementation-completion denominator\*\*:\s*279\b/iu,
+      /\*\*Slice 09 implementation-completion denominator\*\*:\s*1196\b/iu,
     );
     expect(sliceTracker).toMatch(
       /\*\*Local QA-GREEN \(historical, 2026-09-26\)\*\*:\s*279\/279\s+verified at that checkpoint;\s*283\s+authored IDs remain/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Current active verification\*\*:\s*262\/279\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+      /\*\*Current active verification\*\*:\s*260\/1196\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
     );
 
     const ac266Row = sliceTracker
@@ -376,10 +453,75 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /AC266[\s\S]{0,500}owner-deferred[\s\S]{0,500}remains unchecked and excluded from active Phase 2/iu,
     );
     expect(sliceTracker).toMatch(
-      /Slice 10 implementation prerequisites\*\*:\s*completion of the 17 reopened Slice 09 activation-chain criteria;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
+      /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019 and AC259 reopened under the DEC-108 accounting,\s*and the 917 open DEC-108\/109\/110\/111\/119\/120 criteria AC284-AC1200;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
     );
     expect(sliceTracker).toMatch(
       /AC266[\s\S]{0,300}mandatory[\s\S]{0,100}pre-release[\s\S]{0,100}production-readiness\/release/iu,
+    );
+  });
+
+  it('[P2-S09-AC-284, P2-S09-AC-019] exposes exactly CMS-03A-01 through CMS-03A-18 with the locked method/path pairs', () => {
+    const routeEvidence = implementationFiles.map(({ source }) => source);
+    const operationIds = distinctSorted(
+      routeEvidence.flatMap((source) =>
+        [...source.matchAll(/CMS-03A-(?:0[1-9]|1\d)/gu)].map(([operationId]) =>
+          String(operationId),
+        ),
+      ),
+    );
+    expect(operationIds).toEqual(
+      distinctSorted(
+        [...expectedRoutes, ...expectedAmendmentRoutes].map(([id]) => id),
+      ),
+    );
+    const missingRoutes = expectedAmendmentRoutes
+      .filter(
+        ([operationId, method, path]) =>
+          !routeEvidence.some((source) =>
+            hasRouteDeclaration(source, operationId, method, path),
+          ),
+      )
+      .map(([operationId, method, path]) => `${operationId} ${method} ${path}`);
+    expect(missingRoutes).toEqual([]);
+  });
+
+  it('[P2-S09-AC-734] creates the DEC-108, DEC-109, DEC-110 and DEC-119 private tables with forced RLS', () => {
+    const tableNames = distinctSorted(
+      [
+        ...amendmentMigrationSource.matchAll(
+          /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:[a-z0-9_]+\.)?["']?(cms_[a-z0-9_]+)["']?/giu,
+        ),
+      ].map(([, name]) => name),
+    );
+    expect(tableNames).toEqual(
+      expect.arrayContaining(distinctSorted([...expectedAmendmentTables])),
+    );
+    for (const table of expectedAmendmentTables) {
+      const creator = migrationFiles.find(({ source }) =>
+        new RegExp(`create\\s+table[^;]*\\b${table}\\b`, 'iu').test(source),
+      );
+      expect(creator, `${table} must be created by a migration`).toBeDefined();
+      expect(creator?.source ?? '', `${table} must enable RLS`).toMatch(
+        /enable\s+row\s+level\s+security/iu,
+      );
+      expect(creator?.source ?? '', `${table} must force RLS`).toMatch(
+        /force\s+row\s+level\s+security/iu,
+      );
+    }
+  });
+
+  it('[P2-S09-AC-732] exposes the eighteen named registry RPCs plus the service-only template resolver', () => {
+    const rpcNames = distinctSorted(
+      [
+        ...amendmentMigrationSource.matchAll(
+          /create\s+(?:or\s+replace\s+)?function\s+platform_api\.["']?(cms_[a-z0-9_]+)["']?\s*\(/giu,
+        ),
+      ].map(([, name]) => name),
+    );
+    expect(rpcNames).toEqual(
+      expect.arrayContaining(
+        distinctSorted([...expectedRpcs, ...expectedAmendmentRpcs]),
+      ),
     );
   });
 });

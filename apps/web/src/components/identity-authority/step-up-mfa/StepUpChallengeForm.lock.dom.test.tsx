@@ -34,7 +34,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const politeText = (container: ParentNode): string =>
+const politeText = (container: HTMLElement): string =>
   Array.from(container.querySelectorAll('[role="status"][aria-live="polite"]'))
     .map((node) => node.textContent ?? '')
     .join('|');
@@ -48,7 +48,12 @@ const advance = (milliseconds: number): void => {
 const lock = async (retryAfter: number) => {
   const fetchImpl = stubFetch(
     json(201, challenge()),
-    apiError(429, 'RATE_LIMITED', { retryAfterSeconds: retryAfter }, { 'retry-after': String(retryAfter) }),
+    apiError(
+      429,
+      'RATE_LIMITED',
+      { retryAfterSeconds: retryAfter },
+      { 'retry-after': String(retryAfter) },
+    ),
   );
   harness = mountForm(fetchImpl);
   await flush();
@@ -63,7 +68,9 @@ const lock = async (retryAfter: number) => {
 describe('StepUpChallengeForm lockout', () => {
   it('disables submit with a visible reason and announces the wait once at the start', async () => {
     const { container } = await lock(150);
-    const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const submit = container.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
     expect(submit?.disabled).toBe(true);
     expect(container.textContent).toContain('Too many attempts');
     expect(politeText(container)).toContain('Try again in 3 minutes.');
@@ -80,7 +87,11 @@ describe('StepUpChallengeForm lockout', () => {
     advance(10_000);
     expect(visible()).toBe('2:19');
     expect(politeText(container)).toBe(announced);
-    expect(container.querySelector('[data-lockout-countdown]')?.closest('[aria-live]')).toBeNull();
+    expect(
+      container
+        .querySelector('[data-lockout-countdown]')
+        ?.closest('[aria-live]'),
+    ).toBeNull();
   });
 
   it('announces again at each whole minute and at unlock, then re-enables submit', async () => {
@@ -91,7 +102,9 @@ describe('StepUpChallengeForm lockout', () => {
     expect(politeText(container)).toContain('Try again in 1 minute.');
     advance(60_000);
     expect(politeText(container)).toContain('You can try again.');
-    const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const submit = container.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
     expect(submit?.disabled).toBe(false);
   });
 });
@@ -99,7 +112,10 @@ describe('StepUpChallengeForm lockout', () => {
 describe('StepUpChallengeForm multi-tab and fresh proof', () => {
   it('refetches AUTH-API-16 on another tab success and offers Continue without auto-redirect', async () => {
     const resource = factorsResource([factor(FACTOR_A)], '4', true);
-    const fetchImpl = stubFetch(json(201, challenge()), json(200, resource, { etag: '"4"' }));
+    const fetchImpl = stubFetch(
+      json(201, challenge()),
+      json(200, resource, { etag: '"4"' }),
+    );
     harness = mountForm(fetchImpl);
     await flush();
     act(() => harness?.channel.emit());
@@ -107,8 +123,14 @@ describe('StepUpChallengeForm multi-tab and fresh proof', () => {
     const container = harness.mounted.container;
     expect(fetchImpl.calls[1]?.url).toBe('/api/v1/account/mfa/factors');
     expect(container.textContent).toContain('already verified');
-    expect(container.querySelector(`time[datetime="${FRESH_UNTIL}"]`)).not.toBeNull();
-    expect(container.querySelector('a[href="/app/cms-content-modeling?tab=versions"]')).not.toBeNull();
+    expect(
+      container.querySelector(`time[datetime="${FRESH_UNTIL}"]`),
+    ).not.toBeNull();
+    expect(
+      container.querySelector(
+        'a[href="/app/cms-content-modeling?tab=versions"]',
+      ),
+    ).not.toBeNull();
     expect(harness.navigate).not.toHaveBeenCalled();
   });
 
@@ -119,6 +141,8 @@ describe('StepUpChallengeForm multi-tab and fresh proof', () => {
     await flush();
     act(() => harness?.channel.emit());
     await flush();
-    expect(harness.mounted.container.textContent).not.toContain('already verified');
+    expect(harness.mounted.container.textContent).not.toContain(
+      'already verified',
+    );
   });
 });

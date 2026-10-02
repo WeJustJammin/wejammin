@@ -168,6 +168,32 @@ select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
   pg_temp.s09d_id('z:dryRun'), pg_temp.s09d_id('z:plan')))::boolean, false),
   'the sealed pass carries zero counts and hashes, no per-row evidence, and advances the plan to ready');
 
+-- Server classification of a successor: a newly required field is conditional and
+-- needs one registered transform pair; the pair is refused on a no-transform
+-- classification and an unregistered pair is refused on a conditional one.
+select pg_temp.s09d_create_type('k', 'dec108dryclass');
+select pg_temp.s09d_to_active('k');
+select pg_temp.s09d_successor('kb', 'k');
+select pg_temp.s09d_rpc('kb:field', 'platform_api.cms_add_field_definition', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('kb:type'), 'versionId', pg_temp.s09d_id('kb:version'),
+    'field', jsonb_build_object('key', 'summary', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+      'required', true, 'validatorKey', null, 'validatorVersion', null, 'defaultMode', 'none',
+      'localizationMode', 'none', 'editorConfig', jsonb_build_object('label', 'Summary', 'order', 1),
+      'lifecycle', 'active'),
+    'migrationPlanId', null, 'expectedVersion', pg_temp.s09d_version('kb'),
+    'idempotencyKey', pg_temp.s09d_idem('kb', 'field')));
+select pg_temp.s09d_dry_run('kb', 'owner', null, null, 's09d-dry-class-none');
+select is(pg_temp.s09d_outcome('kb:dryRun'), 'VALIDATION_FAILED',
+  'a conditional candidate without a transform pair is refused (422)');
+select pg_temp.s09d_dry_run('kb', 'owner', 'cms.unregistered', '1', 's09d-dry-class-unregistered');
+select is(pg_temp.s09d_outcome('kb:dryRun'), 'VALIDATION_FAILED', 'an unregistered transform pair is refused (422)');
+select pg_temp.s09d_dry_run('kb', 'owner', 'identity.revalidate', '1', 's09d-dry-class-registered');
+select ok(pg_temp.s09d_outcome('kb:dryRun') = 'OK'
+  and (select r->>'classification' = 'conditional' and r->>'transformKey' = 'identity.revalidate'
+        and r->>'transformVersion' = '1' from (select pg_temp.s09d_resp('kb:dryRun') r) s)
+  and pg_temp.s09d_read('cms_content_type_versions', 'compatibility', pg_temp.s09d_id('kb:version')) = 'conditional',
+  'the server derives conditional and a registered pair is admitted onto the attempt and the candidate');
+
 select ok(pg_temp.s09d_service_only('platform_api.cms_start_schema_dry_run(jsonb)')
   and to_regprocedure('platform_private.cms_start_schema_dry_run(jsonb)') is not null
   and not coalesce(has_function_privilege('authenticated', to_regprocedure('platform_private.cms_start_schema_dry_run(jsonb)'), 'execute'), true),

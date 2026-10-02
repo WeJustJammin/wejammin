@@ -38,7 +38,18 @@ second domain-policy or persistence layer.
   parsing.
 - `content-schema-registry-platform-mutation-support.ts` — mutation path,
   contract, security, and response helpers.
-- `content-schema-registry-platform-mutation.ts` — the four mutation forwards.
+- `content-schema-registry-platform-mutation.ts` — the human mutation forwards:
+  CMS-03A-01..04, 09..12 and 14, plus the owner-only grant commands 15..17
+  (the facade binds `{grantId}` like `{reviewId}`; the Worker owns ownership).
+- `content-schema-review-context.ts` and `content-schema-review-platform-api.ts`
+  — the protected review route resolver and read ports (CMS-03A-13). The
+  owner-only `assignments[]` summary is kept only when the server lets the
+  caller assign.
+- `cms-capability-grant-contracts.ts`, `cms-capability-grant-platform-api.ts`
+  and `cms-capability-grant-context.ts` — the owner-only DEC-119/DEC-120 grant
+  console: page query (the person filter never enters it), the 90-day
+  `termWindow`, the CMS-03A-18 read ports, the owner navigation probe and the
+  page resolver. An upstream 2xx is the only owner proof.
 
 ## CMS editorial map
 

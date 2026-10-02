@@ -20,12 +20,12 @@ const authoritativeDocuments = [
 ] as const;
 
 const expectedAuthoredIds = Array.from(
-  { length: 283 },
+  { length: 1200 },
   (_, index) => `P2-S09-AC-${String(index + 1).padStart(3, '0')}`,
-);
+).sort();
 
 const acceptanceIds = (source: string): string[] =>
-  [...new Set(source.match(/\bP2-S09-AC-\d{3}\b/gu) ?? [])].sort();
+  [...new Set(source.match(/\bP2-S09-AC-\d{3,4}\b/gu) ?? [])].sort();
 
 const acPolicyWindows = (source: string, id: string): string[] =>
   [...source.matchAll(new RegExp(`${id}|AC${id.slice(-3)}`, 'gu'))].map(
@@ -36,18 +36,18 @@ const acPolicyWindows = (source: string, id: string): string[] =>
   );
 
 describe('Phase 2 Slice 09 completion policy', () => {
-  it('[P2-S09-AC-267] preserves 283 authored IDs with separate 279-item Slice 09 and 2011-item Phase 2 implementation denominators', () => {
+  it('[P2-S09-AC-267] preserves 1200 authored IDs with separate 1196-item Slice 09 and 2928-item Phase 2 implementation denominators', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(acceptanceIds(source), label).toEqual(expectedAuthoredIds);
       expect(source, label).toMatch(
-        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*2,?011\b/iu,
+        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*2,?928\b/iu,
       );
       expect(source, label).toMatch(
-        /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*279\b/iu,
+        /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*1196\b/iu,
       );
-      expect(source, label).toMatch(/262\/279\s+active/iu);
+      expect(source, label).toMatch(/260\/1196\s+active/iu);
       expect(source, label).toMatch(
-        /283 authored[^\n]*(?:AC209|AC211|AC265|AC266|production)/iu,
+        /1200 authored[^\n]*(?:AC209|AC211|AC265|AC266|production)/iu,
       );
     }
   });
@@ -109,13 +109,13 @@ describe('Phase 2 Slice 09 completion policy', () => {
     );
   });
 
-  it('[P2-S09-AC-265] keeps hosted acceptance pre-release while reopened Slice 09 criteria gate Slice 10', () => {
+  it('[P2-S09-AC-265] keeps hosted acceptance pre-release while the amended Slice 09 criteria gate Slice 10', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(source, `${label} AC265 release timing`).toMatch(
         /AC265[^\n]*mandatory pre-release|AC265[^\n]*pre-release[^\n]*mandatory/iu,
       );
       expect(source, `${label} Slice 10 dependency`).toMatch(
-        /Slice 10 implementation prerequisites\*\*:\s*completion of the 17 reopened Slice 09 activation-chain criteria;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
+        /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019 and AC259 reopened under the DEC-108 accounting,\s*and the 917 open DEC-108\/109\/110\/111\/119\/120 criteria AC284-AC1200;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
       );
       expect(source, `${label} AC265 row remains unchecked`).toMatch(
         /^\s*-\s*\[ \].*P2-S09-AC-265/mu,
@@ -183,6 +183,90 @@ describe('Phase 2 Slice 09 completion policy', () => {
     );
     expect(combinedPolicy).toMatch(
       /Linux[^\n]*(?:cannot|does not)[^\n]*(?:replace|substitute)/iu,
+    );
+  });
+});
+
+describe('[P2-S09-AC-1193] DEC-108 amendment criteria in plan and tracker', () => {
+  const amendmentIds = Array.from(
+    { length: 917 },
+    (_, index) => `P2-S09-AC-${String(index + 284).padStart(3, '0')}`,
+  );
+  const rowFor = (source: string, id: string): string | undefined =>
+    source.split(/\r?\n/u).find((line) => line.includes(`**${id}**`));
+
+  it('[P2-S09-AC-1193] mirrors every amendment criterion from P2-S09-AC-284 through P2-S09-AC-1200 as one open row with identical text and source in plan and tracker', () => {
+    for (const id of amendmentIds) {
+      const tracker = rowFor(slice09Tracker, id) ?? '';
+      const plan = rowFor(phasePlan, id) ?? '';
+      expect(tracker, id).toMatch(/^- \[ \] \*\*/u);
+      expect(plan, id).toMatch(/^- \[ \] \*\*/u);
+      const description = (row: string): string =>
+        row
+          .replace(/^- \[ \] \*\*[^*]+\*\* — /u, '')
+          .replace(/\]\([^)]*\)/u, '](link)');
+      expect(description(tracker), id).toBe(description(plan));
+    }
+  });
+
+  it('[P2-S09-AC-1195] reopens AC019 and AC259 and rewords the eight falsified universal claims to explicit A01-A08 scope', () => {
+    for (const id of ['P2-S09-AC-019', 'P2-S09-AC-259']) {
+      expect(rowFor(slice09Tracker, id), id).toMatch(/^- \[ \] \*\*/u);
+    }
+    for (const id of [
+      'P2-S09-AC-018',
+      'P2-S09-AC-032',
+      'P2-S09-AC-165',
+      'P2-S09-AC-180',
+      'P2-S09-AC-214',
+      'P2-S09-AC-221',
+      'P2-S09-AC-264',
+      'P2-S09-AC-269',
+    ]) {
+      const row = rowFor(slice09Tracker, id) ?? '';
+      expect(row, id).toMatch(/^- \[x\] \*\*/u);
+      expect(row, id).toMatch(/original|A01-A08/u);
+    }
+    expect(rowFor(slice09Tracker, 'P2-S09-AC-099'), 'AC099').toMatch(
+      /^- \[ \] \*\*P2-S09-AC-099\*\* — [^\n]*never creates a plan/u,
+    );
+  });
+
+  it('[P2-S09-AC-1194] keeps the floor, active denominator and verified count consistent with the ledger', () => {
+    const activeVerifiedIds = slice09Tracker
+      .split(/\r?\n/u)
+      .filter((line) => /^- \[x\] \*\*P2-S09-AC-\d{3,4}\*\*/u.test(line))
+      .map((line) => /P2-S09-AC-(\d{3,4})/u.exec(line)?.[1] ?? '')
+      .filter((id) => !['209', '211', '265', '266'].includes(id));
+    expect(activeVerifiedIds).toHaveLength(260);
+    expect(slice09Tracker).toMatch(/\*\*Spec depth floor\*\*:\s*1200\b/u);
+    expect(phasePlan).toMatch(/\*\*Spec depth floor\*\*:\s*1200 criteria/u);
+  });
+
+  it('[P2-S09-AC-1192] records the depth-floor ledger with the delta and floor', () => {
+    const ledger = readFileSync(
+      resolve(
+        ROOT,
+        '.memory/pipeline/progress/verification/2026-10-02-slice-09-dec108-depth-floor.md',
+      ),
+      'utf8',
+    );
+    expect(ledger).toMatch(/amendment delta is \*\*917\*\* new open criteria/u);
+    expect(ledger).toMatch(/floor moves from 283 to \*\*1200\*\*/u);
+    const ledgerRows = ledger.match(/^\| P2-S09-AC-\d{3,4} \|/gmu) ?? [];
+    expect(ledgerRows).toHaveLength(917);
+  });
+
+  it('[P2-S09-AC-1196] gates Slices 10 and 12 on the amended Slice 09 criteria', () => {
+    for (const path of [
+      '.memory/pipeline/progress/slices/phase-02-slice-10.md',
+      '.memory/pipeline/progress/slices/phase-02-slice-12.md',
+    ]) {
+      const tracker = readFileSync(resolve(ROOT, path), 'utf8');
+      expect(tracker, path).toMatch(/AC019, AC259 and the 917/u);
+    }
+    expect(phasePlan).toMatch(
+      /\*\*Depends on\*\*: Slice 09 implementation completion, which now includes the amended Slice 09 criteria/u,
     );
   });
 });

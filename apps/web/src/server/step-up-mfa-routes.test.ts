@@ -16,7 +16,9 @@ describe('/step-up page', () => {
 
   it('is a non-prerendered, no-store, noindex page with one focusable heading', () => {
     expect(source).toContain('export const prerender = false');
-    expect(source).toMatch(/Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u);
+    expect(source).toMatch(
+      /Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u,
+    );
     expect(source).toContain('name="robots" content="noindex"');
     expect(source).toContain('lang="en"');
     expect(source).toContain('<title>Verify it');
@@ -56,10 +58,14 @@ describe('/settings/security/mfa page', () => {
 
   it('is a non-prerendered, no-store, noindex page with one focusable heading', () => {
     expect(source).toContain('export const prerender = false');
-    expect(source).toMatch(/Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u);
+    expect(source).toMatch(
+      /Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u,
+    );
     expect(source).toContain('name="robots" content="noindex"');
     expect(source).toContain('<title>Two-step verification');
-    expect(source).toMatch(/<h1 id="page-title" tabindex="-1">\s*Two-step verification/u);
+    expect(source).toMatch(
+      /<h1 id="page-title" tabindex="-1">\s*Two-step verification/u,
+    );
     expect(source).toContain('focus-page-heading');
   });
 

@@ -89,7 +89,9 @@ export class QrGrid {
     positions.forEach((row, i) =>
       positions.forEach((column, j) => {
         const corner =
-          (i === 0 && j === 0) || (i === 0 && j === last) || (i === last && j === 0);
+          (i === 0 && j === 0) ||
+          (i === 0 && j === last) ||
+          (i === last && j === 0);
         if (!corner) this.drawAlignment(column, row);
       }),
     );

@@ -1,4 +1,7 @@
-import type { MfaFactorSummary, StepUpState } from '../components/identity-authority/step-up-mfa/step-up-phase';
+import type {
+  MfaFactorSummary,
+  StepUpState,
+} from '../components/identity-authority/step-up-mfa/step-up-phase';
 import {
   MFA_SETTINGS_ROUTE,
   resolveStepUpReturnTo,

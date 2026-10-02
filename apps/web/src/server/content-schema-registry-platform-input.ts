@@ -37,9 +37,15 @@ const FORM_TRANSPORT_FIELDS = new Set([
   'contentTypeId',
   'versionId',
   'reviewId',
+  'grantId',
 ]);
 
-const PATH_IDENTIFIERS = ['contentTypeId', 'versionId', 'reviewId'] as const;
+const PATH_IDENTIFIERS = [
+  'contentTypeId',
+  'versionId',
+  'reviewId',
+  'grantId',
+] as const;
 
 /**
  * A browser may echo the path identifier the route already bound, but it can

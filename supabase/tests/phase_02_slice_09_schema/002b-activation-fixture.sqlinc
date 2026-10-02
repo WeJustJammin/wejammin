@@ -144,7 +144,8 @@ select pg_temp.s09d_call('x:activation', 'platform_api.cms_activate_schema', req
 from s09_activation_request;
 select pg_temp.s09d_guc_restore();
 select ok(
-  (select response ?& array['id','version','contentTypeVersionId','state','activationEvidence','eventType','eventId']
+  (select response ?& array['id','version','contentHash','createdAt','updatedAt','contentTypeVersionId','state','activationEvidence','eventType']
+   and not (response ? 'eventId')
    and response->>'state' = 'active'
    and response->>'eventType' = 'cms.schema.activated.v1'
    and response->'activationEvidence'->>'riskClass' = 'ordinary'

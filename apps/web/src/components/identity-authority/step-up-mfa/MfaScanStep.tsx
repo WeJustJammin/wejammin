@@ -69,7 +69,9 @@ export function MfaScanStep({
           onChange={onCode}
           inputRef={inputRef}
         />
-        {lockedSeconds !== null && <LockoutNotice remainingSeconds={lockedSeconds} />}
+        {lockedSeconds !== null && (
+          <LockoutNotice remainingSeconds={lockedSeconds} />
+        )}
         <button type="submit" disabled={busy || lockedSeconds !== null}>
           Verify and finish
         </button>{' '}

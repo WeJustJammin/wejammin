@@ -9,7 +9,6 @@ import {
 import type { WorkerApp } from '../index';
 import {
   appendCookies,
-  authError,
   parseIdempotencyKey,
   parseJsonBody,
   rejectUnexpectedQuery,
@@ -140,10 +139,7 @@ export const registerSessionRoutes = (
     if (!resolved.ok) return responseForAuthError(context, resolved);
     const scope = parsed.value.scope ?? 'current';
     if (scope === 'all' && !isStepUpFresh(resolved.value, Date.now())) {
-      return responseForAuthError(
-        context,
-        stepUpRequiredError(),
-      );
+      return responseForAuthError(context, stepUpRequiredError());
     }
     const rateError = await enforceRate(
       context,

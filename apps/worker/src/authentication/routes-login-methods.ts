@@ -99,10 +99,7 @@ export const registerLoginMethodRoutes = (
       const resolved = await requireSession(context, dependencies);
       if (!resolved.ok) return responseForAuthError(context, resolved);
       if (!isStepUpFresh(resolved.value, Date.now())) {
-        return responseForAuthError(
-          context,
-          stepUpRequiredError(),
-        );
+        return responseForAuthError(context, stepUpRequiredError());
       }
       const rateError = await enforceRate(
         context,
@@ -171,10 +168,7 @@ export const registerLoginMethodRoutes = (
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
     if (!isStepUpFresh(resolved.value, Date.now())) {
-      return responseForAuthError(
-        context,
-        stepUpRequiredError(),
-      );
+      return responseForAuthError(context, stepUpRequiredError());
     }
     const rateError = await enforceRate(
       context,

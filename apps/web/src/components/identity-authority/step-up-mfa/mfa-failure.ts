@@ -7,6 +7,8 @@ export type MfaFailure = Readonly<{
   reason: string | null;
   recoveryAction: string | null;
   allowedMethods: readonly string[];
+  /** Field names named by schema violations (at most eight, 64 characters each). */
+  violationFields: readonly string[];
   requestId: string | null;
   retryAfterSeconds: number | null;
 }>;
@@ -23,7 +25,9 @@ const positiveSeconds = (value: unknown): number | null => {
     : null;
 };
 
-const reasonOf = (details: Readonly<Record<string, unknown>>): string | null => {
+const reasonOf = (
+  details: Readonly<Record<string, unknown>>,
+): string | null => {
   const direct = text(details['reasonCode']);
   if (direct !== null) return direct;
   const violations = details['violations'];
@@ -49,12 +53,28 @@ const methodsOf = (value: unknown): readonly string[] =>
         .slice(0, 8)
     : [];
 
+const violationFieldsOf = (value: unknown): readonly string[] => {
+  if (!Array.isArray(value)) return [];
+  const fields: string[] = [];
+  for (const violation of value) {
+    const field =
+      typeof violation === 'object' && violation !== null
+        ? (violation as Record<string, unknown>)['field']
+        : null;
+    if (typeof field === 'string' && field.length > 0 && field.length <= 64)
+      fields.push(field);
+    if (fields.length === 8) break;
+  }
+  return fields;
+};
+
 const base = (status: number): MfaFailure => ({
   status,
   code: `HTTP_${status}`,
   reason: null,
   recoveryAction: null,
   allowedMethods: [],
+  violationFields: [],
   requestId: null,
   retryAfterSeconds: null,
 });
@@ -82,6 +102,7 @@ export const parseMfaFailure = async (
     reason: reasonOf(details),
     recoveryAction: text(details['recoveryAction']),
     allowedMethods: methodsOf(details['allowedMethods']),
+    violationFields: violationFieldsOf(details['violations']),
     requestId: parsed.data.requestId,
     retryAfterSeconds:
       headerRetry ?? positiveSeconds(details['retryAfterSeconds']),

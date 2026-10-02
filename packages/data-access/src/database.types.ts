@@ -529,6 +529,7 @@ export type Database = {
       }
       cms_add_field_definition: { Args: { p_request: Json }; Returns: Json }
       cms_advance_block_lifecycle: { Args: { p_request: Json }; Returns: Json }
+      cms_assign_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
       cms_begin_schema_migration_verification: {
         Args: { p_request: Json }
@@ -554,11 +555,13 @@ export type Database = {
       }
       cms_create_entry: { Args: { p_request: Json }; Returns: Json }
       cms_create_revision: { Args: { p_request: Json }; Returns: Json }
+      cms_create_schema_successor: { Args: { p_request: Json }; Returns: Json }
       cms_create_type_draft: { Args: { p_request: Json }; Returns: Json }
       cms_dead_letter_schema_migration_event: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_decide_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_define_template: { Args: { p_request: Json }; Returns: Json }
       cms_finalize_schema_migration_dry_run: {
         Args: { p_request: Json }
@@ -578,6 +581,7 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_get_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_heartbeat_schema_migration_lease: {
         Args: { p_request: Json }
         Returns: Json
@@ -602,10 +606,16 @@ export type Database = {
         Returns: Json
       }
       cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
+      cms_resolve_template_compatibility: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
+      cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_template_context: { Args: { p_request: Json }; Returns: Json }
       cms_template_latest: { Args: { p_request: Json }; Returns: Json }
       cms_verify_operational_alert_delivery: {
@@ -5955,73 +5965,97 @@ export type Database = {
       }
       cms_schema_dry_run_reports: {
         Row: {
+          attempt_no: number
           classification: string
-          compiler_hash: string
+          compiler_hash: string | null
           compiler_version: string
           content_type_id: string
           created_at: string
           created_by: string | null
-          failed_count: number
+          failed_count: number | null
+          failure_code: string | null
           id: string
-          migrated_count: number
+          job_id: string | null
+          migrated_count: number | null
           owner_id: string
-          report: Json
-          result: string
-          row_error_count: number
-          source_count: number
-          source_hash: string
+          plan_id: string | null
+          report: Json | null
+          result: string | null
+          row_error_count: number | null
+          sealed_at: string | null
+          source_count: number | null
+          source_hash: string | null
           source_version_id: string | null
-          target_count: number
-          target_hash: string
+          state: string
+          target_count: number | null
+          target_hash: string | null
           target_version_id: string
           transform_key: string | null
           transform_version: number | null
+          updated_at: string
+          version: number
         }
         Insert: {
+          attempt_no: number
           classification: string
-          compiler_hash: string
+          compiler_hash?: string | null
           compiler_version: string
           content_type_id: string
           created_at?: string
           created_by?: string | null
-          failed_count: number
+          failed_count?: number | null
+          failure_code?: string | null
           id: string
-          migrated_count: number
+          job_id?: string | null
+          migrated_count?: number | null
           owner_id: string
-          report: Json
-          result?: string
-          row_error_count: number
-          source_count: number
-          source_hash: string
+          plan_id?: string | null
+          report?: Json | null
+          result?: string | null
+          row_error_count?: number | null
+          sealed_at?: string | null
+          source_count?: number | null
+          source_hash?: string | null
           source_version_id?: string | null
-          target_count: number
-          target_hash: string
+          state: string
+          target_count?: number | null
+          target_hash?: string | null
           target_version_id: string
           transform_key?: string | null
           transform_version?: number | null
+          updated_at?: string
+          version?: number
         }
         Update: {
+          attempt_no?: number
           classification?: string
-          compiler_hash?: string
+          compiler_hash?: string | null
           compiler_version?: string
           content_type_id?: string
           created_at?: string
           created_by?: string | null
-          failed_count?: number
+          failed_count?: number | null
+          failure_code?: string | null
           id?: string
-          migrated_count?: number
+          job_id?: string | null
+          migrated_count?: number | null
           owner_id?: string
-          report?: Json
-          result?: string
-          row_error_count?: number
-          source_count?: number
-          source_hash?: string
+          plan_id?: string | null
+          report?: Json | null
+          result?: string | null
+          row_error_count?: number | null
+          sealed_at?: string | null
+          source_count?: number | null
+          source_hash?: string | null
           source_version_id?: string | null
-          target_count?: number
-          target_hash?: string
+          state?: string
+          target_count?: number | null
+          target_hash?: string | null
           target_version_id?: string
           transform_key?: string | null
           transform_version?: number | null
+          updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -6029,6 +6063,13 @@ export type Database = {
             columns: ["content_type_id"]
             isOneToOne: false
             referencedRelation: "cms_content_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_schema_dry_run_reports_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: true
+            referencedRelation: "cms_schema_migration_plans"
             referencedColumns: ["id"]
           },
           {
@@ -6047,6 +6088,57 @@ export type Database = {
           },
         ]
       }
+      cms_schema_dry_run_row_evidence: {
+        Row: {
+          error_code: string | null
+          id: string
+          output_hash: string | null
+          plan_id: string
+          recorded_at: string
+          report_id: string
+          source_hash: string
+          source_row_id: string
+          source_table: string
+        }
+        Insert: {
+          error_code?: string | null
+          id?: string
+          output_hash?: string | null
+          plan_id: string
+          recorded_at?: string
+          report_id: string
+          source_hash: string
+          source_row_id: string
+          source_table: string
+        }
+        Update: {
+          error_code?: string | null
+          id?: string
+          output_hash?: string | null
+          plan_id?: string
+          recorded_at?: string
+          report_id?: string
+          source_hash?: string
+          source_row_id?: string
+          source_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_schema_dry_run_row_evidence_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_migration_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_schema_dry_run_row_evidence_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_dry_run_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cms_schema_migration_plans: {
         Row: {
           classification: string
@@ -6057,7 +6149,7 @@ export type Database = {
           cursor: number
           dry_run_report: Json
           failed_count: number
-          from_version_id: string
+          from_version_id: string | null
           id: string
           migrated_count: number
           owner_id: string
@@ -6066,6 +6158,7 @@ export type Database = {
           source_count: number
           started_at: string | null
           state: string
+          superseded_at: string | null
           target_count: number
           to_version_id: string
           transform_key: string | null
@@ -6082,7 +6175,7 @@ export type Database = {
           cursor?: number
           dry_run_report?: Json
           failed_count?: number
-          from_version_id: string
+          from_version_id?: string | null
           id?: string
           migrated_count?: number
           owner_id: string
@@ -6091,6 +6184,7 @@ export type Database = {
           source_count?: number
           started_at?: string | null
           state?: string
+          superseded_at?: string | null
           target_count?: number
           to_version_id: string
           transform_key?: string | null
@@ -6107,7 +6201,7 @@ export type Database = {
           cursor?: number
           dry_run_report?: Json
           failed_count?: number
-          from_version_id?: string
+          from_version_id?: string | null
           id?: string
           migrated_count?: number
           owner_id?: string
@@ -6116,6 +6210,7 @@ export type Database = {
           source_count?: number
           started_at?: string | null
           state?: string
+          superseded_at?: string | null
           target_count?: number
           to_version_id?: string
           transform_key?: string | null
@@ -6143,6 +6238,255 @@ export type Database = {
             columns: ["to_version_id"]
             isOneToOne: false
             referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_schema_review_assignments: {
+        Row: {
+          actions: string[]
+          capability_key: string
+          created_at: string
+          ends_at: string
+          grantor_person_ref: string
+          id: string
+          owner_id: string
+          reason: string | null
+          review_id: string
+          reviewer_person_ref: string
+          starts_at: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          actions: string[]
+          capability_key: string
+          created_at?: string
+          ends_at: string
+          grantor_person_ref: string
+          id?: string
+          owner_id: string
+          reason?: string | null
+          review_id: string
+          reviewer_person_ref: string
+          starts_at: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          actions?: string[]
+          capability_key?: string
+          created_at?: string
+          ends_at?: string
+          grantor_person_ref?: string
+          id?: string
+          owner_id?: string
+          reason?: string | null
+          review_id?: string
+          reviewer_person_ref?: string
+          starts_at?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_schema_review_assignments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_schema_review_decisions: {
+        Row: {
+          assignment_id: string
+          assignment_version: number
+          binding_context_hash: string
+          capability_key: string
+          capability_version: number
+          created_at: string
+          decided_at: string
+          decision: string
+          id: string
+          mfa_verified_at: string
+          owner_id: string
+          review_id: string
+          reviewed_hash: string
+          reviewer_person_ref: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          assignment_id: string
+          assignment_version: number
+          binding_context_hash: string
+          capability_key: string
+          capability_version: number
+          created_at?: string
+          decided_at?: string
+          decision: string
+          id?: string
+          mfa_verified_at: string
+          owner_id: string
+          review_id: string
+          reviewed_hash: string
+          reviewer_person_ref: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          assignment_id?: string
+          assignment_version?: number
+          binding_context_hash?: string
+          capability_key?: string
+          capability_version?: number
+          created_at?: string
+          decided_at?: string
+          decision?: string
+          id?: string
+          mfa_verified_at?: string
+          owner_id?: string
+          review_id?: string
+          reviewed_hash?: string
+          reviewer_person_ref?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_schema_review_decisions_assignment_fkey"
+            columns: ["assignment_id", "review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_review_assignments"
+            referencedColumns: ["id", "review_id"]
+          },
+          {
+            foreignKeyName: "cms_schema_review_decisions_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_schema_reviews: {
+        Row: {
+          approval_evidence_hash: string | null
+          candidate_version_no: number
+          compiler_version: string
+          content_type_id: string
+          content_type_version_id: string
+          context_hash: string
+          created_at: string
+          decided_at: string | null
+          definition_hash: string
+          dependency_manifest_hash: string
+          dry_run_id: string
+          dry_run_report_hash: string
+          id: string
+          owner_id: string
+          policy_hash: string
+          policy_key: string
+          policy_version: number
+          required_capabilities: Json
+          required_decision_count: number
+          risk_class: string
+          schema_artifact_id: string
+          source_policy_hash: string | null
+          source_policy_key: string | null
+          source_policy_version: number | null
+          state: string
+          submitted_at: string
+          submitter_person_ref: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          approval_evidence_hash?: string | null
+          candidate_version_no: number
+          compiler_version: string
+          content_type_id: string
+          content_type_version_id: string
+          context_hash: string
+          created_at?: string
+          decided_at?: string | null
+          definition_hash: string
+          dependency_manifest_hash: string
+          dry_run_id: string
+          dry_run_report_hash: string
+          id?: string
+          owner_id: string
+          policy_hash: string
+          policy_key: string
+          policy_version: number
+          required_capabilities: Json
+          required_decision_count: number
+          risk_class: string
+          schema_artifact_id: string
+          source_policy_hash?: string | null
+          source_policy_key?: string | null
+          source_policy_version?: number | null
+          state?: string
+          submitted_at?: string
+          submitter_person_ref: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          approval_evidence_hash?: string | null
+          candidate_version_no?: number
+          compiler_version?: string
+          content_type_id?: string
+          content_type_version_id?: string
+          context_hash?: string
+          created_at?: string
+          decided_at?: string | null
+          definition_hash?: string
+          dependency_manifest_hash?: string
+          dry_run_id?: string
+          dry_run_report_hash?: string
+          id?: string
+          owner_id?: string
+          policy_hash?: string
+          policy_key?: string
+          policy_version?: number
+          required_capabilities?: Json
+          required_decision_count?: number
+          risk_class?: string
+          schema_artifact_id?: string
+          source_policy_hash?: string | null
+          source_policy_key?: string | null
+          source_policy_version?: number | null
+          state?: string
+          submitted_at?: string
+          submitter_person_ref?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_schema_reviews_content_type_id_fkey"
+            columns: ["content_type_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_schema_reviews_content_type_version_id_fkey"
+            columns: ["content_type_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_schema_reviews_dry_run_id_fkey"
+            columns: ["dry_run_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_dry_run_reports"
             referencedColumns: ["id"]
           },
         ]
@@ -6530,6 +6874,51 @@ export type Database = {
             referencedColumns: ["id", "owner_id"]
           },
         ]
+      }
+      cms_workflow_policies: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          policy_hash: string
+          policy_key: string
+          policy_version: number
+          required_capabilities: Json
+          required_decision_count: number
+          risk_class: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          policy_hash: string
+          policy_key: string
+          policy_version: number
+          required_capabilities: Json
+          required_decision_count: number
+          risk_class: string
+          state?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          policy_hash?: string
+          policy_key?: string
+          policy_version?: number
+          required_capabilities?: Json
+          required_decision_count?: number
+          risk_class?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
       }
       db_harness_fixture: {
         Row: {
@@ -8170,6 +8559,14 @@ export type Database = {
         Returns: string
       }
       cms_activate_schema: { Args: { p_request: Json }; Returns: Json }
+      cms_activation_preparation: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       cms_activation_references_valid: {
         Args: { p_version_id: string }
         Returns: boolean
@@ -8180,7 +8577,21 @@ export type Database = {
       }
       cms_actor: { Args: { p_request: Json }; Returns: string }
       cms_add_field_definition: { Args: { p_request: Json }; Returns: Json }
+      cms_advance_activation_plan: {
+        Args: {
+          p_candidate_id: string
+          p_dry_run_id: string
+          p_requested_plan_id: string
+          p_source_id: string
+        }
+        Returns: string
+      }
       cms_advance_block_lifecycle: { Args: { p_request: Json }; Returns: Json }
+      cms_artifact_contract_ref: {
+        Args: { p_type_key: string; p_version_no: number }
+        Returns: string
+      }
+      cms_assign_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
       cms_authority_origin: {
         Args: {
@@ -8204,6 +8615,14 @@ export type Database = {
         Args: { p_reference: Json }
         Returns: boolean
       }
+      cms_candidate_compiled_current: {
+        Args: { p_version_id: string }
+        Returns: boolean
+      }
+      cms_candidate_definition_request: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       cms_canonical_type_definition: {
         Args: { p_request: Json }
         Returns: Json
@@ -8220,6 +8639,7 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_compile_candidate: { Args: { p_version_id: string }; Returns: string }
       cms_compiled_editor_manifest: { Args: { p_request: Json }; Returns: Json }
       cms_compiled_manifest_bounded: {
         Args: { p_value: Json }
@@ -8249,6 +8669,7 @@ export type Database = {
       cms_correlation: { Args: { p_request: Json }; Returns: string }
       cms_create_entry: { Args: { p_request: Json }; Returns: Json }
       cms_create_revision: { Args: { p_request: Json }; Returns: Json }
+      cms_create_schema_successor: { Args: { p_request: Json }; Returns: Json }
       cms_create_type_draft: { Args: { p_request: Json }; Returns: Json }
       cms_data_source_registry_valid: {
         Args: { p_key: string }
@@ -8258,9 +8679,13 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_decide_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_define_template: { Args: { p_request: Json }; Returns: Json }
-      cms_definition_artifact_hash: {
-        Args: { p_request: Json }
+      cms_definition_artifact_hash:
+        | { Args: { p_request: Json }; Returns: string }
+        | { Args: { p_request: Json; p_version_no: number }; Returns: string }
+      cms_derive_schema_classification: {
+        Args: { p_source_id: string; p_target_id: string }
         Returns: string
       }
       cms_draft_content_hash: {
@@ -8330,6 +8755,7 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_get_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_heartbeat_schema_migration_lease: {
         Args: { p_request: Json }
         Returns: Json
@@ -8420,17 +8846,13 @@ export type Database = {
         }
         Returns: boolean
       }
-      cms_prepare_activation_migration: {
+      cms_person_holds_capability: {
         Args: {
-          p_candidate_id: string
-          p_current_active_id: string
-          p_dry_run_id: string
-          p_dry_run_report?: Json
-          p_requested_plan_id: string
-          p_transform_key?: string
-          p_transform_version?: number
+          p_capability: string
+          p_organization_id: string
+          p_person_id: string
         }
-        Returns: string
+        Returns: boolean
       }
       cms_process_schema_migration_batch: {
         Args: { p_dry_run?: boolean; p_request: Json }
@@ -8465,25 +8887,6 @@ export type Database = {
           p_reason_code: string
           p_target_id: string
           p_target_type: string
-        }
-        Returns: undefined
-      }
-      cms_record_dry_run_report: {
-        Args: {
-          p_classification: string
-          p_compiler_hash: string
-          p_compiler_version: string
-          p_content_type_id: string
-          p_created_by?: string
-          p_owner_id: string
-          p_report: Json
-          p_report_id: string
-          p_source_hash: string
-          p_source_version_id: string
-          p_target_hash: string
-          p_target_version_id: string
-          p_transform_key: string
-          p_transform_version: number
         }
         Returns: undefined
       }
@@ -8560,12 +8963,99 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cms_reserve_conflict: {
+        Args: { p_actor_id: string; p_operation: string; p_request: Json }
+        Returns: {
+          actor_id: string
+          claim_lease_until: string | null
+          claim_token_hash: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          key_hash: string
+          operation: string
+          request_hash: string
+          response_ref: Json | null
+          state: Database["platform_private"]["Enums"]["idempotency_state"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "idempotency_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cms_reserved_key: { Args: { p_key: string }; Returns: boolean }
       cms_resolution_policy_complete: {
         Args: { p_version_id: string }
         Returns: boolean
       }
+      cms_resolve_activation_review: {
+        Args: { p_candidate_id: string; p_decision_ids: string[] }
+        Returns: string
+      }
       cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
+      cms_resolve_review_policy: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
+      cms_resolve_template_compatibility: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_review_assignment_effective: {
+        Args: { p_ends_at: string; p_starts_at: string; p_state: string }
+        Returns: boolean
+      }
+      cms_review_binding: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_recent: boolean
+          p_request: Json
+        }
+        Returns: {
+          binding_id: string
+          mfa_verified_at: string
+        }[]
+      }
+      cms_review_context_hash: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_binding_id: string
+          p_person_id: string
+        }
+        Returns: string
+      }
+      cms_review_is_owner: {
+        Args: { p_acting_party_id: string; p_actor_id: string }
+        Returns: boolean
+      }
+      cms_review_owner_authority_end: {
+        Args: { p_acting_party_id: string; p_actor_id: string }
+        Returns: string
+      }
+      cms_review_person_eligible: {
+        Args: { p_person_id: string }
+        Returns: boolean
+      }
+      cms_review_qualifying_approvers: {
+        Args: { p_review_id: string }
+        Returns: string[]
+      }
+      cms_review_scope: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_review_id: string
+        }
+        Returns: string
+      }
+      cms_review_unsatisfied_slots: {
+        Args: { p_extra_person: string; p_review_id: string }
+        Returns: number
+      }
       cms_revision_author_class: {
         Args: { p_author_person_id: string; p_entry_id: string }
         Returns: string
@@ -8602,14 +9092,45 @@ export type Database = {
         Returns: Json
       }
       cms_rpc_context_valid: { Args: never; Returns: boolean }
+      cms_schema_dry_run_resource: {
+        Args: { p_report_id: string }
+        Returns: Json
+      }
       cms_schema_ref_registry_valid: {
         Args: { p_ref: string }
         Returns: boolean
+      }
+      cms_schema_review_approval_digest: {
+        Args: { p_review_id: string }
+        Returns: string
+      }
+      cms_schema_review_assignment_resource: {
+        Args: { p_assignment_id: string }
+        Returns: Json
+      }
+      cms_schema_review_decision_resource: {
+        Args: { p_decision_id: string }
+        Returns: Json
+      }
+      cms_schema_review_resource: {
+        Args: {
+          p_designer: boolean
+          p_owner: boolean
+          p_review_id: string
+          p_viewer_person_id: string
+        }
+        Returns: Json
+      }
+      cms_schema_source_row_count: {
+        Args: { p_version_id: string }
+        Returns: number
       }
       cms_stale_locale_dependents: {
         Args: { p_backfill: boolean; p_source_revision_id: string }
         Returns: number
       }
+      cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
+      cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_template_binding_compatible: {
         Args: {
           p_content_type_id: string
@@ -8633,6 +9154,10 @@ export type Database = {
         Returns: boolean
       }
       cms_template_registry_valid: { Args: { p_id: string }; Returns: boolean }
+      cms_transform_registry_member_valid: {
+        Args: { p_key: string; p_version: number }
+        Returns: boolean
+      }
       cms_type_version_resource: {
         Args: { p_version_id: string }
         Returns: Json
@@ -8656,6 +9181,7 @@ export type Database = {
         Returns: Json
       }
       cms_verify_schema_migration: { Args: { p_request: Json }; Returns: Json }
+      cms_with_content_hash: { Args: { p_resource: Json }; Returns: Json }
       cms_worker_activate_schema: { Args: { p_request: Json }; Returns: Json }
       cms_worker_counter: {
         Args: { p_code?: string; p_value: string }
@@ -8710,6 +9236,20 @@ export type Database = {
           p_request: Json
         }
         Returns: undefined
+      }
+      cms_workflow_policy_hash: {
+        Args: {
+          p_key: string
+          p_required_capabilities: Json
+          p_required_decision_count: number
+          p_risk_class: string
+          p_version: number
+        }
+        Returns: string
+      }
+      cms_workflow_policy_member: {
+        Args: { p_key: string; p_version: number }
+        Returns: Json
       }
       cms_workflow_registry_valid: {
         Args: { p_key: string; p_version: number }

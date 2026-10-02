@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import ContentSchemaRegistryWorkbenchIsland from './ContentSchemaRegistryWorkbenchIsland';
-import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
+import {
+  approvedReviewPreparation,
+  emptyActivationPreparation,
+} from './content-schema-registry-activation-preparation.test-support';
+import { approvedProtectedReview } from './content-schema-review-dec108.test-support';
 import { CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS } from './content-schema-registry-types';
 import type {
   ContentSchemaRegistryDetail,
@@ -144,8 +148,6 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   },
   variant: 'entitledRead',
   access: 'read-only',
-  actorId: TYPE_ID,
-  actingPartyId: VERSION_ID,
   query,
   contentTypeId: TYPE_ID,
   versionId: VERSION_ID,
@@ -160,6 +162,23 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   csrfToken: 'csrf-token',
   onCanonicalRefetch: async () => undefined,
   contractFields: CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
+};
+
+// Activation renders only from server state: `activate` plus its approved review.
+const activatable: Partial<ContentSchemaRegistryWorkbenchProps> = {
+  access: 'full',
+  initialDetail: {
+    status: 'success',
+    data: { ...detail, activationPreparation: approvedReviewPreparation },
+    version: '4',
+    stale: false,
+  },
+  initialReview: {
+    status: 'success',
+    data: approvedProtectedReview(),
+    version: '3',
+    stale: false,
+  },
 };
 
 const render = (
@@ -178,15 +197,14 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
     // must sit inside the 10-minute verified window.
     const freshUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const markup = render({
-      access: 'full',
+      ...activatable,
       actingContextLabel: 'Northwind Collective',
       stepUpState: 'verified',
       stepUpFreshUntil: freshUntil,
     });
     expect(markup).toContain('Northwind Collective');
     expect(markup).toContain('Verified until');
-    // The trusted acting party is serialized for the existing island
-    // contract, but it must never be shown as the acting context itself.
+    // No identifier is ever the displayed acting context.
     const disclosureStart = markup.indexOf('Acting context');
     expect(markup.slice(disclosureStart, disclosureStart + 220)).not.toContain(
       VERSION_ID,
@@ -194,7 +212,7 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
   });
 
   it('[P2-S09-AC-250] states the honest fallback when no context or expiry is proven', () => {
-    const markup = render({ access: 'full' });
+    const markup = render(activatable);
     expect(markup).toContain('Server-verified acting context unavailable');
     expect(markup).not.toContain('Verified until');
     expect(markup).toContain('Step-up required before commit');
@@ -202,15 +220,14 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
 
   it('[P2-S09-AC-250] adds no private identifier to the island boundary', () => {
     const boundary = render({
-      access: 'full',
+      ...activatable,
       actingContextLabel: 'Northwind Collective',
       stepUpState: 'verified',
       stepUpFreshUntil: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     });
     // The disclosure contributes only a human label and a derived expiry. The
-    // locked FE03 props already serialize actorId/actingPartyId for the
-    // existing island contract; no private binding, session, or authority
-    // value is added, and neither identifier renders as the acting context.
+    // amended FE03 island invariant carries no actor, party, binding or
+    // session identifier, so none can render as the acting context.
     const disclosureStart = boundary.indexOf('Acting context');
     const disclosureSection = boundary.slice(
       disclosureStart,

@@ -2,9 +2,11 @@
 
 ## Scope and owner
 
-The CMS schema-registry on-call owns `CMS-03A-01` through `CMS-03A-08`, the
-twelve private registry tables, schema-migration worker, audit/outbox delivery,
-and the protected Astro workbench. This runbook does not authorize editorial
+The CMS schema-registry on-call owns `CMS-03A-01` through `CMS-03A-18`, the
+nineteen private registry tables (the twelve definition tables, the three
+schema-review tables, the row-evidence table, the two capability-grant tables
+and the workflow policy table), schema-migration worker, audit/outbox delivery,
+and the protected Astro workbench and capability-grant console. This runbook does not authorize editorial
 entries, publication, taxonomy, media, or public-delivery behavior owned by
 Slices 10–17.
 
@@ -12,7 +14,7 @@ Slices 10–17.
 
 - Read access to scrubbed Worker telemetry, queue state, migration progress,
   audit/outbox status, and the current deployment/migration identifiers.
-- Environment-appropriate access to the eight named `platform_api` RPCs and
+- Environment-appropriate access to the eighteen named `platform_api` RPCs and
   read-only inspection of the private registry authority.
 - Permission to pause the affected command, release-worker principal,
   migration consumer, or outbox consumer through an approved control.
@@ -35,6 +37,16 @@ capability graphs, private identifiers, or personal data into incident notes.
 | `CMS-03A-06` | `GET /api/v1/cms/content-types`                                               | protected registry reader; no-store and no mutation headers |
 | `CMS-03A-07` | `GET /api/v1/cms/content-types/:contentTypeId/versions/:versionId`            | protected registry reader; scoped no-store detail           |
 | `CMS-03A-08` | `POST /api/v1/cms/blocks/versions/:blockDefinitionVersionId/lifecycle`        | signed release worker only; durable nonce claim and CAS     |
+| `CMS-03A-09` | `POST /api/v1/cms/content-types/:contentTypeId/versions/:versionId/successors` | schema designer; CSRF, idempotency, exact source If-Match   |
+| `CMS-03A-10` | `POST /api/v1/cms/content-types/:contentTypeId/versions/:versionId/dry-runs`  | schema designer; CSRF, idempotency, CAS; queues a BE00 job  |
+| `CMS-03A-11` | `POST /api/v1/cms/content-types/:contentTypeId/versions/:versionId/reviews`   | schema designer; passed dry run; freezes review evidence    |
+| `CMS-03A-12` | `POST /api/v1/cms/schema-reviews/:reviewId/decisions`                         | assigned reviewer; recent step-up, CSRF, idempotency, CAS   |
+| `CMS-03A-13` | `GET /api/v1/cms/schema-reviews/:reviewId`                                    | designer or assigned reviewer scope; no-store               |
+| `CMS-03A-14` | `POST /api/v1/cms/schema-reviews/:reviewId/assignments`                       | receipt-derived owner; recent step-up, CSRF, CAS            |
+| `CMS-03A-15` | `POST /api/v1/cms/capability-grants`                                          | receipt-derived owner; recent step-up, idempotency          |
+| `CMS-03A-16` | `POST /api/v1/cms/capability-grants/:grantId/renewals`                        | receipt-derived owner; recent step-up, idempotency, CAS     |
+| `CMS-03A-17` | `POST /api/v1/cms/capability-grants/:grantId/revocations`                     | receipt-derived owner; recent step-up, idempotency, CAS     |
+| `CMS-03A-18` | `GET /api/v1/cms/capability-grants`                                           | receipt-derived owner; protected no-store list              |
 
 All routes have a 15-second application deadline. Human and release-worker
 origins use separate allowlists. Release routes never use browser credentials
@@ -169,7 +181,7 @@ queue/DLQ, outbox, rollback, and recovery drills before enabling the capability.
 ## Drill cadence
 
 After contract, route, trust, migration, schema, Worker, or workbench changes,
-exercise all eight operations; exact replay and mismatch; cross-tenant and
+exercise all eighteen operations; exact replay and mismatch; the successor, dry-run, review, decision, assignment and capability-grant chain through real producers; grant lapse and renewal; cross-tenant and
 concealment denial; 128-field definitions; forged, revoked, stale, and replayed
 release evidence; nested attestation mismatch; migration crash/resume; outbox
 failure/replay; 429/502/503/504 recovery; offline/multi-tab invalidation-only

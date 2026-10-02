@@ -25,6 +25,7 @@ export interface ContentSchemaRegistryCommandFormProps {
   readonly formId: string;
   readonly children: React.ReactNode;
   readonly consequence: string;
+  readonly instanceKey?: string | undefined;
   readonly onSubmit?: React.ComponentProps<'form'>['onSubmit'];
 }
 
@@ -68,6 +69,7 @@ export default function ContentSchemaRegistryCommandForm({
   formId,
   children,
   consequence,
+  instanceKey,
   onSubmit,
 }: ContentSchemaRegistryCommandFormProps): React.ReactElement {
   return (
@@ -109,6 +111,7 @@ export default function ContentSchemaRegistryCommandForm({
         expectedVersion={expectedVersion ?? null}
         state={state}
         consequence={consequence}
+        {...(instanceKey === undefined ? {} : { instanceKey })}
       />
     </form>
   );

@@ -3,11 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   bindings,
   createMfaApp,
-  enrollmentBody,
   factorsBody,
   mfaRequest,
 } from './mfa-route-test-support';
-import { failure, success } from './phase-02-slice-02.test-support';
 import {
   FACTOR_ID,
   OTHER_FACTOR_ID,
@@ -15,7 +13,6 @@ import {
 } from './mfa-test-support';
 
 const LIST = '/api/v1/account/mfa/factors';
-const ENROLL_BODY = { method: 'totp', friendlyName: 'Phone authenticator' };
 
 const send = (app: ReturnType<typeof createMfaApp>['app'], request: Request) =>
   app.request(request, undefined, bindings);

@@ -61,7 +61,9 @@ export function MfaNameStep({
           </p>
         )}
       </div>
-      {lockedSeconds !== null && <LockoutNotice remainingSeconds={lockedSeconds} />}
+      {lockedSeconds !== null && (
+        <LockoutNotice remainingSeconds={lockedSeconds} />
+      )}
       <button type="submit" disabled={busy || gated || lockedSeconds !== null}>
         Continue
       </button>{' '}

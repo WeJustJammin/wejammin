@@ -200,8 +200,9 @@ whose seven-day bootstrap grants have lapsed renews its own
 re-bootstrap. A grant names one capability from the closed grantable CMS
 registry and one existing human with a confirmed membership in the owner's
 organization; it ends at the end of a UTC date no later than the current UTC
-date plus six days, so it is never longer than seven days. Renewal restarts a
-fresh finite term, may be repeated, and revocation is immediate. A grant creates
+date plus 89 days, so a term spans at most 90 UTC days (DEC-120); assignments
+under DEC-108 stay at most seven days. Renewal restarts a fresh finite term of
+at most 90 UTC days, requires step-up, may be repeated, and revocation is immediate. A grant creates
 no identity or membership and confers no admin, grant, delegation or purpose
 authority; `cms.schema_review` and `cms.delivery_review` (assignment-only),
 `cms.schema_review.assign` and `cms.delivery_review.assign` (owner-only),
@@ -510,6 +511,7 @@ registration metadata through the protected registry projection.
 | 2026-10-02 | DEC-108 consistency closure: AC-CMS-04 now names dry-run, review and decisions as producers and approval IDs as decision references; current effective owner authority and the grantor authority end are defined; schema-review edge cases added.                                                                                                                                                                            |
 | 2026-10-02 | DEC-109/DEC-110/DEC-119: added the code-owned workflow policy registry membership and reviewer-slot semantics, the owner-only CMS capability grant, renewal, revocation and protected list contract, redefined the grantor authority end around the renewable `cms.schema_designer` grant, and added the grant and specialist-capability edge cases.                                                                         | /propagate-decision               | Contracts, Data Models, Event Schemas, Edge Cases                                                                                     |
 | 2026-10-02 | DEC-119 follow-ups: owner may self-grant any grantable capability (separation enforced at decision time); strictest-of downgrade guard for a successor's schema review and editorial policy; navigation editor, media contributor and media curator named among grantable capabilities                                                                                                                                       | /propagate-decision               | Workflow Policy Registry and Owner CMS Capability Grants                                                                              |
+| 2026-10-02 | DEC-120: standing CMS capability grants (BE03a `CMS-03A-15` grant, `CMS-03A-16` renew) may run up to 90 UTC days (valid-through at most the current UTC date plus 89, ending at the end of that UTC day), renewable with step-up, revocation immediate; replaced the six-day/seven-day grant-term rule in the owner CMS capability grant rules. DEC-108 schema-review assignments stay at most seven days | /propagate-decision | Workflow Policy Registry and Owner CMS Capability Grants |
 
 DEC-108 (2026-10-02, owner-approved): added the CMS-owned activation producer,
 independent review and bounded assignment contracts; stable private binding

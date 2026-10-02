@@ -173,6 +173,8 @@ describe('foundation wire contracts', () => {
       'AuthorizationStart',
       'BindContextApiRequest',
       'CapacityPeriodRequest',
+      'Cfg05b06MfaFactorResetRequest',
+      'Cfg05b06MfaFactorResetResponse',
       'ChallengeApiRequest',
       'ChallengeResource',
       'ChangeHandleApiRequest',

@@ -3,9 +3,9 @@
  * Index 0 is unused so a version indexes its own entry.
  */
 const ECC_CODEWORDS_PER_BLOCK = [
-  0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26,
-  26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
-  28, 28, 28,
+  0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26,
+  26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+  28, 28,
 ] as const;
 
 const ERROR_CORRECTION_BLOCKS = [
@@ -75,7 +75,8 @@ const generator = (degree: number): readonly number[] => {
   for (let i = 0; i < degree; i += 1) {
     for (let j = 0; j < degree; j += 1) {
       coefficients[j] = multiply(coefficients[j] ?? 0, root);
-      if (j + 1 < degree) coefficients[j] ^= coefficients[j + 1] ?? 0;
+      if (j + 1 < degree)
+        coefficients[j] = (coefficients[j] ?? 0) ^ (coefficients[j + 1] ?? 0);
     }
     root = multiply(root, 0x02);
   }

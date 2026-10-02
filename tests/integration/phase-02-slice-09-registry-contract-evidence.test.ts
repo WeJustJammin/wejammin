@@ -77,7 +77,17 @@ const successFixtures = {
     items: [resource, safeBlock],
     nextCursor: null,
   },
-  ContentSchemaRegistryDetailSchema: detail,
+  // The shared worker fixture predates the DEC-108 required activationPreparation
+  // member, so the contract-evidence fixture supplies a valid empty projection.
+  ContentSchemaRegistryDetailSchema: {
+    ...detail,
+    activationPreparation: {
+      dryRunRef: null,
+      jobRef: null,
+      reviewRef: null,
+      permittedNextActions: [],
+    },
+  },
   BlockLifecycleEventResourceSchema: lifecycleEvent,
 } as const;
 
@@ -103,12 +113,27 @@ const successSchemas = {
   BlockLifecycleEventResourceSchema,
 } as const;
 
+const ORIGINAL_OPERATION_IDS = [
+  'CMS-03A-01',
+  'CMS-03A-02',
+  'CMS-03A-03',
+  'CMS-03A-04',
+  'CMS-03A-05',
+  'CMS-03A-06',
+  'CMS-03A-07',
+  'CMS-03A-08',
+] as const;
+
 describe('P2-S09 generated contract integration evidence', () => {
-  it('[P2-S09-AC-264] validates generated request and success fixtures for all eight operations', () => {
-    expect(
-      contentSchemaRegistryRoutePolicies.map(({ operationId }) => operationId),
-    ).toEqual(CONTENT_SCHEMA_REGISTRY_OPERATION_IDS);
-    for (const route of contentSchemaRegistryRoutePolicies) {
+  it('[P2-S09-AC-264] validates generated request and success fixtures for the eight original operations', () => {
+    const originalPolicies = contentSchemaRegistryRoutePolicies.filter(
+      ({ operationId }) =>
+        (ORIGINAL_OPERATION_IDS as readonly string[]).includes(operationId),
+    );
+    expect(originalPolicies.map(({ operationId }) => operationId)).toEqual([
+      ...ORIGINAL_OPERATION_IDS,
+    ]);
+    for (const route of originalPolicies) {
       expect(
         requestSchemas[route.requestSchema].safeParse(
           requestFixtures[route.requestSchema],
@@ -322,5 +347,22 @@ describe('P2-S09 generated contract integration evidence', () => {
       'DEPENDENCY_DEADLINE_EXCEEDED',
       'INTERNAL_ERROR',
     ]);
+  });
+
+  it('[P2-S09-AC-284] registers all eighteen operation policies with request and success schemas and valid error codes', () => {
+    expect(CONTENT_SCHEMA_REGISTRY_OPERATION_IDS).toHaveLength(18);
+    expect(
+      contentSchemaRegistryRoutePolicies.map(({ operationId }) => operationId),
+    ).toEqual([...CONTENT_SCHEMA_REGISTRY_OPERATION_IDS]);
+    for (const route of contentSchemaRegistryRoutePolicies) {
+      expect(route.requestSchema.length, route.operationId).toBeGreaterThan(0);
+      expect(route.successSchema.length, route.operationId).toBeGreaterThan(0);
+      for (const [code, status] of Object.entries(route.errors)) {
+        expect(status, `${route.operationId} ${code}`).toBeGreaterThanOrEqual(
+          400,
+        );
+        expect(status, `${route.operationId} ${code}`).toBeLessThanOrEqual(599);
+      }
+    }
   });
 });

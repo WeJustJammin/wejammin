@@ -21,6 +21,7 @@ import {
   CmsSchemaReviewRiskClassSchema,
   CmsSchemaReviewStateSchema,
 } from './models.ts';
+import { SchemaReviewAssignmentSummarySchema } from './resources-review-assignments.ts';
 import { resourceMetaShape } from './resources-meta.ts';
 
 const NullableCountSchema = z.number().int().nonnegative().nullable();
@@ -161,6 +162,12 @@ export const SchemaReviewResourceSchema = z
     submittedAt: CmsInstantSchema,
     decidedAt: CmsInstantSchema.nullable(),
     decisions: z.array(SchemaReviewDecisionSummarySchema).max(8).readonly(),
+    /** Owner-only safe summaries; non-owners always receive an empty array. */
+    assignments: z
+      .array(SchemaReviewAssignmentSummarySchema)
+      .max(8)
+      .default([])
+      .readonly(),
     permittedNextActions: z
       .array(CmsSchemaReviewNextActionSchema)
       .max(6)
@@ -205,6 +212,15 @@ export const SchemaReviewResourceSchema = z
         code: 'custom',
         path: ['recordedDecisionCount'],
         message: 'recorded_decision_count_must_equal_references',
+      });
+    if (
+      new Set(value.assignments.map((entry) => entry.assignmentId)).size !==
+      value.assignments.length
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['assignments'],
+        message: 'review_assignment_references_must_be_unique',
       });
     if (value.decisions.length > 8)
       context.addIssue({
@@ -287,6 +303,20 @@ export const SchemaActivationPreparationSchema = z
         state: CmsSchemaDryRunStateSchema,
         result: CmsSchemaDryRunResultSchema.nullable(),
         jobId: CmsUuidSchema.nullable(),
+        /** Sealed dry-run failure code; non-null only on an unsealed failed run. */
+        failureCode: CmsSchemaDryRunFailureCodeSchema.nullable().optional(),
+      })
+      .superRefine((value, context) => {
+        if (
+          value.failureCode !== null &&
+          value.failureCode !== undefined &&
+          value.state !== 'failed'
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['failureCode'],
+            message: 'only_failed_dry_run_carries_failure_code',
+          });
       })
       .nullable(),
     jobRef: z

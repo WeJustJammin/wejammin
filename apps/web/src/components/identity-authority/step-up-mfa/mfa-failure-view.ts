@@ -81,7 +81,9 @@ export const mfaFailureView = (
       ? view('step-up', '')
       : view(
           'sign-in',
-          context === 'start' ? MFA_COPY.firstFactorSignIn : MFA_COPY.sessionEnded,
+          context === 'start'
+            ? MFA_COPY.firstFactorSignIn
+            : MFA_COPY.sessionEnded,
         );
   }
   if (status === 409) return conflictView(reason);

@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { WorkerBindings } from '../index';
-import { normalizeAuthProductionOptions } from './production-support';
-import { createSupabaseMfaProvider } from './production-mfa-provider';
 import {
   ACCESS_TOKEN,
   CHALLENGE_ID,
@@ -12,56 +9,15 @@ import {
   PROVIDER_CHALLENGE_ID,
   PROVIDER_FACTOR_ID,
   REFRESH_TOKEN,
-  requestFor,
 } from './mfa-test-support';
-
-const environment: WorkerBindings = {
-  APP_ENVIRONMENT: 'staging',
-  APP_RELEASE: 'dec-111-test',
-  SUPABASE_SECRET_KEY: 'sb_secret_test_only',
-  SUPABASE_URL: 'https://staging.example.supabase.co',
-};
-
-const json = (value: unknown, status = 200, headers: HeadersInit = {}) =>
-  new Response(JSON.stringify(value), {
-    status,
-    headers: { 'content-type': 'application/json', ...headers },
-  });
-
-type Fetch = ReturnType<typeof vi.fn>;
-
-const build = (
-  fetchImpl: Fetch,
-  extra: Partial<Parameters<typeof createSupabaseMfaProvider>[1]> = {},
-  clock: { now: number } = { now: NOW },
-) => {
-  const config = normalizeAuthProductionOptions({
-    environment,
-    fetchImpl: fetchImpl as unknown as typeof fetch,
-    now: () => clock.now,
-  });
-  const sleep = vi.fn(async () => undefined);
-  return {
-    sleep,
-    clock,
-    provider: createSupabaseMfaProvider(config, {
-      issuer: 'WeJammin (staging)',
-      sleep,
-      timeoutMs: 5_000,
-      ...extra,
-    }),
-  };
-};
-
-const signal = new AbortController().signal;
-const request = requestFor();
-const enrollInput = { request, friendlyName: 'Phone authenticator' };
-const enrollPayload = {
-  id: PROVIDER_FACTOR_ID,
-  type: 'totp',
-  friendly_name: 'Phone authenticator',
-  totp: { qr_code: '<svg></svg>', secret: MANUAL_KEY, uri: OTPAUTH_URI },
-};
+import {
+  build,
+  enrollInput,
+  enrollPayload,
+  json,
+  request,
+  signal,
+} from './production-mfa-provider.test-support';
 
 describe('Supabase MFA provider: enroll', () => {
   it('posts the factor with the caller token and returns the one-time secret only', async () => {
@@ -377,47 +333,5 @@ describe('Supabase MFA provider: unenroll, challenge, verify', () => {
       'sb_secret_test_only',
     ])
       expect(text).not.toContain(secret);
-  });
-});
-
-describe('Supabase MFA provider: circuit breaker', () => {
-  it('opens after five failures in 60 s, refuses without calling Supabase, then recovers', async () => {
-    const fetchImpl = vi.fn(async () => json({}, 500));
-    const clock = { now: NOW };
-    const { provider } = build(fetchImpl, {}, clock);
-    const unenroll = () =>
-      provider.unenroll(
-        { request, providerFactorId: PROVIDER_FACTOR_ID },
-        signal,
-      );
-    for (let attempt = 0; attempt < 5; attempt += 1) await unenroll();
-    expect(fetchImpl).toHaveBeenCalledTimes(5);
-    expect(await unenroll()).toMatchObject({
-      ok: false,
-      status: 503,
-      code: 'DEPENDENCY_UNAVAILABLE',
-    });
-    expect(fetchImpl).toHaveBeenCalledTimes(5);
-    clock.now += 61_000;
-    await unenroll();
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
-  });
-
-  it('does not count wrong codes or rate refusals as provider failures', async () => {
-    const fetchImpl = vi.fn(async () =>
-      json({ error_code: 'mfa_verification_failed' }, 400),
-    );
-    const { provider } = build(fetchImpl);
-    for (let attempt = 0; attempt < 8; attempt += 1)
-      await provider.verify(
-        {
-          request,
-          providerFactorId: PROVIDER_FACTOR_ID,
-          providerChallengeId: CHALLENGE_ID,
-          code: '000000',
-        },
-        signal,
-      );
-    expect(fetchImpl).toHaveBeenCalledTimes(8);
   });
 });

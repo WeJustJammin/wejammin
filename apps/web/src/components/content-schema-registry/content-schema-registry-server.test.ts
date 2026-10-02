@@ -56,8 +56,8 @@ describe('content schema registry protected read context', () => {
     expect(authorized.kind).toBe('authorized');
     if (authorized.kind === 'authorized') {
       expect(authorized.page.access).toBe('read-only');
-      expect(authorized.page.actorId).toBe(ACTOR_ID);
-      expect(authorized.page.actingPartyId).toBe(PARTY_ID);
+      expect(authorized.page).not.toHaveProperty('actorId');
+      expect(authorized.page).not.toHaveProperty('actingPartyId');
       expect(authorized.page.initialList.status).toBe('success');
     }
 
@@ -182,8 +182,8 @@ describe('content schema registry protected read context', () => {
       if (result.kind !== 'authorized') throw new Error('expected page');
       expect(result.page.variant).toBe(variant);
       expect(result.page.access).toBe(expectedAccess);
-      expect(result.page.actorId).toBeNull();
-      expect(result.page.actingPartyId).toBeNull();
+      expect(result.page).not.toHaveProperty('actorId');
+      expect(result.page).not.toHaveProperty('actingPartyId');
     },
   );
 
@@ -212,7 +212,7 @@ describe('content schema registry protected read context', () => {
     expect(result).toEqual({ kind: 'forbidden' });
   });
 
-  it('projects trusted actor and acting-party IDs into the authorized page only', async () => {
+  it('keeps trusted actor and acting-party IDs server-side and out of the authorized page', async () => {
     const ports = createContentSchemaRegistryPlatformPorts({
       fetch: vi.fn(
         async () =>
@@ -239,8 +239,9 @@ describe('content schema registry protected read context', () => {
 
     expect(result.kind).toBe('authorized');
     if (result.kind !== 'authorized') throw new Error('expected page');
-    expect(result.page.actorId).toBe(ACTOR_ID);
-    expect(result.page.actingPartyId).toBe(PARTY_ID);
+    expect(result.page).not.toHaveProperty('actorId');
+    expect(result.page).not.toHaveProperty('actingPartyId');
+    expect(JSON.stringify(result.page)).not.toContain(PARTY_ID);
     expect(result.page.access).toBe('full');
   });
 

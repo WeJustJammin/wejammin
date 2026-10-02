@@ -315,14 +315,16 @@ if (existsSync(SPEC_PIPELINE_PATH)) {
 }
 
 // ----- Cross-check the active Phase 2 completion policy -----
-// Slice 09 keeps all 283 authored IDs for traceability. AC266 (DEC-101),
+// Slice 09 keeps all 1200 authored IDs for traceability. AC266 (DEC-101),
 // AC209/AC211 (DEC-104), and AC265 (DEC-105) remain unchecked acceptance gates
-// outside the 279-item Slice 09 and 2011-item Phase 2 implementation denominators.
+// outside the 1196-item Slice 09 and 2928-item Phase 2 implementation denominators.
 // The 2026-09-30 activation re-audit reopened 17 active Slice 09 criteria,
 // which remain open. The separately reopened AC250 (a disclosure clause, not
-// private-binding proof) was Chrome-verified on 2026-10-01 and closed, so the
-// current claim is 262/279. Keep it distinct from historical 261/279 and
-// 279/279 evidence, and never label the 17-item activation set as 18 criteria.
+// private-binding proof) was Chrome-verified on 2026-10-01 and closed. The
+// 2026-10-02 DEC-108 depth-floor cascade added 917 open criteria and reopened
+// AC019 and AC259, so the current claim is 260/1196. Keep it distinct from
+// historical 262/279, 261/279 and 279/279 evidence, and never label the 17-item
+// activation set as 18 criteria.
 const policySection = (text, heading, nextHeading = /^##\s/imu) => {
   const start = text.search(heading);
   if (start < 0) return '';
@@ -370,14 +372,14 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('index.md', indexHeader, [
     {
       pattern:
-        /\*\*Phase 2 criteria\*\*:\s*2,011\s+active\s*\/\s*2,015\s+authored/iu,
+        /\*\*Phase 2 criteria\*\*:\s*2,928\s+active\s*\/\s*2,932\s+authored/iu,
       message:
-        'index.md must publish the 2,011 active / 2,015 authored Phase 2 denominator',
+        'index.md must publish the 2,928 active / 2,932 authored Phase 2 denominator',
     },
     {
-      pattern: /Slice 09 is 262\/279\s+active\s+with\s+283\s+authored IDs/iu,
+      pattern: /Slice 09 is 260\/1196\s+active\s+with\s+1200\s+authored IDs/iu,
       message:
-        'index.md must publish Slice 09 as 262/279 active with 283 authored IDs',
+        'index.md must publish Slice 09 as 260/1196 active with 1200 authored IDs',
     },
     {
       pattern:
@@ -390,15 +392,15 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('phases/phase-02.md', phaseHeader, [
     {
       pattern:
-        /\*\*Criteria[^:]*\*\*:\s*2,011\s+active\s*\/\s*2,015\s+authored/iu,
+        /\*\*Criteria[^:]*\*\*:\s*2,928\s+active\s*\/\s*2,932\s+authored/iu,
       message:
-        'phase-02.md must publish the 2,011 active / 2,015 authored Phase 2 denominator',
+        'phase-02.md must publish the 2,928 active / 2,932 authored Phase 2 denominator',
     },
     {
       pattern:
-        /Slice 09 is \*\*262\/279\s+active\*\* \(\*\*283\s+authored IDs\*\*\)/iu,
+        /Slice 09 is \*\*260\/1196\s+active\*\* \(\*\*1200\s+authored IDs\*\*\)/iu,
       message:
-        'phase-02.md current gate must publish Slice 09 as 262/279 active with 283 authored IDs',
+        'phase-02.md current gate must publish Slice 09 as 260/1196 active with 1200 authored IDs',
     },
     {
       pattern:
@@ -434,26 +436,26 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('phases/phase-02.md#slice-09', phaseRows, [
     {
       pattern:
-        /\|\s*09\s+Content schemas[^|]*\|\s*in progress\s*\|\s*262\/279\s+active\s*\(283\s+authored\)\s*\|/iu,
+        /\|\s*09\s+Content schemas[^|]*\|\s*in progress\s*\|\s*260\/1196\s+active\s*\(1200\s+authored\)\s*\|/iu,
       message:
-        'phase-02.md Slice 09 row must use in progress, 262/279 active, and 283 authored notation',
+        'phase-02.md Slice 09 row must use in progress, 260/1196 active, and 1200 authored notation',
     },
   ]);
 
   assertPolicy('slices/phase-02-slice-09.md', sliceHeader, [
     {
-      pattern: /\*\*Acceptance criteria \(authored\)\*\*:\s*283\b/iu,
-      message: 'Slice 09 must retain all 283 authored acceptance IDs',
+      pattern: /\*\*Acceptance criteria \(authored\)\*\*:\s*1200\b/iu,
+      message: 'Slice 09 must retain all 1200 authored acceptance IDs',
     },
     {
-      pattern: /\*\*Active release denominator\*\*:\s*279\b/iu,
-      message: 'Slice 09 must declare a 279-item active release denominator',
+      pattern: /\*\*Active release denominator\*\*:\s*1196\b/iu,
+      message: 'Slice 09 must declare a 1196-item active release denominator',
     },
     {
       pattern:
-        /\*\*Current active verification\*\*:\s*262\/279\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+        /\*\*Current active verification\*\*:\s*260\/1196\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
       message:
-        'Slice 09 must publish 262/279 active evidence (17 activation-chain criteria remain open; separately reopened AC250 Chrome-verified and closed 2026-10-01) while retaining 283 authored IDs',
+        'Slice 09 must publish 260/1196 active evidence (17 activation-chain criteria, AC019, AC259 and 917 amendment criteria remain open; separately reopened AC250 Chrome-verified and closed 2026-10-01) while retaining 1200 authored IDs',
     },
     {
       pattern:
@@ -525,14 +527,14 @@ const checkPhaseTwoCompletionPolicy = () => {
           'spec-pipeline.md NEXT must retain AC265 pre-release hosted route and matrix work',
       },
       {
-        pattern: /Slice 09 at 262\/279\s+active/iu,
+        pattern: /Slice 09 at 260\/1196\s+active/iu,
         message:
-          'spec-pipeline.md NEXT must publish Slice 09 as 262/279 active',
+          'spec-pipeline.md NEXT must publish Slice 09 as 260/1196 active',
       },
       {
-        pattern: /2,011 active criteria/iu,
+        pattern: /2,928 active criteria/iu,
         message:
-          'spec-pipeline.md NEXT must publish the 2,011 active Phase 2 criteria count',
+          'spec-pipeline.md NEXT must publish the 2,928 active Phase 2 criteria count',
       },
       {
         pattern: /Slice 10\s+implementation is blocked/iu,
@@ -565,9 +567,9 @@ const checkPhaseTwoCompletionPolicy = () => {
     const header = nextSpecText.split('\n').slice(0, 6).join('\n');
     assertPolicy('spec-pipeline.md#header', header, [
       {
-        pattern: /\*\*Last updated\*\*:\s*2026-10-01/iu,
+        pattern: /\*\*Last updated\*\*:\s*2026-10-02/iu,
         message:
-          'spec-pipeline.md header must carry the current 2026-10-01 last-updated date',
+          'spec-pipeline.md header must carry the current 2026-10-02 last-updated date',
       },
     ]);
   }

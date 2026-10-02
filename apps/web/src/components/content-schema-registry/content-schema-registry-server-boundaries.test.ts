@@ -52,8 +52,6 @@ describe('content schema registry server boundaries', () => {
       status: 429,
       page: {
         access: 'read-only',
-        actorId: ACTOR_ID,
-        actingPartyId: PARTY_ID,
         initialList: {
           status: 'error',
           error: { code: 'RATE_LIMITED' },
@@ -64,6 +62,8 @@ describe('content schema registry server boundaries', () => {
       },
     });
     if (result.kind !== 'error') throw new Error('expected rate-limit error');
+    expect(result.page).not.toHaveProperty('actorId');
+    expect(result.page).not.toHaveProperty('actingPartyId');
     const headers = new Headers();
     applyContentSchemaRegistryRecoveryHeaders(headers, result.page);
     expect(headers.get('x-content-schema-registry-retryable')).toBe('true');
@@ -147,8 +147,6 @@ describe('content schema registry server boundaries', () => {
       status: 422,
       page: {
         access: 'read-only',
-        actorId: ACTOR_ID,
-        actingPartyId: PARTY_ID,
         initialList: {
           status: 'error',
           httpStatus: 422,

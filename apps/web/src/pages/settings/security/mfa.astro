@@ -50,9 +50,7 @@ if (resolved.kind === 'unauthenticated')
     <main id="main-content" class="infra-main" tabindex="-1">
       <div class="infra-shell-header">
         <p class="infra-eyebrow">Account security</p>
-        <h1 id="page-title" tabindex="-1">
-          Two-step verification
-        </h1>
+        <h1 id="page-title" tabindex="-1">Two-step verification</h1>
         <p>
           Authenticators protect your account. Your own account is always the
           one changed here, whichever profile or role you are acting as.
@@ -76,9 +74,7 @@ if (resolved.kind === 'unauthenticated')
             aria-live="polite"
           >
             <h2>Two-step verification is temporarily unavailable</h2>
-            <p>
-              We could not load your authenticators. Nothing was changed.
-            </p>
+            <p>We could not load your authenticators. Nothing was changed.</p>
             <a href="/settings/security/mfa">Try again</a>
             <p class="infra-request-id">
               Request ID: <code>{resolved.requestId}</code>
@@ -88,6 +84,8 @@ if (resolved.kind === 'unauthenticated')
       }
       <p><a href="/settings/security">Back to security settings</a></p>
     </main>
-    <script src="../../../components/identity-authority/step-up-mfa/focus-page-heading.ts"></script>
+    <script
+      src="../../../components/identity-authority/step-up-mfa/focus-page-heading.ts"
+    ></script>
   </body>
 </html>

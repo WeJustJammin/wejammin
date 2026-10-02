@@ -19,23 +19,28 @@ import {
 } from './route-support';
 import type { AdminOperationId } from './types';
 
-const requiredCapability: Readonly<Record<AdminOperationId, string>> = {
+/** Admin routes that share admission; CFG-05B-06 has no legacy port name. */
+export type AdminRouteOperationId = AdminOperationId | 'CFG-05B-06';
+
+const requiredCapability: Readonly<Record<AdminRouteOperationId, string>> = {
   'CFG-05B-01': 'admin.inbox.read',
   'CFG-05B-04': 'admin.capability.grant',
   'CFG-05B-05': 'admin.audit.read',
+  'CFG-05B-06': 'admin.identity.mfa_reset',
 };
 
-const deadlines: Readonly<Record<AdminOperationId, number>> = {
+const deadlines: Readonly<Record<AdminRouteOperationId, number>> = {
   'CFG-05B-01': 8_000,
   'CFG-05B-04': 15_000,
   'CFG-05B-05': 8_000,
+  'CFG-05B-06': 15_000,
 };
 
 type TimedAdminHandler = (signal: AbortSignal) => Promise<Response>;
 
 export const withDeadline = async (
   context: WorkerContext,
-  operationId: AdminOperationId,
+  operationId: AdminRouteOperationId,
   handler: TimedAdminHandler,
 ): Promise<Response> => {
   const controller = new AbortController();
@@ -187,7 +192,7 @@ const resolveContext = async (
 export const admit = async (
   context: WorkerContext,
   dependencies: WorkerDependencies,
-  operationId: AdminOperationId,
+  operationId: AdminRouteOperationId,
   signal: AbortSignal,
 ): Promise<
   | Readonly<{ session: AuthenticationSession; requestContext: RequestContext }>

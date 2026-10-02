@@ -357,3 +357,61 @@ describe('SchemaActivationPreparation', () => {
     ).toBe(false);
   });
 });
+
+describe('SchemaActivationPreparation dryRunRef failureCode', () => {
+  const ref = (over: Record<string, unknown>) => ({
+    ...preparation,
+    dryRunRef: { ...preparation.dryRunRef, ...over },
+  });
+
+  it('accepts a null or absent failureCode on a sealed or running reference', () => {
+    expect(
+      SchemaActivationPreparationSchema.parse(ref({ failureCode: null }))
+        .dryRunRef?.failureCode,
+    ).toBeNull();
+    expect(
+      SchemaActivationPreparationSchema.safeParse(preparation).success,
+    ).toBe(true);
+    expect(
+      SchemaActivationPreparationSchema.safeParse(
+        ref({ state: 'running', result: null, failureCode: null }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it('accepts a sealed failure code only on an unsealed failed reference', () => {
+    const failed = ref({
+      state: 'failed',
+      result: null,
+      failureCode: 'MIGRATION_WORKER_TIMEOUT',
+    });
+    expect(
+      SchemaActivationPreparationSchema.parse(failed).dryRunRef?.failureCode,
+    ).toBe('MIGRATION_WORKER_TIMEOUT');
+  });
+
+  it.each([
+    ['a completed passed', { failureCode: 'SCAN_FAILED' }],
+    ['a completed failed', { result: 'failed', failureCode: 'SCAN_FAILED' }],
+    [
+      'a running',
+      { state: 'running', result: null, failureCode: 'SCAN_FAILED' },
+    ],
+    ['a queued', { state: 'queued', result: null, failureCode: 'SCAN_FAILED' }],
+  ])('rejects a failure code on %s reference', (_name, over) => {
+    expect(SchemaActivationPreparationSchema.safeParse(ref(over)).success).toBe(
+      false,
+    );
+  });
+
+  it.each(['lowercase', 'HAS SPACE', '1LEADING', 'A'.repeat(65), '', 7])(
+    'rejects the malformed failure code %j outside the sealed enum',
+    (code) => {
+      expect(
+        SchemaActivationPreparationSchema.safeParse(
+          ref({ state: 'failed', result: null, failureCode: code }),
+        ).success,
+      ).toBe(false);
+    },
+  );
+});

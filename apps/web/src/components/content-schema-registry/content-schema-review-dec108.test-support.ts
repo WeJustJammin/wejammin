@@ -394,8 +394,5 @@ export const reviewTarget = (
 ): Dec108Target => ({ operationId, reviewId: REVIEW_ID });
 
 /** A private-service ApiError body, as the platform emits it. */
-export const apiError = (
-  code: string,
-  details: Record<string, unknown> = {},
-  message = 'Refused.',
-) => ({ code, details, message, requestId: REQUEST_ID });
+export const apiError = (code: string, details = {}, message = 'Refused.') =>
+  ({ code, details, message, requestId: REQUEST_ID }) as const;

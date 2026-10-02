@@ -1,22 +1,7 @@
 import * as React from 'react';
-import { flushSync } from 'react-dom';
 
-import { ACTING_CONTEXT_CHANGED_EVENT } from '../../lib/client-binding';
-import { installContentSchemaRegistryCommandEnhancement } from './content-schema-registry-runtime-dom';
-import { subscribeContentSchemaRegistryInvalidation } from './content-schema-registry-invalidation';
-import {
-  canonicalAuthNavigate,
-  CanonicalRefreshScheduler,
-  type FocusLocator,
-  type RefetchReason,
-} from './content-schema-registry-canonical-refresh-scheduler';
-import {
-  initialProjectionState,
-  toDisabledProjection,
-  type ContentSchemaRegistryProjectionState,
-} from './content-schema-registry-canonical-state-validate';
 import { initialFailureOf } from './content-schema-registry-initial-failure';
-import { restoreContentSchemaRegistryFocus } from './content-schema-registry-runtime-dom-refetch-support';
+import { useContentSchemaRegistryIslandRuntime } from './use-content-schema-registry-island-runtime';
 import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
 import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
@@ -46,130 +31,14 @@ export default function ContentSchemaRegistryWorkbenchIsland(
   // verified authority, so a usable access level is the only signal needed.
   const ssrHasAuthority =
     props.access === 'full' || props.access === 'read-only';
-  const [contextEpoch, setContextEpoch] = React.useState(0);
-  const [projectionState, setProjectionState] =
-    React.useState<ContentSchemaRegistryProjectionState>(() =>
-      initialProjectionState(props),
-    );
-  const [loading, setLoading] = React.useState(false);
-  const [offline, setOffline] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
-  const commandCleanupRef = React.useRef<() => void>(() => undefined);
-  const [focusLocator, setFocusLocator] = React.useState<FocusLocator>(null);
-  const schedulerRef = React.useRef<CanonicalRefreshScheduler | null>(null);
-  if (schedulerRef.current === null) {
-    schedulerRef.current = new CanonicalRefreshScheduler(
-      {
-        setLoading,
-        setMessage,
-        setProjection: (updater) => setProjectionState(updater),
-        setFocusLocator,
-        navigate: (target) => {
-          // Commit the fail-closed state to the DOM before navigating so the
-          // protected controls are gone at the moment navigation is observed.
-          flushSync(() =>
-            setProjectionState((current) =>
-              toDisabledProjection(current, 'navigate'),
-            ),
-          );
-          canonicalAuthNavigate(target);
-        },
-      },
-      props.canonicalRefetchUrl,
-    );
-  }
-
-  React.useEffect(() => {
-    schedulerRef.current?.setUrl(props.canonicalRefetchUrl);
-  }, [props.canonicalRefetchUrl]);
-
-  const onCanonicalRefetch = React.useCallback(
-    async (reason: RefetchReason | 'mutation'): Promise<void> => {
-      // A completed mutation reconciles its own result; it never triggers a
-      // canonical refetch. Mutation is not a scheduler reason.
-      if (reason === 'mutation') return;
-      schedulerRef.current?.request(reason);
-    },
-    [],
-  );
-
-  React.useEffect(() => {
-    if (typeof document === 'undefined' || !ssrHasAuthority) return undefined;
-    commandCleanupRef.current =
-      installContentSchemaRegistryCommandEnhancement(document);
-    document
-      .querySelector<HTMLElement>('[data-workbench="content-schema-registry"]')
-      ?.setAttribute('data-content-schema-registry-hydrated', 'true');
-    return () => {
-      commandCleanupRef.current();
-      commandCleanupRef.current = () => undefined;
-    };
-  }, [ssrHasAuthority]);
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined' || !ssrHasAuthority) return undefined;
-    const scheduler = schedulerRef.current;
-    const subscription = subscribeContentSchemaRegistryInvalidation({
-      onInvalidate: () => scheduler?.request('list-read'),
-    });
-    const onOffline = (): void => setOffline(true);
-    const onOnline = (): void => {
-      setOffline(false);
-      scheduler?.request('reconnect');
-    };
-    // Context change forces an immediate read and invalidates the in-flight one.
-    const onActingContextChanged = (): void => {
-      scheduler?.bumpEpoch();
-      setContextEpoch((current) => current + 1);
-      setProjectionState((current) =>
-        toDisabledProjection(current, 'context-change'),
-      );
-      scheduler?.request('list-read', true);
-    };
-    window.addEventListener('offline', onOffline);
-    window.addEventListener('online', onOnline);
-    window.addEventListener(
-      ACTING_CONTEXT_CHANGED_EVENT,
-      onActingContextChanged,
-    );
-    const kickoff = window.setTimeout(
-      () => scheduler?.request('detail-read', true),
-      0,
-    );
-    return () => {
-      window.clearTimeout(kickoff);
-      scheduler?.dispose();
-      subscription.unsubscribe();
-      window.removeEventListener('offline', onOffline);
-      window.removeEventListener('online', onOnline);
-      window.removeEventListener(
-        ACTING_CONTEXT_CHANGED_EVENT,
-        onActingContextChanged,
-      );
-    };
-  }, [ssrHasAuthority]);
-
-  const projectionRevision = JSON.stringify([
-    projectionState.access,
-    projectionState.initialList.status,
-    projectionState.initialDetail?.status ?? null,
-  ]);
-  React.useEffect(() => {
-    if (focusLocator === null || typeof document === 'undefined') return;
-    restoreContentSchemaRegistryFocus(document, focusLocator);
-    const clear = setTimeout(() => setFocusLocator(null), 0);
-    return () => clearTimeout(clear);
-  }, [projectionRevision, focusLocator]);
-
-  // A denial/failure boundary takes focus so the removed controls are announced
-  // from a safe, non-interactive heading.
-  const accessState = projectionState.access;
-  React.useEffect(() => {
-    if (accessState !== 'disabled' || typeof document === 'undefined') return;
-    document
-      .getElementById('content-schema-registry-capability-heading')
-      ?.focus({ preventScroll: true });
-  }, [accessState]);
+  const {
+    projectionState,
+    contextEpoch,
+    loading,
+    offline,
+    message,
+    onCanonicalRefetch,
+  } = useContentSchemaRegistryIslandRuntime(props, ssrHasAuthority);
 
   if (props.access === 'not-rendered') {
     return (

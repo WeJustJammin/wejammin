@@ -9,6 +9,7 @@ import {
 } from './mfa-api';
 import type { MfaFailure } from './mfa-failure';
 import { MFA_COPY, mfaFailureView, type MfaContext } from './mfa-failure-view';
+import { failurePatch } from './mfa-wizard-failure-patch';
 import {
   initialWizardState,
   newRemovalKey,
@@ -44,7 +45,11 @@ export type MfaWizardActions = Readonly<{
 
 export const useMfaWizard = (
   options: MfaWizardOptions,
-): Readonly<{ state: MfaWizardState; actions: MfaWizardActions; lockout: Lockout }> => {
+): Readonly<{
+  state: MfaWizardState;
+  actions: MfaWizardActions;
+  lockout: Lockout;
+}> => {
   const [state, setState] = React.useState(() => initialWizardState(options));
   const latest = React.useRef(state);
   latest.current = state;
@@ -52,11 +57,13 @@ export const useMfaWizard = (
   const api = options.api ?? {};
   const navigate = options.navigate ?? assign;
   const channel = React.useMemo(
-    () => (options.channel === undefined ? createStepUpChannel() : options.channel),
+    () =>
+      options.channel === undefined ? createStepUpChannel() : options.channel,
     [options.channel],
   );
   const patch = React.useCallback(
-    (next: Partial<MfaWizardState>): void => setState((s) => ({ ...s, ...next })),
+    (next: Partial<MfaWizardState>): void =>
+      setState((s) => ({ ...s, ...next })),
     [],
   );
   const focus = (target: 'code' | 'heading' | 'name' | 'notice') => ({
@@ -80,22 +87,7 @@ export const useMfaWizard = (
     }
     if (view.kind === 'locked' && view.retryAfterSeconds !== null)
       lockout.start(view.retryAfterSeconds);
-    const dropSecret =
-      context === 'verify' && (view.kind === 'conflict' || view.kind === 'expired');
-    const inline = view.kind === 'name' || view.kind === 'code';
-    patch({
-      busy: false,
-      notice: inline ? null : { ...view, requestId: failure.requestId, context },
-      nameError: view.kind === 'name' ? view.message : null,
-      codeError: view.kind === 'code' ? view.message : null,
-      ...(view.clearCode ? { code: '' } : {}),
-      ...(view.kind === 'sign-in' || view.kind === 'last-factor'
-        ? { announcement: view.message }
-        : {}),
-      ...(view.kind === 'last-factor' ? { removal: null } : {}),
-      ...(dropSecret ? { secret: null, step: 'idle' as const, code: '' } : {}),
-      focus: view.kind === 'name' ? focus('name') : view.kind === 'code' ? focus('code') : null,
-    });
+    patch(failurePatch(view, failure, context, focus));
     if (view.kind === 'conflict') void refresh();
   };
 
@@ -108,31 +100,37 @@ export const useMfaWizard = (
       return;
     }
     patch({ busy: true, nameError: null, notice: null });
-    void startTotpEnrollment({ friendlyName: name, version: current.version }, api).then(
-      (outcome) => {
-        if (!outcome.ok) return fail(outcome.failure, 'start');
-        const data = outcome.data;
-        patch({
-          busy: false,
-          step: 'scan',
-          code: '',
-          codeError: null,
+    void startTotpEnrollment(
+      { friendlyName: name, version: current.version },
+      api,
+    ).then((outcome) => {
+      if (!outcome.ok) return fail(outcome.failure, 'start');
+      const data = outcome.data;
+      patch({
+        busy: false,
+        step: 'scan',
+        code: '',
+        codeError: null,
+        version: data.version,
+        secret: {
+          factorId: data.factorId,
+          otpauthUri: data.otpauthUri,
+          manualEntryKey: data.manualEntryKey,
           version: data.version,
-          secret: {
-            factorId: data.factorId,
-            otpauthUri: data.otpauthUri,
-            manualEntryKey: data.manualEntryKey,
-            version: data.version,
-          },
-          focus: focus('code'),
-        });
-      },
-    );
+        },
+        focus: focus('code'),
+      });
+    });
   };
 
   const submitCode = (): void => {
     const current = latest.current;
-    if (current.busy || current.secret === null || lockout.remainingSeconds !== null) return;
+    if (
+      current.busy ||
+      current.secret === null ||
+      lockout.remainingSeconds !== null
+    )
+      return;
     const checked = validateOneTimeCode(current.code);
     if (!checked.ok) {
       patch({ codeError: checked.message, focus: focus('code') });
@@ -140,7 +138,11 @@ export const useMfaWizard = (
     }
     patch({ busy: true, codeError: null });
     void verifyEnrollment(
-      { factorId: current.secret.factorId, code: checked.code, version: current.secret.version },
+      {
+        factorId: current.secret.factorId,
+        code: checked.code,
+        version: current.secret.version,
+      },
       api,
     ).then((outcome) => {
       if (!outcome.ok) return fail(outcome.failure, 'verify');
@@ -167,7 +169,12 @@ export const useMfaWizard = (
   ): void => {
     patch({ busy: true, notice: null });
     void removeFactor(
-      { factorId, reason, version: latest.current.version, idempotencyKey: key },
+      {
+        factorId,
+        reason,
+        version: latest.current.version,
+        idempotencyKey: key,
+      },
       api,
     ).then((outcome) => {
       if (!outcome.ok) return fail(outcome.failure, context);
@@ -183,19 +190,30 @@ export const useMfaWizard = (
   };
 
   React.useEffect(() => {
-    if (lockout.announcement !== '') patch({ announcement: lockout.announcement });
+    if (lockout.announcement !== '')
+      patch({ announcement: lockout.announcement });
   }, [lockout.announcement, patch]);
 
   React.useEffect(() => {
     const clear = (): void =>
-      setState((s) => (s.secret === null ? s : { ...s, secret: null, code: '', step: 'idle' }));
+      setState((s) =>
+        s.secret === null ? s : { ...s, secret: null, code: '', step: 'idle' },
+      );
     window.addEventListener('pagehide', clear);
     return () => window.removeEventListener('pagehide', clear);
   }, []);
 
   const actions: MfaWizardActions = {
     openName: (prefill) =>
-      patch({ step: 'name', name: prefill ?? latest.current.name, nameError: null, notice: null, secret: null, code: '', focus: focus('name') }),
+      patch({
+        step: 'name',
+        name: prefill ?? latest.current.name,
+        nameError: null,
+        notice: null,
+        secret: null,
+        code: '',
+        focus: focus('name'),
+      }),
     closeName: () => patch({ step: 'idle', nameError: null }),
     setName: (value) => patch({ name: value, nameError: null }),
     submitName,
@@ -204,27 +222,55 @@ export const useMfaWizard = (
     copyKey: () => {
       const key = latest.current.secret?.manualEntryKey;
       if (key === undefined || navigator.clipboard === undefined)
-        return patch({ announcement: 'Copy is not available. Select the key and copy it manually.' });
+        return patch({
+          announcement:
+            'Copy is not available. Select the key and copy it manually.',
+        });
       void navigator.clipboard.writeText(key).then(
         () => patch({ announcement: 'Key copied' }),
-        () => patch({ announcement: 'Copy is not available. Select the key and copy it manually.' }),
+        () =>
+          patch({
+            announcement:
+              'Copy is not available. Select the key and copy it manually.',
+          }),
       );
     },
     cancelPending: (factorId) => {
       if (latest.current.busy) return;
       patch({ secret: null, step: 'idle', code: '' });
-      remove(factorId, 'user_request', newRemovalKey(), 'cancel', 'Setup cancelled.');
+      remove(
+        factorId,
+        'user_request',
+        newRemovalKey(),
+        'cancel',
+        'Setup cancelled.',
+      );
     },
     refresh: () => void refresh(),
     openRemoval: (factorId) =>
-      patch({ removal: { factorId, reason: 'user_request', idempotencyKey: newRemovalKey() }, notice: null }),
+      patch({
+        removal: {
+          factorId,
+          reason: 'user_request',
+          idempotencyKey: newRemovalKey(),
+        },
+        notice: null,
+      }),
     closeRemoval: () => patch({ removal: null }),
     setRemovalReason: (reason) =>
-      setState((s) => (s.removal === null ? s : { ...s, removal: { ...s.removal, reason } })),
+      setState((s) =>
+        s.removal === null ? s : { ...s, removal: { ...s.removal, reason } },
+      ),
     confirmRemoval: () => {
       const { removal, busy } = latest.current;
       if (removal === null || busy) return;
-      remove(removal.factorId, removal.reason, removal.idempotencyKey, 'remove', 'Authenticator removed');
+      remove(
+        removal.factorId,
+        removal.reason,
+        removal.idempotencyKey,
+        'remove',
+        'Authenticator removed',
+      );
     },
     retry: () => {
       const context = latest.current.notice?.context;
@@ -239,4 +285,3 @@ export const useMfaWizard = (
   };
   return { state, actions, lockout };
 };
-

@@ -6,6 +6,7 @@ export const AdminWorkspaceOperationIdSchema = z.enum([
   'CFG-05B-03',
   'CFG-05B-04',
   'CFG-05B-05',
+  'CFG-05B-06',
 ]);
 
 export const AdminWorkspaceRouteErrorCodeSchema = z.enum([
@@ -28,6 +29,11 @@ export const AdminWorkspaceRouteErrorCodeSchema = z.enum([
   'AUDIT_TARGET_NOT_FOUND',
   'DIAGNOSTIC_VERSION_CONFLICT',
   'DIAGNOSTIC_UNAVAILABLE',
+  'STEP_UP_REQUIRED',
+  'IDEMPOTENCY_CONFLICT',
+  'MFA_RESET_IN_PROGRESS',
+  'MFA_RESET_INVALID',
+  'IDENTITY_UNAVAILABLE',
   'INTERNAL_ERROR',
 ]);
 
@@ -40,7 +46,16 @@ export const AdminWorkspaceRoutePolicySchema = z
     requestSchema: z.string().min(1).max(128),
     successSchema: z.string().min(1).max(128),
     auth: z.literal('session'),
+    /** Present only where the route demands recent MFA (401 STEP_UP_REQUIRED). */
+    stepUp: z.literal('required').optional(),
+    /** Named admin capability the route requires, when it is not inbox-scoped. */
+    capability: z
+      .string()
+      .regex(/^[a-z][a-z0-9_.-]{0,127}$/u)
+      .optional(),
     rateLimit: z.number().int().positive(),
+    /** Per-party bucket charged beside the per-actor `rateLimit`. */
+    partyRateLimit: z.number().int().positive().optional(),
     rateWindowSeconds: z.number().int().positive(),
     rateScope: z.enum(['actor', 'party']),
     rateClass: z.string().regex(/^[a-z][a-z0-9_.-]*$/u),
@@ -111,6 +126,20 @@ export const diagnosticRouteErrors = [
   'DIAGNOSTIC_VERSION_CONFLICT',
   'DIAGNOSTIC_UNAVAILABLE',
   'RATE_LIMITED',
+  'INTERNAL_ERROR',
+] as const satisfies readonly AdminWorkspaceRouteErrorCode[];
+
+export const mfaResetRouteErrors = [
+  'INVALID_REQUEST',
+  'UNAUTHENTICATED',
+  'STEP_UP_REQUIRED',
+  'FORBIDDEN',
+  'TARGET_NOT_FOUND',
+  'IDEMPOTENCY_CONFLICT',
+  'MFA_RESET_IN_PROGRESS',
+  'MFA_RESET_INVALID',
+  'RATE_LIMITED',
+  'IDENTITY_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const satisfies readonly AdminWorkspaceRouteErrorCode[];
 

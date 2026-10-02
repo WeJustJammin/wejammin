@@ -31,15 +31,20 @@ describe('one-time code input semantics', () => {
     });
   });
 
-  it.each(['', '12345', '1234567', 'abcdef', '12345a', '１２３４５６', '12.456'])(
-    'rejects %j with the exact invalid copy and no request value',
-    (raw) => {
-      expect(validateOneTimeCode(raw)).toEqual({
-        ok: false,
-        message: 'Enter the 6-digit code from your authenticator app.',
-      });
-    },
-  );
+  it.each([
+    '',
+    '12345',
+    '1234567',
+    'abcdef',
+    '12345a',
+    '１２３４５６',
+    '12.456',
+  ])('rejects %j with the exact invalid copy and no request value', (raw) => {
+    expect(validateOneTimeCode(raw)).toEqual({
+      ok: false,
+      message: 'Enter the 6-digit code from your authenticator app.',
+    });
+  });
 
   it('exports the exact copy for the server-reported wrong code', () => {
     expect(ONE_TIME_CODE_COPY.invalid).toBe(

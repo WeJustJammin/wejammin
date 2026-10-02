@@ -56,7 +56,6 @@ export const mfaSettingsHref = (returnTo: string | null): string =>
  */
 export const stepUpSignInHref = (returnTo: string): string => {
   const nested = `${STEP_UP_ROUTE}?returnTo=${encodeURIComponent(resolveStepUpReturnTo(returnTo))}`;
-  const carried =
-    nested.length > MAX_RETURN_TO_LENGTH ? STEP_UP_ROUTE : nested;
+  const carried = nested.length > MAX_RETURN_TO_LENGTH ? STEP_UP_ROUTE : nested;
   return `/auth/sign-in?returnTo=${encodeURIComponent(carried)}`;
 };

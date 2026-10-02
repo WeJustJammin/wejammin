@@ -235,4 +235,16 @@ export const s08ExpectedRoutes = [
     idempotency: 'required',
     ifMatch: 'required',
   },
+  {
+    operationId: 'CFG-05B-06',
+    active: true,
+    method: 'POST',
+    path: '/api/v1/admin/identity/mfa-factor-resets',
+    requestSchema: 'Cfg05b06MfaFactorResetRequestSchema',
+    successSchema: 'Cfg05b06MfaFactorResetResponseSchema',
+    auth: 'session',
+    timeoutMs: 15_000,
+    idempotency: 'required',
+    ifMatch: 'none',
+  },
 ] as const;

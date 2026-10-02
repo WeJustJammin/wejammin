@@ -48,7 +48,8 @@ const ifMatch = (version: string): string =>
   version.startsWith('"') ? version : `"${version}"`;
 
 const versionFromEtag = (etag: string | null): string | null => {
-  const match = etag === null ? null : /^(?:W\/)?"([1-9][0-9]{0,18})"$/u.exec(etag);
+  const match =
+    etag === null ? null : /^(?:W\/)?"([1-9][0-9]{0,18})"$/u.exec(etag);
   return match?.[1] ?? null;
 };
 
@@ -57,7 +58,7 @@ const invalid = (code: string, status: number): ApiOutcome<never> => ({
   failure: { ...networkFailure(), status, code },
 });
 
-type CallInput = Readonly<{
+export type MfaCallInput = Readonly<{
   method: 'DELETE' | 'GET' | 'POST';
   path: string;
   body?: unknown;
@@ -65,8 +66,8 @@ type CallInput = Readonly<{
   idempotencyKey?: string;
 }>;
 
-const call = async <T>(
-  input: CallInput,
+export const mfaApiCall = async <T>(
+  input: MfaCallInput,
   schema: z.ZodType<T>,
   deps: MfaApiDeps,
 ): Promise<ApiOutcome<T>> => {
@@ -113,13 +114,17 @@ const uuid = z.uuid();
 export const readMfaFactors = (
   deps: MfaApiDeps = {},
 ): Promise<ApiOutcome<MfaFactorsResource>> =>
-  call({ method: 'GET', path: FACTORS_PATH }, MfaFactorsResourceSchema, deps);
+  mfaApiCall(
+    { method: 'GET', path: FACTORS_PATH },
+    MfaFactorsResourceSchema,
+    deps,
+  );
 
 export const startTotpEnrollment = (
   input: Readonly<{ friendlyName: string; version: string }>,
   deps: MfaApiDeps = {},
 ): Promise<ApiOutcome<TotpEnrollmentStart>> =>
-  call(
+  mfaApiCall(
     {
       method: 'POST',
       path: FACTORS_PATH,
@@ -135,7 +140,7 @@ export const verifyEnrollment = async (
   deps: MfaApiDeps = {},
 ): Promise<ApiOutcome<MfaFactorsResource>> =>
   uuid.safeParse(input.factorId).success
-    ? call(
+    ? mfaApiCall(
         {
           method: 'POST',
           path: `${FACTORS_PATH}/${input.factorId}/verify`,
@@ -157,7 +162,7 @@ export const removeFactor = async (
   deps: MfaApiDeps = {},
 ): Promise<ApiOutcome<MfaFactorsResource>> =>
   uuid.safeParse(input.factorId).success
-    ? call(
+    ? mfaApiCall(
         {
           method: 'DELETE',
           path: `${FACTORS_PATH}/${input.factorId}`,
@@ -176,7 +181,7 @@ export const createStepUpChallenge = (
   input: Readonly<{ factorId?: string }>,
   deps: MfaApiDeps = {},
 ): Promise<ApiOutcome<StepUpChallenge>> =>
-  call(
+  mfaApiCall(
     {
       method: 'POST',
       path: CHALLENGES_PATH,
@@ -194,7 +199,7 @@ export const verifyStepUp = async (
   deps: MfaApiDeps = {},
 ): Promise<ApiOutcome<StepUpResult>> =>
   uuid.safeParse(input.challengeId).success
-    ? call(
+    ? mfaApiCall(
         {
           method: 'POST',
           path: `${CHALLENGES_PATH}/${input.challengeId}/verify`,

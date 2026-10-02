@@ -41,7 +41,10 @@ describe('read factors (AUTH-API-16)', () => {
 
   it('uses same-origin credentials and bypasses caches', async () => {
     let init: RequestInit | undefined;
-    const fetchImpl = ((_input: RequestInfo | URL, requestInit?: RequestInit) => {
+    const fetchImpl = ((
+      _input: RequestInfo | URL,
+      requestInit?: RequestInit,
+    ) => {
       init = requestInit;
       return Promise.resolve(json(200, factorsResource([])));
     }) as typeof fetch;
@@ -91,11 +94,21 @@ describe('start enrollment (AUTH-API-17)', () => {
   it('turns a server refusal into a typed failure', async () => {
     const outcome = await startTotpEnrollment(
       { friendlyName: 'Laptop', version: '4' },
-      apiDeps(stubFetch(apiError(401, 'UNAUTHENTICATED', { recoveryAction: 'reauthenticate' }))),
+      apiDeps(
+        stubFetch(
+          apiError(401, 'UNAUTHENTICATED', {
+            recoveryAction: 'reauthenticate',
+          }),
+        ),
+      ),
     );
     expect(outcome).toMatchObject({
       ok: false,
-      failure: { status: 401, code: 'UNAUTHENTICATED', recoveryAction: 'reauthenticate' },
+      failure: {
+        status: 401,
+        code: 'UNAUTHENTICATED',
+        recoveryAction: 'reauthenticate',
+      },
     });
   });
 });
@@ -119,9 +132,16 @@ describe('verify enrollment (AUTH-API-18)', () => {
 
 describe('remove factor (AUTH-API-19)', () => {
   it('DELETEs with the reason body, a per-instance idempotency key and If-Match', async () => {
-    const fetchImpl = stubFetch(json(200, factorsResource([], '7'), { etag: '"7"' }));
+    const fetchImpl = stubFetch(
+      json(200, factorsResource([], '7'), { etag: '"7"' }),
+    );
     const outcome = await removeFactor(
-      { factorId: FACTOR_A, reason: 'factor_compromise', version: '6', idempotencyKey: 'instance-key-0001' },
+      {
+        factorId: FACTOR_A,
+        reason: 'factor_compromise',
+        version: '6',
+        idempotencyKey: 'instance-key-0001',
+      },
       apiDeps(fetchImpl),
     );
     expect(outcome).toMatchObject({ ok: true, version: '7' });
@@ -139,7 +159,10 @@ describe('step-up challenge and verify (AUTH-API-20, AUTH-API-21)', () => {
   it('creates a challenge with only the method when no factor is chosen', async () => {
     const fetchImpl = stubFetch(json(201, challenge()));
     const outcome = await createStepUpChallenge({}, apiDeps(fetchImpl));
-    expect(outcome).toMatchObject({ ok: true, data: { challengeId: CHALLENGE_ID } });
+    expect(outcome).toMatchObject({
+      ok: true,
+      data: { challengeId: CHALLENGE_ID },
+    });
     const [call] = fetchImpl.calls;
     expect(call?.url).toBe('/api/v1/auth/step-up/challenges');
     expect(call?.method).toBe('POST');
@@ -152,7 +175,10 @@ describe('step-up challenge and verify (AUTH-API-20, AUTH-API-21)', () => {
   it('names the chosen factor', async () => {
     const fetchImpl = stubFetch(json(201, challenge(FACTOR_B)));
     await createStepUpChallenge({ factorId: FACTOR_B }, apiDeps(fetchImpl));
-    expect(fetchImpl.calls[0]?.body).toEqual({ method: 'totp', factorId: FACTOR_B });
+    expect(fetchImpl.calls[0]?.body).toEqual({
+      method: 'totp',
+      factorId: FACTOR_B,
+    });
   });
 
   it('verifies a code against the challenge path and returns no token', async () => {
@@ -163,7 +189,9 @@ describe('step-up challenge and verify (AUTH-API-20, AUTH-API-21)', () => {
     );
     expect(outcome).toMatchObject({ ok: true, data: { verified: true } });
     const [call] = fetchImpl.calls;
-    expect(call?.url).toBe(`/api/v1/auth/step-up/challenges/${CHALLENGE_ID}/verify`);
+    expect(call?.url).toBe(
+      `/api/v1/auth/step-up/challenges/${CHALLENGE_ID}/verify`,
+    );
     expect(call?.body).toEqual({ code: '123456' });
     expect(call?.headers.get('x-csrf-token')).toBe(CSRF);
   });
@@ -185,7 +213,10 @@ describe('step-up challenge and verify (AUTH-API-20, AUTH-API-21)', () => {
       { challengeId: '../admin', code: '123456' },
       apiDeps(fetchImpl),
     );
-    expect(outcome).toMatchObject({ ok: false, failure: { code: 'INVALID_REQUEST' } });
+    expect(outcome).toMatchObject({
+      ok: false,
+      failure: { code: 'INVALID_REQUEST' },
+    });
     expect(fetchImpl.calls).toHaveLength(0);
   });
 });

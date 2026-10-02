@@ -20,7 +20,15 @@ import {
   detail,
   list,
 } from './content-schema-registry-server-test-values';
+import { approvedReviewPreparation } from './content-schema-registry-activation-preparation.test-support';
+import { approvedProtectedReview } from './content-schema-review-dec108.test-support';
 
+/** Activation renders only when the server offers `activate` (FE03 G8). */
+const activatableDetail = {
+  ...detail,
+  activationPreparation: approvedReviewPreparation,
+};
+const REVIEWS_PATH = '/api/v1/cms/schema-reviews/';
 const ACTING_CONTEXTS_PATH = '/api/v1/me/acting-contexts';
 const LABEL = 'Northwind Collective';
 const NOW = Date.parse('2026-10-01T12:00:00.000Z');
@@ -63,7 +71,11 @@ const binding = (options: BindingOptions = {}) => {
             { status },
           );
         return Response.json(
-          request.url.includes('/versions/') ? detail : list,
+          request.url.includes(REVIEWS_PATH)
+            ? approvedProtectedReview()
+            : request.url.includes('/versions/')
+              ? activatableDetail
+              : list,
           {
             status: 200,
             headers: {

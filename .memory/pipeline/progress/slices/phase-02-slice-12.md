@@ -4,7 +4,7 @@
 **Complexity**: M  
 **Surface scope**: web  
 **Depends on**: Slice 09  
-**Implementation gate**: Slice 09 activation-chain criteria were reopened on 2026-09-30 and remain open, while the separately reopened AC250 was Chrome-verified and closed 2026-10-01 (262/279 active); Slice 12's local work remains in progress but cannot close before that dependency.  
+**Implementation gate**: Slice 09 activation-chain criteria were reopened on 2026-09-30 and remain open together with AC019, AC259 and the 917 amended criteria AC284-AC1200, while the separately reopened AC250 was Chrome-verified and closed 2026-10-01 (260/1196 active); Slice 12's local work remains in progress but cannot close before that dependency.  
 **Spec depth floor**: 50  
 **Acceptance criteria**: 50  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)

@@ -48,8 +48,7 @@ export const useLockout = (): Lockout => {
         return;
       }
       setRemaining(left);
-      if (left % 60 === 0)
-        setAnnouncement(`Try again in ${formatWait(left)}.`);
+      if (left % 60 === 0) setAnnouncement(`Try again in ${formatWait(left)}.`);
     }, 1000);
     return () => clearInterval(timer);
   }, [until]);

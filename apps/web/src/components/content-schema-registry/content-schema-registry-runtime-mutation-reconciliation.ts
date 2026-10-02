@@ -23,6 +23,9 @@ const SUCCESS_STATUSES: Readonly<Record<string, readonly number[]>> = {
   'CMS-03A-11': [201],
   'CMS-03A-12': [201],
   'CMS-03A-14': [200, 201],
+  'CMS-03A-15': [201],
+  'CMS-03A-16': [200],
+  'CMS-03A-17': [200],
 };
 
 const successStatusesFor = (operationId: string): readonly number[] =>

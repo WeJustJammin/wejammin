@@ -3,6 +3,7 @@ import {
   diagnosticRouteErrors,
   grantRouteErrors,
   inboxRouteErrors,
+  mfaResetRouteErrors,
   type AdminWorkspaceRoutePolicy,
 } from './admin-route-policy.ts';
 
@@ -49,4 +50,25 @@ export const activeAdminWorkspaceRoutePolicies = [
     diagnosticRouteErrors,
     true,
   ),
+  {
+    // BE05b CFG-05B-06: 5 per hour per user and 10 per hour per party.
+    ...adminRoute(
+      'CFG-05B-06',
+      'POST',
+      '/api/v1/admin/identity/mfa-factor-resets',
+      'Cfg05b06MfaFactorResetRequestSchema',
+      'Cfg05b06MfaFactorResetResponseSchema',
+      5,
+      'admin_mfa_factor_reset',
+      15_000,
+      'required',
+      'none',
+      mfaResetRouteErrors,
+      true,
+    ),
+    stepUp: 'required',
+    capability: 'admin.identity.mfa_reset',
+    partyRateLimit: 10,
+    rateWindowSeconds: 3600,
+  },
 ] as const satisfies readonly AdminWorkspaceRoutePolicy[];

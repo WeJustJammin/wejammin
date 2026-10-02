@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
+import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMemoryLockManager } from '../../lib/test-support/memory-lock-manager';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
+import ContentSchemaRegistryActivationForm from './ContentSchemaRegistryActivationForm';
 import { installContentSchemaRegistryCommandEnhancement } from './content-schema-registry-runtime-dom-mutations';
 import {
   REQUEST_ID,
@@ -101,6 +104,42 @@ describe('[DEC-108] 401 STEP_UP_REQUIRED routing', () => {
       cleanup();
     },
   );
+
+  it('routes the real activation form (no token field) to /step-up on 401 STEP_UP_REQUIRED', async () => {
+    const path = '/app/cms-content-modeling/type-id/versions/version-id';
+    window.history.replaceState({}, '', path);
+    document.body.innerHTML = `<main><section data-workbench="content-schema-registry" data-canonical-refetch-url="${path}">${renderToStaticMarkup(
+      React.createElement(ContentSchemaRegistryActivationForm, {
+        action: path,
+        contentTypeId: 'type-id',
+        versionId: 'version-id',
+        csrfToken: 'csrf-token',
+        idempotencyKey: 'stable-key-123',
+        ifMatch: '"4"',
+        expectedVersion: '4',
+        dryRunId: '018f0c45-73fe-7dc2-9c09-68f7ecf132dc',
+        approvalIds: ['018f0c45-73fe-7dc2-9c09-68f7ecf132dd'],
+      }),
+    )}</section></main>`;
+    expect(document.querySelector('[name="stepUpToken"]')).toBeNull();
+    const navigate = vi.fn();
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(stepUpBody, {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const cleanup = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate,
+    });
+    await submitUntil(() => navigate.mock.calls.length > 0);
+    expect(navigate).toHaveBeenCalledWith(
+      `/step-up?returnTo=${encodeURIComponent(path)}`,
+    );
+    cleanup();
+  });
 
   it('keeps a plain 401 on the sign-in page, not the step-up page', async () => {
     formMarkup('CMS-03A-12', REVIEW_PATH);

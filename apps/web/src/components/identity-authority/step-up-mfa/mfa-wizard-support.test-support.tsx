@@ -2,7 +2,10 @@ import * as React from 'react';
 import { vi } from 'vitest';
 
 import { MfaEnrollmentWizard } from './MfaEnrollmentWizard';
-import { channelStub, type ChannelStub } from './step-up-form-support.test-support';
+import {
+  channelStub,
+  type ChannelStub,
+} from './step-up-form-support.test-support';
 import {
   FACTOR_A,
   apiDeps,
@@ -15,7 +18,10 @@ import {
 } from './step-up-mfa.test-support';
 import type { MfaFactorSummary, StepUpState } from './step-up-phase';
 
-export const CURRENT = { pathname: '/settings/security/mfa', search: '' } as const;
+export const CURRENT = {
+  pathname: '/settings/security/mfa',
+  search: '',
+} as const;
 
 export type WizardHarness = Readonly<{
   mounted: Mounted;
@@ -54,33 +60,43 @@ export const mountWizard = (
   return { mounted, navigate, reload, channel };
 };
 
-export const button = (container: ParentNode, name: string | RegExp): HTMLElement => {
+export const button = (
+  container: HTMLElement,
+  name: string | RegExp,
+): HTMLElement => {
   const found = byText(container, 'button', name);
   if (found === undefined) throw new Error(`missing button ${String(name)}`);
   return found;
 };
 
-export const pressButton = (container: ParentNode, name: string | RegExp): void =>
-  click(button(container, name));
+export const pressButton = (
+  container: HTMLElement,
+  name: string | RegExp,
+): void => click(button(container, name));
 
-export const nameInput = (container: ParentNode): HTMLInputElement => {
-  const input = container.querySelector<HTMLInputElement>('input[name="friendlyName"]');
+export const nameInput = (container: HTMLElement): HTMLInputElement => {
+  const input = container.querySelector<HTMLInputElement>(
+    'input[name="friendlyName"]',
+  );
   if (input === null) throw new Error('missing name field');
   return input;
 };
 
-export const fillAndSubmitName = (container: ParentNode, value: string): void => {
+export const fillAndSubmitName = (
+  container: HTMLElement,
+  value: string,
+): void => {
   setValue(nameInput(container), value);
   const form = nameInput(container).closest('form');
   form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 };
 
-export const statusText = (container: ParentNode): string =>
+export const statusText = (container: HTMLElement): string =>
   Array.from(container.querySelectorAll('[role="status"]'))
     .map((node) => node.textContent ?? '')
     .join('|');
 
-export const alertText = (container: ParentNode): string =>
+export const alertText = (container: HTMLElement): string =>
   Array.from(container.querySelectorAll('[role="alert"]'))
     .map((node) => node.textContent ?? '')
     .join('|');

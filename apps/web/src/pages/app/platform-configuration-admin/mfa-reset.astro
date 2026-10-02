@@ -1,0 +1,94 @@
+---
+import { createRequestId } from '@wejammin/contracts';
+import { env } from 'cloudflare:workers';
+import '@wejammin/ui/styles.css';
+import '../../../styles/infrastructure.css';
+import '../../../styles/step-up-mfa.css';
+
+import AdminMfaFactorResetForm from '../../../components/platform-configuration/admin-mfa-reset/AdminMfaFactorResetForm.tsx';
+import { resolveAdminMfaResetPage } from '../../../server/admin-mfa-reset-page-context.ts';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const requestId = createRequestId(
+  Astro.request.headers.get('x-request-id') ?? undefined,
+);
+const localApiOrigin = (
+  env as unknown as { PLATFORM_CONFIGURATION_LOCAL_API_ORIGIN?: string }
+).PLATFORM_CONFIGURATION_LOCAL_API_ORIGIN;
+const resolved = await resolveAdminMfaResetPage({
+  request: Astro.request,
+  binding: env.PLATFORM_API,
+  requestId,
+  ...(localApiOrigin === undefined ? {} : { localApiOrigin }),
+});
+if (resolved.kind === 'unauthenticated')
+  return Astro.redirect(resolved.location, 303);
+if (resolved.kind === 'not_found')
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'Cache-Control': 'no-store' },
+  });
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Reset another person's two-step verification after a recent identity check."
+    />
+    <title>Reset two-step verification | WeJammin admin</title>
+  </head>
+  <body class="infra-page">
+    <nav aria-label="Skip navigation">
+      <a class="infra-skip-link" href="#main-content">Skip to main content</a>
+    </nav>
+    <header class="infra-shell-header" aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/platform-configuration-admin">Platform configuration</a>
+        <a href="/settings/security/mfa">Your two-step verification</a>
+      </nav>
+    </header>
+    <main id="main-content" class="infra-main" tabindex="-1">
+      <div class="infra-shell-header">
+        <p class="infra-eyebrow">Administration</p>
+        <h1 id="page-title" tabindex="-1">Reset two-step verification</h1>
+        <p>
+          Use this only for a person who has lost every authenticator. The
+          action is recorded and cannot be undone.
+        </p>
+      </div>
+      {
+        resolved.kind === 'degraded' ? (
+          <section
+            class="infra-capability-gate"
+            role="status"
+            aria-live="polite"
+          >
+            <h2>The reset service is temporarily unavailable</h2>
+            <p>Nothing was changed.</p>
+            <a href="/app/platform-configuration-admin/mfa-reset">Try again</a>
+            <p class="infra-request-id">
+              Request ID: <code>{resolved.requestId}</code>
+            </p>
+          </section>
+        ) : (
+          <AdminMfaFactorResetForm
+            variant={resolved.variant}
+            stepUp={resolved.stepUp}
+            client:load
+          />
+        )
+      }
+    </main>
+    <script
+      src="../../../components/identity-authority/step-up-mfa/focus-page-heading.ts"
+    ></script>
+  </body>
+</html>

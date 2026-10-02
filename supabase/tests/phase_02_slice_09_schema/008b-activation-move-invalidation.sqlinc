@@ -76,8 +76,8 @@ select throws_ok(
     ) values (
       'a9090000-0000-4000-8000-000000000180',
       (select owner_id from platform_private.cms_content_type_versions
-       where id = 'a9090000-0000-4000-8000-000000000103'),
-      'active', 1, 'a9090000-0000-4000-8000-000000000103',
+       where id = pg_temp.s09d_id('x:version')),
+      'active', 1, pg_temp.s09d_id('x:version'),
       'a9090000-0000-4000-8000-000000000180', 0
     )$$,
   'P0001', 'IMMUTABLE_RECORD',

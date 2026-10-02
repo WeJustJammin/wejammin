@@ -55,9 +55,7 @@ export function OneTimeCodeField({
         readOnly={readOnly}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
-        aria-describedby={
-          invalid ? `${describedBy} ${errorId}` : describedBy
-        }
+        aria-describedby={invalid ? `${describedBy} ${errorId}` : describedBy}
         {...(invalid ? { 'aria-invalid': true } : {})}
       />
       <p id={describedBy} className="infra-help">

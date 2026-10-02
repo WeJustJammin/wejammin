@@ -48,7 +48,9 @@ export function MfaNotice({
           Request ID: <code>{notice.requestId}</code>
         </p>
       )}
-      {notice.kind === 'limit' && <a href="#mfa-factor-list-heading">Go to your authenticators</a>}
+      {notice.kind === 'limit' && (
+        <a href="#mfa-factor-list-heading">Go to your authenticators</a>
+      )}
       {notice.kind === 'expired' && (
         <button type="button" onClick={onStartAgain}>
           Start again

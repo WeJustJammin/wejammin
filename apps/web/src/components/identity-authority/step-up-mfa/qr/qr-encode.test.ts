@@ -43,10 +43,14 @@ describe('QR encoder (byte mode, error correction level M)', () => {
     [10, 213],
     [20, 666],
     [40, 2331],
-  ])('chooses version %i at its %i byte capacity and the next one above it', (version, capacity) => {
-    expect(encodeQr('a'.repeat(capacity)).version).toBe(version);
-    if (version < 40) expect(encodeQr('a'.repeat(capacity + 1)).version).toBe(version + 1);
-  });
+  ])(
+    'chooses version %i at its %i byte capacity and the next one above it',
+    (version, capacity) => {
+      expect(encodeQr('a'.repeat(capacity)).version).toBe(version);
+      if (version < 40)
+        expect(encodeQr('a'.repeat(capacity + 1)).version).toBe(version + 1);
+    },
+  );
 
   it('refuses text beyond the largest symbol', () => {
     expect(() => encodeQr('a'.repeat(2332))).toThrow(RangeError);
@@ -60,7 +64,9 @@ describe('QR encoder (byte mode, error correction level M)', () => {
     const matrix = encodeQr(OTPAUTH);
     expect(matrix.size).toBe(17 + 4 * matrix.version);
     expect(matrix.modules).toHaveLength(matrix.size);
-    expect(matrix.modules.every((row) => row.length === matrix.size)).toBe(true);
+    expect(matrix.modules.every((row) => row.length === matrix.size)).toBe(
+      true,
+    );
   });
 
   it('places the three finder patterns, timing lines and the dark module', () => {
@@ -80,12 +86,38 @@ describe('QR encoder (byte mode, error correction level M)', () => {
     const matrix = encodeQr(OTPAUTH);
     const n = matrix.size;
     const first = bits(matrix, [
-      [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8],
-      [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
+      [8, 0],
+      [8, 1],
+      [8, 2],
+      [8, 3],
+      [8, 4],
+      [8, 5],
+      [8, 7],
+      [8, 8],
+      [7, 8],
+      [5, 8],
+      [4, 8],
+      [3, 8],
+      [2, 8],
+      [1, 8],
+      [0, 8],
     ]);
     const second = bits(matrix, [
-      [n - 1, 8], [n - 2, 8], [n - 3, 8], [n - 4, 8], [n - 5, 8], [n - 6, 8], [n - 7, 8],
-      [8, n - 8], [8, n - 7], [8, n - 6], [8, n - 5], [8, n - 4], [8, n - 3], [8, n - 2], [8, n - 1],
+      [n - 1, 8],
+      [n - 2, 8],
+      [n - 3, 8],
+      [n - 4, 8],
+      [n - 5, 8],
+      [n - 6, 8],
+      [n - 7, 8],
+      [8, n - 8],
+      [8, n - 7],
+      [8, n - 6],
+      [8, n - 5],
+      [8, n - 4],
+      [8, n - 3],
+      [8, n - 2],
+      [8, n - 1],
     ]);
     expect(first).toBe(second);
     expect(VALID_FORMAT_CODES.has(first)).toBe(true);
@@ -112,9 +144,12 @@ describe('QR encoder (byte mode, error correction level M)', () => {
 
   it('matches the golden matrix independently decoded with zbar', () => {
     const matrix = encodeQr(OTPAUTH);
-    const flat = matrix.modules.map((row) => row.map((m) => (m ? '1' : '0')).join('')).join('');
+    const flat = matrix.modules
+      .map((row) => row.map((m) => (m ? '1' : '0')).join(''))
+      .join('');
     let hash = 5381;
-    for (const character of flat) hash = ((hash * 33) ^ character.charCodeAt(0)) >>> 0;
+    for (const character of flat)
+      hash = ((hash * 33) ^ character.charCodeAt(0)) >>> 0;
     expect(matrix.version).toBe(7);
     expect(hash).toBe(GOLDEN_HASH);
   });

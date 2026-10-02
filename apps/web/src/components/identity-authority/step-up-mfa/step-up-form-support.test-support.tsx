@@ -67,13 +67,13 @@ export const mountForm = (
   return { mounted, navigate, channel };
 };
 
-export const codeInput = (container: ParentNode): HTMLInputElement => {
+export const codeInput = (container: HTMLElement): HTMLInputElement => {
   const input = container.querySelector<HTMLInputElement>('input[name="code"]');
   if (input === null) throw new Error('missing one-time code field');
   return input;
 };
 
-export const submitForm = (container: ParentNode): void => {
+export const submitForm = (container: HTMLElement): void => {
   const form = container.querySelector('form');
   if (form === null) throw new Error('missing form');
   form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));

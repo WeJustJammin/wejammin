@@ -17,7 +17,8 @@ import {
 import { resourceMetaShape } from './resources-meta.ts';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
-const MAX_GRANT_SPAN_DAYS = 6;
+/** DEC-120: a standing CMS grant spans at most 90 UTC days (validThrough <= validFrom + 89). */
+const MAX_GRANT_SPAN_DAYS = 89;
 
 /**
  * One owner CMS capability grant aggregate. `subjectPersonId` is returned
@@ -44,7 +45,7 @@ export const CmsCapabilityGrantResourceSchema = z
       context.addIssue({
         code: 'custom',
         path: ['validThrough'],
-        message: 'grant_term_spans_at_most_seven_utc_days',
+        message: 'grant_term_spans_at_most_ninety_utc_days',
       });
     const throughMs = utcDateToEpochMs(value.validThrough);
     if (

@@ -53,7 +53,7 @@ if (Astro.request.method === 'POST') {
     303,
   );
 }
-let ports: ContentSchemaReviewPorts | null = null;
+let ports: ContentSchemaReviewPorts | null;
 try {
   ports = createContentSchemaReviewPlatformPorts(env.PLATFORM_API);
 } catch {

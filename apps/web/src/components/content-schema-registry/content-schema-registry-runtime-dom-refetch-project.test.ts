@@ -70,14 +70,11 @@ const DETAIL = {
 
 const ACTOR_ID = '10000000-0000-4000-8000-000000000001';
 const ACTING_PARTY_ID = '20000000-0000-4000-8000-000000000002';
-const OTHER_PARTY_ID = '20000000-0000-4000-8000-0000000000ff';
 
 const propsPayload = (overrides: Record<string, unknown> = {}) => ({
   state: 'ready',
   variant: 'ownerFull',
   access: 'full',
-  actorId: ACTOR_ID,
-  actingPartyId: ACTING_PARTY_ID,
   actingContextLabel: 'Northwind Collective',
   stepUpState: 'verified',
   stepUpFreshUntil: '2026-10-01T12:05:00.000Z',
@@ -90,6 +87,8 @@ const propsPayload = (overrides: Record<string, unknown> = {}) => ({
     version: '1',
     stale: false,
   },
+  initialReview: null,
+  reviewId: null,
   contractFields: { source: 'contracts', fields: {} },
   retryUrl: '/app/cms-content-modeling/x',
   ...overrides,
@@ -185,14 +184,7 @@ describe('[P2-S09-AC-250] canonical refetch projection', () => {
 
   it('accepts a genuine acting-context change from trusted same-origin SSR', () => {
     const result = parseCanonicalWorkbenchOutcome(
-      page(
-        island(
-          propsPayload({
-            actingPartyId: OTHER_PARTY_ID,
-            actingContextLabel: 'Other Collective',
-          }),
-        ),
-      ),
+      page(island(propsPayload({ actingContextLabel: 'Other Collective' }))),
     );
     expect(result.kind).toBe('projection');
     if (result.kind !== 'projection') return;
@@ -281,24 +273,28 @@ describe('[P2-S09-AC-250] canonical refetch projection', () => {
     expect(result).toEqual({ kind: 'disabled', reason: 'invalid' });
   });
 
-  it('rejects a non-UUID actorId but accepts null authority ids', () => {
+  it('rejects any private identifier in the island props, in any spelling', () => {
+    for (const key of ['actorId', 'actingPartyId', 'personId', 'bindingId']) {
+      for (const value of [ACTOR_ID, ACTING_PARTY_ID, null]) {
+        expect(
+          parseCanonicalWorkbenchOutcome(
+            page(island(propsPayload({ [key]: value }))),
+          ),
+        ).toEqual({ kind: 'disabled', reason: 'invalid' });
+      }
+    }
     expect(
-      parseCanonicalWorkbenchOutcome(
-        page(island(propsPayload({ actorId: 'not-a-uuid' }))),
-      ),
-    ).toEqual({ kind: 'disabled', reason: 'invalid' });
-    const noAuthority = parseCanonicalWorkbenchOutcome(
-      page(island(propsPayload({ actorId: null, actingPartyId: null }))),
-    );
-    expect(noAuthority.kind).toBe('projection');
+      parseCanonicalWorkbenchOutcome(page(island(propsPayload()))).kind,
+    ).toBe('projection');
   });
 
   it('accepts exactly the declared island projection keyset', () => {
     expect(CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS.size).toBe(22);
-    expect(CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS.has('actorId')).toBe(true);
-    expect(CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS.has('actingPartyId')).toBe(
-      true,
-    );
+    const keys: ReadonlySet<string> = CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS;
+    for (const key of ['actorId', 'actingPartyId', 'personId', 'bindingId'])
+      expect(keys.has(key)).toBe(false);
+    for (const key of ['initialReview', 'reviewId'])
+      expect(keys.has(key)).toBe(true);
   });
 
   it('ignores island-like markup inside script and comment regions', () => {

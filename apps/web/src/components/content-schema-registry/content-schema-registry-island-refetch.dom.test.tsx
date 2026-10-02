@@ -7,10 +7,8 @@ import { ACTING_CONTEXT_CHANGED_EVENT } from '../../lib/client-binding';
 import ContentSchemaRegistryWorkbenchIsland from './ContentSchemaRegistryWorkbenchIsland';
 import { readContentSchemaRegistryCanonicalOutcome } from './content-schema-registry-canonical-read';
 import {
-  ACTOR_ID,
   DETAIL,
-  OTHER_PARTY_ID,
-  PARTY_ID,
+  REVIEW,
   capturedWorkbench,
   islandMarkup,
   islandPropsFixture,
@@ -131,7 +129,7 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
     );
     await settle();
     const field = view.container.querySelector<HTMLInputElement>(
-      '#content-schema-registry-dry-run-id',
+      '#content-schema-registry-activation-evidence-hash',
     );
     expect(field).not.toBeNull();
     field?.focus();
@@ -140,7 +138,7 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
     });
     await settle();
     expect(document.activeElement?.id).toBe(
-      'content-schema-registry-dry-run-id',
+      'content-schema-registry-activation-evidence-hash',
     );
   });
 
@@ -149,7 +147,6 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
     const bodies = [
       okBody({ requestId: 'old' }),
       okBody({
-        actingPartyId: OTHER_PARTY_ID,
         actingContextLabel: 'Other Collective',
         requestId: 'new',
       }),
@@ -172,9 +169,11 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
     await settle();
     expect(view.container.textContent).toContain('Other Collective');
     const consumed = lastWorkbenchProps();
-    // #4 proof: the consumer received the CURRENT validated tuple, not SSR props.
-    expect(consumed.actorId).toBe(ACTOR_ID);
-    expect(consumed.actingPartyId).toBe(OTHER_PARTY_ID);
+    // #4 proof: the consumer received the CURRENT validated projection, not
+    // SSR props, and no private identifier is part of it.
+    expect(consumed.actingContextLabel).toBe('Other Collective');
+    expect(consumed).not.toHaveProperty('actorId');
+    expect(consumed).not.toHaveProperty('actingPartyId');
     expect(consumed.expectedVersion).toBe('1');
   });
 
@@ -222,8 +221,6 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
               state: 'ready',
               variant: 'ownerFull',
               access: 'full',
-              actorId: ACTOR_ID,
-              actingPartyId: PARTY_ID,
               requestId: 'omitted',
               initialList: { status: 'empty', reason: 'no-records' },
               initialDetail: {
@@ -232,6 +229,7 @@ describe('[P2-S09-AC-250] island canonical refetch is React-owned', () => {
                 version: '1',
                 stale: false,
               },
+              initialReview: REVIEW,
             }),
             { status: 200 },
           ),

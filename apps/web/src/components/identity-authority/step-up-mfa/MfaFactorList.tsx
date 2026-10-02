@@ -43,31 +43,46 @@ function Actions({
   if (factor.state === 'pending')
     return (
       <>
-        <button type="button" disabled={busy} onClick={() => props.onStartAgain(factor.friendlyName)}>
-          Start again<Hidden name={factor.friendlyName} />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => props.onStartAgain(factor.friendlyName)}
+        >
+          Start again
+          <Hidden name={factor.friendlyName} />
         </button>{' '}
-        <button type="button" disabled={busy} onClick={() => props.onCancelSetup(factor.id)}>
-          Cancel setup<Hidden name={factor.friendlyName} />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => props.onCancelSetup(factor.id)}
+        >
+          Cancel setup
+          <Hidden name={factor.friendlyName} />
         </button>
       </>
     );
   if (factor.state === 'reconciling')
     return (
       <button type="button" disabled={busy} onClick={props.onRefresh}>
-        Refresh status<Hidden name={factor.friendlyName} />
+        Refresh status
+        <Hidden name={factor.friendlyName} />
       </button>
     );
   return (
-    <button type="button" disabled={busy} onClick={() => props.onRemove(factor.id)}>
-      Remove<Hidden name={factor.friendlyName} />
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => props.onRemove(factor.id)}
+    >
+      Remove
+      <Hidden name={factor.friendlyName} />
     </button>
   );
 }
 
 /** Semantic table of the account's authenticators, one action per row state. */
 export function MfaFactorList(props: MfaFactorListProps): React.ReactElement {
-  if (props.factors.length === 0)
-    return <p>No authenticator is set up.</p>;
+  if (props.factors.length === 0) return <p>No authenticator is set up.</p>;
   return (
     <div className="mfa-table-wrap">
       <table className="mfa-table">

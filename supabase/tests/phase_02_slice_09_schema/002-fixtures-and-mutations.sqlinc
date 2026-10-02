@@ -95,7 +95,7 @@ select ok(
    and response->>'resourceKind' = 'content_type_version'
    and response->>'typeKey' = 'articlex'
    and response->>'version' = '1'
-   and response->>'dryRunId' is not null
+   and response->'dryRunId' = 'null'::jsonb
    and (response->>'fieldCount')::integer = 1 from s09_type_created),
   'CMS-03A-01 executes the atomic draft aggregate and returns the full resource'
 );

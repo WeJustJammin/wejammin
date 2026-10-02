@@ -168,7 +168,7 @@ editorial decision and is distinct from the schema review's decision digest.
 
 `cms_capability_grants` is the versioned owner grant aggregate: owner
 organization, existing human, one grantable CMS capability, finite UTC
-valid-from and valid-through (at most seven UTC days inclusive), last action
+valid-from and valid-through (at most 90 UTC days inclusive, valid-through at most valid-from plus 89; DEC-120), last action
 (`granted|renewed|revoked`), optional reason and version. `state` is physically
 `active|revoked`; `lapsed` is derived from valid-through. One aggregate exists
 per owner, human and capability. `cms_capability_grant_events` is the
@@ -415,7 +415,7 @@ nonces, and persists immutable `keyId`, `rawBodyHash`, `signatureHash`,
 | Control-plane outage        | Last-known-good serves; revocation/takedown path can remove unsafe output independently.                                                                                                                                                              |
 | Entry create replay/refusal | Repeated create idempotency key returns the same entry and first revision with no duplicate effect; a refused create commits neither row and never leaks existence.                                                                                   |
 | Draft-detail concealment    | Concealed or absent entry returns 404 and visible-but-unauthorized returns 403 with no values, ownership, or authority disclosure; the response is `no-store` with no mutation effect.                                                                |
-| Grant overreach             | Non-owner callers, non-grantable capabilities (assignment-only and owner-only review keys, `admin.*`, wildcards), cross-organization subjects, terms over seven days and delegation are refused; every grant is step-up gated, audited and revocable. |
+| Grant overreach             | Non-owner callers, non-grantable capabilities (assignment-only and owner-only review keys, `admin.*`, wildcards), cross-organization subjects, terms over 90 UTC days and delegation are refused; every grant is step-up gated, audited and revocable. |
 | Specialist bypass           | A protected approval cannot complete without a counted approver who holds the class specialist capability through an effective grant; an assignment alone never satisfies the slot.                                                                   |
 
 ## Cross-Shard Contracts
@@ -454,6 +454,7 @@ template-version activation.
 | 2026-10-02 | DEC-108 consistency closure: `approvalIds` are the approve-decision IDs of one approved review resolved under current assignment authority, and the grantor authority end is defined.                                                                                                                                                                                                            |
 | 2026-10-02 | DEC-109/DEC-110/DEC-119: added the workflow policy registry members, `policyHash` and reviewer-slot semantics, the editorial `approvalEvidenceHash` basis, the owner CMS capability grant aggregate and event contract, the two initial transforms, the grant and specialist abuse rows, and the owner-grant provisioning of integrated-path test humans.                                        | /propagate-decision              | Canonical Field Contracts, Review and Publication Algorithm, Migration Algorithm, Abuse and Recovery Verification |
 | 2026-10-02 | DEC-119 follow-ups: owner may self-grant any grantable capability with separation enforced at decision time; strictest-of downgrade guard for a successor's review and editorial policy; navigation and media capabilities join the grantable registry                                                                                                                                           | /propagate-decision              | Owner CMS capability grants, Workflow policy registry, Abuse                                                      |
+| 2026-10-02 | DEC-120: standing CMS capability grants (BE03a `CMS-03A-15`/`CMS-03A-16`) may run up to 90 UTC days (valid-through at most the current UTC date plus 89), renewable with step-up, revocation immediate; replaced the seven-day owner-grant term and the grant-overreach ceiling. DEC-108 assignments (`CMS-03A-14`) stay at most seven days | /propagate-decision | Resolved Architecture Choices, Abuse and Recovery Verification, Changelog |
 
 DEC-108 (2026-10-02, owner-approved): private schema-review ownership and bounded
 assignment, reachable successor/dry-run/review producers, stable private evidence

@@ -35,7 +35,9 @@ describe('MfaEnrollmentWizard factor list', () => {
   it('renders a semantic table with the five column headers and one row per factor', () => {
     harness = mountWizard(stubFetch(), { factors: two });
     const container = harness.mounted.container;
-    const headers = Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent?.trim());
+    const headers = Array.from(container.querySelectorAll('thead th')).map(
+      (th) => th.textContent?.trim(),
+    );
     expect(headers).toEqual(['Name', 'Status', 'Added', 'Last used', 'Action']);
     expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(container.querySelector('table caption')).not.toBeNull();
@@ -44,7 +46,9 @@ describe('MfaEnrollmentWizard factor list', () => {
 
   it('exposes a focusable list heading', () => {
     harness = mountWizard(stubFetch(), { factors: two });
-    const heading = harness.mounted.container.querySelector('#mfa-factor-list-heading');
+    const heading = harness.mounted.container.querySelector(
+      '#mfa-factor-list-heading',
+    );
     expect(heading?.getAttribute('tabindex')).toBe('-1');
   });
 });
@@ -54,16 +58,31 @@ describe('MfaEnrollmentWizard removal', () => {
     harness = mountWizard(stubFetch(), { factors: two });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
-    expect(container.textContent).toContain('You will not be able to verify protected actions with it');
-    expect(container.textContent).not.toContain('until you add another authenticator');
-    const radios = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="radio"][name="reason"]'));
-    expect(radios.map((radio) => radio.value)).toEqual(['user_request', 'factor_compromise']);
+    expect(container.textContent).toContain(
+      'You will not be able to verify protected actions with it',
+    );
+    expect(container.textContent).not.toContain(
+      'until you add another authenticator',
+    );
+    const radios = Array.from(
+      container.querySelectorAll<HTMLInputElement>(
+        'input[type="radio"][name="reason"]',
+      ),
+    );
+    expect(radios.map((radio) => radio.value)).toEqual([
+      'user_request',
+      'factor_compromise',
+    ]);
     expect(radios[0]?.checked).toBe(true);
-    expect(container.textContent).toContain('Your other signed-in sessions will be signed out');
+    expect(container.textContent).toContain(
+      'Your other signed-in sessions will be signed out',
+    );
     act(() => {
-      container.querySelector('[data-mfa-removal]')?.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
-      );
+      container
+        .querySelector('[data-mfa-removal]')
+        ?.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        );
     });
     expect(container.querySelector('[data-mfa-removal]')).toBeNull();
   });
@@ -72,16 +91,23 @@ describe('MfaEnrollmentWizard removal', () => {
     harness = mountWizard(stubFetch(), { factors: [factor(FACTOR_A)] });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
-    expect(container.textContent).toContain('until you add another authenticator');
+    expect(container.textContent).toContain(
+      'until you add another authenticator',
+    );
   });
 
   it('removes with a per-instance idempotency key and If-Match, then focuses the list heading and announces', async () => {
-    const after = factorsResource([factor(FACTOR_B, 'verified', 'Laptop')], '9');
+    const after = factorsResource(
+      [factor(FACTOR_B, 'verified', 'Laptop')],
+      '9',
+    );
     const fetchImpl = stubFetch(json(200, after, { etag: '"9"' }));
     harness = mountWizard(fetchImpl, { factors: two });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
-    const radios = container.querySelectorAll<HTMLInputElement>('input[type="radio"][name="reason"]');
+    const radios = container.querySelectorAll<HTMLInputElement>(
+      'input[type="radio"][name="reason"]',
+    );
     const compromise = radios[1];
     if (compromise === undefined) throw new Error('missing radio');
     click(compromise);
@@ -95,12 +121,17 @@ describe('MfaEnrollmentWizard removal', () => {
     expect(call?.headers.get('idempotency-key')).toMatch(/^mfa-/u);
     expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
     expect(statusText(container)).toContain('Authenticator removed');
-    expect(document.activeElement).toBe(container.querySelector('#mfa-factor-list-heading'));
+    expect(document.activeElement).toBe(
+      container.querySelector('#mfa-factor-list-heading'),
+    );
   });
 
   it('routes a missing step-up to /step-up with the current location and keeps nothing', async () => {
     const fetchImpl = stubFetch(
-      apiError(401, 'STEP_UP_REQUIRED', { recoveryAction: 'step_up', allowedMethods: ['totp'] }),
+      apiError(401, 'STEP_UP_REQUIRED', {
+        recoveryAction: 'step_up',
+        allowedMethods: ['totp'],
+      }),
     );
     harness = mountWizard(fetchImpl, { factors: two });
     const container = harness.mounted.container;
@@ -113,7 +144,9 @@ describe('MfaEnrollmentWizard removal', () => {
   });
 
   it('refuses the last factor while access needs verification: closed, polite, no state change', async () => {
-    const fetchImpl = stubFetch(conflict('last_factor_required', 'enroll_factor'));
+    const fetchImpl = stubFetch(
+      conflict('last_factor_required', 'enroll_factor'),
+    );
     harness = mountWizard(fetchImpl, { factors: [factor(FACTOR_A)] });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
@@ -125,20 +158,26 @@ describe('MfaEnrollmentWizard removal', () => {
     );
     expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
     pressButton(container, 'Set up an authenticator');
-    expect(container.querySelector('input[name="friendlyName"]')).not.toBeNull();
+    expect(
+      container.querySelector('input[name="friendlyName"]'),
+    ).not.toBeNull();
   });
 
   it('opens a sync conflict and refetches on factor_state_conflict', async () => {
     const fetchImpl = stubFetch(
       conflict('factor_state_conflict'),
-      json(200, factorsResource([factor(FACTOR_A, 'reconciling')], '10'), { etag: '"10"' }),
+      json(200, factorsResource([factor(FACTOR_A, 'reconciling')], '10'), {
+        etag: '"10"',
+      }),
     );
     harness = mountWizard(fetchImpl, { factors: two });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
     pressButton(container, 'Remove authenticator');
     await flush();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('This page was out of date');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'This page was out of date',
+    );
     expect(container.textContent).toContain('Checking status');
     expect(button(container, /Refresh status/u)).toBeDefined();
   });

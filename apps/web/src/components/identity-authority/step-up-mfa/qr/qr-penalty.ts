@@ -9,7 +9,11 @@ const FINDER_LIKE = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0];
 const lineBits = (line: readonly boolean[]): number[] =>
   line.map((module) => (module ? 1 : 0));
 
-const matchesAt = (bits: readonly number[], start: number, forward: boolean): boolean =>
+const matchesAt = (
+  bits: readonly number[],
+  start: number,
+  forward: boolean,
+): boolean =>
   FINDER_LIKE.every(
     (expected, offset) =>
       bits[start + offset] ===
@@ -34,7 +38,9 @@ const linePenalty = (line: readonly boolean[]): number => {
   return penalty;
 };
 
-export const maskPenalty = (modules: readonly (readonly boolean[])[]): number => {
+export const maskPenalty = (
+  modules: readonly (readonly boolean[])[],
+): number => {
   const size = modules.length;
   let penalty = 0;
   for (let i = 0; i < size; i += 1) {

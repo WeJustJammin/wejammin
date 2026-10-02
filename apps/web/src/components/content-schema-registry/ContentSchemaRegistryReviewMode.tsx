@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import ContentSchemaRegistryReviewAssignmentForm from './ContentSchemaRegistryReviewAssignmentForm';
+import ContentSchemaRegistryReviewAssignments from './ContentSchemaRegistryReviewAssignments';
 import ContentSchemaRegistryReviewDecisionForm from './ContentSchemaRegistryReviewDecisionForm';
 import ContentSchemaRegistryReviewPanel from './ContentSchemaRegistryReviewPanel';
 import { reviewRouteFor } from './content-schema-registry-version-actions';
@@ -74,6 +75,16 @@ export default function ContentSchemaRegistryReviewMode(
           expectedVersion={review.version}
           csrfToken={props.csrfToken}
           idempotencyKey={props.idempotencyKey('CMS-03A-14')}
+        />
+      ) : null}
+      {review !== null && owner && permitted('assign_reviewer') ? (
+        <ContentSchemaRegistryReviewAssignments
+          action={action}
+          reviewId={reviewId}
+          expectedVersion={review.version}
+          csrfToken={props.csrfToken}
+          idempotencyKey={props.idempotencyKey('CMS-03A-14')}
+          assignments={review.assignments}
         />
       ) : null}
     </ContentSchemaRegistryReviewPanel>

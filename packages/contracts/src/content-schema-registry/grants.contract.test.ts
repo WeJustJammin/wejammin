@@ -208,7 +208,7 @@ describe('CMS-03A-18 list query contract', () => {
 });
 
 describe('CmsCapabilityGrantResource', () => {
-  it('accepts every derived state across a single-day to seven-day term', () => {
+  it('accepts every derived state across a single-day to ninety-day term (DEC-120)', () => {
     for (const state of ['active', 'lapsed', 'revoked'] as const)
       expect(
         CmsCapabilityGrantResourceSchema.safeParse({ ...grant, state }).success,
@@ -222,17 +222,24 @@ describe('CmsCapabilityGrantResource', () => {
         reason: 'because',
       }).success,
     ).toBe(true);
+    expect(
+      CmsCapabilityGrantResourceSchema.safeParse({
+        ...grant,
+        validThrough: '2026-12-30',
+        endsAt: '2026-12-31T00:00:00.000Z',
+      }).success,
+    ).toBe(true);
   });
 
-  it('rejects a term longer than seven UTC days or ending before it starts', () => {
+  it('rejects a term longer than ninety UTC days or ending before it starts', () => {
     const longer = CmsCapabilityGrantResourceSchema.safeParse({
       ...grant,
-      validThrough: '2026-10-09',
-      endsAt: '2026-10-10T00:00:00.000Z',
+      validThrough: '2026-12-31',
+      endsAt: '2027-01-01T00:00:00.000Z',
     });
     expect(longer.success).toBe(false);
     expect(longer.error?.issues.map(({ message }) => message)).toEqual([
-      'grant_term_spans_at_most_seven_utc_days',
+      'grant_term_spans_at_most_ninety_utc_days',
     ]);
     expect(
       CmsCapabilityGrantResourceSchema.safeParse({

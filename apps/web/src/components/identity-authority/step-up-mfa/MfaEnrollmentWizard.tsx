@@ -28,7 +28,9 @@ export interface MfaEnrollmentWizardProps {
 }
 
 /** FE01 `/settings/security/mfa`: factor list plus the inline three-step wizard. */
-export function MfaEnrollmentWizard(props: MfaEnrollmentWizardProps): React.ReactElement {
+export function MfaEnrollmentWizard(
+  props: MfaEnrollmentWizardProps,
+): React.ReactElement {
   const { state, actions, lockout } = useMfaWizard({
     returnTo: props.returnTo,
     factors: props.factors,
@@ -55,19 +57,22 @@ export function MfaEnrollmentWizard(props: MfaEnrollmentWizardProps): React.Reac
 
   const gated = state.notice?.kind === 'gate';
   const removing = state.factors.find((f) => f.id === state.removal?.factorId);
-  const verifiedCount = state.factors.filter((f) => f.state === 'verified').length;
+  const verifiedCount = state.factors.filter(
+    (f) => f.state === 'verified',
+  ).length;
   const allowed = props.allowedMethods.includes('totp');
   return (
-    <section className="infra-workbench" aria-labelledby="mfa-factor-list-heading">
+    <section
+      className="infra-workbench"
+      aria-labelledby="mfa-factor-list-heading"
+    >
       <h2 id="mfa-factor-list-heading" ref={headingRef} tabIndex={-1}>
         Authenticators
       </h2>
       <p role="status" aria-live="polite" aria-atomic="true">
         {state.announcement}
       </p>
-      {!allowed && (
-        <p role="alert">No verification method is available.</p>
-      )}
+      {!allowed && <p role="alert">No verification method is available.</p>}
       {state.notice !== null && (
         <MfaNotice
           notice={state.notice}

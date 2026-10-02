@@ -24,10 +24,7 @@ describe('initialStepUpPhase', () => {
   it('has no factor when nothing is verified', () => {
     expect(initialStepUpPhase([])).toBe('no-factor');
     expect(
-      initialStepUpPhase([
-        factor('a', 'pending'),
-        factor('b', 'reconciling'),
-      ]),
+      initialStepUpPhase([factor('a', 'pending'), factor('b', 'reconciling')]),
     ).toBe('no-factor');
   });
 

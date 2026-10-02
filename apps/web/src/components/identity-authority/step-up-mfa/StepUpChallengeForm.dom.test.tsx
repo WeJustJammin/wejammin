@@ -16,6 +16,7 @@ import {
   setValue,
   stepUpResult,
   stubFetch,
+  type StubResponse,
   violation,
   byText,
   click,
@@ -36,7 +37,7 @@ afterEach(() => {
   harness = null;
 });
 
-const open = async (...responses: Parameters<typeof stubFetch>) => {
+const open = async (...responses: StubResponse[]) => {
   const fetchImpl = stubFetch(json(201, challenge()), ...responses);
   harness = mountForm(fetchImpl);
   await flush();
@@ -82,7 +83,9 @@ describe('StepUpChallengeForm creating the challenge', () => {
     expect(fetchImpl.calls).toHaveLength(0);
     const group = container.querySelector('[role="radiogroup"], fieldset');
     expect(group).not.toBeNull();
-    const radios = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+    const radios = container.querySelectorAll<HTMLInputElement>(
+      'input[type="radio"]',
+    );
     expect(radios).toHaveLength(2);
     const second = radios[1];
     if (second === undefined) throw new Error('missing radio');
@@ -91,7 +94,10 @@ describe('StepUpChallengeForm creating the challenge', () => {
     if (cont === undefined) throw new Error('missing Continue');
     click(cont);
     await flush();
-    expect(fetchImpl.calls[0]?.body).toEqual({ method: 'totp', factorId: FACTOR_B });
+    expect(fetchImpl.calls[0]?.body).toEqual({
+      method: 'totp',
+      factorId: FACTOR_B,
+    });
   });
 
   it('explains the missing authenticator and links to enrollment and back', async () => {
@@ -99,7 +105,9 @@ describe('StepUpChallengeForm creating the challenge', () => {
     await flush();
     const container = harness.mounted.container;
     expect(container.textContent).toContain('verified authenticator');
-    const primary = container.querySelector<HTMLAnchorElement>('a[href^="/settings/security/mfa"]');
+    const primary = container.querySelector<HTMLAnchorElement>(
+      'a[href^="/settings/security/mfa"]',
+    );
     expect(primary?.getAttribute('href')).toBe(
       `/settings/security/mfa?returnTo=${encodeURIComponent(RETURN_TO)}`,
     );
@@ -124,8 +132,14 @@ describe('StepUpChallengeForm one-time code field', () => {
     const label = container.querySelector(`label[for="${input.id}"]`);
     expect(label?.textContent).toMatch(/code/iu);
     const described = input.getAttribute('aria-describedby') ?? '';
-    expect(described.split(' ').every((id) => container.querySelector(`#${id}`) !== null)).toBe(true);
-    expect(container.querySelector('form')?.hasAttribute('novalidate')).toBe(true);
+    expect(
+      described
+        .split(' ')
+        .every((id) => container.querySelector(`#${id}`) !== null),
+    ).toBe(true);
+    expect(container.querySelector('form')?.hasAttribute('novalidate')).toBe(
+      true,
+    );
   });
 
   it('strips spaces and hyphens before the six-digit check and sends the digits only', async () => {
@@ -145,7 +159,10 @@ describe('StepUpChallengeForm one-time code field', () => {
     await flush();
     expect(fetchImpl.calls).toHaveLength(1);
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    const errorId = input.getAttribute('aria-describedby')?.split(' ').find((id) => container.querySelector(`#${id}[role="alert"]`) !== null);
+    const errorId = input
+      .getAttribute('aria-describedby')
+      ?.split(' ')
+      .find((id) => container.querySelector(`#${id}[role="alert"]`) !== null);
     expect(errorId).toBeDefined();
     expect(container.querySelector(`#${errorId}`)?.textContent).toBe(
       'Enter the 6-digit code from your authenticator app.',
@@ -161,7 +178,9 @@ describe('StepUpChallengeForm one-time code field', () => {
     await flush();
     expect(input.value).toBe('');
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(container.textContent).toContain("That code didn't work. Check the code and try again.");
+    expect(container.textContent).toContain(
+      "That code didn't work. Check the code and try again.",
+    );
     expect(document.activeElement).toBe(input);
   });
 
@@ -204,17 +223,24 @@ describe('StepUpChallengeForm outcomes', () => {
     setValue(codeInput(container), '123456');
     submitForm(container);
     await flush();
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('Verified. Returning to your page.');
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      'Verified. Returning to your page.',
+    );
     expect(h.navigate).toHaveBeenCalledExactlyOnceWith(RETURN_TO);
     expect(h.channel.posts()).toBe(1);
   });
 
   it('offers a fresh code request when the challenge expired and moves focus to it', async () => {
-    const { fetchImpl, container } = await open(conflict('challenge_expired', 'new_challenge'), json(201, challenge()));
+    const { fetchImpl, container } = await open(
+      conflict('challenge_expired', 'new_challenge'),
+      json(201, challenge()),
+    );
     setValue(codeInput(container), '123456');
     submitForm(container);
     await flush();
-    expect(container.textContent).toContain('This code request is no longer valid.');
+    expect(container.textContent).toContain(
+      'This code request is no longer valid.',
+    );
     const button = byText(container, 'button', 'Get a new code request');
     expect(button).toBeDefined();
     expect(document.activeElement).toBe(button);
@@ -224,20 +250,34 @@ describe('StepUpChallengeForm outcomes', () => {
   });
 
   it('signs out to the sign-in page carrying /step-up on 401 UNAUTHENTICATED', async () => {
-    const { container, h } = await open(apiError(401, 'UNAUTHENTICATED', { recoveryAction: 'reauthenticate' }));
+    const { container, h } = await open(
+      apiError(401, 'UNAUTHENTICATED', { recoveryAction: 'reauthenticate' }),
+    );
     setValue(codeInput(container), '123456');
     submitForm(container);
     await flush();
-    expect(h.navigate).toHaveBeenCalledExactlyOnceWith(stepUpSignInHref(RETURN_TO));
+    expect(h.navigate).toHaveBeenCalledExactlyOnceWith(
+      stepUpSignInHref(RETURN_TO),
+    );
   });
 
   it('shows degraded copy with the request id and retries by creating a new challenge, never resending the code', async () => {
-    const { fetchImpl, container } = await open(apiError(503, 'DEPENDENCY_UNAVAILABLE', { dependencyClass: 'provider', retryable: true }), json(201, challenge()));
+    const { fetchImpl, container } = await open(
+      apiError(503, 'DEPENDENCY_UNAVAILABLE', {
+        dependencyClass: 'provider',
+        retryable: true,
+      }),
+      json(201, challenge()),
+    );
     setValue(codeInput(container), '123456');
     submitForm(container);
     await flush();
-    expect(container.textContent).toContain('Verification is temporarily unavailable.');
-    expect(container.textContent).toContain('0195b6f0-0000-7000-8000-000000000001');
+    expect(container.textContent).toContain(
+      'Verification is temporarily unavailable.',
+    );
+    expect(container.textContent).toContain(
+      '0195b6f0-0000-7000-8000-000000000001',
+    );
     const retry = byText(container, 'button', 'Retry');
     if (retry === undefined) throw new Error('missing Retry');
     click(retry);

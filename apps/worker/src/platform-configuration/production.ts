@@ -11,6 +11,7 @@ import {
 
 import { authError } from '../authentication/boundary';
 import { callRpc } from '../authentication/production-http';
+import { createAdminMfaResetPort } from './admin-mfa-reset-port';
 import { normalizeConfigurationOptions } from './production-http';
 import type { AuthProductionOptions } from '../authentication/production-configuration';
 import type { AuthenticationSession } from '../authentication/types';
@@ -218,6 +219,7 @@ export const createProductionPlatformConfigurationDependencies = (
         bodyValue(input),
       );
     },
+    resetMfaFactors: createAdminMfaResetPort(config),
     readCapabilityKeys,
     ...(options.resolveReleasePrincipal === undefined
       ? {}

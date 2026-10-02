@@ -26,8 +26,7 @@ const build = buildService;
 const withoutPrimaryAuth = (
   session: ReturnType<typeof sessionFor>,
 ): ReturnType<typeof sessionFor> => {
-  const { primaryAuthAt: _omitted, ...rest } = session;
-  return rest;
+  return { ...session, primaryAuthAt: null };
 };
 
 const startInput = (

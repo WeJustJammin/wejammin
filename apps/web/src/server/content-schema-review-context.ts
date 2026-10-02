@@ -1,4 +1,5 @@
 import { SchemaReviewResourceSchema } from '@wejammin/contracts';
+import type { SchemaReviewResource } from '@wejammin/contracts';
 
 import type { ContentSchemaRegistryReviewState } from '../components/content-schema-registry/content-schema-registry-review-types';
 import { resolveContentSchemaRegistryActingContextLabel } from './content-schema-registry-acting-context';
@@ -151,6 +152,12 @@ export const resolveContentSchemaReviewPage = async (
   }
   if (parsed.data.id !== reviewId) return { kind: 'not_found' };
   if (!hasReviewScope(read.capabilities)) return { kind: 'forbidden' };
+  // The assignment summary is an owner-only projection: keep it only where the
+  // server lets this caller assign; an upstream slip never reaches the island.
+  const review: SchemaReviewResource =
+    parsed.data.permittedNextActions.includes('assign_reviewer')
+      ? parsed.data
+      : { ...parsed.data, assignments: [] };
 
   const designer = read.capabilities.includes(DESIGNER);
   const variant: ContentSchemaRegistryPresentationVariant =
@@ -181,8 +188,8 @@ export const resolveContentSchemaReviewPage = async (
       detail: null,
       review: {
         status: 'success',
-        data: parsed.data,
-        version: parsed.data.version,
+        data: review,
+        version: review.version,
         stale: false,
       },
       reviewId,

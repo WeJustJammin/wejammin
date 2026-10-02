@@ -88,6 +88,7 @@ select ok((select r->>'state' = 'approved' and (r->>'distinctApprovalCount')::in
 -- A revoked human stops counting without erasing the recorded decision (protected policy).
 select pg_temp.s09d_create_type('p', 'dec108readprot', 'cms.disclosure.policy');
 select pg_temp.s09d_to_review('p');
+select pg_temp.s09d_grant_specialist('rev1', 'cms.reviewer.policy');
 select pg_temp.s09d_assign('p', 'rev1');
 select pg_temp.s09d_assign('p', 'rev2');
 select pg_temp.s09d_decide('p', 'rev1', 'approve');

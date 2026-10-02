@@ -57,7 +57,7 @@ const resolvesToFile = (target: LinkTarget): boolean => {
   return existsSync(absolute) && statSync(absolute).isFile();
 };
 
-const criterionRowPattern = /^\s*- \[[ x/]\] \*\*P2-S09-AC-\d{3}\*\*/u;
+const criterionRowPattern = /^\s*- \[[ x/]\] \*\*P2-S09-AC-\d{3,4}\*\*/u;
 const criterionRows = tracker
   .split('\n')
   .map((line, index) => ({ line, number: index + 1 }))
@@ -65,7 +65,7 @@ const criterionRows = tracker
 
 describe('Slice 09 tracker local source links', () => {
   it('keeps every authored criterion row present', () => {
-    expect(criterionRows).toHaveLength(283);
+    expect(criterionRows).toHaveLength(1200);
   });
 
   it('includes a local file citation for every authored criterion', () => {

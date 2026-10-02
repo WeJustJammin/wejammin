@@ -59,10 +59,7 @@ const degraded = (): StepUpFailureView =>
  * Maps a failed AUTH-API-20 or AUTH-API-21 call to presentation state, using
  * the exact FE01 copy. Server wording and codes never reach the person.
  */
-export const stepUpFailureView = (
-  failure: MfaFailure,
-  _during: 'challenge' | 'verify',
-): StepUpFailureView => {
+export const stepUpFailureView = (failure: MfaFailure): StepUpFailureView => {
   const { status, reason } = failure;
   if (status === 401) return view('signed-out', { signIn: true });
   if (status === 422 && reason === 'code_incorrect')

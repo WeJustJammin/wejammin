@@ -80,13 +80,20 @@ export function StepUpChallengeForm({
       {state.phase === 'choosing-factor' && (
         <StepUpChooseFactor factors={factors} state={state} actions={actions} />
       )}
-      {state.phase === 'creating-challenge' && <p>Preparing your code request.</p>}
+      {state.phase === 'creating-challenge' && (
+        <p>Preparing your code request.</p>
+      )}
       {state.phase === 'signed-out' && (
         <p>
-          Your session ended. <a href={stepUpSignInHref(returnTo)}>Sign in again</a>
+          Your session ended.{' '}
+          <a href={stepUpSignInHref(returnTo)}>Sign in again</a>
         </p>
       )}
-      <StepUpRecovery state={state} retry={actions.newChallenge} reload={reload} />
+      <StepUpRecovery
+        state={state}
+        retry={actions.newChallenge}
+        reload={reload}
+      />
       {showForm && (
         <form
           noValidate

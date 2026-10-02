@@ -6,7 +6,6 @@ import {
   buildService,
   env,
   fakePersistence,
-  fakeProvider,
   iso,
   ok,
   requestFor,

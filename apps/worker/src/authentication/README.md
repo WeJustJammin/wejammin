@@ -8,6 +8,12 @@ Strict request parsing, route policy enforcement, Supabase Auth integration, enc
 
 The Identity domain owns these routes and persistence calls. Supabase validates provider credentials; the worker remains the application authority for sessions, people, audit, and recovery.
 
+## Step-up MFA and TOTP enrollment (DEC-111)
+
+AUTH-API-16 through AUTH-API-21 are implemented over three typed ports in `mfa-types.ts`: `MfaPersistencePort` (protected registry and challenge state), `MfaProviderPort` (Supabase Auth MFA, always called with the caller's own server-held token) and `SessionRotationPort` (aal2 token validation, then one commit that touches or swaps the index row and replaces the access, refresh, session-reference and CSRF cookies together). `mfa-service*.ts` and `step-up-service.ts` own ordering and the error matrix; `routes-mfa.ts` and `routes-step-up.ts` own the HTTP boundary. Unit tests use the fakes in `mfa-test-support.ts`.
+
+Production adapters: `production-mfa-provider.ts` (Supabase MFA with a 5 s deadline, pre-effect retries and a breaker), `production-mfa-persistence.ts` (one `platform_api` RPC per port method; names are listed in `MFA_PERSISTENCE_RPC` and must match the identity migration), `production-session-rotation.ts`, composed by `production-mfa.ts`. Step-up freshness is `STEP_UP_FRESHNESS_SECONDS` in `step-up.ts`; every step-up shortfall is 401 `STEP_UP_REQUIRED` with `recoveryAction: 'step_up'` and the method registry. The browser never receives a provider token, factor id or challenge id.
+
 ## Extension rules
 
 Start from a locked Zod contract and failing test. Add policy metadata before a route, keep all secrets server-side, use protected RPCs instead of direct table access, and preserve exact idempotency and deadline behavior.
