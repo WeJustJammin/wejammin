@@ -402,9 +402,12 @@ describe('BE03a 422 VALIDATION_FAILED', () => {
   );
 });
 
-describe('BE03a 429 RATE_LIMITED', () => {
+describe('BE03a 429 RATE_LIMITED (mapping of a refused limiter decision)', () => {
+  // Mapping only: the limiter is told to refuse. The condition itself is
+  // produced through the real production limiter in
+  // phase-02-slice-09-be03a-evidence-rate.test.ts.
   it.each(E429)(
-    '%s %s returns 429 RATE_LIMITED with Retry-After and RateLimit headers once the bucket is exceeded and never reaches the port',
+    '%s %s maps a refused limiter decision to 429 RATE_LIMITED with the limiter reset in Retry-After, RateLimit headers and BE00 details and never reaches the port',
     async (_marker, operationId) => {
       const op = opFor(operationId);
       const harness = harnessFor(op, {
@@ -419,10 +422,10 @@ describe('BE03a 429 RATE_LIMITED', () => {
       const body = await envelope(response, 429, 'RATE_LIMITED');
       expect(body.details).toEqual({
         limit: op.limit,
-        resetAt: 1_788_345_660,
-        retryAfterSeconds: 5,
+        resetAt: '2026-09-02T10:41:00.000Z',
+        retryAfterSeconds: 60,
       });
-      expect(response.headers.get('retry-after')).toBe('5');
+      expect(response.headers.get('retry-after')).toBe('60');
       expect(response.headers.get('ratelimit-limit')).toBe(String(op.limit));
       expect(response.headers.get('ratelimit-remaining')).toBe('0');
       expect(response.headers.get('ratelimit-reset')).toBe('1788345660');

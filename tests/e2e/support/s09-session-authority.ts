@@ -1,4 +1,4 @@
-const SESSION_SIGNING_SECRET = 's09-real-route-session-secret';
+export const SESSION_SIGNING_SECRET = 's09-real-route-session-secret';
 
 export const isLocalSessionId = (value: unknown): value is string =>
   typeof value === 'string' &&

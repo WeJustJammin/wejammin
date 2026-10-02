@@ -74,7 +74,7 @@ export const classifyProviderFailure = (
     return {
       ...authError(429, 'RATE_LIMITED', 'Too many requests.', {
         retryAfterSeconds: delay,
-        resetAt: Math.floor(nowMs / 1000) + delay,
+        resetAt: new Date(nowMs + delay * 1000).toISOString(),
       }),
       retryAfterSeconds: delay,
     };

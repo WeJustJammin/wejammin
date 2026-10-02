@@ -1,7 +1,12 @@
 import { authRoutePolicies, type AuthOperationId } from '@wejammin/contracts';
 
 import type { WorkerContext } from '../index';
-import { applyRateHeaders, authError, responseForAuthError } from './boundary';
+import {
+  applyRateHeaders,
+  authError,
+  rateLimitedDetails,
+  responseForAuthError,
+} from './boundary';
 import { parseClientBindingIdHeader } from './client-binding-header';
 import { isFreshProof, stepUpRequiredError } from './step-up';
 import type {
@@ -55,6 +60,7 @@ export const enforceRate = async (
       identifierDigest,
       limit: policy.rateLimit,
       windowSeconds: policy.rateWindowSeconds,
+      scope: policy.rateScope,
     },
     context.env,
     controller.signal,
@@ -65,14 +71,12 @@ export const enforceRate = async (
     ? null
     : respond(
         context,
-        authError(429, 'RATE_LIMITED', 'Too many requests.', {
-          retryAfterSeconds: Math.max(
-            1,
-            result.value.resetAt - Math.floor(Date.now() / 1000),
-          ),
-          limit: result.value.limit,
-          resetAt: result.value.resetAt,
-        }),
+        authError(
+          429,
+          'RATE_LIMITED',
+          'Too many requests.',
+          rateLimitedDetails(result.value),
+        ),
       );
 };
 

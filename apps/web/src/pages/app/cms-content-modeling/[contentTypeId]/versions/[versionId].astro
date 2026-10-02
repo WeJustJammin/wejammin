@@ -16,7 +16,9 @@ import {
 import { safeContentSchemaRegistryReturnPath } from '../../../../../server/content-schema-registry-contracts';
 import {
   createdResourceId,
+  jsonContinuation,
   mutationFailureCode,
+  wantsJsonResponse,
 } from '../../../../../server/content-schema-registry-mutation-outcome';
 
 export const prerender = false;
@@ -50,35 +52,40 @@ if (Astro.request.method === 'POST') {
     env.PLATFORM_API,
     { operationId, contentTypeId, versionId },
   );
+  const json = wantsJsonResponse(Astro.request);
   if (!mutation.ok) {
-    if ((await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED')
+    // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
+    // itself; only a native form post is redirected from the server.
+    if (
+      !json &&
+      (await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED'
+    )
       return Astro.redirect(
         `/step-up?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
         303,
       );
     return mutation;
   }
+  const continueTo = (location: string): Response =>
+    json ? jsonContinuation(mutation, location) : Astro.redirect(location, 303);
   // A submitted review continues on the protected review route, carrying only
   // the review id; a successor draft continues on its own version page.
   if (operationId === 'CMS-03A-11') {
     const reviewId = await createdResourceId(mutation);
     if (reviewId !== null)
-      return Astro.redirect(
+      return continueTo(
         `/app/cms-content-modeling/schema-reviews/${encodeURIComponent(reviewId)}`,
-        303,
       );
   }
   if (operationId === 'CMS-03A-09') {
     const successorId = await createdResourceId(mutation);
     if (successorId !== null)
-      return Astro.redirect(
+      return continueTo(
         `/app/cms-content-modeling/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(successorId)}`,
-        303,
       );
   }
-  return Astro.redirect(
+  return continueTo(
     `/app/cms-content-modeling/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(versionId)}${new URL(Astro.request.url).search}`,
-    303,
   );
 }
 const result = await resolveContentSchemaRegistryPage({

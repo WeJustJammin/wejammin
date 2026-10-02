@@ -173,6 +173,16 @@ const providerAuth = (call: Call): Response | null => {
   return null;
 };
 
+/** Supabase Auth `GET /user`: answers with the user of the bearer token. */
+export const providerUserOfBearer: Handler = (call) => {
+  const token =
+    call.headers.get('authorization')?.slice('Bearer '.length) ?? '';
+  const claims = JSON.parse(
+    Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
+  ) as { sub: string };
+  return json({ id: claims.sub });
+};
+
 export type World = Readonly<{
   /** Overrides keyed by RPC name or by `METHOD /auth/v1/path` for the provider. */
   handlers?: Readonly<Record<string, Handler>>;
@@ -230,15 +240,18 @@ export const mintJar = async (
   options: Readonly<{
     stepUpAt?: string | null;
     sessionId?: string;
+    /** A different signed-in user (default `AUTH_USER_ID`). */
+    authUserId?: string;
     accessClaims?: Readonly<Record<string, unknown>>;
   }> = {},
 ): Promise<Jar> => {
   const sessionId = options.sessionId ?? SESSION_ID;
+  const authUserId = options.authUserId ?? AUTH_USER_ID;
   const set = await sessionCookies(
     {
-      accessToken: jwt(options.accessClaims ?? {}, sessionId),
+      accessToken: jwt({ sub: authUserId, ...options.accessClaims }, sessionId),
       refreshToken: 'caller-refresh-token-secret',
-      authUserId: AUTH_USER_ID,
+      authUserId,
       sessionId,
       expiresAt: iso(3600),
       stepUpAt: options.stepUpAt === undefined ? iso(-60) : options.stepUpAt,
@@ -323,7 +336,12 @@ export const crashOnSuccessBody = () =>
 type Details = Record<string, unknown>;
 export type DetailsShape =
   | Readonly<{ exact: Details }>
-  | Readonly<{ keys: readonly string[]; optional?: readonly string[] }>;
+  | Readonly<{
+      keys: readonly string[];
+      optional?: readonly string[];
+      /** Value-level BE00 rules on top of the key allowlist. */
+      check?: (details: Details) => void;
+    }>;
 
 const assertDetails = (details: Details, shape: DetailsShape): void => {
   if ('exact' in shape) {
@@ -333,6 +351,22 @@ const assertDetails = (details: Details, shape: DetailsShape): void => {
   const allowed = new Set([...shape.keys, ...(shape.optional ?? [])]);
   for (const key of Object.keys(details)) expect(allowed.has(key)).toBe(true);
   for (const key of shape.keys) expect(key in details).toBe(true);
+  shape.check?.(details);
+};
+
+/** BE00 `FieldViolation`: JSON Pointer path, lowercase code, safe message. */
+const assertViolations = (violations: unknown, atLeastOne: boolean): void => {
+  expect(Array.isArray(violations)).toBe(true);
+  const rows = violations as Array<Record<string, unknown>>;
+  if (atLeastOne) expect(rows.length).toBeGreaterThanOrEqual(1);
+  expect(rows.length).toBeLessThanOrEqual(50);
+  for (const row of rows) {
+    expect(Object.keys(row).sort()).toStrictEqual(['code', 'message', 'path']);
+    expect(String(row.path)).toMatch(/^\/[^\s]{0,255}$/u);
+    expect(String(row.code)).toMatch(/^[a-z][a-z0-9_]{0,63}$/u);
+    expect(String(row.message).length).toBeGreaterThanOrEqual(1);
+    expect(String(row.message).length).toBeLessThanOrEqual(300);
+  }
 };
 
 /** Asserts the BE00 ApiError envelope and one strict details row. */
@@ -363,18 +397,55 @@ export const SHAPES = {
   stepUp: { exact: { recoveryAction: 'step_up', allowedMethods: ['totp'] } },
   forbidden: { keys: ['reasonCode'], optional: ['recoveryAction'] },
   empty: { exact: {} },
-  invalidRequest: { keys: [], optional: ['violations'] },
+  invalidRequest: {
+    keys: [],
+    optional: ['violations'],
+    check: (details) => {
+      if ('violations' in details) assertViolations(details.violations, true);
+    },
+  },
   conflict: {
     keys: ['conflict', 'reasonCode', 'recoveryAction'],
     optional: ['expectedVersion', 'currentVersion'],
+    check: (details) => {
+      expect([
+        'VERSION_MISMATCH',
+        'IDEMPOTENCY_MISMATCH',
+        'INVALID_TRANSITION',
+      ]).toContain(details.conflict);
+      expect(String(details.reasonCode)).toMatch(/^[a-z][a-z0-9_]*$/u);
+      expect(typeof details.recoveryAction).toBe('string');
+    },
   },
   tooLarge: { exact: { maxBytes: 262_144 } },
   unsupported: { exact: { allowedMediaTypes: ['application/json'] } },
-  validation: { keys: ['violations'] },
-  rate: { keys: ['retryAfterSeconds', 'limit', 'resetAt'] },
+  validation: {
+    keys: ['violations'],
+    check: (details) => assertViolations(details.violations, true),
+  },
+  rate: {
+    keys: ['retryAfterSeconds', 'limit', 'resetAt'],
+    check: (details) => {
+      expect(Number.isInteger(details.retryAfterSeconds)).toBe(true);
+      expect(details.retryAfterSeconds as number).toBeGreaterThanOrEqual(1);
+      expect(Number.isInteger(details.limit)).toBe(true);
+      expect(details.limit as number).toBeGreaterThanOrEqual(1);
+      expect(typeof details.resetAt).toBe('string');
+      expect(new Date(details.resetAt as string).toISOString()).toBe(
+        details.resetAt,
+      );
+    },
+  },
   dependency: {
     keys: ['dependencyClass', 'retryable'],
     optional: ['retryAfterSeconds'],
+    check: (details) => {
+      expect(typeof details.dependencyClass).toBe('string');
+      expect((details.dependencyClass as string).length).toBeGreaterThan(0);
+      expect(details.retryable).toBe(true);
+      if ('retryAfterSeconds' in details)
+        expect(Number.isInteger(details.retryAfterSeconds)).toBe(true);
+    },
   },
 } as const satisfies Record<string, DetailsShape>;
 
@@ -440,11 +511,16 @@ export const collapseDeadline = (deadlineMs: number): number[] => {
   return delays;
 };
 
-/** A real counting rate limiter behind the `auth_rate_limit` RPC. */
+/**
+ * A counting rate limiter behind the `auth_rate_limit` RPC, modelling
+ * `platform_api.auth_rate_limit`: one counter per (operation id, bucket digest)
+ * and window, `allowed` while the count is at most the limit
+ * (supabase/migrations/20261002160000_auth_rate_limit_mfa_operations.sql).
+ */
 export const countingRateLimiter = (): Handler => {
   const counts = new Map<string, number>();
   return (call) => {
-    const digest = String(call.body?.p_bucket_digest);
+    const digest = `${String(call.body?.p_operation_id)}\u0000${String(call.body?.p_bucket_digest)}`;
     const limit = Number(call.body?.p_limit);
     const used = (counts.get(digest) ?? 0) + 1;
     counts.set(digest, used);

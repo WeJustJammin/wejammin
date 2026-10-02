@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { S09_AMENDMENT_EVIDENCE } from './phase-02-slice-09-amendment-evidence';
+
 const ROOT = resolve(import.meta.dirname, '../..');
 
 const phasePlan = readFileSync(
@@ -45,7 +47,7 @@ describe('Phase 2 Slice 09 completion policy', () => {
       expect(source, label).toMatch(
         /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*1235\b/iu,
       );
-      expect(source, label).toMatch(/249\/1235\s+active/iu);
+      expect(source, label).toMatch(/1202\/1235\s+active/iu);
       expect(source, label).toMatch(
         /1239 authored[^\n]*(?:AC209|AC211|AC265|AC266|production)/iu,
       );
@@ -194,16 +196,22 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
   );
   const rowFor = (source: string, id: string): string | undefined =>
     source.split(/\r?\n/u).find((line) => line.includes(`**${id}**`));
+  // A criterion is [x] exactly when the executable evidence index verifies it.
+  const indexVerified = new Set<string>(
+    S09_AMENDMENT_EVIDENCE.map(({ criterion }) => criterion),
+  );
+  const boxFor = (id: string): RegExp =>
+    indexVerified.has(id) ? /^- \[x\] \*\*/u : /^- \[ \] \*\*/u;
 
-  it('[P2-S09-AC-1144] mirrors every amendment criterion from P2-S09-AC-284 through P2-S09-AC-1239 as one open row with identical text and source in plan and tracker', () => {
+  it('[P2-S09-AC-1144] mirrors every amendment criterion from P2-S09-AC-284 through P2-S09-AC-1239 as one row with identical text and source in plan and tracker, checked only when the evidence index verifies it', () => {
     for (const id of amendmentIds) {
       const tracker = rowFor(slice09Tracker, id) ?? '';
       const plan = rowFor(phasePlan, id) ?? '';
-      expect(tracker, id).toMatch(/^- \[ \] \*\*/u);
-      expect(plan, id).toMatch(/^- \[ \] \*\*/u);
+      expect(tracker, id).toMatch(boxFor(id));
+      expect(plan, id).toMatch(boxFor(id));
       const description = (row: string): string =>
         row
-          .replace(/^- \[ \] \*\*[^*]+\*\* — /u, '')
+          .replace(/^- \[[ x]\] \*\*[^*]+\*\* — /u, '')
           .replace(/\]\([^)]*\)/u, '](link)');
       expect(description(tracker), id).toBe(description(plan));
     }
@@ -225,7 +233,7 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
       'P2-S09-AC-264',
       'P2-S09-AC-273',
     ]) {
-      expect(rowFor(slice09Tracker, id), id).toMatch(/^- \[ \] \*\*/u);
+      expect(rowFor(slice09Tracker, id), id).toMatch(boxFor(id));
     }
     for (const id of [
       'P2-S09-AC-018',
@@ -271,13 +279,13 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
       expect(row, id).toMatch(/original|A01-A08/u);
     }
     for (const id of ['P2-S09-AC-089', 'P2-S09-AC-091', 'P2-S09-AC-099']) {
-      expect(rowFor(slice09Tracker, id), id).toMatch(/^- \[ \] \*\*/u);
+      expect(rowFor(slice09Tracker, id), id).toMatch(boxFor(id));
     }
     expect(rowFor(slice09Tracker, 'P2-S09-AC-099'), 'AC099').toMatch(
-      /^- \[ \] \*\*P2-S09-AC-099\*\* — [^\n]*never creates a plan/u,
+      /^- \[[ x]\] \*\*P2-S09-AC-099\*\* — [^\n]*never creates a plan/u,
     );
     expect(rowFor(slice09Tracker, 'P2-S09-AC-089'), 'AC089').toMatch(
-      /^- \[ \] \*\*P2-S09-AC-089\*\* — [^\n]*activator's own/u,
+      /^- \[[ x]\] \*\*P2-S09-AC-089\*\* — [^\n]*activator's own/u,
     );
   });
 
@@ -287,7 +295,7 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
       .filter((line) => /^- \[x\] \*\*P2-S09-AC-\d{3,4}\*\*/u.test(line))
       .map((line) => /P2-S09-AC-(\d{3,4})/u.exec(line)?.[1] ?? '')
       .filter((id) => !['209', '211', '265', '266'].includes(id));
-    expect(activeVerifiedIds).toHaveLength(249);
+    expect(activeVerifiedIds).toHaveLength(1202);
     expect(slice09Tracker).toMatch(/\*\*Spec depth floor\*\*:\s*1239\b/u);
     expect(phasePlan).toMatch(/\*\*Spec depth floor\*\*:\s*1239 criteria/u);
   });

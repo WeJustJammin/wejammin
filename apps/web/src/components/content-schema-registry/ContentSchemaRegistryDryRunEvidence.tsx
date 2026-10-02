@@ -21,7 +21,7 @@ export default function ContentSchemaRegistryDryRunEvidence({
       {rows.map(([label, value]) => (
         <React.Fragment key={label}>
           <dt>{label}</dt>
-          <dd style={{ overflowWrap: 'anywhere' }}>{value}</dd>
+          <dd>{value}</dd>
         </React.Fragment>
       ))}
     </>

@@ -61,6 +61,9 @@ export const list = {
       ownerCapability: 'cms.schema_registry.read',
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',
+      supportedLocales: ['en-US'],
+      fallbackChains: {},
+      localeConfigHash: HASH,
       workflowKey: 'cms.content.workflow',
       workflowVersion: '1',
       defaultTemplateVersionId: null,
@@ -117,6 +120,12 @@ export const detail = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [list.items[2]],
+  activationPreparation: {
+    dryRunRef: null,
+    jobRef: null,
+    reviewRef: null,
+    permittedNextActions: [],
+  },
 } as const;
 
 const baseProps: ContentSchemaRegistryWorkbenchProps = {
@@ -129,14 +138,14 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   },
   variant: 'entitledRead',
   access: 'read-only',
-  actorId: REQUEST_ID,
-  actingPartyId: REQUEST_ID,
   query: { limit: 25, sort: 'key', direction: 'asc' },
   contentTypeId: TYPE_ID,
   versionId: VERSION_ID,
   cursor: null,
   expectedVersion: '4',
-  requestId: REQUEST_ID,
+  supportReference: REQUEST_ID,
+  csrfToken: 'e2e-csrf-token',
+  onCanonicalRefetch: async () => undefined,
   canonicalUrl: APP_ROUTE,
   listUrl: `${APP_ROUTE}?limit=25&sort=key&direction=asc`,
   retryUrl: `${APP_ROUTE}?limit=25&sort=key&direction=asc`,
@@ -162,6 +171,15 @@ const renderPlaywrightComponent = <Props extends object>(
   }
   return React.createElement(PlaywrightComponentBoundary);
 };
+
+/**
+ * Playwright's JSX transform compiles `<>...</>` to a marker object instead of
+ * `React.Fragment`; Slice 09 review, grant and locale components use fragments.
+ */
+const isPlaywrightFragmentType = (type: unknown): boolean =>
+  typeof type === 'object' &&
+  type !== null &&
+  Object.hasOwn(type, '__pw_jsx_fragment');
 
 export const normalizePlaywrightJsx = (value: unknown): React.ReactNode => {
   if (Array.isArray(value)) {
@@ -191,6 +209,9 @@ export const normalizePlaywrightJsx = (value: unknown): React.ReactNode => {
   const props = { ...candidate.props };
   if (Object.hasOwn(props, 'children')) {
     props.children = normalizePlaywrightJsx(props.children);
+  }
+  if (isPlaywrightFragmentType(candidate.type)) {
+    return React.createElement(React.Fragment, null, props.children as never);
   }
   if (typeof candidate.type === 'function') {
     return renderPlaywrightComponent(

@@ -203,17 +203,25 @@ const capabilityResolver = (
 ):
   | ((input: PlatformConfigurationCapabilityResolutionInput) => unknown)
   | null => {
+  // Own property only: a service binding on a modern compatibility date is an
+  // RPC stub that answers `in` and property reads for ANY name, so a prototype
+  // or proxy member is never the trusted server-side resolver.
   if (
     typeof binding !== 'object' ||
     binding === null ||
-    !('resolveCapabilities' in binding) ||
-    typeof binding.resolveCapabilities !== 'function'
+    !Object.hasOwn(binding, 'resolveCapabilities') ||
+    typeof (binding as { resolveCapabilities?: unknown }).resolveCapabilities !==
+      'function'
   ) {
     return null;
   }
-  return binding.resolveCapabilities as (
-    input: PlatformConfigurationCapabilityResolutionInput,
-  ) => unknown;
+  return (
+    binding as {
+      resolveCapabilities: (
+        input: PlatformConfigurationCapabilityResolutionInput,
+      ) => unknown;
+    }
+  ).resolveCapabilities;
 };
 
 const capabilityResolverRequestHeaders = [

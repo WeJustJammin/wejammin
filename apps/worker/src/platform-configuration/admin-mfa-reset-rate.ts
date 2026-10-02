@@ -2,6 +2,7 @@ import type { WorkerContext } from '../index';
 import {
   applyRateHeaders,
   authError,
+  rateLimitedDetails,
   responseForAuthError,
 } from '../authentication/boundary';
 import type {
@@ -51,6 +52,7 @@ export const enforceMfaResetRate = async (
           authUserId: bucket.scope === 'user' ? session.authUserId : null,
           actingPartyId: session.actingPartyId,
           identifierDigest: null,
+          scope: bucket.scope,
           limit: bucket.limit,
           windowSeconds: WINDOW_SECONDS,
         },
@@ -67,14 +69,12 @@ export const enforceMfaResetRate = async (
       applyRateHeaders(context, decision.value);
       return responseForAuthError(
         context,
-        authError(429, 'RATE_LIMITED', 'Too many requests.', {
-          retryAfterSeconds: Math.max(
-            1,
-            decision.value.resetAt - Math.floor(Date.now() / 1000),
-          ),
-          limit: decision.value.limit,
-          resetAt: decision.value.resetAt,
-        }),
+        authError(
+          429,
+          'RATE_LIMITED',
+          'Too many requests.',
+          rateLimitedDetails(decision.value),
+        ),
       );
     }
   }

@@ -244,6 +244,12 @@
   overflow-wrap: anywhere;
 }
 
+.content-schema-registry dd,
+.content-schema-registry p,
+.content-schema-registry code {
+  overflow-wrap: anywhere;
+}
+
 .content-schema-registry-filter-actions {
   align-items: center;
   display: flex;

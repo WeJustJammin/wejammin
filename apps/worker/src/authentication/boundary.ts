@@ -271,6 +271,20 @@ export const applyRateHeaders = <E extends AuthBoundaryEnvironment>(
   }
 };
 
+/**
+ * BE00 `RATE_LIMITED` details row: `retryAfterSeconds` and `limit` as numbers
+ * and `resetAt` as an ISO 8601 UTC string, all derived from the same limiter
+ * decision that sets `Retry-After` and `RateLimit-*`.
+ */
+export const rateLimitedDetails = (
+  decision: Readonly<{ limit: number; resetAt: number }>,
+  nowMs: number = Date.now(),
+): Readonly<{ retryAfterSeconds: number; limit: number; resetAt: string }> => ({
+  retryAfterSeconds: Math.max(1, decision.resetAt - Math.floor(nowMs / 1000)),
+  limit: decision.limit,
+  resetAt: new Date(decision.resetAt * 1000).toISOString(),
+});
+
 export const responseForAuthError = <E extends AuthBoundaryEnvironment>(
   context: AuthBoundaryContext<E>,
   error: AuthenticationError,

@@ -75,33 +75,47 @@ describe('content registry production error helpers', () => {
       retryAfterSeconds: 3,
     });
     expect(safeDetails(null)).toEqual({});
-    expect(
-      safeDetails({
-        details: {
-          dependencyClass: 'rpc',
-          retryable: true,
-          recoveryAction: 'retry',
-          reasonCode: 'R',
-          expectedVersion: '7',
-          currentVersion: 8,
-          limit: 9,
-          resetAt: 10,
-          retryAfterSeconds: 11,
-          secret: 'remove',
-          object: {},
-        },
-      }),
-    ).toEqual({
-      dependencyClass: 'rpc',
-      retryable: true,
-      recoveryAction: 'retry',
+    const hostile = {
+      details: {
+        dependencyClass: 'rpc',
+        retryable: true,
+        recoveryAction: 'retry',
+        reasonCode: 'R',
+        expectedVersion: '7',
+        currentVersion: 8,
+        limit: 9,
+        resetAt: 10,
+        retryAfterSeconds: 11,
+        reason: 'private',
+        secret: 'remove',
+        object: {},
+      },
+    };
+    // Each status keeps only its BE00 row; no status carries `reason`.
+    expect(safeDetails(hostile)).toEqual({});
+    expect(safeDetails(hostile, 400)).toEqual({});
+    expect(safeDetails(hostile, 422)).toEqual({});
+    expect(safeDetails(hostile, 401)).toEqual({ recoveryAction: 'retry' });
+    expect(safeDetails(hostile, 403)).toEqual({
       reasonCode: 'R',
+      recoveryAction: 'retry',
+    });
+    expect(safeDetails(hostile, 409)).toEqual({
       expectedVersion: '7',
       currentVersion: 8,
+    });
+    expect(safeDetails(hostile, 429)).toEqual({
       limit: 9,
       resetAt: 10,
       retryAfterSeconds: 11,
     });
+    for (const status of [502, 503, 504])
+      expect(safeDetails(hostile, status)).toEqual({
+        dependencyClass: 'rpc',
+        retryable: true,
+        retryAfterSeconds: 11,
+      });
+    expect(safeDetails(hostile, 404)).toEqual({});
     expect(isRecord({})).toBe(true);
     expect(isRecord([])).toBe(false);
     expect(isAbortError(new DOMException('aborted', 'AbortError'))).toBe(true);
@@ -152,12 +166,12 @@ describe('content registry production error helpers', () => {
         status: 418 as never,
         code: 'AUTH_FAILURE',
         message: 'safe',
-        details: { limit: 2, secret: 'hide' },
+        details: { dependencyClass: 'auth', limit: 2, secret: 'hide' },
       }),
     ).toMatchObject({
       status: 503,
       code: 'AUTH_FAILURE',
-      details: { limit: 2 },
+      details: { dependencyClass: 'auth' },
     });
     expect(statusIsSupported(400)).toBe(true);
     expect(statusIsSupported(418)).toBe(false);

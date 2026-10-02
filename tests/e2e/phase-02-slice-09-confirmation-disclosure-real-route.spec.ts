@@ -333,11 +333,26 @@ test('[P2-S09-AC-250] Escape clears acknowledgement and retains draft fields wit
   await waitForHydration(page);
 
   const checkbox = page.locator('#content-schema-registry-confirmed');
-  const dryRunId = page.locator('#content-schema-registry-dry-run-id');
-  const approvalIds = page.locator('#content-schema-registry-approval-ids');
+  // FE03 G8: the sealed dry run and approve ids are prefilled from the server
+  // read (hidden fields plus a recorded-approvals list), never typed. The
+  // remaining draft fields are the optional evidence hash and plan id.
+  const evidenceHash = page.locator(
+    '#content-schema-registry-activation-evidence-hash',
+  );
+  const planId = page.locator(
+    '#content-schema-registry-activation-migration-plan-id',
+  );
+  const prefilledDryRun = page.locator('input[name="dryRunId"]');
+  const prefilledApprovals = page.locator('input[name="approvalIds"]');
+  const dryRunBefore = await prefilledDryRun.inputValue();
+  const approvalsBefore = await prefilledApprovals.inputValue();
+  expect(dryRunBefore).toBe('90000000-0000-4000-8000-000000000009');
+  expect(JSON.parse(approvalsBefore)).toEqual([
+    '90000000-0000-4000-8000-00000000000c',
+  ]);
 
-  await dryRunId.fill('90000000-0000-4000-8000-000000000009');
-  await approvalIds.fill('["a0000000-0000-4000-8000-00000000000a"]');
+  await evidenceHash.fill('c'.repeat(64));
+  await planId.fill('a0000000-0000-4000-8000-00000000000a');
   await checkbox.check();
   await expect(checkbox).toBeChecked();
 
@@ -345,10 +360,10 @@ test('[P2-S09-AC-250] Escape clears acknowledgement and retains draft fields wit
   await page.keyboard.press('Escape');
 
   await expect(checkbox).not.toBeChecked();
-  await expect(dryRunId).toHaveValue('90000000-0000-4000-8000-000000000009');
-  await expect(approvalIds).toHaveValue(
-    '["a0000000-0000-4000-8000-00000000000a"]',
-  );
+  await expect(evidenceHash).toHaveValue('c'.repeat(64));
+  await expect(planId).toHaveValue('a0000000-0000-4000-8000-00000000000a');
+  await expect(prefilledDryRun).toHaveValue(dryRunBefore);
+  await expect(prefilledApprovals).toHaveValue(approvalsBefore);
   expect(new URL(page.url()).pathname).toBe(DETAIL_PATH);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 

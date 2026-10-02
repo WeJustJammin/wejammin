@@ -45,9 +45,6 @@ describe('content schema registry safe error details', () => {
         }),
       ),
     ).toEqual({
-      expectedVersion: '7',
-      currentVersion: '8',
-      reason: 'conflict',
       violations: [
         { pointer: '/title', message: 'Required', code: 'REQUIRED' },
         { pointer: '/only-pointer' },
@@ -97,18 +94,31 @@ describe('content schema registry safe error details', () => {
           secret: 'hide',
         }),
       ),
-    ).toEqual({ expectedVersion: '7', currentVersion: '8', reason: 'stale' });
+    ).toEqual({ expectedVersion: '7', currentVersion: '8' });
     expect(safeDetails(failure(409))).toEqual({});
     expect(
       safeDetails(
         failure(429, 'RATE', 'safe', {
           limit: 10,
-          resetAt: 20,
+          resetAt: '2026-09-02T10:41:00.000Z',
           retryAfterSeconds: 3,
           ignored: 'x',
         }),
       ),
-    ).toEqual({ limit: 10, resetAt: 20, retryAfterSeconds: 3 });
+    ).toEqual({
+      limit: 10,
+      resetAt: '2026-09-02T10:41:00.000Z',
+      retryAfterSeconds: 3,
+    });
+    // BE00 types resetAt as a string: a number or a non-RFC 3339 text is dropped.
+    expect(
+      safeDetails(failure(429, 'RATE', 'safe', { limit: 10, resetAt: 20 })),
+    ).toEqual({ limit: 10 });
+    expect(
+      safeDetails(
+        failure(429, 'RATE', 'safe', { limit: 10, resetAt: 'tomorrow' }),
+      ),
+    ).toEqual({ limit: 10 });
     expect(safeDetails(failure(429, 'RATE', 'safe', { limit: '10' }))).toEqual(
       {},
     );

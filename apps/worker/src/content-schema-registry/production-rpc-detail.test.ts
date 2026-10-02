@@ -120,7 +120,7 @@ describe('registry RPC error DETAIL mapping', () => {
     expect(conflict.details).not.toHaveProperty('violations');
   });
 
-  it('keeps only the 409 reasonCode token, never the active chain, and ignores plain-text DETAIL', () => {
+  it('keeps no reasonCode and never the active chain on a 409, and ignores plain-text DETAIL', () => {
     const mismatch = mapRpcFailure(
       409,
       postgrest(
@@ -132,7 +132,8 @@ describe('registry RPC error DETAIL mapping', () => {
       ),
     );
     expect(mismatch).toMatchObject({ status: 409, code: 'VERSION_MISMATCH' });
-    expect(mismatch.details).toEqual({ reasonCode: 'FALLBACK_CHAIN_MISMATCH' });
+    // BE03a: a 409 carries only expectedVersion/currentVersion.
+    expect(mismatch.details).toEqual({});
     expect(
       mapRpcFailure(409, postgrest('CONFLICT', 'MIGRATION_SOURCE_DRIFT')),
     ).toMatchObject({ status: 409, code: 'CONFLICT', details: {} });

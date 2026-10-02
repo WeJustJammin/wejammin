@@ -96,6 +96,12 @@ describe('[DEC-108] sealed dry-run report evidence', () => {
     expect(hash).toBeDefined();
   });
 
+  it('renders the sealed report without any inline style the production CSP refuses', () => {
+    const region = panel(sealedDryRunPreparation('passed'));
+    expect(region.querySelectorAll('[style]')).toHaveLength(0);
+    expect(region.querySelector('dd code')).not.toBeNull();
+  });
+
   it('[P2-S09-AC-1039] announces the sealed counts and hashes in the polite live region', () => {
     const region = panel(sealedDryRunPreparation('passed'));
     const live = region.querySelector('[role="status"][aria-live="polite"]');

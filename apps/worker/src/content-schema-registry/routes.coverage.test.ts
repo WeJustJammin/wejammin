@@ -46,7 +46,6 @@ describe('content schema registry route defensive coverage', () => {
     expect(conflictBody.details).toEqual({
       expectedVersion: '1',
       currentVersion: '2',
-      reason: 'stale',
     });
 
     const rate = makeDependencies({

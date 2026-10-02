@@ -4,6 +4,7 @@ import type {
   RateLimitDecision,
 } from './types';
 import type { ContentSchemaRegistryProductionOptions } from './production-types';
+import { MAX_RATE_RESET_EPOCH_SECONDS } from './route-rate-refusal';
 import {
   deadlineExceeded,
   invalidResponse,
@@ -114,7 +115,8 @@ export const createRateLimiter = (
         !Number.isSafeInteger(value.remaining) ||
         value.remaining > value.limit ||
         !Number.isSafeInteger(value.resetAt) ||
-        value.resetAt < 0
+        value.resetAt < 0 ||
+        value.resetAt > MAX_RATE_RESET_EPOCH_SECONDS
       )
         return invalidResponse();
       return {

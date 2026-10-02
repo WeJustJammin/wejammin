@@ -120,24 +120,28 @@ const safeViolations = (
   return kept;
 };
 
+/**
+ * BE00 per-status details allowlist applied at the adapter. A key outside the
+ * status's row is never copied, whatever the database or a port supplied.
+ */
+const DETAIL_KEYS_BY_STATUS: Readonly<Record<number, readonly string[]>> = {
+  401: ['recoveryAction'],
+  403: ['reasonCode', 'recoveryAction'],
+  409: ['expectedVersion', 'currentVersion'],
+  429: ['limit', 'resetAt', 'retryAfterSeconds'],
+  502: ['dependencyClass', 'retryable', 'retryAfterSeconds'],
+  503: ['dependencyClass', 'retryable', 'retryAfterSeconds'],
+  504: ['dependencyClass', 'retryable', 'retryAfterSeconds'],
+};
+
 export const safeDetails = (
   value: unknown,
   status?: number,
 ): Readonly<Record<string, unknown>> => {
-  if (!isRecord(value)) return {};
+  if (!isRecord(value) || status === undefined) return {};
   const details = detailRecord(value);
   const primitives = Object.fromEntries(
-    [
-      'dependencyClass',
-      'retryable',
-      'recoveryAction',
-      'reasonCode',
-      'expectedVersion',
-      'currentVersion',
-      'limit',
-      'resetAt',
-      'retryAfterSeconds',
-    ].flatMap((key) => {
+    (DETAIL_KEYS_BY_STATUS[status] ?? []).flatMap((key) => {
       const candidate = details[key];
       return typeof candidate === 'string' ||
         typeof candidate === 'number' ||
@@ -328,7 +332,7 @@ export const mapAuthResult = <T>(
     status,
     result.code,
     result.message,
-    safeDetails(result),
+    safeDetails(result, status),
     result.retryAfterSeconds,
   ) as ContentSchemaRegistryError;
 };

@@ -6,6 +6,7 @@ import {
   validHumanSession,
 } from './admission';
 import { CMS_STEP_UP_ALLOWED_METHODS } from './production-errors';
+import { rateLimitedError } from './route-rate-refusal';
 import { errorResponse, policyFor, setRateHeaders } from './route-response';
 import type { FeatureContext } from './route-types';
 import type {
@@ -33,18 +34,6 @@ const stepUpRequired = (): ContentSchemaRegistryError => ({
     allowedMethods: CMS_STEP_UP_ALLOWED_METHODS,
     recoveryAction: 'step_up',
   },
-});
-
-const rateRefused = (
-  limit: number,
-  resetAt: number,
-): ContentSchemaRegistryError => ({
-  ok: false,
-  status: 429,
-  code: 'RATE_LIMITED',
-  message: 'Too many requests.',
-  details: { limit, resetAt, retryAfterSeconds: 5 },
-  retryAfterSeconds: 5,
 });
 
 /**
@@ -107,6 +96,8 @@ export const createHumanAuthority =
     if (!rate.ok) return refuse(rate);
     setRateHeaders(context, rate.value);
     if (!rate.value.allowed)
-      return refuse(rateRefused(rate.value.limit, rate.value.resetAt));
+      return refuse(
+        rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
+      );
     return { ok: true, session };
   };

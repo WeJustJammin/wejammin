@@ -56,6 +56,12 @@
 }
 
 @media (max-width: 48rem) {
+  /* The shared registry table rule floors every table at 42rem, which would
+     keep the stacked mobile rows wider than the viewport. */
+  .content-schema-registry .cms-capability-grant-table {
+    min-inline-size: 0;
+  }
+
   .cms-capability-grant-table thead {
     block-size: 1px;
     inline-size: 1px;

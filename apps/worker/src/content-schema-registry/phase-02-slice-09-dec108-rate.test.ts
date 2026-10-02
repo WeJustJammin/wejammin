@@ -173,15 +173,15 @@ describe('DEC-108 rate refusal and headers', () => {
       });
       const response = await harness.app.request(requestFor(spec));
       expect(response.status).toBe(429);
-      expect(response.headers.get('retry-after')).toBe('5');
+      expect(response.headers.get('retry-after')).toBe('60');
       expect(response.headers.get('ratelimit-limit')).toBe(String(spec.limit));
       expect(response.headers.get('ratelimit-remaining')).toBe('0');
       const body = (await response.json()) as Record<string, unknown>;
       expect(body.code).toBe('RATE_LIMITED');
       expect(body.details).toEqual({
         limit: spec.limit,
-        resetAt: 1_788_345_660,
-        retryAfterSeconds: 5,
+        resetAt: '2026-09-02T10:41:00.000Z',
+        retryAfterSeconds: 60,
       });
       expect(harness.ports[spec.portName]).not.toHaveBeenCalled();
     },

@@ -294,13 +294,12 @@ describe('DEC-111 session rotation token validation', () => {
     },
   );
 
-  it('[P2-S09-AC-879] returns a non-success and changes nothing when the provider rejects the signature', async () => {
+  it('[P2-S09-AC-879] returns 502 and changes nothing when the provider rejects the signature', async () => {
     const { result, rpc } = rotate(
       { access_token: jwt(aal2), refresh_token: 'r' },
       vi.fn(async () => json({ message: 'bad jwt' }, 401)) as never,
     );
-    const outcome = await result;
-    expect(outcome.ok).toBe(false);
+    expect(await result).toMatchObject({ ok: false, status: 502 });
     expect(rpc).not.toHaveBeenCalled();
   });
 

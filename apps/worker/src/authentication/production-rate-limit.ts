@@ -16,7 +16,7 @@ import {
 } from './production-cookie';
 import type { AuthenticationDependencies, AuthRateLimitInput } from './types';
 
-const AUTH_RATE_LIMIT_OPERATION_PATTERN = /^AUTH-API-(?:0[1-9]|1[0-5])$/u;
+const AUTH_RATE_LIMIT_OPERATION_PATTERN = /^AUTH-API-(?:0[1-9]|1[0-9]|2[01])$/u;
 const AUTH_RATE_LIMIT_FALLBACK_OPERATION = 'AUTH-API-15' as const;
 
 /**

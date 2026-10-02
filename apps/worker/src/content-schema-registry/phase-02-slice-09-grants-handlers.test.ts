@@ -333,10 +333,14 @@ describe('grant rate policy handed to the limiter (BE03a rate classes)', () => {
       });
       const response = await harness.app.request(grantRequestFor(spec));
       expect(response.status).toBe(429);
-      expect(response.headers.get('retry-after')).toBe('5');
+      expect(response.headers.get('retry-after')).toBe('60');
       expect(response.headers.get('ratelimit-limit')).toBe(String(spec.limit));
       expect(((await response.json()) as { details: unknown }).details).toEqual(
-        { limit: spec.limit, resetAt: 1_788_345_660, retryAfterSeconds: 5 },
+        {
+          limit: spec.limit,
+          resetAt: '2026-09-02T10:41:00.000Z',
+          retryAfterSeconds: 60,
+        },
       );
       expect(harness.ports[spec.portName]).not.toHaveBeenCalled();
     },

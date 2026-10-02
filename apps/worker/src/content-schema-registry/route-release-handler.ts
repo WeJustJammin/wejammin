@@ -14,6 +14,7 @@ import {
 } from './admission';
 import type { ContentSchemaRegistryDependencies } from './types';
 import type { FeatureContext } from './route-types';
+import { rateLimitedError } from './route-rate-refusal';
 import { errorResponse, policyFor, setRateHeaders } from './route-response';
 import type { RouteExecutor } from './route-execution';
 
@@ -79,18 +80,7 @@ export const createReleaseMutation =
     if (!rate.value.allowed)
       return errorResponse(
         context,
-        {
-          ok: false,
-          status: 429,
-          code: 'RATE_LIMITED',
-          message: 'Too many requests.',
-          details: {
-            limit: rate.value.limit,
-            resetAt: rate.value.resetAt,
-            retryAfterSeconds: 5,
-          },
-          retryAfterSeconds: 5,
-        },
+        rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
         context.get('requestId'),
       );
     return execute(context, operationId, 'release-worker', {

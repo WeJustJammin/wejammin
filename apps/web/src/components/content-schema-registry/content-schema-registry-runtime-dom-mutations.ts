@@ -74,7 +74,12 @@ export const installContentSchemaRegistryCommandEnhancement = (
       );
       timers.add(loadingTimer);
       void executeContentSchemaRegistryMutation({
-        action: form.action,
+        // `form.action` is shadowed by a control named `action` (the CMS-03A-14
+        // forms carry one), so read the declared attribute instead.
+        action: new URL(
+          form.getAttribute('action') ?? windowObject.location.pathname,
+          document.baseURI,
+        ).href,
         operationId,
         formData,
       }).then((result) => {

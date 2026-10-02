@@ -40,7 +40,30 @@ export const CmsCapabilityGrantLastActionSchema = z.enum([
   'revoked',
 ]);
 
-export const CmsCapabilityGrantReasonSchema = z.string().min(1).max(256);
+/** BE03a: a reason is 1 to 256 Unicode characters, counted after NFC. */
+export const CMS_CAPABILITY_GRANT_REASON_MAX_CHARACTERS = 256;
+
+/**
+ * Raw text bound before normalization. NFC never expands a string past four
+ * times its length, so this only rejects hostile payloads cheaply; the
+ * authoritative bound is the post-NFC Unicode character count below.
+ */
+const REASON_RAW_MAX_UNITS = CMS_CAPABILITY_GRANT_REASON_MAX_CHARACTERS * 8;
+
+const unicodeCharacterCount = (value: string): number =>
+  Array.from(value).length;
+
+export const CmsCapabilityGrantReasonSchema = z
+  .string()
+  .min(1)
+  .max(REASON_RAW_MAX_UNITS)
+  .refine(
+    (value) =>
+      unicodeCharacterCount(value.normalize('NFC')) <=
+      CMS_CAPABILITY_GRANT_REASON_MAX_CHARACTERS,
+    'reason_too_long',
+  )
+  .transform((value) => value.normalize('NFC'));
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 
@@ -80,7 +103,10 @@ export const daysBetweenUtcDates = (
 export const CmsUtcDateSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/u, 'utc_date_invalid')
-  .refine((value) => utcDateToEpochMs(value) !== null, 'not a real calendar date');
+  .refine(
+    (value) => utcDateToEpochMs(value) !== null,
+    'not a real calendar date',
+  );
 
 export type GrantableCmsCapability = z.infer<
   typeof GrantableCmsCapabilitySchema

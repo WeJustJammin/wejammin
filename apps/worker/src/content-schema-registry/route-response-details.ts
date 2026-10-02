@@ -1,13 +1,25 @@
 import type { ContentSchemaRegistryError } from './types';
 
+/**
+ * BE03a error matrix: a 409 may carry `expectedVersion` and `currentVersion`
+ * and nothing else. A 400 or 422 never carries them; `reason` is never on the
+ * wire for any status.
+ */
+const VERSION_DETAIL = /^[1-9][0-9]{0,18}$/u;
+
 const safeVersionDetails = (
   details: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, unknown>> =>
   Object.fromEntries(
-    ['expectedVersion', 'currentVersion', 'reason'].flatMap((key) =>
-      typeof details[key] === 'string' ? [[key, details[key]]] : [],
-    ),
+    ['expectedVersion', 'currentVersion'].flatMap((key) => {
+      const value = details[key];
+      return typeof value === 'string' && VERSION_DETAIL.test(value)
+        ? [[key, value]]
+        : [];
+    }),
   );
+
+const RFC3339_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
 
 const STEP_UP_METHOD_MAX_LENGTH = 32;
 const STEP_UP_METHOD_MAX_COUNT = 8;
@@ -56,7 +68,7 @@ export const safeDetails = (
           const code =
             typeof candidate.code === 'string' &&
             candidate.code.length <= 64 &&
-            /^[A-Z][A-Z0-9_]{0,63}$/u.test(candidate.code)
+            /^[A-Za-z][A-Za-z0-9_]{0,63}$/u.test(candidate.code)
               ? candidate.code
               : null;
           return pointer === null && message === null && code === null
@@ -70,12 +82,9 @@ export const safeDetails = (
               ];
         })
       : [];
-    return {
-      ...safeVersionDetails(details),
-      ...(safeViolations.length === 0
-        ? {}
-        : { violations: safeViolations.slice(0, 50) }),
-    };
+    return safeViolations.length === 0
+      ? {}
+      : { violations: safeViolations.slice(0, 50) };
   }
   if (result.status === 401) {
     if (result.code === 'STEP_UP_REQUIRED') {
@@ -96,11 +105,18 @@ export const safeDetails = (
   if (result.status === 409) return safeVersionDetails(result.details ?? {});
   if (result.status === 429) {
     const details = result.details ?? {};
-    return Object.fromEntries(
-      ['limit', 'resetAt', 'retryAfterSeconds'].flatMap((key) =>
-        typeof details[key] === 'number' ? [[key, details[key]]] : [],
-      ),
-    );
+    // BE00 RATE_LIMITED: { retryAfterSeconds: number, limit: number,
+    // resetAt: string }. `resetAt` is an RFC 3339 UTC instant, never a number.
+    return {
+      ...(typeof details.retryAfterSeconds === 'number'
+        ? { retryAfterSeconds: details.retryAfterSeconds }
+        : {}),
+      ...(typeof details.limit === 'number' ? { limit: details.limit } : {}),
+      ...(typeof details.resetAt === 'string' &&
+      RFC3339_UTC.test(details.resetAt)
+        ? { resetAt: details.resetAt }
+        : {}),
+    };
   }
   if (result.status === 502 || result.status === 503 || result.status === 504) {
     const details = result.details ?? {};

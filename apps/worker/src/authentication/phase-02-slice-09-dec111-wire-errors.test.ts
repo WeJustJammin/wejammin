@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  countingRateLimiter,
   createWorld,
   expectApiError,
   mintJar,
@@ -31,11 +32,18 @@ afterEach(() => {
 });
 
 const run = async (scenario: Scenario) => {
-  const world = createWorld(
-    scenario.handlers === undefined ? {} : { handlers: scenario.handlers },
-  );
+  const world = createWorld({
+    handlers: {
+      ...(scenario.exhaust === undefined
+        ? {}
+        : { auth_rate_limit: countingRateLimiter() }),
+      ...scenario.handlers,
+    },
+  });
   const base = { ...BASE[scenario.op], jar: await mintJar() };
   const spec = scenario.send === undefined ? base : await scenario.send(base);
+  for (let n = 0; n < (scenario.exhaust ?? 0); n += 1)
+    await send(world.app, spec);
   const handle = scenario.arrange?.();
   try {
     const response = await send(world.app, spec);

@@ -275,6 +275,9 @@ export const executeContentSchemaRegistryMutation = async (input: {
     response = await fetcher(input.action, {
       method: 'POST',
       body: copyFormData(input.formData),
+      // A manual-redirect browser fetch cannot read a 303; ask for the JSON
+      // success answer instead (same Accept as the reconciliation replay).
+      headers: new Headers({ accept: 'application/json, text/html' }),
       credentials: 'same-origin',
       redirect: 'manual',
     });

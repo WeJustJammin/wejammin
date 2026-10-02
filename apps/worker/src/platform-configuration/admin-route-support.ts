@@ -3,6 +3,7 @@ import { isFreshProof } from '../authentication/step-up';
 import {
   applyRateHeaders,
   authError,
+  rateLimitedDetails,
   responseForAuthError,
 } from '../authentication/boundary';
 import type {
@@ -176,11 +177,12 @@ export const enforceConfigurationRate = async (
   if (merged.allowed) return null;
   return responseForAuthError(
     context,
-    authError(429, 'RATE_LIMITED', 'Too many requests.', {
-      retryAfterSeconds: Math.max(1, merged.resetAt - now),
-      limit: merged.limit,
-      resetAt: merged.resetAt,
-    }),
+    authError(
+      429,
+      'RATE_LIMITED',
+      'Too many requests.',
+      rateLimitedDetails(merged, now * 1000),
+    ),
   );
 };
 

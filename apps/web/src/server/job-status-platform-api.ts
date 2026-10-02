@@ -37,14 +37,34 @@ const isControlFree = (value: string): boolean =>
     );
   });
 
+const ACCESS_COOKIE = 'wj_access';
+const TOKEN_PATTERN = /^[A-Za-z0-9._~+/=-]+$/u;
+
+/** The HttpOnly access-token cookie value, when the request carries one. */
+const accessCookieToken = (request: Request): string | null => {
+  const cookie = request.headers.get('cookie');
+  if (cookie === null || cookie.length > MAX_BEARER_BYTES) return null;
+  for (const part of cookie.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator <= 0 || part.slice(0, separator).trim() !== ACCESS_COOKIE)
+      continue;
+    const value = part.slice(separator + 1).trim();
+    return value.length > 0 && TOKEN_PATTERN.test(value) ? value : null;
+  }
+  return null;
+};
+
 /**
  * Extracts an opaque bearer credential. It is deliberately not decoded,
  * inspected, or treated as an authority claim; the bound API verifies it.
+ * The browser's job reader sends only same-origin cookies, so without an
+ * explicit `Authorization` header the HttpOnly `wj_access` cookie supplies
+ * the same token; it is forwarded as the bearer and never as a cookie.
  */
 export const parsePlatformApiBearer = (request: Request): string | null => {
   const value = request.headers.get('authorization');
+  if (value === null) return accessCookieToken(request);
   if (
-    value === null ||
     value.length > MAX_BEARER_BYTES ||
     !isControlFree(value) ||
     !/^Bearer [^\s]+$/u.test(value)

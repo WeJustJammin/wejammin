@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 
 import * as React from 'react';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMemoryLockManager } from '../../lib/test-support/memory-lock-manager';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
 import ContentSchemaRegistryActivationForm from './ContentSchemaRegistryActivationForm';
+import { ContentSchemaRegistryTransportFields } from './ContentSchemaRegistryCommandForm';
 import { installContentSchemaRegistryCommandEnhancement } from './content-schema-registry-runtime-dom-mutations';
 import {
   REQUEST_ID,
@@ -225,5 +228,74 @@ describe('[DEC-108] CMS-03A-12 conflict recovery', () => {
       document.querySelector<HTMLInputElement>('[name="decision"]')?.value,
     ).toBe('approve');
     cleanup();
+  });
+});
+
+describe('[DEC-108] form with a field named "action"', () => {
+  it('posts to the declared route, not to the clobbering input element', async () => {
+    // The CMS-03A-14 forms carry a hidden `action` field (create | revoke), and
+    // `form.action` then returns that input instead of the route attribute.
+    window.history.replaceState({}, '', REVIEW_PATH);
+    document.body.innerHTML = `<main><section data-workbench="content-schema-registry" data-canonical-refetch-url="${REVIEW_PATH}">
+      <form data-cms-command-form="true" data-operation-id="CMS-03A-14" action="${REVIEW_PATH}" method="post">
+        <input type="hidden" name="idempotency-key" value="stable-key-123" />
+        <input type="hidden" name="action" value="create" />
+        <fieldset><button type="submit">Save</button></fieldset>
+      </form></section></main>`;
+    // jsdom has no [LegacyOverrideBuiltIns], so mirror Chrome: a named control
+    // shadows the built-in `form.action` property.
+    const form = document.querySelector('form') as HTMLFormElement;
+    Object.defineProperty(form, 'action', {
+      configurable: true,
+      get: () => form.querySelector('[name="action"]'),
+    });
+    const targets: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        targets.push(String(input));
+        return new Response('{}', {
+          status: 201,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+    const cleanup = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate: vi.fn(),
+    });
+    await submitUntil(() => targets.length > 0);
+    expect(new URL(targets[0] as string, 'https://app.test').pathname).toBe(
+      REVIEW_PATH,
+    );
+    cleanup();
+  });
+});
+
+describe('[DEC-108] restored Idempotency-Key survives a re-render', () => {
+  it('keeps the key restored after step-up when the island re-renders with a fresh support reference', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const render = (key: string): void =>
+      act(() =>
+        root.render(
+          React.createElement(ContentSchemaRegistryTransportFields, {
+            csrfToken: 'csrf-token',
+            idempotencyKey: key,
+            ifMatch: '"3"',
+          }),
+        ),
+      );
+    render('cms-schema-cms-03a-12-SR-FIRST-RENDER');
+    const input = container.querySelector(
+      'input[name="idempotency-key"]',
+    ) as HTMLInputElement;
+    // restoreStepUpDraft pins the original key onto the rendered form.
+    input.dataset.pinnedKey = 'cms-schema-cms-03a-12-SR-ORIGINAL-KEY';
+    input.value = 'cms-schema-cms-03a-12-SR-ORIGINAL-KEY';
+    render('cms-schema-cms-03a-12-SR-REFETCHED-PROPS');
+    expect(input.value).toBe('cms-schema-cms-03a-12-SR-ORIGINAL-KEY');
+    act(() => root.unmount());
+    container.remove();
   });
 });

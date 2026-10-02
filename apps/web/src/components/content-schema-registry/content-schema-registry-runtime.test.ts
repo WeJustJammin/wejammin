@@ -40,6 +40,23 @@ describe('content schema registry runtime retry contract', () => {
     ).toBe(expected);
   });
 
+  it('asks for JSON on the first post because a manual-redirect fetch can never read a 303', async () => {
+    let accept: string | null = null;
+    const fetcher = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        accept = new Headers(init?.headers).get('accept');
+        return new Response('{}', { status: 303, headers: { location: '/next' } });
+      },
+    );
+    await executeContentSchemaRegistryMutation({
+      action: '/app/cms-content-modeling',
+      operationId: 'CMS-03A-01',
+      formData: formDataWithKey(),
+      fetcher,
+    });
+    expect(accept).toContain('application/json');
+  });
+
   it('replays a transient mutation with the same idempotency key and reconciles success', async () => {
     const requests: FormData[] = [];
     const methods: string[] = [];

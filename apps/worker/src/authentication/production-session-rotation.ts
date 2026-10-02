@@ -27,7 +27,13 @@ export const createSessionRotation = (
 ): SessionRotationPort => ({
   validate: async ({ session, payload }, signal) => {
     const verified = await verifyTokenResponse(payload, config, signal);
-    if (!verified.ok) return verified;
+    // A token the provider itself issued but then rejects (signature, expiry)
+    // is an invalid provider response, never the caller's authentication
+    // failure; throttling and outages keep their own dependency status.
+    if (!verified.ok)
+      return verified.status < 500 && verified.status !== 429
+        ? invalidRotation()
+        : verified;
     const token = verified.value;
     if (
       token.authUserId !== session.authUserId ||

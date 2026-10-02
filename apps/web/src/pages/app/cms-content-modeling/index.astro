@@ -18,6 +18,10 @@ import {
 } from '../../../server/content-schema-registry-platform-api';
 import { safeContentSchemaRegistryReturnPath } from '../../../server/content-schema-registry-contracts';
 import { probeCmsCapabilityGrantOwner } from '../../../server/cms-capability-grant-platform-api';
+import {
+  jsonContinuation,
+  wantsJsonResponse,
+} from '../../../server/content-schema-registry-mutation-outcome';
 
 export const prerender = false;
 
@@ -47,10 +51,12 @@ if (Astro.request.method === 'POST') {
   );
   if (!mutation.ok) return mutation;
   try {
-    return Astro.redirect(
-      contentSchemaRegistryDetailPath(await mutation.clone().json()),
-      303,
+    const location = contentSchemaRegistryDetailPath(
+      await mutation.clone().json(),
     );
+    return wantsJsonResponse(Astro.request)
+      ? jsonContinuation(mutation, location)
+      : Astro.redirect(location, 303);
   } catch {
     return new Response('Bad gateway', {
       status: 502,

@@ -62,20 +62,54 @@ export type Scenario = Readonly<{
   handlers?: Readonly<Record<string, Handler>>;
   send?: (base: Send) => Send | Promise<Send>;
   arrange?: () => { restore: () => void };
+  /**
+   * Requests sent before the asserted one against a counting limiter that
+   * models `platform_api.auth_rate_limit`: the 429 is produced by the real
+   * limiter path, never by a stub that returns `allowed: false`.
+   */
+  exhaust?: number;
 }>;
+
+/** BE01a Route Registry rate column: requests allowed per window. */
+const RATE_RULES: Readonly<
+  Record<OperationNumber, Readonly<{ limit: number; windowSeconds: number }>>
+> = {
+  16: { limit: 300, windowSeconds: 60 },
+  17: { limit: 5, windowSeconds: 3600 },
+  18: { limit: 10, windowSeconds: 900 },
+  19: { limit: 5, windowSeconds: 3600 },
+  20: { limit: 10, windowSeconds: 900 },
+  21: { limit: 10, windowSeconds: 900 },
+};
+
+export const rateScenario = (
+  op: OperationNumber,
+  criterion: number,
+  title: string,
+): Scenario => {
+  const { limit, windowSeconds } = RATE_RULES[op];
+  return {
+    op,
+    criterion,
+    title,
+    status: 429,
+    code: 'RATE_LIMITED',
+    shape: {
+      exact: {
+        retryAfterSeconds: windowSeconds,
+        limit,
+        resetAt: new Date(NOW + windowSeconds * 1000).toISOString(),
+      },
+    },
+    exhaust: limit,
+  };
+};
 
 const providerDown = () => new Response('{}', { status: 500 });
 const providerGarbage = () => new Response('not json', { status: 200 });
 const aborted: Handler = () => {
   throw new DOMException('deadline', 'AbortError');
 };
-const rateExceeded: Handler = (call) =>
-  json({
-    allowed: false,
-    limit: Number(call.body?.p_limit ?? 1),
-    remaining: 0,
-    resetAt: Math.floor(NOW / 1000) + 600,
-  });
 const suspended: Handler = () =>
   json({
     accountState: 'suspended',
@@ -146,15 +180,114 @@ const INVALID_FIELD: Readonly<Record<OperationNumber, (b: Send) => Send>> = {
   21: (b) => ({ ...b, body: { code: 'abcdef' } }),
 };
 
-const CONFLICT_RPC: Readonly<
-  Record<OperationNumber, readonly [string, string]>
+/**
+ * The 409 refusal each operation's database function raises, with the BE01a
+ * reason and recovery the Worker must serialize. The condition itself is
+ * decided in the database; the pgTAP assertion that proves the database raises
+ * it is named per row.
+ */
+const CONFLICT_ROWS: Readonly<
+  Record<
+    OperationNumber,
+    Readonly<{
+      rpc: string;
+      message: string;
+      reasonCode: string;
+      recoveryAction: string;
+      pgtap: string;
+    }>
+  >
 > = {
-  16: ['', ''],
-  17: ['auth_mfa_enrollment_begin', 'MFA_FACTOR_LIMIT'],
-  18: ['auth_mfa_enrollment_verify_prepare', 'FACTOR_NOT_PENDING'],
-  19: ['auth_mfa_removal_begin', 'LAST_FACTOR_REQUIRED'],
-  20: ['auth_step_up_challenge_begin', 'NO_VERIFIED_FACTOR'],
-  21: ['auth_step_up_challenge_verify_prepare', 'CHALLENGE_CONSUMED'],
+  16: {
+    rpc: '',
+    message: '',
+    reasonCode: '',
+    recoveryAction: '',
+    pgtap: '',
+  },
+  17: {
+    rpc: 'auth_mfa_enrollment_begin',
+    message: 'MFA_FACTOR_LIMIT',
+    reasonCode: 'mfa_factor_limit',
+    recoveryAction: 'refetch',
+    pgtap: 'dec111_mfa_enrollment.sql:208',
+  },
+  18: {
+    rpc: 'auth_mfa_enrollment_verify_prepare',
+    message: 'FACTOR_NOT_PENDING',
+    reasonCode: 'factor_not_pending',
+    recoveryAction: 'restart_enrollment',
+    pgtap: 'dec111_mfa_enrollment.sql:176',
+  },
+  19: {
+    rpc: 'auth_mfa_removal_begin',
+    message: 'LAST_FACTOR_REQUIRED',
+    reasonCode: 'last_factor_required',
+    recoveryAction: 'enroll_factor',
+    pgtap: 'dec111_mfa_last_factor.sql:73',
+  },
+  20: {
+    rpc: 'auth_step_up_challenge_begin',
+    message: 'NO_VERIFIED_FACTOR',
+    reasonCode: 'no_verified_factor',
+    recoveryAction: 'enroll_factor',
+    pgtap: 'dec111_step_up_challenge.sql:79',
+  },
+  21: {
+    rpc: 'auth_step_up_challenge_verify_prepare',
+    message: 'CHALLENGE_CONSUMED',
+    reasonCode: 'challenge_consumed',
+    recoveryAction: 'new_challenge',
+    pgtap: 'dec111_step_up_challenge.sql:205',
+  },
+};
+
+/** A well-formed id that belongs to no one: the concealed-resource probe. */
+const FOREIGN_ID = '99999999-9999-4999-8999-999999999999';
+
+/**
+ * The 404 database refusal, decided exactly as the pgTAP proves it: NOT_FOUND
+ * only for an id the caller does not own (`dec111_mfa_enrollment.sql:94`,
+ * `dec111_step_up_challenge.sql:85` and `:138`), never for the caller's own.
+ */
+const concealedByDatabase: Readonly<
+  Partial<Record<OperationNumber, Readonly<Record<string, Handler>>>>
+> = {
+  18: {
+    auth_mfa_enrollment_verify_prepare: (call) =>
+      call.body?.p_factor_id === OTHER_FACTOR_ID
+        ? json({ providerFactorId: PROVIDER_FACTOR_ID })
+        : rpcRefusal('NOT_FOUND', 404),
+  },
+  20: {
+    auth_step_up_challenge_begin: (call) =>
+      call.body?.p_factor_id === null || call.body?.p_factor_id === undefined
+        ? rpcRefusal('NO_VERIFIED_FACTOR', 409)
+        : rpcRefusal('NOT_FOUND', 404),
+  },
+  21: {
+    auth_step_up_challenge_verify_prepare: (call) =>
+      call.body?.p_challenge_id === CHALLENGE_ID
+        ? json({
+            factorId: FACTOR_ID,
+            providerFactorId: PROVIDER_FACTOR_ID,
+            providerChallengeId: '88888888-8888-4888-8888-888888888888',
+            expiresAt: new Date(NOW + 300_000).toISOString(),
+          })
+        : rpcRefusal('NOT_FOUND', 404),
+  },
+};
+
+const concealedRequest: Readonly<Record<OperationNumber, (b: Send) => Send>> = {
+  16: (b) => b,
+  17: (b) => b,
+  18: (b) => ({ ...b, path: `${LIST}/${FOREIGN_ID}/verify` }),
+  19: (b) => ({ ...b, path: `${LIST}/${FOREIGN_ID}` }),
+  20: (b) => ({
+    ...b,
+    body: { method: 'totp', factorId: FOREIGN_ID },
+  }),
+  21: (b) => ({ ...b, path: `${CHALLENGES}/${FOREIGN_ID}/verify` }),
 };
 
 const dependency = (
@@ -212,7 +345,7 @@ const forOperation = (op: OperationNumber, ids: number[]): Scenario[] => {
   ).filter((s) => op !== 17 || s !== 404);
   const id = (status: number): number =>
     ids[statuses.indexOf(status)] as number;
-  const [conflictRpc, conflictMessage] = CONFLICT_RPC[op];
+  const conflictRow = CONFLICT_ROWS[op];
   const out: Scenario[] = [
     {
       op,
@@ -246,11 +379,19 @@ const forOperation = (op: OperationNumber, ids: number[]): Scenario[] => {
     {
       op,
       criterion: id(409),
-      title: 'returns 409 CONFLICT with the INVALID_TRANSITION details row',
+      title: `returns 409 CONFLICT with the exact INVALID_TRANSITION details row for ${conflictRow.reasonCode} (database raises ${conflictRow.message}: supabase/tests/phase_02_slice_09_${conflictRow.pgtap})`,
       status: 409,
       code: 'CONFLICT',
-      shape: SHAPES.conflict,
-      handlers: { [conflictRpc]: () => rpcRefusal(conflictMessage, 409) },
+      shape: {
+        exact: {
+          conflict: 'INVALID_TRANSITION',
+          reasonCode: conflictRow.reasonCode,
+          recoveryAction: conflictRow.recoveryAction,
+        },
+      },
+      handlers: {
+        [conflictRow.rpc]: () => rpcRefusal(conflictRow.message, 409),
+      },
     },
     {
       op,
@@ -284,16 +425,11 @@ const forOperation = (op: OperationNumber, ids: number[]): Scenario[] => {
       shape: SHAPES.validation,
       send: (b) => INVALID_FIELD[op](b),
     },
-    {
+    rateScenario(
       op,
-      criterion: id(429),
-      title:
-        'returns 429 RATE_LIMITED with retryAfterSeconds, limit and resetAt',
-      status: 429,
-      code: 'RATE_LIMITED',
-      shape: SHAPES.rate,
-      handlers: { auth_rate_limit: rateExceeded },
-    },
+      id(429),
+      'returns 429 RATE_LIMITED with exact retryAfterSeconds, limit and resetAt once the real limiter count passes the BE01a limit',
+    ),
     dependency(op, id(502), 502, 'provider'),
     dependency(op, id(503), 503, 'provider'),
     dependency(op, id(504), 504, 'provider'),
@@ -316,14 +452,17 @@ const forOperation = (op: OperationNumber, ids: number[]): Scenario[] => {
       op,
       criterion: id(404),
       title:
-        'returns 404 NOT_FOUND with empty details for a concealed resource',
+        op === 19
+          ? 'returns 404 NOT_FOUND with empty details for a factor id outside the caller factor list (produced by the Worker ownership check)'
+          : 'returns 404 NOT_FOUND with empty details for a concealed id (database raises NOT_FOUND only for an id the caller does not own)',
       status: 404,
       code: 'NOT_FOUND',
       shape: SHAPES.empty,
+      send: (b) => concealedRequest[op](b),
       handlers:
         op === 19
           ? { auth_mfa_factors_read: () => json({ factors: [], version: '3' }) }
-          : { [FIRST_RPC[op]]: () => rpcRefusal('NOT_FOUND', 404) },
+          : (concealedByDatabase[op] ?? {}),
     });
   return out;
 };
@@ -351,15 +490,11 @@ export const SCENARIOS: readonly Scenario[] = [
     shape: SHAPES.forbidden,
     handlers: { auth_session_read: suspended },
   },
-  {
-    op: 16,
-    criterion: 728,
-    title: 'returns 429 RATE_LIMITED when 300 per minute per user is exceeded',
-    status: 429,
-    code: 'RATE_LIMITED',
-    shape: SHAPES.rate,
-    handlers: { auth_rate_limit: rateExceeded },
-  },
+  rateScenario(
+    16,
+    728,
+    'returns 429 RATE_LIMITED when the real limiter count passes 300 per minute per user',
+  ),
   {
     ...dependency(16, 729, 503, 'persistence'),
   },

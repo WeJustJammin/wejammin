@@ -216,4 +216,25 @@ describe('resolveAdminMfaResetPage through a fetch-only production binding', () 
     });
     expect(seen).not.toHaveBeenCalled();
   });
+
+  it('[P2-S09-AC-1108] reads the snapshot through an RPC-enabled service binding that answers every property name', async () => {
+    // A Cloudflare service binding on a modern compatibility date is an RPC
+    // stub: `'resolveCapabilities' in stub` is true and the property is a
+    // callable that only fails when invoked. It is not the trusted server-side
+    // resolver, so the protected Worker snapshot read must still be used.
+    const target = binding(undefined, () =>
+      json({ capabilities: [ADMIN_MFA_RESET_CAPABILITY] }),
+    );
+    const rpcStub = new Proxy(target, {
+      has: () => true,
+      get: (object, name) =>
+        name in object
+          ? (object as unknown as Record<PropertyKey, unknown>)[name]
+          : () => Promise.reject(new Error('RPC method is not exposed')),
+    });
+    expect(await resolve(rpcStub)).toMatchObject({
+      kind: 'ready',
+      variant: 'adminStepUp',
+    });
+  });
 });

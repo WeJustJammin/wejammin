@@ -178,4 +178,43 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
     expect(forwarded?.headers.get('x-step-up-token')).toBe('token-123');
     expect(forwarded?.headers.get('if-match')).toBe('"4"');
   });
+
+  it('CMS-03A-04: a confirmed activation form with no browser token is forwarded (recency is the session, not a form field)', async () => {
+    // The activation form renders no token field (see commands.test); the
+    // Worker derives recent MFA from the session, so the facade must not demand
+    // an `x-step-up-token` the browser can never supply.
+    const doc = render(approvedReviewPreparation, {
+      initialReview: reviewSuccess(approvedProtectedReview()),
+    });
+    const { response, forwardedBody, forwarded } = await submitForm(
+      doc,
+      'CMS-03A-04',
+      { confirmed: 'true' },
+      {
+        status: 202,
+        body: {
+          resourceKind: 'schema_activation',
+        },
+      },
+    );
+    // The stand-in upstream body is not a full activation resource, so the
+    // facade's own 502 is acceptable here; what matters is that it forwarded.
+    expect(response.status).not.toBe(403);
+    expect(forwardedBody).toMatchObject({ dryRunId: DRY_RUN_ID });
+    expect(forwarded?.headers.get('x-step-up-token')).toBeNull();
+  });
+
+  it('CMS-03A-04: an unconfirmed activation form is still refused locally and never forwarded', async () => {
+    const doc = render(approvedReviewPreparation, {
+      initialReview: reviewSuccess(approvedProtectedReview()),
+    });
+    const { response, fetch } = await submitForm(
+      doc,
+      'CMS-03A-04',
+      {},
+      { status: 202, body: { resourceKind: 'schema_activation' } },
+    );
+    expect(response.status).toBe(403);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

@@ -1,112 +1,26 @@
 /**
- * BE03a CMS-03A-09..18 rate evidence through the real composition: the real
- * Hono app, the real route policy and the real production per-user and
- * per-party limiter. Only the shared counter store behind the limiter is an
- * in-memory model (it buckets exactly like the production shared limiter).
+ * BE03a CMS-03A-09..18 rate evidence through the real production stack: the
+ * real Hono app, route policy, CMS RPC adapter, CMS limiter and the real
+ * authentication limiter adapter. Only PostgREST is faked, by a model of
+ * `platform_api.auth_rate_limit` (fixed window keyed by operation id, bucket
+ * digest and window start; see supabase/tests/authentication_foundation.sql).
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import type { AuthRateLimitInput } from '../authentication/types';
-import type { WorkerBindings } from '../index';
-import { createProductionContentSchemaRegistryDependencies } from './production';
-import { createContentSchemaRegistryApp } from './index';
-import { ok } from './phase-02-slice-09-test-values';
 import {
-  harnessFor,
   opFor,
   requestFor,
-  sessionFor,
   type EvidenceOp,
   type EvidenceOperationId,
 } from './phase-02-slice-09-be03a-evidence-support';
-
-const CMS_ORIGIN = 'https://cms-console.example.test';
-const environment: WorkerBindings = {
-  APP_ENVIRONMENT: 'staging',
-  APP_RELEASE: 'be03a-rate',
-  SUPABASE_SECRET_KEY: 'sb_secret_be03a_rate',
-  SUPABASE_URL: 'https://supabase.example.test',
-};
-
-const sharedStore = () => {
-  const counts = new Map<string, number>();
-  return vi.fn(async (input: AuthRateLimitInput) => {
-    const key = [
-      input.operationId,
-      input.authUserId ?? '',
-      input.actingPartyId ?? '',
-      input.identifierDigest ?? '',
-    ].join('|');
-    const count = (counts.get(key) ?? 0) + 1;
-    counts.set(key, count);
-    return {
-      ok: true as const,
-      value: {
-        allowed: count <= input.limit,
-        limit: input.limit,
-        remaining: Math.max(0, input.limit - count),
-        resetAt: 1_788_345_660,
-      },
-    };
-  });
-};
+import {
+  authRateModel,
+  bodyOf,
+  composeProduction,
+} from './phase-02-slice-09-r2-support';
 
 const userId = (index: number): string =>
   `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
-const PARTY = '20000000-0000-4000-8000-0000000000aa';
-
-const composed = (op: EvidenceOp) => {
-  const base = harnessFor(op);
-  const production = createProductionContentSchemaRegistryDependencies({
-    environment,
-    fetchImpl: vi.fn<typeof fetch>(async () => new Response('{}')),
-    auth: {
-      resolveSession: vi.fn(async () => ({
-        ok: false as const,
-        status: 401 as const,
-        code: 'UNAUTHENTICATED',
-        message: 'unused',
-      })),
-      rateLimit: sharedStore(),
-    },
-    humanOrigins: [],
-    releaseOrigins: [],
-  });
-  const limiterSpy = vi.fn(production.rateLimit);
-  const app = createContentSchemaRegistryApp({
-    ports: base.ports as never,
-    resolveSession: vi.fn(async (request: Request) => {
-      const index = Number(request.headers.get('x-test-user') ?? '1');
-      return ok({
-        ...sessionFor(op),
-        userId: userId(index),
-        actingPartyId: PARTY,
-      });
-    }),
-    verifyRelease: vi.fn(),
-    rateLimit: limiterSpy,
-    humanOrigins: [CMS_ORIGIN],
-    releaseOrigins: ['https://release-worker.example.test'],
-    now: () => 1_788_345_600_000,
-  });
-  let sequence = 0;
-  const send = (index: number) => {
-    sequence += 1;
-    return app.request(
-      requestFor(op, {
-        headers: {
-          'x-test-user': String(index),
-          ...(op.method === 'POST'
-            ? {
-                'idempotency-key': `cms-rate-key-${String(sequence).padStart(6, '0')}`,
-              }
-            : {}),
-        },
-      }),
-    );
-  };
-  return { app, send, ports: base.ports, limiterSpy };
-};
 
 const RATE: readonly (readonly [string, EvidenceOperationId])[] = [
   ['[P2-S09-AC-303]', 'CMS-03A-09'],
@@ -121,69 +35,183 @@ const RATE: readonly (readonly [string, EvidenceOperationId])[] = [
   ['[P2-S09-AC-618]', 'CMS-03A-18'],
 ];
 
-describe('BE03a per-user and per-party rate limits (real limiter composition)', () => {
+/** A sibling operation in the same rate class family, to prove keying. */
+const SIBLING: Readonly<Record<string, EvidenceOperationId>> = {
+  'CMS-03A-09': 'CMS-03A-10',
+  'CMS-03A-10': 'CMS-03A-09',
+  'CMS-03A-11': 'CMS-03A-09',
+  'CMS-03A-12': 'CMS-03A-14',
+  'CMS-03A-13': 'CMS-03A-18',
+  'CMS-03A-14': 'CMS-03A-12',
+  'CMS-03A-15': 'CMS-03A-16',
+  'CMS-03A-16': 'CMS-03A-15',
+  'CMS-03A-17': 'CMS-03A-16',
+  'CMS-03A-18': 'CMS-03A-13',
+};
+
+const CLOCK_MS = 1_788_345_617_000;
+
+const stack = (op: EvidenceOp, alsoOps: readonly EvidenceOp[] = []) => {
+  const nowMs = () => CLOCK_MS;
+  const rate = authRateModel(() => Math.floor(nowMs() / 1000));
+  const composed = composeProduction(op, {
+    nowMs,
+    rate,
+    alsoOps,
+    userId: (request) => {
+      const index = request.headers.get('x-test-user');
+      return index === null ? undefined : userId(Number(index));
+    },
+  });
+  let sequence = 0;
+  const sendAs = (
+    target: EvidenceOp,
+    user: number,
+    headers: Record<string, string> = {},
+  ) => {
+    sequence += 1;
+    return composed.send(
+      requestFor(target, {
+        headers: {
+          'x-test-user': String(user),
+          ...(target.method === 'POST'
+            ? {
+                'idempotency-key': `cms-rate-key-${String(sequence).padStart(6, '0')}`,
+              }
+            : {}),
+          ...headers,
+        },
+      }),
+    );
+  };
+  const cmsCalls = (): number =>
+    composed.rpcCalls.filter((call) => call.rpc !== 'auth_rate_limit').length;
+  return { ...composed, sendAs, cmsCalls };
+};
+
+describe('BE03a rate limits through the production limiter stack', () => {
   it.each(RATE)(
-    '%s %s allows its declared per-user limit per minute, then returns 429 with Retry-After and RateLimit headers',
+    '%s %s allows the declared per-user limit per minute and refuses the next request with 429 before any CMS RPC',
     async (_marker, operationId) => {
       const op = opFor(operationId);
-      const { send, ports, limiterSpy } = composed(op);
+      const { sendAs, cmsCalls } = stack(op);
       for (let index = 0; index < op.limit; index += 1)
-        expect((await send(1)).status).toBe(op.status);
-      expect(limiterSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          operationId,
-          actorId: userId(1),
-          actingPartyId: PARTY,
-          principalClass: 'human',
-          rateClass: op.rateClass,
-          limit: op.limit,
-          partyLimit: op.partyLimit,
-          windowSeconds: 60,
-        }),
-        expect.any(AbortSignal),
-      );
-      const refused = await send(1);
+        expect((await sendAs(op, 1)).status).toBe(op.status);
+      const before = cmsCalls();
+      const refused = await sendAs(op, 1);
       expect(refused.status).toBe(429);
-      expect(((await refused.json()) as { code: string }).code).toBe(
-        'RATE_LIMITED',
+      expect((await bodyOf(refused)).code).toBe('RATE_LIMITED');
+      expect(cmsCalls()).toBe(before);
+    },
+  );
+
+  it.each(RATE)(
+    '%s %s sends the declared per-user and per-party limits and the 60-second window to the shared limiter',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const { sendAs, rpcCalls } = stack(op);
+      await sendAs(op, 1);
+      const limiterCalls = rpcCalls
+        .filter((call) => call.rpc === 'auth_rate_limit')
+        .map((call) => [call.body.p_limit, call.body.p_window_seconds]);
+      expect(limiterCalls).toEqual([
+        [op.limit, 60],
+        [op.partyLimit, 60],
+      ]);
+    },
+  );
+
+  it.each(RATE)(
+    '%s %s refuses with 429 once distinct users of one party exceed the per-party limit inside the window',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const { sendAs } = stack(op);
+      for (let user = 1; user <= op.partyLimit; user += 1)
+        expect((await sendAs(op, user)).status).toBe(op.status);
+      expect((await sendAs(op, op.partyLimit + 1)).status).toBe(429);
+    },
+  );
+
+  it.each(RATE)(
+    '%s %s keys the buckets per operation: exhausting this operation leaves the same user free on another operation',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const sibling = opFor(SIBLING[operationId] as EvidenceOperationId);
+      const { sendAs } = stack(op, [sibling]);
+      for (let index = 0; index < op.limit; index += 1) await sendAs(op, 1);
+      expect((await sendAs(op, 1)).status).toBe(429);
+      expect((await sendAs(sibling, 1)).status).toBe(sibling.status);
+    },
+  );
+
+  it.each(RATE)(
+    '%s %s hashes a different bucket for every operation and a different bucket for every actor',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const sibling = opFor(SIBLING[operationId] as EvidenceOperationId);
+      const { sendAs, rate } = stack(op, [sibling]);
+      await sendAs(op, 1);
+      await sendAs(sibling, 1);
+      await sendAs(op, 2);
+      const digestOf = (index: number): string =>
+        rate.calls[index]?.digest ?? '';
+      // Calls come in (user bucket, party bucket) pairs per request.
+      const [opUser1, , siblingUser1, , opUser2] = [0, 1, 2, 3, 4].map(
+        (index) => digestOf(index * 1),
       );
-      expect(refused.headers.get('retry-after')).toBe('5');
+      expect(new Set([opUser1, siblingUser1, opUser2]).size).toBe(3);
+    },
+  );
+
+  it.each(RATE)(
+    '%s %s keys the user bucket by the authenticated user, not by client address',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const { sendAs } = stack(op);
+      for (let index = 0; index < op.limit; index += 1)
+        await sendAs(op, 1, {
+          'cf-connecting-ip': index % 2 === 0 ? '203.0.113.7' : '198.51.100.9',
+        });
+      const refused = await sendAs(op, 1, {
+        'cf-connecting-ip': '192.0.2.44',
+      });
+      expect(refused.status).toBe(429);
+    },
+  );
+
+  it.each(RATE)(
+    '%s %s answers 429 with Retry-After and RateLimit headers derived from the limiter window end',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const { sendAs } = stack(op);
+      for (let index = 0; index < op.limit; index += 1) await sendAs(op, 1);
+      const refused = await sendAs(op, 1);
+      // The clock sits 17 s into the window: the window ends at :00 + 60 s, so
+      // 43 s remain. A hard-coded Retry-After could not equal 43.
+      expect(refused.headers.get('retry-after')).toBe('43');
       expect(refused.headers.get('ratelimit-limit')).toBe(String(op.limit));
       expect(refused.headers.get('ratelimit-remaining')).toBe('0');
       expect(refused.headers.get('ratelimit-reset')).toBe('1788345660');
-      // The refusal is decided before the port: it never adds a port call.
-      expect(ports[op.portName]).toHaveBeenCalledTimes(op.limit);
-      // A different user of the same party still has their own bucket.
-      expect((await send(2)).status).toBe(op.status);
     },
   );
 
   it.each(RATE)(
-    '%s %s returns 429 once the per-party limit is exceeded by distinct users inside the 60-second window',
+    '%s %s carries the BE00 RATE_LIMITED details with resetAt as a string that names the same instant as Retry-After',
     async (_marker, operationId) => {
       const op = opFor(operationId);
-      const { send } = composed(op);
-      for (let index = 1; index <= op.partyLimit; index += 1)
-        expect((await send(index)).status).toBe(op.status);
-      const refused = await send(op.partyLimit + 1);
-      expect(refused.status).toBe(429);
-      expect(refused.headers.get('retry-after')).toBe('5');
-      expect(refused.headers.get('ratelimit-remaining')).toBe('0');
-    },
-  );
-
-  it.each(RATE)(
-    '%s %s keys its buckets per operation: another operation of the same user is unaffected',
-    async (_marker, operationId) => {
-      const op = opFor(operationId);
-      const { send } = composed(op);
-      for (let index = 0; index <= op.limit; index += 1) await send(1);
-      expect((await send(1)).status).toBe(429);
-      const other = opFor(
-        operationId === 'CMS-03A-13' ? 'CMS-03A-18' : 'CMS-03A-13',
+      const { sendAs } = stack(op);
+      for (let index = 0; index < op.limit; index += 1) await sendAs(op, 1);
+      const refused = await sendAs(op, 1);
+      const { details } = await bodyOf(refused);
+      expect(details).toEqual({
+        retryAfterSeconds: 43,
+        limit: op.limit,
+        resetAt: '2026-09-02T10:41:00.000Z',
+      });
+      expect(typeof details.resetAt).toBe('string');
+      expect((Date.parse(details.resetAt as string) - CLOCK_MS) / 1000).toBe(
+        Number(refused.headers.get('retry-after')),
       );
-      const sibling = composed(other);
-      expect((await sibling.send(1)).status).toBe(other.status);
     },
   );
 });

@@ -62,7 +62,7 @@ describe('AUTH-API-16 MFA factor list route', () => {
     expect(body.details).toEqual({
       retryAfterSeconds: expect.any(Number),
       limit: 300,
-      resetAt: 4_102_444_800,
+      resetAt: '2100-01-01T00:00:00.000Z',
     });
     expect(mocks.readMfaFactors).not.toHaveBeenCalled();
   });

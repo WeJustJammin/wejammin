@@ -119,12 +119,17 @@ export const forwardContentSchemaRegistryMutation = async (
   ) {
     return localMutationError(request, 400);
   }
+  // Recent MFA is the session's step-up proof, which the Worker checks (401
+  // STEP_UP_REQUIRED); the activation form has no token field, so a token is
+  // forwarded only when a caller supplied one and is never demanded here.
   if (
     target.operationId === 'CMS-03A-04' &&
-    (!printableToken(stepUpToken, 512) ||
-      (parsed.transport.source === 'form' &&
-        parsed.transport.confirmed !== true))
+    parsed.transport.source === 'form' &&
+    parsed.transport.confirmed !== true
   ) {
+    return localMutationError(request, 403);
+  }
+  if (stepUpToken !== null && !printableToken(stepUpToken, 512)) {
     return localMutationError(request, 403);
   }
 

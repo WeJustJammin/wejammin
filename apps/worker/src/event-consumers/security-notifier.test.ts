@@ -122,6 +122,35 @@ describe('identity.security-notifier', () => {
     await expect(consume(notifier, 4)).resolves.toEqual({ outcome: 'retry' });
   });
 
+  it('[P2-S09-AC-916] never restores access on failure: across every failed attempt the notifier touches only the event read, the provider send and the telemetry sink', async () => {
+    const touched = new Set<string>();
+    const watch = <T extends object>(name: string, port: T): T =>
+      new Proxy(port, {
+        get: (target, key, receiver) => {
+          touched.add(`${name}.${String(key)}`);
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+    const { telemetry } = recordingTelemetry();
+    const deadLetter = recordingDeadLetter();
+    const notifier = createSecurityNotifier({
+      source: watch('source', {
+        read: async () => record('MFA_FACTOR_REMOVED'),
+      }),
+      provider: watch('provider', {
+        send: async () => ({ ok: false as const, code: 'PROVIDER_FAILED' }),
+      }),
+      deadLetter: watch('deadLetter', deadLetter.port),
+      telemetry: watch('telemetry', telemetry),
+      clock: { now: () => NOW, randomUuid: () => IDS.correlation },
+    });
+    for (const attempt of [1, 2, 3, 4]) await consume(notifier, attempt);
+    expect(
+      [...touched].filter((entry) => !entry.startsWith('telemetry.')),
+    ).toStrictEqual(['source.read', 'provider.send']);
+    expect(deadLetter.records).toStrictEqual([]);
+  });
+
   it('[P2-S09-AC-916] treats a throwing provider as a failed delivery', async () => {
     const { notifier } = build({
       send: async () => {

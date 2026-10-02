@@ -291,6 +291,24 @@ describe('validation and review', () => {
     expect(view.container.querySelector('[role="alert"]')).toBeNull();
   });
 
+  it('keeps the Add control still while a typed tag is waiting (blur does not push it down)', () => {
+    const view = render();
+    const input = inputByLabel(view.container, 'Add a language tag');
+    type(input, 'en-US');
+    blur(input);
+    expect(view.container.querySelector('[data-locale-summary]')).toBeNull();
+    click(buttonNamed(view.container, 'Add'));
+    expect(
+      view.container.querySelector('[data-locale-tags-field]')?.textContent,
+    ).toContain('1 of 32');
+  });
+
+  it('still reveals the summary when the tag input blurs empty', () => {
+    const view = render();
+    blur(inputByLabel(view.container, 'Add a language tag'));
+    expect(view.container.querySelector('[data-locale-summary]')).not.toBeNull();
+  });
+
   it('[P2-S09-AC-1213] [P2-S09-AC-1228] blocks submit, lists exact messages with paths and focuses the summary', () => {
     const view = render();
     const allowed = submit(view.form);

@@ -45,6 +45,14 @@ export type AuthRoutePolicy = Readonly<{
     | 'session_conditional_step_up';
   rateLimit: number;
   rateWindowSeconds: number;
+  /**
+   * Bucket identity of the BE01a Route Registry rate column: `user` for the
+   * "per user" rows (operation plus the server-derived Auth UUID only, never
+   * the client address), `client` for the "per IP", "IP+identifier",
+   * "IP+session" and "IP+account" rows (operation plus client address plus the
+   * identity named by the row).
+   */
+  rateScope: 'client' | 'user';
   timeoutMs: number;
   cacheControl: 'public, max-age=60' | 'no-store';
   idempotency: 'none' | 'required';
@@ -246,6 +254,35 @@ export const AUTH_ROUTE_POLICIES = [
   AuthRoutePolicy['ifMatch'],
 ])[];
 
+/**
+ * BE01a Route Registry rate column. Every "/user" row is `user`; AUTH-API-01
+ * (per IP), 02 (IP+identifier), 03 (login limits), 04 and 20 (IP+account), 06
+ * (IP+session) and 18 and 21 (failed attempts per IP+account) are `client`.
+ */
+const AUTH_RATE_SCOPES: Readonly<Record<AuthOperationId, 'client' | 'user'>> = {
+  'AUTH-API-01': 'client',
+  'AUTH-API-02': 'client',
+  'AUTH-API-03': 'client',
+  'AUTH-API-04': 'client',
+  'AUTH-API-05': 'user',
+  'AUTH-API-06': 'client',
+  'AUTH-API-07': 'user',
+  'AUTH-API-08': 'user',
+  'AUTH-API-09': 'user',
+  'AUTH-API-10': 'user',
+  'AUTH-API-11': 'user',
+  'AUTH-API-12': 'user',
+  'AUTH-API-13': 'user',
+  'AUTH-API-14': 'user',
+  'AUTH-API-15': 'user',
+  'AUTH-API-16': 'user',
+  'AUTH-API-17': 'user',
+  'AUTH-API-18': 'client',
+  'AUTH-API-19': 'user',
+  'AUTH-API-20': 'client',
+  'AUTH-API-21': 'client',
+};
+
 export const authRoutePolicies: readonly AuthRoutePolicy[] =
   AUTH_ROUTE_POLICIES.map((policy) => ({
     operationId: policy[0],
@@ -254,6 +291,7 @@ export const authRoutePolicies: readonly AuthRoutePolicy[] =
     auth: policy[3],
     rateLimit: policy[4],
     rateWindowSeconds: policy[5],
+    rateScope: AUTH_RATE_SCOPES[policy[0]],
     timeoutMs: policy[6],
     cacheControl: policy[7],
     idempotency: policy[8],

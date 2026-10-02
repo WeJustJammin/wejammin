@@ -81,6 +81,63 @@ describe('production job status boundary', () => {
     });
   });
 
+  it('reads the HttpOnly wj_access cookie the browser can send, forwarding only its token as the bearer', async () => {
+    const requests: Request[] = [];
+    const token = 'header.payload.signature';
+    const binding = {
+      fetch: vi.fn(async (input: RequestInfo | URL) => {
+        const request = input instanceof Request ? input : new Request(input);
+        requests.push(request);
+        return new Response(JSON.stringify(JOB), {
+          status: 200,
+          headers: {
+            'cache-control': 'no-store',
+            etag: TRANSPORT.etag,
+            'x-request-id': REQUEST_ID,
+          },
+        });
+      }),
+    };
+    const response = await handleJobStatusRead(
+      new Request('https://app.example.test/api/v1/jobs/' + JOB_ID, {
+        headers: {
+          cookie: `wj_csrf=csrf-value; wj_access=${token}; unrelated=1`,
+          'x-request-id': REQUEST_ID,
+        },
+      }),
+      JOB_ID,
+      readPlatformApiJobStatusBoundaryPorts(binding),
+    );
+
+    expect(response.status).toBe(200);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.headers.get('authorization')).toBe(`Bearer ${token}`);
+    expect(requests[0]!.headers.get('cookie')).toBeNull();
+  });
+
+  it('prefers an explicit bearer over the cookie', async () => {
+    const requests: Request[] = [];
+    const binding = {
+      fetch: vi.fn(async (input: RequestInfo | URL) => {
+        requests.push(input instanceof Request ? input : new Request(input));
+        return new Response('{}', { status: 404 });
+      }),
+    };
+    await handleJobStatusRead(
+      new Request('https://app.example.test/api/v1/jobs/' + JOB_ID, {
+        headers: {
+          authorization: 'Bearer explicit-token',
+          cookie: 'wj_access=cookie-token',
+        },
+      }),
+      JOB_ID,
+      readPlatformApiJobStatusBoundaryPorts(binding),
+    );
+    expect(requests[0]!.headers.get('authorization')).toBe(
+      'Bearer explicit-token',
+    );
+  });
+
   it('maps a service-verified invalid bearer to 401 without exposing the token', async () => {
     const token = 'invalid-but-opaque';
     const fetcher = vi.fn(

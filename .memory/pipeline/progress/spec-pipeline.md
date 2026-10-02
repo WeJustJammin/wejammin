@@ -2,7 +2,7 @@
 
 **Project**: WeJammin
 **Last updated**: 2026-10-02
-**Overall**: IA 43/43 authored and independently ambiguity-passed (**fresh rerun PASS — 0/344 = 0.00%, 2026-08-28**); Phase 1 complete at 7/7 slices; Phase 2 at 8/17 complete with an active criteria denominator of 2,967 out of 2,971 authored and 1,462 active-checked. Slice 09 is 249/1235 active with 1239 authored IDs after the 2026-09-30 activation reopen (17 criteria, still open), the 2026-10-02 reopen of AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, 956 new open DEC-108/109/110/111/119/120 criteria (AC284-AC1239) and the separately reopened AC250, Chrome-verified and closed 2026-10-01; its superseded 279/279 claim is retained only as history. DEC-106 adds fifteen open Slice 10 entry bootstrap/read criteria. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator: AC209 is post-deployment alerting readiness, AC211 is post-launch operational SLO acceptance, and AC265 and AC266 are separate mandatory pre-release release gates. Slice 10 implementation is blocked again by the reopened Slice 09 activation criteria. The sub-workflow decision itself (DEC-105) is unchanged.
+**Overall**: IA 43/43 authored and independently ambiguity-passed (**fresh rerun PASS — 0/344 = 0.00%, 2026-08-28**); Phase 1 complete at 7/7 slices; Phase 2 at 8/17 complete with an active criteria denominator of 2,967 out of 2,971 authored and 2,415 active-checked. Slice 09 is 1202/1235 active with 1239 authored IDs after the 2026-09-30 activation reopen (17 criteria, re-verified 2026-10-02), the 2026-10-02 reopen of AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, 956 new DEC-108/109/110/111/119/120 criteria (AC284-AC1239) and the separately reopened AC250, Chrome-verified and closed 2026-10-01; its superseded 279/279 claim is retained only as history. DEC-106 adds fifteen open Slice 10 entry bootstrap/read criteria. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator: AC209 is post-deployment alerting readiness, AC211 is post-launch operational SLO acceptance, and AC265 and AC266 are separate mandatory pre-release release gates. Slice 10 implementation is blocked again by the reopened Slice 09 activation criteria. The sub-workflow decision itself (DEC-105) is unchanged.
 **Activation reopen (2026-09-30)**: A read-only cross-layer activation re-audit found no production producer for the CMS-03A-04 `actingContextId` or CMS review/approval evidence, so 17 existing Slice 09 activation-chain criteria were reopened, and a separate truthfulness correction reopened AC250. Slice 09 is **261/279 active** (283 authored IDs) and Phase 2 is **8/17**. No criterion was waived and no synthetic or fixture evidence is counted; exact evidence is in the [Slice 09 tracker](slices/phase-02-slice-09.md).
 **Active implementation**: Slice 10 remains 0/75 and is blocked again on the reopened Slice 09 activation criteria. Independent Slice 12 is in progress at 0/50, beginning with CMS-03C-01 contracts. Slices 11 and 13–17 remain unstarted behind their declared dependencies; no local contract test establishes hosted acceptance.
 
@@ -413,15 +413,15 @@ failed: malformed response`. The token still passes Workers Observability.
   contracts, and a fail-closed collector port boundary. This remains scaffolding:
   no protected collector/service protocol or hosted acceptance exists, and AC265
   remains open.
-- **NEXT:** resume the reopened Slice 09 CMS-03A-04 activation authority work first, then continue Slice 10 implementation from the CMS entry-revision contract and DEC-106 protected entry bootstrap/draft-read propagation, and advance independent Slice 12 from its CMS-03C-01 template contract through the remaining contract-first TDD layers.
+- **NEXT:** finish the Slice 09 criteria still open in the amendment evidence index first (browser layout and target-size scenarios, the FE03 rows the web lane deferred, AC678 and the IA03 edge cases AC1128-AC1138), then continue Slice 10 implementation from the CMS entry-revision contract and DEC-106 protected entry bootstrap/draft-read propagation, and advance independent Slice 12 from its CMS-03C-01 template contract through the remaining contract-first TDD layers.
   Keep the **AC265** pre-release hosted route and matrix as mandatory release
   work: protected target source, run-scoped session broker, receipt resolver/
   issuer, hosted workflow, and an accepted 9-role/10-scenario report with signed
   exact artifact provenance. The staging-scope acceptance route exists, but
-  no genuine hosted acceptance is claimed. Keep Slice 09 at 249/1235 active
+  no genuine hosted acceptance is claimed. Keep Slice 09 at 1202/1235 active
   (1239 authored IDs) and Phase 2 at 8/17 slices with 2,967 active criteria out
-  of 2,971 authored. Slice 09 is implementation-incomplete again until the
-  CMS-03A-04 activation authority is produced in production, so Slice 10
+  of 2,971 authored. Slice 09 is implementation-incomplete until the criteria
+  still open in the amendment evidence index close, so Slice 10
   implementation is blocked. AC209,
   AC211, AC265, and AC266 remain authored and unchecked outside the active
   implementation denominator: AC265 and AC266 must pass before production

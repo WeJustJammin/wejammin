@@ -186,16 +186,25 @@ describe('S09 adversarial worker admission and recovery', () => {
 
   it('[P2-S09-AC-214, P2-S09-AC-217] emits rate headers, Retry-After, no-store, and safe recovery for a denied request', async () => {
     const harness = makeHarness({
-      rate: ok({ allowed: false, limit: 10, remaining: 0, resetAt: 1234 }),
+      rate: ok({
+        allowed: false,
+        limit: 10,
+        remaining: 0,
+        resetAt: 1_788_345_630,
+      }),
     });
     const response = await harness.app.request(readRequest());
     const body = await expectError(response, 429, 'RATE_LIMITED');
     expect(response.headers.get('ratelimit-limit')).toBe('10');
     expect(response.headers.get('ratelimit-remaining')).toBe('0');
-    expect(response.headers.get('ratelimit-reset')).toBe('1234');
-    expect(response.headers.get('retry-after')).toBe('5');
+    expect(response.headers.get('ratelimit-reset')).toBe('1788345630');
+    expect(response.headers.get('retry-after')).toBe('30');
     expect(response.headers.get('cache-control')).toBe('no-store');
-    expect(body.details).toMatchObject({ limit: 10, resetAt: 1234 });
+    expect(body.details).toEqual({
+      limit: 10,
+      resetAt: '2026-09-02T10:40:30.000Z',
+      retryAfterSeconds: 30,
+    });
     expect(harness.ports.listContentTypes).not.toHaveBeenCalled();
   });
 

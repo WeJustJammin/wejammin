@@ -240,6 +240,13 @@ describe('AUTH-API-16..21 route policies (BE01a Route Registry)', () => {
         auth,
         rateLimit,
         rateWindowSeconds,
+        // BE01a rate column: 16, 17 and 19 are "per user"; 18, 20 and 21 are
+        // "IP+account".
+        rateScope: ['AUTH-API-16', 'AUTH-API-17', 'AUTH-API-19'].includes(
+          operationId,
+        )
+          ? 'user'
+          : 'client',
         timeoutMs,
         cacheControl: 'no-store',
         idempotency,

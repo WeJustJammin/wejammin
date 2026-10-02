@@ -149,7 +149,12 @@ export const restoreStepUpDraft = (
     setNative(element, value);
   }
   const key = form.elements.namedItem('idempotency-key');
-  if (key instanceof HTMLInputElement) key.value = draft.idempotencyKey;
+  if (key instanceof HTMLInputElement) {
+    // Pinned so a later island re-render cannot put a fresh key back (the
+    // transport fields re-apply `data-pinned-key` after every commit).
+    key.dataset.pinnedKey = draft.idempotencyKey;
+    key.value = draft.idempotencyKey;
+  }
   return {
     form,
     draftVersion: draft.expectedVersion,

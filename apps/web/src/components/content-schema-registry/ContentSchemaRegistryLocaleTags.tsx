@@ -67,7 +67,12 @@ export default function ContentSchemaRegistryLocaleTags({
           aria-invalid={invalid ? 'true' : undefined}
           aria-describedby={describedBy}
           onChange={(event) => controller.setTagText(event.target.value)}
-          onBlur={controller.reveal}
+          // Revealing the issue summary moves every control below it, which
+          // swallows the click on Add that caused this blur. A typed tag is
+          // pending, so wait for the commit (or the submit guard) instead.
+          onBlur={() => {
+            if (tagText.trim() === '') controller.reveal();
+          }}
           onKeyDown={(event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();

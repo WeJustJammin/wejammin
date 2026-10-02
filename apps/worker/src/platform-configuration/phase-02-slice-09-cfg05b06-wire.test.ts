@@ -142,7 +142,7 @@ describe('CFG-05B-06 production composition wire', () => {
     });
   });
 
-  it('[P2-S09-AC-944] fails with 504 when the reserve RPC outlives the 15 s route deadline', async () => {
+  it('fails with 504 when the reserve RPC outlives the 15 s route deadline (the BE00 deadline row, not the AC-944 503 row)', async () => {
     collapseDeadline(15_000);
     const { response } = await post({
       admin_mfa_factor_reset: hangUntilAborted,

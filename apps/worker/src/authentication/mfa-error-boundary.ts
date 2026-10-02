@@ -44,9 +44,9 @@ const rateLimited = (
           ? details.limit
           : policyFor(operationId).rateLimit,
       resetAt:
-        typeof details.resetAt === 'number'
+        typeof details.resetAt === 'string'
           ? details.resetAt
-          : Math.floor(nowMs / 1000) + retryAfterSeconds,
+          : new Date(nowMs + retryAfterSeconds * 1000).toISOString(),
     },
   };
 };
