@@ -26,7 +26,14 @@ export default defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   retries: 0,
   testDir: './tests/e2e',
-  testMatch: 'phase-02-slice-09-content-schema-registry-real-route.spec.ts',
+  testMatch: [
+    'phase-02-slice-09-content-schema-registry-real-route.spec.ts',
+    'phase-02-slice-09-confirmation-disclosure-real-route.spec.ts',
+    'phase-02-slice-10-revision-history-real-route.spec.ts',
+    'phase-02-slice-12-template-real-route.spec.ts',
+    'phase-02-slice-12-template-uncertain-real-route.spec.ts',
+    'phase-02-slice-12-locale-real-route.spec.ts',
+  ],
   use: {
     baseURL: webOrigin,
     // Trace DOM snapshots perturb the Event Timing values this project owns.

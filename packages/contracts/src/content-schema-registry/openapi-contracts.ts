@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ApiErrorSchema } from '../api-error.ts';
+import { anchorOpenApiSchemaReferences } from '../openapi-reference-normalization.ts';
 import * as models from './models.ts';
 import * as primitives from './primitives.ts';
 import * as requests from './requests.ts';
@@ -73,8 +74,11 @@ export const schemaReference = (
 };
 
 export const toJsonSchema = (schemaName: string, schema: z.ZodTypeAny) =>
-  z.toJSONSchema(schemaForName(schemaName, { [schemaName]: schema }), {
-    io: 'input',
-    target: 'draft-7',
-    unrepresentable: 'any',
-  });
+  anchorOpenApiSchemaReferences(
+    componentName(schemaName),
+    z.toJSONSchema(schemaForName(schemaName, { [schemaName]: schema }), {
+      io: 'input',
+      target: 'draft-7',
+      unrepresentable: 'any',
+    }),
+  );

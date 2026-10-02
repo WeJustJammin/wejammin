@@ -1,0 +1,325 @@
+-- CMS-03B-02 RED contract. The prior fragment created one durable proposed
+-- conflict through cms_create_revision, and this entire fixture rolls back.
+
+select ok(
+  pg_temp.s10_fn_exists('platform_private', 'cms_resolve_conflict', 'jsonb')
+    and pg_temp.s10_fn_exists('platform_api', 'cms_resolve_conflict', 'jsonb'),
+  'CMS-03B-02 has a private resolver and worker-facing named RPC'
+);
+select ok(
+  pg_temp.s10_fn_privilege('platform_api', 'cms_resolve_conflict', 'jsonb', 'service_role')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_resolve_conflict', 'jsonb', 'authenticated')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_resolve_conflict', 'jsonb', 'anon')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_resolve_conflict', 'authenticated')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_resolve_conflict', 'anon'),
+  'CMS-03B-02 is callable only through a service-role worker wrapper'
+);
+
+create temp table s10_resolve_request on commit drop as
+select pg_catalog.jsonb_build_object(
+  'entryId', conflict.entry_id,
+  'conflictId', conflict.id,
+  'baseRevision', '1',
+  'choices', pg_catalog.jsonb_build_array(
+    pg_catalog.jsonb_build_object(
+      'path', conflict.changed_paths->>0, 'choice', 'theirs'
+    )
+  ),
+  'expectedVersion', '2',
+  'ifMatch', '2',
+  'idempotencyKey', 's10-conflict-resolve-0001',
+  'context', pg_catalog.jsonb_build_object(
+    'actingPartyId', (select value::uuid from s10_ids where key = 'organization'),
+    'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+    'correlationId', 'a9100000-0000-4000-8000-000000000095'
+  )
+) as request
+from platform_private.cms_conflict_records conflict
+where conflict.entry_id = (select value::uuid from s10_ids where key = 'entryId')
+  and conflict.state = 'open';
+
+-- A visible but unassigned actor cannot resolve another author's conflict.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000003'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_probe(
+  'resolve-unassigned', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((select request::text from s10_resolve_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-unassigned'), 'FORBIDDEN',
+  'CMS-03B-02 refuses a visible actor without assigned edit authority'
+);
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+select pg_temp.s10_rpc_probe(
+  'resolve-no-answer', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(request, '{choices}', '[]'::jsonb)::text
+      from s10_resolve_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-no-answer'), 'VALIDATION_FAILED',
+  'CMS-03B-02 refuses an inferred same-field winner'
+);
+select pg_temp.s10_rpc_probe(
+  'resolve-wrong-kind', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        request, '{choices,0}',
+        pg_catalog.jsonb_build_object(
+          'path', request #>> '{choices,0,path}',
+          'choice', 'explicit', 'value', true
+        )
+      )::text from s10_resolve_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-wrong-kind'), 'VALIDATION_FAILED',
+  'CMS-03B-02 validates explicit replacement against the active field kind'
+);
+select pg_temp.s10_rpc_probe(
+  'resolve-moved-entry', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        pg_catalog.jsonb_set(request, '{expectedVersion}', '"3"'::jsonb),
+        '{ifMatch}', '"3"'::jsonb
+      ) || pg_catalog.jsonb_build_object(
+        'idempotencyKey', 's10-conflict-resolve-stale-0001'
+      ) from s10_resolve_request
+    )::text) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-moved-entry'), 'VERSION_MISMATCH',
+  'CMS-03B-02 refuses a moved entry version without selecting a winner'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_conflict_records
+   where id = (select (request->>'conflictId')::uuid from s10_resolve_request)
+     and state = 'open'),
+  1,
+  'CMS-03B-02 invalid choices and stale CAS leave the open record intact'
+);
+
+select pg_temp.s10_rpc_probe(
+  'resolve-duplicate-choice', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        request, '{choices}',
+        pg_catalog.jsonb_build_array(request #> '{choices,0}', request #> '{choices,0}')
+      )::text from s10_resolve_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-duplicate-choice'), 'VALIDATION_FAILED',
+  'CMS-03B-02 rejects duplicate path decisions instead of choosing a last winner'
+);
+select pg_temp.s10_rpc_probe(
+  'resolve-hidden-conflict', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        request, '{conflictId}',
+        '"a9100000-0000-4000-8000-000000000996"'::jsonb
+      )::text from s10_resolve_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-hidden-conflict'), 'NOT_FOUND',
+  'CMS-03B-02 conceals an absent or foreign conflict identity'
+);
+
+savepoint s10_resolve_policy_closed;
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select null::jsonb where p_version_id is not null
+$body$;
+select pg_temp.s10_rpc_probe(
+  'resolve-policy-missing', null,
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((select request::text from s10_resolve_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('resolve-policy-missing'), 'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-02 refuses to resolve without owner-approved editorial policy evidence'
+);
+rollback to savepoint s10_resolve_policy_closed;
+release savepoint s10_resolve_policy_closed;
+
+-- Each variant commits only inside a savepoint, proving that all four named
+-- choices have deterministic semantics without consuming the open fixture.
+savepoint s10_resolve_choose_yours;
+create temp table s10_yours_choice on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        request, '{choices,0,choice}', '"yours"'::jsonb
+      ) || pg_catalog.jsonb_build_object(
+        'idempotencyKey', 's10-conflict-resolve-yours-0001'
+      ) from s10_resolve_request
+    )::text) || '::jsonb)'
+) as response;
+select is(
+  (select field.value
+   from platform_private.cms_entry_field_values field
+   where field.revision_id =
+     (select (response->>'id')::uuid from s10_yours_choice)
+     and field.field_id = (select value::uuid from s10_ids where key = 'typeFieldId')),
+  (select request->'values'->(select value from s10_ids where key = 'typeFieldId')
+   from s10_conflict_request),
+  'CMS-03B-02 yours selects the bounded rejected proposal, not the current title'
+);
+rollback to savepoint s10_resolve_choose_yours;
+release savepoint s10_resolve_choose_yours;
+
+savepoint s10_resolve_choose_base;
+create temp table s10_base_choice on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        request, '{choices,0,choice}', '"base"'::jsonb
+      ) || pg_catalog.jsonb_build_object(
+        'idempotencyKey', 's10-conflict-resolve-base-0001'
+      ) from s10_resolve_request
+    )::text) || '::jsonb)'
+) as response;
+select is(
+  (select field.value
+   from platform_private.cms_entry_field_values field
+   where field.revision_id =
+     (select (response->>'id')::uuid from s10_base_choice)
+     and field.field_id = (select value::uuid from s10_ids where key = 'typeFieldId')),
+  (select field.value
+   from platform_private.cms_entry_field_values field
+   join platform_private.cms_conflict_records conflict
+     on conflict.base_revision_id = field.revision_id
+   where conflict.id = (select (request->>'conflictId')::uuid from s10_resolve_request)
+     and field.field_id = (select value::uuid from s10_ids where key = 'typeFieldId')),
+  'CMS-03B-02 base restores exactly the common-base field value'
+);
+rollback to savepoint s10_resolve_choose_base;
+release savepoint s10_resolve_choose_base;
+
+savepoint s10_resolve_choose_explicit;
+create temp table s10_explicit_choice on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((
+      select pg_catalog.jsonb_set(
+        request, '{choices,0}',
+        pg_catalog.jsonb_build_object(
+          'path', request #>> '{choices,0,path}',
+          'choice', 'explicit', 'value', 'Manual resolution'
+        )
+      ) || pg_catalog.jsonb_build_object(
+        'idempotencyKey', 's10-conflict-resolve-explicit-0001'
+      ) from s10_resolve_request
+    )::text) || '::jsonb)'
+) as response;
+select is(
+  (select field.value
+   from platform_private.cms_entry_field_values field
+   where field.revision_id =
+     (select (response->>'id')::uuid from s10_explicit_choice)
+     and field.field_id = (select value::uuid from s10_ids where key = 'typeFieldId')),
+  '"Manual resolution"'::jsonb,
+  'CMS-03B-02 explicit choice persists a typed manual replacement'
+);
+rollback to savepoint s10_resolve_choose_explicit;
+release savepoint s10_resolve_choose_explicit;
+
+create temp table s10_resolve_result on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((select request::text from s10_resolve_request))
+    || '::jsonb)'
+) as response;
+select is(
+  pg_temp.s10_last_error_message(), null::text,
+  'CMS-03B-02 authorized resolution commits without a database exception'
+);
+select is(
+  (select response->>'revisionNumber' from s10_resolve_result), '3',
+  'CMS-03B-02 creates the next immutable draft revision'
+);
+select ok(
+  (select response->>'conflictId' from s10_resolve_result)
+    = (select request->>'conflictId' from s10_resolve_request)
+    and (select pg_catalog.jsonb_array_length(response->'parentRevisionIds')
+         from s10_resolve_result) = 2,
+  'CMS-03B-02 response binds the resolved conflict and both immutable parents'
+);
+select is(
+  (select state from platform_private.cms_conflict_records
+   where id = (select (request->>'conflictId')::uuid from s10_resolve_request)),
+  'resolved',
+  'CMS-03B-02 CAS-closes exactly the open private conflict'
+);
+select ok(
+  exists (
+    select 1 from platform_private.cms_conflict_records conflict
+    where conflict.id =
+      (select (request->>'conflictId')::uuid from s10_resolve_request)
+      and conflict.version = 2
+      and conflict.resolved_revision_id =
+        (select (response->>'id')::uuid from s10_resolve_result)
+      and conflict.resolved_by_person_id =
+        (select value::uuid from s10_ids where key = 'creatorPerson')
+      and conflict.resolved_acting_party_id =
+        (select value::uuid from s10_ids where key = 'organization')
+      and conflict.resolved_at is not null
+      and conflict.updated_at = conflict.resolved_at
+  ),
+  'CMS-03B-02 closes the versioned resolution envelope with server-derived actor'
+);
+select is(
+  (select version from platform_private.cms_content_entries
+   where id = (select value::uuid from s10_ids where key = 'entryId')),
+  3::bigint,
+  'CMS-03B-02 advances the entry version atomically with conflict closure'
+);
+select is(
+  pg_temp.s10_outbox_count(
+    'cms.entry.revision-created.v1',
+    (select value::uuid from s10_ids where key = 'entryId')
+  ),
+  2,
+  'CMS-03B-02 emits one additional revision-created outbox event'
+);
+
+create temp table s10_resolve_replay on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_resolve_conflict('
+    || quote_literal((select request::text from s10_resolve_request))
+    || '::jsonb)'
+) as response;
+select ok(
+  (select response from s10_resolve_replay)
+    = (select response from s10_resolve_result),
+  'CMS-03B-02 exact-key replay returns the identical resolved revision'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')),
+  3,
+  'CMS-03B-02 replay does not append a duplicate revision'
+);

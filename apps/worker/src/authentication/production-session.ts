@@ -23,10 +23,42 @@ import type {
   AuthenticationSession,
 } from './types';
 
+/**
+ * Canonical UUID form (any version/variant nibble). The private binding id is
+ * a database identifier, not a canonical v4 value, so this shape check is
+ * deliberately narrower than the public resource contracts.
+ */
+const ACTING_CONTEXT_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
+/**
+ * The service-role projection is the only carrier of the private
+ * acting-context binding id. Anything that is neither an explicit null nor a
+ * canonical UUID fails closed so a malformed dependency response can never be
+ * mistaken for an unbound session.
+ */
+const parseActingContextId = (
+  value: unknown,
+): AuthenticationResult<string | null> =>
+  value === null || value === undefined
+    ? { ok: true, value: null }
+    : typeof value === 'string' && ACTING_CONTEXT_UUID_PATTERN.test(value)
+      ? { ok: true, value: value }
+      : authError(
+          502,
+          'DEPENDENCY_INVALID_RESPONSE',
+          'Authentication persistence returned an invalid response.',
+        );
+
 const sessionProjection = (
   value: unknown,
   token: Pick<AuthenticationSession, 'expiresAt'>,
-): AuthenticationResult<ReturnType<typeof SessionResourceSchema.parse>> => {
+): AuthenticationResult<
+  Readonly<{
+    resource: ReturnType<typeof SessionResourceSchema.parse>;
+    actingContextId: string | null;
+  }>
+> => {
   const candidate = asRecord(value);
   const parsed = SessionResourceSchema.safeParse({
     authenticated: true,
@@ -36,13 +68,23 @@ const sessionProjection = (
     actingPartyId: candidate?.actingPartyId ?? null,
     sessionExpiresAt: token.expiresAt,
   });
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : authError(
-        502,
-        'DEPENDENCY_INVALID_RESPONSE',
-        'Authentication persistence returned an invalid response.',
-      );
+  if (!parsed.success) {
+    return authError(
+      502,
+      'DEPENDENCY_INVALID_RESPONSE',
+      'Authentication persistence returned an invalid response.',
+    );
+  }
+  const actingContextId = parseActingContextId(candidate?.actingContextId);
+  return actingContextId.ok
+    ? {
+        ok: true,
+        value: {
+          resource: parsed.data,
+          actingContextId: actingContextId.value,
+        },
+      }
+    : actingContextId;
 };
 
 const readIndexedSession = async (
@@ -100,10 +142,11 @@ export const createSessionDependencies = (
           value: {
             authUserId: reference.nonce,
             sessionId: reference.state,
-            accountState: indexed.value.accountState,
-            personId: indexed.value.personId,
-            actingPartyId: indexed.value.actingPartyId,
-            expiresAt: indexed.value.sessionExpiresAt,
+            accountState: indexed.value.resource.accountState,
+            personId: indexed.value.resource.personId,
+            actingPartyId: indexed.value.resource.actingPartyId,
+            actingContextId: indexed.value.actingContextId,
+            expiresAt: indexed.value.resource.sessionExpiresAt,
             stepUpAt: null,
           },
         };
@@ -151,9 +194,10 @@ export const createSessionDependencies = (
         value: {
           authUserId: verified.value.authUserId,
           sessionId: verified.value.sessionId,
-          accountState: indexed.value.accountState,
-          personId: indexed.value.personId,
-          actingPartyId: indexed.value.actingPartyId,
+          accountState: indexed.value.resource.accountState,
+          personId: indexed.value.resource.personId,
+          actingPartyId: indexed.value.resource.actingPartyId,
+          actingContextId: indexed.value.actingContextId,
           expiresAt: verified.value.expiresAt,
           stepUpAt:
             sessionReference.verifier !== '' &&
@@ -253,7 +297,7 @@ export const createSessionDependencies = (
       return {
         ok: true,
         value: {
-          resource: indexed.value,
+          resource: indexed.value.resource,
           cookies: await sessionCookies(preservedToken, config),
         },
       };

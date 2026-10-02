@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-09-26T18:22:09.296Z",
-  "nodeCount": 1638,
-  "edgeCount": 10135,
+  "builtAt": "2026-09-26T21:46:31.768Z",
+  "nodeCount": 1642,
+  "edgeCount": 10145,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -270,6 +270,20 @@
       "shardId": null
     },
     {
+      "id": "audit:audits/propagation-cms-conflict-record-2026-09-26",
+      "type": "audit",
+      "label": "Approved CMS conflict-record propagation",
+      "path": ".memory/wiki/specs/audits/propagation-cms-conflict-record-2026-09-26.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-cms-entry-bootstrap-2026-09-26",
+      "type": "audit",
+      "label": "Approved CMS entry bootstrap and draft-read propagation",
+      "path": ".memory/wiki/specs/audits/propagation-cms-entry-bootstrap-2026-09-26.md",
+      "shardId": null
+    },
+    {
       "id": "audit:audits/propagation-github-repository-identity-2026-09-22",
       "type": "audit",
       "label": "Approved AC265 GitHub repository identity propagation",
@@ -344,6 +358,20 @@
       "type": "audit",
       "label": "AC265 pre-release gate propagation scan",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-ac265-pre-release.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-26-cms-conflict-record",
+      "type": "audit",
+      "label": "CMS conflict-record propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-cms-conflict-record.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-26-cms-entry-bootstrap",
+      "type": "audit",
+      "label": "CMS entry bootstrap and draft-read propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-cms-entry-bootstrap.md",
       "shardId": null
     },
     {
@@ -11706,6 +11734,12 @@
       "source": "phase-ref"
     },
     {
+      "from": "audit:audits/propagation-ac265-pre-release-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "audit:audits/propagation-ac266-2026-09-21",
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
@@ -11713,6 +11747,30 @@
     },
     {
       "from": "audit:audits/propagation-ac266-2026-09-21",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-cms-conflict-record-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-cms-conflict-record-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-cms-entry-bootstrap-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-cms-entry-bootstrap-2026-09-26",
       "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
@@ -11830,6 +11888,36 @@
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
       "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-ac265-pre-release",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-conflict-record",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-conflict-record",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-entry-bootstrap",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-entry-bootstrap",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
     },
     {
       "from": "audit:audits/remediation-state",
@@ -72286,7 +72374,7 @@
     "byNodeType": {
       "plan": 12,
       "architecture": 18,
-      "audit": 35,
+      "audit": 39,
       "be-spec": 157,
       "fe-spec": 44,
       "ia-spec": 85,
@@ -72295,9 +72383,9 @@
       "decision": 97
     },
     "byEdgeType": {
-      "phases_into": 99,
+      "phases_into": 103,
       "constrained_by": 9041,
-      "references": 922,
+      "references": 928,
       "derives_from": 64,
       "implemented_by": 6,
       "split_from": 3

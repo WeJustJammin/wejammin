@@ -16,11 +16,13 @@ import { runAc265HostedE2ePreflight } from '../infra/workflows/collect-ac265-hos
 import { AC265_STAGING_HOSTING_PROJECT_ID } from '../packages/contracts/src/content-schema-registry/operational-release-evidence-hosted-candidate-enrollment.ts';
 import { AC265_STAGING_API_ORIGIN } from '../packages/contracts/src/content-schema-registry/operational-release-evidence-hosted-control-plane.ts';
 import {
+  CI_ARTIFACT_ID,
   CI_RUN_ATTEMPT,
   CI_RUN_ID,
   DEPLOYMENT_ID,
   REPOSITORY,
   SOURCE_SHA,
+  STAGING_ARTIFACT_ID,
   STAGING_RUN_ATTEMPT,
   STAGING_RUN_ID,
   TOKEN,
@@ -44,6 +46,8 @@ const requiredEnvironmentKeys = [
   'AC265_CI_RUN_ID',
   'AC265_CI_RUN_ATTEMPT',
   'AC265_STAGING_DEPLOYMENT_ID',
+  'AC265_DOWNLOADED_CI_ARTIFACT_ID',
+  'AC265_DOWNLOADED_STAGING_ARTIFACT_ID',
   'STAGING_WEB_ORIGIN',
   'STAGING_API_ORIGIN',
   'CLOUDFLARE_ACCOUNT_ID',
@@ -96,6 +100,8 @@ const environmentFor = (): TestEnvironment => {
     AC265_CI_RUN_ID: CI_RUN_ID,
     AC265_CI_RUN_ATTEMPT: CI_RUN_ATTEMPT,
     AC265_STAGING_DEPLOYMENT_ID: DEPLOYMENT_ID,
+    AC265_DOWNLOADED_CI_ARTIFACT_ID: String(CI_ARTIFACT_ID),
+    AC265_DOWNLOADED_STAGING_ARTIFACT_ID: String(STAGING_ARTIFACT_ID),
     STAGING_WEB_ORIGIN: WEB_ORIGIN,
     STAGING_API_ORIGIN: AC265_STAGING_API_ORIGIN,
     CLOUDFLARE_ACCOUNT_ID: 'f'.repeat(32),
@@ -277,6 +283,35 @@ describe('AC265 hosted E2E candidate provenance preflight entrypoint', () => {
 
     expect(api.requests.length).toBeGreaterThan(0);
     expect(readFileSync(env.GITHUB_OUTPUT!, 'utf8')).toBe('');
+  });
+
+  it('fails closed when a downloaded artifact ID differs from the verified GitHub artifact ID', async () => {
+    for (const [key, value] of [
+      ['AC265_DOWNLOADED_CI_ARTIFACT_ID', String(CI_ARTIFACT_ID + 1)],
+      ['AC265_DOWNLOADED_STAGING_ARTIFACT_ID', String(STAGING_ARTIFACT_ID + 1)],
+      ['AC265_DOWNLOADED_STAGING_ARTIFACT_ID', String(CI_ARTIFACT_ID)],
+    ] as const) {
+      const api = createMockGitHubApi();
+      const messages: string[] = [];
+      const env = { ...environmentFor(), [key]: value };
+      const before = artifactTreeDigest(fixture.workspaceRoot);
+
+      await expect(
+        runAc265HostedE2ePreflight({
+          env,
+          cwd: fixture.workspaceRoot,
+          fetchImpl: api.fetchImpl,
+          logger: { log: (message: string) => messages.push(message) },
+        }),
+      ).rejects.toThrow();
+
+      expect(api.requests.length).toBeGreaterThan(0);
+      expect(messages).toHaveLength(0);
+      expect(readFileSync(env.GITHUB_OUTPUT!, 'utf8')).toBe('');
+      for (const entry of readdirSync(runnerTemp))
+        expect(readFileSync(join(runnerTemp, entry), 'utf8'), entry).toBe('');
+      expect(artifactTreeDigest(fixture.workspaceRoot)).toBe(before);
+    }
   });
 
   it('sets a nonzero exit code and emits only a generic message when run directly with invalid inputs', () => {

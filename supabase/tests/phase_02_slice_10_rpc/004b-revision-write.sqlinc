@@ -1,0 +1,414 @@
+-- CMS-03B-01 revision-write contract. This fragment is deliberately RED until
+-- the protected cms_create_revision RPC commits a typed immutable revision and
+-- records a durable same-field conflict without rolling that record back.
+
+select ok(
+  pg_temp.s10_fn_exists('platform_private', 'cms_create_revision', 'jsonb')
+    and pg_temp.s10_fn_exists('platform_api', 'cms_create_revision', 'jsonb'),
+  'CMS-03B-01 has private and worker-facing revision-write RPCs'
+);
+select ok(
+  pg_temp.s10_fn_exists('platform_api', 'cms_create_revision', 'jsonb')
+    and pg_temp.s10_fn_privilege('platform_api', 'cms_create_revision', 'jsonb', 'service_role')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_create_revision', 'jsonb', 'authenticated')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_create_revision', 'jsonb', 'anon')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_create_revision', 'authenticated')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_create_revision', 'anon'),
+  'CMS-03B-01 worker wrapper is service_role-only and private command is not a browser grant'
+);
+
+-- All changed state, including this test-only policy projection, is rolled
+-- back. The real registry projection remains fail-closed and this fixture must
+-- never be taken as approved editorial policy evidence.
+savepoint s10_revision_write;
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select jsonb_build_object(
+    'key', 's10-rolled-back-fixture', 'version', '1',
+    'policyHash', repeat('c', 64), 'riskClass', 'ordinary',
+    'requiredDecisionCount', 1, 'requiredCapabilities', '[]'::jsonb,
+    'approvalEvidenceHash', repeat('d', 64)
+  )
+  where p_version_id is not null
+$body$;
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table s10_revision_request on commit drop as
+select jsonb_build_object(
+  'entryId', ids_entry.value,
+  'baseRevision', '1',
+  'changedPaths', jsonb_build_array('/fields/' || ids_field.value),
+  'values', jsonb_build_object(ids_field.value, 'Second draft title'),
+  'locale', 'en-US',
+  'expectedVersion', '1',
+  'ifMatch', '1',
+  'idempotencyKey', 's10-revision-append-0001',
+  'context', jsonb_build_object(
+    'actingPartyId', ids_org.value,
+    'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+    'correlationId', 'a9100000-0000-4000-8000-000000000095'
+  )
+) as request
+from s10_ids ids_entry, s10_ids ids_field, s10_ids ids_org
+where ids_entry.key = 'entryId'
+  and ids_field.key = 'typeFieldId'
+  and ids_org.key = 'organization';
+
+select pg_temp.s10_rpc_probe(
+  'revision-wrong-kind', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(request, '{values}',
+        jsonb_build_object((select value from s10_ids where key = 'typeFieldId'), true)
+      )::text from s10_revision_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-wrong-kind'),
+  'VALIDATION_FAILED',
+  'CMS-03B-01 refuses a boolean in an active short_text field before mutation'
+);
+select pg_temp.s10_rpc_probe(
+  'revision-null-base', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(request, '{baseRevision}', 'null'::jsonb)::text
+      from s10_revision_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-null-base'), 'VALIDATION_FAILED',
+  'CMS-03B-01 rejects a null base version at the SQL boundary'
+);
+select pg_temp.s10_rpc_probe(
+  'revision-nonarray-paths', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(request, '{changedPaths}', '"/fields/not-an-array"'::jsonb)::text
+      from s10_revision_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-nonarray-paths'), 'VALIDATION_FAILED',
+  'CMS-03B-01 rejects non-array paths without leaking a PostgreSQL type error'
+);
+select pg_temp.s10_rpc_probe(
+  'revision-relation-unlocked', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(
+        jsonb_set(
+          request, '{changedPaths}',
+          jsonb_build_array('/fields/' || ids_relation.value)
+        ),
+        '{values}',
+        jsonb_build_object(ids_relation.value, jsonb_build_array(
+          jsonb_build_object('targetId', ids_entry.value, 'targetVersion', '1')
+        ))
+      ) || jsonb_build_object('idempotencyKey', 's10-revision-relation-0001')
+      from s10_revision_request, s10_ids ids_relation, s10_ids ids_entry
+      where ids_relation.key = 'typeRelationFieldId'
+        and ids_entry.key = 'entryId'
+    )::text) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-relation-unlocked'), 'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-01 does not persist an unapproved relation-value encoding'
+);
+
+create temp table s10_revision_result on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_revision('
+    || quote_literal((select request::text from s10_revision_request))
+    || '::jsonb)'
+) as response;
+select is(
+  pg_temp.s10_last_error_message(), null::text,
+  'CMS-03B-01 authorized append completes without a database exception'
+);
+select is(
+  (select response->>'state' from s10_revision_result), 'draft',
+  'CMS-03B-01 appends one draft revision for an assigned author'
+);
+select is(
+  (select response->>'revisionNumber' from s10_revision_result), '2',
+  'CMS-03B-01 returns the immutable second revision number'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')),
+  2,
+  'CMS-03B-01 persists exactly one additional revision'
+);
+select is(
+  (select version from platform_private.cms_content_entries
+   where id = (select value::uuid from s10_ids where key = 'entryId')),
+  2::bigint,
+  'CMS-03B-01 CAS-advances the entry version'
+);
+select is(
+  pg_temp.s10_outbox_count(
+    'cms.entry.revision-created.v1',
+    (select value::uuid from s10_ids where key = 'entryId')
+  ),
+  1,
+  'CMS-03B-01 emits exactly one revision-created event'
+);
+select is(
+  (select response->>'contentHash' from s10_revision_result),
+  (
+    select platform_private.cms_draft_content_hash((response->>'id')::uuid, 'en-US')
+    from s10_revision_result
+  ),
+  'CMS-03B-01 frozen hash matches the complete copied-and-patched field snapshot'
+);
+select is(
+  (select count(*)::integer
+   from platform_private.cms_entry_relations relation
+   where relation.revision_id =
+     (select (response->>'id')::uuid from s10_revision_result)),
+  1,
+  'CMS-03B-01 preserves an unchanged normalized relation on the new revision'
+);
+select is(
+  (select relation.expected_target_version
+   from platform_private.cms_entry_relations relation
+   where relation.revision_id =
+     (select (response->>'id')::uuid from s10_revision_result)),
+  2::bigint,
+  'CMS-03B-01 re-pins an unchanged self relation to the committed entry version'
+);
+
+create temp table s10_revision_replay on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_revision('
+    || quote_literal((select request::text from s10_revision_request))
+    || '::jsonb)'
+) as response;
+select ok(
+  (select response from s10_revision_replay)
+    = (select response from s10_revision_result),
+  'CMS-03B-01 exact-key replay returns the identical committed revision'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')),
+  2,
+  'CMS-03B-01 exact-key replay does not append a duplicate revision'
+);
+
+-- A known tenant member with no edit grant or assignment receives FORBIDDEN.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000003'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_probe(
+  'revision-unassigned', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(jsonb_set(request, '{expectedVersion}', '"2"'::jsonb),
+        '{ifMatch}', '"2"'::jsonb)
+        || jsonb_build_object('idempotencyKey', 's10-revision-outsider-0001')
+      from s10_revision_request
+    )::text) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-unassigned'), 'FORBIDDEN',
+  'CMS-03B-01 refuses an unassigned tenant member without edit authority'
+);
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+-- A missing owner-approved policy source never falls back to request values.
+savepoint s10_revision_policy_closed;
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select null::jsonb where p_version_id is not null
+$body$;
+select pg_temp.s10_rpc_probe(
+  'revision-policy-missing', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(jsonb_set(request, '{baseRevision}', '"2"'::jsonb),
+        '{expectedVersion}', '"2"'::jsonb)
+        || jsonb_build_object(
+          'ifMatch', '2', 'idempotencyKey', 's10-revision-policy-0001'
+        )
+      from s10_revision_request
+    )::text) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-policy-missing'), 'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-01 fails closed when editorial policy evidence is absent'
+);
+rollback to savepoint s10_revision_policy_closed;
+release savepoint s10_revision_policy_closed;
+
+savepoint s10_revision_policy_incomplete;
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select jsonb_build_object('key', 'incomplete', 'version', '1')
+  where p_version_id is not null
+$body$;
+select pg_temp.s10_rpc_probe(
+  'revision-policy-incomplete', null,
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(jsonb_set(request, '{baseRevision}', '"2"'::jsonb),
+        '{expectedVersion}', '"2"'::jsonb)
+        || jsonb_build_object(
+          'ifMatch', '2', 'idempotencyKey', 's10-revision-policy-0002'
+        )
+      from s10_revision_request
+    )::text) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('revision-policy-incomplete'), 'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-01 rejects incomplete editorial policy projection evidence'
+);
+rollback to savepoint s10_revision_policy_incomplete;
+release savepoint s10_revision_policy_incomplete;
+
+-- A relation to the entry itself is re-pinned on every immutable snapshot;
+-- otherwise the second autosave would dead-end on its own old target version.
+savepoint s10_revision_repeat_edit;
+create temp table s10_repeat_result on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_revision('
+    || quote_literal((
+      select jsonb_set(
+        jsonb_set(
+          jsonb_set(request, '{baseRevision}', '"2"'::jsonb),
+          '{expectedVersion}', '"2"'::jsonb
+        ),
+        array['values', (select value from s10_ids where key = 'typeFieldId')],
+        '"Third draft title"'::jsonb
+      ) || jsonb_build_object(
+        'ifMatch', '2', 'idempotencyKey', 's10-revision-repeat-0001'
+      )
+      from s10_revision_request
+    )::text) || '::jsonb)'
+) as response;
+select is(
+  (select response->>'revisionNumber' from s10_repeat_result), '3',
+  'CMS-03B-01 can append a second consecutive author edit on a self-related entry'
+);
+select is(
+  (select relation.expected_target_version
+   from platform_private.cms_entry_relations relation
+   where relation.revision_id =
+     (select (response->>'id')::uuid from s10_repeat_result)),
+  3::bigint,
+  'CMS-03B-01 consecutive edit re-pins self relation to the next entry version'
+);
+rollback to savepoint s10_revision_repeat_edit;
+release savepoint s10_revision_repeat_edit;
+
+-- A later save from base revision 1 knows the current entry version 2, but its
+-- changed title overlaps the committed second draft. It must preserve the
+-- rejected proposal in the one open private record and return a committed
+-- private conflict disposition, not RAISE after INSERT (which would roll back).
+create temp table s10_conflict_request on commit drop as
+select jsonb_set(
+  jsonb_set(
+    jsonb_set(request, '{values}',
+      jsonb_build_object(
+        (select value from s10_ids where key = 'typeFieldId'),
+        'Concurrent title from old base'
+      )
+    ),
+    '{expectedVersion}', '"2"'::jsonb
+  ),
+  '{ifMatch}', '"2"'::jsonb
+) || jsonb_build_object('idempotencyKey', 's10-revision-conflict-0001') as request
+from s10_revision_request;
+
+create temp table s10_conflict_result on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_revision('
+    || quote_literal((select request::text from s10_conflict_request))
+    || '::jsonb)'
+) as response;
+select is(
+  (select response->>'kind' from s10_conflict_result), 'conflict',
+  'CMS-03B-01 returns a committed private conflict disposition for same-field divergence'
+);
+select is(
+  (select response->>'code' from s10_conflict_result), 'VERSION_MISMATCH',
+  'CMS-03B-01 conflict disposition carries the stable 409 mapping token'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_conflict_records
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')
+     and state = 'open'),
+  1,
+  'CMS-03B-01 persists exactly one open conflict for the overlapping proposal'
+);
+select ok(
+  exists (
+    select 1 from platform_private.cms_conflict_records conflict
+    where conflict.entry_id = (select value::uuid from s10_ids where key = 'entryId')
+      and conflict.state = 'open'
+      and conflict.yours_source = 'proposed'
+      and conflict.yours_revision_id is null
+      and conflict.proposed_values = (select request->'values' from s10_conflict_request)
+      and conflict.proposed_values_hash =
+        platform_private.cms_jcs_sha256(conflict.proposed_values)::char(64)
+  ),
+  'CMS-03B-01 binds the uncommitted proposal and its hash to the durable conflict'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')),
+  2,
+  'CMS-03B-01 conflict does not append or overwrite either competing revision'
+);
+
+create temp table s10_conflict_replay on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_revision('
+    || quote_literal((select request::text from s10_conflict_request))
+    || '::jsonb)'
+) as response;
+select ok(
+  (select response is not null from s10_conflict_result)
+    and (select response from s10_conflict_replay)
+      = (select response from s10_conflict_result),
+  'CMS-03B-01 exact-key retry replays the original conflict result'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_conflict_records
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')
+     and state = 'open'),
+  1,
+  'CMS-03B-01 exact-key retry does not duplicate the durable open conflict'
+);
+
+-- The resolver suite consumes this genuinely committed, still-open private
+-- conflict inside the same rolled-back fixture. No test seeds a conflict by
+-- bypassing the named revision-write RPC.
+\ir 004c-conflict-resolve.sqlinc
+
+rollback to savepoint s10_revision_write;
+release savepoint s10_revision_write;

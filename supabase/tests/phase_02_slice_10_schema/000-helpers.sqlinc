@@ -1,0 +1,192 @@
+
+-- Shared read-only inspection helpers for the Slice 10 table foundation.
+-- They resolve identifiers by OID so an absent table yields false or an empty
+-- set instead of raising, which keeps the RED run evidence complete rather
+-- than aborting at the first missing object.
+
+create or replace function pg_temp.s10_closed_check_labels(
+  p_table text,
+  p_column text
+)
+returns text[]
+language sql
+stable
+as $body$
+  select coalesce(array_agg(m.arr[1] order by m.arr[1]), array[]::text[])
+  from pg_constraint c
+  cross join lateral regexp_matches(
+    pg_get_constraintdef(c.oid), '''([^'']+)''', 'g'
+  ) as m(arr)
+  -- PostgreSQL renders a single-label union as "= 'label'::text" and a
+  -- multi-label union as "= ANY (ARRAY[...])", so accept both renderings while
+  -- still anchoring on the exact column token.
+  where c.conrelid = to_regclass(p_table)
+    and c.contype = 'c'
+    and pg_get_constraintdef(c.oid) like 'CHECK ((%'
+    and pg_get_constraintdef(c.oid)
+      ~ ('[^A-Za-z0-9_.]' || p_column || E' = (ANY|'')')
+$body$;
+
+create or replace function pg_temp.s10_trigger_events(
+  p_table text,
+  p_indicator text
+)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(distinct e.event, ',' order by e.event), '')
+  from pg_trigger t
+  cross join lateral (values
+    (case when t.tgtype & 4 = 4 then 'insert' end),
+    (case when t.tgtype & 16 = 16 then 'update' end),
+    (case when t.tgtype & 8 = 8 then 'delete' end)
+  ) as e(event)
+  where t.tgrelid = to_regclass(p_table)
+    and not t.tgisinternal
+    and t.tgname like '%' || p_indicator || '%'
+    and e.event is not null
+$body$;
+
+create or replace function pg_temp.s10_trigger_function(
+  p_table text,
+  p_indicator text
+)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(distinct p.proname, ',' order by p.proname), '')
+  from pg_trigger t
+  join pg_proc p on p.oid = t.tgfoid
+  where t.tgrelid = to_regclass(p_table)
+    and not t.tgisinternal
+    and t.tgname like '%' || p_indicator || '%'
+$body$;
+
+-- Assert a named index exists on p_table and its definition carries
+-- p_predicate (for example '(owner_id, updated_at DESC)'). Requiring both the
+-- locked index name and its expression prevents an unrelated index that merely
+-- shares column names from satisfying the assertion.
+create or replace function pg_temp.s10_has_index(
+  p_table text,
+  p_index text,
+  p_predicate text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_or(
+    pg_get_indexdef(i.indexrelid) like '%' || p_predicate || '%'
+  ), false)
+  from pg_index i
+  join pg_class ic on ic.oid = i.indexrelid
+  where i.indrelid = to_regclass(p_table)
+    and ic.relname = p_index
+$body$;
+
+create or replace function pg_temp.s10_column_type(
+  p_table text,
+  p_column text
+)
+returns text
+language sql
+stable
+as $body$
+  select ty.typname
+  from pg_attribute a
+  join pg_type ty on ty.oid = a.atttypid
+  where a.attrelid = to_regclass(p_table)
+    and a.attname = p_column
+    and a.attnum > 0
+    and not a.attisdropped
+$body$;
+
+-- Returns the SQLSTATE observed for p_sql, or '00000' when it succeeds.
+-- Callers assert an exact code so a guard firing (P0001) is never confused
+-- with a constraint rejection (23514), or with an unexpected error.
+create or replace function pg_temp.s10_write_sqlstate(p_sql text)
+returns text
+language plpgsql
+as $body$
+begin
+  begin
+    execute p_sql;
+    return '00000';
+  exception
+    when others then
+      return sqlstate;
+  end;
+end;
+$body$;
+
+create or replace function pg_temp.s10_fk_target(
+  p_table text,
+  p_column text
+)
+returns text
+language sql
+stable
+as $body$
+  select tn.nspname || '.' || tt.relname || '.' || ta.attname
+  from pg_constraint c
+  join pg_class ft on ft.oid = c.conrelid
+  join pg_attribute fa on fa.attrelid = ft.oid and fa.attnum = c.conkey[1]
+  join pg_class tt on tt.oid = c.confrelid
+  join pg_namespace tn on tn.oid = tt.relnamespace
+  join pg_attribute ta on ta.attrelid = tt.oid and ta.attnum = c.confkey[1]
+  where ft.oid = to_regclass(p_table)
+    and c.contype = 'f'
+    and fa.attname = p_column
+    and array_length(c.conkey, 1) = 1
+$body$;
+
+create or replace function pg_temp.s10_fk_count(
+  p_table text,
+  p_column text
+)
+returns integer
+language sql
+stable
+as $body$
+  select count(*)::integer
+  from pg_constraint c
+  join pg_class ft on ft.oid = c.conrelid
+  join pg_attribute fa on fa.attrelid = ft.oid and fa.attnum = c.conkey[1]
+  where ft.oid = to_regclass(p_table)
+    and c.contype = 'f'
+    and fa.attname = p_column
+$body$;
+
+create or replace function pg_temp.s10_col_notnull(
+  p_table text,
+  p_column text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(a.attnotnull), false)
+  from pg_attribute a
+  where a.attrelid = to_regclass(p_table)
+    and a.attname = p_column
+    and a.attnum > 0
+    and not a.attisdropped
+$body$;
+
+create or replace function pg_temp.s10_has_default(
+  p_table text,
+  p_column text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(a.atthasdef), false)
+  from pg_attribute a
+  where a.attrelid = to_regclass(p_table)
+    and a.attname = p_column
+    and a.attnum > 0
+    and not a.attisdropped
+$body$;

@@ -64,6 +64,16 @@ Every FE specification defines typed component props and named variants, complet
 - [FE ambiguity audit: remediated, fresh rerun required](../audits/2026-08-29-fe-ambiguity-report.md)
 - [FE audit scope: 43 scored specifications + 1 supporting index](../audits/audit-scope.md)
 
+## Amendment Note
+
+FE shard 03 carries the owner-approved DEC-108 CMS activation-producer cascade
+(successor, dry-run, frozen CMS review, bounded assignment and independent
+reviewer-decision commands CMS-03A-09..14, plus the safe display-only context
+evidence and the `schemaReviewAssigned` review-only variant). The cascade is a
+frontend selection over the locked IA/BE contracts and changes no product,
+permission, security or data-placement decision; a fresh FE ambiguity pass is
+required before `/plan-phase` treats the amended shard as complete.
+
 The next valid pipeline stage is `/plan-phase`.
 
 

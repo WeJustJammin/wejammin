@@ -35,6 +35,8 @@ export const AuthoritySchema = z.union([
       presentationVariant: z
         .enum(CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS)
         .optional(),
+      /** Trusted private projection metadata; used for disclosure only. */
+      stepUpFreshUntil: z.string().optional(),
     })
     .strict(),
   z
@@ -44,6 +46,7 @@ export const AuthoritySchema = z.union([
       presentationVariant: z
         .enum(CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS)
         .optional(),
+      stepUpFreshUntil: z.string().optional(),
     })
     .strict(),
 ]);
@@ -80,4 +83,12 @@ export interface ContentSchemaRegistryPorts {
     readonly contentTypeId: string;
     readonly versionId: string;
   }) => Awaitable<unknown>;
+  /**
+   * Server-only read of the authorized acting-context list, used solely to
+   * resolve a human-readable context label for disclosure. It carries no
+   * authority and its identifiers never reach the browser projection.
+   */
+  readonly loadActingContexts?: (input: {
+    readonly request: Request;
+  }) => Awaitable<Response>;
 }

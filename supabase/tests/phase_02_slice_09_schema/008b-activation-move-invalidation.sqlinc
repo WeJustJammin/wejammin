@@ -116,6 +116,14 @@ select throws_ok(
 -- A moved organization authority row invalidates candidates owned by both the
 -- old and new organizations.  The second candidate is intentionally owned by
 -- tenant two so the new-owner side is observable in the same transaction.
+insert into platform_private.cms_content_types(
+  id, owner_id, state, version, type_key, owner_capability, created_by
+) values (
+  'a9090000-0000-4000-8000-000000000184',
+  (select organization_id from s09_fixture_org_two), 'retired', 1,
+  'articlex_two', 'cms.schema_designer',
+  'a9090000-0000-4000-8000-000000000001'
+);
 insert into platform_private.cms_content_type_versions(
   id, owner_id, state, version, content_type_id, version_no, labels,
   workflow_key, workflow_version, source_locale, default_locale,
@@ -123,7 +131,7 @@ insert into platform_private.cms_content_type_versions(
 ) values (
   'a9090000-0000-4000-8000-000000000181',
   (select organization_id from s09_fixture_org_two), 'review', 1,
-  (select content_type_id from s09_type_ids), 10,
+  'a9090000-0000-4000-8000-000000000184', 1,
   '{"label":"Move tenant two"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
   'a9090000-0000-4000-8000-000000000182', repeat('3', 64), 'additive',
   'a9090000-0000-4000-8000-000000000412',
@@ -136,9 +144,9 @@ insert into platform_private.cms_schema_artifacts(
   'a9090000-0000-4000-8000-000000000182',
   (select organization_id from s09_fixture_org_two), 'compiled', 1,
   'a9090000-0000-4000-8000-000000000181', '1',
-  'cms/content-type/articlex/v1',
+  'cms/content-type/articlex_two/v1',
   jsonb_build_object('schema', jsonb_build_object(
-    'typeKey','articlex','label','Move tenant two',
+    'typeKey','articlex_two','label','Move tenant two',
     'ownerCapability','cms.schema_designer','sourceLocale','en-US',
     'defaultLocale','en-US','workflowKey','editorial','workflowVersion','1',
     'defaultTemplateVersionId',null,'fields','[]'::jsonb,

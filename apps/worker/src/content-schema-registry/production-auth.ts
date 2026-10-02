@@ -150,12 +150,16 @@ export const createSessionResolver = (
       Number.isFinite(stepUpMs) &&
       stepUpMs <= now &&
       now - stepUpMs <= 10 * 60 * 1000;
+    const stepUpFreshUntil = mfaFresh
+      ? new Date(stepUpMs + 10 * 60 * 1000).toISOString()
+      : undefined;
     sessionContexts.set(request, {
       authUserId: result.value.authUserId,
       sessionId: result.value.sessionId,
       actorPersonId: result.value.personId,
       actingPartyId: result.value.actingPartyId,
       stepUpAt: result.value.stepUpAt,
+      actingContextId: result.value.actingContextId ?? null,
     });
     return {
       ok: true,
@@ -164,6 +168,7 @@ export const createSessionResolver = (
         actingPartyId: result.value.actingPartyId,
         capabilities,
         mfaFresh,
+        ...(stepUpFreshUntil === undefined ? {} : { stepUpFreshUntil }),
         ...(presentationVariant === undefined ? {} : { presentationVariant }),
       },
     };

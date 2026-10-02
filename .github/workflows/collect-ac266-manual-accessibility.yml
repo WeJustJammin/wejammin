@@ -44,22 +44,35 @@ jobs:
           persist-credentials: false
       - name: Set up pinned workspace dependencies
         uses: ./.github/actions/setup
+      - name: Resolve exact staging candidate and intake artifact IDs
+        id: resolve
+        shell: bash
+        env:
+          AC266_SOURCE_SHA: ${{ inputs.source_sha }}
+          AC266_STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+          AC266_STAGING_DEPLOYMENT_ID: ${{ inputs.staging_deployment_id }}
+          AC266_MANUAL_REPORT_RUN_ID: ${{ inputs.manual_report_run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node --experimental-strip-types infra/workflows/resolve-ac266-manual-accessibility-artifacts.ts
       - name: Download the requested staging candidate
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: staging-verified-candidate
+          artifact-ids: ${{ steps.resolve.outputs.staging_artifact_id }}
           path: candidate
           repository: ${{ github.repository }}
           run-id: ${{ inputs.staging_run_id }}
           github-token: ${{ github.token }}
+          digest-mismatch: error
       - name: Download the sanitized manual intake manifest
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: ac266-manual-accessibility-intake
+          artifact-ids: ${{ steps.resolve.outputs.intake_artifact_id }}
           path: manual-intake
           repository: ${{ github.repository }}
           run-id: ${{ inputs.manual_report_run_id }}
           github-token: ${{ github.token }}
+          digest-mismatch: error
       - name: Strictly verify staging, intake provenance, and protected reports
         env:
           GITHUB_TOKEN: ${{ github.token }}

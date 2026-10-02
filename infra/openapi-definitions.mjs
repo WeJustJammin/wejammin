@@ -1553,6 +1553,369 @@ export const routeDefinitions = {
       'mutation',
     ),
   },
+  'CMS-03B-01': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Immutable entry revision created',
+      [
+        { status: 400, description: 'Revision request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Revision assignment or edit capability is forbidden',
+        },
+        { status: 404, description: 'Entry is absent or concealed' },
+        {
+          status: 409,
+          description: 'Stale base, conflict, or idempotency mismatch',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Revision fields fail validation' },
+        { status: 429, description: 'Author-write rate limit exceeded' },
+        { status: 500, description: 'Revision write failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-02': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Two-parent conflict-resolution revision created',
+      [
+        { status: 400, description: 'Conflict request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Conflict resolve capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Entry or conflict is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Moved base, invalid choice, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Conflict choice or value fails schema' },
+        { status: 429, description: 'Conflict-write rate limit exceeded' },
+        { status: 500, description: 'Conflict resolution failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-03': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized revision history page',
+      [
+        {
+          status: 400,
+          description: 'History path, query, or cursor is malformed',
+        },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'History read scope is forbidden' },
+        {
+          status: 404,
+          description: 'Entry or revision is absent or concealed',
+        },
+        { status: 409, description: 'Cursor or context mismatch' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'History query bounds fail validation' },
+        { status: 429, description: 'Read rate limit exceeded' },
+        { status: 500, description: 'History read failed safely' },
+        {
+          status: 502,
+          description: 'History dependency returned invalid data',
+        },
+        { status: 503, description: 'History dependency unavailable' },
+        { status: 504, description: 'History dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03B-04': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'New draft revision restored from a readable source revision',
+      [
+        { status: 400, description: 'Restore request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Restore edit capability is forbidden' },
+        {
+          status: 404,
+          description: 'Entry or source revision is absent or concealed',
+        },
+        {
+          status: 409,
+          description:
+            'Stale version, migration mismatch, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Restore fields fail validation' },
+        { status: 429, description: 'Restore rate limit exceeded' },
+        { status: 500, description: 'Restore failed safely' },
+        {
+          status: 502,
+          description: 'Migration dependency returned invalid data',
+        },
+        { status: 503, description: 'Migration dependency unavailable' },
+        { status: 504, description: 'Migration dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-10': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Entry and initial draft revision created',
+      [
+        { status: 400, description: 'Entry create request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Entry create capability is forbidden' },
+        { status: 404, description: 'Content schema is absent or concealed' },
+        { status: 409, description: 'Entry create or idempotency conflicts' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Entry create fields fail validation' },
+        { status: 429, description: 'Entry create rate limit exceeded' },
+        { status: 500, description: 'Entry create failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-11': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized current draft detail',
+      [
+        { status: 400, description: 'Draft-detail request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Draft-detail read capability is forbidden',
+        },
+        { status: 404, description: 'Entry is absent or concealed' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Draft-detail fields fail validation' },
+        { status: 429, description: 'Draft-detail rate limit exceeded' },
+        { status: 500, description: 'Draft-detail read failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03C-01': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Template version created',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  cmsTemplateContextRead: {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Protected template designer selector context',
+      [
+        { status: 400, description: 'Context request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Template designer capability is forbidden',
+        },
+        { status: 429, description: 'Context read rate limit exceeded' },
+        { status: 500, description: 'Context read failed safely' },
+        {
+          status: 502,
+          description: 'Context projection returned invalid data',
+        },
+        { status: 503, description: 'Context dependency unavailable' },
+        { status: 504, description: 'Context dependency timed out' },
+      ],
+    ),
+  },
+  cmsTemplateLatestRead: {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Current authorized editable template definition',
+      [
+        { status: 400, description: 'Template key or query is invalid' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Template designer capability is forbidden',
+        },
+        { status: 404, description: 'Template is absent or not visible' },
+        { status: 429, description: 'Template read rate limit exceeded' },
+        { status: 500, description: 'Template read failed safely' },
+        { status: 502, description: 'Template detail returned invalid data' },
+        { status: 503, description: 'Template dependency unavailable' },
+        { status: 504, description: 'Template dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03C-04': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Locale variant revision created',
+      [
+        { status: 400, description: 'Locale variant request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Locale authoring capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Entry or source revision is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Source, version, or idempotency conflicts',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Locale fields or fallback fail validation',
+        },
+        { status: 429, description: 'Locale authoring rate limit exceeded' },
+        { status: 500, description: 'Locale authoring failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03C-02': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Immutable pattern instance created on an authorized draft',
+      [
+        { status: 400, description: 'Composition request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Draft edit capability is forbidden' },
+        {
+          status: 404,
+          description: 'Revision or pattern is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Revision, slot, graph, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Pattern graph or overrides fail validation',
+        },
+        { status: 429, description: 'Composition write rate limit exceeded' },
+        { status: 500, description: 'Composition mutation failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03C-03': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Taxonomy term action applied to the authorized vocabulary',
+      [
+        { status: 400, description: 'Taxonomy term request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Taxonomy curator capability is forbidden',
+        },
+        { status: 404, description: 'Taxonomy or term is absent or concealed' },
+        {
+          status: 409,
+          description: 'Term version, survivor, or idempotency conflicts',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Taxonomy term fields fail validation' },
+        { status: 429, description: 'Taxonomy write rate limit exceeded' },
+        { status: 500, description: 'Taxonomy mutation failed safely' },
+        {
+          status: 502,
+          description: 'Taxonomy dependency returned invalid data',
+        },
+        { status: 503, description: 'Taxonomy dependency unavailable' },
+        { status: 504, description: 'Taxonomy dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03C-05': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Related content rule revision created',
+      [
+        { status: 400, description: 'Related content request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Related content capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Source entry is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Source, version, or idempotency conflicts',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Pins, exclusions, or rule fail validation',
+        },
+        {
+          status: 429,
+          description: 'Related content rate limit exceeded',
+        },
+        { status: 500, description: 'Related content failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
   healthRead: {
     responses: [
       { status: '200', description: 'Process is healthy', schema: 'success' },

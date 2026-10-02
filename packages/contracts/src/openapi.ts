@@ -1,6 +1,48 @@
 import { z } from 'zod';
 
+import { anchorOpenApiSchemaReferences } from './openapi-reference-normalization.ts';
 import { ApiErrorSchema } from './api-error.ts';
+import {
+  EntryCreateApiRequestSchema,
+  EntryCreateResourceSchema,
+} from './cms-editorial/entry-create.ts';
+import {
+  EntryDraftDetailApiRequestSchema,
+  EntryDraftDetailResourceSchema,
+} from './cms-editorial/entry-draft-detail.ts';
+import { ConflictResolutionApiRequestSchema } from './cms-editorial/conflict-resolution.ts';
+import { EntryRevisionApiRequestSchema } from './cms-editorial/requests.ts';
+import {
+  RevisionHistoryApiRequestSchema,
+  RevisionHistoryPageSchema,
+} from './cms-editorial/revision-history.ts';
+import { RevisionRestoreApiRequestSchema } from './cms-editorial/revision-restore.ts';
+import { EntryRevisionResourceSchema } from './cms-editorial/resources.ts';
+import {
+  TemplateDesignerContextSchema,
+  TemplateVersionApiRequestSchema,
+  TemplateVersionResourceSchema,
+} from './cms-composition/template.ts';
+import {
+  TemplateLatestApiRequestSchema,
+  TemplateVersionDetailSchema,
+} from './cms-composition/template-detail.ts';
+import {
+  LocaleVariantApiRequestSchema,
+  LocaleVariantResourceSchema,
+} from './cms-composition/locale-variant.ts';
+import {
+  RelatedContentApiRequestSchema,
+  RelatedContentResourceSchema,
+} from './cms-composition/related-content.ts';
+import {
+  TaxonomyTermActionApiRequestSchema,
+  TaxonomyTermResourceSchema,
+} from './cms-composition/taxonomy-term.ts';
+import {
+  CompositionInstanceResourceSchema,
+  PatternInstanceApiRequestSchema,
+} from './cms-composition/pattern-instance.ts';
 import {
   AuthCallbackApiRequestSchema,
   AuthMergePathSchema,
@@ -134,6 +176,13 @@ const schemaContracts = {
   CreatePersonApiRequestSchema,
   CreateTransferOfferApiRequestSchema,
   DiagnosticResponseSchema,
+  ConflictResolutionApiRequestSchema,
+  EntryRevisionApiRequestSchema,
+  EntryRevisionResourceSchema,
+  EntryCreateApiRequestSchema,
+  EntryCreateResourceSchema,
+  EntryDraftDetailApiRequestSchema,
+  EntryDraftDetailResourceSchema,
   HealthResponseSchema,
   JobIdPathSchema,
   JobStatusSchema,
@@ -196,6 +245,9 @@ const schemaContracts = {
   OrganizationTypeAssignmentPathSchema,
   OrganizationTypeAssignmentResourceSchema,
   RequestContextSchema,
+  RevisionHistoryApiRequestSchema,
+  RevisionHistoryPageSchema,
+  RevisionRestoreApiRequestSchema,
   SessionRefreshApiRequestSchema,
   SessionResourceSchema,
   UnlinkApiRequestSchema,
@@ -205,6 +257,19 @@ const schemaContracts = {
   UploadAdmissionRequestSchema,
   UploadCompletionRequestSchema,
   UploadIntentResourceSchema,
+  TemplateVersionApiRequestSchema,
+  TemplateDesignerContextSchema,
+  TemplateVersionResourceSchema,
+  TemplateLatestApiRequestSchema,
+  TemplateVersionDetailSchema,
+  LocaleVariantApiRequestSchema,
+  LocaleVariantResourceSchema,
+  RelatedContentApiRequestSchema,
+  RelatedContentResourceSchema,
+  TaxonomyTermActionApiRequestSchema,
+  TaxonomyTermResourceSchema,
+  PatternInstanceApiRequestSchema,
+  CompositionInstanceResourceSchema,
 } as const;
 
 const schemaIo = {
@@ -232,6 +297,12 @@ const schemaIo = {
   ConversionApiRequestSchema: 'input',
   EndMembershipApiRequestSchema: 'input',
   EndMembershipRequestSchema: 'input',
+  EntryCreateApiRequestSchema: 'input',
+  EntryDraftDetailApiRequestSchema: 'input',
+  ConflictResolutionApiRequestSchema: 'input',
+  EntryRevisionApiRequestSchema: 'input',
+  RevisionHistoryApiRequestSchema: 'input',
+  RevisionRestoreApiRequestSchema: 'input',
   EmailStartRequestSchema: 'input',
   HistoricalMembershipAssertionRequestSchema: 'input',
   InvitationApiRequestSchema: 'input',
@@ -265,6 +336,12 @@ const schemaIo = {
   SessionRefreshApiRequestSchema: 'input',
   UnlinkApiRequestSchema: 'input',
   TransferDecisionApiRequestSchema: 'input',
+  TemplateVersionApiRequestSchema: 'input',
+  TemplateLatestApiRequestSchema: 'input',
+  LocaleVariantApiRequestSchema: 'input',
+  RelatedContentApiRequestSchema: 'input',
+  TaxonomyTermActionApiRequestSchema: 'input',
+  PatternInstanceApiRequestSchema: 'input',
   UploadAdmissionRequestSchema: 'input',
   UploadCompletionRequestSchema: 'input',
 } as const satisfies Partial<
@@ -286,14 +363,17 @@ const schemaForName = (schemaName: string): z.ZodTypeAny => {
 };
 
 export const getOpenApiSchemaJson = (schemaName: string): unknown =>
-  z.toJSONSchema(schemaForName(schemaName), {
-    io:
-      schemaIo[schemaName as keyof typeof schemaIo] === 'input'
-        ? 'input'
-        : 'output',
-    target: 'draft-7',
-    unrepresentable: 'throw',
-  });
+  anchorOpenApiSchemaReferences(
+    schemaComponentName(schemaName),
+    z.toJSONSchema(schemaForName(schemaName), {
+      io:
+        schemaIo[schemaName as keyof typeof schemaIo] === 'input'
+          ? 'input'
+          : 'output',
+      target: 'draft-7',
+      unrepresentable: 'throw',
+    }),
+  );
 
 export const getOpenApiSchemaReference = (
   schemaName: string,

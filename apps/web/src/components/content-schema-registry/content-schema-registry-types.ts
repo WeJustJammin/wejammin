@@ -1,5 +1,6 @@
 import { CONTENT_SCHEMA_REGISTRY_OPERATION_IDS as GENERATED_CONTENT_SCHEMA_REGISTRY_OPERATION_IDS } from '@wejammin/contracts';
 import type { ContentSchemaRegistryOperationId as GeneratedContentSchemaRegistryOperationId } from '@wejammin/contracts';
+import type { ContentSchemaRegistryStepUpState } from './ContentSchemaRegistryConfirmationStep';
 import type {
   ContentSchemaRegistryDetail,
   ContentSchemaRegistryListPage,
@@ -216,6 +217,12 @@ export interface ContentSchemaRegistryWorkbenchProps {
   /** Required for an authorized Workbench; unavailable pages are outside it. */
   readonly actorId: string;
   readonly actingPartyId: string;
+  /** Server-resolved human acting-context label; never a raw identifier. */
+  readonly actingContextLabel?: string;
+  /** Server-derived disclosure state for the activation step-up clause. */
+  readonly stepUpState?: ContentSchemaRegistryStepUpState;
+  /** Server-derived absolute expiry of the verified step-up window. */
+  readonly stepUpFreshUntil?: string;
   readonly query: ContentSchemaRegistryQuery;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
@@ -226,6 +233,10 @@ export interface ContentSchemaRegistryWorkbenchProps {
   readonly listUrl: string;
   readonly retryUrl: string;
   readonly csrfToken: string;
+  /** Browser-owned canonical refresh presentation (island only). */
+  readonly loading?: boolean;
+  readonly offline?: boolean;
+  readonly message?: string | null;
   readonly onCanonicalRefetch: (
     reason: 'list-read' | 'detail-read' | 'mutation' | 'reconnect',
   ) => Promise<void>;
@@ -237,6 +248,9 @@ export interface ContentSchemaRegistryPage {
   readonly access: ContentSchemaRegistryAccess;
   readonly actorId: string | null;
   readonly actingPartyId: string | null;
+  readonly actingContextLabel?: string;
+  readonly stepUpState?: ContentSchemaRegistryStepUpState;
+  readonly stepUpFreshUntil?: string;
   readonly query: ContentSchemaRegistryQuery;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;

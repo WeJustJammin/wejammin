@@ -36,16 +36,16 @@ const acPolicyWindows = (source: string, id: string): string[] =>
   );
 
 describe('Phase 2 Slice 09 completion policy', () => {
-  it('[P2-S09-AC-267] preserves 283 authored IDs with separate 279-item Slice 09 and 1996-item Phase 2 implementation denominators', () => {
+  it('[P2-S09-AC-267] preserves 283 authored IDs with separate 279-item Slice 09 and 2011-item Phase 2 implementation denominators', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(acceptanceIds(source), label).toEqual(expectedAuthoredIds);
       expect(source, label).toMatch(
-        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*1,?996\b/iu,
+        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*2,?011\b/iu,
       );
       expect(source, label).toMatch(
         /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*279\b/iu,
       );
-      expect(source, label).toMatch(/279\/279\s+active/iu);
+      expect(source, label).toMatch(/262\/279\s+active/iu);
       expect(source, label).toMatch(
         /283 authored[^\n]*(?:AC209|AC211|AC265|AC266|production)/iu,
       );
@@ -109,13 +109,13 @@ describe('Phase 2 Slice 09 completion policy', () => {
     );
   });
 
-  it('[P2-S09-AC-265] defers genuine hosted acceptance to pre-release without gating Slice 10 implementation', () => {
+  it('[P2-S09-AC-265] keeps hosted acceptance pre-release while reopened Slice 09 criteria gate Slice 10', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(source, `${label} AC265 release timing`).toMatch(
         /AC265[^\n]*mandatory pre-release|AC265[^\n]*pre-release[^\n]*mandatory/iu,
       );
       expect(source, `${label} Slice 10 dependency`).toMatch(
-        /AC265[^\n]*does not (?:block|gate) Slice 10 implementation|Slice 10 implementation[^\n]*no AC265 prerequisite/iu,
+        /Slice 10 implementation prerequisites\*\*:\s*completion of the 17 reopened Slice 09 activation-chain criteria;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
       );
       expect(source, `${label} AC265 row remains unchecked`).toMatch(
         /^\s*-\s*\[ \].*P2-S09-AC-265/mu,
@@ -132,7 +132,11 @@ describe('Phase 2 Slice 09 completion policy', () => {
       expect(ac266Row, label).toMatch(/^\s*-\s*\[ \]/u);
 
       const policyWindow = acPolicyWindows(source, 'P2-S09-AC-266').find(
-        (window) => /deferred/iu.test(window),
+        (window) =>
+          /pre-release/iu.test(window) &&
+          /(?:not|never)[^\n]*(?:passed|accepted|waived|simulated|inferred)/iu.test(
+            window,
+          ),
       );
       expect(policyWindow, `${label} AC266 policy`).toBeDefined();
       expect(policyWindow, `${label} AC266 policy`).toMatch(/pre-release/iu);

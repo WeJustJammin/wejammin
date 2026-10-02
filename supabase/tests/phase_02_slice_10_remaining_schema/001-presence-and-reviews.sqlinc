@@ -1,0 +1,152 @@
+
+-- EditPresence and EditorialReview canonical records (BE03b Database Schema).
+
+select ok(
+  pg_temp.s10r_closed_check_labels(
+    'platform_private.cms_edit_presence', 'state'
+  ) = array['active','expired','revoked']::text[]
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_edit_presence', 'version > 0'
+    ),
+  'presence state is a closed lease union and version stays positive'
+);
+
+select ok(
+  pg_temp.s10r_fk_target(
+    'platform_private.cms_edit_presence', 'entry_id'
+  ) = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_edit_presence', 'person_id'
+    ) = 'platform_private.person_party.party_id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_edit_presence', 'acting_party_id'
+    ) = 'platform_private.party.id',
+  'presence binds a real entry, the canonical person row and acting party'
+);
+
+select ok(
+  pg_temp.s10r_unique_target('platform_private.cms_edit_presence')
+    @> array['entry_id,person_id']::text[]
+    and pg_temp.s10r_column_type(
+      'platform_private.cms_edit_presence', 'lease_until'
+    ) = 'timestamptz'
+    and pg_temp.s10r_column_type(
+      'platform_private.cms_edit_presence', 'last_seen_at'
+    ) = 'timestamptz'
+    and pg_temp.s10r_col_notnull(
+      'platform_private.cms_edit_presence', 'lease_until'
+    ),
+  'presence enforces one row per entry and person with a real lease window'
+);
+
+select ok(
+  pg_temp.s10r_has_default(
+    'platform_private.cms_edit_presence', 'created_at'
+  )
+    and pg_temp.s10r_has_default(
+      'platform_private.cms_edit_presence', 'updated_at'
+    )
+    -- The sole permitted timestamp/version mutation exception: presence is
+    -- CAS-mutable on renewal, so no updated_at = created_at snapshot CHECK.
+    and not pg_temp.s10r_has_check(
+      'platform_private.cms_edit_presence', 'updated_at = created_at'
+    ),
+  'presence keeps the documented CAS renewal exception and no snapshot lock'
+);
+
+select ok(
+  pg_temp.s10r_has_index(
+    'platform_private.cms_edit_presence',
+    'cms_edit_presence_owner_state_updated_idx',
+    array['(owner_id, state, updated_at DESC)']
+  )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_edit_presence',
+      'cms_edit_presence_entry_lease_idx',
+      array['(entry_id, lease_until)']
+    )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_edit_presence',
+      'cms_edit_presence_person_lease_idx',
+      array['(person_id, lease_until)']
+    ),
+  'presence carries the locked owner, entry-lease and person-lease indexes'
+);
+
+select ok(
+  pg_temp.s10r_closed_check_labels(
+    'platform_private.cms_editorial_reviews', 'state'
+  ) = array['approved','invalidated','open','rejected']::text[]
+    and pg_temp.s10r_closed_check_labels(
+      'platform_private.cms_editorial_reviews', 'risk_class'
+    ) = array['ordinary','protected']::text[],
+  'review state and risk class are closed unions'
+);
+
+select ok(
+  pg_temp.s10r_fk_target(
+    'platform_private.cms_editorial_reviews', 'revision_id'
+  ) = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_editorial_reviews', 'submitted_by'
+    ) = 'platform_private.person_party.party_id'
+    and pg_temp.s10r_col_notnull(
+      'platform_private.cms_editorial_reviews', 'revision_id'
+    ),
+  'review freezes evidence against a real revision and canonical submitter'
+);
+
+select ok(
+  pg_temp.s10r_has_check(
+    'platform_private.cms_editorial_reviews',
+    'jsonb_array_length(required_capabilities) >= 1'
+  )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_reviews',
+      'jsonb_array_length(required_capabilities) <= 16'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_reviews',
+      'required_decision_count >= 1'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_reviews',
+      'required_decision_count <= 8'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_reviews',
+      'recorded_decision_count <= required_decision_count'
+    ),
+  'review bounds required capabilities and decision counts'
+);
+
+select ok(
+  pg_temp.s10r_has_check(
+    'platform_private.cms_editorial_reviews',
+    'risk_class <> ''protected''::text) OR (required_decision_count >= 2'
+  )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_reviews',
+      'risk_class <> ''protected''::text) OR (jsonb_array_length(required_capabilities) >= 1'
+    ),
+  'protected reviews demand at least two decisions and one capability'
+);
+
+select ok(
+  pg_temp.s10r_has_partial_index(
+    'platform_private.cms_editorial_reviews',
+    'cms_editorial_reviews_live_revision_unique',
+    array['(revision_id)', 'open', 'approved']
+  )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_editorial_reviews',
+      'cms_editorial_reviews_owner_state_updated_idx',
+      array['(owner_id, state, updated_at DESC)']
+    )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_editorial_reviews',
+      'cms_editorial_reviews_revision_state_idx',
+      array['(revision_id, state)']
+    ),
+  'one live review per revision, superseded history retained'
+);

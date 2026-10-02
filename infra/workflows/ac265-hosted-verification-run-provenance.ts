@@ -8,6 +8,7 @@ import {
   fixedWorkflowRunPathMatches,
   requestAc265GitHubJson,
   safeGitHubUrl,
+  timestampMs,
   type Ac265Fetch,
 } from './ac265-candidate-provenance-common.ts';
 import {
@@ -44,12 +45,6 @@ export interface Ac265HostedVerificationRunProvenance {
   /** GitHub-reported byte length of the exact report archive. */
   readonly reportArchiveBytes: number;
 }
-
-const timestampMs = (value: unknown): number => {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)))
-    return failAc265CandidateProvenance();
-  return Date.parse(value);
-};
 
 const requireOrigin = (value: unknown): string => {
   if (typeof value !== 'string') return failAc265CandidateProvenance();
@@ -179,18 +174,18 @@ const verifyReportArtifact = async (input: {
   const matches = values.filter((value) => {
     if (!isAc265Record(value) || value.name !== REPORT_ARTIFACT_NAME)
       return false;
-    const createdAt = Date.parse(String(value['created_at']));
-    const updatedAt = Date.parse(
-      String(value['updated_at'] ?? value['created_at']),
-    );
-    return (
-      Number.isFinite(createdAt) &&
-      Number.isFinite(updatedAt) &&
-      createdAt >= windowStart &&
-      createdAt <= windowEnd &&
-      updatedAt >= createdAt &&
-      updatedAt <= windowEnd
-    );
+    try {
+      const createdAt = timestampMs(value['created_at']);
+      const updatedAt = timestampMs(value['updated_at']);
+      return (
+        createdAt >= windowStart &&
+        createdAt <= windowEnd &&
+        updatedAt >= createdAt &&
+        updatedAt <= windowEnd
+      );
+    } catch {
+      return false;
+    }
   });
   if (matches.length !== 1) return failAc265CandidateProvenance();
   const artifact = matches[0]!;

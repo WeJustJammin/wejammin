@@ -1,5 +1,7 @@
 export * from './api-error.ts';
 export * from './authentication.ts';
+export * from './cms-composition/index.ts';
+export * from './cms-editorial/index.ts';
 export * from './content-schema-registry/index.ts';
 export * from './idempotency-retention.ts';
 export * from './identifiers.ts';
@@ -8,6 +10,7 @@ export * from './infrastructure-state.ts';
 export * from './job-status.ts';
 export * from './offline-intent.ts';
 export * from './operational.ts';
+export * from './openapi-reference-normalization.ts';
 export * from './openapi.ts';
 export * from './platform-events.ts';
 export * from './platform-configuration/index.ts';

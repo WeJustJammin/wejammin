@@ -156,8 +156,11 @@ const validateSlo = (
     );
 };
 
-const validateHostedAndAccessibility = (
-  evidence: OperationalReleaseEvidenceShape,
+export const validateHostedAndAccessibility = (
+  evidence: Pick<
+    OperationalReleaseEvidenceShape,
+    'hostedE2e' | 'accessibility'
+  >,
   context: z.RefinementCtx,
 ): void => {
   validateChecklist(

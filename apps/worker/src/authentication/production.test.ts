@@ -16,6 +16,7 @@ const SESSION_ID = '33333333-3333-4333-8333-333333333333';
 const PERSON_ID = '44444444-4444-4444-8444-444444444444';
 const INTENT_ID = '55555555-5555-4555-8555-555555555555';
 const REQUEST_ID = '11111111-1111-4111-8111-111111111111';
+const ACTING_CONTEXT_ID = '66666666-6666-4666-8666-666666666666';
 const NOW = Date.parse('2026-09-01T04:00:00Z');
 
 const environment: WorkerBindings = {
@@ -935,6 +936,7 @@ describe('production authentication operation coverage', () => {
     const invalid = createProductionAuthenticationDependencies({
       environment,
       fetchImpl: vi.fn(async () => json({})) as typeof fetch,
+      now: () => NOW,
     });
     await expect(
       invalid.refreshSession(
@@ -1164,5 +1166,133 @@ describe('production authentication operation coverage', () => {
     await expect(
       registerOutage.refreshSession(refreshRequest(), environment, signal),
     ).resolves.toMatchObject({ ok: false, status: 503 });
+  });
+
+  it('threads the private acting-context binding id from the service-role projection into the internal session', async () => {
+    const reference = await sealFlowCookie(
+      {
+        state: SESSION_ID,
+        nonce: AUTH_USER_ID,
+        verifier: '',
+        provider: 'session',
+        intent: 'session',
+        expiresAt: '2026-10-01T04:00:00Z',
+      },
+      normalizeAuthProductionOptions({ environment, now: () => NOW }),
+    );
+    const bindingProjection = (actingContextId: unknown) => ({
+      accountState: 'active',
+      personId: PERSON_ID,
+      actingPartyId: PERSON_ID,
+      actingContextId,
+    });
+    const authFor = (projectionValue: unknown) =>
+      createProductionAuthenticationDependencies({
+        environment,
+        fetchImpl: vi.fn(async (input: string | URL | Request) =>
+          String(input).endsWith('/auth/v1/user')
+            ? json({ id: AUTH_USER_ID })
+            : json(projectionValue),
+        ) as typeof fetch,
+        now: () => NOW,
+      });
+    const accessRequest = () =>
+      new Request('https://api.example.test/api/v1/auth/session', {
+        headers: {
+          cookie: `wj_access=${jwt()}; wj_session_ref=${reference}`,
+        },
+      });
+    const referenceRequest = () =>
+      new Request('https://api.example.test/api/v1/auth/session/refresh', {
+        headers: { cookie: `wj_session_ref=${reference}` },
+      });
+
+    await expect(
+      authFor(bindingProjection(ACTING_CONTEXT_ID)).resolveSession(
+        accessRequest(),
+        environment,
+        signal,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { actingContextId: ACTING_CONTEXT_ID },
+    });
+    await expect(
+      authFor(bindingProjection(ACTING_CONTEXT_ID)).resolveSession(
+        referenceRequest(),
+        environment,
+        signal,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { actingContextId: ACTING_CONTEXT_ID },
+    });
+    await expect(
+      authFor(bindingProjection(null)).resolveSession(
+        accessRequest(),
+        environment,
+        signal,
+      ),
+    ).resolves.toMatchObject({ ok: true, value: { actingContextId: null } });
+    await expect(
+      authFor({
+        accountState: 'active',
+        personId: PERSON_ID,
+        actingPartyId: PERSON_ID,
+      }).resolveSession(accessRequest(), environment, signal),
+    ).resolves.toMatchObject({ ok: true, value: { actingContextId: null } });
+
+    for (const malformed of ['not-a-uuid', 7, {}, true] as const) {
+      await expect(
+        authFor(bindingProjection(malformed)).resolveSession(
+          accessRequest(),
+          environment,
+          signal,
+        ),
+      ).resolves.toMatchObject({
+        ok: false,
+        status: 502,
+        code: 'DEPENDENCY_INVALID_RESPONSE',
+      });
+      await expect(
+        authFor(bindingProjection(malformed)).resolveSession(
+          referenceRequest(),
+          environment,
+          signal,
+        ),
+      ).resolves.toMatchObject({
+        ok: false,
+        status: 502,
+        code: 'DEPENDENCY_INVALID_RESPONSE',
+      });
+    }
+  });
+
+  it('keeps the private acting-context binding id out of the public session resource', async () => {
+    const auth = createProductionAuthenticationDependencies({ environment });
+    const result = await auth.readSession(
+      { ...authSession, actingContextId: ACTING_CONTEXT_ID },
+      environment,
+      signal,
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        authenticated: true,
+        accountState: 'active',
+        bootstrapState: 'complete',
+        personId: PERSON_ID,
+        actingPartyId: PERSON_ID,
+        sessionExpiresAt: '2026-09-01T05:00:00Z',
+      },
+    });
+    expect(result.ok ? Object.keys(result.value).sort() : []).toEqual([
+      'accountState',
+      'actingPartyId',
+      'authenticated',
+      'bootstrapState',
+      'personId',
+      'sessionExpiresAt',
+    ]);
   });
 });

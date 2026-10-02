@@ -30,9 +30,24 @@ const prepareAction = existsSync(prepareActionPath)
 const preflightAction = existsSync(preflightActionPath)
   ? readFileSync(preflightActionPath, 'utf8')
   : '';
+const resolverEntrypointPath = fileURLToPath(
+  new URL(
+    '../infra/workflows/resolve-ac265-hosted-e2e-artifacts.ts',
+    import.meta.url,
+  ),
+);
+const resolverEntrypoint = existsSync(resolverEntrypointPath)
+  ? readFileSync(resolverEntrypointPath, 'utf8')
+  : '';
 
 const configLineCount = (source: string): number =>
   source.trimEnd().split(/\r?\n/u).length;
+
+// Rendered GitHub expression, e.g. expression('inputs.source_sha') is the
+// literal text the workflow YAML contains. Built from parts so this test file
+// never embeds an expression that a workflow would interpolate.
+const expression = (inner: string): string =>
+  ['\u0024', '{', '{', ' ', inner, ' ', '}', '}'].join('');
 
 const jobBlock = (source: string, name: string): string => {
   const headers = [...source.matchAll(/^ {2}([a-zA-Z0-9_-]+):\s*$/gmu)];
@@ -48,9 +63,13 @@ const namedStep = (source: string, name: string, indent = 6): string => {
   const marker = `${stepIndent}- name: ${name}`;
   const start = source.indexOf(marker);
   if (start === -1) return '';
-  const remainder = source.slice(start);
-  const next = remainder.indexOf(`\n${stepIndent}- `, marker.length);
-  return next === -1 ? remainder : remainder.slice(0, next);
+  // A step ends at the next list item at the same indentation, so nested
+  // sequence values such as `- run: |` block lines cannot truncate it early.
+  const lines = source.slice(start).split('\n');
+  const end = lines.findIndex(
+    (line, index) => index > 0 && line.startsWith(`${stepIndent}- `),
+  );
+  return (end === -1 ? lines : lines.slice(0, end)).join('\n');
 };
 
 const inputBlock = (source: string, name: string): string => {
@@ -109,6 +128,125 @@ describe('AC265 hosted E2E preflight workflow contract', () => {
       expect(source, path).not.toBe('');
       expect(configLineCount(source), path).toBeLessThanOrEqual(100);
     }
+  });
+
+  it('keeps the artifact resolver entrypoint bounded and credential-scoped', () => {
+    expect(resolverEntrypoint).not.toBe('');
+    // The resolver mirrors the collector's canonical-path guards, so it is
+    // bounded above the generic utility limit while staying a single unit.
+    expect(configLineCount(resolverEntrypoint)).toBeLessThanOrEqual(160);
+    expect(resolverEntrypoint).toContain(
+      'AC265 hosted E2E artifact resolution failed',
+    );
+    expect(resolverEntrypoint).not.toMatch(/\$\{\{\s*(?:secrets|vars)\./u);
+  });
+
+  it('binds the downloaded artifacts to the exact verified artifact IDs', () => {
+    const resolution = namedStep(
+      prepareAction,
+      'Resolve the exact verified artifact IDs',
+      4,
+    );
+    expect(resolution).not.toBe('');
+    expect(resolution).toContain(
+      'node --experimental-strip-types infra/workflows/resolve-ac265-hosted-e2e-artifacts.ts',
+    );
+    expect(resolution).toMatch(/^ {6}id: resolve$/mu);
+    expect(resolution).toMatch(/^ {6}shell: bash$/mu);
+    for (const mapping of [
+      'AC265_SOURCE_SHA: ' + expression('inputs.source_sha'),
+      'AC265_STAGING_RUN_ID: ' + expression('inputs.staging_run_id'),
+      'AC265_STAGING_RUN_ATTEMPT: ' + expression('inputs.staging_run_attempt'),
+      'AC265_CI_RUN_ID: ' + expression('inputs.ci_run_id'),
+      'AC265_CI_RUN_ATTEMPT: ' + expression('inputs.ci_run_attempt'),
+      'AC265_STAGING_DEPLOYMENT_ID: ' +
+        expression('inputs.staging_deployment_id'),
+      'STAGING_WEB_ORIGIN: ' + expression('inputs.staging_web_origin'),
+      'STAGING_API_ORIGIN: ' + expression('inputs.staging_api_origin'),
+      'GITHUB_REPOSITORY: ' + expression('github.repository'),
+      'GITHUB_TOKEN: ' + expression('github.token'),
+    ])
+      expect(resolution, mapping).toContain(mapping);
+    expect(resolution).not.toMatch(/\$\{\{\s*(?:secrets|vars)\./u);
+
+    const workspaceSetup = namedStep(
+      prepareAction,
+      'Set up pinned workspace dependencies',
+      4,
+    );
+    const stagingDownload = namedStep(
+      prepareAction,
+      'Download the staging-verified candidate',
+      4,
+    );
+    const ciDownload = namedStep(
+      prepareAction,
+      'Download the exact CI build',
+      4,
+    );
+    expect(stagingDownload).toContain(
+      'artifact-ids: ' +
+        expression('steps.resolve.outputs.staging_artifact_id'),
+    );
+    expect(ciDownload).toContain(
+      'artifact-ids: ' + expression('steps.resolve.outputs.ci_artifact_id'),
+    );
+    for (const download of [stagingDownload, ciDownload]) {
+      expect(download).toMatch(/^ {8}digest-mismatch: error$/mu);
+      expect(download).not.toMatch(/^ {8}name:/mu);
+      expect(download).toContain(
+        'repository: ' + expression('github.repository'),
+      );
+      expect(download).toContain('github-token: ' + expression('github.token'));
+    }
+
+    expect(prepareAction.indexOf(workspaceSetup)).toBeLessThan(
+      prepareAction.indexOf(resolution),
+    );
+    expect(prepareAction.indexOf(resolution)).toBeLessThan(
+      prepareAction.indexOf(stagingDownload),
+    );
+    expect(prepareAction.indexOf(resolution)).toBeLessThan(
+      prepareAction.indexOf(ciDownload),
+    );
+    expect(prepareAction).toContain('ci_artifact_id:');
+    expect(prepareAction).toContain(
+      'value: ' + expression('steps.resolve.outputs.ci_artifact_id'),
+    );
+    expect(prepareAction).toContain('staging_artifact_id:');
+    expect(prepareAction).toContain(
+      'value: ' + expression('steps.resolve.outputs.staging_artifact_id'),
+    );
+
+    const preparation = namedStep(
+      preflightAction,
+      'Prepare exact staging and CI artifacts',
+      4,
+    );
+    expect(preparation).toMatch(/^ {6}id: prepare$/mu);
+    for (const mapping of [
+      'staging_run_id: ' + expression('inputs.staging_run_id'),
+      'staging_run_attempt: ' + expression('inputs.staging_run_attempt'),
+      'ci_run_id: ' + expression('inputs.ci_run_id'),
+      'ci_run_attempt: ' + expression('inputs.ci_run_attempt'),
+      'staging_deployment_id: ' + expression('inputs.staging_deployment_id'),
+      'staging_web_origin: ' + expression('inputs.staging_web_origin'),
+      'staging_api_origin: ' + expression('inputs.staging_api_origin'),
+    ])
+      expect(preparation, mapping).toContain(mapping);
+
+    const verifier = namedStep(
+      preflightAction,
+      'Verify exact staging and CI candidate provenance',
+      4,
+    );
+    for (const mapping of [
+      'AC265_DOWNLOADED_CI_ARTIFACT_ID: ' +
+        expression('steps.prepare.outputs.ci_artifact_id'),
+      'AC265_DOWNLOADED_STAGING_ARTIFACT_ID: ' +
+        expression('steps.prepare.outputs.staging_artifact_id'),
+    ])
+      expect(verifier, mapping).toContain(mapping);
   });
 
   it('is manual-only and requires exactly six staging and CI candidate selectors', () => {
@@ -236,7 +374,9 @@ describe('AC265 hosted E2E preflight workflow contract', () => {
     expect(stagingDownload).toMatch(
       /uses: actions\/download-artifact@[0-9a-f]{40}(?:\s+# v\d+)?/u,
     );
-    expect(stagingDownload).toContain('name: staging-verified-candidate');
+    expect(stagingDownload).toContain(
+      'artifact-ids: ${{ steps.resolve.outputs.staging_artifact_id }}',
+    );
     expect(stagingDownload).toContain('path: candidate');
     expect(stagingDownload).toContain('run-id: ${{ inputs.staging_run_id }}');
     expect(stagingDownload).toContain('repository: ${{ github.repository }}');
@@ -251,7 +391,7 @@ describe('AC265 hosted E2E preflight workflow contract', () => {
       /uses: actions\/download-artifact@[0-9a-f]{40}(?:\s+# v\d+)?/u,
     );
     expect(ciDownload).toContain(
-      'name: workspace-build-${{ inputs.source_sha }}',
+      'artifact-ids: ${{ steps.resolve.outputs.ci_artifact_id }}',
     );
     expect(ciDownload).toContain('path: ci-build');
     expect(ciDownload).toContain('run-id: ${{ inputs.ci_run_id }}');

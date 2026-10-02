@@ -35,6 +35,12 @@ export type ContentSchemaRegistrySession = Readonly<{
   actingPartyId: string | null;
   capabilities: readonly string[];
   mfaFresh: boolean;
+  /**
+   * Server-derived expiry of the verified step-up window. Present only when
+   * verified step-up is currently fresh; the browser may disclose but never
+   * authorize from it. Derived from the authenticated step-up time only.
+   */
+  stepUpFreshUntil?: string;
   /** Optional server-selected UI scope; never read from browser input. */
   presentationVariant?: (typeof CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS)[number];
 }>;

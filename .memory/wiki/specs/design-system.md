@@ -16,11 +16,11 @@ At compact widths, four context-relevant primary destinations occupy a bottom ba
 
 ## Layout Grid
 
-| Breakpoint | Columns | Gutter | Max Width |
-|------------|---------|--------|-----------|
-| Mobile (≤768px) | 4 | 16px | 100% with 16px page margins |
-| Tablet (769–1024px) | 8 | 20px | 100% with 24px page margins |
-| Desktop (≥1025px) | 12 | 24px | 1440px application shell |
+| Breakpoint          | Columns | Gutter | Max Width                   |
+| ------------------- | ------- | ------ | --------------------------- |
+| Mobile (≤768px)     | 4       | 16px   | 100% with 16px page margins |
+| Tablet (769–1024px) | 8       | 20px   | 100% with 24px page margins |
+| Desktop (≥1025px)   | 12      | 24px   | 1440px application shell    |
 
 **Grid type**: Hybrid. CSS Grid owns page shells, workbenches, comparisons, timelines, and aligned record regions. Flexbox owns one-dimensional controls, toolbars, navigation rows, and inline metadata. Public reading content is capped at 65–75ch and public editorial composition usually caps at 1200px even inside the wider shell.
 
@@ -29,61 +29,73 @@ At compact widths, four context-relevant primary destinations occupy a bottom ba
 ## Page Archetypes
 
 ### Public Record
+
 **Layout zones**: minimal navigation | identity header | now | record | detail | contextual actions
 
 The profile/EPK archetype preserves Header → Now → Record → Detail. Every material fact carries its own provenance treatment. Templates may fill permitted slots but cannot reorder the spine or reserved trust regions.
 
 ### Work Queue / Overview
+
 **Layout zones**: application shell | scope/status bar | prioritized queue | supporting summaries | task actions
 
 The landing view answers “what needs attention?” rather than presenting vanity metrics. Summaries link to the records and freshness evidence that produced them.
 
 ### List → Detail Workbench
+
 **Layout zones**: application shell | query/filter bar | selectable list/table | detail inspector | action bar
 
 Used for projects, credits, services, listings, people, media, admin records, and search-heavy operations. Compact split view becomes list then detail stack on narrow screens.
 
 ### Record Detail / Activity
+
 **Layout zones**: application shell | record header | state/provenance summary | primary facts | timeline/audit | contextual actions
 
 Used when one canonical record, its state machine, history, permissions, and allowed commands are the task.
 
 ### Guided Form / Transaction
+
 **Layout zones**: application shell | purpose/progress | grouped fields | review summary | persistent action bar
 
 Used for claims, split capture, contracts, checkout, publication, and other consequential multi-step work. Progress names completed decisions, not arbitrary percentages.
 
 ### Collaboration / Review Room
+
 **Layout zones**: project context | media/work canvas | timeline/comments | participants/authority | approval/action rail
 
 Used for file review, session capture, approvals, annotations, and bounded realtime status. Media and comments never displace authoritative version/state indicators.
 
 ### CMS Editor / Preview
+
 **Layout zones**: admin shell | content outline | typed editor canvas | validation/inspector | version/preview/publish rail
 
 Draft, review, preview, scheduling, publication, compare, restore, and convergence state remain visible. Preview is authenticated and cannot be mistaken for live output.
 
 ### Admin Operations
+
 **Layout zones**: admin shell | task inbox/query | operations table | evidence/detail | capability-gated actions
 
 Designed for search, bulk work, audit, moderation, diagnostics, migrations, and recovery. Destructive or sensitive actions show acting context, consequence, step-up state, and immutable audit outcome.
 
 ### Settings / Registry
+
 **Layout zones**: admin or application shell | registry navigation | definition/effective value | scope/inheritance | version/approval actions
 
 Used for typed settings, feature flags, schemas, taxonomies, menus, integrations, and policy configuration. Effective value, source scope, owner, and rollback target are always inspectable.
 
 ### Content / Discovery
+
 **Layout zones**: minimal navigation | title/context | content/results | filters or table of contents | related actions
 
 Used for articles, help, policies, discovery, catalogs, and fan-facing content. Reading measure is protected; filter/result density increases only when the user begins an explicit browse task.
 
 ### Auth / Claim / Recovery
+
 **Layout zones**: focused identity context | primary task | provider choices or proof | recovery/help | legal notice
 
 Provider linking is additive and never visually implies a new account when an existing canonical user is detected. Account merge, claim, and recovery risks are stated before commitment.
 
 ### System / Degraded
+
 **Layout zones**: preserved shell when safe | exact state | affected scope | last-known-good context | recovery/status action
 
 Used for 404, offline, dependency outage, blocked publication, and service degradation. Security, privacy, legal, and takedown state may remove unsafe content even when last-known-good delivery would otherwise remain.

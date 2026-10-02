@@ -6,6 +6,16 @@
 
 All 156 backend companions are complete and independently ambiguity-passed. The BE contract lock scored **1716/1716 (PASS, 2026-08-29)**. The downstream FE layer is also complete at **473/473 (PASS, 2026-08-29)**; the next valid pipeline stage is `/plan-phase`.
 
+DEC-108 (owner-approved 2026-10-02) amends the CMS shard set without renumbering
+existing operations: [03a-content-schema-registry.md](03a-content-schema-registry.md)
+adds the reachable activation producers CMS-03A-09…14 and three private CMS-owned
+review records; [03b-editorial-workflow-publication.md](03b-editorial-workflow-publication.md)
+attributes the minimum Slice 09 source-row prerequisite; and
+[03c-composition-taxonomy-localization.md](03c-composition-taxonomy-localization.md)
+adds the reciprocal immutable template-draft/compatibility-resolver contract.
+Public template activation remains a separate 03c gap, and no new acceptance is
+claimed by this amendment.
+
 ## Quality Gate
 
 - [Fresh BE ambiguity audit — PASS, 1716/1716](../audits/2026-08-29-be-ambiguity-report.md)

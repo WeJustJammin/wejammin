@@ -1,0 +1,183 @@
+
+-- PreviewToken canonical record plus the RLS, grant, guard and index posture
+-- for all six remaining support tables.
+
+select ok(
+  pg_temp.s10r_closed_check_labels(
+    'platform_private.cms_preview_tokens', 'state'
+  ) = array['active','expired','revoked']::text[]
+    and pg_temp.s10r_has_default(
+      'platform_private.cms_preview_tokens', 'version'
+    )
+    and pg_temp.s10r_col_notnull(
+      'platform_private.cms_preview_tokens', 'expires_at'
+    )
+    and pg_temp.s10r_column_type(
+      'platform_private.cms_preview_tokens', 'expires_at'
+    ) = 'timestamptz',
+  'preview state is a closed union with a mandatory real expiry instant'
+);
+
+select ok(
+  pg_temp.s10r_fk_target(
+    'platform_private.cms_preview_tokens', 'entry_id'
+  ) = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_preview_tokens', 'revision_id'
+    ) = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_preview_tokens', 'user_id'
+    ) = 'auth.users.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_preview_tokens', 'acting_party_id'
+    ) = 'platform_private.party.id',
+  'preview binds a real entry, revision, authenticated user and party'
+);
+
+select ok(
+  pg_temp.s10r_unique_target('platform_private.cms_preview_tokens')
+    @> array['token_hash']::text[]
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_preview_tokens', '^[a-f0-9]{64}$'
+    )
+    -- The route regex is the only control-character guard in the schema; a
+    -- plain-translatable class keeps it stable across PG releases.
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_preview_tokens', '[:cntrl:]'
+    )
+    -- Plaintext token material must never be storable.
+    and not pg_temp.s10r_has_column(
+      'platform_private.cms_preview_tokens', 'token'
+    ),
+  'preview stores only a unique 64-hex token hash behind a safe route'
+);
+
+select ok(
+  pg_temp.s10r_has_partial_index(
+    'platform_private.cms_preview_tokens',
+    'cms_preview_tokens_expires_live_idx',
+    array['(expires_at)']
+  )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_preview_tokens',
+      'cms_preview_tokens_entry_revision_expires_idx',
+      array['(entry_id, revision_id, expires_at)']
+    )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_preview_tokens',
+      'cms_preview_tokens_user_expires_idx',
+      array['(user_id, expires_at)']
+    ),
+  'preview carries the locked ownership, binding and live-expiry indexes'
+);
+
+select ok(
+  coalesce((
+    select bool_and(relrowsecurity and relforcerowsecurity)
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'platform_private'
+      and c.relname = any(array[
+        'cms_edit_presence','cms_editorial_reviews',
+        'cms_editorial_decisions','cms_publication_schedules',
+        'cms_publication_versions','cms_preview_tokens']::name[])
+  ), false),
+  'every remaining editorial table enables and forces RLS'
+);
+
+select ok(
+  coalesce((
+    select bool_and(
+      case when to_regclass(table_name) is null then false else
+        not has_table_privilege(role_name, table_name, 'select')
+        and not has_table_privilege(role_name, table_name, 'insert')
+        and not has_table_privilege(role_name, table_name, 'update')
+        and not has_table_privilege(role_name, table_name, 'delete')
+      end
+    )
+    from (values ('anon'), ('authenticated'), ('service_role'))
+      as roles(role_name)
+    cross join (values
+      ('platform_private.cms_edit_presence'),
+      ('platform_private.cms_editorial_reviews'),
+      ('platform_private.cms_editorial_decisions'),
+      ('platform_private.cms_publication_schedules'),
+      ('platform_private.cms_publication_versions'),
+      ('platform_private.cms_preview_tokens')
+    ) as tables(table_name)
+  ), false),
+  'browser and service roles receive no direct grants on support tables'
+);
+
+select ok(
+  coalesce((
+    select count(*) = 6
+    from pg_policy p
+    where p.polrelid in (
+      to_regclass('platform_private.cms_edit_presence'),
+      to_regclass('platform_private.cms_editorial_reviews'),
+      to_regclass('platform_private.cms_editorial_decisions'),
+      to_regclass('platform_private.cms_publication_schedules'),
+      to_regclass('platform_private.cms_publication_versions'),
+      to_regclass('platform_private.cms_preview_tokens')
+    )
+      and pg_get_expr(p.polqual, p.polrelid) like '%cms_rpc_context_valid%'
+      and pg_get_expr(p.polwithcheck, p.polrelid)
+        like '%cms_rpc_context_valid%'
+  ), false),
+  'every support table is reachable only inside a verified CMS RPC context'
+);
+
+select ok(
+  pg_temp.s10r_write_sqlstate(
+    'insert into platform_private.cms_edit_presence(id) values (gen_random_uuid())'
+  ) = 'P0001'
+    and pg_temp.s10r_write_sqlstate(
+      'insert into platform_private.cms_editorial_reviews(id) values (gen_random_uuid())'
+    ) = 'P0001'
+    and pg_temp.s10r_write_sqlstate(
+      'insert into platform_private.cms_editorial_decisions(id) values (gen_random_uuid())'
+    ) = 'P0001'
+    and pg_temp.s10r_write_sqlstate(
+      'insert into platform_private.cms_publication_schedules(id) values (gen_random_uuid())'
+    ) = 'P0001'
+    and pg_temp.s10r_write_sqlstate(
+      'insert into platform_private.cms_publication_versions(id) values (gen_random_uuid())'
+    ) = 'P0001'
+    and pg_temp.s10r_write_sqlstate(
+      'insert into platform_private.cms_preview_tokens(id) values (gen_random_uuid())'
+    ) = 'P0001',
+  'a direct insert into any support table is rejected by the write guard'
+);
+
+select ok(
+  pg_temp.s10r_trigger_events(
+    'platform_private.cms_editorial_decisions', 'write_guard'
+  ) = 'delete,insert,update'
+    and pg_temp.s10r_trigger_events(
+      'platform_private.cms_editorial_decisions', 'immutable_guard'
+    ) = 'delete,update'
+    and pg_temp.s10r_trigger_events(
+      'platform_private.cms_publication_versions', 'immutable_guard'
+    ) = 'delete,update',
+  'decisions and publication versions stay append-only after the write guard'
+);
+
+select ok(
+  pg_temp.s10r_trigger_events(
+    'platform_private.cms_editorial_reviews', 'write_guard'
+  ) = 'delete,insert,update'
+    and pg_temp.s10r_trigger_events(
+      'platform_private.cms_editorial_reviews', 'immutable_guard'
+    ) = ''
+    and pg_temp.s10r_trigger_events(
+      'platform_private.cms_publication_schedules', 'immutable_guard'
+    ) = ''
+    and pg_temp.s10r_trigger_events(
+      'platform_private.cms_edit_presence', 'immutable_guard'
+    ) = ''
+    and pg_temp.s10r_trigger_events(
+      'platform_private.cms_preview_tokens', 'immutable_guard'
+    ) = '',
+  'review, schedule, presence and token rows stay CAS-mutable by named RPC'
+);

@@ -20,6 +20,7 @@ import type {
   ContentSchemaRegistryPorts,
   ContentSchemaRegistrySession,
 } from './content-schema-registry-context-types';
+import { contentSchemaRegistryStepUpStateFor } from './content-schema-registry-acting-context';
 
 export type ContentSchemaRegistryResult =
   | { readonly kind: 'authorized'; readonly page: ContentSchemaRegistryPage }
@@ -52,6 +53,8 @@ export interface ResolveInput {
   readonly requestId: string;
   readonly contentTypeId?: string | undefined;
   readonly versionId?: string | undefined;
+  /** Trusted server clock used for the step-up disclosure window. */
+  readonly now?: (() => number) | undefined;
 }
 
 export const safeAccess = (input: {
@@ -170,6 +173,10 @@ export const pageFor = (input: {
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
   readonly state: 'ready' | 'degraded';
+  /** Server-resolved disclosure values; never raw identifiers. */
+  readonly actingContextLabel?: string | undefined;
+  /** Trusted clock for the step-up disclosure window. */
+  readonly now?: number | undefined;
 }): ContentSchemaRegistryPage => {
   const access = safeAccess(input);
   const actorId =
@@ -185,6 +192,8 @@ export const pageFor = (input: {
       ? 'degradedPage'
       : (input.authority?.presentationVariant ??
         (access === 'full' ? 'ownerFull' : 'entitledRead'));
+  const stepUpFreshUntil = input.authority?.stepUpFreshUntil;
+  const disclosureNow = input.now ?? Date.now();
   return {
     state: input.state,
     variant,
@@ -217,5 +226,15 @@ export const pageFor = (input: {
     initialList: input.list,
     initialDetail: input.detail,
     contractFields: CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
+    ...(input.actingContextLabel === undefined
+      ? {}
+      : { actingContextLabel: input.actingContextLabel }),
+    stepUpState: contentSchemaRegistryStepUpStateFor(
+      stepUpFreshUntil,
+      disclosureNow,
+    ),
+    ...(stepUpFreshUntil === undefined || !Number.isFinite(disclosureNow)
+      ? {}
+      : { stepUpFreshUntil }),
   };
 };

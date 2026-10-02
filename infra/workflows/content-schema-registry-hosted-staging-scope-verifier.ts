@@ -37,6 +37,9 @@ export interface Ac265HostedStagingScopeInput {
   readonly authenticatedReportArchiveSha256: unknown;
   /** Byte length reported by the GitHub Actions artifact API. */
   readonly authenticatedReportArchiveBytes: unknown;
+  /** Run identity independently authenticated by the GitHub Actions API. */
+  readonly authenticatedStagingRunId: unknown;
+  readonly authenticatedStagingRunAttempt: unknown;
   /** Source revision reported for the independently verified run. */
   readonly authenticatedSourceRevision: unknown;
   /** Staging deployment identity reported for the independently verified run. */
@@ -240,6 +243,17 @@ export const verifyAc265HostedStagingEvidence = (
   const authenticatedSourceRevision = requireRevision(
     input.authenticatedSourceRevision,
   );
+  const authenticatedStagingRunId = input.authenticatedStagingRunId;
+  const authenticatedStagingRunAttempt = input.authenticatedStagingRunAttempt;
+  if (
+    typeof authenticatedStagingRunId !== 'string' ||
+    !/^[1-9][0-9]{0,18}$/u.test(authenticatedStagingRunId) ||
+    typeof authenticatedStagingRunAttempt !== 'number' ||
+    !Number.isSafeInteger(authenticatedStagingRunAttempt) ||
+    authenticatedStagingRunAttempt < 1 ||
+    authenticatedStagingRunAttempt > 1_000
+  )
+    return failAc265HostedVerification();
   const authenticatedDeploymentId = input.authenticatedDeploymentId;
   if (
     typeof authenticatedDeploymentId !== 'string' ||
@@ -276,6 +290,8 @@ export const verifyAc265HostedStagingEvidence = (
   const contract = parseContract(bundle);
   if (
     report.environment !== 'staging' ||
+    contract.identity.stagingRunId !== authenticatedStagingRunId ||
+    contract.identity.stagingRunAttempt !== authenticatedStagingRunAttempt ||
     report.sourceRevision !== authenticatedSourceRevision ||
     report.sourceRevision !== contract.identity.sourceRevision ||
     report.deploymentId !== authenticatedDeploymentId ||

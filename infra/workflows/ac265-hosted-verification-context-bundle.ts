@@ -171,6 +171,12 @@ export interface Ac265HostedVerificationContextBundle {
 export const parseAc265HostedVerificationContextBundle = (
   bundleBytes: Uint8Array,
 ): Ac265HostedVerificationContextBundle => {
+  if (
+    !(bundleBytes instanceof Uint8Array) ||
+    bundleBytes.byteLength === 0 ||
+    bundleBytes.byteLength > MAX_BUNDLE_BYTES
+  )
+    return failAc265HostedVerification();
   let parsed: unknown;
   try {
     parsed = parseJsonBytesWithoutDuplicateMembers(

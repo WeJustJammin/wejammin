@@ -33,6 +33,7 @@ The split is independently implementable. 03a owns definition state, protected r
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | IA Shard 03             | Overview lines 9–22; Features lines 24–29; Acceptance Criteria lines 31–49                                                                                                                                       | Scope, acceptance, feature boundary, and non-negotiable behavior.                                                                                                                                                                                    |
 | IA Shard 03             | Interactions lines 50–69, especially CMS-01 through CMS-04 and CMS-10                                                                                                                                            | Operation registry, request semantics, refusals, and recovery behavior.                                                                                                                                                                              |
+| IA Shard 03 (DEC-108)   | Schema Activation Producers; deep-dive Schema Compilation and Compatibility and Reachable Activation Producer Chain (DEC-108)                                                                                     | Successor, actual dry-run, frozen CMS review, bounded assignment, independent decisions, and the reachable activation chain; private CMS review records.                                                                                              |
 | IA Shard 03             | Contracts                                                                                                                                                                                                        | Built-in/reserved types, field kinds, immutable versions, migration, block registry, protected registry reads, and storage rules.                                                                                                                    |
 | IA Shard 03             | Data Models and Common Model Envelope and Exceptions                                                                                                                                                             | ContentType, ContentTypeVersion, ContentTypeTemplateBinding, ContentTypeCapabilityBinding, FieldDefinitionVersion, RelationDefinition, SchemaMigrationPlan, SchemaArtifact, BlockDefinitionVersion, and explicit envelope ownership/exception rules. |
 | IA Shard 03             | Access Control lines 220–245; Accessibility lines 246–255                                                                                                                                                        | Capability, ownership, protected approval, disclosure, and accessible validation handoff.                                                                                                                                                            |
@@ -74,7 +75,7 @@ The split is independently implementable. 03a owns definition state, protected r
 | 25.01.01  | Content Type Definitions             | CMS-03A-01   | ContentType and ContentTypeVersion tables, draft route, reserved-key checks, Zod contract, RLS, and create/replay tests.                                                                            |
 | 25.01.02  | Field Schemas, Validation & Defaults | CMS-03A-02   | FieldDefinitionVersion table, all 14 field kinds, strict constraints/default/localization semantics, compatibility classification, and field-contract tests.                                        |
 | 25.01.03  | Relations & Domain Record Bindings   | CMS-03A-03   | RelationDefinition table, allowlisted target/projection/cardinality/onUnavailable contract, target-authority boundary, and binding tests.                                                           |
-| 25.01.04  | Schema Versioning & Migration        | CMS-03A-04   | SchemaMigrationPlan table, deterministic compiler/dry-run, state machine, CAS activation, worker retry/DLQ, and migration recovery tests.                                                           |
+| 25.01.04  | Schema Versioning & Migration        | CMS-03A-04, CMS-03A-09..14 | SchemaMigrationPlan table, deterministic compiler/dry-run, successor clone, actual dry-run report/plan/job, private CMS review freeze (cms_schema_reviews), bounded assignment (cms_schema_review_assignments), append-only independent decisions (cms_schema_review_decisions), safe review read, state machine, CAS activation, worker retry/DLQ, and the reachable producer → activation plus migration recovery tests. |
 | 25.03.01  | Approved Block Registry              | CMS-03A-05   | BlockDefinitionVersion table, signed release registration, strict props/renderer/data/a11y manifest, immutable retirement/lifecycle events, durable nonce replay receipts, and release-spoof tests. |
 
 25.02.01–25.02.04 and 25.03.02–25.03.04 are explicitly owned by 03b/03c. 25.05.* is also owned by 03c. This document supplies only the schema/block compatibility inputs those consumers are allowed to reference.
@@ -83,11 +84,17 @@ The split is independently implementable. 03a owns definition state, protected r
 
 The IA interaction table contains six mutation flows owned by this file, plus
 the protected list/detail query boundary required to serve the schema-registry
-workbench: exactly eight HTTP operations. Each has exactly one route registry
-entry and one operation contract. CMS-04 may enqueue migration work, but
-migration worker execution is an internal consumer, not a second HTTP endpoint.
-CMS-10 is admitted only from a trusted code-release registration path; an
-administrator cannot upload executable assets.
+workbench: the original eight HTTP operations. The DEC-108 activation producer amendment
+adds the reachable command chain that makes CMS-04 truthful rather than
+dependent on hand-inserted approved rows: successor, dry-run, review
+submission, review decision, review detail, and review assignment —
+CMS-03A-09 through CMS-03A-14. This boundary therefore owns exactly fourteen
+HTTP operations, each with exactly one route registry entry and one operation
+contract. Existing operation IDs CMS-03A-01 through CMS-03A-08 are unchanged
+and never renumbered. CMS-04 may enqueue migration work, but migration worker
+execution is an internal consumer, not a second HTTP endpoint. CMS-10 is
+admitted only from a trusted code-release registration path; an administrator
+cannot upload executable assets.
 
 | IA interaction                   | Operation ID | Concrete endpoint / trigger                                                   | Reconciliation                                                                                                                        |
 | -------------------------------- | ------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -99,6 +106,12 @@ administrator cannot upload executable assets.
 | CMS-10 Advance block lifecycle   | CMS-03A-08   | POST /api/v1/cms/blocks/versions/{blockDefinitionVersionId}/lifecycle         | One signed release command appends an immutable lifecycle event for an existing key/version; the version row is never updated.        |
 | Protected registry list          | CMS-03A-06   | GET /api/v1/cms/content-types                                                 | Capability-scoped, no-store page of discriminated content-type registry records with bounded cursor pagination.                       |
 | Protected registry detail        | CMS-03A-07   | GET /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}            | Capability-scoped, no-store discriminated version detail with nested field/relation metadata and immutable schema-artifact reference. |
+| CMS-04 Successor schema draft    | CMS-03A-09   | POST /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/successors | One command clones an immutable source into a fresh draft with new definition row IDs, preserved stable field identities/keys, remapped local references, and an incremented version number. |
+| CMS-04 Start schema dry-run      | CMS-03A-10   | POST /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/dry-runs  | One command derives source/target/classification/compiler/transform evidence, binds a new immutable dry-run report to the still-draft candidate under CAS, and atomically creates report, plan, and BE00 job. |
+| CMS-04 Submit schema review      | CMS-03A-11   | POST /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/reviews   | One command freezes the candidate definition/artifact/compiler/dependency/dry-run/policy evidence and moves draft → review atomically. |
+| CMS-04 Record review decision    | CMS-03A-12   | POST /api/v1/cms/schema-reviews/{reviewId}/decisions                          | One command appends an immutable decision by an independently authenticated assigned reviewer, rejecting the submitter and repeated humans. |
+| CMS-04 Read schema review        | CMS-03A-13   | GET /api/v1/cms/schema-reviews/{reviewId}                                     | Capability-scoped, no-store review detail with frozen evidence summary, required/recorded decision counts, decision references, and permitted next actions. |
+| CMS-04 Assign review capability  | CMS-03A-14   | POST /api/v1/cms/schema-reviews/{reviewId}/assignments                        | One command creates or revokes a bounded owner/review-scoped assignment of only read/decide on one frozen review, expiring within seven days and no later than the grantor's authority. |
 
 BE00 endpoints are inherited, not repeated: GET /api/v1/jobs/{jobId} observes migration status when a job exists; this file does not redefine JobStatus. CMS-03A-06 and CMS-03A-07 are protected control-plane reads, never public delivery endpoints. No INF-01, INF-03, INF-04, INF-10, or INF-08 duplicate is introduced.
 
@@ -144,6 +157,12 @@ This table is the single authoritative route registry for 03a. CI must compare d
 | CMS-03A-08   | CMS-10                    | POST /api/v1/cms/blocks/versions/{blockDefinitionVersionId}/lifecycle         | BlockLifecycleAdvanceRequest → 201 BlockLifecycleEventResource     | signed release-worker principal with block_registry:write; unknown/unreadable version is 404; human/admin or invalid capability is 403                                 | canonical order; release-worker CORS only; no browser CSRF; exact raw `X-WeJammin-Release-*` signature guard before JSON; rate release-registry-lifecycle | existing key/version; expected current lifecycle and monotonic next lifecycle are checked under lock; append-only event and nonce receipt commit atomically                                                        | 20/min/release; 15,000ms, response target <2s; no-store; Tier 2                                  | BE00 ApiError { code, message, requestId, details } | cms.block.lifecycle.changed.v1 after commit                              |
 | CMS-03A-06   | Protected registry list   | GET /api/v1/cms/content-types                                                 | ContentSchemaRegistryListQuery → 200 ContentSchemaRegistryListPage | authenticated caller with schema-registry read scope; insufficient scope is 403; inaccessible tenant/owner scope is 404-equivalent page omission                       | canonical BE00 order; CORS cms-console allowlist; no request body; no CSRF mutation check; strict query; rate cms-definition-read                         | no Idempotency-Key or If-Match; opaque cursor binds query/filter/sort and acting scope; deterministic ID tie-breaker                                                                                               | 120/min/user, 240/min/party; 15,000ms; `Cache-Control: no-store`; Tier 2 protected-read SLO      | BE00 ApiError { code, message, requestId, details } | none                                                                     |
 | CMS-03A-07   | Protected registry detail | GET /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}            | path UUIDs → 200 ContentSchemaRegistryDetail                       | authenticated caller with schema-registry read scope; unreadable owner/version is 404; known readable resource lacking a required capability is 403                    | canonical BE00 order; CORS cms-console allowlist; no request body; strict path/query; rate cms-definition-read                                            | no Idempotency-Key or If-Match; exact immutable IDs/version; no public cache                                                                                                                                       | 120/min/user, 240/min/party; 15,000ms; `Cache-Control: no-store`; Tier 2 protected-read SLO      | BE00 ApiError { code, message, requestId, details } | none                                                                     |
+| CMS-03A-09   | CMS-04                    | POST /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/successors | SchemaSuccessorRequest → 201 ContentTypeVersionResource            | schema_designer on the readable immutable source; hidden/absent source is 404; insufficient capability is 403                                                          | canonical order; CORS cms-console allowlist; CSRF; strict JSON; rate cms-definition-write                                                                | key and exact source If-Match required; clone commits new draft definition row IDs with remapped local references and stable field identities/keys; source rows never mutated; repeated key replays same draft                                                              | 30/min/user, 60/min/party; 15,000ms; no-store; Tier 2                                            | BE00 ApiError { code, message, requestId, details } | none                                                                     |
+| CMS-03A-10   | CMS-04                    | POST /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/dry-runs  | SchemaDryRunRequest → 202 SchemaDryRunResource                     | schema_designer on the draft; hidden/absent candidate is 404; capability denial is 403                                                                                | canonical order; CORS cms-console allowlist; CSRF; strict JSON; rate cms-definition-write                                                                | key and If-Match required; server derives source/target/compiler/classification; binds immutable report + plan + BE00 job under CAS in one transaction; same-key retry reuses, changed evidence starts a new run | 30/min/user, 60/min/party; 15,000ms acceptance deadline; no-store; Tier 2                        | BE00 ApiError { code, message, requestId, details } | none                                                                     |
+| CMS-03A-11   | CMS-04                    | POST /api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/reviews   | SchemaReviewSubmissionRequest → 201 SchemaReviewResource           | schema_designer on a draft with a passed persisted dry run; hidden/absent candidate is 404; capability denial is 403                                                  | canonical order; CORS cms-console allowlist; CSRF; strict JSON; rate cms-definition-write                                                                | key and If-Match required; freezes definition/artifact/compiler/dependency/dry-run/policy evidence; draft → review atomic; one live review per exact candidate evidence  | 30/min/user, 60/min/party; 15,000ms; no-store; Tier 2                                            | BE00 ApiError { code, message, requestId, details } | none                                                                     |
+| CMS-03A-12   | CMS-04                    | POST /api/v1/cms/schema-reviews/{reviewId}/decisions                          | SchemaReviewDecisionRequest → 201 SchemaReviewDecisionResource     | assigned cms.schema_review human with recent binding-bound MFA; concealed review is 404; missing assignment/capability is 403                                         | canonical order; CORS cms-console allowlist; CSRF; step-up MFA; strict JSON; rate cms-activation                                                          | key and If-Match required; append one decision; reject submitter/repeated human; recheck frozen evidence and current authority at decision; count resolved from code-owned policy | 30/min/user, 60/min/party; 15,000ms; no-store; Tier 2                                            | BE00 ApiError { code, message, requestId, details } | none                                                                     |
+| CMS-03A-13   | CMS-04                    | GET /api/v1/cms/schema-reviews/{reviewId}                                     | path UUID → 200 SchemaReviewResource                               | submitter/schema-designer scope or assigned review-only scope; concealed review is 404; insufficient capability is 403                                               | canonical BE00 order; CORS cms-console allowlist; no request body; strict path; rate cms-definition-read                                                 | no Idempotency-Key or If-Match; exact frozen review version; no public cache; always returns only the capability-safe review projection                              | 120/min/user, 240/min/party; 15,000ms; `Cache-Control: no-store`; Tier 2 protected-read SLO      | BE00 ApiError { code, message, requestId, details } | none                                                                     |
+| CMS-03A-14   | CMS-04                    | POST /api/v1/cms/schema-reviews/{reviewId}/assignments                        | SchemaReviewAssignmentRequest → 201/200 SchemaReviewAssignmentResource | existing owner with cms.schema_review.assign derived from the immutable owner initialization receipt; concealed/cross-owner review is 404; capability denial is 403    | canonical order; CORS cms-console allowlist; CSRF; step-up MFA; strict JSON; rate cms-activation                                                          | key and exact review If-Match required; create or revoke only read/decide on one frozen review; expires within seven days and no later than grantor authority; creates no identity; audit atomic | 10/min/user, 20/min/party; 15,000ms; no-store; Tier 2                                            | BE00 ApiError { code, message, requestId, details } | none                                                                     |
 
 ### Registry invariants
 
@@ -195,6 +214,15 @@ This table is the single authoritative route registry for 03a. CI must compare d
 | CMS-03A-05 and CMS-03A-08                    | release headers                                                        | exact HTTP names `X-WeJammin-Release-Key-Id`, `X-WeJammin-Release-Issued-At`, `X-WeJammin-Release-Nonce`, and `X-WeJammin-Release-Signature` map to internal `keyId`, `issuedAt`, `nonce`, and `signature`; aliases and JSON copies are rejected                                                                                                                                                     | 400/401                                    |
 | CMS-03A-06 and CMS-03A-07                    | read headers                                                           | Idempotency-Key and If-Match must be absent; no Content-Type is required because no body exists                                                                                                                                                                                                                                                                                                      | 400 INVALID_REQUEST                        |
 | CMS-03A-06 and CMS-03A-07                    | browser response state/ownership                                       | ResourceMeta contains only id, version, contentHash where applicable, and timestamps; concrete resources use exact per-resource state/lifecycle enums and compiled/active literals; ownership and release evidence are absent                                                                                                                                                                        | 422 response-contract failure              |
+| CMS-03A-09                                   | expectedVersion / source If-Match                                      | positive decimal string; exact strong If-Match must match the immutable source version; clone preserves stable field IDs/keys and remaps local references without mutating the source                                                                                                                                                                                                                 | 400 or 409 CONFLICT                        |
+| CMS-03A-10                                   | expectedVersion / transformKey / transformVersion                      | draft CAS version; the transform pair is both-null or both-present; the server derives source/target/compiler/classification and refuses caller-supplied counts, hashes, classification, or report; a transform pair present for additive or absent for conditional/breaking is 422                                                                                                                    | 422 or 409 CONFLICT                        |
+| CMS-03A-11                                   | expectedVersion / dryRunId                                             | draft CAS version; dryRunId must reference a persisted passed immutable dry run for the same candidate/evidence                                                                                                                                                                                                                                                                                      | 422 or 409 CONFLICT                        |
+| CMS-03A-12                                   | expectedVersion / decision                                             | exact review CAS version; decision is approve or reject; the reviewer is server-resolved, must be currently assigned and capable, cannot be the submitter, and cannot repeat a human                                                                                                                                                                                                                 | 422 or 409 CONFLICT                        |
+| CMS-03A-13                                   | review-detail response                                                 | returns only the capability-safe review projection: frozen evidence summaries, required/recorded counts, decision references, and permitted next actions; no actor/person/party/private-binding identifiers and no caller-authoritative policy fields                                                                                                                                                   | 422 response-contract failure              |
+| CMS-03A-14                                   | action / reviewerPersonId / expiresAt / assignmentId                   | discriminated create/revoke with expectedVersion; create references an authorized eligible existing human and a finite expiresAt no later than seven days from now and no later than the grantor's own authority; revoke references an existing assignment; broad scopes and delegation are rejected                                                                                                  | 422 or 409 CONFLICT                        |
+| CMS-03A-09 through CMS-03A-12 and CMS-03A-14 | mutation headers                                                       | Idempotency-Key 8-128 printable ASCII; If-Match exact quoted positive decimal where required; Content-Type application/json                                                                                                                                                                                                                                                                          | 400 INVALID_REQUEST                        |
+| CMS-03A-06, CMS-03A-07, and CMS-03A-13      | read headers                                                           | Idempotency-Key and If-Match must be absent; no Content-Type is required because no body exists                                                                                                                                                                                                                                                                                                      | 400 INVALID_REQUEST                        |
+| CMS-03A-09 through CMS-03A-14               | browser response state/ownership                                       | ResourceMeta contains only id, version, contentHash where applicable, and timestamps; concrete resources use exact per-resource state enums; actor, person, party, private-binding, ownership, and release evidence are absent                                                                                                                                                                        | 422 response-contract failure              |
 
 ## Request/Response Contracts (Zod 4 schemas)
 
@@ -476,6 +504,47 @@ const SchemaActivationRequest = z
       });
     }
   });
+const SchemaSuccessorRequest = z.strictObject({
+  expectedVersion: Version,
+});
+const SchemaDryRunRequest = z
+  .strictObject({
+    expectedVersion: Version,
+    transformKey: ValidatorKey.nullable(),
+    transformVersion: Version.nullable(),
+  })
+  .superRefine((value, ctx) => {
+    if ((value.transformKey === null) !== (value.transformVersion === null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['transformVersion'],
+        message: 'transform key and version must be both null or both present',
+      });
+    }
+  });
+const SchemaReviewSubmissionRequest = z.strictObject({
+  expectedVersion: Version,
+  dryRunId: UUID,
+});
+const SchemaReviewDecisionRequest = z.strictObject({
+  expectedVersion: Version,
+  decision: z.enum(['approve', 'reject']),
+});
+const SchemaReviewAssignmentRequest = z.discriminatedUnion('action', [
+  z.strictObject({
+    action: z.literal('create'),
+    expectedVersion: Version,
+    reviewerPersonId: UUID,
+    expiresAt: z.string().datetime({ offset: true }),
+    reason: z.string().min(1).max(256).optional(),
+  }),
+  z.strictObject({
+    action: z.literal('revoke'),
+    expectedVersion: Version,
+    assignmentId: UUID,
+    reason: z.string().min(1).max(256).optional(),
+  }),
+]);
 const BlockRegistrationRequest = z.strictObject({
   blockKey: BlockKey,
   blockVersion: z.number().int().positive().max(2147483647),
@@ -730,6 +799,243 @@ const SchemaActivationResource = ResourceMeta.extend({
   jobId: UUID.nullable(),
   eventType: z.literal('cms.schema.activated.v1'),
 });
+const SchemaDryRunState = z.enum(['queued', 'running', 'completed', 'failed']);
+const SchemaDryRunResource = ResourceMeta
+  .extend({
+    resourceKind: z.literal('schema_dry_run'),
+    state: SchemaDryRunState,
+    contentTypeVersionId: UUID,
+    // Derived server-side at creation; never caller-supplied.
+    classification: z.enum(['additive', 'conditional', 'breaking', 'unknown']),
+    attemptId: UUID,
+    jobId: UUID,
+    migrationPlanId: UUID,
+    compilerVersion: z.string().min(1).max(32),
+    transformKey: ValidatorKey.nullable(),
+    transformVersion: Version.nullable(),
+    // Final evidence is null until the actual scan seals the report.
+    result: z.enum(['passed', 'failed']).nullable(),
+    failureCode: z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/).nullable(),
+    sourceCount: z.number().int().nonnegative().nullable(),
+    targetCount: z.number().int().nonnegative().nullable(),
+    rowErrorCount: z.number().int().nonnegative().nullable(),
+    sourceHash: Hash.nullable(),
+    targetHash: Hash.nullable(),
+    reportHash: Hash.nullable(),
+  })
+  .superRefine((value, ctx) => {
+    const sealed = value.state === 'completed';
+    const sealedFields = [
+      value.result,
+      value.sourceCount,
+      value.targetCount,
+      value.rowErrorCount,
+      value.sourceHash,
+      value.targetHash,
+      value.reportHash,
+    ];
+    if (sealed && sealedFields.some((field) => field === null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'a completed dry-run must expose sealed report evidence',
+      });
+    }
+    if (!sealed && sealedFields.some((field) => field !== null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'an unsealed dry-run cannot carry final report evidence',
+      });
+    }
+    // A sealed pass is only valid with a proven zero row-error scan; a sealed
+    // fail must carry the actual sealed scan errors. Infrastructure failure is
+    // the separate unsealed 'failed' state, distinguished by its failure code.
+    if (sealed && value.result === 'passed' && value.rowErrorCount !== 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['rowErrorCount'],
+        message: 'a passed dry-run requires zero row errors',
+      });
+    }
+    if (sealed && value.result === 'failed' && value.rowErrorCount === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['rowErrorCount'],
+        message: 'a sealed failing scan must carry the actual scan errors',
+      });
+    }
+    if (value.state === 'failed' && value.failureCode === null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['failureCode'],
+        message: 'an unsealed failed dry-run requires a safe failure code',
+      });
+    }
+    if (value.state !== 'failed' && value.failureCode !== null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['failureCode'],
+        message: 'only a failed dry-run carries a failure code',
+      });
+    }
+  });
+const SchemaReviewState = z.enum(['open', 'approved', 'rejected', 'invalidated']);
+const SchemaReviewNextAction = z.enum([
+  'create_successor',
+  'start_dry_run',
+  'submit_review',
+  'assign_reviewer',
+  'record_decision',
+  'activate',
+]);
+const SchemaReviewDecisionOutcome = z.enum(['approve', 'reject']);
+const SchemaReviewFrozenEvidence = z.strictObject({
+  contentTypeVersionId: UUID,
+  contentTypeVersionNo: Version,
+  definitionHash: Hash,
+  schemaArtifact: z.strictObject({
+    id: UUID,
+    state: z.literal('compiled'),
+    compilerVersion: z.string().min(1).max(32),
+    zodContractRef: z.string().min(1).max(256),
+    artifactHash: Hash,
+  }),
+  dependencyManifestHash: Hash,
+  dryRun: z.strictObject({
+    id: UUID,
+    state: SchemaDryRunState,
+    result: z.enum(['passed', 'failed']).nullable(),
+    reportHash: Hash.nullable(),
+  }),
+});
+const SchemaReviewResource = ResourceMeta.extend({
+  resourceKind: z.literal('schema_review'),
+  state: SchemaReviewState,
+  contentTypeId: UUID,
+  contentTypeVersionId: UUID,
+  contentTypeVersionNo: Version,
+  riskClass: z.enum(['ordinary', 'protected']),
+  requiredDecisionCount: z.number().int().min(1).max(8),
+  requiredCapabilities: z.array(CapabilityKey).min(1).max(16),
+  distinctApprovalCount: z.number().int().nonnegative(),
+  recordedDecisionCount: z.number().int().nonnegative(),
+  frozenEvidence: SchemaReviewFrozenEvidence,
+  dryRunId: UUID,
+  policyKey: z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/),
+  policyVersion: Version,
+  policyHash: Hash,
+  approvalEvidenceHash: Hash.nullable(),
+  submittedAt: z.string().datetime({ offset: true }),
+  decidedAt: z.string().datetime({ offset: true }).nullable(),
+  decisions: z
+    .array(
+      z.strictObject({
+        id: UUID,
+        decision: SchemaReviewDecisionOutcome,
+        capability: CapabilityKey,
+        decidedAt: z.string().datetime({ offset: true }),
+      }),
+    )
+    .max(8),
+  permittedNextActions: z.array(SchemaReviewNextAction).max(6),
+}).superRefine((value, ctx) => {
+  const approves = value.decisions.filter(
+    (decision) => decision.decision === 'approve',
+  ).length;
+  const decisionIds = new Set(value.decisions.map((decision) => decision.id));
+  if (decisionIds.size !== value.decisions.length) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['decisions'],
+      message: 'decision references must be unique',
+    });
+  }
+  if (value.recordedDecisionCount !== value.decisions.length) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['recordedDecisionCount'],
+      message: 'recorded decision count must equal the decision references',
+    });
+  }
+  // recordedDecisionCount is the immutable append-only history (<= 8), while
+  // distinctApprovalCount is the number of distinct humans still qualifying
+  // after the current authority/MFA recheck; a revoked or ineligible human is
+  // no longer counted as an approver even though their recorded decision stays.
+  if (value.distinctApprovalCount > approves) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['distinctApprovalCount'],
+      message: 'distinct qualifying approvers cannot exceed recorded approvals',
+    });
+  }
+  if (
+    value.state === 'approved' &&
+    value.distinctApprovalCount !== value.requiredDecisionCount
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['state'],
+      message: 'an approved review requires exactly the policy decision count',
+    });
+  }
+  if (value.decisions.some((decision) => decision.decision === 'reject')) {
+    if (value.state === 'approved') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'a review with a rejection cannot be approved',
+      });
+    }
+  }
+});
+const SchemaReviewDecisionResource = ResourceMeta.extend({
+  resourceKind: z.literal('schema_review_decision'),
+  reviewId: UUID,
+  decision: SchemaReviewDecisionOutcome,
+  capability: CapabilityKey,
+  decidedAt: z.string().datetime({ offset: true }),
+});
+const SchemaReviewAssignmentResource = ResourceMeta.extend({
+  resourceKind: z.literal('schema_review_assignment'),
+  reviewId: UUID,
+  state: z.enum(['active', 'revoked']),
+  capability: z.literal('cms.schema_review'),
+  actions: z.tuple([z.literal('read'), z.literal('decide')]),
+  startsAt: z.string().datetime({ offset: true }),
+  expiresAt: z.string().datetime({ offset: true }),
+  reason: z.string().min(1).max(256).nullable(),
+});
+const SchemaActivationPreparation = z.strictObject({
+  dryRunRef: z
+    .strictObject({
+      id: UUID,
+      state: SchemaDryRunState,
+      result: z.enum(['passed', 'failed']).nullable(),
+      jobId: UUID.nullable(),
+    })
+    .nullable(),
+  jobRef: z
+    .strictObject({
+      id: UUID,
+      state: z.enum([
+        'queued',
+        'running',
+        'retrying',
+        'completed',
+        'failed_retryable',
+        'failed_terminal',
+      ]),
+    })
+    .nullable(),
+  reviewRef: z
+    .strictObject({
+      id: UUID,
+      state: SchemaReviewState,
+    })
+    .nullable(),
+  permittedNextActions: z.array(SchemaReviewNextAction).max(6),
+});
 const BlockDefinitionVersionResource = LifecycleResourceMeta.extend({
   resourceKind: z.literal('block_definition_version'),
   blockKey: BlockKey,
@@ -927,6 +1233,7 @@ const ContentSchemaRegistryDetail = z.strictObject({
   templateBindings: z.array(TemplateBindingResource).max(32),
   capabilityBindings: z.array(CapabilityBindingResource).max(32),
   blockDefinitions: z.array(BlockDefinitionRegistryRecord).max(128),
+  activationPreparation: SchemaActivationPreparation,
 });
 ```
 
@@ -948,6 +1255,43 @@ There is no optional artifact query flag. CMS-03A-07 always returns the
 capability-safe artifact identity/hash required by its detail contract, while
 release verification evidence remains worker-only.
 
+The DEC-108 activation producers return their own safe discriminated resources:
+CMS-03A-09 returns ContentTypeVersionResource, CMS-03A-10 returns
+SchemaDryRunResource, CMS-03A-11 and CMS-03A-13 return SchemaReviewResource,
+CMS-03A-12 returns SchemaReviewDecisionResource, and CMS-03A-14 returns
+SchemaReviewAssignmentResource. None of these responses contains an actor,
+person, party, or private acting-context binding identifier. The
+SchemaReviewAssignmentResource exposes only the safe assignment projection
+(review, state, the fixed capability, the read/decide actions, start/expiry, and
+an optional reason); the owner-supplied `reviewerPersonId` is a request
+reference, never echoed back, and the resolved reviewer/grantor person and
+binding identities remain server-side. The
+`ContentSchemaRegistryDetail.activationPreparation` projection carries only
+dry-run/job/review references, the resolved next actions, and the server-derived
+readiness — never actor ownership identifiers, the private binding id, raw
+content, or caller-authoritative policy fields.
+
+The stable private actor/person/party/binding projection hash is computed
+server-side only and is never exposed to the browser as a context evidence
+field or correlation token; the confirmation and review UI receive only these
+safe resources, the server-verified human-readable acting-context label, and the
+expiring MFA disclosure. The public lowercase 64-hex approval-evidence digest is
+the only review evidence serialized, and no separate actor-scope correlation
+token is required.
+
+On a SchemaReviewResource, `recordedDecisionCount` and `decisions` are the
+immutable append-only decision history (at most eight, unique per human, the
+submitter and repeated humans excluded), while `distinctApprovalCount` is the
+number of distinct humans who still qualify after the current authority/MFA
+recheck — a revoked or since-ineligible human stops counting as an approver
+without erasing their recorded decision. An `approved` review requires
+`distinctApprovalCount` to equal the policy `requiredDecisionCount` exactly,
+and a review holding any rejection cannot be approved. In the
+`activationPreparation.dryRunRef`, `result` stays `null` until the actual scan
+seals the report: a `queued`/`running` reference must never report `passed`,
+and only a `completed` passed report with zero row errors is a satisfiable
+readiness input.
+
 The `lifecycle` filter is a closed union with this compatibility matrix:
 
 | resourceKind                       | Accepted lifecycle values              |
@@ -966,13 +1310,15 @@ resources use the separate `state` filter and state is never interpreted as a
 lifecycle value.
 
 The declared HTTP responses are 201 for draft/field/relation/block creation
-and lifecycle-advance event append,
-202 for activation acceptance when migration/projection work is queued, and
-200 for a completed synchronous activation or either protected registry read.
-CMS-03A-04 always returns SchemaActivationResource with a jobId when work
-remains. CMS-03A-06 returns ContentSchemaRegistryListPage and CMS-03A-07
-returns ContentSchemaRegistryDetail. Every operation returns ApiError { code, message,
-requestId, details } on failure.
+and lifecycle-advance event append, plus successor-draft, review-submission,
+review-decision, and assignment-create (201); 202 for activation and dry-run
+acceptance when migration/projection work is queued; 200 for a completed
+synchronous activation, an assignment revocation, or either protected registry
+read. CMS-03A-04 always returns SchemaActivationResource with a jobId when work
+remains. CMS-03A-06 returns ContentSchemaRegistryListPage, CMS-03A-07 returns
+ContentSchemaRegistryDetail, CMS-03A-13 returns SchemaReviewResource, and
+CMS-03A-14 returns SchemaReviewAssignmentResource on both create and revoke.
+Every operation returns ApiError { code, message, requestId, details } on failure.
 
 ### Contract and error matrix
 
@@ -986,6 +1332,12 @@ requestId, details } on failure.
 | CMS-03A-08   | malformed signature/header/body/path           | no valid release principal/signature   | human, wrong release, or scope denied | unknown/unreadable block version                                      | stale lifecycle/version, invalid advance, duplicate nonce/idempotency  | unsupported media       | lifecycle/release-digest schema failure         | release-registry-lifecycle limit | registry/RPC/deadline                | scrubbed internal error |
 | CMS-03A-06   | malformed query/cursor or mutation-only header | missing/expired session                | registry-read capability denied       | not emitted for concealed rows; rows are omitted                      | not emitted                                                            | not applicable; no body | filter/sort/page validation failure             | cms-definition-read limit        | projection/RPC/deadline; Retry-After | scrubbed internal error |
 | CMS-03A-07   | malformed UUID or mutation-only header         | missing/expired session                | detail capability denied              | concealed, absent, or mismatched type/version                         | not emitted                                                            | not applicable; no body | not emitted; path-only request                  | cms-definition-read limit        | projection/RPC/deadline; Retry-After | scrubbed internal error |
+| CMS-03A-09   | malformed path/header/body                     | missing/expired session                | source capability denied              | source hidden or absent                                               | stale source If-Match or idempotency mismatch; source already active  | non-JSON                | clone/definition schema failure                 | cms-definition-write limit       | RPC unavailable/deadline             | scrubbed internal error |
+| CMS-03A-10   | malformed path/header/body                     | missing/expired session                | draft capability denied               | candidate hidden or absent                                            | stale version, invalid classification/transform pairing, idempotency mismatch | non-JSON                | transform/registry/count-input schema failure   | cms-definition-write limit       | queue/RPC/deadline; Retry-After      | scrubbed internal error |
+| CMS-03A-11   | malformed path/header/body                     | missing/expired session                | draft capability denied               | candidate hidden or absent                                            | stale version, dry-run not passed, existing live review, idempotency mismatch | non-JSON                | review-freeze schema failure                    | cms-definition-write limit       | RPC unavailable/deadline             | scrubbed internal error |
+| CMS-03A-12   | malformed path/header/body                     | missing/expired session or missing step-up MFA | assignment/capability denied    | review hidden or absent; concealed review is indistinguishable        | stale review version, submitter/self or repeated human, frozen-evidence drift, idempotency mismatch | non-JSON                | decision schema failure                         | cms-activation limit             | RPC unavailable/deadline; Retry-After | scrubbed internal error |
+| CMS-03A-13   | malformed UUID or mutation-only header         | missing/expired session                | review-detail capability denied       | concealed, absent, or out-of-scope review                            | not emitted                                                            | not applicable; no body | not emitted; path-only request                  | cms-definition-read limit        | projection/RPC/deadline; Retry-After | scrubbed internal error |
+| CMS-03A-14   | malformed path/header/body                     | missing/expired session or missing step-up MFA | owner assignment capability denied; cross-owner concealed | review hidden, absent, or cross-owner                       | stale review version, invalid expiry, unknown/ineligible human, broad scope/delegation, self/submitter target, revoke of a non-existent assignment, idempotency mismatch | non-JSON                | assignment schema failure                       | cms-activation limit             | RPC unavailable/deadline; Retry-After | scrubbed internal error |
 
 Error details are BE00 allowlists only: 400/422 may include at most 50 JSON-pointer violations; 401 has recoveryAction; 403 has reasonCode without policy predicates; 404 is empty; 409 may include expectedVersion/currentVersion only when the caller may read the candidate; 429 includes retryAfterSeconds, limit, resetAt; 502/503/504 includes dependencyClass, retryable, and optional retryAfterSeconds; 500 is empty. No error distinguishes a hidden resource from absence.
 
@@ -1001,8 +1353,11 @@ This boundary owns twelve storage tables: `cms_content_types`,
 `cms_relation_definitions`, `cms_schema_migration_plans`,
 `cms_schema_artifacts`, `cms_schema_dry_run_reports`,
 `cms_block_definition_versions`, `cms_release_nonce_receipts`, and
-`cms_block_definition_lifecycle_events`. The HTTP surface remains eight
-operations (six mutations and two protected reads); the migration plan and its
+`cms_block_definition_lifecycle_events`, plus the three DEC-108 private
+CMS-owned review records `cms_schema_reviews`,
+`cms_schema_review_decisions`, and `cms_schema_review_assignments`. The HTTP
+surface is fourteen operations (eleven first-party mutations and three
+protected reads: CMS-03A-06, CMS-03A-07, and CMS-03A-13); the migration plan and its
 immutable dry-run report are internal activation/worker records, not extra
 endpoints.
 
@@ -1022,7 +1377,7 @@ The model names below are literal IA names. Every field includes SQL type, nulla
 | ReleaseNonceReceipt / cms_release_nonce_receipts                      | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; release_key_id text NOT NULL CHECK octet_length(release_key_id) BETWEEN 1 AND 128; nonce_hash char(64) NOT NULL CHECK nonce_hash ~ '^[a-f0-9]{64}$'; operation_id text NOT NULL CHECK operation_id IN ('CMS-03A-05','CMS-03A-08'); issued_at timestamptz NOT NULL; expires_at timestamptz NOT NULL; consumed_at timestamptz NULL; raw_body_hash char(64) NOT NULL CHECK raw_body_hash ~ '^[a-f0-9]{64}$'; signature_hash char(64) NOT NULL CHECK signature_hash ~ '^[a-f0-9]{64}$'; verified_at timestamptz NOT NULL; outcome text NOT NULL CHECK outcome IN ('claimed','consumed','rejected'); created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK(expires_at >= issued_at + interval '10 minutes');                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | UNIQUE(release_key_id,nonce_hash); INDEX(expires_at); INSERT/claim occurs before either signed operation is accepted; unique key+nonce admission is atomic with the mutation, consumed evidence is immutable after success, and retention is never shorter than ten minutes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | BlockDefinitionLifecycleEvent / cms_block_definition_lifecycle_events | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state = 'recorded'; version bigint NOT NULL CHECK version > 0; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); block_definition_version_id uuid NOT NULL REFERENCES cms_block_definition_versions(id); block_key text NOT NULL CHECK block_key ~ '^[a-z][a-z0-9._-]{0,95}$'; block_version integer NOT NULL CHECK block_version > 0; from_lifecycle text NOT NULL CHECK from_lifecycle IN ('supported','deprecated'); to_lifecycle text NOT NULL CHECK to_lifecycle IN ('deprecated','withdrawn'); release_digest char(64) NOT NULL CHECK release_digest ~ '^[a-f0-9]{64}$'; release_principal_id uuid NOT NULL; release_key_id text NOT NULL CHECK octet_length(release_key_id) BETWEEN 1 AND 128; release_raw_body_hash char(64) NOT NULL CHECK release_raw_body_hash ~ '^[a-f0-9]{64}$'; release_signature_hash char(64) NOT NULL CHECK release_signature_hash ~ '^[a-f0-9]{64}$'; release_nonce_hash char(64) NOT NULL CHECK release_nonce_hash ~ '^[a-f0-9]{64}$'; release_verified_at timestamptz NOT NULL; CHECK((from_lifecycle='supported' AND to_lifecycle='deprecated') OR (from_lifecycle='deprecated' AND to_lifecycle='withdrawn')); CHECK(updated_at = created_at);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | UNIQUE(block_definition_version_id,to_lifecycle); UNIQUE(block_key,block_version,to_lifecycle); INDEX(block_definition_version_id,created_at DESC); append-only immutable evidence; CMS-03A-08 inserts the event and nonce receipt in one transaction, and effective lifecycle is the latest ordered event or initial supported registration. UPDATE/DELETE are rejected.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-The twelfth record, `cms_schema_dry_run_reports`, is immutable compiler
+The dry-run report record, `cms_schema_dry_run_reports`, is immutable compiler
 evidence rather than a caller-facing resource. It stores the target and
 optional source version, additive/conditional/breaking classification, the
 required transform pair for conditional or breaking changes, source/target/
@@ -1032,6 +1387,47 @@ typed columns. The target version and content type are foreign keys; the
 all-zero source hash represents first activation. Its report is bounded by the
 same JSONB safety rules, keyed by target and creation time, inserted only by
 the named dry-run RPC, and rejected on update or delete.
+
+The report distinguishes the sealed scan from the infrastructure failure. A
+`completed` report is immutable and carries a sealed `result`; a sealed pass
+requires `row_error_count = 0` and a sealed fail requires `row_error_count > 0`
+with the actual bounded per-row error evidence. An unsealed `failed` report
+(the job could not seal a scan) carries a safe `failureCode` and no sealed
+counts or hashes. No counter arithmetic or manually inserted report substitutes
+for the sealed scan, and the resource never reports a queued/running attempt as
+`passed`.
+
+The artifact compiler uses the actual versioned contract reference
+`cms/content-type/{typeKey}/v{versionNo}` rather than a fixed `/v1`, so a
+successor version's immutable artifact is addressed by its own version. The
+deterministic artifact hash composes that versioned `zodContractRef`, the
+`compilerVersion`, and the compiled editor/renderer manifests; it uses no
+random salt and never mutates the source artifact. Successor drafts therefore
+carry new definition row IDs but preserve stable field IDs and keys, and two
+unchanged clones of different versions coexist under distinct version-addressed
+artifact references without claiming identical versioned artifacts. Tests cover
+both the second and third version.
+
+The three DEC-108 private review records are CMS-owned, never CFG
+setting-value candidates, and are the only authority for schema-review evidence.
+
+| Model / table                                                         | Typed fields, constraints, and foreign keys                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Query indexes and write rules                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SchemaReview / cms_schema_reviews                                     | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state IN ('open','approved','rejected','invalidated'); version bigint NOT NULL CHECK version > 0; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); content_type_id uuid NOT NULL REFERENCES cms_content_types(id); content_type_version_id uuid NOT NULL REFERENCES cms_content_type_versions(id); candidate_version_no integer NOT NULL CHECK candidate_version_no > 0; definition_hash char(64) NOT NULL CHECK definition_hash ~ '^[a-f0-9]{64}$'; schema_artifact_id uuid NOT NULL; compiler_version text NOT NULL CHECK octet_length(compiler_version) BETWEEN 1 AND 32; dependency_manifest_hash char(64) NOT NULL CHECK dependency_manifest_hash ~ '^[a-f0-9]{64}$'; dry_run_id uuid NOT NULL; dry_run_report_hash char(64) NOT NULL CHECK dry_run_report_hash ~ '^[a-f0-9]{64}$'; policy_key text NOT NULL CHECK policy_key ~ '^[a-z][a-z0-9._-]{0,127}$'; policy_version bigint NOT NULL CHECK policy_version > 0; policy_hash char(64) NOT NULL CHECK policy_hash ~ '^[a-f0-9]{64}$'; risk_class text NOT NULL CHECK risk_class IN ('ordinary','protected'); required_decision_count smallint NOT NULL CHECK required_decision_count BETWEEN 1 AND 8; required_capabilities jsonb NOT NULL CHECK jsonb_typeof(required_capabilities)='array' AND jsonb_array_length(required_capabilities) BETWEEN 1 AND 16; context_hash char(64) NOT NULL CHECK context_hash ~ '^[a-f0-9]{64}$'; submitter_person_ref uuid NOT NULL; submitted_at timestamptz NOT NULL DEFAULT clock_timestamp(); decided_at timestamptz NULL; approval_evidence_hash char(64) NULL CHECK approval_evidence_hash IS NULL OR approval_evidence_hash ~ '^[a-f0-9]{64}$'; CHECK ((state IN ('approved')) = (approval_evidence_hash IS NOT NULL)); CHECK (decided_at IS NULL OR decided_at >= submitted_at); CHECK ((state = 'approved') = (decided_at IS NOT NULL)) | UNIQUE(content_type_version_id, definition_hash, dry_run_id) WHERE state = 'open' (one live review per exact frozen candidate/evidence); INDEX(owner_id, state, submitted_at DESC); INDEX(content_type_version_id, state). INSERT through the review-submission RPC only; frozen evidence columns, submitter_person_ref, submitted_at, and context_hash are immutable after insert; state only moves open → approved, rejected, or invalidated. UPDATE/DELETE and direct browser/service-role table grants are revoked. |
+| SchemaReviewDecision / cms_schema_review_decisions                    | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; review_id uuid NOT NULL REFERENCES cms_schema_reviews(id); reviewer_person_ref uuid NOT NULL; binding_context_hash char(64) NOT NULL CHECK binding_context_hash ~ '^[a-f0-9]{64}$'; capability_key text NOT NULL CHECK capability_key ~ '^[a-z][a-z0-9._-]{0,127}$ AND capability_key = 'cms.schema_review''; decision text NOT NULL CHECK decision IN ('approve','reject'); decided_at timestamptz NOT NULL DEFAULT clock_timestamp(); reviewed_hash char(64) NOT NULL CHECK reviewed_hash ~ '^[a-f0-9]{64}$'; mfa_verified_at timestamptz NOT NULL; UNIQUE(review_id, reviewer_person_ref) | Append-only; only the review-decision RPC inserts. UNIQUE(review_id, reviewer_person_ref) prevents repeated humans; a CHECK and the RPC together forbid reviewer_person_ref = the review submitter. UPDATE/DELETE and direct grants are revoked and forced RLS applies. |
+| SchemaReviewAssignment / cms_schema_review_assignments                | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; review_id uuid NOT NULL REFERENCES cms_schema_reviews(id); reviewer_person_ref uuid NOT NULL; grantor_person_ref uuid NOT NULL; capability_key text NOT NULL CHECK capability_key = 'cms.schema_review'; actions text[] NOT NULL CHECK actions = ARRAY['read','decide']::text[]; state text NOT NULL CHECK state IN ('active','revoked'); starts_at timestamptz NOT NULL; ends_at timestamptz NOT NULL; reason text NULL CHECK reason IS NULL OR octet_length(reason) BETWEEN 1 AND 256; created_at timestamptz NOT NULL DEFAULT clock_timestamp(); updated_at timestamptz NOT NULL DEFAULT clock_timestamp(); version bigint NOT NULL DEFAULT 1 CHECK version > 0; CHECK (ends_at > starts_at); CHECK (ends_at <= starts_at + interval '7 days') | INDEX(review_id, reviewer_person_ref, state); INDEX(owner_id, state, ends_at). Only the named assignment RPC creates/revokes; effective authority requires starts_at <= now < ends_at and rechecks current binding/capability at decision and activation, so no expiry sweep is required. Assignment never stores an owner acting context and cannot be delegated or broadened. UPDATE/DELETE and direct grants are revoked; forced RLS applies. |
+
+Every review, decision, and assignment row carries the IA envelope
+(`owner_id`, closed `state` where applicable, `version`, timestamps),
+ENABLE/FORCE RLS, revoked direct browser/service-role table grants, and
+pinned-search-path named private RPCs as the only command authority. Review
+identity hashes use a versioned private actor/person/party/binding projection
+that excludes request/correlation and transport timestamps; the resolved
+private matching UUIDs are never serialized into any resource, prop, public
+evidence resource, or log. Candidate definition, artifact, compiler,
+dependency, dry-run, policy, or relevant-authority drift invalidates the open
+or approved review; rejection returns the candidate to an editable draft
+through an audited transition and a resubmission freezes new evidence.
 
 The activation RPC enforces that every version in `active`, `superseded`, or
 `retired` state has all six immutable activation-evidence values populated:
@@ -1046,10 +1442,10 @@ caller-authoritative fields.
 - cms_definition_state is a private enum with draft, review, approved, scheduled, active, superseded, retired, blocked for versioned definitions. ContentType has one physical `state` column (`active|retired`); API `lifecycle` is its derived external name. BlockDefinitionVersion has one physical registration `state` column and its API lifecycle is derived from append-only lifecycle events, never a duplicate column or mutable version-row field. Definition workflow state must not be inferred from root lifecycle, and active records are immutable. Blocked may return to draft only through an audited transition. Migration state is separate and cannot be inferred from job state.
 - Every bigint crosses the API as a decimal string. Every UUID FK is checked inside the same transaction. Caller-controlled JSONB cells are capped at 8 KiB, nesting 8, object keys 128, and array length 128 unless the field contract gives a lower bound; the server-generated compiled editor and renderer manifest aggregates use the immutable `cms_compiled_manifest_bounded` helper with a 512 KiB aggregate ceiling while retaining nesting 8, object keys 128, and array length 128. All persisted rows carry the IA envelope (`owner_id`, closed `state`, `version`, timestamps); immutable rows pin `updated_at = created_at`.
 - Fields without a relational FK are intentional: owner_capability, workflow_key/version, validator_key/version, target_type, projection_key, transform_key, renderer_ref, and manifest JSONB values resolve against protected registries; dry_run_id identifies an immutable compiler report. `schema_artifact_id` is a deferred composite FK to the matching immutable artifact and the draft RPC inserts both rows atomically. No caller-selected table, SQL expression, free-form validator, or arbitrary URL is a permitted substitute for those registries.
-- The SQL API exposes only cms_create_type_draft, cms_add_field_definition, cms_bind_relation, cms_activate_schema, cms_register_block, cms_advance_block_lifecycle, cms_list_content_types, and cms_get_content_type_version RPCs to named capability grants. anon and authenticated roles have no direct INSERT/UPDATE/DELETE grants on these tables.
+- The SQL API exposes only cms_create_type_draft, cms_add_field_definition, cms_bind_relation, cms_activate_schema, cms_register_block, cms_advance_block_lifecycle, cms_list_content_types, cms_get_content_type_version, cms_create_schema_successor, cms_start_schema_dry_run, cms_submit_schema_review, cms_decide_schema_review, cms_get_schema_review, and cms_assign_schema_review RPCs to named capability grants. anon and authenticated roles have no direct INSERT/UPDATE/DELETE grants on these tables.
 - RLS policies call a schema-qualified immutable helper that resolves the verified session and acting context. SELECT policy permits only the caller's schema-design scope or an explicitly authorized code-release principal; WITH CHECK requires the same scope, registry allowlist, and current state. A SECURITY DEFINER RPC sets search_path to pg_catalog, public, and the private CMS schema, then rechecks all predicates.
 - Audit and outbox rows are BE00-owned and written atomically; this spec does not add shadow audit tables. A failed audit/outbox insert rolls back the definition mutation.
-- CMS-03A-06 and CMS-03A-07 execute projection-only RPCs: they perform no INSERT, UPDATE, DELETE, idempotency reservation, mutation audit, outbox write, migration lease, or definition-state transition on success or failure. Rate/telemetry counters are the only permitted side effects.
+- CMS-03A-06, CMS-03A-07, and CMS-03A-13 execute projection-only RPCs: they perform no INSERT, UPDATE, DELETE, idempotency reservation, mutation audit, outbox write, migration lease, or definition-state transition on success or failure. Rate/telemetry counters are the only permitted side effects.
 - Retention keeps active/superseded definitions and migration evidence for the configured legal/audit retention. Retirement is a new state, not deletion; key uniqueness prevents reuse forever. A legal hold or incident fence prevents purge.
 
 ### Permission, RLS and grants
@@ -1067,6 +1463,9 @@ caller-authoritative fields.
 | cms_block_definition_versions         | authorized template/schema consumer sees safe metadata, props ref/hash, and release digest; withdrawn details follow the fixed safe-use rule | signed registration RPC inserts once; CMS-03A-08 appends lifecycle evidence only and never updates this version row                                 | release principal EXECUTE on named registration/lifecycle RPCs; no human table writes |
 | cms_release_nonce_receipts            | release audit service sees key/nonce hashes and verification outcome only; no caller reads raw headers or body                               | signed admission RPC inserts/claims `(release_key_id,nonce_hash)` before acceptance; expiry cleanup is fenced and cannot shorten the ten-minute TTL | release verifier and audit worker RPCs only; no browser or human table writes         |
 | cms_block_definition_lifecycle_events | authorized registry consumers see safe lifecycle event metadata and release digest; hidden owner scope is omitted/404                        | CMS-03A-08 append-only RPC with signed release principal, expected lifecycle/version, unique transition, and nonce receipt in one transaction       | release principal lifecycle RPC and read projection RPC only; UPDATE/DELETE revoked   |
+| cms_schema_reviews                    | schema designer on the candidate scope or an assigned review-only scope; concealed reviews are omitted/404                                    | review-submission RPC inserts once and freezes evidence; state transitions only through decision/invalidation; frozen columns immutable                | private command RPCs only; direct browser and service-role table grants revoked       |
+| cms_schema_review_decisions           | readable only through the authorized review projection; reviewer identity is not exposed                                                     | review-decision RPC append-only insert; unique per review/human; no submitter or repeated human; UPDATE/DELETE revoked                              | private review-decision RPC only; no direct browser or service-role table grants      |
+| cms_schema_review_assignments         | readable only through the authorized review projection; no reviewer/grantor matching identifiers are exposed                                  | assignment create/revoke RPC only; fixed read/decide scope; expires <=7 days and <= grantor authority; audit atomic; no delegation                      | private owner-assignment RPC only; no direct browser or service-role table grants     |
 
 ## Middleware & Policies
 
@@ -1082,6 +1481,12 @@ caller-authoritative fields.
 | CMS-03A-06   | verified human with cms.schema_registry.read or schema_designer read scope                                                 | query is valid and every returned resource is within acting-party/tenant scope                                                                    | authenticated caller lacks read capability                   | concealed scope is omitted; unknown/retired parent is not disclosed | no-store; bounded cursor is bound to query and acting scope; public delivery is forbidden                                                      |
 | CMS-03A-07   | verified human with cms.schema_registry.read or schema_designer read scope                                                 | type/version IDs belong together and detail projection is permitted                                                                               | known readable parent but required detail capability missing | hidden/absent type/version                                          | no-store; RLS recheck; always return only the capability-safe artifact identity/hash and allowed manifests                                     |
 | CMS-03A-08   | signed release worker with release.block_registry.write                                                                    | existing version is readable; expected lifecycle/version and release digest match; transition is supported → deprecated or deprecated → withdrawn | browser/human/wrong release principal                        | hidden/absent block version                                         | stale version/lifecycle, duplicate transition/nonce/idempotency; signature and nonce receipt are verified before append; no version-row update |
+| CMS-03A-09   | verified human with cms.schema_designer                                     | immutable source version is readable in caller scope and in an activatable state; acting party holds the registry scope                            | known source but capability missing                          | hidden/absent source                                                | exact source If-Match; clone preserves stable field IDs/keys, remaps local references, and never mutates the source                           |
+| CMS-03A-10   | verified human with cms.schema_designer                                     | candidate belongs to caller scope and state=draft; server derives source/target/compiler/classification                                           | known draft but capability missing                           | hidden/absent candidate                                             | transform pair both-null or both-present; caller cannot supply counts, hashes, classification, or report; report+plan+job commit atomically  |
+| CMS-03A-11   | verified human with cms.schema_designer                                     | candidate in caller scope is draft with a persisted passed dry run for the same evidence                                                          | known draft but capability missing                           | hidden/absent candidate                                             | freezes definition/artifact/compiler/dependency/dry-run/policy evidence; draft → review atomic; one live review per exact evidence           |
+| CMS-03A-12   | independently authenticated human with an active assignment for cms.schema_review on that frozen review | review is open and readable to the caller; assignment interval and capability are current | missing/expired assignment or capability, or the decision requires current MFA | concealed review is 404; a caller without assignment cannot distinguish it | reviewer is server-resolved; submitter and repeated humans are refused; frozen evidence is rechecked |
+| CMS-03A-13   | verified human with cms.schema_registry.read or schema_designer scope, or an assigned review-only scope | review is readable in the caller's submitter/designer or assigned review scope                                      | known readable review but required capability missing        | concealed, absent, or out-of-scope review is 404                    | no-store; returns only the safe review projection; no body, Idempotency-Key, or If-Match                                                     |
+| CMS-03A-14   | verified human derived as the owner: immutable cms_owner_initialization receipt identity AND current effective owner authority with cms.schema_review.assign; recent binding-bound MFA | review is owned by the same organization; the assignment subject is an existing eligible human | known review but the caller is not the derived owner, or lacks the assign capability | concealed/cross-owner review is 404                                 | create references an eligible existing human and a finite expiry <= 7 days and <= grantor authority; only read/decide on one frozen review; no identity is created; audit atomic |
 
 A known resource is not disguised as 404 when policy permits existence disclosure: a valid caller with insufficient capability receives 403. A caller who cannot read the parent, a retired key lookup, or an invalid target scope receives indistinguishable 404. Structural malformed IDs are 400 before existence checks.
 
@@ -1090,8 +1495,10 @@ A known resource is not disguised as 404 when policy permits existence disclosur
 - Raw body ceiling is 256 KiB; JSON nesting is at most 8, keys 128, arrays 128, and strings are bounded by the field matrix. Unknown keys reject. No HTML, CSS, JavaScript, template source, SQL, regular-expression backtracking bombs, expressions, URLs selecting code, or dynamic imports are accepted.
 - CMS-03A-05 and CMS-03A-08 verify the exact release signature and timestamp over untouched bytes before parsing. Only a missing or invalid release principal, or signature verification failure, returns exactly 401 `WEBHOOK_REJECTED`; malformed signature/header/body/path returns 400. For CMS-03A-05, key/version/digest collision or idempotency mismatch returns 409 and manifest/renderer/accessibility validation failure returns 422. For CMS-03A-08, stale lifecycle/version, invalid advance, duplicate nonce/replay, or idempotency conflict returns 409 and lifecycle/release-digest/evidence/schema validation failure returns 422. Dependency failures use 502/503/504 and unexpected failures return scrubbed 500, per the operation matrix. The verifier inserts/claims the durable nonce receipt before acceptance. A valid duplicate digest is idempotent; a conflicting digest creates a severity-1 security signal and no second registration or lifecycle append. Every rejection fails closed with no registration or lifecycle mutation.
 - CSRF is required for browser cookie/session mutations after origin check. Release-worker requests use a non-browser principal and signed body; they do not receive browser authority from CORS.
-- Step-up MFA is recent and bound to acting context for activation. Approval IDs cannot identify the acting submitter, cannot repeat a human, and are invalidated if the candidate hash, compiler version, dependency set, or authority changes.
-- Rate limits use BE00 token buckets keyed by actor, acting party, and release principal. Concurrent definition commands are capped at 3 per actor; activation and registration are separately capped.
+- Step-up MFA is recent and bound to acting context for activation, review decision, and assignment. Approval IDs and the assignment `reviewerPersonId` cannot identify the acting submitter; decisions cannot repeat a human and are invalidated if the candidate hash, compiler version, dependency set, dry-run evidence, policy, or reviewer authority changes. Missing or stale MFA on CMS-03A-04, CMS-03A-12, or CMS-03A-14 returns exactly 401 `STEP_UP_REQUIRED` with `{ recoveryAction: 'step_up', allowedMethods: [] }` (only configured allowlisted method identifiers), never collapsed to 400 or replaced with `reauthenticate`.
+- The owner-only `cms.schema_review.assign` authority is server-derived: the caller must be the immutable `cms_owner_initialization` receipt identity (its `auth_user_id`/`person_id`/`organization_id`) and must hold current effective owner authority. No party is ever re-bootstrapped, the four-capability initialization list is not widened or re-run, and CFG grant delegation is not used. The owner approves schema reviews as an approver only by holding a bounded assignment; owner status alone does not skip the assignment, decision-count, or MFA gates.
+- The assigned-reviewer path is deliberately not the owner-authority predicate. A reviewer independently authenticates its own session and acting-context binding; the frozen review's `owner_id` need not equal the reviewer's acting party, and the decision RPC must not reuse an owner-only authorization helper that requires the owner's acting context. The assignment binds the frozen review's owner scope to the reviewer's own person, and grants no part of the owner's acting context, session, or capability set. Eligibility and decision checks require only a real, active/claimed, non-banned existing human with a current binding; they never require `cms.schema_review` before assignment, `cms.schema_designer`, admin, or any pre-existing review capability. The owner's assign authority derives from the immutable initialization identity plus the current live scoped authority and is not transferable or broadenable through ordinary capability grants.
+- Rate limits use BE00 token buckets keyed by actor, acting party, and release principal. Concurrent definition commands are capped at 3 per actor; activation, review decision, and assignment are separately capped, and assignment is bounded to the owner alone.
 - Definitions and manifests are safe to log only as IDs, hashes, operation, outcome, and size. No field labels, help text, renderer source, schema values, capability graph, or private projection is sent to logs or provider-native diagnostics.
 
 ## Data Flow
@@ -1103,6 +1510,27 @@ Human command flow: raw request → request ID/media guard → strict Zod parse 
 Protected registry read flow: raw request → request ID/media/query guard → strict query/path parse → session and acting context → `cms.schema_registry.read` or schema-designer scope → RLS-backed named projection → discriminated page/detail response with `Cache-Control: no-store`. Reads never select public delivery tables, never return concealed rows, and never use Idempotency-Key or If-Match.
 
 CMS-03A-04 flow: RPC verifies the exact dryRunId/hash/compiler version, schema artifact, workflow/risk-policy snapshot, and approval set, locks candidate and current active row, rechecks all referenced fields/relations/template/block compatibility, creates or advances SchemaMigrationPlan, switches active state only when all gates pass, records `cms.schema.activated.v1` with the immutable activation-evidence snapshot in the BE00 outbox, and returns the committed resource/job. A worker receives only `schemaVersionId`, migrationPlanId, expected version, correlation ID, and causation ID.
+
+DEC-108 activation producer flow: CMS-03A-09 locks the readable immutable source,
+clones the definition aggregate into a fresh draft with new row IDs, preserved
+stable field identities and keys, remapped local references, and an incremented
+version number, leaving the source untouched. CMS-03A-10 derives
+source/target/classification/compiler/transform evidence server-side, creates a
+dedicated migration plan identity and report under CAS on the still-draft
+candidate, and enqueues one BE00 job in the same idempotent transaction; a
+same-key retry returns the same attempt, while changed candidate or transform
+evidence starts a new attempt and preserves earlier immutable attempts.
+CMS-03A-11 accepts only a persisted passed dry run, freezes the
+candidate/artifact/compiler/dependency/dry-run/policy evidence and the stable
+context hash, and transitions draft → review atomically. CMS-03A-14 lets only
+the server-derived owner create or revoke a bounded read/decide assignment on
+that one frozen review. CMS-03A-12 appends an independent decision, rechecking
+the current assignment, capability, and recent binding-bound MFA. CMS-03A-13
+serves the authorized safe review projection. The CMS-03A-04 activation then
+rechecks current assignment/capability, frozen evidence, and the activator's
+current binding/MFA — it does not re-require MFA freshness for a reviewer's
+earlier decision, so a valid decision is not expired solely because ten minutes
+elapsed.
 
 CMS-03A-05/08 signed flow: the raw body and exact four release headers are
 verified against the trusted Ed25519 key before JSON parsing; the verifier
@@ -1121,6 +1549,20 @@ External seam policy: the canonical definition compiler and protected registries
 Definition state is draft → review → approved → scheduled or active → superseded or retired; blocked may return to draft. Active ContentTypeVersion, FieldDefinitionVersion, RelationDefinition, SchemaMigrationPlan definitions after completion, and BlockDefinitionVersion rows are immutable. A block row starts with physical state `registered` and derived API lifecycle `supported`; later lifecycle values exist only as ordered immutable lifecycle events. CMS-03A-02, CMS-03A-03, and CMS-03A-08 use SELECT FOR UPDATE plus expected version; two writers cannot append the same stable field, relation, or lifecycle successor.
 
 Migration state is draft → dry_running → ready or blocked → running → verifying → completed, failed_retryable, or failed_terminal. The cursor, row counts, compiler hash, transform version, and source/target hashes are durable. Worker lease expiry is recoverable; each retry rechecks state and cursor. A failed migration leaves old active schema serving, never deletes rows, and cannot silently retry a changed transform.
+
+Schema review state is open → approved | rejected | invalidated. There is at most
+one live (open) review per exact frozen candidate/evidence identity, enforced by
+a partial unique index. A candidate changes when its definition, artifact,
+compiler version, dependency manifest, dry-run evidence, workflow policy, or a
+relevant reviewer-authority fact changes; any such drift invalidates the open or
+approved review and its decisions, and a resubmission freezes new evidence
+rather than reusing old decisions. Each human records at most one decision per
+review, the submitter never counts, and the required count (1 for ordinary, 2..8
+for protected) is resolved from the code-owned workflow registry, never from the
+request. A rejection returns the candidate to an editable draft through an
+audited transition. Effective assignment authority requires
+`starts_at <= now < ends_at` and a current eligible binding, so no expiry sweep
+is required to revoke it.
 
 Activation is a compare-and-swap against candidate version and current active version. Approval, reference, compiler, allowlist, and migration evidence changes invalidate the candidate and force review again. A duplicate event or worker delivery is harmless because consumers apply exact version monotonicity and dedupe by event identity.
 
@@ -1169,7 +1611,7 @@ Event consumers never receive field values, renderer code, secrets, user IDs bey
 - From BE00: inherit ApiError, request IDs, job observation, queue envelope, rate, CORS, and SLOs for all routes; mutations additionally inherit Idempotency-Key, applicable If-Match, CSRF, audit, and outbox rules, while protected reads explicitly omit mutation-only headers/effects.
 - From BE01: resolve verified human, party, acting context, capability, recent MFA, and authorization facts. Never copy identity state into CMS definitions.
 - To 03b: publish exact active schema version/hash, field stable IDs, relation definitions, and cms.schema.activated.v1. Entry revisions must snapshot schema version and reject stale definitions.
-- To 03c: expose immutable BlockDefinitionVersion metadata and compatibility ranges. Template and pattern commands cannot register or mutate blocks.
+- To 03c: expose immutable BlockDefinitionVersion metadata and compatibility ranges. Template and pattern commands cannot register or mutate blocks. DEC-108 activation preflight consumes 03c's non-mutating service-only `platform_api.cms_resolve_template_compatibility` resolver (reads only; never a mutating GET) to prove an exact immutable compatible template-version reference under the verified actor/owner scope. The resolver request is `{ templateVersionId, contentTypeId, contentTypeVersionId, expectedTemplateVersionNo? }`: the exact candidate content-type version is required and verified to belong to `contentTypeId` under the same owner, no "current" version is resolved implicitly, and a success projection is the literal invariant `compatible: true` / `withdrawn: false` (incompatible, withdrawn, or version-mismatched references are typed failures). Public template activation remains a separate 03c contract gap and is not an AC169 prerequisite for a draft-binding reference.
 - To Shard 04: provide exact active schema/block version IDs for delivery preflight. Shard 04 owns public route/cache/search projections.
 - To Shard 05: consume governed settings only where explicitly allowlisted; settings cannot override reserved concepts, lifecycle, security, or migration invariants.
 - To Shard 16: reserved concepts prevent CMS types/templates from impersonating credentials, entitlements, credits, EvidenceState, or InstitutionGate. No upward request-time reads.
@@ -1190,6 +1632,12 @@ The route registry is authoritative; each row below is keyed to every operation 
 | CMS-03A-08   | signature, principal, path, lifecycle, and digest validation errors                                             | CONFLICT for stale version/lifecycle, duplicate nonce, idempotency; DEPENDENCY_UNAVAILABLE for registry/RPC | immutable lifecycle event/outbox remains committed; consumers refetch derived lifecycle | reconcile by idempotency/status; never update the version row; retry only with a fresh nonce                        |
 | CMS-03A-06   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, VALIDATION_FAILED, RATE_LIMITED                                    | DEPENDENCY_UNAVAILABLE for projection/RPC timeout                                                           | no mutation or async effect; no-store response                                          | correct query, restart without cursor, or retry 503/504                                                             |
 | CMS-03A-07   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, RATE_LIMITED                                            | DEPENDENCY_UNAVAILABLE for projection/RPC timeout                                                           | no mutation or async effect; no-store response                                          | correct UUIDs, refetch authorized parent, or retry 503/504                                                          |
+| CMS-03A-09   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VALIDATION_FAILED, RATE_LIMITED                         | CONFLICT for stale source If-Match, already-active source, or idempotency; DEPENDENCY_UNAVAILABLE for RPC   | new draft is committed and the source is unchanged; audit/outbox atomic with the clone  | refetch source, correct version, or replay the exact idempotency key                                                 |
+| CMS-03A-10   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VALIDATION_FAILED, RATE_LIMITED                         | CONFLICT for stale version or idempotency; DEPENDENCY_UNAVAILABLE for queue/RPC                             | report+plan+job commit together; queued work is observed through BE00 JobStatus          | retry with the same key reuses the run; changed evidence starts a new attempt                                        |
+| CMS-03A-11   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, CONFLICT, VALIDATION_FAILED, RATE_LIMITED               | CONFLICT for stale version, a non-passed dry run, an existing live review, or idempotency                   | frozen review committed atomically with draft → review; no partial freeze                | refetch candidate/evidence, resubmit with new evidence, or replay the exact key                                      |
+| CMS-03A-12   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, CONFLICT, VALIDATION_FAILED, RATE_LIMITED        | CONFLICT for stale review version, submitter/self, repeated human, frozen-evidence or authority drift       | append-only decision committed with atomic audit/outbox; rejected review returns to draft | refetch review, satisfy assignment/MFA, or resubmit after invalidation                                               |
+| CMS-03A-13   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, RATE_LIMITED                                            | DEPENDENCY_UNAVAILABLE for projection/RPC timeout                                                           | no mutation or async effect; no-store response                                          | correct UUIDs, refetch authorized review, or retry 503/504                                                           |
+| CMS-03A-14   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, NOT_FOUND, CONFLICT, VALIDATION_FAILED, RATE_LIMITED | CONFLICT for stale review version, invalid expiry, unknown/ineligible human, or idempotency                 | assignment create/revoke commits with atomic audit/outbox; no identity is created        | correct the eligible-human reference or expiry, refetch review, or replay the exact key                              |
 
 Retry rule: mutation clients may retry a 503/504 only with the same idempotency key after checking status; they must not blind-retry a possibly committed command. Protected reads retry the same canonical query/path without adding mutation-only headers. 502 invalid upstream data is not retried until the adapter or registry version changes. 429 honors Retry-After. Unknown state is surfaced as pending/degraded, never guessed as active.
 
@@ -1197,7 +1645,7 @@ Retry rule: mutation clients may retry a 503/504 only with the same idempotency 
 
 Each route emits structured, scrubbed logs keyed by operation ID, requestId, traceId, correlationId, actor class, acting-context class, safe aggregate ID/hash, expected/current version where authorized, outcome, error code, duration, dependency class, and retryability. Logs never contain request bodies, field values, capability graphs, labels/help text, renderer references, release signatures, tokens, or private domain data.
 
-Metrics are emitted per operation: cms_definition_request_total{operation,outcome}, cms_definition_latency_ms, cms_definition_error_total{operation,code}, cms_definition_rate_limited_total, cms_definition_conflict_total{operation,reason}, cms_registry_allowlist_reject_total, cms_migration_progress, cms_migration_blocked_total, cms_activation_age, cms_block_registration_total, cms_block_lifecycle_advance_total, cms_release_nonce_claim_total{outcome}, cms_outbox_lag, cms_queue_retry_total, and cms_queue_dlq_total. Alert thresholds: activation blocked >15m, migration retry >3, nonce-receipt rejection spike, DLQ >0, outbox age >2m, conflict spike >5%/5m, or unknown event version.
+Metrics are emitted per operation: cms_definition_request_total{operation,outcome}, cms_definition_latency_ms, cms_definition_error_total{operation,code}, cms_definition_rate_limited_total, cms_definition_conflict_total{operation,reason}, cms_registry_allowlist_reject_total, cms_migration_progress, cms_migration_blocked_total, cms_activation_age, cms_schema_review_age, cms_schema_review_pending_total{riskClass}, cms_schema_review_decision_total{decision}, cms_schema_review_assignment_total{action,outcome}, cms_schema_dry_run_total{state,classification}, cms_block_registration_total, cms_block_lifecycle_advance_total, cms_release_nonce_claim_total{outcome}, cms_outbox_lag, cms_queue_retry_total, and cms_queue_dlq_total. Alert thresholds: activation blocked >15m, migration retry >3, a review open past its expected window, a decision or assignment denial spike, nonce-receipt rejection spike, DLQ >0, outbox age >2m, conflict spike >5%/5m, or unknown event version. Logs and metrics never include reviewer/grantor or reviewerPersonId identifiers.
 
 Traces cover validation → session/acting-context → capability → idempotency → RPC/SQL → audit/outbox → worker/refetch. Structured diagnostics record unexpected errors and high-risk command failures with allowlisted fields only; audit remains PostgreSQL authority. Telemetry loss does not roll back a committed definition, but audit failure does.
 
@@ -1219,6 +1667,9 @@ SLOs: Tier 2 command p95 <1,200ms, protected RPC p95 <300ms, acceptance p99 <1,0
 - CMS-03A-06 and CMS-03A-07 include zero-side-effect assertions: successful and rejected GETs leave definition, migration, idempotency, audit, and outbox rows byte-for-byte unchanged, reserve no idempotency key, emit no mutation audit/event, and return only the projection plus permitted request/observability counters.
 - Browser-envelope tests reject ownership identifiers, release-principal/signature/snapshot/verification fields, and unknown state values; CMS-03A-07 accepts only its safe nested registry resources and strict discriminator, never the worker-only block response.
 - Every operation tests 400, 401, 403, 404, 409, 415, 422, 429, 502, 503, 504, and 500 where applicable, with exact ApiError shape, safe details, Content-Type, X-Request-Id, Cache-Control, Retry-After, and RateLimit headers.
+- CMS-03A-09 tests stable-field-ID/key preservation, new row IDs, local-reference remapping, version increment, source immutability, and exact source If-Match; CMS-03A-10 tests server-derived classification, the both-null/both-present transform rule, refusal of caller counts/hashes/classification/report, atomic report+plan+job, same-key reuse, and new-attempt-on-changed-evidence, including the unsealed (queued/running) resource that exposes no final counts/hashes; CMS-03A-11 tests draft → review atomicity, one live review per exact evidence, and rejection of a non-passed dry run.
+- CMS-03A-12 tests that only an independently authenticated assigned reviewer can decide, that the submitter and repeated humans are refused, that recent binding-bound MFA is required and recorded at decision time, and that frozen-evidence or authority drift invalidates; CMS-03A-13 tests the safe projection with no actor/person/party/private-binding identifiers and a zero-side-effect read; CMS-03A-14 tests the server-derived owner, eligible-existing-human and finite-expiry rules, the fixed read/decide tuple, refusal of the submitter, unknown/ineligible humans, cross-owner reviews, broad scopes, and delegation, and atomic audit with no identity creation.
+- DEC-108 integration tests exercise the real non-fixture producer path create → actual dry-run → submit review → independent decisions → activate, then actual source rows → compatible template → successor → nonzero dry-run/backfill/verify → independent review → second atomic switch. Directly inserting review, decision, dry-run, approved-state, or completed-plan rows cannot satisfy this path, and the test-human authority commands are the only permitted provisioning.
 
 ### Authorization, persistence, and concurrency tests
 
@@ -1244,8 +1695,8 @@ Validation failures preserve stable JSON Pointer paths and safe messages for fro
 
 | Pass | Focus                                | Evidence                                                                                                                                                                                                                                                                                                                                               | Result |
 | ---- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
-| 1    | Source and split completeness        | All six owned IA mutation flows, twelve canonical storage tables (including nonce receipts, lifecycle events, template and capability bindings, and immutable dry-run reports), eight operation contracts, owned activation/lifecycle events plus the consumed template event, contracts, access, edge cases, and deep-dive headings are mapped above. | PASS   |
-| 2    | Endpoint and contract reconciliation | One authoritative registry row per CMS-01/02/03/04/10/lifecycle command plus two protected reads; request/success/error schema and operation matrices key to all eight IDs.                                                                                                                                                                            | PASS   |
+| 1    | Source and split completeness        | The owned IA mutation flows, twelve canonical definition tables plus three private CMS review records (nonce receipts, lifecycle events, template and capability bindings, immutable dry-run reports, and the review/decision/assignment tables), fourteen operation contracts, owned activation/lifecycle events plus the consumed template event, contracts, access, edge cases, and deep-dive headings are mapped above. | PASS   |
+| 2    | Endpoint and contract reconciliation | One authoritative registry row per CMS-01/02/03/04/10/lifecycle command, the six DEC-108 producer commands, and three protected reads; request/success/error schema and operation matrices key to all fourteen IDs.                                                                                                                                       | PASS   |
 | 3    | Persistence hard floor               | Twelve storage tables list SQL type, nullability, checks, FKs, indexes, RLS predicates, grants, immutability, and retention.                                                                                                                                                                                                                           | PASS   |
 | 4    | State/concurrency/failure            | CAS, immutable versions, migration cursor/lease, idempotency, outbox atomicity, old-active fallback, and DLQ behavior are explicit.                                                                                                                                                                                                                    | PASS   |
 | 5    | Security and disclosure              | CORS is named per operation; CSRF, step-up, trusted Ed25519 release and nested props attestations, nonce receipts, allowlists, 403/404, no executable content, and no PII logging are explicit.                                                                                                                                                        | PASS   |
@@ -1258,9 +1709,9 @@ Validation failures preserve stable JSON Pointer paths and safe messages for fro
 ## Ambiguity Gate
 
 - Micro ambiguity PASS: every request/query/path field has a type, bound, null/default rule, unknown-key policy, and failure; every state transition names its guard and recovery; every operation has auth, CORS, rate, error, observability, and test rows, while mutation-only idempotency/If-Match and read-only absence rules are explicit.
-- Macro ambiguity PASS: create → draft → field/relation changes → compile/dry-run → workflow/risk-policy-derived activation → migration worker → downstream refetch is a single deterministic flow with no hidden endpoint or ownership handoff.
-- Two-implementer PASS: independent implementers can derive the same twelve storage tables (including nonce receipts, lifecycle events, template/capability bindings, and immutable dry-run reports), eight operation IDs, Zod schemas, event payloads, RPC transaction boundaries, protected-read behavior, and 403/404 policy.
-- Devil's-advocate PASS: hostile admin upload, reserved key reuse, relation-to-private-domain target, approval race, stale compiler, duplicate release digest/nonce, forged nested Ed25519 attestation, illegal lifecycle advance, worker crash, and telemetry outage produce safe typed outcomes.
+- Macro ambiguity PASS: create → draft → field/relation changes → successor/dry-run → frozen CMS review with bounded assignment and independent decisions → workflow/risk-policy-derived activation → migration worker → downstream refetch is a single deterministic flow with no hidden endpoint or ownership handoff.
+- Two-implementer PASS: independent implementers can derive the same twelve definition tables plus three private CMS review records (including nonce receipts, lifecycle events, template/capability bindings, immutable dry-run reports, and the review/decision/assignment tables), fourteen operation IDs, Zod schemas, event payloads, RPC transaction boundaries, protected-read behavior, and 403/404 policy.
+- Devil's-advocate PASS: hostile admin upload, reserved key reuse, relation-to-private-domain target, approval race, submitter/self or repeated-human decision, assignment broadening or delegation, a decision replayed after evidence drift, stale compiler, duplicate release digest/nonce, forged nested Ed25519 attestation, illegal lifecycle advance, worker crash, and telemetry outage produce safe typed outcomes.
 - No unresolved product, architecture, security, or implementation ambiguity remains in this boundary.
 
 ## Open Questions
@@ -1276,6 +1727,7 @@ None.
 | 2026-09-02 | Applied authorized IA-first Slice 09 reconciliation: atomic aggregate, full field/relation grammar, policy-derived approvals, immutable artifacts, signed block identity, protected list/detail reads, and eight-operation closure.                                                                                            | /propagate-decision     | All                                                                         |
 | 2026-09-02 | Added CMS-03A-08 signed lifecycle advance with immutable lifecycle-event evidence, durable ten-minute nonce receipts, single physical state/derived lifecycle semantics, safe registry discriminator, strict state/lifecycle filter rejection, artifact FK atomicity, and RFC 8785/JCS-bound nested Ed25519 props attestation. | /implement-slice        | Contracts, Database Schema, Middleware & Policies, Data Flow, Events, Tests |
 | 2026-09-02 | Closed browser response state/lifecycle enums against the IA and SQL matrices, removed ownership identifiers from browser envelopes, and documented safe A07 nested projections versus worker-only release evidence.                                                                                                           | /implement-slice        | Source Map, Route Registry, Contracts, Testing Strategy                     |
+| 2026-10-02 | DEC-108: added CMS-03A-09…14 reachable activation producers (successor, actual dry-run, review submit/detail/decision, bounded assignment) with private CMS-owned review/decision/assignment records, approval-only `cms.schema_review` and server-derived owner-only `cms.schema_review.assign`, frozen safe evidence summaries, version-addressed artifact references, recent-MFA-at-decision with no ten-minute decision-age expiry, exact 401 `STEP_UP_REQUIRED` recovery, and the safe `activationPreparation` projection. | /propagate-decision     | Route Registry, Contracts, Database Schema, Middleware, Data Flow, Error Handling, Observability, Testing, Deepening, Changelog |
 
 ## Dependency References
 

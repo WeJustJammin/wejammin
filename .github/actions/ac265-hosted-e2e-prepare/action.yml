@@ -5,26 +5,60 @@ inputs:
     required: true
   staging_run_id:
     required: true
+  staging_run_attempt:
+    required: true
   ci_run_id:
     required: true
+  ci_run_attempt:
+    required: true
+  staging_deployment_id:
+    required: true
+  staging_web_origin:
+    required: true
+  staging_api_origin:
+    required: true
+outputs:
+  ci_artifact_id:
+    description: Exact verified CI artifact ID the job downloaded.
+    value: ${{ steps.resolve.outputs.ci_artifact_id }}
+  staging_artifact_id:
+    description: Exact verified staging candidate artifact ID the job downloaded.
+    value: ${{ steps.resolve.outputs.staging_artifact_id }}
 runs:
   using: composite
   steps:
     - name: Set up pinned workspace dependencies
       uses: ./.github/actions/setup
+    - name: Resolve the exact verified artifact IDs
+      id: resolve
+      shell: bash
+      env:
+        AC265_SOURCE_SHA: ${{ inputs.source_sha }}
+        AC265_STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+        AC265_STAGING_RUN_ATTEMPT: ${{ inputs.staging_run_attempt }}
+        AC265_CI_RUN_ID: ${{ inputs.ci_run_id }}
+        AC265_CI_RUN_ATTEMPT: ${{ inputs.ci_run_attempt }}
+        AC265_STAGING_DEPLOYMENT_ID: ${{ inputs.staging_deployment_id }}
+        STAGING_WEB_ORIGIN: ${{ inputs.staging_web_origin }}
+        STAGING_API_ORIGIN: ${{ inputs.staging_api_origin }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: node --experimental-strip-types infra/workflows/resolve-ac265-hosted-e2e-artifacts.ts
     - name: Download the staging-verified candidate
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         github-token: ${{ github.token }}
-        name: staging-verified-candidate
+        artifact-ids: ${{ steps.resolve.outputs.staging_artifact_id }}
         path: candidate
         repository: ${{ github.repository }}
         run-id: ${{ inputs.staging_run_id }}
+        digest-mismatch: error
     - name: Download the exact CI build
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         github-token: ${{ github.token }}
-        name: workspace-build-${{ inputs.source_sha }}
+        artifact-ids: ${{ steps.resolve.outputs.ci_artifact_id }}
         path: ci-build
         repository: ${{ github.repository }}
         run-id: ${{ inputs.ci_run_id }}
+        digest-mismatch: error

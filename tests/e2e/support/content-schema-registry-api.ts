@@ -11,10 +11,14 @@ import type {
 import {
   createSessionVerifier,
   isLocalSessionId,
+  verifyLocalSessionRequest,
 } from './s09-session-authority';
+import { createS09DisclosurePorts } from './s09-disclosure-fixture';
+import { createCmsTemplateFixture } from './cms-template-fixture';
+import { createCmsLocaleFixture } from './cms-locale-fixture';
+import { createCmsEditorialHistoryFixture } from './cms-editorial-history-fixture';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
-const PARTY_ID = '20000000-0000-4000-8000-000000000002';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';
 const VERSION_ID = '40000000-0000-4000-8000-000000000004';
 const FIELD_ID = '50000000-0000-4000-8000-000000000005';
@@ -175,6 +179,10 @@ const unavailable = (): ContentSchemaRegistryResult<never> => ({
 
 const revokedSessionIds = new Set<string>();
 const hasValidSession = createSessionVerifier(USER_ID, revokedSessionIds);
+const s09 = createS09DisclosurePorts({
+  verifyClaim: (request) =>
+    verifyLocalSessionRequest(USER_ID, revokedSessionIds, request),
+});
 
 const registry: ContentSchemaRegistryDependencies = {
   ports: {
@@ -187,21 +195,22 @@ const registry: ContentSchemaRegistryDependencies = {
     listContentTypes: async () => ok(list),
     getContentTypeVersion: async () => ok(detail),
   },
-  resolveSession: async (request) =>
-    (await hasValidSession(request))
-      ? ok({
-          userId: USER_ID,
-          actingPartyId: PARTY_ID,
-          capabilities: ['cms.schema_registry.read', 'cms.schema_designer'],
-          mfaFresh: true,
-        })
-      : {
-          ok: false,
-          status: 401,
-          code: 'UNAUTHENTICATED',
-          message: 'The authentication session is invalid.',
-          details: {},
-        },
+  resolveSession: async (request) => {
+    const claim = await verifyLocalSessionRequest(
+      USER_ID,
+      revokedSessionIds,
+      request,
+    );
+    if (claim === null)
+      return {
+        ok: false,
+        status: 401,
+        code: 'UNAUTHENTICATED',
+        message: 'The authentication session is invalid.',
+        details: {},
+      };
+    return ok(s09.registrySessionForClaim(claim.sessionId));
+  },
   verifyRelease: async () => unavailable(),
   rateLimit: async () =>
     ok({ allowed: true, limit: 30, remaining: 29, resetAt: 2_000_000_000 }),
@@ -223,7 +232,12 @@ const dependencies = {
   captureException: () => undefined,
   createLogger: () => logger,
   now: Date.now,
+  auth: s09.auth,
+  identityAuthority: s09.identityAuthority,
   contentSchemaRegistry: registry,
+  cmsTemplate: createCmsTemplateFixture(hasValidSession),
+  cmsLocale: createCmsLocaleFixture(hasValidSession),
+  cmsEditorial: createCmsEditorialHistoryFixture(hasValidSession),
 } as unknown as WorkerDependencies;
 
 const app = createWorkerApp(dependencies);

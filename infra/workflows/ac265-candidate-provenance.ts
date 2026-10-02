@@ -16,6 +16,20 @@ import { ContentSchemaRegistryAc265VerifiedCandidateProvenanceSchema } from '../
 
 const verifiedCandidates = new WeakSet<object>();
 
+/**
+ * Freeze every reachable object and array so nothing can mutate the branded
+ * result after verification. The WeakSet brand proves the shape was produced
+ * by this verifier; the deep freeze keeps the bound values stable while a
+ * consumer reads them, including the authenticated archive length and the
+ * candidate axe report digest.
+ */
+const deepFreeze = <T>(value: T): T => {
+  if (value === null || typeof value !== 'object') return value;
+  for (const entry of Object.values(value as Record<string, unknown>))
+    deepFreeze(entry);
+  return Object.freeze(value);
+};
+
 export const isVerifiedAc265CandidateProvenance = (
   value: unknown,
 ): value is Ac265VerifiedCandidateProvenance =>
@@ -51,6 +65,7 @@ export const verifyAc265CandidateProvenance = async (
         artifactName: AC265_CANDIDATE_ARTIFACT_NAME,
         artifactId: trusted.stagingArtifact.id,
         artifactDigest: trusted.stagingArtifact.digest,
+        artifactBytes: trusted.stagingArtifact.sizeInBytes,
         deploymentId: trusted.deployment.id,
         deployedAt: new Date(trusted.deployment.createdAt).toISOString(),
         environment: trusted.deployment.environment,
@@ -61,6 +76,7 @@ export const verifyAc265CandidateProvenance = async (
       migration,
       provider,
     });
-  verifiedCandidates.add(result);
-  return result;
+  const branded = deepFreeze(result);
+  verifiedCandidates.add(branded);
+  return branded;
 };

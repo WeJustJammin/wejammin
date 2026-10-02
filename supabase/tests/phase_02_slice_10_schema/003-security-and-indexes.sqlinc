@@ -1,0 +1,105 @@
+
+-- P2-S10-AC-006 / P2-S10-AC-013 / P2-S10-AC-063.
+-- RLS, browser grant revocation, live guard enforcement and the assignment
+-- foundation. The direct-write probe ran in the entrypoint's first transaction
+-- because a raised exception would abort this single-transaction pgTAP plan.
+
+select ok(
+  coalesce((
+    select bool_and(relrowsecurity and relforcerowsecurity)
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'platform_private'
+      and c.relname = any(array[
+        'cms_content_entries','cms_entry_revisions','cms_entry_field_values',
+        'cms_entry_relations','cms_entry_assignments']::name[])
+  ), false),
+  'P2-S10-AC-006 every editorial table enables and forces RLS'
+);
+
+select ok(
+  coalesce((
+    select bool_and(
+      case when to_regclass(table_name) is null then false else
+        not has_table_privilege(role_name, table_name, 'select')
+        and not has_table_privilege(role_name, table_name, 'insert')
+        and not has_table_privilege(role_name, table_name, 'update')
+        and not has_table_privilege(role_name, table_name, 'delete')
+      end
+    )
+    from (values ('anon'), ('authenticated'), ('service_role')) as roles(role_name)
+    cross join (values
+      ('platform_private.cms_content_entries'),
+      ('platform_private.cms_entry_revisions'),
+      ('platform_private.cms_entry_field_values'),
+      ('platform_private.cms_entry_relations'),
+      ('platform_private.cms_entry_assignments')
+    ) as tables(table_name)
+  ), false),
+  'P2-S10-AC-013 browser and service roles receive no direct table grants'
+);
+
+select ok(
+  coalesce((
+    select count(*) = 5
+    from pg_policy p
+    where p.polrelid in (
+      to_regclass('platform_private.cms_content_entries'),
+      to_regclass('platform_private.cms_entry_revisions'),
+      to_regclass('platform_private.cms_entry_field_values'),
+      to_regclass('platform_private.cms_entry_relations'),
+      to_regclass('platform_private.cms_entry_assignments')
+    )
+      and pg_get_expr(p.polqual, p.polrelid) like '%cms_rpc_context_valid%'
+      and pg_get_expr(p.polwithcheck, p.polrelid) like '%cms_rpc_context_valid%'
+  ), false),
+  'P2-S10-AC-006 every editorial table is reachable only inside CMS RPC context'
+);
+
+select ok(
+  pg_temp.s10_write_sqlstate(
+    'insert into platform_private.cms_content_entries(id) values (gen_random_uuid())'
+  ) = 'P0001',
+  'P2-S10-AC-006 a direct ContentEntry insert is rejected by the write guard'
+);
+
+select ok(
+  pg_temp.s10_fk_target(
+    'platform_private.cms_entry_assignments', 'entry_id'
+  ) = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_assignments', 'assignee_person_id'
+    ) = 'platform_private.person_party.party_id',
+  'P2-S10-AC-063 assignment rows bind a real entry and a real person'
+);
+
+select ok(
+  pg_temp.s10_closed_check_labels(
+    'platform_private.cms_entry_assignments', 'state'
+  ) = array['active','revoked']::text[]
+    and exists (
+      select 1 from pg_constraint c
+      where c.conrelid = to_regclass('platform_private.cms_entry_assignments')
+        and c.contype = 'c'
+        and pg_get_constraintdef(c.oid)
+          like '%''^[a-z][a-z0-9._-]{0,127}$''%'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_assignments',
+      'cms_entry_assignments_assignee_idx',
+      '(assignee_person_id, state)'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_assignments',
+      'cms_entry_assignments_entry_idx',
+      '(entry_id, state)'
+    ),
+  'P2-S10-AC-063 assignment state, capability key and lookup index are locked'
+);
+
+select ok(
+  pg_temp.s10_trigger_events(
+    'platform_private.cms_entry_assignments', 'write_guard'
+  ) = 'delete,insert,update',
+  'P2-S10-AC-063 assignment writes stay inside CMS RPC authority only'
+);

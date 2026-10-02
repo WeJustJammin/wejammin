@@ -1,10 +1,21 @@
 import * as React from 'react';
+import { flushSync } from 'react-dom';
 
+import { ACTING_CONTEXT_CHANGED_EVENT } from '../../lib/client-binding';
+import { installContentSchemaRegistryCommandEnhancement } from './content-schema-registry-runtime-dom';
+import { subscribeContentSchemaRegistryInvalidation } from './content-schema-registry-invalidation';
 import {
-  installContentSchemaRegistryCanonicalRefetch,
-  installContentSchemaRegistryCommandEnhancement,
-  refetchContentSchemaRegistryCanonical,
-} from './content-schema-registry-runtime-dom';
+  canonicalAuthNavigate,
+  CanonicalRefreshScheduler,
+  type FocusLocator,
+  type RefetchReason,
+} from './content-schema-registry-canonical-refresh-scheduler';
+import {
+  initialProjectionState,
+  toDisabledProjection,
+  type ContentSchemaRegistryProjectionState,
+} from './content-schema-registry-canonical-state-validate';
+import { restoreContentSchemaRegistryFocus } from './content-schema-registry-runtime-dom-refetch-support';
 import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
 import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
@@ -19,64 +30,138 @@ export type ContentSchemaRegistryWorkbenchIslandProps = Omit<
   readonly canonicalRefetchUrl: string;
 };
 
-type ContentSchemaRegistryRefetchReason = Parameters<
-  ContentSchemaRegistryWorkbenchProps['onCanonicalRefetch']
->[0];
-
 /**
- * Serializable Astro island boundary. The server still renders the exact
- * Workbench HTML; the browser constructs the canonical callback after load so
- * no server function or authority state is serialized into the page.
+ * Serializable Astro island boundary. The server renders the exact Workbench
+ * HTML; the browser owns canonical refresh and its presentation through React
+ * state. No server function or authority state is serialized.
  */
 export default function ContentSchemaRegistryWorkbenchIsland(
   props: ContentSchemaRegistryWorkbenchIslandProps,
 ): React.ReactElement {
-  const hasAuthorityIds =
+  const ssrHasAuthority =
     props.actorId !== null && props.actingPartyId !== null;
-  const initialFailure =
-    props.initialList.status === 'error' ||
-    props.initialList.status === 'degraded'
-      ? props.initialList
-      : props.initialDetail?.status === 'error' ||
-          props.initialDetail?.status === 'degraded'
-        ? props.initialDetail
-        : null;
+  const [projectionState, setProjectionState] =
+    React.useState<ContentSchemaRegistryProjectionState>(() =>
+      initialProjectionState(props),
+    );
+  const [loading, setLoading] = React.useState(false);
+  const [offline, setOffline] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
   const commandCleanupRef = React.useRef<() => void>(() => undefined);
-  const onCanonicalRefetch = React.useCallback(
-    async (reason: ContentSchemaRegistryRefetchReason): Promise<void> => {
-      if (typeof document === 'undefined' || reason === 'mutation') return;
-      await refetchContentSchemaRegistryCanonical({
-        document,
-        canonicalUrl: props.canonicalRefetchUrl,
-        reason,
-        onAfterReplace: () => {
-          commandCleanupRef.current();
-          commandCleanupRef.current =
-            installContentSchemaRegistryCommandEnhancement(document);
+  const [focusLocator, setFocusLocator] = React.useState<FocusLocator>(null);
+  const schedulerRef = React.useRef<CanonicalRefreshScheduler | null>(null);
+  if (schedulerRef.current === null) {
+    schedulerRef.current = new CanonicalRefreshScheduler(
+      {
+        setLoading,
+        setMessage,
+        setProjection: (updater) => setProjectionState(updater),
+        setFocusLocator,
+        navigate: (target) => {
+          // Commit the fail-closed state to the DOM before navigating so the
+          // protected controls are gone at the moment navigation is observed.
+          flushSync(() =>
+            setProjectionState((current) =>
+              toDisabledProjection(current, 'navigate'),
+            ),
+          );
+          canonicalAuthNavigate(target);
         },
-      });
+      },
+      props.canonicalRefetchUrl,
+    );
+  }
+
+  React.useEffect(() => {
+    schedulerRef.current?.setUrl(props.canonicalRefetchUrl);
+  }, [props.canonicalRefetchUrl]);
+
+  const onCanonicalRefetch = React.useCallback(
+    async (reason: RefetchReason | 'mutation'): Promise<void> => {
+      // A completed mutation reconciles its own result; it never triggers a
+      // canonical refetch. Mutation is not a scheduler reason.
+      if (reason === 'mutation') return;
+      schedulerRef.current?.request(reason);
     },
-    [props.canonicalRefetchUrl],
+    [],
   );
 
   React.useEffect(() => {
-    if (typeof document === 'undefined' || !hasAuthorityIds) return undefined;
+    if (typeof document === 'undefined' || !ssrHasAuthority) return undefined;
     commandCleanupRef.current =
       installContentSchemaRegistryCommandEnhancement(document);
-    const canonicalCleanup = installContentSchemaRegistryCanonicalRefetch(
-      document,
-      props.canonicalRefetchUrl,
-      (reason) => onCanonicalRefetch(reason),
-    );
     document
       .querySelector<HTMLElement>('[data-workbench="content-schema-registry"]')
       ?.setAttribute('data-content-schema-registry-hydrated', 'true');
     return () => {
       commandCleanupRef.current();
       commandCleanupRef.current = () => undefined;
-      canonicalCleanup();
     };
-  }, [hasAuthorityIds, onCanonicalRefetch, props.canonicalRefetchUrl]);
+  }, [ssrHasAuthority]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !ssrHasAuthority) return undefined;
+    const scheduler = schedulerRef.current;
+    const subscription = subscribeContentSchemaRegistryInvalidation({
+      onInvalidate: () => scheduler?.request('list-read'),
+    });
+    const onOffline = (): void => setOffline(true);
+    const onOnline = (): void => {
+      setOffline(false);
+      scheduler?.request('reconnect');
+    };
+    // Context change forces an immediate read and invalidates the in-flight one.
+    const onActingContextChanged = (): void => {
+      scheduler?.bumpEpoch();
+      setProjectionState((current) =>
+        toDisabledProjection(current, 'context-change'),
+      );
+      scheduler?.request('list-read', true);
+    };
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    window.addEventListener(
+      ACTING_CONTEXT_CHANGED_EVENT,
+      onActingContextChanged,
+    );
+    const kickoff = window.setTimeout(
+      () => scheduler?.request('detail-read', true),
+      0,
+    );
+    return () => {
+      window.clearTimeout(kickoff);
+      scheduler?.dispose();
+      subscription.unsubscribe();
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener(
+        ACTING_CONTEXT_CHANGED_EVENT,
+        onActingContextChanged,
+      );
+    };
+  }, [ssrHasAuthority]);
+
+  const projectionRevision = JSON.stringify([
+    projectionState.access,
+    projectionState.initialList.status,
+    projectionState.initialDetail?.status ?? null,
+  ]);
+  React.useEffect(() => {
+    if (focusLocator === null || typeof document === 'undefined') return;
+    restoreContentSchemaRegistryFocus(document, focusLocator);
+    const clear = setTimeout(() => setFocusLocator(null), 0);
+    return () => clearTimeout(clear);
+  }, [projectionRevision, focusLocator]);
+
+  // A denial/failure boundary takes focus so the removed controls are announced
+  // from a safe, non-interactive heading.
+  const accessState = projectionState.access;
+  React.useEffect(() => {
+    if (accessState !== 'disabled' || typeof document === 'undefined') return;
+    document
+      .getElementById('content-schema-registry-capability-heading')
+      ?.focus({ preventScroll: true });
+  }, [accessState]);
 
   if (props.access === 'not-rendered') {
     return (
@@ -87,27 +172,43 @@ export default function ContentSchemaRegistryWorkbenchIsland(
     );
   }
 
+  const initialFailure =
+    projectionState.initialList.status === 'error' ||
+    projectionState.initialList.status === 'degraded'
+      ? projectionState.initialList
+      : projectionState.initialDetail?.status === 'error' ||
+          projectionState.initialDetail?.status === 'degraded'
+        ? projectionState.initialDetail
+        : null;
+
   if (
-    props.access === 'disabled' &&
+    projectionState.access === 'disabled' &&
     initialFailure !== null &&
-    !hasAuthorityIds
+    !ssrHasAuthority
   ) {
     return (
       <ContentSchemaRegistryInitialFailureBoundary
         failure={initialFailure}
         access="disabled"
-        variant={props.variant}
+        variant={projectionState.variant}
         requestId={props.requestId}
         retryUrl={props.canonicalRefetchUrl}
       />
     );
   }
 
-  if (props.access === 'disabled' || !hasAuthorityIds) {
+  const currentActorId = projectionState.actorId;
+  const currentActingPartyId = projectionState.actingPartyId;
+  if (
+    projectionState.access === 'disabled' ||
+    !ssrHasAuthority ||
+    currentActorId === null ||
+    currentActingPartyId === null
+  ) {
     return (
       <ContentSchemaRegistryCapabilityGate
         variant="disabled"
-        reasonCode={props.variant}
+        reasonCode={projectionState.variant}
         recoveryHref={props.canonicalRefetchUrl}
       />
     );
@@ -115,10 +216,36 @@ export default function ContentSchemaRegistryWorkbenchIsland(
 
   return (
     <ContentSchemaRegistryWorkbench
-      {...props}
-      actorId={props.actorId}
-      actingPartyId={props.actingPartyId}
+      query={props.query}
+      contractFields={props.contractFields}
+      contentTypeId={props.contentTypeId}
+      versionId={props.versionId}
+      cursor={props.cursor}
+      expectedVersion={props.expectedVersion}
+      requestId={props.requestId}
+      canonicalUrl={props.canonicalUrl}
+      listUrl={props.listUrl}
+      retryUrl={props.retryUrl}
+      csrfToken={props.csrfToken}
+      access={projectionState.access}
+      variant={projectionState.variant}
+      initialList={projectionState.initialList}
+      initialDetail={projectionState.initialDetail}
+      {...(projectionState.actingContextLabel === undefined
+        ? {}
+        : { actingContextLabel: projectionState.actingContextLabel })}
+      {...(projectionState.stepUpState === undefined
+        ? {}
+        : { stepUpState: projectionState.stepUpState })}
+      {...(projectionState.stepUpFreshUntil === undefined
+        ? {}
+        : { stepUpFreshUntil: projectionState.stepUpFreshUntil })}
+      actorId={currentActorId}
+      actingPartyId={currentActingPartyId}
       onCanonicalRefetch={onCanonicalRefetch}
+      loading={loading}
+      offline={offline}
+      message={message}
     />
   );
 }

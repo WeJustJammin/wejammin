@@ -25,6 +25,13 @@ export default function ContentSchemaRegistryWorkbench({
   retryUrl,
   csrfToken,
   onCanonicalRefetch,
+  actingContextLabel,
+  actingPartyId,
+  stepUpState,
+  stepUpFreshUntil,
+  loading = false,
+  offline = false,
+  message = null,
 }: ContentSchemaRegistryWorkbenchProps) {
   if (access === 'not-rendered') {
     return (
@@ -102,6 +109,7 @@ export default function ContentSchemaRegistryWorkbench({
       data-canonical-refetch-binding={canonicalRefetchBinding}
       data-role-policy="server-authoritative"
       aria-labelledby="content-schema-registry-heading"
+      aria-busy={loading ? 'true' : undefined}
     >
       <header className="content-schema-registry-header">
         <p className="content-schema-registry-eyebrow">
@@ -113,6 +121,38 @@ export default function ContentSchemaRegistryWorkbench({
           disclosure-safe block references.
         </p>
       </header>
+      {offline ? (
+        <section
+          className="content-schema-registry-offline-status"
+          data-cms-offline-status="true"
+          role="status"
+          aria-live="polite"
+        >
+          <h3>Registry is offline</h3>
+          <p>
+            Canonical registry reads are unavailable. No registry intent was
+            retained offline.
+          </p>
+        </section>
+      ) : null}
+      {loading ? (
+        <div
+          className="content-schema-registry-loading-skeleton"
+          data-cms-loading-skeleton="true"
+          aria-hidden="true"
+        />
+      ) : null}
+      {message === null ? null : (
+        <p
+          className="visually-hidden"
+          data-cms-canonical-status="true"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {message}
+        </p>
+      )}
       <ContentSchemaRegistryCapabilityGate
         variant={access}
         reasonCode={variant}
@@ -183,6 +223,12 @@ export default function ContentSchemaRegistryWorkbench({
               idempotencyKey={idempotencyKey('CMS-03A-04')}
               ifMatch={ifMatch ?? '"1"'}
               expectedVersion={expectedVersion ?? '1'}
+              actingPartyId={actingPartyId}
+              {...(actingContextLabel === undefined
+                ? {}
+                : { actingContextLabel })}
+              {...(stepUpState === undefined ? {} : { stepUpState })}
+              {...(stepUpFreshUntil === undefined ? {} : { stepUpFreshUntil })}
             />
           </div>
         ) : null}

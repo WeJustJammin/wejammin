@@ -9,6 +9,26 @@ const safeVersionDetails = (
     ),
   );
 
+const STEP_UP_METHOD_MAX_LENGTH = 32;
+const STEP_UP_METHOD_MAX_COUNT = 8;
+const safeStepUpMethod = /^[a-z][a-z0-9_]{0,31}$/u;
+
+/**
+ * BE00 allows only configured step-up method identifiers on the wire. Keep
+ * bounded identifiers, drop everything else, and never let an unconfigured or
+ * malformed list invent a method. A non-array list fails closed.
+ */
+const safeStepUpMethods = (value: unknown): readonly string[] | null => {
+  if (!Array.isArray(value)) return null;
+  const methods = value.filter(
+    (method): method is string =>
+      typeof method === 'string' &&
+      method.length <= STEP_UP_METHOD_MAX_LENGTH &&
+      safeStepUpMethod.test(method),
+  );
+  return [...new Set(methods)].slice(0, STEP_UP_METHOD_MAX_COUNT);
+};
+
 /** Keep only bounded error details that are useful to a human client. */
 export const safeDetails = (
   result: ContentSchemaRegistryError,
@@ -57,10 +77,18 @@ export const safeDetails = (
         : { violations: safeViolations.slice(0, 50) }),
     };
   }
-  if (result.status === 401)
+  if (result.status === 401) {
+    if (result.code === 'STEP_UP_REQUIRED') {
+      if (result.details?.recoveryAction !== 'step_up') return {};
+      const allowedMethods = safeStepUpMethods(result.details.allowedMethods);
+      return allowedMethods === null
+        ? {}
+        : { recoveryAction: 'step_up', allowedMethods: [...allowedMethods] };
+    }
     return result.details?.recoveryAction === 'reauthenticate'
       ? { recoveryAction: 'reauthenticate' }
       : {};
+  }
   if (result.status === 403)
     return typeof result.details?.reasonCode === 'string'
       ? { reasonCode: result.details.reasonCode }

@@ -16,11 +16,17 @@ runs:
   using: composite
   steps:
     - name: Prepare exact staging and CI artifacts
+      id: prepare
       uses: ./.github/actions/ac265-hosted-e2e-prepare
       with:
         source_sha: ${{ inputs.source_sha }}
         staging_run_id: ${{ inputs.staging_run_id }}
+        staging_run_attempt: ${{ inputs.staging_run_attempt }}
         ci_run_id: ${{ inputs.ci_run_id }}
+        ci_run_attempt: ${{ inputs.ci_run_attempt }}
+        staging_deployment_id: ${{ inputs.staging_deployment_id }}
+        staging_web_origin: ${{ inputs.staging_web_origin }}
+        staging_api_origin: ${{ inputs.staging_api_origin }}
     - name: Verify exact staging and CI candidate provenance
       id: verify
       shell: bash
@@ -31,6 +37,8 @@ runs:
         AC265_CI_RUN_ID: ${{ inputs.ci_run_id }}
         AC265_CI_RUN_ATTEMPT: ${{ inputs.ci_run_attempt }}
         AC265_STAGING_DEPLOYMENT_ID: ${{ inputs.staging_deployment_id }}
+        AC265_DOWNLOADED_CI_ARTIFACT_ID: ${{ steps.prepare.outputs.ci_artifact_id }}
+        AC265_DOWNLOADED_STAGING_ARTIFACT_ID: ${{ steps.prepare.outputs.staging_artifact_id }}
         STAGING_WEB_ORIGIN: ${{ inputs.staging_web_origin }}
         STAGING_API_ORIGIN: ${{ inputs.staging_api_origin }}
         CLOUDFLARE_ACCOUNT_ID: ${{ inputs.hosting_account_id }}

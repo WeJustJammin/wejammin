@@ -2,16 +2,34 @@
 
 ## Active
 
-- **P2-S09 external release evidence** (updated 2026-09-26) — Slice 09
-  implementation is complete at **279/279 active** (**283 authored IDs**),
-  with authored depth ratio **0.986** and active depth ratio **1.000**. Phase 2
-  has **1,996 active criteria / 2,000 authored**. AC209, AC211, AC265, and
-  AC266 remain authored and unchecked outside the active implementation
-  denominator (DEC-101, DEC-104, DEC-105). Slice 10 implementation is
-  unblocked. AC265 is a mandatory pre-release hosted acceptance gate, not a
-  Slice 10 implementation prerequisite. Its separate staging-scope verifier
-  exists, but genuine nine-role/ten-scenario hosted evidence, signed exact
-  artifact provenance, and an authenticated receipt remain absent. No AC265
+- **P2-S12 locale source-stale fanout contract** (2026-09-28) — The local
+  append-only transition and backfill are verified, but BE03c sets no
+  maximum number of dependent locales that a 15-second source write must
+  synchronously invalidate. The owner has been asked to choose a bounded
+  per-entry locale count or asynchronous fail-closed invalidation. BE03c
+  also leaves equal entry `aggregateVersion` values across distinct
+  `cms.localization.changed.v1` locale events unspecified for consumers;
+  event-ID-plus-locale reconciliation or a per-locale aggregate key must be
+  locked before consumer acceptance. These are spec/scale gaps, not a claim
+  that local pgTAP or Chrome proves hosted behavior.
+- **P2-S09 external release evidence** (updated 2026-10-01) — Slice 09
+  implementation is incomplete at **262/279 active** (**283 authored IDs**). The
+  2026-09-30 activation re-audit reopened 17 activation-chain criteria that remain
+  open; the separately reopened AC250 disclosure clause was Chrome-verified and
+  closed 2026-10-01, and the recorded count before that closure was 261/279. The
+  proof that activation or the confirmation step works end-to-end. Phase 2 has
+  **2,011 active criteria / 2,015 authored**. AC209, AC211, AC265, and AC266
+  remain authored and unchecked outside the active implementation denominator
+  (DEC-101, DEC-104, DEC-105). A 2026-10-01 [dry-run producer audit](../verification/2026-10-01-slice-09-dry-run-producer-audit.md)
+  also found that the migration worker requires a plan that production creates
+  only during activation, while activation requires the immutable report first;
+  the pre-activation trigger is not locked. BE03a also has no successor-draft
+  command for an existing type, so that scope requires an owner decision.
+  Slice 10 implementation is blocked
+  again by the reopened Slice 09 criteria. AC265 is a mandatory pre-release hosted acceptance
+  gate, not a Slice 10 implementation prerequisite. Its separate staging-scope
+  verifier exists, but genuine nine-role/ten-scenario hosted evidence, signed
+  exact artifact provenance, and an authenticated receipt remain absent. No AC265
   acceptance is claimed.
   AC209 is deferred as a production-rollout/post-initial-controlled-deployment
   alert gate that must pass before alerting is declared ready — it does not

@@ -1,0 +1,162 @@
+
+-- EditorialDecision, PublicationSchedule and PublicationVersion canonical
+-- records (BE03b Database Schema).
+
+select ok(
+  pg_temp.s10r_closed_check_labels(
+    'platform_private.cms_editorial_decisions', 'state'
+  ) = array['recorded']::text[]
+    and pg_temp.s10r_closed_check_labels(
+      'platform_private.cms_editorial_decisions', 'decision'
+    ) = array['approve','reject']::text[]
+    and pg_temp.s10r_has_default(
+      'platform_private.cms_editorial_decisions', 'version'
+    ),
+  'decision state is recorded-only with a closed approve/reject union'
+);
+
+select ok(
+  pg_temp.s10r_fk_target(
+    'platform_private.cms_editorial_decisions', 'review_id'
+  ) = 'platform_private.cms_editorial_reviews.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_editorial_decisions', 'reviewer_person_id'
+    ) = 'platform_private.person_party.party_id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_editorial_decisions', 'acting_party_id'
+    ) = 'platform_private.party.id',
+  'decision binds a real review, canonical reviewer and acting party'
+);
+
+select ok(
+  pg_temp.s10r_unique_target('platform_private.cms_editorial_decisions')
+    @> array['review_id,reviewer_person_id']::text[]
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_decisions', 'updated_at = created_at'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_decisions',
+      'octet_length(reason) >= 1'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_decisions',
+      'octet_length(capability) >= 1'
+    ),
+  'one decision per reviewer per review on immutable append-only evidence'
+);
+
+select ok(
+  pg_temp.s10r_has_check(
+    'platform_private.cms_editorial_decisions', 'comment_hash IS NULL'
+  )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_decisions', '^[a-f0-9]{64}$'
+    )
+    and pg_temp.s10r_col_notnull(
+      'platform_private.cms_editorial_decisions', 'reviewed_hash'
+    ),
+  'optional comment hash and mandatory reviewed hash stay 64-hex'
+);
+
+select ok(
+  pg_temp.s10r_closed_check_labels(
+    'platform_private.cms_publication_schedules', 'state'
+  ) = array[
+    'blocked','cancelled','completed','executing','failed_retryable','pending'
+  ]::text[]
+    and pg_temp.s10r_closed_check_labels(
+      'platform_private.cms_publication_schedules', 'action'
+    ) = array['archive','expire','publish','unpublish']::text[]
+    and pg_temp.s10r_closed_check_labels(
+      'platform_private.cms_publication_schedules', 'disambiguation'
+    ) = array['earlier','later','none']::text[],
+  'schedule state, action and DST disambiguation are closed unions'
+);
+
+select ok(
+  pg_temp.s10r_fk_target(
+    'platform_private.cms_publication_schedules', 'entry_id'
+  ) = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_publication_schedules', 'revision_id'
+    ) = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_publication_schedules', 'created_by'
+    ) = 'platform_private.person_party.party_id'
+    and pg_temp.s10r_column_type(
+      'platform_private.cms_publication_schedules', 'local_datetime'
+    ) = 'timestamp'
+    and pg_temp.s10r_column_type(
+      'platform_private.cms_publication_schedules', 'resolved_at_utc'
+    ) = 'timestamptz',
+  'schedule separates naive local time from the resolved UTC instant'
+);
+
+select ok(
+  pg_temp.s10r_unique_target('platform_private.cms_publication_schedules')
+    @> array['entry_id,revision_id,action,local_datetime,timezone']::text[]
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_publication_schedules', 'expected_version > 0'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_publication_schedules', 'octet_length(timezone) >= 1'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_publication_schedules',
+      'octet_length(tzdb_version) >= 1'
+    ),
+  'schedule identity is unique and its version and tz evidence are bounded'
+);
+
+select ok(
+  pg_temp.s10r_closed_check_labels(
+    'platform_private.cms_publication_versions', 'state'
+  ) = array['active','pending','revoked','superseded']::text[]
+    and pg_temp.s10r_has_default(
+      'platform_private.cms_publication_versions', 'version'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_publication_versions',
+      'updated_at = created_at'
+    ),
+  'publication version state is a closed union on immutable evidence'
+);
+
+select ok(
+  pg_temp.s10r_fk_target(
+    'platform_private.cms_publication_versions', 'entry_id'
+  ) = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_publication_versions', 'revision_id'
+    ) = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_publication_versions', 'schema_version_id'
+    ) = 'platform_private.cms_content_type_versions.id'
+    and pg_temp.s10r_fk_target(
+      'platform_private.cms_publication_versions', 'schema_artifact_id'
+    ) = 'platform_private.cms_schema_artifacts.id'
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_publication_versions',
+      'cms_template_registry_valid'
+    ),
+  'publication version pins real schema, artifact and template-seam evidence'
+);
+
+select ok(
+  pg_temp.s10r_has_partial_index(
+    'platform_private.cms_publication_versions',
+    'cms_publication_versions_active_identity_unique',
+    array['(entry_id, locale, audience)', 'active']
+  )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_publication_versions',
+      'cms_publication_versions_entry_locale_audience_state_idx',
+      array['(entry_id, locale, audience, state)']
+    )
+    and pg_temp.s10r_has_index(
+      'platform_private.cms_publication_versions',
+      'cms_publication_versions_revision_idx',
+      array['(revision_id)']
+    ),
+  'only one active publication per entry, locale and audience'
+);

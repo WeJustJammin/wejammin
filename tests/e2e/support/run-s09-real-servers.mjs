@@ -86,10 +86,12 @@ const spawnChild = (command, args, watch) => {
   children.push(child);
   if (watch)
     child.once('exit', (code, signal) => {
-      if (!shuttingDown) shutdown(code === null || code === 0 ? 1 : code);
-      console.error(
-        `S09 server exited before teardown (code=${String(code)}, signal=${String(signal)})`,
-      );
+      if (!shuttingDown) {
+        console.error(
+          `S09 ${args[1]} server exited before teardown (code=${String(code)}, signal=${String(signal)})`,
+        );
+        shutdown(code === null || code === 0 ? 1 : code);
+      }
     });
   return child;
 };

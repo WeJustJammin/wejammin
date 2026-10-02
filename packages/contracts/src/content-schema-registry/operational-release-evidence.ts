@@ -31,6 +31,7 @@ export * from './operational-release-evidence-observability.ts';
 export * from './operational-release-evidence-hosted-input.ts';
 export * from './operational-release-evidence-hosted-receipt.ts';
 export * from './operational-release-evidence-hosted-report.ts';
+export * from './operational-release-evidence-hosted-scope.ts';
 export * from './operational-release-evidence-manual-accessibility-report.ts';
 export * from './operational-release-evidence-provider.ts';
 

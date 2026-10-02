@@ -18,6 +18,7 @@ import {
 } from './admission';
 import type { ContentSchemaRegistryDependencies } from './types';
 import type { FeatureContext } from './route-types';
+import { CMS_STEP_UP_ALLOWED_METHODS } from './production-errors';
 import { errorResponse, policyFor, setRateHeaders } from './route-response';
 import type { RouteExecutor } from './route-execution';
 
@@ -79,7 +80,13 @@ export const createHumanHandlers = (
           status: 401,
           code: 'STEP_UP_REQUIRED',
           message: 'Recent verification is required.',
-          details: { recoveryAction: 'reauthenticate' },
+          // BE00: a missing recent step-up is recoverable by completing
+          // recent verification, not by reauthenticating. Only methods the
+          // server is actually configured to accept may be advertised.
+          details: {
+            allowedMethods: CMS_STEP_UP_ALLOWED_METHODS,
+            recoveryAction: 'step_up',
+          },
         },
         context.get('requestId'),
       );
