@@ -6,6 +6,10 @@ import {
 } from './content-schema-registry-runtime-mutation-reconciliation';
 import { addClientBindingIdHeader } from '../../lib/client-binding';
 import { parseContentSchemaRegistryRetryAfter } from './content-schema-registry-runtime-constants';
+import {
+  classifyStepUpResponse,
+  type StepUpClassification,
+} from './content-schema-registry-step-up-classify';
 
 export {
   CONTENT_SCHEMA_REGISTRY_LOADING_DELAY_MS,
@@ -29,6 +33,8 @@ export type ContentSchemaRegistryMutationOutcome =
   | 'validation'
   | 'unauthenticated'
   | 'step-up-required'
+  | 'step-up-unavailable'
+  | 'step-up-malformed'
   | 'forbidden'
   | 'not-found'
   | 'conflict'
@@ -48,6 +54,8 @@ export interface ContentSchemaRegistryMutationResult {
   /** OD-4 locale refusals: exact server-owned messages with their pointers. */
   readonly localeIssues?: readonly ContentSchemaRegistryLocaleIssue[];
   readonly serverVersion: string | null;
+  /** The request ID of a degraded step-up response, for recovery copy. */
+  readonly requestId?: string | null;
   readonly formData: FormData;
 }
 
@@ -137,28 +145,6 @@ const mutationErrorDetails = async (
   }
 };
 
-/** BE03a: a 401 whose recovery is exactly `step_up` routes to /step-up. */
-const isStepUpRequired = async (response: Response): Promise<boolean> => {
-  if (response.status !== 401) return false;
-  try {
-    const body: unknown = await response.clone().json();
-    if (typeof body !== 'object' || body === null) return false;
-    const { code, details } = body as {
-      readonly code?: unknown;
-      readonly details?: unknown;
-    };
-    return (
-      code === 'STEP_UP_REQUIRED' &&
-      typeof details === 'object' &&
-      details !== null &&
-      (details as { readonly recoveryAction?: unknown }).recoveryAction ===
-        'step_up'
-    );
-  } catch {
-    return false;
-  }
-};
-
 const mutationServerVersion = async (
   response: Response,
 ): Promise<string | null> => {
@@ -198,13 +184,18 @@ export const executeContentSchemaRegistryMutation = async (input: {
   const outcomeFor = (
     response: Response | null,
     authoritative: boolean,
-    stepUp: boolean,
+    stepUp: StepUpClassification | null,
   ): ContentSchemaRegistryMutationOutcome => {
     if (response === null || authoritative)
       return authoritative ? 'success' : 'degraded';
     if (response.status === 400 || response.status === 422) return 'validation';
-    if (response.status === 401)
-      return stepUp ? 'step-up-required' : 'unauthenticated';
+    if (response.status === 401) {
+      if (stepUp === null) return 'unauthenticated';
+      if (stepUp.kind === 'navigate') return 'step-up-required';
+      return stepUp.kind === 'no-method'
+        ? 'step-up-unavailable'
+        : 'step-up-malformed';
+    }
     if (response.status === 403) return 'forbidden';
     if (response.status === 404) return 'not-found';
     if (response.status === 409) return 'conflict';
@@ -225,11 +216,9 @@ export const executeContentSchemaRegistryMutation = async (input: {
           input.operationId,
           response,
         )));
-    const outcome = outcomeFor(
-      response,
-      isAuthoritative,
-      response !== null && (await isStepUpRequired(response)),
-    );
+    const stepUp =
+      response === null ? null : await classifyStepUpResponse(response);
+    const outcome = outcomeFor(response, isAuthoritative, stepUp);
     return {
       outcome,
       attempts,
@@ -249,6 +238,8 @@ export const executeContentSchemaRegistryMutation = async (input: {
         response === null ? [] : await mutationLocaleIssues(response),
       serverVersion:
         response === null ? null : await mutationServerVersion(response),
+      requestId:
+        stepUp !== null && stepUp.kind !== 'navigate' ? stepUp.requestId : null,
       formData: input.formData,
     };
   };

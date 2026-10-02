@@ -266,7 +266,7 @@ from field_values;
 select is(
   (select platform_private.cms_definition_artifact_hash(request_a) from s09_hash_requests),
   (select platform_private.cms_definition_artifact_hash(request_b) from s09_hash_requests),
-  'CMS schema artifact compilation is deterministic under field input reordering'
+  'CMS schema artifact compilation is deterministic under field input reordering [P2-S09-AC-684]'
 );
 
 -- A01 must roll back the aggregate and its effects when a protected child

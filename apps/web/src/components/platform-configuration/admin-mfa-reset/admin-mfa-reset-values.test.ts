@@ -23,7 +23,7 @@ describe('validateResetValues', () => {
     ).toEqual({});
   });
 
-  it('rejects a malformed or empty person ID', () => {
+  it('[P2-S09-AC-1110] rejects a malformed or empty person ID', () => {
     for (const targetPersonId of [
       '',
       'not-a-uuid',
@@ -42,7 +42,7 @@ describe('validateResetValues', () => {
     ).toEqual({});
   });
 
-  it('rejects an empty, blank or 513-character reason', () => {
+  it('[P2-S09-AC-1111] rejects an empty, blank or 513-character reason', () => {
     for (const reason of ['', '   ', 'a'.repeat(REASON_MAX_LENGTH + 1)]) {
       expect(
         validateResetValues({ targetPersonId: PERSON, reason }).reason,
@@ -59,7 +59,7 @@ describe('validateResetValues', () => {
 });
 
 describe('buildResetRequest', () => {
-  it('builds a strict body of exactly targetPersonId and the trimmed reason', () => {
+  it('[P2-S09-AC-1112] builds a strict body of exactly targetPersonId and the trimmed reason', () => {
     expect(
       buildResetRequest({
         targetPersonId: ` ${PERSON} `,

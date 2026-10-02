@@ -16,6 +16,11 @@ import {
   startRetryAfterCountdown,
 } from './content-schema-registry-runtime-dom-renderers';
 import type { ContentSchemaRegistryMutationResult } from './content-schema-registry-runtime';
+import { persistStepUpDraft } from './content-schema-registry-step-up-draft';
+import {
+  reviewFlashFor,
+  writeReviewFlash,
+} from './content-schema-registry-review-flash';
 
 export const completeContentSchemaRegistryMutation = (
   form: HTMLFormElement,
@@ -44,7 +49,24 @@ export const completeContentSchemaRegistryMutation = (
       false,
     );
     focusWithoutScroll(status);
+    persistStepUpDraft(form, windowObject);
     safeStepUp(windowObject, navigate);
+    return;
+  }
+  if (
+    result.outcome === 'step-up-unavailable' ||
+    result.outcome === 'step-up-malformed'
+  ) {
+    // Typed step-up details were empty, unusable or unreadable: a degraded
+    // state, never a redirect, a gate or a reauthentication.
+    const base = safeOutcomeMessage(result.outcome, null);
+    const message =
+      result.outcome === 'step-up-unavailable' && result.requestId != null
+        ? `${base} Reference: ${result.requestId}`
+        : base;
+    focusWithoutScroll(announce(form, message, true));
+    if (result.outcome === 'step-up-malformed')
+      renderRetryAction(form, windowObject);
     return;
   }
   if (result.outcome === 'forbidden') {
@@ -73,6 +95,17 @@ export const completeContentSchemaRegistryMutation = (
     result.outcome !== 'success' && result.outcome !== 'rate-limited',
   );
   if (result.outcome === 'success') {
+    const flash = reviewFlashFor(
+      form.dataset.operationId ?? '',
+      result.formData,
+    );
+    if (flash !== null) {
+      try {
+        writeReviewFlash(windowObject.sessionStorage, flash);
+      } catch {
+        // Storage may be blocked; the refreshed counts still render.
+      }
+    }
     const location =
       result.location === null
         ? null

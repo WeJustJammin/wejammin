@@ -22,7 +22,7 @@ import {
  */
 
 describe('[DEC-108] review route guard', () => {
-  it('redirects an absent session to sign-in without calling the platform', async () => {
+  it('[P2-S09-AC-1018] redirects an absent session to sign-in without calling the platform', async () => {
     const { result, bound } = await resolveReview(
       {},
       { request: reviewRequest({ cookie: null }) },
@@ -31,7 +31,7 @@ describe('[DEC-108] review route guard', () => {
     expect(bound.fetch).not.toHaveBeenCalled();
   });
 
-  it('treats an upstream 401 as an unauthenticated session', async () => {
+  it('[P2-S09-AC-1018] treats an upstream 401 as an unauthenticated session', async () => {
     const { result } = await resolveReview({
       status: 401,
       errorCode: 'UNAUTHENTICATED',
@@ -57,7 +57,7 @@ describe('[DEC-108] review route guard', () => {
     },
   );
 
-  it('conceals an upstream 404 as not_found with no review data', async () => {
+  it('[P2-S09-AC-1017] conceals an upstream 404 as not_found with no review data', async () => {
     const { result } = await resolveReview({
       status: 404,
       errorCode: 'NOT_FOUND',
@@ -73,13 +73,13 @@ describe('[DEC-108] review route guard', () => {
     expect(result.kind).toBe('not_found');
   });
 
-  it('reports a visible review without the required scope as forbidden', async () => {
+  it('[P2-S09-AC-1017] reports a visible review without the required scope as forbidden', async () => {
     expect((await resolveReview({ status: 403 })).result.kind).toBe(
       'forbidden',
     );
   });
 
-  it('never accepts registry-wide read as authority for a review', async () => {
+  it('[P2-S09-AC-987] never accepts registry-wide read as authority for a review', async () => {
     // BE03a CMS-03A-13: submitter/designer or assigned review-only scope only.
     const { result } = await resolveReview({
       capability: 'cms.schema_registry.read',
@@ -95,7 +95,7 @@ describe('[DEC-108] review route guard', () => {
 });
 
 describe('[DEC-108] review route projection', () => {
-  it('authorizes the schema designer with the full owner variant', async () => {
+  it('[P2-S09-AC-1016] authorizes the schema designer with the full owner variant', async () => {
     const { result } = await resolveReview();
     if (result.kind !== 'authorized')
       throw new Error(`expected authorized, got ${result.kind}`);
@@ -106,7 +106,7 @@ describe('[DEC-108] review route projection', () => {
     expect(result.page.initialReview.data?.id).toBe(REVIEW_ID);
   });
 
-  it('authorizes an assigned reviewer with the review-only schemaReviewAssigned variant', async () => {
+  it('[P2-S09-AC-986] [P2-S09-AC-1016] authorizes an assigned reviewer with the review-only schemaReviewAssigned variant', async () => {
     const { result } = await resolveReview({
       capability: 'cms.schema_review',
       variant: 'schemaReviewAssigned',
@@ -133,7 +133,7 @@ describe('[DEC-108] review route projection', () => {
     expect(result.page.stepUpState).toBe('verified');
   });
 
-  it('keeps the deep link to the review id only, ignoring any query', async () => {
+  it('[P2-S09-AC-1019] keeps the deep link to the review id only, ignoring any query', async () => {
     const { result } = await resolveReview(
       {},
       { request: reviewRequest({ search: `?reviewer=${ACTOR_ID}&limit=25` }) },
@@ -147,7 +147,7 @@ describe('[DEC-108] review route projection', () => {
 });
 
 describe('[DEC-108] review route platform read', () => {
-  it('issues exactly one no-store GET to the CMS-03A-13 path with no body or mutation headers', async () => {
+  it('[P2-S09-AC-984] [P2-S09-AC-1016] issues exactly one no-store GET to the CMS-03A-13 path with no body or mutation headers', async () => {
     const { result, bound } = await resolveReview(
       {},
       { request: reviewRequest({ search: '?limit=25&cursor=x' }) },
@@ -191,7 +191,7 @@ describe('[DEC-108] review route failure states', () => {
     [503, 'DEPENDENCY_UNAVAILABLE'],
     [504, 'DEPENDENCY_DEADLINE_EXCEEDED'],
   ] as const)(
-    'maps an upstream %i to a degraded page with a degraded review state',
+    '[P2-S09-AC-953] maps an upstream %i to a degraded page with a degraded review state',
     async (status, errorCode) => {
       const { result } = await resolveReview({ status, errorCode });
       if (result.kind !== 'degraded')
@@ -219,7 +219,7 @@ describe('[DEC-108] review route failure states', () => {
     expect(result.status).toBe(502);
   });
 
-  it('maps a rate limit to a retryable error state', async () => {
+  it('[P2-S09-AC-953] maps a rate limit to a retryable error state', async () => {
     const { result } = await resolveReview({
       status: 429,
       errorCode: 'RATE_LIMITED',

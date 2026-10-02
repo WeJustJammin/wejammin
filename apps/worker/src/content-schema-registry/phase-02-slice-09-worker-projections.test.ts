@@ -120,7 +120,7 @@ describe('S09 worker content-schema-registry projections', () => {
         },
       }),
     );
-    await expectApiError(response, 502, 'DEPENDENCY_INVALID_RESPONSE');
+    await expectApiError(response, 502, 'DEPENDENCY_UNAVAILABLE');
   });
 
   it('returns safe detail projections with only browser-allowlisted block records', async () => {
@@ -247,7 +247,7 @@ describe('S09 worker content-schema-registry projections', () => {
   it.each([
     [
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
       { dependencyClass: 'cms_registry', retryable: false },
     ],
     [
@@ -257,7 +257,7 @@ describe('S09 worker content-schema-registry projections', () => {
     ],
     [
       504,
-      'DEPENDENCY_DEADLINE_EXCEEDED',
+      'DEPENDENCY_UNAVAILABLE',
       { dependencyClass: 'cms_registry', retryable: true },
     ],
     [429, 'RATE_LIMITED', { limit: 20, retryAfterSeconds: 5 }],
@@ -296,11 +296,7 @@ describe('S09 worker content-schema-registry projections', () => {
       expect(
         response.headers.get(CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER),
       ).toBe(
-        status === 502
-          ? 'false'
-          : status === 503 || status === 504
-            ? 'true'
-            : null,
+        status === 502 || status === 503 || status === 504 ? 'true' : null,
       );
     },
   );

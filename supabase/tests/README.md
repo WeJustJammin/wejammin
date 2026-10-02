@@ -24,6 +24,27 @@ context_capabilities_reaudit}.sql` suites pin purpose-grant approval, durable
 CAS/idempotency, filtered pagination/freshness, disclosure-safe audit reads,
 and the service-only capability-context seam.
 
+### Slice 09 — acceptance evidence markers
+
+Every assertion that proves a Slice 09 acceptance criterion carries the marker
+`[P2-S09-AC-NNN]` in its pgTAP description (or its runner check label), so
+`grep -rn "\[P2-S09-AC-NNN\]" supabase/tests` lists exactly the tests behind
+one criterion. The lane files are `phase_02_slice_09_evidence_{cms09_10,
+cms11_14,grants,constraints_reviews,constraints_grants,constraints_reports,
+paths,mfa,misc,bench128}.sql`; the shared
+`phase_02_slice_09_dec108/05-probes.sqlinc` isolates one real CHECK, NOT NULL,
+unique constraint or partial unique index of a table (copying the table's own
+definition into a temp table), probes every foreign key, generates a violating
+row for every CHECK, and lists the functions that write a table, so a new writer
+fails the file that pins the writer set. `phase_02_slice_09_schema/011-constraint-probes.sqlinc`
+runs those generated probes over every BE03a persistence table at the end of the
+schema entrypoint. The two-session runners are
+`phase_02_slice_09_dec108/012-concurrent-commands.mjs`,
+`phase_02_slice_09_scan/010-entry-lock-race.mjs`,
+`phase_02_slice_09_dec111/{010-admin-reset-race,011-verification-lock-race}.mjs`
+and `phase_02_slice_09_schema/009c-independent-sessions.mjs`; run each only
+right after `pnpm db:reset` and reset again afterwards (they commit rows).
+
 ## Extension
 
 Add tests beside the migration that introduces a behavior. Cover both allowed

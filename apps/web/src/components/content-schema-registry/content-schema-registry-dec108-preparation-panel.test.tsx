@@ -59,7 +59,7 @@ describe('[DEC-108] dry-run status panel', () => {
     expect(panel(queuedDryRunPreparation, 'full')).not.toBeNull();
   });
 
-  it('states that no dry run exists yet when dryRunRef is null', () => {
+  it('[P2-S09-AC-961] [P2-S09-AC-964] states that no dry run exists yet when dryRunRef is null', () => {
     expect(panel(activationPreparation()).textContent).toMatch(/no dry run/iu);
   });
 
@@ -67,7 +67,7 @@ describe('[DEC-108] dry-run status panel', () => {
     ['queued', 'queued'],
     ['running', 'running'],
   ] as const)(
-    'announces a %s dry run politely without a result',
+    '[P2-S09-AC-962] announces a %s dry run politely without a result',
     (state, jobState) => {
       const region = panel(
         activationPreparation({
@@ -90,7 +90,7 @@ describe('[DEC-108] dry-run status panel', () => {
   });
 
   it.each(['queued', 'running', 'succeeded', 'failed', 'cancelled'] as const)(
-    'renders the BE00 job state %s as a status line, never as a result',
+    '[P2-S09-AC-969] renders the BE00 job state %s as a status line, never as a result',
     (jobState) => {
       const region = panel(
         activationPreparation({
@@ -102,12 +102,12 @@ describe('[DEC-108] dry-run status panel', () => {
     },
   );
 
-  it('renders the sealed passed result only for a completed dry run', () => {
+  it('[P2-S09-AC-963] renders the sealed passed result only for a completed dry run', () => {
     const region = panel(passedDryRunPreparation);
     expect(region.textContent).toMatch(/passed/iu);
   });
 
-  it('renders a sealed failed result and keeps submit-review unavailable', () => {
+  it('[P2-S09-AC-963] renders a sealed failed result and keeps submit-review unavailable', () => {
     const preparation = activationPreparation({
       dryRunRef: dryRun('completed', 'failed'),
       jobRef: { id: JOB_ID, state: 'succeeded' },
@@ -126,7 +126,7 @@ describe('[DEC-108] dry-run status panel', () => {
     ).toBeNull();
   });
 
-  it('does not render passed when the job succeeded but no sealed report exists', () => {
+  it('[P2-S09-AC-960] does not render passed when the job succeeded but no sealed report exists', () => {
     // FE03: a job state of succeeded alone never renders a passed result.
     const region = panel(
       activationPreparation({
@@ -138,7 +138,7 @@ describe('[DEC-108] dry-run status panel', () => {
   });
 
   it.each(['failed', 'cancelled'] as const)(
-    'renders unsealed-failure copy for a %s job without a sealed report',
+    '[P2-S09-AC-960] renders unsealed-failure copy for a %s job without a sealed report',
     (jobState) => {
       const region = panel(
         activationPreparation({
@@ -169,7 +169,7 @@ describe('[DEC-108] template compatibility projection', () => {
     contentTypeVersionId: VERSION_ID,
   };
 
-  it('renders the safe resolver projection read-only for the exact candidate', () => {
+  it('[P2-S09-AC-971] renders the safe resolver projection read-only for the exact candidate', () => {
     const region = panel(
       activationPreparation({
         ...passedDryRunPreparation,
@@ -181,7 +181,7 @@ describe('[DEC-108] template compatibility projection', () => {
     expect(region.querySelector('input, select, textarea, button')).toBeNull();
   });
 
-  it('states nothing about compatibility when the projection is absent', () => {
+  it('[P2-S09-AC-971] states nothing about compatibility when the projection is absent', () => {
     // Control: the projection renders when present.
     expect(
       panel(

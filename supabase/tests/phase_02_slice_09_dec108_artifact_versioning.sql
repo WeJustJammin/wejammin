@@ -35,7 +35,7 @@ $body$;
 
 select ok(pg_temp.s09d_def('platform_private.cms_create_type_draft(jsonb)') <> ''
   and position('/v1' in pg_temp.s09d_def('platform_private.cms_create_type_draft(jsonb)')) = 0,
-  'DEFECT C: the draft compiler no longer hard-codes a literal /v1 artifact reference');
+  'DEFECT C: the draft compiler no longer hard-codes a literal /v1 artifact reference [P2-S09-AC-684]');
 select pg_temp.s09d_create_type('a', 'dec108ver');
 select pg_temp.s09d_to_active('a');
 create temp table s09d_v1_artifact on commit drop as
@@ -48,12 +48,12 @@ select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_i
 select pg_temp.s09d_successor('b', 'a');
 select is(pg_temp.s09d_outcome('b:successor'), 'OK', 'fixture: an unchanged successor draft (v2) was cloned');
 select is(pg_temp.s09d_artifact('b', 'zod_contract_ref'), 'cms/content-type/dec108ver/v2',
-  'the second version''s artifact is addressed cms/content-type/{typeKey}/v2');
+  'the second version''s artifact is addressed cms/content-type/{typeKey}/v2 [P2-S09-AC-684]');
 select ok(pg_temp.s09d_artifact('b', 'artifact_hash') ~ '^[a-f0-9]{64}$'
   and pg_temp.s09d_artifact('b', 'artifact_hash') <> pg_temp.s09d_artifact('a', 'artifact_hash'),
   'an unchanged clone has a DISTINCT artifact hash from its source (no identical-artifact claim)');
 select ok(pg_temp.s09d_artifact('b', 'artifact_hash') = pg_temp.s09d_recomputed_hash('b'),
-  'the v2 hash is exactly the canonical SHA-256 of compilerVersion, versioned zodContractRef, both manifests and localeConfigHash (no salt)');
+  'the v2 hash is exactly the canonical SHA-256 of compilerVersion, versioned zodContractRef, both manifests and localeConfigHash (no salt) [P2-S09-AC-684]');
 select ok(pg_temp.s09d_artifact('b', 'artifact_hash') is not null
   and pg_temp.s09d_artifact('b', 'artifact_hash') = pg_temp.s09d_read('cms_content_type_versions', 'definition_hash', pg_temp.s09d_id('b:version')),
   'the successor row''s definition hash is its own artifact hash');
@@ -65,13 +65,13 @@ select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_i
 select pg_temp.s09d_successor('c', 'b');
 select is(pg_temp.s09d_outcome('c:successor'), 'OK', 'fixture: an unchanged successor draft (v3) was cloned from v2');
 select is(pg_temp.s09d_artifact('c', 'zod_contract_ref'), 'cms/content-type/dec108ver/v3',
-  'the third version''s artifact is addressed cms/content-type/{typeKey}/v3');
+  'the third version''s artifact is addressed cms/content-type/{typeKey}/v3 [P2-S09-AC-684]');
 select ok(pg_temp.s09d_artifact('c', 'artifact_hash') ~ '^[a-f0-9]{64}$'
   and pg_temp.s09d_artifact('c', 'artifact_hash') not in (pg_temp.s09d_artifact('a', 'artifact_hash'),
         pg_temp.s09d_artifact('b', 'artifact_hash')),
   'the v3 clone''s hash differs from both v1 and v2');
 select ok(pg_temp.s09d_artifact('c', 'artifact_hash') = pg_temp.s09d_recomputed_hash('c'),
-  'the v3 hash is exactly the canonical SHA-256 of its versioned composition');
+  'the v3 hash is exactly the canonical SHA-256 of its versioned composition [P2-S09-AC-684]');
 
 -- Coexistence and source immutability.
 select ok((select count(distinct artifact_hash) = 3 and count(*) = 3
@@ -80,10 +80,10 @@ select ok((select count(distinct artifact_hash) = 3 and count(*) = 3
   'three versions of one type coexist as three artifacts under three distinct hashes (global UNIQUE(artifact_hash) holds)');
 select ok(exists (select 1 from pg_indexes where schemaname = 'platform_private' and tablename = 'cms_schema_artifacts'
     and indexdef ilike '%unique%artifact_hash%'), 'the global UNIQUE(artifact_hash) invariant is retained, not relaxed');
-select is(pg_temp.s09d_artifact('a', 'zod_contract_ref'), 'cms/content-type/dec108ver/v1', 'the v1 artifact keeps its /v1 reference');
+select is(pg_temp.s09d_artifact('a', 'zod_contract_ref'), 'cms/content-type/dec108ver/v1', 'the v1 artifact keeps its /v1 reference [P2-S09-AC-684]');
 select ok(pg_temp.s09d_outcome('c:successor') = 'OK' and pg_temp.s09d_scalar(format('select row_to_json(a)::text from platform_private.cms_schema_artifacts a where a.content_type_version_id = %L',
     pg_temp.s09d_id('a:version'))) = (select snapshot from s09d_v1_artifact),
-  'creating and activating successors never mutates the source artifact row');
+  'creating and activating successors never mutates the source artifact row [P2-S09-AC-684]');
 select is(pg_temp.s09d_artifact('a', 'artifact_hash'), pg_temp.s09d_recomputed_hash('a'),
   'the v1 hash is the same versioned composition (compilerVersion, /v1, manifests)');
 select ok(pg_temp.s09d_artifact('b', 'compiler_version') = pg_temp.s09d_artifact('a', 'compiler_version')

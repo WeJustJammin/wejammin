@@ -66,6 +66,12 @@ describe('content schema registry operational metrics', () => {
       }),
     ).toEqual({
       acceptanceP99Ms: 1_100,
+      assignmentDenialBaseline: 0,
+      assignmentDenialRate: 0,
+      capabilityGrantDenialBaseline: 0,
+      capabilityGrantDenialRate: 0,
+      decisionDenialBaseline: 0,
+      decisionDenialRate: 0,
       activationBlockedMs: 900_001,
       commandP95Ms: 1_300,
       conflictRate: 0.5,
@@ -166,10 +172,172 @@ describe('content schema registry operational metrics', () => {
         now: Date.parse('2026-09-05T12:00:00.000Z'),
       }),
     ).toEqual({
+      assignmentDenialBaseline: 0,
+      assignmentDenialRate: 0,
+      capabilityGrantDenialBaseline: 0,
+      capabilityGrantDenialRate: 0,
+      decisionDenialBaseline: 0,
+      decisionDenialRate: 0,
       conflictWindowMs: 300_000,
       nonceRejectionBaseline: 0,
       nonceRejectionRate: 0,
       unknownEventVersions: 0,
     });
+  });
+});
+
+const command = (
+  timestamp: string,
+  operationId: string,
+  status: number,
+  eventName = 'cms.registry.command',
+) =>
+  at(timestamp, {
+    eventName,
+    operation: `cms.registry.${operationId}`,
+    outcome: status >= 500 ? 'failure' : status >= 400 ? 'rejected' : 'success',
+    metrics: { request_status: status },
+    durationMs: 10,
+  });
+
+describe('[P2-S09-AC-693] review open age', () => {
+  const now = Date.parse('2026-10-02T12:00:00.000Z');
+  it('passes the database review age through', () => {
+    expect(
+      buildContentSchemaRegistryOperationalSnapshot({
+        database: { reviewOpenAgeMs: 700_000_000 },
+        events: [],
+        now,
+      }).reviewOpenAgeMs,
+    ).toBe(700_000_000);
+  });
+
+  it.each([
+    ['absent', {}],
+    ['negative', { reviewOpenAgeMs: -1 }],
+    ['not finite', { reviewOpenAgeMs: Number.POSITIVE_INFINITY }],
+  ])('omits the age when it is %s', (_label, database) => {
+    expect(
+      'reviewOpenAgeMs' in
+        buildContentSchemaRegistryOperationalSnapshot({
+          database,
+          events: [],
+          now,
+        }),
+    ).toBe(false);
+  });
+});
+
+describe('[P2-S09-AC-694] denial counts', () => {
+  const now = Date.parse('2026-10-02T12:00:00.000Z');
+  const snapshot = (events: readonly unknown[]) =>
+    buildContentSchemaRegistryOperationalSnapshot({
+      database: {},
+      events: events as never,
+      now,
+    });
+
+  it('is zero in both windows when there is no command event', () => {
+    expect(snapshot([])).toMatchObject({
+      decisionDenialRate: 0,
+      decisionDenialBaseline: 0,
+      assignmentDenialRate: 0,
+      assignmentDenialBaseline: 0,
+      capabilityGrantDenialRate: 0,
+      capabilityGrantDenialBaseline: 0,
+    });
+  });
+
+  it('counts 401, 403 and 404 command outcomes per family in the current and preceding five minutes', () => {
+    const result = snapshot([
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-12', 403),
+      command('2026-10-02T11:58:00.000Z', 'CMS-03A-12', 404),
+      command('2026-10-02T11:57:00.000Z', 'CMS-03A-12', 401),
+      command('2026-10-02T11:54:00.000Z', 'CMS-03A-12', 403),
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-14', 403),
+      command('2026-10-02T11:52:00.000Z', 'CMS-03A-14', 404),
+      command('2026-10-02T11:51:00.000Z', 'CMS-03A-14', 403),
+      command('2026-10-02T11:59:30.000Z', 'CMS-03A-15', 403),
+      command('2026-10-02T11:59:20.000Z', 'CMS-03A-16', 404),
+      command('2026-10-02T11:59:10.000Z', 'CMS-03A-17', 401),
+      command('2026-10-02T11:53:00.000Z', 'CMS-03A-15', 403),
+    ]);
+    expect(result).toMatchObject({
+      decisionDenialRate: 3,
+      decisionDenialBaseline: 1,
+      assignmentDenialRate: 1,
+      assignmentDenialBaseline: 2,
+      capabilityGrantDenialRate: 3,
+      capabilityGrantDenialBaseline: 1,
+    });
+  });
+
+  it('ignores successes, conflicts, validation and server failures, other operations, other event names and older events', () => {
+    const result = snapshot([
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-12', 200),
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-12', 409),
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-12', 422),
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-12', 503),
+      command('2026-10-02T11:59:00.000Z', 'CMS-03A-11', 403),
+      command(
+        '2026-10-02T11:59:00.000Z',
+        'CMS-03A-12',
+        403,
+        'cms.registry.rpc',
+      ),
+      command(
+        '2026-10-02T11:59:00.000Z',
+        'CMS-03A-12',
+        403,
+        'cms.registry.acceptance',
+      ),
+      command('2026-10-02T11:30:00.000Z', 'CMS-03A-12', 403),
+      at('2026-10-02T11:59:00.000Z', {
+        eventName: 'cms.registry.command',
+        operation: 'cms.registry.CMS-03A-12',
+        metrics: { request_status: '403' },
+      }),
+      at('2026-10-02T11:59:00.000Z', {
+        eventName: 'cms.registry.command',
+        operation: 7,
+        metrics: { request_status: 403 },
+      }),
+      at('2026-10-02T11:59:00.000Z', {
+        eventName: 'cms.registry.command',
+        operation: 'cms.registry.CMS-03A-12',
+      }),
+    ]);
+    expect(result).toMatchObject({
+      decisionDenialRate: 0,
+      decisionDenialBaseline: 0,
+      assignmentDenialRate: 0,
+      capabilityGrantDenialRate: 0,
+    });
+  });
+
+  it('feeds the alert evaluator: a denial spike and a stale review raise their codes', async () => {
+    const { evaluateContentSchemaRegistryAlerts } =
+      await import('@wejammin/observability/content-schema-registry-alerts');
+    const built = buildContentSchemaRegistryOperationalSnapshot({
+      database: { reviewOpenAgeMs: 8 * 86_400_000 },
+      events: [
+        command('2026-10-02T11:59:00.000Z', 'CMS-03A-12', 403),
+        command('2026-10-02T11:59:10.000Z', 'CMS-03A-14', 404),
+        command('2026-10-02T11:59:20.000Z', 'CMS-03A-15', 403),
+      ] as never,
+      now,
+    });
+    expect(
+      evaluateContentSchemaRegistryAlerts(built)
+        .map((alert) => alert.code)
+        .sort(),
+    ).toEqual(
+      [
+        'assignment_denial_spike',
+        'capability_grant_denial_spike',
+        'decision_denial_spike',
+        'review_open_past_window',
+      ].sort(),
+    );
   });
 });

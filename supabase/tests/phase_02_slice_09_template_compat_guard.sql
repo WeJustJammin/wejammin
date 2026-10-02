@@ -80,7 +80,7 @@ select ok(platform_private.cms_template_binding_compatible(
   (select (response->>'id')::uuid from s09_upper_template),
   (select value::uuid from s10_ids where key = 'organization'),
   (select value::uuid from s10_ids where key = 'typeId')
-), 'AC169 compatibility compares UUID identity, not JSON string casing');
+), 'AC169 compatibility compares UUID identity, not JSON string casing [P2-S09-AC-169]');
 
 create temp table s09_incompatible_requests on commit drop as
 select request || jsonb_build_object(
@@ -111,7 +111,7 @@ select pg_temp.s10_rpc_exec(
 )
 from s09_incompatible_requests;
 select is(pg_temp.s10_last_error_message(), 'VALIDATION_FAILED',
-  'AC169 draft binding rejects a template that excludes the new content type');
+  'AC169 draft binding rejects a template that excludes the new content type [P2-S09-AC-169]');
 select is((select count(*)::integer from platform_private.cms_content_types
   where type_key = 'compat_b'), 0,
   'incompatible binding rejection leaves no type aggregate');
@@ -122,7 +122,7 @@ select pg_temp.s10_rpc_exec(
 )
 from s09_incompatible_requests;
 select is(pg_temp.s10_last_error_message(), 'VALIDATION_FAILED',
-  'AC169 default template rejects a version that excludes the new content type');
+  'AC169 default template rejects a version that excludes the new content type [P2-S09-AC-169]');
 select is((select count(*)::integer from platform_private.cms_content_types
   where type_key = 'compat_c'), 0,
   'incompatible default rejection leaves no type aggregate');
@@ -164,7 +164,7 @@ select pg_temp.s10_rpc_exec(
   )) || '::uuid returning to_jsonb(id)'
 );
 select is(pg_temp.s10_last_error_message(), 'VALIDATION_FAILED',
-  'AC169 activation state switch rechecks incompatible persisted bindings');
+  'AC169 activation state switch rechecks incompatible persisted bindings [P2-S09-AC-095] [P2-S09-AC-169]');
 select is((select state::text from platform_private.cms_content_type_versions
   where id = (select (response->>'id')::uuid from s09_review_candidate)),
   'review', 'rejected activation leaves review candidate unchanged');

@@ -105,12 +105,11 @@ export const safeDetails = (
   if (result.status === 502 || result.status === 503 || result.status === 504) {
     const details = result.details ?? {};
     return {
-      ...(typeof details.dependencyClass === 'string'
-        ? { dependencyClass: details.dependencyClass }
-        : {}),
-      ...(typeof details.retryable === 'boolean'
-        ? { retryable: details.retryable }
-        : {}),
+      dependencyClass:
+        typeof details.dependencyClass === 'string'
+          ? details.dependencyClass
+          : 'cms_registry',
+      retryable: true,
       ...(typeof result.retryAfterSeconds === 'number'
         ? { retryAfterSeconds: result.retryAfterSeconds }
         : {}),

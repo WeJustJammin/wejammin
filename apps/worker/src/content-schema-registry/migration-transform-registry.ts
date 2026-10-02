@@ -10,7 +10,6 @@
 import { CmsFieldKindSchema } from '@wejammin/contracts';
 
 import {
-  refuseMissingTarget,
   TARGET_ROW_ERROR,
   validateTargetValue,
 } from './migration-target-validator';
@@ -65,13 +64,12 @@ const identityRevalidate = (
   document: SourceDocument,
   context: TransformContext,
 ): unknown => {
-  const { targetFields, retiredFields } = context;
-  // With neither a target field to prove nor a retired field to carry there
-  // is nothing the page lets the row be proven against; a clean seal would be
-  // false evidence, so it is refused as a row error. A retire-only page has
-  // no constraint to violate: the row (retired values included) is carried.
-  if (targetFields.length === 0 && retiredFields.length === 0)
-    return refuseMissingTarget();
+  const { targetFields } = context;
+  // A page with no target field and no retired field is a field-neutral plan
+  // (for example a locale-only change): its rows are untouched by definition,
+  // so every row is carried unchanged and seals clean (outputHash ==
+  // sourceHash), mirroring the DB `cms_migration_expected_output`. A
+  // retire-only page likewise has no constraint to violate.
   for (const field of targetFields)
     validateTargetValue(field, valueOf(document, field));
   return document;
@@ -81,9 +79,9 @@ const defaultFillLiteral = (
   document: SourceDocument,
   context: TransformContext,
 ): unknown => {
-  const { targetFields, retiredFields } = context;
-  if (targetFields.length === 0 && retiredFields.length === 0)
-    throw rowError(TRANSFORM_ROW_ERROR.defaultUnavailable);
+  // Field-neutral and retire-only pages have nothing to fill; the row is
+  // carried unchanged exactly as the DB expected-output function does.
+  const { targetFields } = context;
   const filled: Record<string, unknown> = {};
   for (const field of targetFields) {
     if (field.defaultMode !== 'literal' || isAbsent(field.defaultValue))

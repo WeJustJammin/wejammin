@@ -20,7 +20,7 @@ const reset = (state: 'completed' | 'reconciling') => ({
 });
 
 describe('submitMfaFactorReset (CFG-05B-06)', () => {
-  it('posts exactly the strict body with an Idempotency-Key and CSRF header', async () => {
+  it('[P2-S09-AC-1112] [P2-S09-AC-1113] posts exactly the strict body with an Idempotency-Key and CSRF header', async () => {
     const fetchImpl = stubFetch(json(200, reset('completed')));
     const outcome = await submitMfaFactorReset(
       { targetPersonId: PERSON, reason: 'Lost phone' },

@@ -79,7 +79,7 @@ describe('[DEC-108] 401 STEP_UP_REQUIRED routing', () => {
       '?limit=25',
     ],
   ])(
-    '%s routes to /step-up with the encoded relative returnTo',
+    '[P2-S09-AC-1029] [P2-S09-AC-1027] %s routes to /step-up with the encoded relative returnTo',
     async (op, path, query) => {
       formMarkup(op, path, query);
       const navigate = vi.fn();
@@ -105,7 +105,7 @@ describe('[DEC-108] 401 STEP_UP_REQUIRED routing', () => {
     },
   );
 
-  it('routes the real activation form (no token field) to /step-up on 401 STEP_UP_REQUIRED', async () => {
+  it('[P2-S09-AC-1139] routes the real activation form (no token field) to /step-up on 401 STEP_UP_REQUIRED', async () => {
     const path = '/app/cms-content-modeling/type-id/versions/version-id';
     window.history.replaceState({}, '', path);
     document.body.innerHTML = `<main><section data-workbench="content-schema-registry" data-canonical-refetch-url="${path}">${renderToStaticMarkup(
@@ -141,7 +141,7 @@ describe('[DEC-108] 401 STEP_UP_REQUIRED routing', () => {
     cleanup();
   });
 
-  it('keeps a plain 401 on the sign-in page, not the step-up page', async () => {
+  it('[P2-S09-AC-1027] keeps a plain 401 on the sign-in page, not the step-up page', async () => {
     formMarkup('CMS-03A-12', REVIEW_PATH);
     const navigate = vi.fn();
     vi.stubGlobal(

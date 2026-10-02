@@ -82,7 +82,7 @@ const standard: Reply = (url) => {
 };
 
 describe('CFG-05B-06 production port', () => {
-  it('reserves the reset, removes each provider factor with the operator credential, then settles', async () => {
+  it('[P2-S09-AC-894] reserves the reset, removes each provider factor with the operator credential, then settles', async () => {
     const { port, calls } = build(standard);
     const result = await port(input(), bindings, signal);
     expect(result).toEqual({
@@ -144,7 +144,7 @@ describe('CFG-05B-06 production port', () => {
     ).toBe('CFG-05B-06');
   });
 
-  it('uses only the service credential at the provider, never the caller token', async () => {
+  it('[P2-S09-AC-915] uses only the service credential at the provider, never the caller token', async () => {
     const { port, fetchImpl, calls } = build(standard);
     await port(input(), bindings, signal);
     const provider = providerCalls(calls);
@@ -165,7 +165,7 @@ describe('CFG-05B-06 production port', () => {
     });
   });
 
-  it('counts an already absent provider factor as removed', async () => {
+  it('[P2-S09-AC-894] counts an already absent provider factor as removed', async () => {
     const { port, calls } = build((url) =>
       url.includes(FACTOR_A)
         ? json({ message: 'user not found' }, 404)
@@ -182,7 +182,7 @@ describe('CFG-05B-06 production port', () => {
     });
   });
 
-  it('settles a failed or ambiguous removal as failed and never resends', async () => {
+  it('[P2-S09-AC-894][P2-S09-AC-933] settles a failed or ambiguous removal as failed and never resends', async () => {
     const { port, calls } = build((url) =>
       url.includes(FACTOR_A)
         ? json({}, 500)
@@ -276,7 +276,7 @@ describe('CFG-05B-06 production port', () => {
     expect(providerCalls(calls)).toEqual([]);
   });
 
-  it('opens the breaker after five provider failures in a minute and leaves rows reconciling', async () => {
+  it('[P2-S09-AC-932] opens the breaker after five provider failures in a minute and leaves rows reconciling', async () => {
     const clock = { now: NOW };
     const { port, calls } = build(
       (url) =>
@@ -308,7 +308,7 @@ describe('CFG-05B-06 production port', () => {
     expect((await port(input(), bindings, signal)).ok).toBe(true);
   });
 
-  it('treats a provider timeout as failed without a retry', async () => {
+  it('[P2-S09-AC-932] treats a provider timeout as failed without a retry', async () => {
     vi.useFakeTimers();
     try {
       const { port, calls } = build((url, init) =>

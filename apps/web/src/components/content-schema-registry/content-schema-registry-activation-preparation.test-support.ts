@@ -82,3 +82,33 @@ export const approvedReviewPreparation: SchemaActivationPreparation =
     reviewRef: { id: PREPARATION_REVIEW_ID, state: 'approved' },
     permittedNextActions: ['activate'],
   });
+
+export const SEALED_SOURCE_HASH = 'a'.repeat(64);
+export const SEALED_TARGET_HASH = 'b'.repeat(64);
+export const SEALED_REPORT_HASH = 'c'.repeat(64);
+
+/** A sealed dry run whose report evidence is served by the projection. */
+export const sealedDryRunPreparation = (
+  result: 'passed' | 'failed',
+  counts: { source: number; target: number; errors: number } = {
+    source: 12,
+    target: 12,
+    errors: result === 'passed' ? 0 : 3,
+  },
+): SchemaActivationPreparation =>
+  activationPreparation({
+    dryRunRef: {
+      id: PREPARATION_DRY_RUN_ID,
+      state: 'completed',
+      result,
+      jobId: PREPARATION_JOB_ID,
+      sourceCount: counts.source,
+      targetCount: counts.target,
+      rowErrorCount: counts.errors,
+      sourceHash: SEALED_SOURCE_HASH,
+      targetHash: SEALED_TARGET_HASH,
+      reportHash: SEALED_REPORT_HASH,
+    },
+    jobRef: { id: PREPARATION_JOB_ID, state: 'succeeded' },
+    permittedNextActions: result === 'passed' ? ['submit_review'] : [],
+  });

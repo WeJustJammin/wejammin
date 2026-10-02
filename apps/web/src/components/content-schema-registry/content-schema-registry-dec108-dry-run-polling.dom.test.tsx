@@ -97,7 +97,7 @@ afterEach(() => {
 });
 
 describe('[DEC-108] dry-run job polling', () => {
-  it('polls the same-origin BE00 job resource for a queued dry run and announces running', async () => {
+  it('[P2-S09-AC-962] [P2-S09-AC-968] polls the same-origin BE00 job resource for a queued dry run and announces running', async () => {
     const responses: JobBody[] = [
       { state: 'running', etag: '"2"' },
       { state: 'running', etag: '"2"' },
@@ -152,7 +152,7 @@ describe('[DEC-108] dry-run job polling', () => {
     }
   });
 
-  it('never moves focus while the job state changes', async () => {
+  it('[P2-S09-AC-962] never moves focus while the job state changes', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => jobResponse({ state: 'running', etag: '"2"' })),
@@ -211,7 +211,7 @@ describe('[DEC-108] dry-run job polling', () => {
     expect(jobReads(fetcher)).toHaveLength(settled);
   });
 
-  it('renders unsealed failure copy for a failed job and never a passed result', async () => {
+  it('[P2-S09-AC-960] renders unsealed failure copy for a failed job and never a passed result', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => jobResponse({ state: 'failed', etag: '"3"' })),

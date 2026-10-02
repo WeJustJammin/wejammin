@@ -22,6 +22,7 @@ import {
   configureRoute,
   missingSliceDependency,
 } from './routes-provider-access';
+import { mfaOperationTelemetry } from './mfa-telemetry';
 import type { AuthenticationDependencies } from './types';
 
 const invalidPersistence = (
@@ -63,6 +64,7 @@ export const registerMfaFactorRoutes = (
   app: WorkerApp,
   dependencies: AuthenticationDependencies,
 ): void => {
+  app.use('/api/v1/account/mfa/*', mfaOperationTelemetry);
   app.get('/api/v1/account/mfa/factors', async (context) => {
     configureRoute(context, 'AUTH-API-16');
     const fail = (error: Parameters<typeof responseForMfaError>[2]) =>

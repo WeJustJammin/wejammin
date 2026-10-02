@@ -51,6 +51,7 @@ const migrationEvent = {
     contentTypeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     schemaVersionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     migrationPlanId: null,
+    localeConfigHash: 'c'.repeat(64),
     activationEvidence: {
       key: 'cms.schema.activate',
       version: '1',

@@ -236,8 +236,3 @@ export const validateTargetValue = (
   if (!valueConforms(field, compiled, value))
     throw rowError(TARGET_ROW_ERROR.violation);
 };
-
-/** A target field this module can never validate (no data to prove against). */
-export const refuseMissingTarget = (): never => {
-  throw rowError(TARGET_ROW_ERROR.constraintsMissing);
-};

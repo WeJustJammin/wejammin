@@ -23,6 +23,7 @@ type RegistryMethods = Pick<
   | 'beginEnrollment'
   | 'finishEnrollment'
   | 'prepareEnrollmentVerify'
+  | 'recordVerificationFailure'
   | 'settleEnrollmentVerify'
   | 'markFactorReconciling'
   | 'beginRemoval'
@@ -122,6 +123,15 @@ export const createRegistryPersistence = (invoke: Invoke): RegistryMethods => {
         },
         signal,
         snapshotReply,
+      ),
+
+    recordVerificationFailure: (input, signal) =>
+      invoke(
+        MFA_PERSISTENCE_RPC.recordVerificationFailure,
+        input,
+        { p_outcome: input.outcome },
+        signal,
+        nothing,
       ),
 
     markFactorReconciling: (input, signal) =>

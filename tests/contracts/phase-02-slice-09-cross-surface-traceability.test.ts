@@ -180,6 +180,20 @@ const expectedAmendmentTables = [
   'cms_workflow_policies',
 ] as const;
 
+// Supporting objects that later forward migrations in the same slice extend
+// (locale variant scan rows, operational alert codes and snapshot, locale
+// configuration validator). They are not part of the BE03a amendment surface
+// that carries forced-RLS and grant assertions, only of the closed-world check.
+const expectedSupportingTables = [
+  'cms_schema_migration_target_rows',
+  'cms_operational_alert_deliveries',
+] as const;
+const expectedSupportingRpcs = [
+  'cms_claim_operational_alert',
+  'cms_get_operational_state_snapshot',
+  'cms_validate_locale_config',
+] as const;
+
 const expectedAmendmentRpcs = [
   'cms_create_schema_successor',
   'cms_start_schema_dry_run',
@@ -377,7 +391,8 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       tableNames.filter(
         (name) =>
           !(expectedTables as readonly string[]).includes(name) &&
-          !(expectedAmendmentTables as readonly string[]).includes(name),
+          !(expectedAmendmentTables as readonly string[]).includes(name) &&
+          !(expectedSupportingTables as readonly string[]).includes(name),
       ),
     ).toEqual([]);
 
@@ -398,7 +413,9 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
         (name) =>
           ![...expectedRpcs, ...expectedWorkerRpcs].includes(
             name as (typeof expectedRpcs)[number],
-          ) && !(expectedAmendmentRpcs as readonly string[]).includes(name),
+          ) &&
+          !(expectedAmendmentRpcs as readonly string[]).includes(name) &&
+          !(expectedSupportingRpcs as readonly string[]).includes(name),
       ),
     ).toEqual([]);
 

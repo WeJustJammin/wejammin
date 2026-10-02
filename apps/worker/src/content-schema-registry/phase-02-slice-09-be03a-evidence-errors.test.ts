@@ -134,6 +134,30 @@ const E503: readonly Case[] = [
   ['[P2-S09-AC-599]', 'CMS-03A-17'],
   ['[P2-S09-AC-625]', 'CMS-03A-18'],
 ];
+const E502: readonly Case[] = [
+  ['[P2-S09-AC-312]', 'CMS-03A-09'],
+  ['[P2-S09-AC-358]', 'CMS-03A-10'],
+  ['[P2-S09-AC-400]', 'CMS-03A-11'],
+  ['[P2-S09-AC-437]', 'CMS-03A-12'],
+  ['[P2-S09-AC-460]', 'CMS-03A-13'],
+  ['[P2-S09-AC-499]', 'CMS-03A-14'],
+  ['[P2-S09-AC-541]', 'CMS-03A-15'],
+  ['[P2-S09-AC-570]', 'CMS-03A-16'],
+  ['[P2-S09-AC-598]', 'CMS-03A-17'],
+  ['[P2-S09-AC-624]', 'CMS-03A-18'],
+];
+const E504: readonly Case[] = [
+  ['[P2-S09-AC-314]', 'CMS-03A-09'],
+  ['[P2-S09-AC-360]', 'CMS-03A-10'],
+  ['[P2-S09-AC-402]', 'CMS-03A-11'],
+  ['[P2-S09-AC-439]', 'CMS-03A-12'],
+  ['[P2-S09-AC-462]', 'CMS-03A-13'],
+  ['[P2-S09-AC-501]', 'CMS-03A-14'],
+  ['[P2-S09-AC-543]', 'CMS-03A-15'],
+  ['[P2-S09-AC-572]', 'CMS-03A-16'],
+  ['[P2-S09-AC-600]', 'CMS-03A-17'],
+  ['[P2-S09-AC-626]', 'CMS-03A-18'],
+];
 const STEP_UP: readonly Case[] = [
   ['[P2-S09-AC-441]', 'CMS-03A-12'],
   ['[P2-S09-AC-503]', 'CMS-03A-14'],
@@ -459,6 +483,68 @@ describe('BE03a 503 DEPENDENCY_UNAVAILABLE', () => {
       const scrubbed = await thrown.app.request(requestFor(op));
       expect(scrubbed.status).toBe(503);
       expect(await scrubbed.text()).not.toContain('pg down');
+    },
+  );
+});
+
+describe('BE03a 502 DEPENDENCY_UNAVAILABLE', () => {
+  it.each(E502)(
+    '%s %s returns 502 DEPENDENCY_UNAVAILABLE for an invalid dependency response with only dependencyClass, retryable true and retryAfterSeconds',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const wrongShape = harnessFor(op, { port: ok({ unexpected: true }) });
+      const response = await wrongShape.app.request(requestFor(op));
+      expect(wrongShape.ports[op.portName]).toHaveBeenCalledTimes(1);
+      const body = await envelope(response, 502, 'DEPENDENCY_UNAVAILABLE');
+      expect(Object.keys(body.details as object).sort()).toEqual([
+        'dependencyClass',
+        'retryable',
+      ]);
+      expect((body.details as { retryable: boolean }).retryable).toBe(true);
+      expect(JSON.stringify(body)).not.toContain('unexpected');
+
+      const reported = harnessFor(op, {
+        port: error(
+          502,
+          'DEPENDENCY_INVALID_RESPONSE',
+          'bad',
+          { dependencyClass: 'cms_registry', retryable: false, sql: 'leak' },
+          3,
+        ),
+      });
+      const mapped = await reported.app.request(requestFor(op));
+      const mappedBody = await envelope(mapped, 502, 'DEPENDENCY_UNAVAILABLE');
+      expect(mappedBody.details).toEqual({
+        dependencyClass: 'cms_registry',
+        retryable: true,
+        retryAfterSeconds: 3,
+      });
+    },
+  );
+});
+
+describe('BE03a 504 DEPENDENCY_UNAVAILABLE', () => {
+  it.each(E504)(
+    '%s %s returns 504 DEPENDENCY_UNAVAILABLE for an exceeded deadline with only dependencyClass, retryable true and retryAfterSeconds',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const harness = harnessFor(op, {
+        port: error(
+          504,
+          'DEPENDENCY_DEADLINE_EXCEEDED',
+          'slow',
+          { dependencyClass: 'cms_registry', retryable: true, sql: 'leak' },
+          5,
+        ),
+      });
+      const response = await harness.app.request(requestFor(op));
+      const body = await envelope(response, 504, 'DEPENDENCY_UNAVAILABLE');
+      expect(body.details).toEqual({
+        dependencyClass: 'cms_registry',
+        retryable: true,
+        retryAfterSeconds: 5,
+      });
+      expect(response.headers.get('retry-after')).toBe('5');
     },
   );
 });

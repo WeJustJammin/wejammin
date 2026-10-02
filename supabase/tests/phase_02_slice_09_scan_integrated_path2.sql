@@ -57,7 +57,7 @@ select is((select classification from platform_private.cms_schema_migration_plan
   'the server derives a conditional classification from the stricter constraint');
 select pg_temp.s09w_dry_run('b');
 select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', pg_temp.s09d_id('b:plan')), 'ready',
-  'the nonzero worker scan seals the conditional plan ready');
+  'the nonzero worker scan seals the conditional plan ready [P2-S09-AC-712]');
 select ok((select source_count = 3 and target_count = 3 and row_error_count = 0 and cursor = 3
   from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('b:plan')),
   'the plan counters are derived from three recorded evidence rows');
@@ -70,18 +70,18 @@ select is(pg_temp.s09d_outcome('b:submit'), 'OK', 'CMS-03A-11 freezes the sealed
 select pg_temp.s09d_assign('b', 'rev1');
 select pg_temp.s09d_decide('b', 'rev1');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('b:review')), 'approved',
-  'the independent assigned reviewer approves the review');
+  'the independent assigned reviewer approves the review [P2-S09-AC-712]');
 
 -- The switch needs the completed backfill: a merely sealed (ready) nonzero plan is refused.
 select pg_temp.s09d_activate('b', 'owner', '{}'::jsonb, 'b:activate-early');
 select is(pg_temp.s09d_outcome('b:activate-early'), 'VALIDATION_FAILED',
   'CMS-03A-04 refuses to switch a nonzero plan whose backfill has not completed');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'active',
-  'the old active version keeps serving after the refused switch');
+  'the old active version keeps serving after the refused switch [P2-S09-AC-098]');
 
 -- Backfill and verify through the worker protocol.
 select pg_temp.s09w_backfill('b');
-select is(pg_temp.s09d_outcome('b:w.complete'), 'OK', 'the worker completes backfill, verification and completion');
+select is(pg_temp.s09d_outcome('b:w.complete'), 'OK', 'the worker completes backfill, verification and completion [P2-S09-AC-712]');
 select ok((select state = 'completed' and migrated_count = 3 and failed_count = 0 and target_count = 3 and cursor = 3
   from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('b:plan')),
   'the completed plan carries derived migrated/target counts');
@@ -99,7 +99,7 @@ create temp table s09_p2_activation on commit drop as
 select pg_temp.s09d_activation_request('b', 'owner', jsonb_build_object('requestId', extensions.gen_random_uuid(),
   'correlationId', extensions.gen_random_uuid()), jsonb_build_object('idempotencyKey', 's09-path2-activate-0001')) as request;
 select pg_temp.s09d_call('b:activate', 'platform_api.cms_activate_schema', request) from s09_p2_activation;
-select is(pg_temp.s09d_outcome('b:activate'), 'OK', 'CMS-03A-04 performs the second atomic switch over the completed plan');
+select is(pg_temp.s09d_outcome('b:activate'), 'OK', 'CMS-03A-04 performs the second atomic switch over the completed plan [P2-S09-AC-712]');
 select ok((select pg_temp.s09d_call('b:activate-replay', 'platform_api.cms_activate_schema', request) = pg_temp.s09d_resp('b:activate')
   and pg_temp.s09d_resp('b:activate') is not null from s09_p2_activation),
   'an exact replay of the switch request returns the identical original response');
@@ -107,25 +107,25 @@ select is((select count(*)::integer from platform_private.outbox_events where ev
   and aggregate_id = pg_temp.s09d_id('b:version')), 1, 'the switch committed exactly one activation event');
 select pg_temp.s09d_activate('b', 'owner', '{}'::jsonb, 'b:activate-again');
 select is(pg_temp.s09d_outcome('b:activate-again'), 'CONFLICT',
-  'a second switch request is refused by the one-shot CAS once the candidate is active');
+  'a second switch request is refused by the one-shot CAS once the candidate is active [P2-S09-AC-097] [P2-S09-AC-217]');
 select ok((select (select state from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('b:version')) = 'active'
   and (select state from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('a:version')) = 'superseded'),
-  'the successor is active and version 1 is superseded in one switch');
+  'the successor is active and version 1 is superseded in one switch [P2-S09-AC-712]');
 
 -- Guard: no producer row of the path was written by a statement of this script.
 select ok(pg_temp.s09x_via_rpc('cms_schema_reviews') > 0 and pg_temp.s09x_via_rpc('cms_schema_review_decisions') > 0
   and pg_temp.s09x_via_rpc('cms_schema_review_assignments') > 0 and pg_temp.s09x_via_rpc('cms_schema_dry_run_reports') > 0
   and pg_temp.s09x_via_rpc('cms_schema_dry_run_row_evidence') > 0 and pg_temp.s09x_via_rpc('cms_schema_migration_plans') > 0
   and pg_temp.s09x_via_rpc('cms_schema_migration_target_rows') > 0,
-  'precondition: every producer table was written through named RPCs');
+  'precondition: every producer table was written through named RPCs [P2-S09-AC-712]');
 select is(pg_temp.s09x_direct(), 0::bigint,
-  'no review, decision, assignment, dry-run, evidence, target-row or plan row was written by a direct statement');
+  'no review, decision, assignment, dry-run, evidence, target-row or plan row was written by a direct statement [P2-S09-AC-712]');
 
 -- Non-vacuity: the guard does see a hand-written statement (a negative control).
 select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_schema_migration_plans set updated_at = updated_at
  where to_version_id = pg_temp.s09d_id('b:version') and superseded_at is not null;
 select is(pg_temp.s09x_direct('cms_schema_migration_plans'), 1::bigint,
-  'negative control: a hand-written plan update is recorded as a direct write');
+  'negative control: a hand-written plan update is recorded as a direct write [P2-S09-AC-713]');
 select * from finish();
 rollback;

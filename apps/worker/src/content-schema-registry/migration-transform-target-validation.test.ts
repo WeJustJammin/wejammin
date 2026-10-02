@@ -153,10 +153,9 @@ describe('identity.revalidate target constraints', () => {
     );
   });
 
-  it('refuses a missing target field instead of sealing the row', () => {
-    expect(() => identity().apply({ f: 'a' }, ctx())).toThrowError(
-      expect.objectContaining({ code: 'TRANSFORM_TARGET_CONSTRAINTS_MISSING' }),
-    );
+  it('carries the row unchanged when the plan is field-neutral', () => {
+    const document = { f: 'a' };
+    expect(identity().apply(document, ctx())).toBe(document);
   });
 
   it.each([

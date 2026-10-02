@@ -61,9 +61,9 @@ select ok(exists (select 1 from pg_indexes where schemaname = 'platform_private'
     and tablename = 'cms_schema_reviews' and indexdef ilike '%unique%'
     and indexdef ilike '%content_type_version_id%definition_hash%dry_run_id%'
     and indexdef ilike '%where%open%'),
-  'one live review per exact frozen candidate/evidence is a partial unique index');
+  'one live review per exact frozen candidate/evidence is a partial unique index [P2-S09-AC-385]');
 select ok(pg_temp.s09d_constraint_has('cms_schema_review_decisions', 'UNIQUE (review_id, reviewer_person_ref)'),
-  'a human records at most one decision per review');
+  'a human records at most one decision per review [P2-S09-AC-418]');
 select ok(pg_temp.s09d_constraint_has('cms_schema_review_assignments', '7 days')
   and pg_temp.s09d_constraint_has('cms_schema_review_assignments', 'ends_at > starts_at'),
   'assignment authority is finite and at most seven days');

@@ -1,4 +1,8 @@
 import { authError } from '../authentication/boundary';
+import {
+  markMfaCircuitOpen,
+  mfaProviderBreakerFor,
+} from '../authentication/mfa-provider-breaker';
 import type { AuthProductionConfiguration } from '../authentication/production-configuration';
 import type { AuthenticationResult } from '../authentication/types';
 
@@ -8,8 +12,6 @@ export type FactorRemovalOutcome = Readonly<{
 }>;
 
 const TIMEOUT_MS = 5_000;
-const BREAKER_THRESHOLD = 5;
-const BREAKER_WINDOW_MS = 60_000;
 
 /**
  * Operator-only Supabase Auth admin adapter (BE01a seam table). It is
@@ -21,17 +23,8 @@ export const createOperatorFactorRemover = (
   config: AuthProductionConfiguration,
   credentials: Readonly<{ headers: Readonly<Record<string, string>> }>,
 ) => {
-  let failures: number[] = [];
-  let openUntil = 0;
-
-  const recordFailure = (): void => {
-    const now = config.now();
-    failures = [...failures, now].filter((at) => now - at < BREAKER_WINDOW_MS);
-    if (failures.length >= BREAKER_THRESHOLD) {
-      openUntil = now + BREAKER_WINDOW_MS;
-      failures = [];
-    }
-  };
+  const breaker = mfaProviderBreakerFor(config.fetchImpl);
+  const recordFailure = (): void => breaker.recordFailure(config.now());
 
   const removeOne = async (
     authUserId: string,
@@ -70,20 +63,21 @@ export const createOperatorFactorRemover = (
     providerFactorIds: readonly string[],
     signal: AbortSignal,
   ): Promise<AuthenticationResult<readonly FactorRemovalOutcome[]>> => {
-    if (config.now() < openUntil)
-      return authError(
-        503,
-        'IDENTITY_UNAVAILABLE',
-        'The identity service is temporarily unavailable.',
+    if (breaker.isOpen(config.now()))
+      return markMfaCircuitOpen(
+        authError(
+          503,
+          'IDENTITY_UNAVAILABLE',
+          'The identity service is temporarily unavailable.',
+        ),
       );
     const outcomes: FactorRemovalOutcome[] = [];
     for (const providerFactorId of providerFactorIds) {
       outcomes.push({
         providerFactorId,
-        outcome:
-          config.now() < openUntil
-            ? 'failed'
-            : await removeOne(authUserId, providerFactorId, signal),
+        outcome: breaker.isOpen(config.now())
+          ? 'failed'
+          : await removeOne(authUserId, providerFactorId, signal),
       });
     }
     return { ok: true, value: outcomes };

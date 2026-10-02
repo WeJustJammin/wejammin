@@ -3,6 +3,7 @@ import * as React from 'react';
 import ContentSchemaRegistryReviewAssignmentForm from './ContentSchemaRegistryReviewAssignmentForm';
 import ContentSchemaRegistryReviewAssignments from './ContentSchemaRegistryReviewAssignments';
 import ContentSchemaRegistryReviewDecisionForm from './ContentSchemaRegistryReviewDecisionForm';
+import ContentSchemaRegistryReviewFlash from './ContentSchemaRegistryReviewFlash';
 import ContentSchemaRegistryReviewPanel from './ContentSchemaRegistryReviewPanel';
 import { reviewRouteFor } from './content-schema-registry-version-actions';
 import type { ContentSchemaRegistryStepUpState } from './ContentSchemaRegistryConfirmationStep';
@@ -69,6 +70,9 @@ export default function ContentSchemaRegistryReviewMode(
       candidateUrl={candidateUrl}
       decisionReferences
     >
+      {review === null ? null : (
+        <ContentSchemaRegistryReviewFlash review={review} />
+      )}
       {decisionPrerequisite === null ? null : (
         <p data-decision-prerequisite="true">{decisionPrerequisite}</p>
       )}

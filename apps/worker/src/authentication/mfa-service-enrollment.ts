@@ -163,10 +163,25 @@ export const createEnrollmentService = (
         },
         signal,
       );
-      if (!verified.ok)
-        return isAmbiguousProviderOutcome(verified)
-          ? reconcile(verified)
-          : verified;
+      if (!verified.ok) {
+        // One account-wide budget with step-up verification. Fail closed: a
+        // failure that cannot be durably counted is never reported as the
+        // provider result, or guesses would go uncounted.
+        const outcome =
+          verified.status === 422
+            ? 'incorrect'
+            : isAmbiguousProviderOutcome(verified)
+              ? 'ambiguous'
+              : null;
+        if (outcome === null) return verified;
+        // An ambiguous outcome is reconciled whether or not it was counted.
+        if (outcome === 'ambiguous') await reconcile(verified);
+        const recorded = await persistence.recordVerificationFailure(
+          { ...caller, outcome },
+          signal,
+        );
+        return recorded.ok ? verified : recorded;
+      }
       const validated = await rotation.validate(
         { session, request, payload: verified.value },
         signal,

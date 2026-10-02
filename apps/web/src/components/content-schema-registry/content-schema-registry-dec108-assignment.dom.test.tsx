@@ -94,7 +94,7 @@ afterEach(() => {
 });
 
 describe('[DEC-108] assignment form visibility (owner only)', () => {
-  it('renders for the owner when the server permits assign_reviewer on an open review', () => {
+  it('[P2-S09-AC-988] renders for the owner when the server permits assign_reviewer on an open review', () => {
     expect(
       commandForm(renderDocument(ownerPage()), 'CMS-03A-14'),
     ).not.toBeNull();
@@ -110,7 +110,7 @@ describe('[DEC-108] assignment form visibility (owner only)', () => {
       { variant: 'entitledRead', access: 'read-only' },
     ],
   ] as const)(
-    'is not rendered for %s even if assign_reviewer is listed',
+    '[P2-S09-AC-988] [P2-S09-AC-989] is not rendered for %s even if assign_reviewer is listed',
     (_label, overrides) => {
       // Control: the owner variant with the same review renders it.
       expect(
@@ -121,7 +121,7 @@ describe('[DEC-108] assignment form visibility (owner only)', () => {
     },
   );
 
-  it('is not rendered unless the server lists assign_reviewer', () => {
+  it('[P2-S09-AC-988] [P2-S09-AC-989] is not rendered unless the server lists assign_reviewer', () => {
     expect(
       commandForm(renderDocument(ownerPage()), 'CMS-03A-14'),
     ).not.toBeNull();
@@ -165,7 +165,7 @@ describe('[DEC-108] assignment form fields', () => {
     expect(fields['if-match']).toBe('"3"');
   });
 
-  it('has one labelled native UUID text input with the exact helper copy', () => {
+  it('[P2-S09-AC-975] [P2-S09-AC-976] has one labelled native UUID text input with the exact helper copy', () => {
     const input = form().querySelector<HTMLInputElement>(
       '[name="reviewerPersonId"]',
     );
@@ -194,7 +194,7 @@ describe('[DEC-108] assignment form fields', () => {
 });
 
 describe('[DEC-108] reviewer UUID validation', () => {
-  it('shows the inline error on blur for a non-UUID and links it to the field', () => {
+  it('[P2-S09-AC-975] [P2-S09-AC-976] shows the inline error on blur for a non-UUID and links it to the field', () => {
     const form = mountOwner();
     const input = form.querySelector<HTMLInputElement>(
       '[name="reviewerPersonId"]',
@@ -222,7 +222,7 @@ describe('[DEC-108] reviewer UUID validation', () => {
     expect(form.textContent).not.toContain(INVALID_COPY);
   });
 
-  it('blocks submit for an invalid UUID and allows it for a valid one', () => {
+  it('[P2-S09-AC-975] blocks submit for an invalid UUID and allows it for a valid one', () => {
     const form = mountOwner();
     const input = form.querySelector<HTMLInputElement>(
       '[name="reviewerPersonId"]',

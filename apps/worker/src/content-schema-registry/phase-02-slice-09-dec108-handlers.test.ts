@@ -200,7 +200,7 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
   );
 
   it.each(OPERATIONS)(
-    '$operationId turns a port success with the wrong resource shape into 502 DEPENDENCY_INVALID_RESPONSE',
+    '$operationId turns a port success with the wrong resource shape into 502 DEPENDENCY_UNAVAILABLE',
     async (spec) => {
       const wrong =
         spec.operationId === 'CMS-03A-10' ? reviewResource : dryRunResource;
@@ -212,7 +212,7 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
       expect(harness.ports[spec.portName]).toHaveBeenCalledTimes(1);
       expect(response.status).toBe(502);
       const body = (await response.json()) as Record<string, unknown>;
-      expect(body.code).toBe('DEPENDENCY_INVALID_RESPONSE');
+      expect(body.code).toBe('DEPENDENCY_UNAVAILABLE');
     },
   );
 

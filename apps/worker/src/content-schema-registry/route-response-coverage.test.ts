@@ -217,7 +217,12 @@ describe('content schema registry route response helpers', () => {
       expect(response.status).toBe(result.status);
       expect(context.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: result.code === 'bad code' ? 'INTERNAL_ERROR' : result.code,
+          code:
+            result.code === 'bad code'
+              ? 'INTERNAL_ERROR'
+              : result.status >= 502 && result.status <= 504
+                ? 'DEPENDENCY_UNAVAILABLE'
+                : result.code,
           message,
           requestId: REQUEST_ID,
         }),
@@ -232,7 +237,7 @@ describe('content schema registry route response helpers', () => {
       REQUEST_ID,
     );
     expect(retry.headers.get(CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER)).toBe(
-      'false',
+      'true',
     );
     expect(retry.headers.get('retry-after')).toBe('7');
     for (const status of [502, 504] as const) {

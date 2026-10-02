@@ -80,7 +80,11 @@ beforeEach(() => {
   sinks = [];
   window.sessionStorage.clear();
   window.localStorage.clear();
-  window.history.replaceState(null, '', '/app/cms-content-modeling/capability-grants');
+  window.history.replaceState(
+    null,
+    '',
+    '/app/cms-content-modeling/capability-grants',
+  );
   navigateTo.mockClear();
   vi.stubGlobal('BroadcastChannel', RecordingChannel);
   vi.stubGlobal('indexedDB', {

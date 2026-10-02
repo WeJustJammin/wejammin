@@ -1,5 +1,6 @@
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { authError, responseForAuthError } from '../authentication/boundary';
+import { responseForAuthError } from '../authentication/boundary';
+import { stepUpRequiredError } from '../authentication/step-up';
 import type { AuthenticationSession } from '../authentication/types';
 import { configurationResponseVersion } from './runtime-helpers';
 import {
@@ -63,10 +64,7 @@ export const sessionWithRate = async (
   if (requireFreshStepUp && !isConfigurationStepUpFresh(session.value))
     return {
       session: null,
-      rate: responseForAuthError(
-        context,
-        authError(401, 'STEP_UP_REQUIRED', 'Recent verification is required.'),
-      ),
+      rate: responseForAuthError(context, stepUpRequiredError()),
     };
   const rate = await enforceConfigurationRate(
     context,

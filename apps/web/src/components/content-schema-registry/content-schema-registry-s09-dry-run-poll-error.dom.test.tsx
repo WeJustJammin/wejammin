@@ -91,7 +91,10 @@ describe('[P2-S09-AC-965] a failed dry-run job poll is a retryable error', () =>
     vi.stubGlobal('fetch', fetcher);
     mount();
     await vi.waitFor(
-      () => expect(panel()?.querySelector('[data-dry-run-poll-error]')).not.toBeNull(),
+      () =>
+        expect(
+          panel()?.querySelector('[data-dry-run-poll-error]'),
+        ).not.toBeNull(),
       { timeout: 6_000 },
     );
     const error = panel()?.querySelector('[data-dry-run-poll-error]');
@@ -119,7 +122,10 @@ describe('[P2-S09-AC-965] a failed dry-run job poll is a retryable error', () =>
     );
     mount();
     await vi.waitFor(
-      () => expect(panel()?.querySelector('[data-dry-run-poll-error]')).not.toBeNull(),
+      () =>
+        expect(
+          panel()?.querySelector('[data-dry-run-poll-error]'),
+        ).not.toBeNull(),
       { timeout: 4_000 },
     );
     expect(

@@ -8,7 +8,7 @@ select ok(
   platform_private.cms_activation_references_valid(
     (select version_id from s09_type_ids)
   ),
-  'AC095 activation preflight accepts the complete persisted reference graph'
+  'AC095 activation preflight accepts the complete persisted reference graph [P2-S09-AC-095]'
 );
 select throws_ok(
   $$update platform_private.cms_field_definition_versions
@@ -44,7 +44,7 @@ select ok(
   (select state = 'invalidated'
    from platform_private.cms_schema_reviews
    where id = pg_temp.s09d_id('dep:review')),
-  'AC189 owner-capability authority changes invalidate approved activation review evidence'
+  'AC189 owner-capability authority changes invalidate approved activation review evidence [P2-S09-AC-102]'
 );
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_designer'
@@ -72,29 +72,29 @@ select throws_ok(
   format($q$select platform_private.cms_advance_activation_plan(%1$L::uuid, %2$L::uuid, null, %1$L::uuid)$q$,
     :'adv_version', :'adv_source'),
   'P0001', 'VALIDATION_FAILED',
-  'AC096 additive activation rejects a candidate UUID standing in for the independent dry-run report'
+  'AC096 additive activation rejects a candidate UUID standing in for the independent dry-run report [P2-S09-AC-087]'
 );
 select throws_ok(
   format($q$select platform_private.cms_advance_activation_plan(%1$L::uuid, %2$L::uuid,
     extensions.gen_random_uuid(), %3$L::uuid)$q$, :'adv_version', :'adv_source', :'adv_dry_run'),
   'P0001', 'VALIDATION_FAILED',
-  'AC096 additive activation rejects a plan that is not the dry-run attempt''s own plan'
+  'AC096 additive activation rejects a plan that is not the dry-run attempt''s own plan [P2-S09-AC-096]'
 );
 select is(
   platform_private.cms_advance_activation_plan(:'adv_version', :'adv_source', :'adv_plan', :'adv_dry_run'),
   :'adv_plan'::uuid,
-  'AC099 A04 advances the CMS-03A-10 plan only after independent sealed additive evidence'
+  'AC099 A04 advances the CMS-03A-10 plan only after independent sealed additive evidence [P2-S09-AC-099]'
 );
 select is(
   (select state from platform_private.cms_schema_migration_plans where id = :'adv_plan'),
   'completed',
-  'AC099 the advanced plan completes only after exact zero-row evidence'
+  'AC099 the advanced plan completes only after exact zero-row evidence [P2-S09-AC-099]'
 );
 select ok(
   platform_private.cms_migration_plan_ready(
     :'adv_plan', pg_temp.s09d_id('adv:type'), :'adv_version'
   ),
-  'AC096 durable plan carries matching source/target/artifact/compiler evidence'
+  'AC096 durable plan carries matching source/target/artifact/compiler evidence [P2-S09-AC-096]'
 );
 select pg_temp.s09d_guc_save();
 select pg_temp.s09d_dry_run('adv', 'owner', null, null, 's09d-adv-redry-0001');
@@ -119,7 +119,7 @@ select throws_ok(
     set report = report || jsonb_build_object('result', 'pass')
     where id = %L$q$, :'adv_dry_run'),
   'P0001', 'IMMUTABLE_RECORD',
-  'AC096 independent dry-run report rejects an evidence tamper attempt'
+  'AC096 independent dry-run report rejects an evidence tamper attempt [P2-S09-AC-096]'
 );
 select throws_ok(
   format($q$delete from platform_private.cms_schema_dry_run_reports where id = %L$q$, :'adv_dry_run'),

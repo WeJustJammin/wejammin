@@ -312,9 +312,13 @@ describe('Slice 06 provider and webhook evidence web surface', () => {
     ];
     for (const code of codes) {
       const result = getProviderEvidenceErrorPresentation(code);
-      expect(['inline', 'capability', 'rate-wait', 'degraded']).toContain(
-        result.owner,
-      );
+      expect([
+        'inline',
+        'capability',
+        'step-up',
+        'rate-wait',
+        'degraded',
+      ]).toContain(result.owner);
       expect(result.message).not.toContain(code);
     }
   });

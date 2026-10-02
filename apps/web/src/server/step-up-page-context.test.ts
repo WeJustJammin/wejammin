@@ -26,7 +26,7 @@ const resolve = (
 
 /** FE01 `/step-up` server rendering from AUTH-API-16. */
 describe('resolveStepUpPage', () => {
-  it('reads AUTH-API-16 through the private binding with the session cookie only', async () => {
+  it('[P2-S09-AC-1065] reads AUTH-API-16 through the private binding with the session cookie only', async () => {
     const binding = bindingStub(jsonResponse(200, factorsResource()));
     await resolve(binding);
     const [upstream] = binding.requests();
@@ -39,7 +39,7 @@ describe('resolveStepUpPage', () => {
     expect(upstream?.headers.get('idempotency-key')).toBeNull();
   });
 
-  it('is ready with verified factors only and the validated returnTo', async () => {
+  it('[P2-S09-AC-1065] [P2-S09-AC-1066] is ready with verified factors only and the validated returnTo', async () => {
     const resource = factorsResource({
       factors: [
         ...factorsResource().factors,
@@ -69,7 +69,7 @@ describe('resolveStepUpPage', () => {
     ['an external URL', 'https://evil.example/app'],
     ['the step-up page itself', '/step-up?returnTo=%2Fapp'],
     ['an auth path', '/auth/sign-in'],
-  ])('falls back to /app for %s', async (_name, param) => {
+  ])('[P2-S09-AC-1066] falls back to /app for %s', async (_name, param) => {
     const result = await resolve(
       bindingStub(jsonResponse(200, factorsResource())),
       param,
@@ -86,7 +86,7 @@ describe('resolveStepUpPage', () => {
     );
   });
 
-  it('carries a fresh proof for display but never auto-redirects', async () => {
+  it('[P2-S09-AC-1064] carries a fresh proof for display but never auto-redirects', async () => {
     const resource = factorsResource({
       stepUp: { fresh: true, freshUntil: '2026-10-02T12:10:00Z' },
     });
@@ -97,7 +97,7 @@ describe('resolveStepUpPage', () => {
     });
   });
 
-  it('redirects a missing session to sign-in carrying /step-up', async () => {
+  it('[P2-S09-AC-1067] redirects a missing session to sign-in carrying /step-up', async () => {
     const result = await resolve(
       bindingStub(
         errorResponse(401, 'UNAUTHENTICATED', {

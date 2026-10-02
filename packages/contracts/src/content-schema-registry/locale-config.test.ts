@@ -456,7 +456,7 @@ describe('localeConfigCanonicalJson', () => {
     );
   });
 
-  it('sorts supportedLocales by UTF-8 byte order and is request-order independent', () => {
+  it('[P2-S09-AC-1184] sorts supportedLocales by UTF-8 byte order and is request-order independent', () => {
     const base = {
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',
@@ -485,7 +485,7 @@ describe('localeConfigCanonicalJson', () => {
     ).toContain('"supportedLocales":["en","en-US"]');
   });
 
-  it('pins the hash vector the database function must reproduce', () => {
+  it('[P2-S09-AC-1184] pins the hash vector the database function must reproduce', () => {
     const json = localeConfigCanonicalJson({
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',

@@ -19,6 +19,11 @@ It is a psql `\ir` include, not a Supabase-discovered test file.
 | `step_up_challenge` | challenge create, supersede, prepare, failure bookkeeping, settle |
 | `admin_mfa_reset` | CFG-05B-06 reservation and settlement |
 | `mfa_retention` | expiry, 30-day purge eligibility, abuse-limiter operation ids |
+| `mfa_verification_lock` | shared account-scoped 10-in-15-minute verification lock across AUTH-API-18 and -21: sliding window, persisted 15-minute lock, refusal before provider contact, expiry |
+
+## Race runners
+
+`010-admin-reset-race.mjs` (membership and grant revocation in flight vs the administrative reset) and `011-verification-lock-race.mjs` (fourteen concurrent failure charges) commit real rows across independent `psql` sessions. Run each only right after `pnpm db:reset` and run `pnpm db:reset` again afterwards; they are not Supabase-discovered tests.
 
 ## Adding a suite
 

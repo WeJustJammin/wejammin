@@ -14,7 +14,7 @@ const read = (relative: string): string =>
 describe('/step-up page', () => {
   const source = read('../pages/step-up.astro');
 
-  it('is a non-prerendered, no-store, noindex page with one focusable heading', () => {
+  it('[P2-S09-AC-1101] is a non-prerendered, no-store, noindex page with one focusable heading', () => {
     expect(source).toContain('export const prerender = false');
     expect(source).toMatch(
       /Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u,
@@ -28,7 +28,7 @@ describe('/step-up page', () => {
     expect(source).toContain('focus-page-heading');
   });
 
-  it('resolves on the server, validates returnTo there and 303s a missing session', () => {
+  it('[P2-S09-AC-1065] [P2-S09-AC-1067] resolves on the server, validates returnTo there and 303s a missing session', () => {
     expect(source).toContain('resolveStepUpPage');
     expect(source).toContain("Astro.url.searchParams.get('returnTo')");
     expect(source).toMatch(/Astro\.redirect\([^)]*303/su);
@@ -56,7 +56,7 @@ describe('/step-up page', () => {
 describe('/settings/security/mfa page', () => {
   const source = read('../pages/settings/security/mfa.astro');
 
-  it('is a non-prerendered, no-store, noindex page with one focusable heading', () => {
+  it('[P2-S09-AC-1101] is a non-prerendered, no-store, noindex page with one focusable heading', () => {
     expect(source).toContain('export const prerender = false');
     expect(source).toMatch(
       /Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u,
@@ -69,12 +69,12 @@ describe('/settings/security/mfa page', () => {
     expect(source).toContain('focus-page-heading');
   });
 
-  it('resolves on the server and 303s a missing session', () => {
+  it('[P2-S09-AC-1070] resolves on the server and 303s a missing session', () => {
     expect(source).toContain('resolveMfaSettingsPage');
     expect(source).toMatch(/Astro\.redirect\([^)]*303/su);
   });
 
-  it('hydrates the wizard on load with only server-derived props', () => {
+  it('[P2-S09-AC-1078] hydrates the wizard on load with only server-derived props', () => {
     expect(source).toContain('MfaEnrollmentWizard');
     expect(source).toContain('variant="authPage"');
     expect(source).toContain('client:load');
@@ -91,7 +91,7 @@ describe('/settings/security/mfa page', () => {
 describe('account/security navigation', () => {
   const source = read('../pages/settings/security.astro');
 
-  it('links the two-step verification page from the security settings', () => {
+  it('[P2-S09-AC-1070] links the two-step verification page from the security settings', () => {
     expect(source).toContain('href="/settings/security/mfa"');
     expect(source).toContain('Two-step verification');
   });

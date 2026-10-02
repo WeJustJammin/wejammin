@@ -111,6 +111,31 @@ authority from browser headers or query parameters.
 - Server 422 locale messages are fixed BE03a strings; the DOM runtime shows
   only those (never other server text) and links each to its control by id.
 
+## Step-up recovery, draft restore and review announcements (FE03, FE00)
+
+- `content-schema-registry-step-up-classify.ts` — reads a 401 with the typed
+  `CmsStepUpRequiredErrorSchema`: only `totp` counts, an empty or unsupported
+  method list is a degraded "No verification method is available" state with
+  the request ID, any other shape is a malformed degraded response, and a plain
+  401 stays reauthentication. The runtime outcomes are `step-up-required`,
+  `step-up-unavailable` and `step-up-malformed`.
+- `content-schema-registry-step-up-draft.ts` — before navigating to
+  `/step-up?returnTo=` (path plus query, path only above 512 characters, `/app`
+  when still unusable) the form persists a tab-scoped sessionStorage draft:
+  editable text and radio fields, the original Idempotency-Key and the expected
+  version. Hidden transport fields, one-time codes, acknowledgements and the
+  reviewer, subject and target person IDs are never written. The enhancement
+  restores it once after step-up, announces "Verification complete. Review and
+  confirm to continue.", focuses the commit control and never submits for the
+  person; a version that moved opens the sync conflict.
+- `content-schema-registry-review-flash.ts` and `ContentSchemaRegistryReviewFlash.tsx`
+  — a decision or assignment success redirects, so the 201/200 body is unreadable.
+  The runtime leaves a one-shot identifier-free note and the refreshed review
+  announces the exact decision with the updated recorded and required counts, or
+  the assignment state with its expiry.
+- `setFormBusy(form, busy, saving)` sets the commit label to "Saving…" and
+  `aria-disabled` on the locale fields while a command is in flight.
+
 ## Extension rules
 
 Keep browser code free of server secrets and private evidence. Add new commands

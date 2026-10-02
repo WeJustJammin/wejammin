@@ -40,7 +40,7 @@ describe('[DEC-119] grant console query', () => {
     });
   });
 
-  it('never lets the person filter enter page state, even when supplied', () => {
+  it('[P2-S09-AC-1025] never lets the person filter enter page state, even when supplied', () => {
     const query = parseCmsCapabilityGrantPageQuery(
       url(`?subjectPersonId=${SUBJECT_ID}`),
     );
@@ -118,7 +118,7 @@ describe('[DEC-120] grant term window', () => {
 });
 
 describe('[DEC-119] generated grantable registry', () => {
-  it('contains the DEC-108/B2 navigation and media capabilities and no assignment-only key', () => {
+  it('[P2-S09-AC-988] contains the DEC-108/B2 navigation and media capabilities and no assignment-only key', () => {
     expect(GRANTABLE_CMS_CAPABILITIES).toContain('cms.navigation_editor');
     expect(GRANTABLE_CMS_CAPABILITIES).toContain('cms.media_contributor');
     expect(GRANTABLE_CMS_CAPABILITIES).toContain('cms.media_curator');

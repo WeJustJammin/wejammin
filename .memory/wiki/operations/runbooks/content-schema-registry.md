@@ -62,6 +62,9 @@ Page the owning team when any of these conditions occurs:
 - activation remains blocked longer than 15 minutes;
 - a migration exceeds three retries or stops reporting truthful progress;
 - nonce-receipt rejection rises above its established release baseline;
+- a schema review stays open longer than seven days, the maximum assignment span;
+- decision, assignment, or capability-grant denials rise above their preceding
+  five-minute baseline;
 - CMS DLQ depth is greater than zero;
 - oldest CMS outbox event age exceeds two minutes;
 - version/idempotency conflicts exceed 5% for five minutes;

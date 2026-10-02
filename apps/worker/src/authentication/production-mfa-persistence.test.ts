@@ -118,6 +118,18 @@ const calls: readonly Call[] = [
     params: { p_factor_id: FACTOR_ID, p_expected_version: '5' },
   },
   {
+    label: 'recordVerificationFailure',
+    rpc: 'auth_mfa_verification_failure_record',
+    invoke: (port) =>
+      port.recordVerificationFailure(
+        { ...caller, outcome: 'incorrect' },
+        signal,
+      ),
+    reply: { recorded: true, locked: false, retryAfterSeconds: 0 },
+    expected: null,
+    params: { p_outcome: 'incorrect' },
+  },
+  {
     label: 'settleEnrollmentVerify',
     rpc: 'auth_mfa_enrollment_verify_settle',
     invoke: (port) =>

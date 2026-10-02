@@ -673,6 +673,9 @@ commit;`);
     activationRace: 'same-response-one-event',
     dlq: 'single-fenced-replay-owner',
   };
+  console.log(
+    'ok - [P2-S09-AC-217] independent committed psql sessions: expired-lease takeover, one fenced DLQ replay owner, one activation event and an exactly-once switch',
+  );
   console.log(JSON.stringify({ status: 'passed', evidence }));
 };
 

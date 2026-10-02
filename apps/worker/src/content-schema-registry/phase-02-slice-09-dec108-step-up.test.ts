@@ -61,7 +61,7 @@ describe('DEC-108 401 STEP_UP_REQUIRED (BE03a security: activation, decision, as
       expect(body.code).toBe('STEP_UP_REQUIRED');
       expect(body.details).toEqual({
         recoveryAction: 'step_up',
-        allowedMethods: [],
+        allowedMethods: ['totp'],
       });
       expect(body.requestId).toBe(REQUEST_ID);
       expect(response.headers.get('cache-control')).toBe('no-store');
@@ -81,7 +81,7 @@ describe('DEC-108 401 STEP_UP_REQUIRED (BE03a security: activation, decision, as
     expect(body.code).toBe('STEP_UP_REQUIRED');
     expect(body.details).toEqual({
       recoveryAction: 'step_up',
-      allowedMethods: [],
+      allowedMethods: ['totp'],
     });
     expect(harness.ports['activateSchema']).not.toHaveBeenCalled();
   });
@@ -213,7 +213,7 @@ describe('DEC-108 STEP_UP_REQUIRED from the production RPC adapter', () => {
         ok: false,
         status: 401,
         code: 'STEP_UP_REQUIRED',
-        details: { recoveryAction: 'step_up', allowedMethods: [] },
+        details: { recoveryAction: 'step_up', allowedMethods: ['totp'] },
       });
     },
   );
@@ -222,7 +222,7 @@ describe('DEC-108 STEP_UP_REQUIRED from the production RPC adapter', () => {
     expect(mapRpcFailure(401, { message: 'STEP_UP_REQUIRED' })).toMatchObject({
       status: 401,
       code: 'STEP_UP_REQUIRED',
-      details: { recoveryAction: 'step_up', allowedMethods: [] },
+      details: { recoveryAction: 'step_up', allowedMethods: ['totp'] },
     });
   });
 });

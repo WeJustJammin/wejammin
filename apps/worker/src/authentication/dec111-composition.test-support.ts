@@ -152,6 +152,8 @@ export const defaultHandlers: Readonly<Record<string, Handler>> = {
       providerChallengeId: PROVIDER_CHALLENGE_ID,
       expiresAt: iso(300),
     }),
+  auth_mfa_verification_failure_record: () =>
+    json({ recorded: true, locked: false, retryAfterSeconds: 0 }),
   auth_step_up_challenge_failure_record: () => json(null),
   auth_step_up_challenge_verify_settle: () => json(null),
 };

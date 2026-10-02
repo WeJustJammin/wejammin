@@ -50,8 +50,25 @@ select ok((select prep->'dryRunRef'->>'state' = 'completed' and prep->'dryRunRef
     and prep->'jobRef'->>'state' in ('succeeded', 'running', 'queued') and prep->'permittedNextActions' ? 'submit_review'
     from s09d_s2), 'a sealed passed attempt offers submit_review');
 
+select ok((select not (prep->'dryRunRef' ?| array['sourceCount', 'targetCount', 'rowErrorCount', 'sourceHash', 'targetHash', 'reportHash'])
+    from s09d_s1), 'a queued attempt emits none of the six sealed evidence members [P2-S09-AC-963]');
+select ok((select prep->'dryRunRef' ?& array['sourceCount', 'targetCount', 'rowErrorCount', 'sourceHash', 'targetHash', 'reportHash']
+    and (prep->'dryRunRef'->>'sourceCount')::bigint = r.source_count
+    and (prep->'dryRunRef'->>'targetCount')::bigint = r.target_count
+    and (prep->'dryRunRef'->>'rowErrorCount')::bigint = r.row_error_count
+    and prep->'dryRunRef'->>'sourceHash' = r.source_hash
+    and prep->'dryRunRef'->>'targetHash' = r.target_hash
+    and prep->'dryRunRef'->>'reportHash' = platform_private.cms_jcs_sha256(r.report)
+    and (prep->'dryRunRef'->>'rowErrorCount')::bigint = 0
+    and prep->'dryRunRef'->>'sourceHash' ~ '^[a-f0-9]{64}$' and prep->'dryRunRef'->>'targetHash' ~ '^[a-f0-9]{64}$'
+    and prep->'dryRunRef'->>'reportHash' ~ '^[a-f0-9]{64}$'
+    from s09d_s2, platform_private.cms_schema_dry_run_reports r where r.id = pg_temp.s09d_id('a:dryRun')),
+  'a sealed completed passed attempt emits all six members, read from the sealed report row, with zero row errors [P2-S09-AC-963]');
 select pg_temp.s09d_submit('a');
 create temp table s09d_s3 on commit drop as select pg_temp.s09d_prep('a') as prep;
+select ok((select prep->'dryRunRef'->>'reportHash' = r.dry_run_report_hash
+    from s09d_s3, platform_private.cms_schema_reviews r where r.id = pg_temp.s09d_id('a:review')),
+  'the dryRunRef report hash equals the frozen review evidence dryRun.reportHash (same derivation) [P2-S09-AC-1039]');
 select ok((select prep->'reviewRef'->>'id' = pg_temp.s09d_id('a:review')::text and prep->'reviewRef'->>'state' = 'open'
     and prep->'permittedNextActions' ? 'assign_reviewer' and not (prep->'permittedNextActions' ? 'activate')
     from s09d_s3), 'an open review is referenced and the owner is offered reviewer assignment, not activation');

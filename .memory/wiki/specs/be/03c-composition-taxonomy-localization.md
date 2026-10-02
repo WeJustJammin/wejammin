@@ -694,7 +694,7 @@ Known readable resources with insufficient capability return 403. Resources outs
 - Raw body ceiling 256 KiB; JSON depth 8, keys 128, arrays 128; strict schemas reject HTML, scripts, CSS, expressions, dynamic imports, arbitrary SQL, external URLs, and unregistered block/renderer/projection references.
 - Composition graphs reject cycles and enforce protected depth/node/slot counts before save and again before publish. Linked pattern changes show a three-way diff; no silent local overwrite.
 - Taxonomy keys are immutable; rename changes labels, alias preserves lookup, merge locks survivor/retired IDs and migrates assignments idempotently. A merged term cannot reactivate.
-- Locale IDs are BCP 47. Fallback is explicit ordered per type/field and records the selected source. no_fallback is the default for legal, safety, and jurisdiction fields.
+- Locale IDs are BCP 47. Fallback is explicit ordered per type/field and records the selected source. no_fallback is the default for legal, safety, and jurisdiction fields. What a public reader receives for a `no_fallback` field whose target-locale value is missing (the resolution semantics) is a CMS-15 delivery concern (DEC-121) specified with public delivery in 04c, not here: this shard and 03a declare `no_fallback` and enforce it at authoring and storage only.
 - Related content uses manual pins first, exclusions always, bounded deterministic derived rules with reason/version. Eligibility and target authorization are rechecked at read, preview, and publication.
 - Idempotency is bound to operation, actor, acting party, path, body, target, and expected version. Concurrent commands cap at three per actor; duplicate exact commands replay.
 - Logs/provider-native diagnostics contain only operation, safe IDs/hashes, version, actor class, outcome, duration, and error. No content, private locale text, labels, target names, or capability graph.
@@ -865,6 +865,7 @@ None.
 | 2026-10-02 | DEC-108 consistency closure: the template-compatibility resolver has typed failures `NOT_FOUND`, `INCOMPATIBLE`, `WITHDRAWN` and `VERSION_MISMATCH`, is service-role only with zero side effects, and reaches the browser only as 03a's optional `activationPreparation.templateCompatibility`.                                       |
 | 2026-10-02 | OD-4: CMS-03C-04 `fallbackChain` is now an equality expectation against the active content-type version's `fallbackChains` entry for the target locale (03a), the target locale must be in that version's `supportedLocales` (422 `LOCALE_VALIDATION_FAILED` otherwise), and a differing chain is 409 `LOCALE_VERSION_CONFLICT` with `FALLBACK_CHAIN_MISMATCH` and the active chain. |
 | 2026-10-02 | Slice 09 implementation reconciliation: replaced the non-BE00 `DEPENDENCY_INVALID_RESPONSE` (502) and `DEPENDENCY_DEADLINE_EXCEEDED` (504) names with the BE00 `DEPENDENCY_UNAVAILABLE` (502/503/504) in the CMS-03C-01..05 error catalogs. |
+| 2026-10-02 | Slice 09 follow-ups reconciliation: pointer only. `no_fallback` public resolution semantics are a CMS-15 delivery concern (DEC-121) owned by delivery (04c); 03c declares and enforces `no_fallback` at authoring and storage and specifies no resolution behavior. |
 
 ## Dependency References
 

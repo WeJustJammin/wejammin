@@ -28,7 +28,7 @@ const projection = {
 } as const;
 
 describe('named template compatibility resolver contract (DEC-108)', () => {
-  it('accepts the exact candidate version reference with an optional version assertion', () => {
+  it('[P2-S09-AC-698] accepts the exact candidate version reference with an optional version assertion', () => {
     expect(TemplateCompatibilityRequestSchema.parse(request)).toEqual(request);
     expect(
       TemplateCompatibilityRequestSchema.parse({
@@ -38,7 +38,7 @@ describe('named template compatibility resolver contract (DEC-108)', () => {
     ).toBe('2');
   });
 
-  it('never resolves a current version implicitly or accepts extra authority', () => {
+  it('[P2-S09-AC-698] never resolves a current version implicitly or accepts extra authority', () => {
     for (const missing of [
       'templateVersionId',
       'contentTypeId',
@@ -64,7 +64,7 @@ describe('named template compatibility resolver contract (DEC-108)', () => {
     ).toBe(false);
   });
 
-  it('returns only the safe projection with the literal compatible invariant', () => {
+  it('[P2-S09-AC-700] [P2-S09-AC-701] returns only the safe projection with the literal compatible invariant', () => {
     expect(TemplateCompatibilityProjectionSchema.parse(projection)).toEqual(
       projection,
     );

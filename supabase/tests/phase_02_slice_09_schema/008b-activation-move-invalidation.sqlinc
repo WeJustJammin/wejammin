@@ -32,7 +32,7 @@ where field_definition_id = pg_temp.s09d_id('ma:fieldId');
 select ok(
   pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('ma:review')) = 'invalidated'
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mb:review')) = 'invalidated',
-  'AC189 relation moves invalidate activation evidence for both old and new parents'
+  'AC189 relation moves invalidate activation evidence for both old and new parents [P2-S09-AC-102]'
 );
 
 -- A template binding written into a candidate invalidates that candidate's open

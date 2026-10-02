@@ -1,6 +1,7 @@
 import { type CommandResult, type RequestId } from '@wejammin/contracts';
 
 import { type ProtectedCommandDecision } from '@wejammin/application/infrastructure/security';
+import { MFA_METHOD_REGISTRY } from './authentication/step-up';
 import { createSafeErrorResponse, withNoStore } from './request-boundary';
 
 export const addOriginVary = (response: Response): Response => {
@@ -96,7 +97,10 @@ const deniedResponse = (
     case 'STEP_UP_REQUIRED':
       return createSafeErrorResponse(requestId, {
         code: 'STEP_UP_REQUIRED',
-        details: { allowedMethods: ['totp'], recoveryAction: 'step_up' },
+        details: {
+          allowedMethods: [...MFA_METHOD_REGISTRY],
+          recoveryAction: 'step_up',
+        },
         message: 'Recent step-up authentication is required.',
         status: 401,
       });

@@ -62,7 +62,7 @@ select ok(not platform_private.cms_grant_subject_eligible(pg_temp.s09d_id('owner
 select pg_temp.s09g_fingerprint() as before_fp \gset
 select pg_temp.s09g_grant('t:future', 'owner', 'rev2', 'cms.author', pg_temp.s09g_day(3));
 select is(pg_temp.s09d_outcome('t:future'), 'NOT_FOUND',
-  'CMS-03A-15 refuses a future-start member as an indistinguishable 404');
+  'CMS-03A-15 refuses a future-start member as an indistinguishable 404 [P2-S09-AC-507]');
 select is(pg_temp.s09g_fingerprint(), :'before_fp', 'the refused grant left no grant, event, projection, audit, outbox or idempotency row');
 select ok(pg_temp.s09g_projection('rev2', 'cms.author') is null and not pg_temp.s09g_holds('rev2', 'cms.author'),
   'no actor-grant projection exists, so the future member holds nothing');

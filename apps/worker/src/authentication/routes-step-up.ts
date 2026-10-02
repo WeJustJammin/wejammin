@@ -15,6 +15,7 @@ import {
   configureRoute,
   missingSliceDependency,
 } from './routes-provider-access';
+import { mfaOperationTelemetry } from './mfa-telemetry';
 import type { AuthenticationDependencies } from './types';
 
 const invalidPersistence = (
@@ -35,6 +36,7 @@ export const registerStepUpRoutes = (
   app: WorkerApp,
   dependencies: AuthenticationDependencies,
 ): void => {
+  app.use('/api/v1/auth/step-up/*', mfaOperationTelemetry);
   app.post('/api/v1/auth/step-up/challenges', async (context) => {
     configureRoute(context, 'AUTH-API-20');
     const admitted = await admitMfaMutation(

@@ -163,13 +163,13 @@ const versionPage = async () => {
 };
 
 describe('[DEC-108] version page island props carry no private identifier', () => {
-  it('has neither actorId nor actingPartyId in the page projection', async () => {
+  it('[P2-S09-AC-974] has neither actorId nor actingPartyId in the page projection', async () => {
     const page = (await versionPage()) as unknown as Record<string, unknown>;
     expect(Object.keys(page)).not.toContain('actorId');
     expect(Object.keys(page)).not.toContain('actingPartyId');
   });
 
-  it('serializes no actor, person, party, binding, session or correlation value in any spelling', async () => {
+  it('[P2-S09-AC-974] serializes no actor, person, party, binding, session or correlation value in any spelling', async () => {
     expectNoPrivateIdentifiers(await versionPage());
   });
 
@@ -182,14 +182,14 @@ describe('[DEC-108] version page island props carry no private identifier', () =
       expect(String(first.supportReference)).not.toContain(spelling);
   });
 
-  it('keeps the safe display evidence the island is allowed to carry', async () => {
+  it('[P2-S09-AC-974] keeps the safe display evidence the island is allowed to carry', async () => {
     const page = (await versionPage()) as unknown as Record<string, unknown>;
     expect(page.stepUpState).toBe('verified');
     expect(typeof page.stepUpFreshUntil).toBe('string');
     expect(page.csrfToken).toBe('csrf-cookie');
   });
 
-  it('renders the hydrated island markup without any private identifier', async () => {
+  it('[P2-S09-AC-974] renders the hydrated island markup without any private identifier', async () => {
     const page = await versionPage();
     const markup = renderToStaticMarkup(
       React.createElement(ContentSchemaRegistryWorkbenchIsland, {
@@ -227,11 +227,11 @@ describe('[DEC-108] review page island props carry no private identifier', () =>
     return result.page;
   };
 
-  it('serializes no actor, person, party, binding, session or correlation value in any spelling', async () => {
+  it('[P2-S09-AC-974] serializes no actor, person, party, binding, session or correlation value in any spelling', async () => {
     expectNoPrivateIdentifiers(await reviewPage());
   });
 
-  it('has neither actorId nor actingPartyId in the page projection', async () => {
+  it('[P2-S09-AC-974] has neither actorId nor actingPartyId in the page projection', async () => {
     const page = (await reviewPage()) as unknown as Record<string, unknown>;
     expect(Object.keys(page)).not.toContain('actorId');
     expect(Object.keys(page)).not.toContain('actingPartyId');

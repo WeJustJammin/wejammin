@@ -146,7 +146,7 @@ select is(pg_temp.s09p_try('b:bad.hash', (select jsonb_set(evidence, '{0,sourceH
   'VALIDATION_FAILED', 'a source hash the database does not reproduce is refused');
 select is(pg_temp.s09p_try('b:bad.falsepass', (select jsonb_set(jsonb_set(evidence, array[bad::text, 'errorCode'], 'null'::jsonb),
     array[bad::text, 'outputHash'], evidence->bad->'sourceHash') from s09p_good, s09p_idx)),
-  'VALIDATION_FAILED', 'a pass the database can prove violates the target constraint is refused');
+  'VALIDATION_FAILED', 'a pass the database can prove violates the target constraint is refused [P2-S09-AC-680]');
 select is(pg_temp.s09p_try('b:bad.output', (select jsonb_set(evidence, array[good::text, 'outputHash'], to_jsonb(repeat('a', 64))) from s09p_good, s09p_idx)),
   'VALIDATION_FAILED', 'a pass with an output hash the registered executor does not produce is refused');
 select is(pg_temp.s09p_try('b:bad.extra', (select jsonb_set(evidence, array[good::text, 'extra'], '1'::jsonb) from s09p_good, s09p_idx)),

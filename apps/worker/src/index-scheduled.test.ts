@@ -49,13 +49,18 @@ describe('Worker scheduled operational boundaries', () => {
       asyncBindings,
       executionContext,
     );
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain(
-      '/rest/v1/rpc/claim_outbox_batch',
-    );
-    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain(
-      '/rest/v1/rpc/idempotency_expiry_sweep',
-    );
+    // The outbox sweep, the idempotency expiry sweep and the [P2-S09-AC-908]
+    // reconciling-age gauge sample each make one protected RPC per tick.
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(
+      fetchImpl.mock.calls
+        .map(([input]) => String(input).split('/rest/v1/rpc/')[1])
+        .sort(),
+    ).toEqual([
+      'auth_mfa_reconciling_age',
+      'claim_outbox_batch',
+      'idempotency_expiry_sweep',
+    ]);
     expect(createProductionAsyncEntrypoint(fetchImpl)).toHaveProperty(
       'scheduled',
       expect.any(Function),
@@ -187,6 +192,11 @@ describe('Worker scheduled operational boundaries', () => {
         ),
       ),
     ).toHaveLength(1);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(
+      fetchImpl.mock.calls.filter(([input]) =>
+        String(input).includes('/rest/v1/rpc/auth_mfa_reconciling_age'),
+      ),
+    ).toHaveLength(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 });

@@ -82,11 +82,11 @@ describe('CMS-03A-07 detail activationPreparation parse', () => {
     expect(response.status).toBe(200);
   });
 
-  it('refuses a detail without activationPreparation as 502 DEPENDENCY_INVALID_RESPONSE', async () => {
+  it('refuses a detail without activationPreparation as 502 DEPENDENCY_UNAVAILABLE', async () => {
     const response = await fetchDetail(detail);
     expect(response.status).toBe(502);
     expect(((await response.json()) as { code: string }).code).toBe(
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
   });
 

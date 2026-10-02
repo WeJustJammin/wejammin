@@ -106,13 +106,13 @@ select ok(pg_temp.m_resp('cf:ok')->>'challengeId' ~ '^[0-9a-f-]{36}$'
     and (pg_temp.m_resp('cf:ok')->>'expiresAt')::timestamptz between clock_timestamp() + interval '4 minutes 50 seconds' and clock_timestamp() + interval '5 minutes 1 second',
   'expiresAt is the provider expiry when it is earlier than 10 minutes');
 select is(pg_temp.m_one(format('select state::text || session_id::text || factor_id::text from identity.step_up_challenges where id = %L', pg_temp.m_resp('cf:ok')->>'challengeId')),
-  'pending' || pg_temp.m_sid(1)::text || pg_temp.m_fid(1)::text, 'the challenge is pending and bound to the exact session and factor');
+  'pending' || pg_temp.m_sid(1)::text || pg_temp.m_fid(1)::text, 'the challenge is pending and bound to the exact session and factor [P2-S09-AC-900]');
 select is(pg_temp.m_one(format('select auth_user_id::text from identity.step_up_challenges where id = %L', pg_temp.m_resp('cf:ok')->>'challengeId')),
-  pg_temp.m_uid(1)::text, 'and to the Auth UUID');
-select is(pg_temp.m_events(1, 'step_up.challenge.created'), 1, 'one step_up.challenge.created security event');
+  pg_temp.m_uid(1)::text, 'and to the Auth UUID [P2-S09-AC-900]');
+select is(pg_temp.m_events(1, 'step_up.challenge.created'), 1, 'one step_up.challenge.created security event [P2-S09-AC-907]');
 select ok(position(pg_temp.m_one(format('select provider_challenge_id::text from identity.step_up_challenges where id = %L', pg_temp.m_resp('cf:ok')->>'challengeId')) in pg_temp.m_resp('cf:ok')::text) = 0,
   'the provider challenge id is never returned');
-select is(pg_temp.m_ver(1), (select v from m_ver_before where n = 1), 'creating a challenge never changes the MFA version');
+select is(pg_temp.m_ver(1), (select v from m_ver_before where n = 1), 'creating a challenge never changes the MFA version [P2-S09-AC-889]');
 select pg_temp.m_cfinish('cf:long', 2, pg_temp.m_fid(2), interval '30 minutes');
 select ok((pg_temp.m_resp('cf:long')->>'expiresAt')::timestamptz <= clock_timestamp() + interval '10 minutes 1 second',
   'a later provider expiry is clamped to created_at + 10 minutes');
@@ -120,10 +120,10 @@ select ok((pg_temp.m_resp('cf:long')->>'expiresAt')::timestamptz <= clock_timest
 -- supersession by a new begin (same session + factor); another session is independent.
 create temp table m_c1 on commit drop as select (pg_temp.m_resp('cf:ok')->>'challengeId')::uuid id;
 select pg_temp.m_cbegin('cs:b', 1);
-select is(pg_temp.m_cstate((select id from m_c1)), 'expired', 'a new challenge for the same session and factor supersedes the pending one');
+select is(pg_temp.m_cstate((select id from m_c1)), 'expired', 'a new challenge for the same session and factor supersedes the pending one [P2-S09-AC-837]');
 select pg_temp.m_cfinish('cs:f', 1, pg_temp.m_fid(1));
 create temp table m_c2 on commit drop as select (pg_temp.m_resp('cs:f')->>'challengeId')::uuid id;
-select is(pg_temp.m_cstate((select id from m_c2)), 'pending', 'the replacement is pending');
+select is(pg_temp.m_cstate((select id from m_c2)), 'pending', 'the replacement is pending [P2-S09-AC-837]');
 select pg_temp.m_cbegin('cs:b2', 1, null, 'totp', 2);
 select pg_temp.m_cfinish('cs:f2', 1, pg_temp.m_fid(1), interval '5 minutes', 2);
 select is(pg_temp.m_cstate((select id from m_c2)), 'pending', 'a challenge on another session of the same user is independent');
@@ -154,17 +154,17 @@ select is(pg_temp.m_out('fl:other'), 'NOT_FOUND', 'recording a failure from anot
 select pg_temp.m_cfail('fl:1', 1, (select id from m_c2), 'incorrect');
 select pg_temp.m_cfail('fl:2', 1, (select id from m_c2), 'incorrect');
 select is(pg_temp.m_one(format('select failed_attempt_count::text || state::text from identity.step_up_challenges where id = %L', (select id from m_c2))), '2pending',
-  'a wrong code leaves the challenge pending and increments failed_attempt_count');
-select is(pg_temp.m_events(1, 'step_up.failed'), 2, 'each wrong code is security evidence');
+  'a wrong code leaves the challenge pending and increments failed_attempt_count [P2-S09-AC-905]');
+select is(pg_temp.m_events(1, 'step_up.failed'), 2, 'each wrong code is security evidence [P2-S09-AC-907]');
 select is((select count(*)::integer from identity.security_events where action = 'step_up.failed' and reason_code = 'CODE_INCORRECT'), 2,
-  'with the generic CODE_INCORRECT reason');
+  'with the generic CODE_INCORRECT reason [P2-S09-AC-907]');
 select pg_temp.m_cprep('fl:still', 1, (select id from m_c2));
 select is(pg_temp.m_out('fl:still'), 'OK', 'the challenge remains usable after wrong codes');
 select pg_temp.m_cfail('fl:amb', 1, (select id from m_c3), 'ambiguous', 2);
-select is(pg_temp.m_cstate((select id from m_c3)), 'failed', 'an ambiguous provider outcome fails the challenge');
+select is(pg_temp.m_cstate((select id from m_c3)), 'failed', 'an ambiguous provider outcome fails the challenge [P2-S09-AC-905]');
 select is(pg_temp.m_one(format('select (failed_at is not null)::text from identity.step_up_challenges where id = %L', (select id from m_c3))), 'true', 'failed_at is recorded');
 select pg_temp.m_cprep('fl:after', 1, (select id from m_c3), 2);
-select is(pg_temp.m_out('fl:after'), 'CHALLENGE_CONSUMED', 'a failed challenge is CHALLENGE_CONSUMED (start a new one)');
+select is(pg_temp.m_out('fl:after'), 'CHALLENGE_CONSUMED', 'a failed challenge is CHALLENGE_CONSUMED (start a new one) [P2-S09-AC-905]');
 select pg_temp.m_cfail('fl:nonpending', 1, (select id from m_c3), 'incorrect', 2);
 select is(pg_temp.m_out('fl:nonpending'), 'CHALLENGE_CONSUMED', 'a failure cannot be recorded on a non-pending challenge');
 
@@ -189,18 +189,18 @@ select is(pg_temp.m_cstate((select id from m_c2)), 'pending', 'a refused rotatio
 select pg_temp.m_csettle('st:othersess', 1, (select id from m_c2), 2);
 select is(pg_temp.m_out('st:othersess'), 'NOT_FOUND', 'settle from another session is NOT_FOUND');
 select pg_temp.m_csettle('st:ok', 1, (select id from m_c2));
-select is(pg_temp.m_out('st:ok'), 'OK', 'settle consumes the challenge');
+select is(pg_temp.m_out('st:ok'), 'OK', 'settle consumes the challenge [P2-S09-AC-862]');
 select is(pg_temp.m_cstate((select id from m_c2)), 'consumed', 'the challenge is consumed');
-select is(pg_temp.m_one(format('select (consumed_at is not null)::text from identity.step_up_challenges where id = %L', (select id from m_c2))), 'true', 'consumed_at is recorded');
+select is(pg_temp.m_one(format('select (consumed_at is not null)::text from identity.step_up_challenges where id = %L', (select id from m_c2))), 'true', 'consumed_at is recorded [P2-S09-AC-862]');
 select ok(pg_temp.m_one(format('select last_used_at::text from identity.mfa_factor_registry where id = %L', pg_temp.m_fid(1))) is distinct from (select v from m_lu),
-  'the factor''s last_used_at advances');
+  'the factor''s last_used_at advances [P2-S09-AC-862]');
 select is(pg_temp.m_ver(1), (select v from m_ver_before where n = 1),
-  'a successful step-up does not bump the MFA version (no enrollment or removal in progress is invalidated)');
-select is(pg_temp.m_events(1, 'step_up.verified'), 1, 'one step_up.verified security event');
+  'a successful step-up does not bump the MFA version (no enrollment or removal in progress is invalidated) [P2-S09-AC-889]');
+select is(pg_temp.m_events(1, 'step_up.verified'), 1, 'one step_up.verified security event [P2-S09-AC-862] [P2-S09-AC-907]');
 select is(pg_temp.m_one(format($$select count(*)::text from audit_private.audit_events where action = 'identity.step_up.verified' and target_id = %L$$, (select id from m_c2))), '1',
-  'one BE00 audit row for the verification');
+  'one BE00 audit row for the verification [P2-S09-AC-862]');
 select pg_temp.m_csettle('st:again', 1, (select id from m_c2));
-select is(pg_temp.m_out('st:again'), 'CHALLENGE_CONSUMED', 'a challenge is consumed once (replay is CHALLENGE_CONSUMED)');
+select is(pg_temp.m_out('st:again'), 'CHALLENGE_CONSUMED', 'a challenge is consumed once (replay is CHALLENGE_CONSUMED) [P2-S09-AC-905]');
 select pg_temp.m_cprep('st:prep', 1, (select id from m_c2));
 select is(pg_temp.m_out('st:prep'), 'CHALLENGE_CONSUMED', 'a consumed challenge cannot be prepared again');
 
@@ -209,10 +209,10 @@ select pg_temp.m_cbegin('rt:b', 5);
 select pg_temp.m_cfinish('rt:f', 5, pg_temp.m_fid(5));
 create temp table m_cr on commit drop as select (pg_temp.m_resp('rt:f')->>'challengeId')::uuid id;
 select pg_temp.m_csettle('rt:ok', 5, (select id from m_cr), 1, pg_temp.m_sid(5, 2));
-select is(pg_temp.m_out('rt:ok'), 'OK', 'settle rotates the first-party session in the same transaction');
-select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(5, 1)), 'revoked', 'the initiating row is revoked by exact id');
-select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(5, 2)), 'active', 'the rotated row is active');
-select is((select count(*)::integer from identity.auth_session_index where auth_user_id = pg_temp.m_uid(5) and state = 'active'), 1, 'one step-up never leaves two live rows');
+select is(pg_temp.m_out('rt:ok'), 'OK', 'settle rotates the first-party session in the same transaction [P2-S09-AC-862]');
+select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(5, 1)), 'revoked', 'the initiating row is revoked by exact id [P2-S09-AC-880]');
+select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(5, 2)), 'active', 'the rotated row is active [P2-S09-AC-880]');
+select is((select count(*)::integer from identity.auth_session_index where auth_user_id = pg_temp.m_uid(5) and state = 'active'), 1, 'one step-up never leaves two live rows [P2-S09-AC-880]');
 
 -- factor no longer verified at settle time
 select pg_temp.m_cbegin('nv:b', 6);

@@ -32,15 +32,15 @@ select is(pg_temp.s09d_outcome('l:a') || pg_temp.s09d_outcome('l:e') || pg_temp.
 -- Refusals (atomic).
 select pg_temp.s09g_fingerprint() as before_fp \gset
 select pg_temp.s09g_renew('n:designer2', 'designer2', pg_temp.s09d_id('gA'), '1', pg_temp.s09g_day(8));
-select is(pg_temp.s09d_outcome('n:designer2'), 'FORBIDDEN', 'renewal by a non-owner designer is 403');
+select is(pg_temp.s09d_outcome('n:designer2'), 'FORBIDDEN', 'renewal by a non-owner designer is 403 [P2-S09-AC-556]');
 select pg_temp.s09g_revoke('v:other', 'other', pg_temp.s09d_id('gA'), '1');
-select is(pg_temp.s09d_outcome('v:other'), 'FORBIDDEN', 'revocation by another organization''s designer is 403');
+select is(pg_temp.s09d_outcome('v:other'), 'FORBIDDEN', 'revocation by another organization''s designer is 403 [P2-S09-AC-585]');
 select pg_temp.s09g_renew('n:nobinding', 'owner', pg_temp.s09d_id('gA'), '1', pg_temp.s09g_day(8), '{}', null, false);
-select is(pg_temp.s09d_outcome('n:nobinding'), 'STEP_UP_REQUIRED', 'renewal without the private binding is 401 STEP_UP_REQUIRED');
+select is(pg_temp.s09d_outcome('n:nobinding'), 'STEP_UP_REQUIRED', 'renewal without the private binding is 401 STEP_UP_REQUIRED [P2-S09-AC-556]');
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '20 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_revoke('v:stale', 'owner', pg_temp.s09d_id('gA'), '1');
-select is(pg_temp.s09d_outcome('v:stale'), 'STEP_UP_REQUIRED', 'revocation with stale MFA is 401 STEP_UP_REQUIRED');
+select is(pg_temp.s09d_outcome('v:stale'), 'STEP_UP_REQUIRED', 'revocation with stale MFA is 401 STEP_UP_REQUIRED [P2-S09-AC-585]');
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_renew('n:absent', 'owner', extensions.gen_random_uuid(), '1', pg_temp.s09g_day(8));
@@ -71,85 +71,85 @@ select is(pg_temp.s09g_fingerprint(), :'before_fp', 'every refusal left every ef
 select count(*) as audit_before from audit_private.audit_events \gset
 select count(*) as outbox_before from platform_private.outbox_events \gset
 select pg_temp.s09g_renew('n:ok', 'owner', pg_temp.s09d_id('gA'), '1', pg_temp.s09g_day(89), '{"reason": "Extended"}');
-select is(pg_temp.s09d_outcome('n:ok'), 'OK', 'the owner renews an effective aggregate to today + 89 (200)');
+select is(pg_temp.s09d_outcome('n:ok'), 'OK', 'the owner renews an effective aggregate to today + 89 (200) [P2-S09-AC-557]');
 select ok((select r->>'version' = '2' and r->>'lastAction' = 'renewed' and r->>'state' = 'active'
     and r->>'validFrom' = pg_temp.s09g_day(0) and r->>'validThrough' = pg_temp.s09g_day(89)
     and r->>'id' = pg_temp.s09d_id('gA')::text and r->>'reason' = 'Extended'
     from (select pg_temp.s09d_resp('n:ok') r) s),
-  'the renewed resource is version 2, lastAction renewed, with the term restarted from today');
+  'the renewed resource is version 2, lastAction renewed, with the term restarted from today [P2-S09-AC-555]');
 select is(pg_temp.s09g_projection('rev1', 'cms.author'),
   format('true|%s|%s|cms.author', pg_temp.s09g_day(0), pg_temp.s09g_day(89)),
-  'the actor-grant projection carries the renewed term in the same transaction');
+  'the actor-grant projection carries the renewed term in the same transaction [P2-S09-AC-560]');
 select is((select count(*)::integer from platform_private.cms_capability_grant_events e
   where e.grant_id = pg_temp.s09d_id('gA') and e.action = 'renewed' and e.aggregate_version = 2
     and e.prior_valid_through = pg_temp.s09g_today() + 5 and e.valid_through = pg_temp.s09g_today() + 89
     and e.binding_context_hash ~ '^[a-f0-9]{64}$'), 1,
-  'one renewed event records the prior and the new valid_through');
-select is((select count(*)::integer from audit_private.audit_events) - :audit_before, 1, 'one audit row for the renewal');
+  'one renewed event records the prior and the new valid_through [P2-S09-AC-560]');
+select is((select count(*)::integer from audit_private.audit_events) - :audit_before, 1, 'one audit row for the renewal [P2-S09-AC-560]');
 select ok(exists (select 1 from platform_private.outbox_events o
   where o.event_type = 'cms.capability.grant.changed.v1' and o.aggregate_id = pg_temp.s09d_id('gA')
     and o.aggregate_version = 2 and o.payload = jsonb_build_object('grantId', pg_temp.s09d_id('gA')::text,
       'subjectPersonId', pg_temp.s09d_actor_id('rev1', 'person')))
   and (select count(*)::integer from platform_private.outbox_events) - :outbox_before = 1,
-  'one outbox event with the committed aggregate version 2');
+  'one outbox event with the committed aggregate version 2 [P2-S09-AC-560]');
 
 -- Repeated renewal has no cumulative cap.
 select pg_temp.s09g_renew('c:' || n, 'owner', pg_temp.s09d_id('gA'), (n + 1)::text, pg_temp.s09g_day(89))
 from generate_series(1, 4) n;
 select is((select count(*)::integer from s09d_probe where label like 'c:%' and state = '00000'), 4,
-  'four consecutive renewals to today + 89 all succeed');
+  'four consecutive renewals to today + 89 all succeed [P2-S09-AC-555]');
 select is((select version::text from platform_private.cms_capability_grants where id = pg_temp.s09d_id('gA')), '6',
-  'the aggregate version counts every renewal');
+  'the aggregate version counts every renewal [P2-S09-AC-555]');
 
 -- Replay and changed body.
 select pg_temp.s09d_replay_pair('rp', 'platform_api.cms_renew_capability_grant', 'owner', jsonb_build_object(
   'grantId', pg_temp.s09d_id('gE'), 'expectedVersion', '1', 'validThrough', pg_temp.s09g_day(20),
   'idempotencyKey', 's09g-renew-fixed-key'), true);
 select ok(pg_temp.s09d_resp('rp.1') is not null and pg_temp.s09d_resp('rp.1') = pg_temp.s09d_resp('rp.2'),
-  'an exact same-key renewal retry replays the first response');
+  'an exact same-key renewal retry replays the first response [P2-S09-AC-559]');
 select is((select count(*)::integer from platform_private.cms_capability_grant_events where grant_id = pg_temp.s09d_id('gE')), 2,
   'the replay wrote no second event');
 select pg_temp.s09g_renew('rp:changed', 'owner', pg_temp.s09d_id('gE'), '1', pg_temp.s09g_day(21), '{}', 's09g-renew-fixed-key');
 select is(pg_temp.s09d_outcome('rp:changed'), 'CONFLICT', 'the same key with a changed body is 409');
 select pg_temp.s09g_renew('cas:2', 'owner', pg_temp.s09d_id('gE'), '1', pg_temp.s09g_day(22));
-select is(pg_temp.s09d_outcome('cas:2'), 'CONFLICT', 'a second command carrying the same expected version loses the CAS (409)');
+select is(pg_temp.s09d_outcome('cas:2'), 'CONFLICT', 'a second command carrying the same expected version loses the CAS (409) [P2-S09-AC-558]');
 select ok(pg_temp.s09d_def('platform_private.cms_renew_capability_grant(jsonb)') ilike '%for update%'
   and pg_temp.s09d_def('platform_private.cms_revoke_capability_grant(jsonb)') ilike '%for update%'
   and pg_temp.s09d_def('platform_private.cms_grant_capability(jsonb)') ilike '%for update%',
-  'the three commands lock the aggregate (or its key) with SELECT FOR UPDATE');
+  'the three commands lock the aggregate (or its key) with SELECT FOR UPDATE [P2-S09-AC-529] [P2-S09-AC-558]');
 
 -- Lapse, renewal of a lapsed aggregate, and the end of the UTC day.
 select ok(pg_temp.s09g_holds('rev2', 'cms.reviewer'), 'precondition: the reviewer grant is effective');
 select ok(pg_temp.s09g_warp('rev2', 'cms.reviewer', -10, -1) and not pg_temp.s09g_holds('rev2', 'cms.reviewer'),
-  'a grant whose last UTC day was yesterday has lapsed and is no longer effective');
+  'a grant whose last UTC day was yesterday has lapsed and is no longer effective [P2-S09-AC-584]');
 select ok(pg_temp.s09g_warp('rev2', 'cms.reviewer', -10, 0) and pg_temp.s09g_holds('rev2', 'cms.reviewer'),
-  'a grant is effective through the end of its validThrough UTC day');
+  'a grant is effective through the end of its validThrough UTC day [P2-S09-AC-584]');
 select ok(pg_temp.s09g_warp('rev2', 'cms.reviewer', -10, -1), 'precondition: lapsed again');
 select pg_temp.s09g_renew('lapsed', 'owner', pg_temp.s09d_id('gR'), '1', pg_temp.s09g_day(30));
-select is(pg_temp.s09d_outcome('lapsed'), 'OK', 'a lapsed (physically active) aggregate can be renewed');
+select is(pg_temp.s09d_outcome('lapsed'), 'OK', 'a lapsed (physically active) aggregate can be renewed [P2-S09-AC-557]');
 select ok(pg_temp.s09g_holds('rev2', 'cms.reviewer') and (select r->>'state' = 'active' and r->>'validFrom' = pg_temp.s09g_day(0)
   from (select pg_temp.s09d_resp('lapsed') r) s), 'the renewed lapsed aggregate is effective again and active');
 
 -- Immediate revocation, refusal of renewal/revoke on a revoked aggregate, re-establishment by grant.
 select count(*) as audit_before2 from audit_private.audit_events \gset
 select pg_temp.s09g_revoke('rev', 'owner', pg_temp.s09d_id('gE'), '2', '{"reason": "Done"}');
-select is(pg_temp.s09d_outcome('rev'), 'OK', 'the owner revokes an active aggregate (200)');
+select is(pg_temp.s09d_outcome('rev'), 'OK', 'the owner revokes an active aggregate (200) [P2-S09-AC-583]');
 select ok((select r->>'state' = 'revoked' and r->>'lastAction' = 'revoked' and r->>'version' = '3'
     from (select pg_temp.s09d_resp('rev') r) s) and not pg_temp.s09g_holds('rev1', 'cms.editor'),
-  'the revoked resource is version 3 and the capability is not effective in the same transaction');
-select is(pg_temp.s09g_projection('rev1', 'cms.editor') like 'false|%', true, 'the projection row is deactivated');
+  'the revoked resource is version 3 and the capability is not effective in the same transaction [P2-S09-AC-583] [P2-S09-AC-584]');
+select is(pg_temp.s09g_projection('rev1', 'cms.editor') like 'false|%', true, 'the projection row is deactivated [P2-S09-AC-583]');
 select is((select count(*)::integer from platform_private.cms_capability_grant_events
-  where grant_id = pg_temp.s09d_id('gE') and action = 'revoked' and aggregate_version = 3), 1, 'one revoked event');
-select is((select count(*)::integer from audit_private.audit_events) - :audit_before2, 1, 'one audit row for the revocation');
+  where grant_id = pg_temp.s09d_id('gE') and action = 'revoked' and aggregate_version = 3), 1, 'one revoked event [P2-S09-AC-588]');
+select is((select count(*)::integer from audit_private.audit_events) - :audit_before2, 1, 'one audit row for the revocation [P2-S09-AC-588]');
 select pg_temp.s09g_renew('rev:renew', 'owner', pg_temp.s09d_id('gE'), '3', pg_temp.s09g_day(9));
-select is(pg_temp.s09d_outcome('rev:renew'), 'CONFLICT', 'a revoked aggregate is refused for renewal (409)');
+select is(pg_temp.s09d_outcome('rev:renew'), 'CONFLICT', 'a revoked aggregate is refused for renewal (409) [P2-S09-AC-557]');
 select pg_temp.s09g_revoke('rev:again', 'owner', pg_temp.s09d_id('gE'), '3');
 select is(pg_temp.s09d_outcome('rev:again'), 'CONFLICT', 'a revoked aggregate is refused for a second revocation (409)');
 select pg_temp.s09g_grant('rev:regrant', 'owner', 'rev1', 'cms.editor', pg_temp.s09g_day(9));
 select ok(pg_temp.s09d_outcome('rev:regrant') = 'OK' and (select r->>'id' = pg_temp.s09d_id('gE')::text and r->>'version' = '4'
     and r->>'state' = 'active' and r->>'lastAction' = 'granted' from (select pg_temp.s09d_resp('rev:regrant') r) s)
   and pg_temp.s09g_holds('rev1', 'cms.editor'),
-  'grant re-establishes the revoked aggregate with a version increment (same id) and re-activates it');
+  'grant re-establishes the revoked aggregate with a version increment (same id) and re-activates it [P2-S09-AC-528]');
 select is((select count(*)::integer from platform_private.cms_capability_grants where subject_person_ref = pg_temp.s09d_actor_id('rev1', 'person')::uuid
   and capability_code = 'cms.editor'), 1, 'there is still one aggregate for the (owner, subject, capability) key');
 
@@ -166,7 +166,7 @@ select pg_temp.s09g_fingerprint() as atomic_before \gset
 select pg_temp.s09g_renew('at:renew', 'owner', pg_temp.s09d_id('gE'), '4', pg_temp.s09g_day(12));
 select pg_temp.s09g_revoke('at:revoke', 'owner', pg_temp.s09d_id('gA'), '6');
 select ok(pg_temp.s09d_outcome('at:renew') not in ('OK', 'MISSING') and pg_temp.s09d_outcome('at:revoke') not in ('OK', 'MISSING'),
-  'a failing outbox write fails both commands');
+  'a failing outbox write fails both commands [P2-S09-AC-560] [P2-S09-AC-588]');
 select is(pg_temp.s09g_fingerprint(), :'atomic_before', 'the failures rolled back aggregate, projection, event, audit, outbox and idempotency');
 drop trigger s09g_fail_outbox on platform_private.outbox_events;
 select pg_temp.s09g_revoke('at:retry', 'owner', pg_temp.s09d_id('gA'), '6');

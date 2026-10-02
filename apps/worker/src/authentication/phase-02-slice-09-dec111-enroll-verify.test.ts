@@ -200,6 +200,52 @@ describe('AUTH-API-18 enrollment verify (production composition)', () => {
     expect(names).not.toContain('auth_mfa_enrollment_verify_settle');
     expect(setCookies(response)).toHaveLength(0);
     expect(names.filter((n) => n === 'auth_rate_limit')).toHaveLength(1);
+    const charges = world.calls.filter(
+      (call) => call.rpc === 'auth_mfa_verification_failure_record',
+    );
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.body).toMatchObject({
+      p_auth_user_id: AUTH_USER_ID,
+      p_outcome: 'incorrect',
+    });
+  });
+
+  it('[P2-S09-AC-778] fails closed with 503 when a wrong code cannot be durably counted, never reporting the provider result', async () => {
+    const world = createWorld({
+      handlers: {
+        [P_VERIFY]: () =>
+          json({ error_code: 'mfa_verification_failed', msg: 'x' }, 400),
+        auth_mfa_verification_failure_record: () => rpcRefusal('boom', 500),
+      },
+    });
+    const response = await send(world.app, {
+      ...BASE[18],
+      jar: await mintJar(),
+    });
+    expect(response.status).toBe(503);
+    expect(setCookies(response)).toHaveLength(0);
+  });
+
+  it('[P2-S09-AC-865] refuses a locked account at prepare with 429 and Retry-After, before any provider call and without charging', async () => {
+    const world = createWorld({
+      handlers: {
+        auth_mfa_enrollment_verify_prepare: () =>
+          rpcRefusal('MFA_VERIFICATION_LOCKED:742'),
+      },
+    });
+    const response = await send(world.app, {
+      ...BASE[18],
+      jar: await mintJar(),
+    });
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('742');
+    expect((await bodyOf(response)).details).toMatchObject({
+      retryAfterSeconds: 742,
+    });
+    expect(providerCalls(world.calls)).toHaveLength(0);
+    expect(rpcNames(world.calls)).not.toContain(
+      'auth_mfa_verification_failure_record',
+    );
   });
 
   it('[P2-S09-AC-775] carries no client Idempotency-Key: none is required and none reaches persistence', async () => {
@@ -267,6 +313,14 @@ describe('AUTH-API-18 enrollment verify (production composition)', () => {
         (call) => call.rpc === 'auth_mfa_factor_mark_reconciling',
       );
       expect(mark?.body).toMatchObject({ p_factor_id: OTHER_FACTOR_ID });
+      const charged = world.calls.filter(
+        (call) => call.rpc === 'auth_mfa_verification_failure_record',
+      );
+      // An ambiguous provider outcome spends one attempt; a local
+      // finalization failure after a correct code spends none.
+      expect(charged).toHaveLength(status === 500 ? 0 : 1);
+      if (status !== 500)
+        expect(charged[0]?.body).toMatchObject({ p_outcome: 'ambiguous' });
     },
   );
 

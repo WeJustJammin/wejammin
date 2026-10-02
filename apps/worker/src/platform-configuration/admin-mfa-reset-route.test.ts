@@ -309,3 +309,37 @@ describe('CFG-05B-06 admin MFA factor reset route', () => {
     expect(success).toEqual([]);
   });
 });
+
+describe('[P2-S09-AC-945] CFG-05B-06 idempotency key bounds (BE05b 16..128)', () => {
+  it.each([
+    ['8 characters', 'k'.repeat(8)],
+    ['15 characters', 'k'.repeat(15)],
+    ['129 characters', 'k'.repeat(129)],
+  ])(
+    'is 400 INVALID_REQUEST for %s and never reaches the port',
+    async (_l, key) => {
+      const harness = makeResetHarness();
+      const response = await send(
+        harness,
+        resetRequest(resetBody, { 'idempotency-key': key }),
+      );
+      await expectApiError(response, 400, 'INVALID_REQUEST');
+      expect(harness.port).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['16 characters', 'k'.repeat(16)],
+    ['128 characters', 'k'.repeat(128)],
+  ])('forwards a %s key', async (_l, key) => {
+    const harness = makeResetHarness();
+    const response = await send(
+      harness,
+      resetRequest(resetBody, { 'idempotency-key': key }),
+    );
+    expect(response.status).toBe(200);
+    expect(harness.port.mock.calls[0]?.[0]).toMatchObject({
+      idempotencyKey: key,
+    });
+  });
+});

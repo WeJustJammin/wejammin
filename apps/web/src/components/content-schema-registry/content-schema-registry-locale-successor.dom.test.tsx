@@ -60,7 +60,7 @@ const choice = (view: Mounted, value: 'keep' | 'change'): void => {
 };
 
 describe('CMS-03A-09 successor locale replacement choice', () => {
-  it('defaults to keeping the current configuration and submits both null', () => {
+  it('[P2-S09-AC-1222] defaults to keeping the current configuration and submits both null', () => {
     const view = render();
     const group = view.container.querySelector(
       'fieldset[data-locale-choice]',
@@ -81,7 +81,7 @@ describe('CMS-03A-09 successor locale replacement choice', () => {
     expect(submit(view.form)).toBe(true);
   });
 
-  it('reveals the controls prefilled from the source when changing', () => {
+  it('[P2-S09-AC-1222] reveals the controls prefilled from the source when changing', () => {
     const view = render();
     choice(view, 'change');
     expect(view.container.querySelector('[data-locale-fields]')).not.toBeNull();
@@ -136,7 +136,7 @@ describe('CMS-03A-09 successor locale replacement choice', () => {
     expect(submit(view.form)).toBe(true);
   });
 
-  it('keeps edits when the discard confirmation is declined', () => {
+  it('[P2-S09-AC-1223] keeps edits when the discard confirmation is declined', () => {
     const view = render();
     choice(view, 'change');
     click(buttonNamed(view.container, 'Remove fr from supported languages'));
@@ -148,7 +148,7 @@ describe('CMS-03A-09 successor locale replacement choice', () => {
     expect(hiddenValue(view.form, 'supportedLocales')).not.toBe('null');
   });
 
-  it('discards edits and submits both null when the confirmation is accepted', () => {
+  it('[P2-S09-AC-1223] discards edits and submits both null when the confirmation is accepted', () => {
     const view = render();
     choice(view, 'change');
     click(buttonNamed(view.container, 'Remove fr from supported languages'));

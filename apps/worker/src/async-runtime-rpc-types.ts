@@ -3,6 +3,7 @@ import type {
   PlatformJobsMessage,
 } from './async-entrypoint';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
+import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
 export type AsyncRpcOperation =
   | 'claim_outbox_batch'
@@ -15,6 +16,7 @@ export type AsyncRpcOperation =
   | 'apply_job_outcome'
   | 'record_processed_event'
   | 'ac265_prepare_hosted_run'
+  | EventConsumerRpcName
   | SchemaMigrationRpcName;
 
 export const PLATFORM_API_PROFILE = 'platform_api' as const;

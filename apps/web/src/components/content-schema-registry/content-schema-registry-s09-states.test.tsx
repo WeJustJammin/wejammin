@@ -154,9 +154,9 @@ describe('[P2-S09-AC-966] dry-run degraded keeps the last verified dry run', () 
     const doc = renderDocument(degradedProps(passedDryRunPreparation));
     expect(commandForm(doc, 'CMS-03A-11')).toBeNull();
     expect(commandForm(doc, 'CMS-03A-10')).toBeNull();
-    expect(
-      regionNamed(doc, /activation preparation/iu)?.textContent,
-    ).toMatch(/submit review is disabled/iu);
+    expect(regionNamed(doc, /activation preparation/iu)?.textContent).toMatch(
+      /submit review is disabled/iu,
+    );
   });
 
   it('[P2-S09-AC-966] renders nothing from a degraded read that holds no last verified detail', () => {
@@ -183,10 +183,12 @@ describe('[P2-S09-AC-967] dry-run disabled names the missing prerequisite', () =
     expect(commandForm(doc, 'CMS-03A-10')).toBeNull();
     const note = doc.querySelector('[data-dry-run-prerequisite]');
     expect(note?.textContent).toMatch(/dry run/iu);
-    expect(note?.textContent).toMatch(/not (?:currently )?permitted|unavailable/iu);
+    expect(note?.textContent).toMatch(
+      /not (?:currently )?permitted|unavailable/iu,
+    );
   });
 
-  it('[P2-S09-AC-967] renders the start-dry-run form and no prerequisite note when the server lists start_dry_run', () => {
+  it('[P2-S09-AC-961] [P2-S09-AC-967] renders the start-dry-run form and no prerequisite note when the server lists start_dry_run', () => {
     const doc = detailDocument(
       activationPreparation({ permittedNextActions: ['start_dry_run'] }),
     );

@@ -177,7 +177,7 @@ select ok(
      and event.aggregate_id = (select version_id from s09_type_ids)
    order by event.occurred_at desc, event.id desc
    limit 1),
-  'CMS-03A-04 event carries the persisted outer activation-evidence hash and risk class'
+  'CMS-03A-04 event carries the persisted outer activation-evidence hash and risk class [P2-S09-AC-101]'
 );
 select ok(
   (select resource->'activationEvidence'->>'riskClass' = 'ordinary'
@@ -202,12 +202,12 @@ select is(
    where event_type = 'cms.schema.activated.v1'
      and aggregate_id = (select version_id from s09_type_ids)),
   1,
-  'CMS-03A-04 commits one activation outbox event and does not duplicate it on replay'
+  'CMS-03A-04 commits one activation outbox event and does not duplicate it on replay [P2-S09-AC-101]'
 );
 select throws_ok(
   pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
     'approvalIds', jsonb_build_array('a9090000-0000-4000-8000-000000000999'))),
   'P0001', 'CONFLICT',
-  'CMS-03A-04 stale active candidate is rejected after the one-shot CAS'
+  'CMS-03A-04 stale active candidate is rejected after the one-shot CAS [P2-S09-AC-097]'
 );
 select pg_temp.s09d_guc_restore();

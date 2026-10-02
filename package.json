@@ -13,6 +13,7 @@
     "build": "pnpm -r --if-present build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db-integration": "vitest run --config vitest.db-integration.config.ts",
     "test:coverage": "vitest run --coverage",
     "test:evidence:s09": "vitest run tests/contracts/phase-02-slice-09-evidence-map.test.ts -t \"executes every declared nonbrowser command\" --maxWorkers=1",
     "ac266:reports": "node --experimental-strip-types infra/workflows/ac266-manual-accessibility-report-cli.ts",

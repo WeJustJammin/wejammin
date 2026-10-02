@@ -2,12 +2,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  challenge,
-  flush,
-  json,
-  stubFetch,
-} from './step-up-mfa.test-support';
+import { challenge, flush, json, stubFetch } from './step-up-mfa.test-support';
 import {
   RETURN_TO,
   mountForm,

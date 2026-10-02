@@ -29,9 +29,9 @@ select is(:'warped'::text, 't'::text, 'precondition: the editor grant is lapsed'
 -- Refusals and zero side effects.
 select pg_temp.s09g_fingerprint() as before_fp \gset
 select pg_temp.s09g_list('q:designer2', 'designer2');
-select is(pg_temp.s09d_outcome('q:designer2'), 'FORBIDDEN', 'a non-owner designer cannot list (403)');
+select is(pg_temp.s09d_outcome('q:designer2'), 'FORBIDDEN', 'a non-owner designer cannot list (403) [P2-S09-AC-615]');
 select pg_temp.s09g_list('q:other', 'other');
-select is(pg_temp.s09d_outcome('q:other'), 'FORBIDDEN', 'another organization''s designer cannot list (403)');
+select is(pg_temp.s09d_outcome('q:other'), 'FORBIDDEN', 'another organization''s designer cannot list (403) [P2-S09-AC-616]');
 select pg_temp.s09g_list('q:nobinding', 'owner', '{}', false);
 select is(pg_temp.s09d_outcome('q:nobinding'), 'UNAUTHENTICATED', 'a list without the acting-context binding is 401 UNAUTHENTICATED');
 select pg_temp.s09g_list('q:key', 'owner', '{"idempotencyKey": "s09g-list-key-0001"}');
@@ -49,25 +49,25 @@ select is((select count(*)::integer from s09d_probe where label in ('q:l0', 'q:l
   and message = 'VALIDATION_FAILED'), 7, 'out-of-range or out-of-vocabulary query values are 422');
 select pg_temp.s09g_list('q:cursor', 'owner', '{"cursor": "bm90LWEtY3Vyc29y"}');
 select is(pg_temp.s09d_outcome('q:cursor'), 'INVALID_REQUEST', 'a malformed cursor is 400');
-select is(pg_temp.s09g_fingerprint(), :'before_fp', 'rejected lists left every effect table unchanged');
+select is(pg_temp.s09g_fingerprint(), :'before_fp', 'rejected lists left every effect table unchanged [P2-S09-AC-617]');
 
 -- Default list: owner organization only, derived state, no side effects, MFA not required.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '20 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_list('q:all', 'owner', '{"limit": 100}');
-select is(pg_temp.s09d_outcome('q:all'), 'OK', 'the owner lists with a stale MFA instant (read only, no step-up)');
-select is(pg_temp.s09g_fingerprint(), :'before_fp', 'a successful list reserves no idempotency key and writes no audit, outbox, event or row');
+select is(pg_temp.s09d_outcome('q:all'), 'OK', 'the owner lists with a stale MFA instant (read only, no step-up) [P2-S09-AC-615]');
+select is(pg_temp.s09g_fingerprint(), :'before_fp', 'a successful list reserves no idempotency key and writes no audit, outbox, event or row [P2-S09-AC-617]');
 select is(jsonb_array_length(pg_temp.s09d_resp('q:all')->'items'), 9,
   'two owner-initialization aggregates, the second designer''s grant and six granted aggregates are listed');
 select ok(pg_temp.s09d_resp('q:all') ? 'nextCursor' and pg_temp.s09d_resp('q:all')->'nextCursor' = 'null'::jsonb
   and (select count(*) = 2 from jsonb_object_keys(pg_temp.s09d_resp('q:all'))), 'the page is exactly { items, nextCursor } with a null cursor when exhausted');
 select ok((select bool_and(i->>'resourceKind' = 'cms_capability_grant' and (select count(*) = 14 from jsonb_object_keys(i))
     and not (i ?| array['ownerId', 'actorId', 'grantorPersonId', 'actingPartyId']))
-  from jsonb_array_elements(pg_temp.s09d_resp('q:all')->'items') i), 'every item is a safe CmsCapabilityGrantResource');
+  from jsonb_array_elements(pg_temp.s09d_resp('q:all')->'items') i), 'every item is a safe CmsCapabilityGrantResource [P2-S09-AC-522]');
 select is((select string_agg(i->>'capability', ',' order by i->>'capability') from jsonb_array_elements(pg_temp.s09d_resp('q:all')->'items') i
-  where i->>'state' = 'lapsed'), 'cms.editor', 'the lapsed state is derived from valid_through');
+  where i->>'state' = 'lapsed'), 'cms.editor', 'the lapsed state is derived from valid_through [P2-S09-AC-520] [P2-S09-AC-614]');
 select is((select string_agg(i->>'capability', ',') from jsonb_array_elements(pg_temp.s09d_resp('q:all')->'items') i
-  where i->>'state' = 'revoked'), 'cms.reviewer', 'the revoked aggregate is listed as revoked');
+  where i->>'state' = 'revoked'), 'cms.reviewer', 'the revoked aggregate is listed as revoked [P2-S09-AC-520]');
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 
@@ -81,7 +81,7 @@ select pg_temp.s09g_list('f:lapsed', 'owner', '{"state": "lapsed"}');
 select pg_temp.s09g_list('f:revoked', 'owner', '{"state": "revoked"}');
 select is(jsonb_array_length(pg_temp.s09d_resp('f:active')->'items') || '/' || jsonb_array_length(pg_temp.s09d_resp('f:lapsed')->'items')
   || '/' || jsonb_array_length(pg_temp.s09d_resp('f:revoked')->'items'), '7/1/1',
-  'state filters partition the aggregates into effective, lapsed and revoked');
+  'state filters partition the aggregates into effective, lapsed and revoked [P2-S09-AC-614]');
 
 -- Sorting and keyset pagination bound to the query.
 select pg_temp.s09g_list('p:1', 'owner', '{"limit": 4, "sort": "validThrough", "direction": "asc"}');

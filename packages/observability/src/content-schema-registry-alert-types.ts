@@ -10,7 +10,11 @@ export type ContentSchemaRegistryAlertCode =
   | 'protected_rpc_p95_exceeded'
   | 'acceptance_p99_exceeded'
   | 'queue_first_attempt_p95_exceeded'
-  | 'daily_dlq_rate_exceeded';
+  | 'daily_dlq_rate_exceeded'
+  | 'review_open_past_window'
+  | 'decision_denial_spike'
+  | 'assignment_denial_spike'
+  | 'capability_grant_denial_spike';
 
 export type ContentSchemaRegistryOperationalSnapshot = Readonly<{
   activationBlockedMs?: number;
@@ -27,6 +31,13 @@ export type ContentSchemaRegistryOperationalSnapshot = Readonly<{
   acceptanceP99Ms?: number;
   queueFirstAttemptP95Ms?: number;
   dailyDlqRate?: number;
+  reviewOpenAgeMs?: number;
+  decisionDenialRate?: number;
+  decisionDenialBaseline?: number;
+  assignmentDenialRate?: number;
+  assignmentDenialBaseline?: number;
+  capabilityGrantDenialRate?: number;
+  capabilityGrantDenialBaseline?: number;
 }>;
 
 export type ContentSchemaRegistryAlert = Readonly<{

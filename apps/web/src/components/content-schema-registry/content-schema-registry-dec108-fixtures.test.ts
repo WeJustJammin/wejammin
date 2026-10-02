@@ -101,7 +101,7 @@ describe('[DEC-108] privacy-scan fixture integrity', () => {
     ).toBe('248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1');
   });
 
-  it('gives the private identifiers no 8-character prefix or suffix shared with legitimate record ids', () => {
+  it('[P2-S09-AC-974] gives the private identifiers no 8-character prefix or suffix shared with legitimate record ids', () => {
     const compact = (value: string) => value.replaceAll('-', '');
     const legitimate = [
       TYPE_ID,

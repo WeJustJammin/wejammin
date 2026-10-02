@@ -29,7 +29,7 @@ const text = (element: Element | Document | null | undefined): string =>
 describe('[DEC-119] grant list', () => {
   const doc = renderConsoleDocument(consoleProps());
 
-  it('is a captioned table with sortable header buttons', () => {
+  it('[P2-S09-AC-1042] is a captioned table with sortable header buttons', () => {
     const table = doc.querySelector('table');
     expect(text(table?.querySelector('caption'))).toBe('CMS capability grants');
     const sorts = [
@@ -42,13 +42,13 @@ describe('[DEC-119] grant list', () => {
     for (const button of sorts) expect(button.type).toBe('button');
   });
 
-  it('marks the active sort column with aria-sort', () => {
+  it('[P2-S09-AC-1042] marks the active sort column with aria-sort', () => {
     const active = doc.querySelector('th[aria-sort]');
     expect(active?.getAttribute('aria-sort')).toBe('descending');
     expect(active?.querySelector('button')?.dataset.sort).toBe('updatedAt');
   });
 
-  it('shows the plain capability label with the key in monospace', () => {
+  it('[P2-S09-AC-1013] shows the plain capability label with the key in monospace', () => {
     const row = rowFor(doc, GRANT_ID);
     expect(text(row)).toContain('Author entries');
     expect(text(row?.querySelector('code[data-capability-key]'))).toBe(
@@ -64,7 +64,7 @@ describe('[DEC-119] grant list', () => {
     );
   });
 
-  it('states the derived state as text plus icon, never colour alone', () => {
+  it('[P2-S09-AC-1042] states the derived state as text plus icon, never colour alone', () => {
     for (const [id, state] of [
       [GRANT_ID, 'Active'],
       [LAPSED_ID, 'Lapsed'],
@@ -76,7 +76,7 @@ describe('[DEC-119] grant list', () => {
     }
   });
 
-  it('prints the term as UTC date with the derived end instant as secondary text', () => {
+  it('[P2-S09-AC-1015] [P2-S09-AC-1042] prints the term as UTC date with the derived end instant as secondary text', () => {
     const term = rowFor(doc, GRANT_ID)?.querySelector('[data-term-cell]');
     expect(text(term)).toContain('Valid through 2026-10-31 (UTC)');
     expect(term?.querySelector('time')?.getAttribute('datetime')).toBe(
@@ -84,7 +84,7 @@ describe('[DEC-119] grant list', () => {
     );
   });
 
-  it('gives each row action a specific accessible name described by the person cell', () => {
+  it('[P2-S09-AC-1044] gives each row action a specific accessible name described by the person cell', () => {
     const row = rowFor(doc, GRANT_ID);
     const renew = row?.querySelector<HTMLButtonElement>(
       'button[data-action="renew"]',
@@ -155,7 +155,7 @@ describe('[DEC-119/120] grant form', () => {
     );
   });
 
-  it('has a text input for the person ID with the FE03 attributes and helper copy', () => {
+  it('[P2-S09-AC-1043] [P2-S09-AC-1008] has a text input for the person ID with the FE03 attributes and helper copy', () => {
     const input = form?.querySelector<HTMLInputElement>(
       'input[name="subjectPersonId"]',
     );
@@ -174,7 +174,7 @@ describe('[DEC-119/120] grant form', () => {
     );
   });
 
-  it('has a native select of the generated registry in four labelled groups', () => {
+  it('[P2-S09-AC-1009] [P2-S09-AC-1013] has a native select of the generated registry in four labelled groups', () => {
     const select = form?.querySelector(
       'select[name="capability"]',
     ) as unknown as HTMLSelectElement | null;
@@ -201,7 +201,7 @@ describe('[DEC-119/120] grant form', () => {
     expect(select?.value).toBe('');
   });
 
-  it('bounds the date input by the server-computed term window (DEC-120)', () => {
+  it('[P2-S09-AC-1043] [P2-S09-AC-1010] [P2-S09-AC-1015] bounds the date input by the server-computed term window (DEC-120)', () => {
     const input = form?.querySelector<HTMLInputElement>(
       'input[name="validThrough"]',
     );
@@ -217,7 +217,7 @@ describe('[DEC-119/120] grant form', () => {
     );
   });
 
-  it('has an optional reason textarea with a live remaining-count text', () => {
+  it('[P2-S09-AC-1011] has an optional reason textarea with a live remaining-count text', () => {
     const area = form?.querySelector<HTMLTextAreaElement>(
       'textarea[name="reason"]',
     );
@@ -240,7 +240,7 @@ describe('[DEC-119] list and console states', () => {
     ['no-records', 'Grant a capability'],
     ['filter-miss', 'Reset filters'],
   ] as const)(
-    'renders the %s empty state with one action',
+    '[P2-S09-AC-996] renders the %s empty state with one action',
     (reason, action) => {
       const doc = renderConsoleDocument(
         consoleProps({ initialList: { status: 'empty', reason } }),
@@ -250,7 +250,7 @@ describe('[DEC-119] list and console states', () => {
     },
   );
 
-  it('renders a typed error with the request ID and Retry only when retryable', () => {
+  it('[P2-S09-AC-997] renders a typed error with the request ID and Retry only when retryable', () => {
     const base = {
       status: 'error' as const,
       error: {
@@ -274,7 +274,7 @@ describe('[DEC-119] list and console states', () => {
     expect(final.querySelector('[data-cms-retry-control]')).toBeNull();
   });
 
-  it('degrades with the last verified page kept and every command disabled', () => {
+  it('[P2-S09-AC-998] degrades with the last verified page kept and every command disabled', () => {
     const initial = successList();
     const doc = renderConsoleDocument(
       consoleProps({
@@ -296,7 +296,7 @@ describe('[DEC-119] list and console states', () => {
       expect(control.disabled).toBe(true);
   });
 
-  it('renders the disabled-prerequisite reason with no commands', () => {
+  it('[P2-S09-AC-992] [P2-S09-AC-999] renders the disabled-prerequisite reason with no commands', () => {
     const doc = renderConsoleDocument(
       consoleProps({
         variant: 'disabledPrerequisite',
@@ -308,7 +308,7 @@ describe('[DEC-119] list and console states', () => {
     expect(doc.querySelector('form[data-operation-id]')).toBeNull();
   });
 
-  it('renders only the owner gate, with no protected label, for a hidden variant', () => {
+  it('[P2-S09-AC-991] renders only the owner gate, with no protected label, for a hidden variant', () => {
     const doc = renderConsoleDocument(
       consoleProps({ variant: 'forbiddenHidden', access: 'not-rendered' }),
     );
@@ -322,9 +322,7 @@ describe('[DEC-119] list and console states', () => {
   it('discloses the acting context label and the step-up window, never an identifier', () => {
     const doc = renderConsoleDocument(consoleProps());
     expect(text(doc)).toContain('Northwind Collective');
-    expect(text(doc)).toMatch(
-      /Verified until \d{2}:\d{2} UTC/u,
-    );
+    expect(text(doc)).toMatch(/Verified until \d{2}:\d{2} UTC/u);
     const required = renderConsoleDocument(
       consoleProps({ contextEvidence: { stepUpState: 'required' } }),
     );

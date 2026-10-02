@@ -15,6 +15,7 @@ import {
   verifySameOriginCsrf,
 } from '../authentication/boundary';
 import { isStepUpFresh } from '../authentication/route-support';
+import { stepUpRequiredError } from '../authentication/step-up';
 import type {
   AuthenticationDependencies,
   AuthenticationError,
@@ -174,15 +175,10 @@ export const requireProfileSession = async (
     });
   }
   if (stepUp && !isStepUpFresh(resolved.value, Date.now())) {
-    return authError(
-      401,
-      'STEP_UP_REQUIRED',
-      'Recent verification is required.',
-      {
-        recoveryAction: 'step_up',
-        allowedMethods: ['challenge_code', 'attester_route'],
-      },
-    );
+    // BE00/DEC-111: allowedMethods is the configured step-up method registry.
+    // Claim proof kinds (challenge_code, attester_route) are evidence, not
+    // step-up factors, so they are never advertised here.
+    return stepUpRequiredError();
   }
   return resolved;
 };

@@ -1,3 +1,4 @@
+import { MFA_METHOD_REGISTRY } from '../authentication/step-up';
 import type { AuthenticationResult } from '../authentication/types';
 import type {
   ContentSchemaRegistryError,
@@ -66,12 +67,66 @@ export const isAbortError = (value: unknown): boolean =>
   (value instanceof DOMException && value.name === 'AbortError') ||
   (isRecord(value) && value.name === 'AbortError');
 
+const MAX_DETAIL_VIOLATIONS = 50;
+const MAX_VIOLATION_POINTER_LENGTH = 256;
+const MAX_VIOLATION_MESSAGE_LENGTH = 500;
+const PRINTABLE_ASCII = /^[\x20-\x7e]+$/u;
+
+const printable = (value: unknown, maxLength: number): value is string =>
+  typeof value === 'string' &&
+  value.length <= maxLength &&
+  PRINTABLE_ASCII.test(value);
+
+/**
+ * PostgREST reports the raised exception's machine DETAIL as `details`: a
+ * JSON text for the OD-4 shapes, or a plain token such as
+ * `MIGRATION_SOURCE_DRIFT`. Only a JSON object is ever read; any other value
+ * (plain text, array, scalar, malformed JSON) yields no detail.
+ */
+const detailRecord = (
+  value: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> => {
+  const raw = value.details;
+  if (isRecord(raw)) return raw;
+  if (typeof raw !== 'string') return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * BE03a OD-4: a 400/422 carries at most 50 `{ pointer, message }` JSON-pointer
+ * violations. An entry needs both members in bounded printable ASCII or it is
+ * dropped; unknown members are never copied.
+ */
+const safeViolations = (
+  value: unknown,
+): readonly Readonly<{ pointer: string; message: string }>[] => {
+  if (!Array.isArray(value)) return [];
+  const kept: Array<Readonly<{ pointer: string; message: string }>> = [];
+  for (const entry of value as readonly unknown[]) {
+    if (kept.length === MAX_DETAIL_VIOLATIONS) break;
+    if (!isRecord(entry)) continue;
+    const { pointer, message } = entry;
+    if (
+      printable(pointer, MAX_VIOLATION_POINTER_LENGTH) &&
+      printable(message, MAX_VIOLATION_MESSAGE_LENGTH)
+    )
+      kept.push({ pointer, message });
+  }
+  return kept;
+};
+
 export const safeDetails = (
   value: unknown,
+  status?: number,
 ): Readonly<Record<string, unknown>> => {
   if (!isRecord(value)) return {};
-  const details = isRecord(value.details) ? value.details : {};
-  return Object.fromEntries(
+  const details = detailRecord(value);
+  const primitives = Object.fromEntries(
     [
       'dependencyClass',
       'retryable',
@@ -91,6 +146,9 @@ export const safeDetails = (
         : [];
     }),
   );
+  const violations =
+    status === 400 || status === 422 ? safeViolations(details.violations) : [];
+  return violations.length === 0 ? primitives : { ...primitives, violations };
 };
 
 export const statusIsSupported = (
@@ -101,12 +159,13 @@ export const statusIsSupported = (
   );
 
 /**
- * This adapter has no configured source for a CMS step-up method allowlist.
- * Keep the disclosure empty rather than infer factors from an RPC body or
- * local Supabase defaults. This is not a claim about the hosted provider's
- * configuration; real recovery requires a verified configured method source.
+ * BE00 STEP_UP_REQUIRED recovery routing: `allowedMethods` is the one
+ * configured, allowlisted step-up method registry (BE01a MFA method registry),
+ * never an RPC-supplied list, a local default, or a CMS-owned copy.
  */
-export const CMS_STEP_UP_ALLOWED_METHODS: readonly string[] = Object.freeze([]);
+export const CMS_STEP_UP_ALLOWED_METHODS: readonly string[] = Object.freeze([
+  ...MFA_METHOD_REGISTRY,
+]);
 
 export const knownFailure = (
   code: string,
@@ -232,7 +291,7 @@ export const mapRpcFailure = (
       mapped.status,
       mapped.code,
       mapped.message,
-      mapped.details ?? safeDetails(payload),
+      mapped.details ?? safeDetails(payload, mapped.status),
     );
   if (status === 504) return deadlineExceeded();
   if (status === 502) return badGateway();
@@ -254,7 +313,7 @@ export const mapRpcFailure = (
                   ? 'CONFLICT'
                   : 'INVALID_REQUEST',
       'The CMS registry operation was rejected.',
-      safeDetails(payload),
+      safeDetails(payload, status),
     );
   }
   return unavailable();

@@ -32,7 +32,7 @@ afterEach(() => {
 const two = [factor(FACTOR_A), factor(FACTOR_B, 'verified', 'Laptop')];
 
 describe('MfaEnrollmentWizard factor list', () => {
-  it('renders a semantic table with the five column headers and one row per factor', () => {
+  it('[P2-S09-AC-1071] renders a semantic table with the five column headers and one row per factor', () => {
     harness = mountWizard(stubFetch(), { factors: two });
     const container = harness.mounted.container;
     const headers = Array.from(container.querySelectorAll('thead th')).map(
@@ -54,7 +54,7 @@ describe('MfaEnrollmentWizard factor list', () => {
 });
 
 describe('MfaEnrollmentWizard removal', () => {
-  it('names the consequence, defaults the reason to user_request and cancels with Escape', () => {
+  it('[P2-S09-AC-1080] [P2-S09-AC-1081] names the consequence, defaults the reason to user_request and cancels with Escape', () => {
     harness = mountWizard(stubFetch(), { factors: two });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
@@ -87,7 +87,7 @@ describe('MfaEnrollmentWizard removal', () => {
     expect(container.querySelector('[data-mfa-removal]')).toBeNull();
   });
 
-  it('warns about the last verified factor', () => {
+  it('[P2-S09-AC-1080] warns about the last verified factor', () => {
     harness = mountWizard(stubFetch(), { factors: [factor(FACTOR_A)] });
     const container = harness.mounted.container;
     pressButton(container, 'Remove Phone a');
@@ -96,7 +96,7 @@ describe('MfaEnrollmentWizard removal', () => {
     );
   });
 
-  it('removes with a per-instance idempotency key and If-Match, then focuses the list heading and announces', async () => {
+  it('[P2-S09-AC-1081] [P2-S09-AC-1082] removes with a per-instance idempotency key and If-Match, then focuses the list heading and announces', async () => {
     const after = factorsResource(
       [factor(FACTOR_B, 'verified', 'Laptop')],
       '9',
@@ -143,7 +143,7 @@ describe('MfaEnrollmentWizard removal', () => {
     );
   });
 
-  it('refuses the last factor while access needs verification: closed, polite, no state change', async () => {
+  it('[P2-S09-AC-1083] [P2-S09-AC-1141] refuses the last factor while access needs verification: closed, polite, no state change', async () => {
     const fetchImpl = stubFetch(
       conflict('last_factor_required', 'enroll_factor'),
     );
@@ -163,7 +163,7 @@ describe('MfaEnrollmentWizard removal', () => {
     ).not.toBeNull();
   });
 
-  it('opens a sync conflict and refetches on factor_state_conflict', async () => {
+  it('[P2-S09-AC-1093] opens a sync conflict and refetches on factor_state_conflict', async () => {
     const fetchImpl = stubFetch(
       conflict('factor_state_conflict'),
       json(200, factorsResource([factor(FACTOR_A, 'reconciling')], '10'), {

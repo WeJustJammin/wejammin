@@ -210,7 +210,13 @@ describe('AUTH-API-17 TOTP enrollment start (production composition)', () => {
     const logged: string[] = [];
     for (const channel of ['log', 'info', 'warn', 'error', 'debug'] as const)
       vi.spyOn(console, channel).mockImplementation((...args: unknown[]) => {
-        logged.push(args.map(String).join(' '));
+        logged.push(
+          args
+            .map((arg) =>
+              typeof arg === 'object' ? JSON.stringify(arg) : String(arg),
+            )
+            .join(' '),
+        );
       });
     const world = createWorld();
     const response = await send(world.app, {

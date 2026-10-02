@@ -1,4 +1,6 @@
 /** BE03a transform registry: digests, pure members, resolution and JCS hashing. */
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -73,6 +75,18 @@ describe('code-owned registry membership and digests', () => {
     },
   );
 
+  it('keeps the behavior identifiers equal to the DB-seeded registry so digests match after the field-neutral carry', () => {
+    const seed = readFileSync(
+      new URL(
+        '../../../../supabase/migrations/20261002146000_cms_schema_transform_registry.sql',
+        import.meta.url,
+      ).pathname,
+      'utf8',
+    );
+    for (const behavior of Object.values(TRANSFORM_BEHAVIOR))
+      expect(seed).toContain(`'${behavior}'`);
+  });
+
   it('keeps the two digests distinct and the field kinds non-empty', () => {
     const [first, second] = DEFAULT_TRANSFORM_REGISTRY;
     expect(first?.digest).not.toBe(second?.digest);
@@ -94,10 +108,10 @@ describe('identity.revalidate', () => {
   const apply = member(IDENTITY_REVALIDATE_KEY).apply;
   const document = { title: 'a', rank: 2 };
 
-  it('refuses to seal a row when no target field was supplied', () => {
-    expect(
-      rowCode(() => apply(document, { targetFields: [], retiredFields: [] })),
-    ).toBe('TRANSFORM_TARGET_CONSTRAINTS_MISSING');
+  it('carries the row unchanged when the plan is field-neutral (no target and no retired field)', () => {
+    expect(apply(document, { targetFields: [], retiredFields: [] })).toBe(
+      document,
+    );
   });
 
   it('passes a present value of the right kind', () => {
@@ -138,6 +152,11 @@ describe('default.fill_literal', () => {
     });
   });
 
+  it('carries the row unchanged when the plan is field-neutral', () => {
+    const source = { rank: 1 };
+    expect(apply(source, { targetFields: [], retiredFields: [] })).toBe(source);
+  });
+
   it('passes a row that already holds a value unchanged and never mutates input', () => {
     const source = { title: 'kept' };
     expect(apply(source, ctx(field()))).toBe(source);
@@ -147,7 +166,6 @@ describe('default.fill_literal', () => {
   });
 
   it.each([
-    ['no target fields', []],
     ['a non-literal default mode', [field({ defaultMode: 'computed' })]],
     ['a literal mode without a value', [field({ defaultValue: null })]],
   ])('records TRANSFORM_DEFAULT_UNAVAILABLE for %s', (_label, targets) => {

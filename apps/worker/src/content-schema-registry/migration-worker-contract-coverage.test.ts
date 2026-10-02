@@ -145,6 +145,9 @@ describe('migration worker contracts and defensive helpers', () => {
       ['contentTypeId', 'bad'],
       ['schemaVersionId', 'bad'],
       ['migrationPlanId', 'bad'],
+      ['localeConfigHash', 'bad'],
+      ['localeConfigHash', 'A'.repeat(64)],
+      ['localeConfigHash', null],
       ['activationEvidence', null],
     ] as const;
     for (const [key, value] of payloadFields) {
@@ -197,6 +200,26 @@ describe('migration worker contracts and defensive helpers', () => {
         payload: { ...event.payload, migrationPlanId: PLAN_ID },
       }).success,
     ).toBe(true);
+  });
+
+  it('requires localeConfigHash exactly as the DB emits it in cms.schema.activated.v1', () => {
+    expect(event.payload.localeConfigHash).toMatch(/^[a-f0-9]{64}$/u);
+    const parsed = SchemaMigrationQueueEnvelopeSchema.safeParse(event);
+    expect(parsed).toMatchObject({
+      success: true,
+      data: { payload: { localeConfigHash: event.payload.localeConfigHash } },
+    });
+    const withoutHash = Object.fromEntries(
+      Object.entries(event.payload).filter(
+        ([key]) => key !== 'localeConfigHash',
+      ),
+    );
+    expect(
+      SchemaMigrationQueueEnvelopeSchema.safeParse({
+        ...event,
+        payload: withoutHash,
+      }).success,
+    ).toBe(false);
   });
 
   it('evaluates activation evidence capability and risk-class branches', () => {

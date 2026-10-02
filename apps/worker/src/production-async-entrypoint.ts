@@ -10,6 +10,11 @@ import { runContentSchemaRegistryOperationalAlerts } from './content-schema-regi
 import type { OperationalAlertDependencies } from './content-schema-registry/operational-alert-runtime';
 import { logSchemaMigrationQueueAttempt } from './content-schema-registry/operational-alert-queue-telemetry';
 import {
+  createProductionEventConsumers,
+  type ProductionEventConsumerOptions,
+  type ProductionEventConsumers,
+} from './event-consumers/production';
+import {
   createProductionJobEffectDispatcher,
   type ProductionVerificationDependencies,
 } from './production-job-effect-dispatcher';
@@ -24,6 +29,7 @@ export const createProductionAsyncEntrypoint = (
   fetchImpl: typeof fetch = globalThis.fetch,
   verification?: ProductionVerificationDependencies,
   migrationOptions?: ProductionSchemaMigrationWorkerOptions,
+  eventConsumerOptions?: ProductionEventConsumerOptions,
 ) =>
   (() => {
     const dependencies = createAsyncJobDependencies({
@@ -35,8 +41,30 @@ export const createProductionAsyncEntrypoint = (
       ReturnType<typeof createProductionSchemaMigrationWorker>
     >();
     const queueLoggers = new WeakMap<object, Logger>();
+    const eventConsumers = new WeakMap<object, ProductionEventConsumers>();
+    const consumersFor = (
+      env: AsyncWorkerBindings,
+    ): ProductionEventConsumers => {
+      let consumers = eventConsumers.get(env);
+      if (consumers === undefined) {
+        consumers = createProductionEventConsumers(
+          projectServerEnvironment(env),
+          fetchImpl,
+          eventConsumerOptions,
+        );
+        eventConsumers.set(env, consumers);
+      }
+      return consumers;
+    };
     return createAsyncEntrypoint({
       ...dependencies,
+      processEventConsumer: ({ env, message }) =>
+        consumersFor(env).registry.process({
+          body: message.body,
+          attempts: message.attempts,
+        }),
+      observeReconcilingAge: ({ env }) =>
+        consumersFor(env).reconcilingAge.observe(),
       processSchemaMigration: async ({ env, event, message }) => {
         let worker = workers.get(env);
         if (worker === undefined) {

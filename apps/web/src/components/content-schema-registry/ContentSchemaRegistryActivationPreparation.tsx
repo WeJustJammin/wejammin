@@ -5,6 +5,12 @@ import {
   pollableJobId,
   useContentSchemaRegistryDryRunPolling,
 } from './content-schema-registry-dry-run-polling';
+import ContentSchemaRegistryCompatibilityProjection from './ContentSchemaRegistryCompatibilityProjection';
+import ContentSchemaRegistryDryRunEvidence from './ContentSchemaRegistryDryRunEvidence';
+import {
+  sealedEvidenceOf,
+  sealedEvidenceSentence,
+} from './content-schema-registry-dry-run-evidence';
 import { reviewRouteFor } from './content-schema-registry-version-actions';
 import type {
   ContentSchemaRegistryReviewState,
@@ -41,10 +47,13 @@ const statusSentence = (
 ): string => {
   const dryRun = preparation.dryRunRef;
   if (dryRun === null) return 'No dry run has been started for this version.';
-  if (dryRun.state === 'completed')
+  if (dryRun.state === 'completed') {
+    const evidence = sealedEvidenceOf(preparation);
+    if (evidence !== null) return sealedEvidenceSentence(evidence);
     return dryRun.result === 'passed'
       ? 'The sealed dry run passed.'
       : 'The sealed dry run failed; its report lists the row errors.';
+  }
   if (dryRun.state === 'failed' || job === 'failed' || job === 'cancelled') {
     const code = failureCodeOf(preparation);
     return code === null
@@ -61,33 +70,6 @@ const sealedResult = (preparation: SchemaActivationPreparation) =>
     ? preparation.dryRunRef.result
     : null;
 
-const CompatibilityProjection = ({
-  projection,
-}: {
-  readonly projection: NonNullable<
-    SchemaActivationPreparation['templateCompatibility']
-  >;
-}): React.ReactElement => (
-  <section aria-labelledby="content-schema-registry-compatibility-heading">
-    <h4 id="content-schema-registry-compatibility-heading">
-      Template compatibility
-    </h4>
-    <dl>
-      <dt>Template</dt>
-      <dd>
-        <code>{projection.templateKey}</code> version{' '}
-        {projection.templateVersionNo} ({projection.state})
-      </dd>
-      <dt>Compatible with this version</dt>
-      <dd>{projection.compatible ? 'yes' : 'no'}</dd>
-      <dt>Template digest</dt>
-      <dd>
-        <code>{projection.templateDigest}</code>
-      </dd>
-    </dl>
-  </section>
-);
-
 /**
  * FE03 activationPreparation panel (CMS-03A-07 data mapping): dry-run status
  * with the BE00 job vocabulary, announced politely and never moving focus.
@@ -98,13 +80,18 @@ export default function ContentSchemaRegistryActivationPreparation({
   onCanonicalRefetch,
   degraded,
 }: ContentSchemaRegistryActivationPreparationProps): React.ReactElement {
-  const { job: polled, failure, retry } = useContentSchemaRegistryDryRunPolling({
+  const {
+    job: polled,
+    failure,
+    retry,
+  } = useContentSchemaRegistryDryRunPolling({
     jobId: degraded === undefined ? pollableJobId(preparation) : null,
     onTerminal: onCanonicalRefetch,
   });
   const failureCode = failureCodeOf(preparation);
   const job = polled ?? preparation.jobRef?.state ?? null;
   const result = sealedResult(preparation);
+  const evidence = sealedEvidenceOf(preparation);
   const compatibility = preparation.templateCompatibility ?? null;
   const reviewRef = preparation.reviewRef;
   const showReviewLink = reviewRef !== null && review?.status !== 'empty';
@@ -128,7 +115,11 @@ export default function ContentSchemaRegistryActivationPreparation({
         <div data-dry-run-poll-error="true" role="alert" aria-atomic="true">
           <p>The dry-run status could not be read from the server.</p>
           {failure.retryable ? (
-            <button type="button" data-cms-retry-control="enabled" onClick={retry}>
+            <button
+              type="button"
+              data-cms-retry-control="enabled"
+              onClick={retry}
+            >
               Retry
             </button>
           ) : null}
@@ -158,6 +149,9 @@ export default function ContentSchemaRegistryActivationPreparation({
             <dt>Result</dt>
             <dd>{result}</dd>
           </>
+        )}
+        {evidence === null ? null : (
+          <ContentSchemaRegistryDryRunEvidence evidence={evidence} />
         )}
         {failureCode === null ? null : (
           <>
@@ -189,7 +183,9 @@ export default function ContentSchemaRegistryActivationPreparation({
         )}
       </dl>
       {compatibility === null ? null : (
-        <CompatibilityProjection projection={compatibility} />
+        <ContentSchemaRegistryCompatibilityProjection
+          projection={compatibility}
+        />
       )}
     </section>
   );

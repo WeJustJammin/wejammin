@@ -30,7 +30,7 @@ const clone = { supportedLocales: null, fallbackChains: null } as const;
 const transportKeys = ['csrf', 'idempotency-key', 'if-match', 'operationId'];
 
 describe('[DEC-108] CMS-03A-09 successor facade', () => {
-  it('forwards the source version and the locale pair only, as POST .../successors, expecting 201', async () => {
+  it('[P2-S09-AC-979] forwards the source version and the locale pair only, as POST .../successors, expecting 201', async () => {
     // BE03a CMS-03A-09: the caller never supplies version, row ids or identities.
     const { response, forwarded, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-09'),
@@ -104,7 +104,7 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
     expect(text).not.toContain('secret-locale');
   });
 
-  it('sends Idempotency-Key and the exact strong If-Match as headers, never in the body', async () => {
+  it('[P2-S09-AC-979] [P2-S09-AC-980] [P2-S09-AC-981] sends Idempotency-Key and the exact strong If-Match as headers, never in the body', async () => {
     const { forwarded, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-09'),
       payload: { ...clone, expectedVersion: '4' },
@@ -120,7 +120,7 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
       expect(Object.keys(forwardedBody as object)).not.toContain(key);
   });
 
-  it('rejects a caller-supplied new version number or row identity with 422 and no upstream call', async () => {
+  it('[P2-S09-AC-979] rejects a caller-supplied new version number or row identity with 422 and no upstream call', async () => {
     for (const extra of [{ versionNo: '5' }, { stableFieldId: TYPE_ID }]) {
       const { response, fetch } = await callFacade({
         target: versionTarget('CMS-03A-09'),
@@ -134,7 +134,7 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
 });
 
 describe('[DEC-108] CMS-03A-10 dry-run facade', () => {
-  it('serializes the both-null transform pair with no omitted keys and expects 202', async () => {
+  it('[P2-S09-AC-980] serializes the both-null transform pair with no omitted keys and expects 202', async () => {
     // FE03: "strict both-null-or-both-present transform pair serialized with no omitted keys".
     const { response, forwarded, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-10'),
@@ -156,7 +156,7 @@ describe('[DEC-108] CMS-03A-10 dry-run facade', () => {
     });
   });
 
-  it('forwards a both-present transform pair exactly', async () => {
+  it('[P2-S09-AC-980] forwards a both-present transform pair exactly', async () => {
     const { forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-10'),
       payload: {
@@ -179,7 +179,7 @@ describe('[DEC-108] CMS-03A-10 dry-run facade', () => {
     });
   });
 
-  it('refuses a half transform pair with 422 and never reaches the upstream', async () => {
+  it('[P2-S09-AC-980] refuses a half transform pair with 422 and never reaches the upstream', async () => {
     const { response, fetch } = await callFacade({
       target: versionTarget('CMS-03A-10'),
       payload: {
@@ -193,7 +193,7 @@ describe('[DEC-108] CMS-03A-10 dry-run facade', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('accepts only 202 as success: an upstream 201 is an invalid dependency response', async () => {
+  it('[P2-S09-AC-980] accepts only 202 as success: an upstream 201 is an invalid dependency response', async () => {
     const { response } = await callFacade({
       target: versionTarget('CMS-03A-10'),
       payload: {
@@ -206,7 +206,7 @@ describe('[DEC-108] CMS-03A-10 dry-run facade', () => {
     expect(response.status).toBe(502);
   });
 
-  it('refuses a caller-supplied classification, counts, hashes or report', async () => {
+  it('[P2-S09-AC-980] refuses a caller-supplied classification, counts, hashes or report', async () => {
     const { response, fetch } = await callFacade({
       target: versionTarget('CMS-03A-10'),
       payload: {
@@ -224,7 +224,7 @@ describe('[DEC-108] CMS-03A-10 dry-run facade', () => {
 });
 
 describe('[DEC-108] CMS-03A-11 submit-review facade', () => {
-  it('forwards { expectedVersion, dryRunId } to .../reviews and expects 201', async () => {
+  it('[P2-S09-AC-981] forwards { expectedVersion, dryRunId } to .../reviews and expects 201', async () => {
     const { response, forwarded, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-11'),
       payload: { expectedVersion: '4', dryRunId: DRY_RUN_ID },
@@ -241,7 +241,7 @@ describe('[DEC-108] CMS-03A-11 submit-review facade', () => {
     expect(forwarded?.headers.get('if-match')).toBe('"4"');
   });
 
-  it('refuses a missing or non-UUID dryRunId with 422', async () => {
+  it('[P2-S09-AC-981] refuses a missing or non-UUID dryRunId with 422', async () => {
     for (const payload of [
       { expectedVersion: '4' },
       { expectedVersion: '4', dryRunId: 'not-a-uuid' },
@@ -258,7 +258,7 @@ describe('[DEC-108] CMS-03A-11 submit-review facade', () => {
 });
 
 describe('[DEC-108] CMS-03A-12 record-decision facade', () => {
-  it('forwards { expectedVersion, decision } to the review path and expects 201', async () => {
+  it('[P2-S09-AC-982] forwards { expectedVersion, decision } to the review path and expects 201', async () => {
     const { response, forwarded, forwardedBody } = await callFacade({
       target: reviewTarget('CMS-03A-12'),
       payload: { expectedVersion: '3', decision: 'approve' },
@@ -279,7 +279,7 @@ describe('[DEC-108] CMS-03A-12 record-decision facade', () => {
     );
   });
 
-  it('derives MFA server-side: no browser step-up token is demanded or forwarded', async () => {
+  it('[P2-S09-AC-982] derives MFA server-side: no browser step-up token is demanded or forwarded', async () => {
     // BE03a CMS-03A-12: reviewer identity and recent MFA are server-derived.
     const { response, forwarded } = await callFacade({
       target: reviewTarget('CMS-03A-12'),
@@ -317,7 +317,7 @@ describe('[DEC-108] CMS-03A-14 assign/revoke facade', () => {
     expiresAt: '2026-10-05T12:00:00.000Z',
   } as const;
 
-  it('forwards a create request exactly and accepts 201', async () => {
+  it('[P2-S09-AC-983] forwards a create request exactly and accepts 201', async () => {
     const { response, forwarded, forwardedBody } = await callFacade({
       target: reviewTarget('CMS-03A-14'),
       payload: create,
@@ -331,7 +331,7 @@ describe('[DEC-108] CMS-03A-14 assign/revoke facade', () => {
     expect(forwardedBody).toStrictEqual(create);
   });
 
-  it('forwards a revoke request exactly and accepts 200', async () => {
+  it('[P2-S09-AC-983] forwards a revoke request exactly and accepts 200', async () => {
     const revoke = {
       action: 'revoke',
       expectedVersion: '3',
@@ -347,7 +347,7 @@ describe('[DEC-108] CMS-03A-14 assign/revoke facade', () => {
     expect(forwardedBody).toStrictEqual(revoke);
   });
 
-  it('never echoes the reviewer person id in the browser response', async () => {
+  it('[P2-S09-AC-978] never echoes the reviewer person id in the browser response', async () => {
     const { response } = await callFacade({
       target: reviewTarget('CMS-03A-14'),
       payload: create,

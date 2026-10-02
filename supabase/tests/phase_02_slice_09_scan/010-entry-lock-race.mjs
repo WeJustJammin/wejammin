@@ -226,7 +226,7 @@ await waitFor(
 );
 assert(
   waitEvent('s09race-entry1') === 'Timeout:PgSleep',
-  'S1: the switch is blocked behind the still-uncommitted entry (it did not overtake it)',
+  '[P2-S09-AC-097] S1: the switch is blocked behind the still-uncommitted entry (it locks the source row before its compare-and-swap and did not overtake it)',
 );
 assert(
   versionState(ids.a) === 'active',
@@ -270,7 +270,7 @@ await waitFor(
 );
 assert(
   waitEvent('s09race-switch2') === 'Timeout:PgSleep',
-  'S2: the entry is blocked behind the still-uncommitted switch (it did not overtake it)',
+  '[P2-S09-AC-097] [P2-S09-AC-217] S2: the entry is blocked behind the still-uncommitted switch and, once it committed, no duplicate or unscanned switch exists (it did not overtake it)',
 );
 const switchResult2 = await switchHold.done;
 const entryResult2 = await entryBlocked.done;

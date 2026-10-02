@@ -6,6 +6,7 @@ import {
   SCHEMA_MIGRATION_RPC,
   type SchemaMigrationWorkerDependencies,
 } from './migration-worker';
+import { canonicalHash } from './migration-transform-jcs';
 import { NOW, job } from './migration-worker-test-support';
 import {
   makeRows,
@@ -155,4 +156,42 @@ describe('default registry through the worker', () => {
       database.requests(SCHEMA_MIGRATION_RPC.processDryRunBatch),
     ).toHaveLength(0);
   });
+});
+
+describe('field-neutral plans through the worker (locale-only breaking change)', () => {
+  it.each(['identity.revalidate', 'default.fill_literal'])(
+    '%s carries every row unchanged with clean evidence when the page has no targetFields and no retiredFields',
+    async (transformKey) => {
+      const rows = makeRows(3);
+      const database = makeScanDatabase({
+        rows,
+        plan: { transformKey, transformVersion: '1' },
+      });
+      const result = await runDefault(database);
+      const evidence = database.evidenceBatches(
+        SCHEMA_MIGRATION_RPC.processDryRunBatch,
+      )[0];
+      expect(evidence).toHaveLength(3);
+      expect(evidence?.every((entry) => entry.errorCode === null)).toBe(true);
+      // identity.revalidate seals the DB-computed source hash; a carried
+      // default.fill_literal row hashes its unchanged document (the DB source
+      // hash is the same JCS digest in production).
+      const expected = await Promise.all(
+        rows.map(async (row, index) =>
+          transformKey === 'identity.revalidate'
+            ? evidence?.[index]?.sourceHash
+            : await canonicalHash(row.document),
+        ),
+      );
+      expect(evidence?.map((entry) => entry.outputHash)).toEqual(expected);
+      expect(
+        database.requests(SCHEMA_MIGRATION_RPC.finalizeDryRun)[0],
+      ).toMatchObject({
+        sourceCount: '3',
+        targetCount: '3',
+        rowErrorCount: '0',
+      });
+      expect(result.outcome).toBe('completed');
+    },
+  );
 });

@@ -71,7 +71,7 @@ describe('grant console persona cells are not-rendered for every non-owner perso
     },
   );
 
-  it('keeps ownership independent of any persona label in the server resolver, probe and page', () => {
+  it('[P2-S09-AC-991] [P2-S09-AC-992] keeps ownership independent of any persona label in the server resolver, probe and page', () => {
     for (const source of [
       read('./cms-capability-grant-context.ts'),
       read('./cms-capability-grant-platform-api.ts'),

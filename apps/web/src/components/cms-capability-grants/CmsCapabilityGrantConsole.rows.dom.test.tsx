@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 describe('[DEC-119] renew and revoke', () => {
-  it('opens an inline renew form on the row and posts the strong If-Match and version', async () => {
+  it('[P2-S09-AC-995] opens an inline renew form on the row and posts the strong If-Match and version', async () => {
     const { calls } = scriptFetch(
       () =>
         jsonResponse(
@@ -96,7 +96,7 @@ describe('[DEC-119] renew and revoke', () => {
     );
   });
 
-  it('refuses a renewal date outside the window locally', async () => {
+  it('[P2-S09-AC-1043] refuses a renewal date outside the window locally', async () => {
     const { fetchMock } = scriptFetch(() => grantListResponse());
     const root = mount();
     click(
@@ -117,7 +117,7 @@ describe('[DEC-119] renew and revoke', () => {
     );
   });
 
-  it('asks for confirmation naming the consequence; Escape cancels without a commit', async () => {
+  it('[P2-S09-AC-1012] [P2-S09-AC-1043] asks for confirmation naming the consequence; Escape cancels without a commit', async () => {
     const { fetchMock } = scriptFetch(() => grantListResponse());
     const root = mount();
     const trigger = query<HTMLButtonElement>(

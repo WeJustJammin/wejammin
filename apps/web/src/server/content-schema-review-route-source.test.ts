@@ -42,7 +42,7 @@ describe('[DEC-108] protected review route page', () => {
     expect(source).toContain('Astro.params.reviewId');
   });
 
-  it('redirects an unauthenticated visitor with a safe relative returnTo', () => {
+  it('[P2-S09-AC-1018] redirects an unauthenticated visitor with a safe relative returnTo', () => {
     const source = requireSource(REVIEW_PAGE);
     expect(source).toContain('Astro.redirect');
     expect(source).toContain('/auth/sign-in?returnTo=');
@@ -54,14 +54,17 @@ describe('[DEC-108] protected review route page', () => {
     ['invalid_record', '400'],
     ['not_found', '404'],
     ['forbidden', '403'],
-  ])('answers %s with %s and a no-store header', (kind, status) => {
-    const source = requireSource(REVIEW_PAGE);
-    const branch = source.slice(source.indexOf(`'${kind}'`));
-    expect(branch).toContain(`status: ${status}`);
-    expect(branch.slice(0, 300)).toContain("'cache-control': 'no-store'");
-  });
+  ])(
+    '[P2-S09-AC-1017] answers %s with %s and a no-store header',
+    (kind, status) => {
+      const source = requireSource(REVIEW_PAGE);
+      const branch = source.slice(source.indexOf(`'${kind}'`));
+      expect(branch).toContain(`status: ${status}`);
+      expect(branch.slice(0, 300)).toContain("'cache-control': 'no-store'");
+    },
+  );
 
-  it('moves focus to the single h1 on navigation through the shared focus script', () => {
+  it('[P2-S09-AC-1041] moves focus to the single h1 on navigation through the shared focus script', () => {
     const source = requireSource(REVIEW_PAGE);
     expect(source).toContain('id="page-title"');
     expect(source).toContain('tabindex="-1"');
@@ -70,7 +73,7 @@ describe('[DEC-108] protected review route page', () => {
     expect(source).toContain('id="content-schema-registry-main"');
   });
 
-  it('accepts only the review-scoped decision and assignment commands as native POSTs', () => {
+  it('[P2-S09-AC-1020] accepts only the review-scoped decision and assignment commands as native POSTs', () => {
     const source = requireSource(REVIEW_PAGE);
     expect(source).toContain("Astro.request.method === 'POST'");
     expect(source).toContain(
@@ -107,7 +110,7 @@ describe('[DEC-108] protected review route page', () => {
 });
 
 describe('[DEC-108] version page native POST allowlist', () => {
-  it('admits the successor, dry-run and submit-review commands alongside field, relation and activation', () => {
+  it('[P2-S09-AC-1020] admits the successor, dry-run and submit-review commands alongside field, relation and activation', () => {
     const source = requireSource(VERSION_PAGE);
     for (const operation of [
       'CMS-03A-02',
@@ -120,7 +123,7 @@ describe('[DEC-108] version page native POST allowlist', () => {
       expect(source).toContain(operation);
   });
 
-  it('keeps the review-scoped commands off the version page', () => {
+  it('[P2-S09-AC-1020] keeps the review-scoped commands off the version page', () => {
     const source = requireSource(VERSION_PAGE);
     expect(source).toContain('CMS-03A-09');
     expect(source).not.toContain('CMS-03A-12');
@@ -133,7 +136,7 @@ describe('[DEC-108] version page native POST allowlist', () => {
     expect(source).toContain('/step-up?returnTo=');
   });
 
-  it('sends a submitted review to the protected review route', () => {
+  it('[P2-S09-AC-981] sends a submitted review to the protected review route', () => {
     expect(requireSource(VERSION_PAGE)).toContain('/schema-reviews/');
   });
 });

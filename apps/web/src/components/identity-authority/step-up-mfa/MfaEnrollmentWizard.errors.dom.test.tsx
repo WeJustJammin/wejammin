@@ -48,7 +48,7 @@ const startWith = async (response: Response, ...tail: StubResponse[]) => {
 
 /** FE01 "Error copy and routing" for AUTH-API-17 and AUTH-API-18. */
 describe('MfaEnrollmentWizard enrollment start errors', () => {
-  it('asks for sign-in again when no recent primary authentication exists', async () => {
+  it('[P2-S09-AC-1088] asks for sign-in again when no recent primary authentication exists', async () => {
     const { container } = await startWith(
       apiError(401, 'UNAUTHENTICATED', { recoveryAction: 'reauthenticate' }),
     );
@@ -76,7 +76,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     );
   });
 
-  it('reports the 10 authenticator limit with a link to the list', async () => {
+  it('[P2-S09-AC-1090] reports the 10 authenticator limit with a link to the list', async () => {
     const { container } = await startWith(conflict('mfa_factor_limit'));
     expect(alertText(container)).toContain(
       'You have reached the limit of 10 authenticators. Remove one first.',
@@ -86,7 +86,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     ).not.toBeNull();
   });
 
-  it('shows a taken name as a field error on the name', async () => {
+  it('[P2-S09-AC-1091] shows a taken name as a field error on the name', async () => {
     const { container } = await startWith(conflict('factor_name_taken'));
     const input = nameInput(container);
     expect(input.getAttribute('aria-invalid')).toBe('true');
@@ -108,7 +108,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     expect(nameInput(container).getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('opens a sync conflict and refetches the list on a stale version', async () => {
+  it('[P2-S09-AC-1093] opens a sync conflict and refetches the list on a stale version', async () => {
     const resource = factorsResource([], '8', false);
     const { fetchImpl, container } = await startWith(
       apiError(409, 'CONFLICT', {
@@ -121,7 +121,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     expect(fetchImpl.calls[1]?.url).toBe('/api/v1/account/mfa/factors');
   });
 
-  it('gates an ineligible account with a reason', async () => {
+  it('[P2-S09-AC-1094] gates an ineligible account with a reason', async () => {
     const { container } = await startWith(
       apiError(403, 'FORBIDDEN', { reasonCode: 'account_not_eligible' }),
     );
@@ -134,7 +134,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     expect(gated).not.toBeNull();
   });
 
-  it('asks for a reload on a CSRF refusal', async () => {
+  it('[P2-S09-AC-1095] asks for a reload on a CSRF refusal', async () => {
     const { container, h } = await startWith(
       apiError(403, 'FORBIDDEN', { reasonCode: 'csrf_invalid' }),
     );
@@ -145,7 +145,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     expect(h.reload).toHaveBeenCalledOnce();
   });
 
-  it('counts down a rate limit and keeps submit disabled with a visible reason', async () => {
+  it('[P2-S09-AC-1096] counts down a rate limit and keeps submit disabled with a visible reason', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
     vi.setSystemTime(new Date('2026-10-02T12:00:00Z'));
     const { container } = await startWith(
@@ -173,7 +173,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     ).toBe(false);
   });
 
-  it('is degraded with the request id and Retry starts a new enrollment, never a resend', async () => {
+  it('[P2-S09-AC-1097] is degraded with the request id and Retry starts a new enrollment, never a resend', async () => {
     const { fetchImpl, container } = await startWith(
       apiError(503, 'DEPENDENCY_UNAVAILABLE', {
         dependencyClass: 'provider',
@@ -206,7 +206,7 @@ describe('MfaEnrollmentWizard verify errors', () => {
   };
 
   it.each(['enrollment_expired', 'factor_not_pending'])(
-    'offers Start again after %s and drops the secret',
+    '[P2-S09-AC-1079] [P2-S09-AC-1092] offers Start again after %s and drops the secret',
     async (reason) => {
       const { container } = await toVerify(
         conflict(reason, 'restart_enrollment'),
@@ -220,14 +220,14 @@ describe('MfaEnrollmentWizard verify errors', () => {
     },
   );
 
-  it('reports a malformed code from the server in the field', async () => {
+  it('[P2-S09-AC-1087] reports a malformed code from the server in the field', async () => {
     const { container } = await toVerify(violation('code_invalid'));
     expect(alertText(container)).toContain(
       'Enter the 6-digit code from your authenticator app.',
     );
   });
 
-  it('refuses a malformed code locally with no request', async () => {
+  it('[P2-S09-AC-1087] refuses a malformed code locally with no request', async () => {
     const { fetchImpl, container } = await startWith(
       json(201, enrollment('5')),
     );
@@ -243,7 +243,7 @@ describe('MfaEnrollmentWizard verify errors', () => {
     );
   });
 
-  it('opens a sync conflict on factor_state_conflict and refetches', async () => {
+  it('[P2-S09-AC-1093] opens a sync conflict on factor_state_conflict and refetches', async () => {
     const { fetchImpl, container } = await toVerify(
       conflict('factor_state_conflict'),
     );

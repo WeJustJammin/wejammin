@@ -73,7 +73,7 @@ const revokeForms = (doc: Document): HTMLFormElement[] =>
   );
 
 describe('[WP2c] reviewer assignment revoke (owner)', () => {
-  it('lists every assignment with its display label and window', () => {
+  it('[P2-S09-AC-1049] lists every assignment with its display label and window', () => {
     const doc = renderDocument(page());
     const region = doc.querySelector('[aria-label="Reviewer assignments"]');
     if (region === null)
@@ -85,7 +85,7 @@ describe('[WP2c] reviewer assignment revoke (owner)', () => {
     expect(region.textContent).toContain('2026-10-05T12:00:00.000Z');
   });
 
-  it('renders one revoke form per active assignment and none for revoked ones', () => {
+  it('[P2-S09-AC-1049] renders one revoke form per active assignment and none for revoked ones', () => {
     const forms = revokeForms(renderDocument(page()));
     expect(forms).toHaveLength(2);
     expect(forms.map((form) => fieldRecord(form).assignmentId).sort()).toEqual(
@@ -111,7 +111,7 @@ describe('[WP2c] reviewer assignment revoke (owner)', () => {
     }
   });
 
-  it('carries the review version as expectedVersion and strong If-Match', () => {
+  it('[P2-S09-AC-1049] carries the review version as expectedVersion and strong If-Match', () => {
     const [form] = revokeForms(renderDocument(page()));
     if (form === undefined) throw new Error('RED: expected a revoke form');
     const fields = fieldRecord(form);
@@ -142,13 +142,16 @@ describe('[WP2c] reviewer assignment revoke (owner)', () => {
       'an entitled read variant',
       { variant: 'entitledRead', access: 'read-only' },
     ],
-  ] as const)('renders no revoke form for %s', (_label, overrides) => {
-    expect(
-      revokeForms(renderDocument(page(reviewWith(), overrides))),
-    ).toHaveLength(0);
-  });
+  ] as const)(
+    '[P2-S09-AC-1049] renders no revoke form for %s',
+    (_label, overrides) => {
+      expect(
+        revokeForms(renderDocument(page(reviewWith(), overrides))),
+      ).toHaveLength(0);
+    },
+  );
 
-  it('renders no revoke form when the server does not permit assign_reviewer', () => {
+  it('[P2-S09-AC-1049] renders no revoke form when the server does not permit assign_reviewer', () => {
     expect(
       revokeForms(
         renderDocument(
@@ -158,12 +161,12 @@ describe('[WP2c] reviewer assignment revoke (owner)', () => {
     ).toHaveLength(0);
   });
 
-  it('never prints a person identifier or the private reviewer reference', () => {
+  it('[P2-S09-AC-1049] [P2-S09-AC-978] never prints a person identifier or the private reviewer reference', () => {
     const html = renderDocument(page()).body.innerHTML;
     expect(html).not.toContain(REVIEWER_PERSON_ID);
   });
 
-  it('round trips the revoke form through the facade as the revoke variant', async () => {
+  it('[P2-S09-AC-983] round trips the revoke form through the facade as the revoke variant', async () => {
     const [form] = revokeForms(renderDocument(page()));
     if (form === undefined) throw new Error('RED: expected a revoke form');
     const base = fieldRecord(form);

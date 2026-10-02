@@ -173,7 +173,9 @@ describe('SchemaReviewResource decision accounting', () => {
         ...openReview,
         distinctApprovalCount: 1,
       }),
-    ).toContain('distinct qualifying approvers cannot exceed recorded approvals');
+    ).toContain(
+      'distinct qualifying approvers cannot exceed recorded approvals',
+    );
   });
 
   it('requires the exact policy count for an approved review', () => {
@@ -182,7 +184,9 @@ describe('SchemaReviewResource decision accounting', () => {
         ...approvedReview,
         requiredDecisionCount: 2,
       }),
-    ).toContain('an approved review requires exactly the policy decision count');
+    ).toContain(
+      'an approved review requires exactly the policy decision count',
+    );
   });
 
   it('never approves a review holding a rejection', () => {
@@ -206,7 +210,9 @@ describe('SchemaReviewResource decision accounting', () => {
         ...openReview,
         approvalEvidenceHash: hash,
       }),
-    ).toContain('approval evidence hash exists only when the review is approved');
+    ).toContain(
+      'approval evidence hash exists only when the review is approved',
+    );
     expect(
       messages(SchemaReviewResourceSchema, {
         ...openReview,
@@ -289,7 +295,7 @@ describe('SchemaReviewDecisionResource and SchemaReviewAssignmentResource', () =
 });
 
 describe('SchemaActivationPreparation', () => {
-  it('uses the BE00 job vocabulary for jobRef', () => {
+  it('[P2-S09-AC-636] uses the BE00 job vocabulary for jobRef', () => {
     for (const state of [
       'queued',
       'running',
@@ -379,7 +385,7 @@ describe('SchemaActivationPreparation dryRunRef failureCode', () => {
     ).toBe(true);
   });
 
-  it('accepts a sealed failure code only on an unsealed failed reference', () => {
+  it('[P2-S09-AC-641] [P2-S09-AC-642] accepts a sealed failure code only on an unsealed failed reference', () => {
     const failed = ref({
       state: 'failed',
       result: null,
@@ -398,14 +404,17 @@ describe('SchemaActivationPreparation dryRunRef failureCode', () => {
       { state: 'running', result: null, failureCode: 'SCAN_FAILED' },
     ],
     ['a queued', { state: 'queued', result: null, failureCode: 'SCAN_FAILED' }],
-  ])('rejects a failure code on %s reference', (_name, over) => {
-    expect(SchemaActivationPreparationSchema.safeParse(ref(over)).success).toBe(
-      false,
-    );
-  });
+  ])(
+    '[P2-S09-AC-642] rejects a failure code on %s reference',
+    (_name, over) => {
+      expect(
+        SchemaActivationPreparationSchema.safeParse(ref(over)).success,
+      ).toBe(false);
+    },
+  );
 
   it.each(['lowercase', 'HAS SPACE', '1LEADING', 'A'.repeat(65), '', 7])(
-    'rejects the malformed failure code %j outside the sealed enum',
+    '[P2-S09-AC-641] rejects the malformed failure code %j outside the sealed enum',
     (code) => {
       expect(
         SchemaActivationPreparationSchema.safeParse(

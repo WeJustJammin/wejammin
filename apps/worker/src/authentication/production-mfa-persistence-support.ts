@@ -21,6 +21,7 @@ export const MFA_PERSISTENCE_RPC = {
   beginEnrollment: 'auth_mfa_enrollment_begin',
   finishEnrollment: 'auth_mfa_enrollment_finish',
   prepareEnrollmentVerify: 'auth_mfa_enrollment_verify_prepare',
+  recordVerificationFailure: 'auth_mfa_verification_failure_record',
   settleEnrollmentVerify: 'auth_mfa_enrollment_verify_settle',
   markFactorReconciling: 'auth_mfa_factor_mark_reconciling',
   beginRemoval: 'auth_mfa_removal_begin',

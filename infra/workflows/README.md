@@ -380,7 +380,7 @@ filesystem and validation operations.
   service/operation/event identity, recomputes the locked percentiles and DLQ
   ratio, and atomically publishes three digest-linked redacted reports.
 - `collect-content-schema-registry-alert-configuration.ts` orchestrates the
-  protected AC209 configuration capture. Its contract module locks all twelve
+  protected AC209 configuration capture. Its contract module locks all sixteen
   conditions and thresholds; its provider client reads only the documented
   active deployment, exact-version binding targets, observability settings, and
   schedule fields. `ac209-wrangler-version-attestation.ts` obtains the same

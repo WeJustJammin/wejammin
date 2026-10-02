@@ -6,6 +6,7 @@ import {
   type JsonValue,
 } from '@wejammin/contracts';
 
+import { MFA_METHOD_REGISTRY } from './authentication/step-up';
 import type {
   DiagnosticAuditEvent,
   WorkerApp,
@@ -145,7 +146,7 @@ export const registerDiagnosticsRoute = (
         'STEP_UP_REQUIRED',
         'Recent step-up authentication is required.',
         401,
-        { allowedMethods: ['totp'], recoveryAction: 'step_up' },
+        { allowedMethods: [...MFA_METHOD_REGISTRY], recoveryAction: 'step_up' },
       );
     }
 

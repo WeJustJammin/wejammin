@@ -33,7 +33,7 @@ const assignmentsOf = (
     : null;
 
 describe('[WP2c] review route assignments disclosure', () => {
-  it('keeps the owner-only summary when the server permits assign_reviewer', async () => {
+  it('[P2-S09-AC-1049] keeps the owner-only summary when the server permits assign_reviewer', async () => {
     const body = reviewResource({
       permittedNextActions: ['assign_reviewer'],
       assignments: [summary],
@@ -46,7 +46,7 @@ describe('[WP2c] review route assignments disclosure', () => {
     expect(assignmentsOf(result)).toHaveLength(1);
   });
 
-  it('drops the summary for a reviewer who cannot assign', async () => {
+  it('[P2-S09-AC-1049] drops the summary for a reviewer who cannot assign', async () => {
     const body = reviewResource({
       permittedNextActions: ['record_decision'],
       assignments: [summary],

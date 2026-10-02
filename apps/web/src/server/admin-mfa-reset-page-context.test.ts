@@ -57,7 +57,7 @@ const resolve = (
 
 /** FE05 `AdminMfaFactorResetForm` rendering and access rules. */
 describe('resolveAdminMfaResetPage', () => {
-  it('renders the form only when the projection holds admin.identity.mfa_reset and step-up is fresh', async () => {
+  it('[P2-S09-AC-1108] renders the form only when the projection holds admin.identity.mfa_reset and step-up is fresh', async () => {
     const { promise } = resolve(configuration([ADMIN_MFA_RESET_CAPABILITY]));
     expect(await promise).toEqual({
       kind: 'ready',
@@ -67,7 +67,7 @@ describe('resolveAdminMfaResetPage', () => {
     });
   });
 
-  it('shows the prerequisite variant when the capability is held without fresh step-up', async () => {
+  it('[P2-S09-AC-1109] shows the prerequisite variant when the capability is held without fresh step-up', async () => {
     const { promise } = resolve(
       configuration([ADMIN_MFA_RESET_CAPABILITY]),
       mfa(false),
@@ -78,7 +78,7 @@ describe('resolveAdminMfaResetPage', () => {
     });
   });
 
-  it('returns a disclosure-safe not_found without the capability and never reads factors', async () => {
+  it('[P2-S09-AC-1108] returns a disclosure-safe not_found without the capability and never reads factors', async () => {
     const { promise, readMfa } = resolve(configuration(['admin.inbox.read']));
     expect(await promise).toEqual({ kind: 'not_found' });
     expect(readMfa).not.toHaveBeenCalled();

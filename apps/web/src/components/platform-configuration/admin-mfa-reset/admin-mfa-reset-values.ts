@@ -32,7 +32,7 @@ export const ADMIN_RESET_COPY = {
   unknown:
     'We could not confirm whether the reset finished. Do not assume it did. Retry to find out; the same request is never applied twice.',
   runbook:
-    'If you are the only administrator and have lost your own authenticator, follow the runbook named sole-admin-mfa-lockout.',
+    'If you are the only administrator and have lost your own authenticator, follow the runbook docs/runbooks/platform/sole-admin-mfa-lockout.md.',
 } as const;
 
 export type ResetValues = Readonly<{ targetPersonId: string; reason: string }>;

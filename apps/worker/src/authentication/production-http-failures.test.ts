@@ -82,6 +82,35 @@ describe('DEC-111 RPC failure mapping', () => {
     });
   });
 
+  it.each([
+    ['MFA_VERIFICATION_LOCKED:900', 900],
+    ['MFA_VERIFICATION_LOCKED:1', 1],
+    ['ERROR: MFA_VERIFICATION_LOCKED:742', 742],
+  ] as const)(
+    'maps %s to the shared 429 verification lock carrying its remaining seconds',
+    async (message, seconds) => {
+      expect(await rpcFailure(message)).toMatchObject({
+        ok: false,
+        status: 429,
+        code: 'RATE_LIMITED',
+        retryAfterSeconds: seconds,
+        details: { retryAfterSeconds: seconds },
+      });
+    },
+  );
+
+  it('never lets a malformed lock suffix become a lock delay', async () => {
+    expect(await rpcFailure('MFA_VERIFICATION_LOCKED:abc')).toMatchObject({
+      status: 503,
+    });
+    expect(await rpcFailure('MFA_VERIFICATION_LOCKED:0')).toMatchObject({
+      status: 503,
+    });
+    expect(await rpcFailure('MFA_VERIFICATION_LOCKED:901')).toMatchObject({
+      status: 503,
+    });
+  });
+
   it('keeps the existing mappings for unrelated failures', async () => {
     expect(await rpcFailure('FINAL_LOGIN_METHOD')).toMatchObject({
       status: 409,

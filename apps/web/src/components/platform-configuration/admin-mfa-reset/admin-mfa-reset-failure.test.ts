@@ -25,14 +25,14 @@ const failure = (
 
 /** BE05b CFG-05B-06 error matrix rendered with the exact FE05 copy. */
 describe('resetFailureView', () => {
-  it('routes 401 STEP_UP_REQUIRED to step-up with no message', () => {
+  it('[P2-S09-AC-1116] routes 401 STEP_UP_REQUIRED to step-up with no message', () => {
     expect(resetFailureView(failure(401, 'STEP_UP_REQUIRED'))).toMatchObject({
       kind: 'step-up',
       message: '',
     });
   });
 
-  it('routes any other 401 to sign-in', () => {
+  it('[P2-S09-AC-1117] routes any other 401 to sign-in', () => {
     expect(resetFailureView(failure(401, 'UNAUTHENTICATED'))).toMatchObject({
       kind: 'sign-in',
       message: ADMIN_RESET_COPY.sessionEnded,
@@ -45,14 +45,17 @@ describe('resetFailureView', () => {
     [409, 'MFA_RESET_IN_PROGRESS', 'in-progress', ADMIN_RESET_COPY.inProgress],
     [409, 'IDEMPOTENCY_CONFLICT', 'refresh', ADMIN_RESET_COPY.refresh],
     [422, 'MFA_RESET_INVALID', 'self', ADMIN_RESET_COPY.selfTarget],
-  ] as const)('maps %i %s', (status, code, kind, message) => {
-    expect(resetFailureView(failure(status, code))).toMatchObject({
-      kind,
-      message,
-    });
-  });
+  ] as const)(
+    '[P2-S09-AC-1118] [P2-S09-AC-1119] [P2-S09-AC-1120] [P2-S09-AC-1121] [P2-S09-AC-1122] maps %i %s',
+    (status, code, kind, message) => {
+      expect(resetFailureView(failure(status, code))).toMatchObject({
+        kind,
+        message,
+      });
+    },
+  );
 
-  it('adds schema field errors from violations on 400 and 422', () => {
+  it('[P2-S09-AC-1122] adds schema field errors from violations on 400 and 422', () => {
     const view = resetFailureView(
       failure(422, 'VALIDATION_FAILED', {
         violationFields: ['targetPersonId', 'reason', 'other'],
@@ -68,7 +71,7 @@ describe('resetFailureView', () => {
     );
   });
 
-  it('carries the retry delay for 429 with a safe default', () => {
+  it('[P2-S09-AC-1123] carries the retry delay for 429 with a safe default', () => {
     expect(
       resetFailureView(
         failure(429, 'RATE_LIMITED', { retryAfterSeconds: 120 }),
@@ -82,7 +85,7 @@ describe('resetFailureView', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('shows degraded with the request ID for 502, 503 and IDENTITY_UNAVAILABLE', () => {
+  it('[P2-S09-AC-1124] shows degraded with the request ID for 502, 503 and IDENTITY_UNAVAILABLE', () => {
     for (const [status, code] of [
       [503, 'IDENTITY_UNAVAILABLE'],
       [503, 'DEPENDENCY_UNAVAILABLE'],
@@ -96,7 +99,7 @@ describe('resetFailureView', () => {
     }
   });
 
-  it('treats a network failure or 504 as an unknown outcome, never as reset', () => {
+  it('[P2-S09-AC-1124] treats a network failure or 504 as an unknown outcome, never as reset', () => {
     for (const f of [networkFailure(), failure(504, 'GATEWAY_TIMEOUT')]) {
       const view = resetFailureView(f);
       expect(view.kind).toBe('unknown');

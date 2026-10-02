@@ -48,6 +48,12 @@ export default function CmsCapabilityGrantConsole(
         <p role="status">{COMMAND_COPY.owner}</p>
       </section>
     );
+  if (state.signedOut)
+    return (
+      <section data-workbench="cms-capability-grants" data-access="signed-out">
+        <p role="status">{COMMAND_COPY.signIn}</p>
+      </section>
+    );
   const disabledAccess = props.access === 'disabled';
   const degraded = state.list.status === 'degraded';
   // FE03 role matrix: commit controls are enabled only while the step-up

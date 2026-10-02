@@ -153,7 +153,7 @@ describe('Slice 02 infrastructure state contract', () => {
       await import('../../packages/ui/src/infrastructure/presentation.ts');
     const state = InfrastructureViewStateSchema.parse({
       status: 'capability_gate',
-      recovery: 'step_up',
+      recovery: 'request_capability',
       requiredCapability: 'infrastructure.write',
     });
     expect(presentInfrastructureState(state)).toMatchObject({

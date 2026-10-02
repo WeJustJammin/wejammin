@@ -58,21 +58,21 @@ select pg_temp.m_rbegin('rb:ok', 1, (select id from m_f where name = 'One'), 'us
 select is(pg_temp.m_out('rb:ok'), 'OK', 'removal begin reserves the removal');
 select is(pg_temp.m_resp('rb:ok'), jsonb_build_object('providerFactorId', (select pid from m_f where name = 'One'), 'replay', null),
   'begin returns the protected provider factor id and no replay');
-select is(pg_temp.m_fstate((select id from m_f where name = 'One')), 'reconciling', 'the factor is reconciling before the provider effect');
-select is(pg_temp.m_ver(1)::bigint, (select v + 1 from m_v0), 'the reservation bumps the MFA version once');
-select is(pg_temp.m_events(1, 'mfa.factor.removed'), 1, 'security evidence is committed with the reservation');
+select is(pg_temp.m_fstate((select id from m_f where name = 'One')), 'reconciling', 'the factor is reconciling before the provider effect [P2-S09-AC-807]');
+select is(pg_temp.m_ver(1)::bigint, (select v + 1 from m_v0), 'the reservation bumps the MFA version once [P2-S09-AC-807]');
+select is(pg_temp.m_events(1, 'mfa.factor.removed'), 1, 'security evidence is committed with the reservation [P2-S09-AC-807]');
 select is(pg_temp.m_one(format($$select count(*)::text from audit_private.audit_events where action = 'identity.mfa.factor.removal_reserved' and target_id = %L$$, (select id from m_f where name = 'One'))), '1',
-  'audit evidence is committed with the reservation');
+  'audit evidence is committed with the reservation [P2-S09-AC-807]');
 select ok(pg_temp.m_outbox('identity.mfa-factor.changed.v1', (select id from m_f where name = 'One')) >= 2,
   'the factor-changed outbox row (after the enrollment one) is committed with the reservation');
 select is((select state::text from platform_private.idempotency_records where actor_id = pg_temp.m_uid(1) and operation = 'AUTH-API-19' and key_hash = decode(repeat('a1', 32), 'hex')),
-  'reserved', 'the AUTH-API-19 idempotency record is reserved');
+  'reserved', 'the AUTH-API-19 idempotency record is reserved [P2-S09-AC-807]');
 select pg_temp.m_rbegin('rb:retry', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1));
-select is(pg_temp.m_out('rb:retry'), 'FACTOR_STATE_CONFLICT', 'a retry while the provider effect is unresolved is blocked (no blind resend)');
+select is(pg_temp.m_out('rb:retry'), 'FACTOR_STATE_CONFLICT', 'a retry while the provider effect is unresolved is blocked (no blind resend) [P2-S09-AC-808]');
 select pg_temp.m_rbegin('rb:mismatch', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a1', 'c3');
 select is(pg_temp.m_out('rb:mismatch'), 'IDEMPOTENCY_MISMATCH', 'the same key with a different request hash is IDEMPOTENCY_MISMATCH');
 select pg_temp.m_rbegin('rb:newkey', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'd4', 'e5');
-select is(pg_temp.m_out('rb:newkey'), 'FACTOR_STATE_CONFLICT', 'a new key for a reconciling factor is FACTOR_STATE_CONFLICT');
+select is(pg_temp.m_out('rb:newkey'), 'FACTOR_STATE_CONFLICT', 'a new key for a reconciling factor is FACTOR_STATE_CONFLICT [P2-S09-AC-808]');
 
 select pg_temp.m_rfinish('rf:other', 2, (select id from m_f where name = 'One'), 'user_request');
 select is(pg_temp.m_out('rf:other'), 'NOT_FOUND', 'finish by another user is NOT_FOUND');
@@ -81,10 +81,10 @@ select is(pg_temp.m_out('rf:notrec'), 'FACTOR_STATE_CONFLICT', 'finish on a fact
 create temp table m_v1 on commit drop as select pg_temp.m_ver(1)::bigint as v;
 select pg_temp.m_rfinish('rf:ok', 1, (select id from m_f where name = 'One'), 'user_request');
 select is(pg_temp.m_out('rf:ok'), 'OK', 'finish confirms the removal');
-select is(pg_temp.m_fstate((select id from m_f where name = 'One')), 'removed', 'the factor is removed');
+select is(pg_temp.m_fstate((select id from m_f where name = 'One')), 'removed', 'the factor is removed [P2-S09-AC-807]');
 select ok(pg_temp.m_one(format('select (removed_at is not null)::text from identity.mfa_factor_registry where id = %L', (select id from m_f where name = 'One'))) = 'true',
   'removed_at is recorded');
-select is(pg_temp.m_ver(1)::bigint, (select v + 1 from m_v1), 'confirmation bumps the MFA version once');
+select is(pg_temp.m_ver(1)::bigint, (select v + 1 from m_v1), 'confirmation bumps the MFA version once [P2-S09-AC-889]');
 select is(jsonb_array_length(pg_temp.m_resp('rf:ok')->'factors'), 1, 'the snapshot omits the removed factor');
 select is(pg_temp.m_resp('rf:ok')#>>'{factors,0,friendlyName}', 'Two', 'and keeps the other');
 select ok(position((select pid::text from m_f where name = 'One') in pg_temp.m_resp('rf:ok')::text) = 0, 'the snapshot never carries the provider factor id');
@@ -95,7 +95,7 @@ select is((select count(*)::integer from identity.security_events where action =
   'the completion event carries the generic factor-removed reason');
 select is((select count(*)::integer from platform_private.outbox_events where event_type = 'identity.security-notification.requested.v1'
             and payload->>'securityEventId' in (select id::text from identity.security_events where action = 'mfa.factor.removed' and reason_code = 'MFA_FACTOR_REMOVED' and actor_auth_user_id = pg_temp.m_uid(1))), 1,
-  'a security notification is requested on confirmed removal');
+  'a security notification is requested on confirmed removal [P2-S09-AC-807]');
 select pg_temp.m_rfinish('rf:twice', 1, (select id from m_f where name = 'One'), 'user_request');
 select is(pg_temp.m_out('rf:twice'), 'OK', 'finish is idempotent after completion');
 select is(pg_temp.m_events(1, 'mfa.factor.removed'), 2, 'and adds no further evidence');
@@ -109,7 +109,7 @@ select is(pg_temp.m_out('rb:gone'), 'FACTOR_STATE_CONFLICT', 'removing an alread
 -- user_request does not touch other sessions.
 select platform_api.auth_session_register(pg_temp.m_uid(1), pg_temp.m_sid(1, 2), clock_timestamp(), extensions.gen_random_uuid(), extensions.gen_random_uuid());
 select pg_temp.m_rbegin('rb:two', 1, (select id from m_f where name = 'Two'), 'user_request', pg_temp.m_ver(1), 'a9', 'b0');
-select is(pg_temp.m_out('rb:two'), 'OK', 'with no step-up capability held the last verified factor may be removed');
+select is(pg_temp.m_out('rb:two'), 'OK', 'with no step-up capability held the last verified factor may be removed [P2-S09-AC-804]');
 select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(1, 2)), 'active',
   'a user_request removal leaves every session untouched');
 
@@ -128,12 +128,12 @@ select pg_temp.m_enroll(3, 'B');
 select platform_api.auth_session_register(pg_temp.m_uid(3), pg_temp.m_sid(3, 2), clock_timestamp(), extensions.gen_random_uuid(), extensions.gen_random_uuid());
 select platform_api.auth_session_register(pg_temp.m_uid(3), pg_temp.m_sid(3, 3), clock_timestamp(), extensions.gen_random_uuid(), extensions.gen_random_uuid());
 select pg_temp.m_rbegin('cp:b', 3, pg_temp.m_fid(3), 'factor_compromise', pg_temp.m_ver(3));
-select is(pg_temp.m_out('cp:b'), 'OK', 'a compromise removal is accepted');
+select is(pg_temp.m_out('cp:b'), 'OK', 'a compromise removal is accepted [P2-S09-AC-805]');
 select is((select count(*)::integer from identity.auth_session_index where auth_user_id = pg_temp.m_uid(3) and state = 'active'), 1,
-  'every other active session is revoked');
-select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(3, 1)), 'active', 'the current session is retained');
+  'every other active session is revoked [P2-S09-AC-805]');
+select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(3, 1)), 'active', 'the current session is retained [P2-S09-AC-805]');
 select is((select count(*)::integer from identity.auth_session_index where auth_user_id = pg_temp.m_uid(1) and state = 'active'), 2,
-  'sessions of other accounts are untouched');
+  'sessions of other accounts are untouched [P2-S09-AC-805]');
 select ok((select bool_and(revocation_reason is not null and revoked_at is not null) from identity.auth_session_index
             where auth_user_id = pg_temp.m_uid(3) and state = 'revoked'), 'revoked rows record time and reason');
 
@@ -143,8 +143,8 @@ select pg_temp.m_enroll(4, 'Only');
 alter table identity_private.organization_actor_grant rename to organization_actor_grant_unavailable;
 select pg_temp.m_rbegin('lf:down', 4, pg_temp.m_fid(4), 'user_request', pg_temp.m_ver(4));
 alter table identity_private.organization_actor_grant_unavailable rename to organization_actor_grant;
-select is(pg_temp.m_out('lf:down'), 'LAST_FACTOR_REQUIRED', 'an unavailable capability read refuses the last-factor removal (fail closed)');
-select is(pg_temp.m_fstate(pg_temp.m_fid(4)), 'verified', 'and mutates nothing');
+select is(pg_temp.m_out('lf:down'), 'LAST_FACTOR_REQUIRED', 'an unavailable capability read refuses the last-factor removal (fail closed) [P2-S09-AC-803]');
+select is(pg_temp.m_fstate(pg_temp.m_fid(4)), 'verified', 'and mutates nothing [P2-S09-AC-803]');
 select pg_temp.m_enroll(4, 'Second');
 select pg_temp.m_rbegin('lf:two', 4, pg_temp.m_fid(4), 'user_request', pg_temp.m_ver(4));
 select is(pg_temp.m_out('lf:two'), 'OK', 'with another verified factor present the removal is not "last"');

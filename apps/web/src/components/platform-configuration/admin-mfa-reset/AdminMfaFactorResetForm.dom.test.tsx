@@ -34,12 +34,12 @@ const mountWith = (...args: Parameters<typeof mountReset>) => {
 };
 
 describe('AdminMfaFactorResetForm access variants', () => {
-  it('renders nothing for forbiddenHidden', () => {
+  it('[P2-S09-AC-1108] renders nothing for forbiddenHidden', () => {
     const c = mountWith(stubFetch(), { variant: 'forbiddenHidden' });
     expect(c.innerHTML).toBe('');
   });
 
-  it('renders the prerequisite message and a step-up link for disabledPrerequisite', () => {
+  it('[P2-S09-AC-1109] renders the prerequisite message and a step-up link for disabledPrerequisite', () => {
     const c = mountWith(stubFetch(), {
       variant: 'disabledPrerequisite',
       stepUp: { fresh: false, freshUntil: null },
@@ -54,7 +54,7 @@ describe('AdminMfaFactorResetForm access variants', () => {
 });
 
 describe('AdminMfaFactorResetForm fields', () => {
-  it('labels both fields natively, with helper copy and no autocomplete', () => {
+  it('[P2-S09-AC-1110] [P2-S09-AC-1111] labels both fields natively, with helper copy and no autocomplete', () => {
     const c = mountWith(stubFetch());
     const person = personInput(c);
     expect(person.autocomplete).toBe('off');
@@ -77,13 +77,13 @@ describe('AdminMfaFactorResetForm fields', () => {
     ).toBe('0 / 512');
   });
 
-  it('updates the live character count as the operator types', () => {
+  it('[P2-S09-AC-1111] updates the live character count as the operator types', () => {
     const c = mountWith(stubFetch());
     fill(c, PERSON, 'abc');
     expect(c.textContent).toContain('3 / 512');
   });
 
-  it('validates the person ID on blur', () => {
+  it('[P2-S09-AC-1110] validates the person ID on blur', () => {
     const c = mountWith(stubFetch());
     fill(c, 'nope', 'reason');
     act(() => {
@@ -95,7 +95,7 @@ describe('AdminMfaFactorResetForm fields', () => {
     expect(personInput(c).getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('refuses an invalid submit with a focused summary and no request', async () => {
+  it('[P2-S09-AC-1126] refuses an invalid submit with a focused summary and no request', async () => {
     const fetchImpl = stubFetch();
     const c = mountWith(fetchImpl);
     fill(c, 'nope', '');
@@ -108,15 +108,17 @@ describe('AdminMfaFactorResetForm fields', () => {
     expect(c.querySelector('a[href="#admin-mfa-reset-person"]')).not.toBeNull();
   });
 
-  it('points to the sole-administrator runbook by name as plain text', () => {
+  it('[P2-S09-AC-1125] [P2-S09-AC-1142] points to the sole-administrator runbook by name as plain text', () => {
     const c = mountWith(stubFetch());
-    expect(c.textContent).toContain('sole-admin-mfa-lockout');
+    expect(c.textContent).toContain(
+      'docs/runbooks/platform/sole-admin-mfa-lockout.md',
+    );
     expect(c.querySelector('a[href*="sole-admin"]')).toBeNull();
   });
 });
 
 describe('AdminMfaFactorResetForm confirmation', () => {
-  it('opens a named confirmation with the exact consequence and focuses its heading', async () => {
+  it('[P2-S09-AC-1113] opens a named confirmation with the exact consequence and focuses its heading', async () => {
     const c = mountWith(stubFetch());
     await openConfirmation(c);
     expect(c.textContent).toContain(ADMIN_RESET_COPY.confirmation);
@@ -128,7 +130,7 @@ describe('AdminMfaFactorResetForm confirmation', () => {
     ).toEqual(expect.arrayContaining(['Reset factors', 'Cancel']));
   });
 
-  it('cancels with Escape and keeps the entered values', async () => {
+  it('[P2-S09-AC-1126] cancels with Escape and keeps the entered values', async () => {
     const fetchImpl = stubFetch();
     const c = mountWith(fetchImpl);
     await openConfirmation(c);

@@ -173,13 +173,13 @@ describe('grant handler error mapping (BE03a error matrix)', () => {
   );
 
   it.each(GRANT_OPERATIONS)(
-    '$operationId turns a wrong-shaped port success into 502 DEPENDENCY_INVALID_RESPONSE',
+    '$operationId turns a wrong-shaped port success into 502 DEPENDENCY_UNAVAILABLE',
     async (spec) => {
       const harness = makeGrantHarness({ port: ok({ id: USER_ID }) });
       const response = await harness.app.request(grantRequestFor(spec));
       expect(response.status).toBe(502);
       expect(((await response.json()) as { code: string }).code).toBe(
-        'DEPENDENCY_INVALID_RESPONSE',
+        'DEPENDENCY_UNAVAILABLE',
       );
     },
   );
@@ -244,7 +244,7 @@ describe('grant step-up (401 STEP_UP_REQUIRED for CMS-03A-15, -16 and -17)', () 
       expect(body.code).toBe('STEP_UP_REQUIRED');
       expect(body.details).toEqual({
         recoveryAction: 'step_up',
-        allowedMethods: [],
+        allowedMethods: ['totp'],
       });
       expect(text).not.toContain('reauthenticate');
       expect(harness.ports[spec.portName]).not.toHaveBeenCalled();

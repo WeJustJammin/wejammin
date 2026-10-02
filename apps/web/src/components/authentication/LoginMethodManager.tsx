@@ -1,10 +1,8 @@
 import AccountMergePanel from './login-method-manager/AccountMergePanel';
 import LoginMethodsPanel from './login-method-manager/LoginMethodsPanel';
 import useAccountSecurity from './login-method-manager/use-account-security';
-import {
-  errorCopy,
-  type LoginMethodManagerProps,
-} from './login-method-manager/types';
+import LoginMethodErrorPanel from './login-method-manager/LoginMethodErrorPanel';
+import type { LoginMethodManagerProps } from './login-method-manager/types';
 
 export function LoginMethodManager(props: LoginMethodManagerProps) {
   const { state, actions } = useAccountSecurity(props);
@@ -29,29 +27,11 @@ export function LoginMethodManager(props: LoginMethodManagerProps) {
       </p>
 
       {error !== null && (
-        <section
-          role="alert"
-          className="infra-error"
-          aria-labelledby="security-error-heading"
-        >
-          <h3 id="security-error-heading">
-            Security action could not complete
-          </h3>
-          <p>{errorCopy(error)}</p>
-          {error.retryAfterSeconds !== null && (
-            <p>Try again in {error.retryAfterSeconds} seconds.</p>
-          )}
-          <p>
-            Request ID: <code>{error.requestId}</code>
-          </p>
-          <button
-            type="button"
-            onClick={() => void actions.refresh()}
-            disabled={state.pending !== null}
-          >
-            Refresh current security state
-          </button>
-        </section>
+        <LoginMethodErrorPanel
+          error={error}
+          refreshDisabled={state.pending !== null}
+          onRefresh={() => void actions.refresh()}
+        />
       )}
 
       <LoginMethodsPanel state={state} actions={actions} />

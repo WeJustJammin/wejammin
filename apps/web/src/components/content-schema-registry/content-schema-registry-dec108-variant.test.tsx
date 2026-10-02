@@ -35,7 +35,7 @@ const reviewerDoc = (review = reviewResource()) =>
   );
 
 describe('[DEC-108] schemaReviewAssigned review-only variant', () => {
-  it('is a distinct presentation variant on the workbench root', () => {
+  it('[P2-S09-AC-986] is a distinct presentation variant on the workbench root', () => {
     const doc = reviewerDoc();
     expect(
       doc
@@ -45,7 +45,7 @@ describe('[DEC-108] schemaReviewAssigned review-only variant', () => {
     requireRegion(doc, /schema review/iu);
   });
 
-  it('exposes the decision form and no other command form', () => {
+  it('[P2-S09-AC-986] [P2-S09-AC-987] [P2-S09-AC-1020] exposes the decision form and no other command form', () => {
     expect(operationIds(reviewerDoc())).toStrictEqual(['CMS-03A-12']);
   });
 
@@ -57,7 +57,7 @@ describe('[DEC-108] schemaReviewAssigned review-only variant', () => {
     ).toStrictEqual([]);
   });
 
-  it('renders no registry-wide list, filter bar or create form', () => {
+  it('[P2-S09-AC-987] renders no registry-wide list, filter bar or create form', () => {
     const doc = reviewerDoc();
     requireRegion(doc, /schema review/iu);
     expect(doc.querySelector('table')).toBeNull();
@@ -68,7 +68,7 @@ describe('[DEC-108] schemaReviewAssigned review-only variant', () => {
     ).toBeNull();
   });
 
-  it('links to no registry list or version detail route it could not read', () => {
+  it('[P2-S09-AC-987] links to no registry list or version detail route it could not read', () => {
     const doc = reviewerDoc(approvedProtectedReview());
     requireRegion(doc, /schema review/iu);
     const hrefs = [...doc.querySelectorAll('a')].map(
@@ -80,7 +80,7 @@ describe('[DEC-108] schemaReviewAssigned review-only variant', () => {
     expect(hrefs.filter((href) => href.includes('/versions/'))).toHaveLength(0);
   });
 
-  it('does not offer the activation path even for an approved review it can read', () => {
+  it('[P2-S09-AC-987] does not offer the activation path even for an approved review it can read', () => {
     const doc = reviewerDoc({
       ...approvedProtectedReview(),
       permittedNextActions: ['activate'],

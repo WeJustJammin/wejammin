@@ -38,7 +38,7 @@ select ok(pg_temp.s09d_def('platform_private.cms_entry_version_lock_guard()') ~*
   'the guard locks the target content-type version row FOR SHARE (not a plain read)');
 select ok(pg_temp.s09d_def('platform_private.cms_activate_schema(jsonb)') ~* 'active_version[^;]*for update'
   and pg_temp.s09d_def('platform_private.cms_worker_activate_schema(jsonb)') ~* 'expected_active_version_id[^;]*for update',
-  'both switch paths lock the source version row FOR UPDATE, the lock mode that conflicts with FOR SHARE');
+  'both switch paths lock the source version row FOR UPDATE, the lock mode that conflicts with FOR SHARE [P2-S09-AC-097]');
 select pg_temp.s09d_create_type('a', 'entrylock');
 select pg_temp.s09d_to_active('a');
 select pg_temp.s09g_grant('e:author', 'owner', 'owner', 'cms.author', pg_temp.s09g_day(5));

@@ -65,7 +65,7 @@ afterEach(() => {
 });
 
 describe('[DEC-119/120] grant form validation', () => {
-  it('shows the exact inline error on blur and links it from the field', () => {
+  it('[P2-S09-AC-1008] shows the exact inline error on blur and links it from the field', () => {
     const root = mount();
     const person = query<HTMLInputElement>(
       root,
@@ -81,7 +81,7 @@ describe('[DEC-119/120] grant form validation', () => {
     expect(person.getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('refuses a date past today plus 89 days with the exact range copy', () => {
+  it('[P2-S09-AC-1010] [P2-S09-AC-1048] refuses a date past today plus 89 days with the exact range copy', () => {
     const root = mount();
     const date = query<HTMLInputElement>(root, 'input[name="validThrough"]');
     typeInto(date, '2026-12-31');
@@ -91,7 +91,7 @@ describe('[DEC-119/120] grant form validation', () => {
     );
   });
 
-  it('blocks an invalid submit, forwards nothing and focuses the first invalid field', async () => {
+  it('[P2-S09-AC-993] [P2-S09-AC-1043] blocks an invalid submit, forwards nothing and focuses the first invalid field', async () => {
     const { fetchMock } = scriptFetch(() => grantListResponse());
     const root = mount();
     const form = query<HTMLFormElement>(
@@ -106,7 +106,7 @@ describe('[DEC-119/120] grant form validation', () => {
     expect(textOf(root)).toContain('Choose a capability from the list.');
   });
 
-  it('counts the reason down live and refuses more than 256 characters', () => {
+  it('[P2-S09-AC-1011] counts the reason down live and refuses more than 256 characters', () => {
     const root = mount();
     const area = query<HTMLTextAreaElement>(root, 'textarea[name="reason"]');
     typeInto(area, 'x'.repeat(10));
@@ -118,7 +118,7 @@ describe('[DEC-119/120] grant form validation', () => {
 });
 
 describe('[DEC-119] grant command', () => {
-  it('posts the form through the proxy, shows the result heading and refetches the list', async () => {
+  it('[P2-S09-AC-1043] [P2-S09-AC-995] posts the form through the proxy, shows the result heading and refetches the list', async () => {
     const { calls } = scriptFetch(
       () => jsonResponse(201, grantResource()),
       () => grantListResponse(),
@@ -142,7 +142,7 @@ describe('[DEC-119] grant command', () => {
     expect(document.activeElement).toBe(heading);
   });
 
-  it('announces only the capability label and valid-through date', async () => {
+  it('[P2-S09-AC-1043] announces only the capability label and valid-through date', async () => {
     scriptFetch(
       () => jsonResponse(201, grantResource()),
       () => grantListResponse(),
@@ -195,7 +195,7 @@ describe('[DEC-119] grant command', () => {
     await settle();
   });
 
-  it('routes 401 STEP_UP_REQUIRED to /step-up?returnTo= and keeps the entries in memory', async () => {
+  it('[P2-S09-AC-1000] [P2-S09-AC-1026] routes 401 STEP_UP_REQUIRED to /step-up?returnTo= and keeps the entries in memory', async () => {
     scriptFetch(() =>
       jsonResponse(
         401,
@@ -240,7 +240,7 @@ describe('[DEC-119] grant command', () => {
     ).toBeNull();
   });
 
-  it('sends an expired session to sign-in', async () => {
+  it('[P2-S09-AC-1001] sends an expired session to sign-in', async () => {
     scriptFetch(() => jsonResponse(401, apiError('UNAUTHENTICATED')));
     const root = mount();
     await submit(fillGrantForm(root));
@@ -249,7 +249,7 @@ describe('[DEC-119] grant command', () => {
     );
   });
 
-  it('renders the exact 409 copy with a link that filters the list to the capability', async () => {
+  it('[P2-S09-AC-997] [P2-S09-AC-1004] renders the exact 409 copy with a link that filters the list to the capability', async () => {
     const { calls } = scriptFetch(
       () => jsonResponse(409, apiError('CONFLICT')),
       () => grantListResponse(),
@@ -264,7 +264,7 @@ describe('[DEC-119] grant command', () => {
     expect(calls.at(-1)?.url).toContain('capability=cms.author');
   });
 
-  it('renders the exact non-disclosing 404 copy and retains the input', async () => {
+  it('[P2-S09-AC-997] [P2-S09-AC-1003] renders the exact non-disclosing 404 copy and retains the input', async () => {
     scriptFetch(() => jsonResponse(404, apiError('NOT_FOUND')));
     const root = mount();
     const form = fillGrantForm(root);
@@ -277,7 +277,7 @@ describe('[DEC-119] grant command', () => {
     ).toBe(GRANT_UUID);
   });
 
-  it('maps a server 422 for the 90-day ceiling onto the date field with a linked summary', async () => {
+  it('[P2-S09-AC-1005] [P2-S09-AC-1048] maps a server 422 for the 90-day ceiling onto the date field with a linked summary', async () => {
     scriptFetch(() =>
       jsonResponse(
         422,
@@ -307,7 +307,7 @@ describe('[DEC-119] grant command', () => {
     ).not.toBeNull();
   });
 
-  it('shows an inline Retry-After countdown for 429 and keeps the input', async () => {
+  it('[P2-S09-AC-997] [P2-S09-AC-1006] shows an inline Retry-After countdown for 429 and keeps the input', async () => {
     scriptFetch(() =>
       jsonResponse(429, apiError('RATE_LIMITED'), { 'retry-after': '9' }),
     );
@@ -317,7 +317,7 @@ describe('[DEC-119] grant command', () => {
     expect(textOf(root)).toMatch(/9 seconds/u);
   });
 
-  it('never guesses success after an unconfirmed outcome and refetches before any retry', async () => {
+  it('[P2-S09-AC-998] [P2-S09-AC-1047] never guesses success after an unconfirmed outcome and refetches before any retry', async () => {
     const { calls } = scriptFetch(
       () => jsonResponse(503, apiError('DEPENDENCY_UNAVAILABLE')),
       () => jsonResponse(503, apiError('DEPENDENCY_UNAVAILABLE')),

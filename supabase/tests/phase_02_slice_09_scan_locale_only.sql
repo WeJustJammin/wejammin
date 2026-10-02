@@ -55,13 +55,13 @@ select is(pg_temp.s09d_outcome('m:successor'), 'OK', 'fixture: the successor dro
 select pg_temp.s09d_dry_run('m', 'owner', 'identity.revalidate', '1');
 select is(pg_temp.s09d_outcome('m:dryRun'), 'OK', 'CMS-03A-10 admits the locale-only breaking change with a registered pair');
 select is((select classification from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('m:plan')), 'breaking',
-  'removing a supported locale is classified breaking');
+  'removing a supported locale is classified breaking [P2-S09-AC-1197]');
 select pg_temp.s09w_claim('m');
 select pg_temp.s09w_read('m', 'm:read');
 select ok((select r->'targetFields' = '[]'::jsonb and r->'retiredFields' = '[]'::jsonb
     and jsonb_array_length(r->'rows') = 3 and (r->>'done')::boolean
     from (select pg_temp.s09d_resp('m:read') r) s),
-  'the read page names no target and no retired field and serves all three populated rows');
+  'the read page names no target and no retired field and serves all three populated rows [P2-S09-AC-1197]');
 create temp table s09o_carry on commit drop as
 select pg_temp.s09w_evidence('identity.revalidate', pg_temp.s09d_resp('m:read')) as evidence;
 select ok((select jsonb_array_length(evidence) = 3

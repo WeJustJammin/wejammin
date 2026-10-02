@@ -60,8 +60,18 @@ export const InfrastructureViewStateSchema = z.discriminatedUnion('status', [
   z
     .object({
       status: z.literal('capability_gate'),
-      recovery: z.enum(['request_capability', 'step_up']),
+      recovery: z.literal('request_capability'),
       requiredCapability: CapabilitySchema,
+    })
+    .strict()
+    .readonly(),
+  // BE00/FE00 (DEC-111): a 401 STEP_UP_REQUIRED is a recovery that navigates
+  // to /step-up?returnTo=<relative path>. It is never a 403 capability gate.
+  z
+    .object({
+      status: z.literal('step_up_required'),
+      returnTo: SafeReturnPathSchema,
+      allowedMethods: z.array(z.string().min(1).max(64)).max(8).readonly(),
     })
     .strict()
     .readonly(),

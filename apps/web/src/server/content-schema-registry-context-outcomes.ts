@@ -155,7 +155,8 @@ export const platformOutcome = (
             safeContentSchemaRegistryErrorMessage('INTERNAL_ERROR'),
           requestId: error.apiError?.requestId ?? requestId,
         },
-        retryable: true,
+        // FE03: `retryable` is true only for 429 and 502/503/504.
+        retryable: false,
         status: 500,
         retryAfterSeconds: error.retryAfterSeconds,
       };

@@ -10,7 +10,7 @@ import {
 /** FE03: a native select over the generated registry in four labelled groups. */
 
 describe('capability groups', () => {
-  it('has the four FE03 groups in order', () => {
+  it('[P2-S09-AC-1013] has the four FE03 groups in order', () => {
     expect(CMS_CAPABILITY_GROUPS.map((group) => group.label)).toStrictEqual([
       'Design',
       'Authoring',
@@ -82,7 +82,7 @@ describe('capability labels', () => {
     for (const label of labels) expect(label).toMatch(/specialist reviewer/iu);
   });
 
-  it('never makes the key the only text of an option', () => {
+  it('[P2-S09-AC-1013] never makes the key the only text of an option', () => {
     for (const key of GRANTABLE_CMS_CAPABILITIES) {
       const text = capabilityOptionText(key);
       expect(text).toContain(capabilityLabel(key));

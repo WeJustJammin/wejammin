@@ -94,6 +94,7 @@ The next valid pipeline stage is `/plan-phase`.
 | 2026-10-02 | Spec follow-ups: DEC-111 index entries for the `/step-up` and `/settings/security/mfa` routes and AUTH-API-16 through AUTH-API-21; `STEP_UP_REQUIRED` as 401 step-up navigation in shards 00, 03 and 05; first-factor reauthentication and last-factor copy in shard 01; the admin MFA factor-reset form (CFG-05B-06) in shard 05; DEC-119 owner self-grant and Delivery and media capability group in shard 03 |
 | 2026-10-02 | OD-4 for FE shard 03: locale configuration fields (supported-language tag list, source and default selects, per-language fallback order editors, successor keep/replace choice, review-changes step) with per-field validation, states and accessibility; locale variant form shows the active version's fallback chain read-only. |
 | 2026-10-02 | Slice 09 implementation reconciliation for FE shard 03: error lists use only the BE00 `DEPENDENCY_UNAVAILABLE` (502/503/504), and the DEC-108 review reconciliation covers editing a candidate in review (invalidates the review, returns to draft; approved is frozen, 409) and the `MIGRATION_SOURCE_DRIFT` recovery. |
+| 2026-10-02 | Slice 09 follow-ups reconciliation for FE shard 03: the `MIGRATION_SOURCE_DRIFT` conflict copy states that the refused action changed nothing and that a new dry run invalidates the review and returns the candidate to `draft`; `dryRunRef` is mapped with the six sealed-only members, rendered and announced only for a sealed report. |
 
 <!-- spec-graph: auto-generated -->
 

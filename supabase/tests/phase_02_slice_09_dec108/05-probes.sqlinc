@@ -1,0 +1,329 @@
+-- Slice 09 evidence probes shared by the lane e1 pgTAP files (requires nothing else).
+-- s09e_check isolates ONE real CHECK / NOT NULL, s09e_unique / s09e_unique_idx isolate one
+-- unique constraint or partial/expression unique index, s09e_writers lists the functions that
+-- write a table (so a new writer fails the file that pins the writer set).
+
+-- 'control:ACCEPTED|override:REJECTED:<state>:<constraint or column>' when exactly
+-- the named CHECK (or NOT NULL column) rejects the override and the control row passes.
+create or replace function pg_temp.s09e_check(p_table text, p_constraint text, p_base uuid, p_over jsonb)
+returns text language plpgsql as $body$
+declare
+  control_result text; override_result text; r record; cn text; col text; st text;
+begin
+  begin
+    execute format('create temp table s09e_probe (like platform_private.%I including constraints) on commit drop', p_table);
+    for r in select con.conname from pg_constraint con
+              where con.conrelid = 'pg_temp.s09e_probe'::regclass and con.contype = 'c'
+                and con.conname is distinct from p_constraint loop
+      execute format('alter table pg_temp.s09e_probe drop constraint %I', r.conname);
+    end loop;
+    begin
+      execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+          (select to_jsonb(t) from platform_private.%1$I t where t.id = $1))$f$, p_table) using p_base;
+      control_result := 'ACCEPTED';
+    exception when others then
+      control_result := 'REJECTED:' || sqlstate || ':' || sqlerrm;
+    end;
+    begin
+      execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+          (select to_jsonb(t) from platform_private.%1$I t where t.id = $1) || $2)$f$, p_table) using p_base, p_over;
+      override_result := 'ACCEPTED';
+    exception when others then
+      get stacked diagnostics cn = constraint_name, col = column_name;
+      override_result := 'REJECTED:' || sqlstate || ':' || coalesce(nullif(cn, ''), nullif(col, ''), substring(sqlerrm from 'column "([^"]+)"'), sqlerrm);
+    end;
+    raise exception 'S09E_DONE';
+  exception when others then
+    if sqlerrm <> 'S09E_DONE' then return 'ERROR:' || sqlerrm; end if;
+  end;
+  return 'control:' || control_result || '|override:' || override_result;
+end;
+$body$;
+
+-- 'dup:REJECTED:23505|ctl:ACCEPTED' when two copies of the base row collide on exactly the
+-- unique constraint/index over p_cols and a copy that differs in p_ctl does not.
+create or replace function pg_temp.s09e_unique(p_table text, p_base uuid, p_cols text[], p_ctl jsonb)
+returns text language plpgsql as $body$
+declare
+  dup_result text; ctl_result text; r record; cols text[]; keep_id boolean := 'id' = any(p_cols);
+begin
+  begin
+    execute format('create temp table s09e_probe (like platform_private.%I including constraints including indexes) on commit drop', p_table);
+    for r in select con.conname from pg_constraint con
+              where con.conrelid = 'pg_temp.s09e_probe'::regclass and con.contype in ('u', 'p') loop
+      select array_agg(a.attname::text order by a.attname) into cols
+        from pg_constraint con2 join pg_attribute a on a.attrelid = con2.conrelid and a.attnum = any(con2.conkey)
+       where con2.conname = r.conname and con2.conrelid = 'pg_temp.s09e_probe'::regclass;
+      if cols is distinct from (select array_agg(c order by c) from unnest(p_cols) c) then
+        execute format('alter table pg_temp.s09e_probe drop constraint %I', r.conname);
+      end if;
+    end loop;
+    for r in select i.indexrelid::regclass::text as idx, i.indkey
+               from pg_index i
+              where i.indrelid = 'pg_temp.s09e_probe'::regclass and not exists (
+                select 1 from pg_constraint con where con.conindid = i.indexrelid) loop
+      select array_agg(a.attname::text order by a.attname) into cols
+        from pg_index i2 join pg_attribute a on a.attrelid = i2.indrelid and a.attnum = any(i2.indkey)
+       where i2.indexrelid = r.idx::regclass;
+      if not (cols is not distinct from (select array_agg(c order by c) from unnest(p_cols) c)
+              and (select indisunique from pg_index where indexrelid = r.idx::regclass)) then
+        execute format('drop index %s', r.idx);
+      end if;
+    end loop;
+    execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+        (select to_jsonb(t) from platform_private.%1$I t where t.id = $1))$f$, p_table) using p_base;
+    begin
+      execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+          (select to_jsonb(t) from platform_private.%1$I t where t.id = $1) || case when $2 then '{}'::jsonb else jsonb_build_object('id', extensions.gen_random_uuid()) end)$f$, p_table) using p_base, keep_id;
+      dup_result := 'ACCEPTED';
+    exception when others then
+      dup_result := 'REJECTED:' || sqlstate;
+    end;
+    begin
+      execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+          (select to_jsonb(t) from platform_private.%1$I t where t.id = $1) || case when $3 then '{}'::jsonb else jsonb_build_object('id', extensions.gen_random_uuid()) end || $2)$f$, p_table)
+        using p_base, p_ctl, keep_id;
+      ctl_result := 'ACCEPTED';
+    exception when others then
+      ctl_result := 'REJECTED:' || sqlstate || ':' || sqlerrm;
+    end;
+    raise exception 'S09E_DONE';
+  exception when others then
+    if sqlerrm <> 'S09E_DONE' then return 'ERROR:' || sqlerrm; end if;
+  end;
+  return 'dup:' || dup_result || '|ctl:' || ctl_result;
+end;
+$body$;
+
+
+-- Same as s09e_unique but for an expression/partial unique index identified by the real index name.
+create or replace function pg_temp.s09e_unique_idx(p_table text, p_base uuid, p_real_index text, p_ctl jsonb)
+returns text language plpgsql as $body$
+declare
+  dup_result text; ctl_result text; r record; real_def text;
+begin
+  select split_part(pg_get_indexdef(i.indexrelid), ' USING ', 2) into real_def
+    from pg_index i join pg_class c on c.oid = i.indexrelid
+   where i.indrelid = format('platform_private.%I', p_table)::regclass and c.relname = p_real_index;
+  begin
+    execute format('create temp table s09e_probe (like platform_private.%I including constraints including indexes) on commit drop', p_table);
+    for r in select con.conname from pg_constraint con
+              where con.conrelid = 'pg_temp.s09e_probe'::regclass and con.contype in ('u', 'p') loop
+      execute format('alter table pg_temp.s09e_probe drop constraint %I', r.conname);
+    end loop;
+    for r in select i.indexrelid::regclass::text as idx, split_part(pg_get_indexdef(i.indexrelid), ' USING ', 2) as def
+               from pg_index i where i.indrelid = 'pg_temp.s09e_probe'::regclass loop
+      if r.def is distinct from real_def then
+        execute format('drop index %s', r.idx);
+      end if;
+    end loop;
+    if (select count(*) from pg_index where indrelid = 'pg_temp.s09e_probe'::regclass) <> 1 then
+      raise exception 'S09E_INDEX_NOT_ISOLATED';
+    end if;
+    execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+        (select to_jsonb(t) from platform_private.%1$I t where t.id = $1))$f$, p_table) using p_base;
+    begin
+      execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+          (select to_jsonb(t) from platform_private.%1$I t where t.id = $1) || jsonb_build_object('id', extensions.gen_random_uuid()))$f$, p_table) using p_base;
+      dup_result := 'ACCEPTED';
+    exception when others then
+      dup_result := 'REJECTED:' || sqlstate;
+    end;
+    begin
+      execute format($f$insert into pg_temp.s09e_probe select * from jsonb_populate_record(null::platform_private.%1$I,
+          (select to_jsonb(t) from platform_private.%1$I t where t.id = $1) || jsonb_build_object('id', extensions.gen_random_uuid()) || $2)$f$, p_table)
+        using p_base, p_ctl;
+      ctl_result := 'ACCEPTED';
+    exception when others then
+      ctl_result := 'REJECTED:' || sqlstate || ':' || sqlerrm;
+    end;
+    raise exception 'S09E_DONE';
+  exception when others then
+    if sqlerrm <> 'S09E_DONE' then return 'ERROR:' || sqlerrm; end if;
+  end;
+  return 'dup:' || dup_result || '|ctl:' || ctl_result;
+end;
+$body$;
+
+create or replace function pg_temp.s09e_writers(p_table text, p_op text) returns text language sql stable as $body$
+  select coalesce(string_agg(p.proname, ',' order by p.proname), '')
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname in ('platform_private', 'platform_api', 'identity_private', 'identity', 'public_api', 'audit_private')
+     and p.prokind = 'f'
+     and pg_get_functiondef(p.oid) ~* ('(' || p_op || ')[[:space:]]+platform_private\.' || p_table || '([^a-z_]|$)')
+$body$;
+
+
+-- Candidate values by column type for the generic CHECK prober.
+create or replace function pg_temp.s09e_candidates(p_type text, p_len integer) returns jsonb[] language plpgsql as $body$
+begin
+  return case
+    when p_type in ('text', 'character varying') then array['null'::jsonb, to_jsonb(''::text), to_jsonb('x'::text), to_jsonb(repeat('x', 300)), to_jsonb('BAD VALUE'::text), to_jsonb('Zz'::text), to_jsonb('0'::text), to_jsonb(repeat('a', 65)), to_jsonb(repeat('A', 64)), to_jsonb(repeat('x', 4000))]
+    when p_type = 'character' then array['null'::jsonb, to_jsonb(repeat('A', p_len)), to_jsonb(repeat('g', p_len)), to_jsonb(repeat('0', p_len)), to_jsonb(repeat(' ', p_len))]
+    when p_type in ('integer', 'bigint', 'smallint', 'numeric') then array['null'::jsonb, to_jsonb(-1), to_jsonb(0), to_jsonb(1), to_jsonb(2), to_jsonb(9), to_jsonb(11), to_jsonb(129), to_jsonb(100000), to_jsonb(2000000000)]
+    when p_type = 'boolean' then array['null'::jsonb, to_jsonb(true), to_jsonb(false)]
+    when p_type = 'jsonb' then array['null'::jsonb, '[]'::jsonb, '{}'::jsonb, '"x"'::jsonb, '1'::jsonb, (select jsonb_agg(g) from generate_series(1, 200) g), (select jsonb_object_agg('k' || g, g) from generate_series(1, 200) g), '["a","a"]'::jsonb]
+    when p_type = 'uuid' then array['null'::jsonb, to_jsonb(extensions.gen_random_uuid())]
+    when p_type like 'timestamp%' then array['null'::jsonb, to_jsonb((now() + interval '1 day')::text), to_jsonb((now() - interval '1 day')::text), to_jsonb('infinity'::text)]
+    when p_type = 'date' then array['null'::jsonb, to_jsonb((current_date + 100)::text), to_jsonb((current_date - 100)::text)]
+    when p_type = 'bytea' then array['null'::jsonb, to_jsonb('\x00'::text)]
+    when p_type = 'text[]' then array['null'::jsonb, '[]'::jsonb, '["a"]'::jsonb, (select jsonb_agg(g::text) from generate_series(1, 40) g)]
+    else array['null'::jsonb]
+  end;
+end;
+$body$;
+
+-- 'PROVEN:<columns>' when an override of the constraint's OWN columns is rejected by exactly that
+-- CHECK (isolated, control row accepted), 'EMPTY' when the table holds no producer row,
+-- 'UNPROVEN(<tries>)' otherwise.  Every distinct state of the table's rows is tried as a base row;
+-- single columns first (candidate values plus the base row's other constrained column values), then
+-- every pair.  The isolated copy of the table is built once per constraint.
+create or replace function pg_temp.s09e_try_row(p_table text, p_row jsonb) returns text language plpgsql as $body$
+declare cn text;
+begin
+  begin
+    execute format('insert into pg_temp.s09e_auto_probe select * from jsonb_populate_record(null::platform_private.%I, $1)', p_table) using p_row;
+    raise exception using errcode = 'S9E01', message = 'S09E_ACCEPTED';
+  exception when others then
+    get stacked diagnostics cn = constraint_name;
+    if sqlstate = 'S9E01' then return 'ACCEPTED'; end if;
+    return 'REJECTED:' || sqlstate || ':' || coalesce(nullif(cn, ''), substring(sqlerrm from 'column "([^"]+)"'), sqlerrm);
+  end;
+end;
+$body$;
+create or replace function pg_temp.s09e_auto_check(p_table text, p_constraint text) returns text language plpgsql as $body$
+declare
+  bases uuid[]; base uuid; c1 record; c2 record; cand1 jsonb; cand2 jsonb; res text; tries integer := 0; expected text;
+  base_json jsonb; others jsonb[]; has_state boolean; r record; outcome text := null;
+begin
+  select exists (select 1 from information_schema.columns where table_schema = 'platform_private' and table_name = p_table and column_name = 'state') into has_state;
+  if has_state then
+    execute format('select array_agg(id) from (select distinct on (state) id from platform_private.%I order by state, id) x', p_table) into bases;
+  else
+    execute format('select array_agg(id) from (select id from platform_private.%I limit 1) x', p_table) into bases;
+  end if;
+  if bases is null then return 'EMPTY'; end if;
+  expected := 'REJECTED:23514:' || p_constraint;
+  begin
+    execute format('create temp table s09e_auto_probe (like platform_private.%I including constraints) on commit drop', p_table);
+    for r in select con.conname from pg_constraint con
+              where con.conrelid = 'pg_temp.s09e_auto_probe'::regclass and con.contype = 'c' and con.conname is distinct from p_constraint loop
+      execute format('alter table pg_temp.s09e_auto_probe drop constraint %I', r.conname);
+    end loop;
+    <<bases_loop>>
+    foreach base in array bases loop
+      execute format('select to_jsonb(t) from platform_private.%I t where t.id = $1', p_table) into base_json using base;
+      if pg_temp.s09e_try_row(p_table, base_json) <> 'ACCEPTED' then continue; end if;
+      for c1 in select a.attname::text as attname, a.atttypid::regtype::text as typ, case when a.atttypmod > 4 then a.atttypmod - 4 else 0 end as len
+           from pg_constraint con join pg_attribute a on a.attrelid = con.conrelid and a.attnum = any(con.conkey)
+          where con.conrelid = format('platform_private.%I', p_table)::regclass and con.conname = p_constraint order by a.attnum loop
+        select coalesce(array_agg(base_json -> a2.attname::text), array[]::jsonb[]) into others
+          from pg_constraint con2 join pg_attribute a2 on a2.attrelid = con2.conrelid and a2.attnum = any(con2.conkey)
+         where con2.conrelid = format('platform_private.%I', p_table)::regclass and con2.conname = p_constraint and a2.attname::text <> c1.attname;
+        foreach cand1 in array pg_temp.s09e_candidates(c1.typ, c1.len) || others loop
+          tries := tries + 1;
+          res := pg_temp.s09e_try_row(p_table, base_json || jsonb_build_object(c1.attname, cand1));
+          if res = expected then outcome := 'PROVEN:' || c1.attname || '=' || left(cand1::text, 40); exit bases_loop; end if;
+        end loop;
+      end loop;
+      for c1 in select a.attname::text as attname, a.atttypid::regtype::text as typ, case when a.atttypmod > 4 then a.atttypmod - 4 else 0 end as len, a.attnum
+           from pg_constraint con join pg_attribute a on a.attrelid = con.conrelid and a.attnum = any(con.conkey)
+          where con.conrelid = format('platform_private.%I', p_table)::regclass and con.conname = p_constraint order by a.attnum loop
+        for c2 in select a.attname::text as attname, a.atttypid::regtype::text as typ, case when a.atttypmod > 4 then a.atttypmod - 4 else 0 end as len
+             from pg_constraint con join pg_attribute a on a.attrelid = con.conrelid and a.attnum = any(con.conkey)
+            where con.conrelid = format('platform_private.%I', p_table)::regclass and con.conname = p_constraint and a.attnum > c1.attnum order by a.attnum loop
+          foreach cand1 in array pg_temp.s09e_candidates(c1.typ, c1.len) || array[base_json -> c2.attname] loop
+            foreach cand2 in array pg_temp.s09e_candidates(c2.typ, c2.len) || array[base_json -> c1.attname] loop
+              tries := tries + 1;
+              res := pg_temp.s09e_try_row(p_table, base_json || jsonb_build_object(c1.attname, cand1, c2.attname, cand2));
+              if res = expected then outcome := 'PROVEN:' || c1.attname || '+' || c2.attname; exit bases_loop; end if;
+            end loop;
+          end loop;
+        end loop;
+      end loop;
+    end loop;
+    raise exception 'S09E_DONE';
+  exception when others then
+    if sqlerrm <> 'S09E_DONE' then return 'ERROR:' || sqlerrm; end if;
+  end;
+  return coalesce(outcome, 'UNPROVEN(' || tries || ')');
+end;
+$body$;
+
+-- 'PROVEN' when two copies of a producer row collide on exactly the unique constraint/index over the
+-- given columns (everything else isolated) and a copy whose key differs is accepted.  The control
+-- changes one key column to a random value of its type.  Tries every base state of the table.
+create or replace function pg_temp.s09e_auto_unique(p_table text, p_cols text[]) returns text language plpgsql as $body$
+declare
+  bases uuid[]; base uuid; ctl jsonb; res text; has_state boolean; col text; typ text; len integer; tries integer := 0;
+begin
+  select exists (select 1 from information_schema.columns where table_schema = 'platform_private' and table_name = p_table and column_name = 'state') into has_state;
+  if has_state then
+    execute format('select array_agg(id) from (select distinct on (state) id from platform_private.%I order by state, id) x', p_table) into bases;
+  else
+    execute format('select array_agg(id) from (select id from platform_private.%I limit 1) x', p_table) into bases;
+  end if;
+  if bases is null then return 'EMPTY'; end if;
+  foreach base in array bases loop
+    foreach col in array p_cols loop
+      select a.atttypid::regtype::text, case when a.atttypmod > 4 then a.atttypmod - 4 else 0 end into typ, len
+        from pg_attribute a where a.attrelid = format('platform_private.%I', p_table)::regclass and a.attname = col;
+      ctl := case when typ = 'uuid' then jsonb_build_object(col, extensions.gen_random_uuid())
+                  when typ in ('integer', 'bigint', 'smallint') then jsonb_build_object(col, 987654)
+                  when typ = 'character' then jsonb_build_object(col, left(encode(extensions.digest(extensions.gen_random_uuid()::text, 'sha256'), 'hex'), len))
+                  when typ = 'text' then jsonb_build_object(col, 'a' || left(encode(extensions.digest(extensions.gen_random_uuid()::text, 'sha256'), 'hex'), 20))
+                  when typ like 'timestamp%' then jsonb_build_object(col, (now() + interval '3 days')::text)
+                  else null end;
+      if ctl is null then continue; end if;
+      tries := tries + 1;
+      res := pg_temp.s09e_unique(p_table, base, p_cols, ctl);
+      if res = 'dup:REJECTED:23505|ctl:ACCEPTED' then return 'PROVEN:' || col; end if;
+    end loop;
+  end loop;
+  return 'UNPROVEN(' || tries || ') ' || coalesce(res, '');
+end;
+$body$;
+
+-- Every foreign key of a table: moving the referencing columns to a random value is rejected with
+-- SQLSTATE 23503 by a foreign key over those columns ('probed=N;bad=' when all are).
+create or replace function pg_temp.s09e_fk_probe(p_schema text, p_table text, p_insert_extra jsonb default null) returns text language plpgsql as $body$
+declare
+  fk record; base uuid; bad text := ''; probed integer := 0; cols text[]; cn text; sibling text[];
+begin
+  execute format('select id from %I.%I limit 1', p_schema, p_table) into base;
+  if base is null then return 'EMPTY'; end if;
+  for fk in select con.conname, con.conkey, con.conrelid from pg_constraint con
+             where con.conrelid = format('%I.%I', p_schema, p_table)::regclass and con.contype = 'f' loop
+    select array_agg(a.attname::text order by a.attnum) into cols
+      from pg_attribute a where a.attrelid = fk.conrelid and a.attnum = any(fk.conkey);
+    -- Never move the primary key of a composite reference: change only the referencing columns.
+    if cardinality(cols) > 1 then cols := array_remove(cols, 'id'); end if;
+    select array_agg(con2.conname) into sibling from pg_constraint con2
+     where con2.conrelid = fk.conrelid and con2.contype = 'f'
+       and exists (select 1 from pg_attribute a2 where a2.attrelid = fk.conrelid and a2.attnum = any(con2.conkey) and a2.attname::text = any(cols));
+    begin
+      set constraints all immediate;
+      execute format('alter table %I.%I disable trigger user', p_schema, p_table);
+      if p_insert_extra is null then
+        execute format('update %I.%I set %s where id = $1', p_schema, p_table,
+          (select string_agg(format('%I = extensions.gen_random_uuid()', c), ', ') from unnest(cols) c)) using base;
+      else
+        -- A column that another foreign key references cannot be moved in place: insert a copy instead.
+        execute format($f$insert into %1$I.%2$I select * from jsonb_populate_record(null::%1$I.%2$I,
+            (select to_jsonb(t) from %1$I.%2$I t where t.id = $1) || jsonb_build_object('id', extensions.gen_random_uuid()) || $2
+            || (select jsonb_object_agg(c, to_jsonb(extensions.gen_random_uuid())) from unnest($3) c))$f$, p_schema, p_table)
+          using base, p_insert_extra, cols;
+      end if;
+      raise exception using errcode = 'S9E01', message = 'S09E_ACCEPTED';
+    exception when others then
+      get stacked diagnostics cn = constraint_name;
+      if sqlstate = '23503' and cn = any(sibling) then
+        probed := probed + 1;
+      else
+        bad := bad || fk.conname || '=' || sqlstate || '/' || coalesce(cn, '') || ' ';
+      end if;
+    end;
+  end loop;
+  return 'probed=' || probed || ';bad=' || bad;
+end;
+$body$;

@@ -147,11 +147,11 @@ select pg_temp.s09d_activate('t', 'owner', '{}'::jsonb, 't:activate-drift');
 select is(pg_temp.s09d_outcome('t:activate-drift'), 'CONFLICT',
   'CMS-03A-04 refuses to switch a completed plan whose scanned source has since changed');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('s:version')), 'active',
-  'the old active version stays active and readable after the refused switch');
+  'the old active version stays active and readable after the refused switch [P2-S09-AC-098]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('t:version')), 'approved',
   'the approved candidate is unchanged by the refused switch');
 select pg_temp.s09w_entry('s3', 's', 'Gamma');
-select is(pg_temp.s09d_outcome('s3'), 'OK', 'the old active version still accepts entries (old-active fallback)');
+select is(pg_temp.s09d_outcome('s3'), 'OK', 'the old active version still accepts entries (old-active fallback) [P2-S09-AC-098]');
 
 select is(pg_temp.s09x_direct(), 0::bigint,
   'no producer row of any scenario was written by a direct statement of this script');

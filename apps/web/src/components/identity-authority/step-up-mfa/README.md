@@ -34,3 +34,7 @@ in `../../platform-configuration/admin-mfa-reset/` is the reference consumer.
 - Server projections: `src/server/step-up-page-context.ts`,
   `src/server/mfa-settings-page-context.ts`
 - Spec: `.memory/wiki/specs/fe/01-identity-authority.md`
+
+`StepUpRecoveryLink` is the shared 401 `STEP_UP_REQUIRED` recovery anchor for
+legacy surfaces (login-method manager, provider evidence): it links to
+`/step-up?returnTo=<current relative path>` and never renders a gate.

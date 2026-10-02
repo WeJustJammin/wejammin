@@ -21,6 +21,7 @@ import {
 import {
   CMS_CAPABILITY_GRANT_DEFAULT_QUERY,
   cmsCapabilityGrantConsoleUrl,
+  parseCmsCapabilityGrantPageQuery,
 } from './cms-capability-grant-url';
 import type {
   CmsCapabilityGrantConsoleProps,
@@ -113,6 +114,8 @@ export const useCmsCapabilityGrants = (
   const [epoch, setEpoch] = React.useState(0);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [listLoading, setListLoading] = React.useState(false);
+  /** FE03 401 UNAUTHENTICATED: protected data is removed before the redirect. */
+  const [signedOut, setSignedOut] = React.useState(false);
   const busy = React.useRef(false);
   const attempted = React.useRef('');
 
@@ -145,6 +148,7 @@ export const useCmsCapabilityGrants = (
         setListLoading(false);
       });
       if (read.kind === 'unauthenticated') {
+        setSignedOut(true);
         navigateTo(signInHref(cmsCapabilityGrantConsoleUrl(nextQuery)));
         return;
       }
@@ -154,6 +158,21 @@ export const useCmsCapabilityGrants = (
     },
     [query, person, props.requestId],
   );
+
+  // FE03 URL state: Back and Forward restore the list position. The address is
+  // already the target entry, so the query is re-derived from it (never pushed)
+  // and the list is re-read from the server.
+  React.useEffect(() => {
+    const onPopState = (): void => {
+      const restored = parseCmsCapabilityGrantPageQuery(
+        new URL(window.location.href),
+      );
+      setQuery(restored);
+      void refetch(restored, person);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [person, refetch]);
 
   const applyQuery = React.useCallback(
     (next: CmsCapabilityGrantQueryState, mode: 'push' | 'replace'): void => {
@@ -203,8 +222,10 @@ export const useCmsCapabilityGrants = (
         setPrefill(null);
         setEpoch((value) => value + 1);
       }
-      if (state.status === 'failure' && state.action === 'sign-in')
+      if (state.status === 'failure' && state.action === 'sign-in') {
+        setSignedOut(true);
         navigateTo(signInHref(cmsCapabilityGrantConsoleUrl(query)));
+      }
       if (
         state.status === 'success' ||
         (state.status === 'failure' && state.refetch)
@@ -271,6 +292,7 @@ export const useCmsCapabilityGrants = (
     epoch,
     notice,
     listLoading,
+    signedOut,
     setOpenRow,
     setPrefill,
     setResult,

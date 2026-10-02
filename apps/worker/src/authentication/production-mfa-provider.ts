@@ -10,6 +10,10 @@ import {
   timeoutError,
   unavailableError,
 } from './production-mfa-provider-errors';
+import {
+  markMfaCircuitOpen,
+  mfaProviderBreakerFor,
+} from './mfa-provider-breaker';
 import type { MfaProviderPort } from './mfa-types';
 import { reauthenticateError } from './step-up';
 import type { AuthenticationError, AuthenticationResult } from './types';
@@ -23,8 +27,6 @@ export type MfaProviderOptions = Readonly<{
 }>;
 
 const PRE_EFFECT_RETRY_DELAYS_MS = [250, 750] as const;
-const BREAKER_THRESHOLD = 5;
-const BREAKER_WINDOW_MS = 60_000;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
@@ -101,17 +103,8 @@ export const createSupabaseMfaProvider = (
     options.sleep ??
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const timeoutMs = options.timeoutMs ?? 5_000;
-  let failures: number[] = [];
-  let openUntil = 0;
-
-  const recordFailure = (): void => {
-    const now = config.now();
-    failures = [...failures, now].filter((at) => now - at < BREAKER_WINDOW_MS);
-    if (failures.length >= BREAKER_THRESHOLD) {
-      openUntil = now + BREAKER_WINDOW_MS;
-      failures = [];
-    }
-  };
+  const breaker = mfaProviderBreakerFor(config.fetchImpl);
+  const recordFailure = (): void => breaker.recordFailure(config.now());
 
   const attempt = async (
     call: Call,
@@ -165,7 +158,8 @@ export const createSupabaseMfaProvider = (
     if (token === null) return reauthenticateError();
     const delays = call.retryable ? PRE_EFFECT_RETRY_DELAYS_MS : [];
     for (let index = 0; ; index += 1) {
-      if (config.now() < openUntil) return unavailableError();
+      if (breaker.isOpen(config.now()))
+        return markMfaCircuitOpen(unavailableError());
       const result = await attempt(call, token);
       if (!result.ok) return result;
       const { status } = result.value;

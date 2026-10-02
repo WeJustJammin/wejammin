@@ -135,8 +135,11 @@ describe('content schema registry safe error details', () => {
           retryable: 'yes',
         }),
       ),
-    ).toEqual({});
-    expect(safeDetails(failure(504))).toEqual({});
+    ).toEqual({ dependencyClass: 'cms_registry', retryable: true });
+    expect(safeDetails(failure(504))).toEqual({
+      dependencyClass: 'cms_registry',
+      retryable: true,
+    });
     expect(safeDetails(failure(415))).toEqual({});
   });
 });

@@ -59,7 +59,7 @@ describe('[DEC-108] FE03 next-action gating of the version forms', () => {
     ['submit_review', 'CMS-03A-11', passedDryRunPreparation],
     ['activate', 'CMS-03A-04', approvedReviewPreparation],
   ] as const)(
-    'renders only the %s form (%s) for a designer when the server permits it',
+    '[P2-S09-AC-985] [P2-S09-AC-972] renders only the %s form (%s) for a designer when the server permits it',
     (_action, operationId, preparation) => {
       const review =
         operationId === 'CMS-03A-04'
@@ -72,13 +72,13 @@ describe('[DEC-108] FE03 next-action gating of the version forms', () => {
     },
   );
 
-  it('renders none of the four forms when the server permits no next action', () => {
+  it('[P2-S09-AC-972] renders none of the four forms when the server permits no next action', () => {
     const doc = renderDocument(pageWith(activationPreparation()));
     for (const operationId of FORMS)
       expect(commandForm(doc, operationId)).toBeNull();
   });
 
-  it('keeps every form out of a read-only projection even if an action is listed', () => {
+  it('[P2-S09-AC-972] keeps every form out of a read-only projection even if an action is listed', () => {
     // Control: the same preparation does render the form for a designer.
     expect(
       requireForm(
@@ -108,7 +108,7 @@ describe('[DEC-108] CMS-03A-09 successor form', () => {
       'CMS-03A-09',
     );
 
-  it('posts natively to the version page with the exact source ETag and version', () => {
+  it('[P2-S09-AC-979] posts natively to the version page with the exact source ETag and version', () => {
     const form = successor();
     expect(form.getAttribute('method')).toBe('post');
     expect(form.getAttribute('action')).toBe(
@@ -122,7 +122,7 @@ describe('[DEC-108] CMS-03A-09 successor form', () => {
     expect(fields['idempotency-key']?.length).toBeGreaterThanOrEqual(8);
   });
 
-  it('collects only the contract fields: no caller version number, row id or identity', () => {
+  it('[P2-S09-AC-979] collects only the contract fields: no caller version number, row id or identity', () => {
     const names = [...submittedFields(successor()).keys()].filter(
       (name) =>
         ![
@@ -164,7 +164,7 @@ describe('[DEC-108] CMS-03A-10 dry-run form', () => {
   const dryRun = () =>
     requireForm(renderDocument(pageWith(startDryRunPreparation)), 'CMS-03A-10');
 
-  it('collects the nullable transform pair as blank text fields next to expectedVersion', () => {
+  it('[P2-S09-AC-980] collects the nullable transform pair as blank text fields next to expectedVersion', () => {
     const form = dryRun();
     const fields = fieldRecord(form);
     expect(fields.operationId).toBe('CMS-03A-10');
@@ -175,7 +175,7 @@ describe('[DEC-108] CMS-03A-10 dry-run form', () => {
     expect(form.querySelectorAll('textarea')).toHaveLength(0);
   });
 
-  it('labels both transform fields and explains the both-or-neither rule', () => {
+  it('[P2-S09-AC-980] labels both transform fields and explains the both-or-neither rule', () => {
     const form = dryRun();
     for (const name of ['transformKey', 'transformVersion']) {
       const input = form.querySelector<HTMLInputElement>(`[name="${name}"]`);
@@ -188,7 +188,7 @@ describe('[DEC-108] CMS-03A-10 dry-run form', () => {
     expect(form.textContent?.toLowerCase()).toMatch(/both|together|neither/u);
   });
 
-  it('offers no field for classification, counts, hashes or a report', () => {
+  it('[P2-S09-AC-980] offers no field for classification, counts, hashes or a report', () => {
     const names = [...submittedFields(dryRun()).keys()];
     for (const forbidden of [
       'classification',
@@ -201,7 +201,7 @@ describe('[DEC-108] CMS-03A-10 dry-run form', () => {
 });
 
 describe('[DEC-108] CMS-03A-11 submit-review form', () => {
-  it('prefills dryRunId from the sealed passed dry run and keeps it read-only', () => {
+  it('[P2-S09-AC-968] prefills dryRunId from the sealed passed dry run and keeps it read-only', () => {
     const form = requireForm(
       renderDocument(pageWith(passedDryRunPreparation)),
       'CMS-03A-11',
@@ -278,7 +278,7 @@ describe('[DEC-108] CMS-03A-04 activation form prefill (FE03 approvalIds mapping
       'CMS-03A-04',
     );
 
-  it('prefills approvalIds with the approve-decision ids of the approved review, in order', () => {
+  it('[P2-S09-AC-973] prefills approvalIds with the approve-decision ids of the approved review, in order', () => {
     const values = submittedFields(activation()).getAll('approvalIds');
     expect(values).toHaveLength(1);
     expect(JSON.parse(String(values[0]))).toStrictEqual([
@@ -287,7 +287,7 @@ describe('[DEC-108] CMS-03A-04 activation form prefill (FE03 approvalIds mapping
     ]);
   });
 
-  it('prefills dryRunId from the dry run and never asks the user to type JSON or IDs', () => {
+  it('[P2-S09-AC-968] prefills dryRunId from the dry run and never asks the user to type JSON or IDs', () => {
     const form = activation();
     expect(fieldRecord(form).dryRunId).toBe(DRY_RUN_ID);
     expect(form.textContent).not.toMatch(/JSON array/iu);
@@ -304,13 +304,13 @@ describe('[DEC-108] CMS-03A-04 activation form prefill (FE03 approvalIds mapping
     expect(form.querySelectorAll('textarea')).toHaveLength(0);
   });
 
-  it('shows the approve-decision ids as a read-only list', () => {
+  it('[P2-S09-AC-973] shows the approve-decision ids as a read-only list', () => {
     const text = activation().textContent ?? '';
     expect(text).toContain(APPROVE_A_ID);
     expect(text).toContain(APPROVE_B_ID);
   });
 
-  it('never includes a reject decision id or an id from an unapproved review', () => {
+  it('[P2-S09-AC-973] never includes a reject decision id or an id from an unapproved review', () => {
     const open = reviewResource({
       distinctApprovalCount: 1,
       recordedDecisionCount: 2,
@@ -354,7 +354,7 @@ describe('[DEC-108] CMS-03A-04 activation form prefill (FE03 approvalIds mapping
 });
 
 describe('[DEC-108] FE03 review deep link from the activation preparation', () => {
-  it('links the reviewRef to the protected review route carrying only the review id', () => {
+  it('[P2-S09-AC-970] links the reviewRef to the protected review route carrying only the review id', () => {
     const doc = renderDocument(
       pageWith(approvedReviewPreparation, {
         initialReview: reviewSuccess(approvedProtectedReview()),
@@ -368,7 +368,7 @@ describe('[DEC-108] FE03 review deep link from the activation preparation', () =
     );
   });
 
-  it('renders no review link when the preparation carries no reviewRef', () => {
+  it('[P2-S09-AC-970] renders no review link when the preparation carries no reviewRef', () => {
     expect(
       renderDocument(
         pageWith(approvedReviewPreparation, {

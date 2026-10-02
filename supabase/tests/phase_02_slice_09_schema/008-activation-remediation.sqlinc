@@ -97,7 +97,7 @@ select ok(
   not platform_private.cms_activation_references_valid(
     'a9090000-0000-4000-8000-000000000150'
   ),
-  'AC095 rejects an extra persisted field outside the artifact manifest'
+  'AC095 rejects an extra persisted field outside the artifact manifest [P2-S09-AC-095]'
 );
 delete from platform_private.cms_field_definition_versions
 where id = 'a9090000-0000-4000-8000-000000000153';
@@ -135,7 +135,7 @@ select ok(
   not platform_private.cms_activation_references_valid(
     'a9090000-0000-4000-8000-000000000150'
   ),
-  'AC095 rejects an extra persisted relation outside the artifact manifest'
+  'AC095 rejects an extra persisted relation outside the artifact manifest [P2-S09-AC-095]'
 );
 delete from platform_private.cms_relation_definitions
 where id = 'a9090000-0000-4000-8000-000000000157';
@@ -153,7 +153,7 @@ select ok(
   not platform_private.cms_activation_references_valid(
     'a9090000-0000-4000-8000-000000000150'
   ),
-  'AC095 rejects an extra persisted template binding outside the manifest'
+  'AC095 rejects an extra persisted template binding outside the manifest [P2-S09-AC-095]'
 );
 delete from platform_private.cms_content_type_template_bindings
 where id = 'a9090000-0000-4000-8000-000000000158';
@@ -171,7 +171,7 @@ select ok(
   and not platform_private.cms_block_reference_valid(
     jsonb_build_object('blockKey', 'hero', 'blockVersion', 1, 'lifecycle', 'withdrawn')
   ),
-  'AC095 rejects an unregistered block version and a withdrawn lifecycle'
+  'AC095 rejects an unregistered block version and a withdrawn lifecycle [P2-S09-AC-095]'
 );
 
 -- A conditional plan exists only because CMS-03A-10 produced it, and activation
@@ -181,14 +181,14 @@ select throws_ok(
     %1$L::uuid, %2$L::uuid, null, 'a9090000-0000-4000-8000-000000000405'::uuid)$q$,
     'a9090000-0000-4000-8000-000000000150', :'y_version'),
   'P0001', 'VALIDATION_FAILED',
-  'AC099 conditional plan advance requires a persisted independent dry-run report'
+  'AC099 conditional plan advance requires a persisted independent dry-run report [P2-S09-AC-099]'
 );
 select throws_ok(
   format($q$select platform_private.cms_advance_activation_plan(
     %1$L::uuid, %2$L::uuid, null, %1$L::uuid)$q$,
     'a9090000-0000-4000-8000-000000000150', :'y_version'),
   'P0001', 'VALIDATION_FAILED',
-  'AC096 rejects a candidate UUID used as its own dry-run evidence ID'
+  'AC096 rejects a candidate UUID used as its own dry-run evidence ID [P2-S09-AC-096]'
 );
 
 -- A real conditional successor with no affected rows: the clone is sealed
@@ -210,7 +210,7 @@ select is(
     pg_temp.s09d_id('cnd:version'), pg_temp.s09d_id('cn0:version'),
     pg_temp.s09d_id('cnd:plan'), pg_temp.s09d_id('cnd:dryRun')),
   pg_temp.s09d_id('cnd:plan'),
-  'AC099 advances a conditional plan only after exact sealed report evidence'
+  'AC099 advances a conditional plan only after exact sealed report evidence [P2-S09-AC-099]'
 );
 select ok(
   (select classification = 'conditional'
@@ -256,5 +256,5 @@ set owner_capability = 'cms.schema_designer'
 where id = pg_temp.s09d_id('wk:type');
 select ok(
   not platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
-  'AC102 worker rejects an approval whose review evidence drifted and was invalidated'
+  'AC102 worker rejects an approval whose review evidence drifted and was invalidated [P2-S09-AC-102]'
 );

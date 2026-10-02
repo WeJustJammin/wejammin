@@ -102,7 +102,7 @@ const resolve = (b: PlatformConfigurationPlatformApiBinding) =>
   );
 
 describe('resolveAdminMfaResetPage through the production configuration resolver', () => {
-  it('renders for an actor whose acting-party-bound projection holds admin.identity.mfa_reset', async () => {
+  it('[P2-S09-AC-1108] renders for an actor whose acting-party-bound projection holds admin.identity.mfa_reset', async () => {
     const seen: PlatformConfigurationCapabilityResolutionInput[] = [];
     const result = await resolve(
       binding((input) => {
@@ -122,7 +122,7 @@ describe('resolveAdminMfaResetPage through the production configuration resolver
     });
   });
 
-  it('still answers the disclosure-safe 404 when the projection lacks the capability', async () => {
+  it('[P2-S09-AC-1108] still answers the disclosure-safe 404 when the projection lacks the capability', async () => {
     expect(await resolve(binding(() => ['configuration.read']))).toEqual({
       kind: 'not_found',
     });

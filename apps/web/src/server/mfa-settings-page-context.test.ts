@@ -75,7 +75,7 @@ describe('resolveMfaSettingsPage', () => {
     }
   });
 
-  it('redirects a missing session to sign-in returning to the settings page', async () => {
+  it('[P2-S09-AC-1070] redirects a missing session to sign-in returning to the settings page', async () => {
     const result = await resolve(
       bindingStub(
         errorResponse(401, 'UNAUTHENTICATED', {

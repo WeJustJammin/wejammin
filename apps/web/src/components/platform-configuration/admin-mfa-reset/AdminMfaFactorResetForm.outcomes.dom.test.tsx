@@ -41,7 +41,7 @@ const commit = async (...responses: Parameters<typeof stubFetch>) => {
 };
 
 describe('AdminMfaFactorResetForm success', () => {
-  it('posts the strict body once, announces completion and clears the form', async () => {
+  it('[P2-S09-AC-1114] posts the strict body once, announces completion and clears the form', async () => {
     const { fetchImpl, c, h } = await commit(json(200, resetBody('completed')));
     expect(fetchImpl.calls).toHaveLength(1);
     expect(fetchImpl.calls[0]?.body).toEqual({
@@ -59,7 +59,7 @@ describe('AdminMfaFactorResetForm success', () => {
     expect(h.refetch).toHaveBeenCalledWith('mutation');
   });
 
-  it('announces reconciling for 202 and never says completed', async () => {
+  it('[P2-S09-AC-1115] announces reconciling for 202 and never says completed', async () => {
     const { c } = await commit(json(202, resetBody('reconciling')));
     expect(statusText(c)).toContain(ADMIN_RESET_COPY.reconciling);
     expect(c.textContent).not.toContain(ADMIN_RESET_COPY.completed);
@@ -71,7 +71,7 @@ describe('AdminMfaFactorResetForm success', () => {
     expect(c.textContent).not.toContain(RESET_ID);
   });
 
-  it('shows a stable pending label and ignores duplicate activation', async () => {
+  it('[P2-S09-AC-1113] shows a stable pending label and ignores duplicate activation', async () => {
     const fetchImpl = stubFetch(json(200, resetBody('completed')));
     harness = mountReset(fetchImpl);
     const c = harness.mounted.container;
@@ -92,7 +92,7 @@ describe('AdminMfaFactorResetForm success', () => {
 });
 
 describe('AdminMfaFactorResetForm step-up recovery', () => {
-  it('navigates to /step-up with the current path and persists no entries', async () => {
+  it('[P2-S09-AC-1116] navigates to /step-up with the current path and persists no entries', async () => {
     const { h } = await commit(
       apiError(401, 'STEP_UP_REQUIRED', { allowedMethods: ['totp'] }),
     );
@@ -103,7 +103,7 @@ describe('AdminMfaFactorResetForm step-up recovery', () => {
     expect(h.storage.dump()).not.toContain(REASON);
   });
 
-  it('opens empty with the not-saved note after returning from step-up, once', async () => {
+  it('[P2-S09-AC-1116] opens empty with the not-saved note after returning from step-up, once', async () => {
     const first = await commit(apiError(401, 'STEP_UP_REQUIRED'));
     const { storage } = first.h;
     first.h.mounted.unmount();
@@ -115,6 +115,22 @@ describe('AdminMfaFactorResetForm step-up recovery', () => {
     harness = mountReset(stubFetch(), { storage });
     expect(statusText(harness.mounted.container)).not.toContain(
       ADMIN_RESET_COPY.notSaved,
+    );
+  });
+});
+
+describe('AdminMfaFactorResetForm session recovery', () => {
+  it('[P2-S09-AC-1117] offers the safe sign-in redirect on 401 UNAUTHENTICATED without a step-up detour', async () => {
+    const { c, h } = await commit(apiError(401, 'UNAUTHENTICATED'));
+    expect(alertText(c)).toContain(ADMIN_RESET_COPY.sessionEnded);
+    const link = c.querySelector<HTMLAnchorElement>(
+      'a[href^="/auth/sign-in?returnTo="]',
+    );
+    expect(link?.getAttribute('href')).toBe(
+      `/auth/sign-in?returnTo=${encodeURIComponent('/app/platform-configuration-admin/mfa-reset')}`,
+    );
+    expect(h.navigate).not.toHaveBeenCalledWith(
+      expect.stringContaining('/step-up'),
     );
   });
 });
@@ -132,12 +148,12 @@ describe('AdminMfaFactorResetForm errors', () => {
     expect(statusText(c)).not.toContain(ADMIN_RESET_COPY.completed);
   });
 
-  it('keeps the entries after a refusal so the operator can correct them', async () => {
+  it('[P2-S09-AC-1118] [P2-S09-AC-1119] [P2-S09-AC-1120] [P2-S09-AC-1121] [P2-S09-AC-1122] keeps the entries after a refusal so the operator can correct them', async () => {
     const { c } = await commit(apiError(404, 'TARGET_NOT_FOUND'));
     expect(personInput(c).value).toBe(PERSON);
   });
 
-  it('counts down a 429 Retry-After and disables submission', async () => {
+  it('[P2-S09-AC-1123] counts down a 429 Retry-After and disables submission', async () => {
     const { c } = await commit(
       apiError(429, 'RATE_LIMITED', {}, { 'retry-after': '90' }),
     );
@@ -148,13 +164,13 @@ describe('AdminMfaFactorResetForm errors', () => {
     expect(submitButton?.disabled).toBe(true);
   });
 
-  it('shows degraded with the request ID for 503', async () => {
+  it('[P2-S09-AC-1124] shows degraded with the request ID for 503', async () => {
     const { c } = await commit(apiError(503, 'IDENTITY_UNAVAILABLE'));
     expect(alertText(c)).toContain(ADMIN_RESET_COPY.degraded);
     expect(c.textContent).toContain('0195b6f0-0000-7000-8000-000000000001');
   });
 
-  it('never guesses an outcome after a network failure and retries with the same key', async () => {
+  it('[P2-S09-AC-1124] never guesses an outcome after a network failure and retries with the same key', async () => {
     const { fetchImpl, c } = await commit(
       new Error('offline'),
       json(200, resetBody('completed')),

@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('[DEC-119] list controls', () => {
-  it('sorting by valid-through refetches, updates aria-sort and the URL without a person id', async () => {
+  it('[P2-S09-AC-1042] sorting by valid-through refetches, updates aria-sort and the URL without a person id', async () => {
     const { calls } = scriptFetch(() => grantListResponse());
     const root = mount();
     click(query(root, 'th button[data-sort="validThrough"]'));
@@ -70,7 +70,7 @@ describe('[DEC-119] list controls', () => {
     ).toBe('validThrough');
   });
 
-  it('keeps the person filter island-local: sent in the fetch, never in the URL', async () => {
+  it('[P2-S09-AC-1025] [P2-S09-AC-1014] keeps the person filter island-local: sent in the fetch, never in the URL', async () => {
     const { calls } = scriptFetch(() => grantListResponse());
     const root = mount();
     typeInto(query(root, 'input[name="filterPerson"]'), GRANT_UUID);
@@ -92,7 +92,7 @@ describe('[DEC-119] list controls', () => {
     expect(calls.at(-1)?.url).not.toContain('capability=');
   });
 
-  it('shows an error state with retry when a refetch fails and never empties the page', async () => {
+  it('[P2-S09-AC-997] shows an error state with retry when a refetch fails and never empties the page', async () => {
     scriptFetch(() =>
       jsonResponse(503, apiError('DEPENDENCY_UNAVAILABLE'), {
         'retry-after': '3',

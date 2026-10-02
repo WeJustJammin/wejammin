@@ -75,7 +75,7 @@ select ok(
        join platform_private.cms_schema_artifacts artifact
          on artifact.id = version_row.schema_artifact_id
       where version_row.id = :'big_version'),
-  'AC217 the producer persists a complete 128-field target definition and matching bounded artifact'
+  'AC217 the producer persists a complete 128-field target definition and matching bounded artifact [P2-S09-AC-217]'
 );
 select ok(
   (select platform_private.cms_persisted_dry_run_report_valid(
@@ -122,7 +122,7 @@ select ok(
       and response->'plan'->>'version' = (:'big_ready_version'::bigint + 2)::text
       and response->'plan'->>'cursor' = '0'
    from s09_ac217_claim_two),
-  'AC217 replacement worker resumes the expired lease through durable CAS'
+  'AC217 replacement worker resumes the expired lease through durable CAS [P2-S09-AC-217]'
 );
 
 create temp table s09_ac217_batch on commit drop as

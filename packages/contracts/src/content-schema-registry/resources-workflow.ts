@@ -315,8 +315,27 @@ export const SchemaActivationPreparationSchema = z
         jobId: CmsUuidSchema.nullable(),
         /** Sealed dry-run failure code; non-null only on an unsealed failed run. */
         failureCode: CmsSchemaDryRunFailureCodeSchema.nullable().optional(),
+        /**
+         * Sealed report evidence (BE03a SchemaDryRunResource members), read by
+         * FE03 only from a completed report. Optional for a bare reference;
+         * once any member is present all six are, and only when completed.
+         */
+        sourceCount: NullableCountSchema.optional(),
+        targetCount: NullableCountSchema.optional(),
+        rowErrorCount: NullableCountSchema.optional(),
+        sourceHash: CmsHashSchema.nullable().optional(),
+        targetHash: CmsHashSchema.nullable().optional(),
+        reportHash: CmsHashSchema.nullable().optional(),
       })
       .superRefine((value, context) => {
+        // A result exists only on a sealed (completed) report, so a queued,
+        // running or unsealed failed dry run can never be reported as passed.
+        if (value.result !== null && value.state !== 'completed')
+          context.addIssue({
+            code: 'custom',
+            path: ['result'],
+            message: 'only a completed dry-run carries a result',
+          });
         if (
           value.failureCode !== null &&
           value.failureCode !== undefined &&
@@ -327,6 +346,48 @@ export const SchemaActivationPreparationSchema = z
             path: ['failureCode'],
             message: 'only a failed dry-run carries a failure code',
           });
+        const evidence = [
+          value.sourceCount,
+          value.targetCount,
+          value.rowErrorCount,
+          value.sourceHash,
+          value.targetHash,
+          value.reportHash,
+        ];
+        const present = evidence.some(
+          (member) => member !== null && member !== undefined,
+        );
+        if (present && value.state !== 'completed')
+          context.addIssue({
+            code: 'custom',
+            path: ['state'],
+            message: 'an unsealed dry-run cannot carry final report evidence',
+          });
+        if (
+          present &&
+          value.state === 'completed' &&
+          evidence.some((member) => member === null || member === undefined)
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['state'],
+            message: 'a completed dry-run must expose sealed report evidence',
+          });
+        if (present && value.state === 'completed') {
+          if (value.result === 'passed' && value.rowErrorCount !== 0)
+            context.addIssue({
+              code: 'custom',
+              path: ['rowErrorCount'],
+              message: 'a passed dry-run requires zero row errors',
+            });
+          if (value.result === 'failed' && value.rowErrorCount === 0)
+            context.addIssue({
+              code: 'custom',
+              path: ['rowErrorCount'],
+              message:
+                'a sealed failing scan must carry the actual scan errors',
+            });
+        }
       })
       .nullable(),
     jobRef: z

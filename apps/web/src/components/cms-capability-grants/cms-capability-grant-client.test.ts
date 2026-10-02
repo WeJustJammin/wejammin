@@ -155,7 +155,7 @@ describe('runGrantCommand', () => {
     expect(result.retryAfterSeconds).toBe(9);
   });
 
-  it('reconciles an ambiguous 503 by replaying the same key and reports the committed result', async () => {
+  it('[P2-S09-AC-1007] [P2-S09-AC-1047] reconciles an ambiguous 503 by replaying the same key and reports the committed result', async () => {
     const responses = [
       json(503, apiError('DEPENDENCY_UNAVAILABLE')),
       json(201, grantResource()),
@@ -173,7 +173,7 @@ describe('runGrantCommand', () => {
     expect(new Set(keys).size).toBe(1);
   });
 
-  it('stays degraded and never guesses success when the replay is also unavailable', async () => {
+  it('[P2-S09-AC-1007] [P2-S09-AC-1047] stays degraded and never guesses success when the replay is also unavailable', async () => {
     const fetcher = vi.fn(async () =>
       json(503, apiError('DEPENDENCY_UNAVAILABLE')),
     );
@@ -249,7 +249,7 @@ describe('readGrantList', () => {
     expect(result.kind).toBe(kind);
   });
 
-  it('marks 429 and 502/503/504 as retryable errors with Retry-After', async () => {
+  it('[P2-S09-AC-997] marks 429 and 502/503/504 as retryable errors with Retry-After', async () => {
     for (const status of [429, 502, 503, 504]) {
       const result = await readGrantList({
         query,

@@ -1,6 +1,3 @@
-import { CmsCapabilityGrantListQuerySchema } from '@wejammin/contracts';
-
-import { CMS_CAPABILITY_GRANT_DEFAULT_QUERY } from '../components/cms-capability-grants/cms-capability-grant-url';
 import type { CmsCapabilityGrantListQuery } from '@wejammin/contracts';
 
 export {
@@ -20,45 +17,7 @@ export type CmsCapabilityGrantPageQuery = Omit<
   'subjectPersonId'
 >;
 
-const PAGE_QUERY_KEYS = [
-  'capability',
-  'state',
-  'limit',
-  'cursor',
-  'sort',
-  'direction',
-] as const;
-
-/** Parse only the page-state keys, so the person filter can never be carried. */
-const parsePageQuery = (
-  input: Readonly<Record<string, string>>,
-): CmsCapabilityGrantPageQuery | null => {
-  const parsed = CmsCapabilityGrantListQuerySchema.safeParse(input);
-  if (!parsed.success) return null;
-  const { limit, sort, direction, capability, state, cursor } = parsed.data;
-  return {
-    limit,
-    sort,
-    direction,
-    ...(capability === undefined ? {} : { capability }),
-    ...(state === undefined ? {} : { state }),
-    ...(cursor === undefined ? {} : { cursor }),
-  };
-};
-
-const DEFAULTS = CMS_CAPABILITY_GRANT_DEFAULT_QUERY;
-
-/** Invalid values normalize to the defaults; the page re-canonicalizes the URL. */
-export const parseCmsCapabilityGrantPageQuery = (
-  url: URL,
-): CmsCapabilityGrantPageQuery => {
-  const input: Record<string, string> = {};
-  for (const key of PAGE_QUERY_KEYS) {
-    const value = url.searchParams.get(key);
-    if (value !== null) input[key] = value;
-  }
-  return parsePageQuery(input) ?? DEFAULTS;
-};
+export { parseCmsCapabilityGrantPageQuery } from '../components/cms-capability-grants/cms-capability-grant-url';
 
 /** DEC-120: a standing grant runs at most 90 UTC days (validThrough <= today + 89). */
 export const MAX_GRANT_TERM_OFFSET_DAYS = 89;

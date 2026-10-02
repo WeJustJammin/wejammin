@@ -56,9 +56,13 @@ const isContractViewState = (
       return typeof candidate.returnTo === 'string';
     case 'capability_gate':
       return (
-        (candidate.recovery === 'request_capability' ||
-          candidate.recovery === 'step_up') &&
+        candidate.recovery === 'request_capability' &&
         typeof candidate.requiredCapability === 'string'
+      );
+    case 'step_up_required':
+      return (
+        typeof candidate.returnTo === 'string' &&
+        Array.isArray(candidate.allowedMethods)
       );
     case 'not_found':
       return true;
@@ -133,6 +137,16 @@ const serverContractStateParser: ContractStateParser | null = import.meta.env
       await import('../../../../../packages/contracts/src/infrastructure-view-state.ts')
     ).InfrastructureViewStateSchema
   : null;
+
+type StepUpViewState = Extract<
+  InfrastructureViewState,
+  { status: 'step_up_required' }
+>;
+
+/** BE00/FE00 (DEC-111): 401 STEP_UP_REQUIRED routes to `/step-up?returnTo=`. */
+export const stepUpRecoveryHref = (
+  state: Pick<StepUpViewState, 'returnTo'>,
+): string => `/step-up?returnTo=${encodeURIComponent(state.returnTo)}`;
 
 export const parseContractState = (
   state: ServerInitialState,
@@ -340,6 +354,8 @@ export const stateAnnouncement = (
         return 'Your session is required before protected records can be shown.';
       case 'capability_gate':
         return 'This action is unavailable for the current server capability.';
+      case 'step_up_required':
+        return 'Verification is required before this action can continue. Continue to verify; your place is kept.';
       case 'not_found':
         return 'The requested record is not available.';
       case 'conflict':

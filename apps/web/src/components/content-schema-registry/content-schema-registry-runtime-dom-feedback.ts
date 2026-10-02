@@ -1,3 +1,4 @@
+import { stepUpHref } from '../identity-authority/step-up-mfa/step-up-return';
 import type { ContentSchemaRegistryMutationOutcome } from './content-schema-registry-runtime';
 
 export const safeOutcomeMessage = (
@@ -11,6 +12,10 @@ export const safeOutcomeMessage = (
     return 'Your session expired. Sign in again.';
   if (outcome === 'step-up-required')
     return 'Recent verification is required. Redirecting to confirm your identity.';
+  if (outcome === 'step-up-unavailable')
+    return 'No verification method is available.';
+  if (outcome === 'step-up-malformed')
+    return 'The verification response could not be read. Check the current version before retrying.';
   if (outcome === 'forbidden')
     return 'You do not have permission for this schema change.';
   if (outcome === 'not-found')
@@ -24,7 +29,18 @@ export const safeOutcomeMessage = (
   return 'The schema change is still being reconciled. Check the current version before retrying.';
 };
 
-export const setFormBusy = (form: HTMLFormElement, busy: boolean): void => {
+const SAVING_LABEL = 'Saving…';
+
+/**
+ * Mark a command form busy. While a command is in flight (`saving`) the commit
+ * action reads "Saving…" and the locale fields are aria-disabled (FE03
+ * "Locale configuration" pending state); a Retry-After wait only disables.
+ */
+export const setFormBusy = (
+  form: HTMLFormElement,
+  busy: boolean,
+  saving = false,
+): void => {
   form.setAttribute('aria-busy', String(busy));
   const fieldset = form.querySelector('fieldset');
   if (fieldset !== null) fieldset.disabled = busy;
@@ -32,6 +48,18 @@ export const setFormBusy = (form: HTMLFormElement, busy: boolean): void => {
   if (submit !== null) {
     submit.disabled = busy;
     submit.setAttribute('aria-busy', String(busy));
+    if (busy && saving && submit.dataset.cmsIdleLabel === undefined) {
+      submit.dataset.cmsIdleLabel = submit.textContent ?? '';
+      submit.textContent = SAVING_LABEL;
+    } else if (!busy && submit.dataset.cmsIdleLabel !== undefined) {
+      submit.textContent = submit.dataset.cmsIdleLabel;
+      delete submit.dataset.cmsIdleLabel;
+    }
+  }
+  const locale = form.querySelector<HTMLElement>('[data-locale-fields]');
+  if (locale !== null) {
+    if (busy && saving) locale.setAttribute('aria-disabled', 'true');
+    else if (!busy) locale.removeAttribute('aria-disabled');
   }
 };
 
@@ -100,13 +128,16 @@ export const safeReauthentication = (
   navigate(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
 };
 
-/** Route to the DEC-111 step-up page with the current relative page as returnTo. */
+/**
+ * Route to the DEC-111 step-up page with the current relative page as returnTo:
+ * path plus query when it is a usable return target, the path alone above 512
+ * characters, and /app when even the path is not usable.
+ */
 export const safeStepUp = (
   windowObject: Window,
   navigate: (target: string) => void = (target) =>
     windowObject.location.assign(target),
 ): void => {
   const current = windowObject.location;
-  const returnTo = `${current.pathname}${current.search}`;
-  navigate(`/step-up?returnTo=${encodeURIComponent(returnTo)}`);
+  navigate(stepUpHref(current.pathname, current.search));
 };

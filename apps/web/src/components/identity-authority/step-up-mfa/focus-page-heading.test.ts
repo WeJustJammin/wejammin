@@ -11,7 +11,7 @@ afterEach(() => {
 
 /** FE01: one h1 receives focus on route load. */
 describe('focusPageHeading', () => {
-  it('focuses the page heading', () => {
+  it('[P2-S09-AC-1101] focuses the page heading', () => {
     document.body.innerHTML = '<h1 id="page-title" tabindex="-1">Title</h1>';
     focusPageHeading(document, window.location);
     expect(document.activeElement?.id).toBe('page-title');

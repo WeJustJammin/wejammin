@@ -26,7 +26,7 @@ describe('[DEC-119/120] grant form validation', () => {
     ).toStrictEqual({});
   });
 
-  it('uses the exact FE03 copy for each field', () => {
+  it('[P2-S09-AC-1008] [P2-S09-AC-1009] [P2-S09-AC-1010] [P2-S09-AC-1011] uses the exact FE03 copy for each field', () => {
     expect(GRANT_ERROR_COPY.person).toBe("Enter the person's ID as a UUID.");
     expect(GRANT_ERROR_COPY.capability).toBe(
       'Choose a capability from the list.',

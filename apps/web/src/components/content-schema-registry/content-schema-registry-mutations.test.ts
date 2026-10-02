@@ -259,7 +259,7 @@ describe('content schema registry mutation facade', () => {
     expect(body.fallbackChains).toEqual({ fr: ['en-US'] });
   });
 
-  it('returns the exact locale messages and pointers for an invalid create', async () => {
+  it('[P2-S09-AC-1230] returns the exact locale messages and pointers for an invalid create', async () => {
     const { response, binding } = await call(
       { operationId: 'CMS-03A-01' },
       {

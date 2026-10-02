@@ -81,7 +81,7 @@ describe('[DEC-119] command success copy', () => {
 });
 
 describe('[DEC-119] command failure copy', () => {
-  it('routes 401 STEP_UP_REQUIRED to the step-up action with exact copy', () => {
+  it('[P2-S09-AC-1000] [P2-S09-AC-1027] routes 401 STEP_UP_REQUIRED to the step-up action with exact copy', () => {
     const state = failure('grant', {
       outcome: 'step-up-required',
       status: 401,
@@ -90,13 +90,13 @@ describe('[DEC-119] command failure copy', () => {
     expect(state.action).toBe('step-up');
   });
 
-  it('sends an unauthenticated session to sign-in', () => {
+  it('[P2-S09-AC-1001] [P2-S09-AC-1027] sends an unauthenticated session to sign-in', () => {
     expect(
       failure('renew', { outcome: 'unauthenticated', status: 401 }).action,
     ).toBe('sign-in');
   });
 
-  it('shows the owner gate copy for 403', () => {
+  it('[P2-S09-AC-1002] shows the owner gate copy for 403', () => {
     expect(
       failure('grant', { outcome: 'forbidden', status: 403 }).message,
     ).toBe('Only the organization owner can manage CMS access.');
@@ -111,7 +111,7 @@ describe('[DEC-119] command failure copy', () => {
     ['renew', 'This grant is no longer available.', true],
     ['revoke', 'This grant is no longer available.', true],
   ] as const)(
-    '404 on %s is one non-disclosing refusal',
+    '[P2-S09-AC-1003] 404 on %s is one non-disclosing refusal',
     (kind, message, refetch) => {
       const state = failure(kind, { outcome: 'not-found', status: 404 });
       expect(state.message).toBe(message);
@@ -119,7 +119,7 @@ describe('[DEC-119] command failure copy', () => {
     },
   );
 
-  it('409 on grant points at the existing grant; on renew/revoke it asks for review', () => {
+  it('[P2-S09-AC-1004] 409 on grant points at the existing grant; on renew/revoke it asks for review', () => {
     const grant = failure('grant', { outcome: 'conflict', status: 409 });
     expect(grant.message).toBe(
       'This person already holds this capability. Renew the existing grant instead.',
@@ -134,7 +134,7 @@ describe('[DEC-119] command failure copy', () => {
     }
   });
 
-  it('422 builds field errors from violations and a linked summary', () => {
+  it('[P2-S09-AC-1005] 422 builds field errors from violations and a linked summary', () => {
     const state = failure('grant', {
       outcome: 'validation',
       status: 422,
@@ -151,7 +151,7 @@ describe('[DEC-119] command failure copy', () => {
     expect(state.message).toBe('Check the highlighted fields.');
   });
 
-  it('429 carries the Retry-After countdown seconds', () => {
+  it('[P2-S09-AC-1006] 429 carries the Retry-After countdown seconds', () => {
     const state = failure('grant', {
       outcome: 'rate-limited',
       status: 429,
@@ -161,7 +161,7 @@ describe('[DEC-119] command failure copy', () => {
     expect(state.message).toBe('Too many requests. Try again shortly.');
   });
 
-  it('degraded never claims success and asks for a list refetch before retry', () => {
+  it('[P2-S09-AC-1007] degraded never claims success and asks for a list refetch before retry', () => {
     const state = failure('grant', {
       outcome: 'degraded',
       status: 503,

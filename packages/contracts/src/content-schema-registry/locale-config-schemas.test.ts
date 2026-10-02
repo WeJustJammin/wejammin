@@ -376,7 +376,7 @@ describe('locale configuration in resources, evidence and events', () => {
     );
   });
 
-  it('SchemaReviewFrozenEvidence freezes localeConfigHash', () => {
+  it('[P2-S09-AC-1194] SchemaReviewFrozenEvidence freezes localeConfigHash', () => {
     expect(
       SchemaReviewFrozenEvidenceSchema.parse(frozenEvidence).localeConfigHash,
     ).toBe(hash2);
@@ -386,7 +386,7 @@ describe('locale configuration in resources, evidence and events', () => {
     );
   });
 
-  it('cms.schema.activated.v1 payload is a strict object with localeConfigHash', () => {
+  it('[P2-S09-AC-191] cms.schema.activated.v1 payload is a strict object with localeConfigHash', () => {
     const payload = {
       contentTypeId: uuid2,
       schemaVersionId: uuid,

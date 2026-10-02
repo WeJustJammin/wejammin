@@ -507,6 +507,10 @@ export type Database = {
         }
         Returns: Json
       }
+      auth_mfa_factor_reconcile_read: {
+        Args: { p_factor_id: string }
+        Returns: Json
+      }
       auth_mfa_factors_read: {
         Args: {
           p_auth_user_id: string
@@ -515,6 +519,7 @@ export type Database = {
         }
         Returns: Json
       }
+      auth_mfa_reconciling_age: { Args: never; Returns: Json }
       auth_mfa_registry_sweep: { Args: { p_batch: number }; Returns: Json }
       auth_mfa_removal_begin: {
         Args: {
@@ -539,6 +544,15 @@ export type Database = {
           p_reason: string
           p_request_id: string
           p_session_id: string
+        }
+        Returns: Json
+      }
+      auth_mfa_verification_failure_record: {
+        Args: {
+          p_auth_user_id: string
+          p_correlation_id: string
+          p_outcome: string
+          p_request_id: string
         }
         Returns: Json
       }
@@ -696,6 +710,10 @@ export type Database = {
         Returns: Json
       }
       cms_bind_relation: { Args: { p_request: Json }; Returns: Json }
+      cms_capability_grant_read_current: {
+        Args: { p_grant_id: string }
+        Returns: Json
+      }
       cms_claim_operational_alert: { Args: { p_request: Json }; Returns: Json }
       cms_claim_schema_migration_event: {
         Args: { p_request: Json }
@@ -872,6 +890,7 @@ export type Database = {
           scope: string
         }[]
       }
+      consumer_dead_letter_event: { Args: { p_request: Json }; Returns: Json }
       create_provider_operation: {
         Args: {
           p_acting_party_id?: string
@@ -1046,6 +1065,10 @@ export type Database = {
         Returns: Json
       }
       identity_person_read: { Args: never; Returns: Json }
+      identity_security_notification_read: {
+        Args: { p_security_event_id: string }
+        Returns: Json
+      }
       identity_transfer_accept: {
         Args: { p_expected_version: number; p_offer_id: string }
         Returns: Json
@@ -1058,6 +1081,7 @@ export type Database = {
         Args: { p_alias_id: string; p_recipient_person_id: string }
         Returns: Json
       }
+      in_app_notification_record: { Args: { p_request: Json }; Returns: Json }
       list_harness_fixtures: {
         Args: never
         Returns: {
@@ -7481,6 +7505,45 @@ export type Database = {
         }
         Relationships: []
       }
+      consumer_dead_letters: {
+        Row: {
+          aggregate_id: string | null
+          aggregate_type: string | null
+          aggregate_version: string | null
+          consumer: string
+          created_at: string
+          event_id: string | null
+          event_type: string | null
+          id: string
+          reason_code: string
+          schema_version: number | null
+        }
+        Insert: {
+          aggregate_id?: string | null
+          aggregate_type?: string | null
+          aggregate_version?: string | null
+          consumer: string
+          created_at?: string
+          event_id?: string | null
+          event_type?: string | null
+          id?: string
+          reason_code: string
+          schema_version?: number | null
+        }
+        Update: {
+          aggregate_id?: string | null
+          aggregate_type?: string | null
+          aggregate_version?: string | null
+          consumer?: string
+          created_at?: string
+          event_id?: string | null
+          event_type?: string | null
+          id?: string
+          reason_code?: string
+          schema_version?: number | null
+        }
+        Relationships: []
+      }
       db_harness_fixture: {
         Row: {
           created_at: string
@@ -9124,6 +9187,10 @@ export type Database = {
         Returns: string
       }
       cms_activate_schema: { Args: { p_request: Json }; Returns: Json }
+      cms_activation_frozen_risk_class: {
+        Args: { p_candidate_id: string }
+        Returns: string
+      }
       cms_activation_preparation: {
         Args: {
           p_acting_party_id: string
@@ -9370,6 +9437,10 @@ export type Database = {
         Args: { p_organization_id: string; p_person_id: string }
         Returns: boolean
       }
+      cms_grant_subject_lock: {
+        Args: { p_organization_id: string; p_person_id: string }
+        Returns: boolean
+      }
       cms_grant_today: { Args: never; Returns: string }
       cms_grant_valid_through: { Args: { p_value: Json }; Returns: string }
       cms_grantable_capability: { Args: { p_key: string }; Returns: boolean }
@@ -9445,6 +9516,13 @@ export type Database = {
         Args: { p_version_id: string }
         Returns: undefined
       }
+      cms_migration_affected_variants: {
+        Args: { p_from_version_id: string; p_to_version_id: string }
+        Returns: {
+          revision_id: string
+          variant_id: string
+        }[]
+      }
       cms_migration_changed_fields: {
         Args: { p_plan_id: string }
         Returns: {
@@ -9485,7 +9563,7 @@ export type Database = {
         Returns: Json
       }
       cms_migration_live_rows: {
-        Args: { p_version_id: string }
+        Args: { p_from_version_id: string; p_to_version_id: string }
         Returns: {
           revision_id: string
           source_row_id: string
@@ -9854,7 +9932,7 @@ export type Database = {
         Returns: Json
       }
       cms_schema_source_row_count: {
-        Args: { p_version_id: string }
+        Args: { p_from_version_id: string; p_to_version_id: string }
         Returns: number
       }
       cms_stale_locale_dependents: {
@@ -10365,6 +10443,14 @@ export type Database = {
       mfa_step_up_capability_held: {
         Args: { p_person_id: string }
         Returns: boolean
+      }
+      mfa_verification_charge_failure: {
+        Args: { p_auth_user_id: string }
+        Returns: Json
+      }
+      mfa_verification_require_unlocked: {
+        Args: { p_auth_user_id: string }
+        Returns: undefined
       }
       normalize_identity_handle: { Args: { p_handle: string }; Returns: string }
       protected_writes_allowed: { Args: never; Returns: boolean }

@@ -1,0 +1,169 @@
+-- Shared trigger-catalog probes (AC215): the proved inventory of every user trigger on a
+-- platform_private.cms_ table, the isolated-statement probe, and the generic-guard behavioral
+-- proof (`select pg_temp.s09t_run_generic();` after the fixture has produced its rows).
+-- Used by phase_02_slice_09_schema/012-trigger-catalog.sqlinc and
+-- phase_02_slice_09_evidence_trigger_catalog.sql, each on its own producer-row state.
+
+create temp table s09t_inventory(table_name text, trigger_name text, function_name text, trigger_type integer,
+  primary key (table_name, trigger_name)) on commit drop;
+insert into s09t_inventory values
+  ('cms_block_definition_lifecycle_events', 'cms_block_definition_lifecycle_events_activation_review_invalid', 'cms_activation_review_invalidation_trigger', 5),
+  ('cms_block_definition_lifecycle_events', 'cms_block_definition_lifecycle_events_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_block_definition_lifecycle_events', 'cms_block_definition_lifecycle_events_write_guard', 'cms_write_guard', 7),
+  ('cms_block_definition_versions', 'cms_block_definition_versions_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_block_definition_versions', 'cms_block_definition_versions_write_guard', 'cms_write_guard', 7),
+  ('cms_capability_grant_events', 'cms_capability_grant_events_write_guard', 'cms_write_guard', 31),
+  ('cms_capability_grant_events', 'cms_capability_grant_events_z_append_guard', 'cms_capability_grant_event_guard', 31),
+  ('cms_capability_grants', 'cms_capability_grants_write_guard', 'cms_write_guard', 31),
+  ('cms_capability_grants', 'cms_capability_grants_z_state_guard', 'cms_capability_grant_guard', 27),
+  ('cms_composition_instances', 'cms_composition_instances_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_composition_instances', 'cms_composition_instances_target_revision_guard', 'cms_composition_instance_guards', 7),
+  ('cms_composition_instances', 'cms_composition_instances_write_guard', 'cms_write_guard', 31),
+  ('cms_conflict_records', 'cms_conflict_records_write_guard', 'cms_write_guard', 31),
+  ('cms_content_entries', 'cms_content_entries_write_guard', 'cms_write_guard', 31),
+  ('cms_content_type_capability_bindings', 'cms_content_type_capability_bindings_activation_review_invalida', 'cms_activation_review_invalidation_trigger', 29),
+  ('cms_content_type_capability_bindings', 'cms_content_type_capability_bindings_parent_state_guard', 'cms_active_parent_guard', 31),
+  ('cms_content_type_capability_bindings', 'cms_content_type_capability_bindings_write_guard', 'cms_write_guard', 31),
+  ('cms_content_type_template_bindings', 'cms_content_type_template_bindings_activation_review_invalidati', 'cms_activation_review_invalidation_trigger', 29),
+  ('cms_content_type_template_bindings', 'cms_content_type_template_bindings_parent_state_guard', 'cms_active_parent_guard', 31),
+  ('cms_content_type_template_bindings', 'cms_content_type_template_bindings_write_guard', 'cms_write_guard', 31),
+  ('cms_content_type_template_bindings', 'cms_draft_template_binding_compat_guard', 'cms_draft_template_binding_guard', 23),
+  ('cms_content_type_versions', 'cms_content_type_versions_activation_review_invalidation', 'cms_activation_review_invalidation_trigger', 29),
+  ('cms_content_type_versions', 'cms_content_type_versions_guard', 'cms_content_version_guard', 19),
+  ('cms_content_type_versions', 'cms_content_type_versions_locale_immutable_guard', 'cms_content_version_locale_guard', 19),
+  ('cms_content_type_versions', 'cms_content_type_versions_write_guard', 'cms_write_guard', 31),
+  ('cms_content_type_versions', 'cms_type_version_template_compat_guard', 'cms_type_version_template_compat_guard', 23),
+  ('cms_content_types', 'cms_content_types_activation_review_invalidation', 'cms_activation_review_invalidation_trigger', 17),
+  ('cms_content_types', 'cms_content_types_identity_guard', 'cms_content_type_identity_guard', 19),
+  ('cms_content_types', 'cms_content_types_write_guard', 'cms_write_guard', 31),
+  ('cms_edit_presence', 'cms_edit_presence_write_guard', 'cms_write_guard', 31),
+  ('cms_editorial_decisions', 'cms_editorial_decisions_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_editorial_decisions', 'cms_editorial_decisions_write_guard', 'cms_write_guard', 31),
+  ('cms_editorial_reviews', 'cms_editorial_reviews_write_guard', 'cms_write_guard', 31),
+  ('cms_entry_assignments', 'cms_entry_assignments_write_guard', 'cms_write_guard', 31),
+  ('cms_entry_field_values', 'cms_entry_field_values_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_entry_field_values', 'cms_entry_field_values_write_guard', 'cms_write_guard', 31),
+  ('cms_entry_relations', 'cms_entry_relations_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_entry_relations', 'cms_entry_relations_write_guard', 'cms_write_guard', 31),
+  ('cms_entry_revisions', 'cms_entry_revisions_a_version_lock_guard', 'cms_entry_version_lock_guard', 7),
+  ('cms_entry_revisions', 'cms_entry_revisions_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_entry_revisions', 'cms_entry_revisions_locale_stale', 'cms_entry_revision_locale_stale_trigger', 5),
+  ('cms_entry_revisions', 'cms_entry_revisions_write_guard', 'cms_write_guard', 31),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_activation_review_invalidation', 'cms_activation_review_invalidation_trigger', 29),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_identity_guard', 'cms_field_identity_guard', 19),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_parent_state_guard', 'cms_active_parent_guard', 31),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_write_guard', 'cms_write_guard', 31),
+  ('cms_locale_variants', 'cms_locale_variants_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_locale_variants', 'cms_locale_variants_write_guard', 'cms_write_guard', 31),
+  ('cms_owner_initialization', 'cms_owner_initialization_capability_grant_backfill', 'cms_owner_initialization_backfill_trigger', 5),
+  ('cms_pattern_versions', 'cms_pattern_versions_lifecycle_guard', 'cms_pattern_versions_lifecycle_guard', 31),
+  ('cms_pattern_versions', 'cms_pattern_versions_write_guard', 'cms_write_guard', 31),
+  ('cms_preview_tokens', 'cms_preview_tokens_write_guard', 'cms_write_guard', 31),
+  ('cms_publication_schedules', 'cms_publication_schedules_write_guard', 'cms_write_guard', 31),
+  ('cms_publication_versions', 'cms_publication_versions_a_version_lock_guard', 'cms_entry_version_lock_guard', 7),
+  ('cms_publication_versions', 'cms_publication_versions_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_publication_versions', 'cms_publication_versions_write_guard', 'cms_write_guard', 31),
+  ('cms_related_content_rules', 'cms_related_content_rules_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_related_content_rules', 'cms_related_content_rules_write_guard', 'cms_write_guard', 31),
+  ('cms_relation_definitions', 'cms_relation_definitions_activation_review_invalidation', 'cms_activation_review_invalidation_trigger', 29),
+  ('cms_relation_definitions', 'cms_relation_definitions_parent_state_guard', 'cms_active_parent_guard', 31),
+  ('cms_relation_definitions', 'cms_relation_definitions_write_guard', 'cms_write_guard', 31),
+  ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_identity_guard', 'cms_nonce_guard', 19),
+  ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_immutable_guard', 'cms_immutable_guard', 11),
+  ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_artifacts', 'cms_schema_artifacts_write_guard', 'cms_write_guard', 23),
+  ('cms_schema_artifacts', 'cms_schema_artifacts_z_compile_guard', 'cms_schema_artifact_guard', 27),
+  ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_z_state_guard', 'cms_schema_dry_run_report_guard', 31),
+  ('cms_schema_dry_run_row_evidence', 'cms_schema_dry_run_row_evidence_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_schema_dry_run_row_evidence', 'cms_schema_dry_run_row_evidence_write_guard', 'cms_write_guard', 7),
+  ('cms_schema_migration_plans', 'cms_schema_migration_plans_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_migration_plans', 'cms_schema_migration_plans_z_completed_guard', 'cms_completed_migration_plan_guard', 27),
+  ('cms_schema_migration_target_rows', 'cms_schema_migration_target_rows_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_schema_migration_target_rows', 'cms_schema_migration_target_rows_write_guard', 'cms_write_guard', 7),
+  ('cms_schema_review_assignments', 'cms_schema_review_assignments_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_review_assignments', 'cms_schema_review_assignments_z_state_guard', 'cms_schema_review_assignment_guard', 27),
+  ('cms_schema_review_decisions', 'cms_schema_review_decisions_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_review_decisions', 'cms_schema_review_decisions_z_append_guard', 'cms_schema_review_decision_guard', 31),
+  ('cms_schema_reviews', 'cms_schema_reviews_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_reviews', 'cms_schema_reviews_z_state_guard', 'cms_schema_review_guard', 27),
+  ('cms_schema_transform_registry', 'cms_schema_transform_registry_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_schema_transform_registry', 'cms_schema_transform_registry_write_guard', 'cms_write_guard', 7),
+  ('cms_taxonomy_versions', 'cms_taxonomy_versions_lifecycle_guard', 'cms_taxonomy_versions_lifecycle_guard', 31),
+  ('cms_taxonomy_versions', 'cms_taxonomy_versions_write_guard', 'cms_write_guard', 31),
+  ('cms_template_versions', 'cms_template_versions_guard_trigger', 'cms_template_versions_guard', 31),
+  ('cms_term_assignments', 'cms_term_assignments_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_term_assignments', 'cms_term_assignments_write_guard', 'cms_write_guard', 31),
+  ('cms_term_labels', 'cms_term_labels_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_term_labels', 'cms_term_labels_write_guard', 'cms_write_guard', 31),
+  ('cms_terms', 'cms_terms_hierarchy_cycle_guard', 'cms_terms_hierarchy_cycle_guard', 23),
+  ('cms_terms', 'cms_terms_lifecycle_guard', 'cms_terms_lifecycle_guard', 31),
+  ('cms_terms', 'cms_terms_successor_guard', 'cms_terms_successor_guard', 19),
+  ('cms_terms', 'cms_terms_write_guard', 'cms_write_guard', 31),
+  ('cms_workflow_policies', 'cms_workflow_policies_immutable_guard', 'cms_immutable_guard', 27),
+  ('cms_workflow_policies', 'cms_workflow_policies_write_guard', 'cms_write_guard', 7);
+
+-- Isolated statement probe.  Returns the refusal message, or ACCEPTED (the statement is always rolled back).
+create or replace function pg_temp.s09t_probe_stmt(p_table text, p_trigger text, p_rpc boolean, p_stmt text) returns text
+language plpgsql as $body$
+declare
+  rel regclass := format('platform_private.%I', p_table)::regclass;
+  other record;
+  outcome text;
+  previous text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+begin
+  for other in select tgname from pg_trigger where tgrelid = rel and not tgisinternal and tgname <> p_trigger loop
+    execute format('alter table %s disable trigger %I', rel, other.tgname);
+  end loop;
+  perform pg_catalog.set_config('app.cms_rpc', case when p_rpc then 'true' else '' end, true);
+  begin
+    execute p_stmt;
+    raise exception 'S09T_ACCEPTED';
+  exception when others then
+    outcome := case when sqlerrm = 'S09T_ACCEPTED' then 'ACCEPTED' else sqlerrm end;
+  end;
+  perform pg_catalog.set_config('app.cms_rpc', previous, true);
+  for other in select tgname from pg_trigger where tgrelid = rel and not tgisinternal and tgname <> p_trigger loop
+    execute format('alter table %s enable trigger %I', rel, other.tgname);
+  end loop;
+  return outcome;
+end;
+$body$;
+create or replace function pg_temp.s09t_probe(p_table text, p_trigger text, p_rpc boolean, p_event text) returns text
+language plpgsql as $body$
+declare
+  rel regclass := format('platform_private.%I', p_table)::regclass;
+  first_column text;
+begin
+  select a.attname into first_column from pg_attribute a
+   where a.attrelid = rel and a.attnum > 0 and not a.attisdropped and a.attgenerated = '' order by a.attnum limit 1;
+  return pg_temp.s09t_probe_stmt(p_table, p_trigger, p_rpc, case p_event
+    when 'insert' then format('insert into %s select * from %s limit 1', rel, rel)
+    when 'update' then format('update %s set %I = %I where ctid = (select ctid from %s limit 1)', rel, first_column, first_column, rel)
+    else format('delete from %s where ctid = (select ctid from %s limit 1)', rel, rel) end);
+end;
+$body$;
+create or replace function pg_temp.s09t_rows(p_table text) returns bigint language plpgsql as $body$
+declare n bigint;
+begin
+  execute format('select count(*) from platform_private.%I', p_table) into n;
+  return n;
+end;
+$body$;
+
+
+-- Pending deferred constraint triggers must fire before a table can be altered for isolation.
+create or replace function pg_temp.s09t_run_generic() returns void language plpgsql as $body$
+begin
+  set constraints all immediate;
+  create temp table s09t_generic on commit drop as
+  select i.table_name, i.trigger_name, i.function_name, e.event,
+         pg_temp.s09t_rows(i.table_name) as row_count,
+         case when pg_temp.s09t_rows(i.table_name) = 0 then 'EMPTY'
+              else pg_temp.s09t_probe(i.table_name, i.trigger_name, i.function_name = 'cms_immutable_guard', e.event) end as outcome,
+         case i.function_name when 'cms_write_guard' then 'DIRECT_CMS_TABLE_WRITE' else 'IMMUTABLE_RECORD' end as expected
+    from s09t_inventory i
+    join (values ('insert', 4), ('update', 16), ('delete', 8)) e(event, bit) on i.trigger_type & e.bit = e.bit
+   where i.function_name in ('cms_write_guard', 'cms_immutable_guard');
+end;
+$body$;

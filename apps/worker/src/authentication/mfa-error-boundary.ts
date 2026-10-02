@@ -151,6 +151,6 @@ export const withRouteDeadline = async <T>(
   try {
     return await Promise.race([run(controller.signal), deadline]);
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
   }
 };

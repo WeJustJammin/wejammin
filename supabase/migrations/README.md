@@ -152,6 +152,81 @@ widens the identity rate-limit vocabulary to AUTH-API-01..21 and `20261002161000
 adds the retention sweep `auth_mfa_registry_sweep`. pgTAP coverage is
 `../tests/phase_02_slice_09_dec111_*.sql`.
 
+## Slice 09 Codex review follow-ups (stage 6)
+
+`20261002171000` carries every row unchanged for a field-neutral breaking or
+conditional plan (no target field, no retired field, such as a locale-only
+change) instead of failing each row as unprovable; the registry behavior
+identifiers and transform digests are unchanged. `20261002172000` makes a
+completed migration plan immutable evidence of its exact attempt: CMS-03A-10
+refuses to replace it only while every persisted fingerprint (source rows and
+hash, target definition, compiler and artifact identity, classification,
+transform pair and hash) equals the freshly computed one, otherwise it
+supersedes the plan and starts a new attempt. `20261002173000` resolves the
+risk class a worker activation reports (response, already-active replay,
+`cms.schema.activated.v1`) from the approved review snapshot bound to the
+candidate's frozen policy key, version and hash, never the newest registry
+version. `20261002174000` requires `tenure.starts_on <=` the current UTC date in
+every effective-capability predicate and the CMS grant subject-eligibility
+check, and CMS-03A-15 locks and rechecks the subject's tenure row.
+`20261002175000` makes the administrative MFA reset authorize from locked
+state: target serialization lock first, then the operator grant, then the
+target's tenure and person rows (`FOR SHARE`) with the membership predicate
+rechecked immediately before the identity reset; the independent-session race
+is `../tests/phase_02_slice_09_dec111/010-admin-reset-race.mjs`.
+`20261002176000` adds the shared account-scoped MFA verification lock
+(`identity.mfa_verification_lockouts`, ten failures in a sliding 15 minutes
+persist a 15-minute lock, no operation id in the key). Both verify-prepare RPCs
+refuse a locked account with `MFA_VERIFICATION_LOCKED:<seconds>` before any
+provider contact; `auth_mfa_verification_failure_record` charges enrollment
+failures and `auth_step_up_challenge_failure_record` charges the same budget in
+its own transaction (response unchanged). Concurrency is proven by
+`../tests/phase_02_slice_09_dec111/011-verification-lock-race.mjs`; pgTAP is
+`../tests/phase_02_slice_09_dec111_mfa_verification_lock.sql`. Run the `.mjs`
+runners only right after `pnpm db:reset` and reset again afterwards.
+`20261002177000` makes CMS-03A-10 refuse (409) a new dry-run attempt while an
+earlier plan of the version pair is `running`, `verifying` or `failed_retryable`
+and its scanned source is unchanged (BE03a "Canonical records and fields");
+a drifted source stays the one recovery that supersedes an in-flight plan.
+`20261002178000` makes CMS-03A-13 deny a known readable review with 403 when
+the caller is a confirmed member of the review's owning party acting as it but
+holds neither `cms.schema_designer` nor an effective assignment; an absent,
+cross-owner or out-of-party review remains an indistinguishable 404. pgTAP is
+`../tests/phase_02_slice_09_evidence_cms09_10.sql` and
+`../tests/phase_02_slice_09_evidence_cms11_14.sql`.
+
+`20261002179000` tightens the admin MFA reset idempotency key to BE05b's 16..128
+characters (record CHECK and RPC; contract `Cfg05b06IdempotencyKeySchema` and the
+CFG-05B-06 route enforce the same range). `20261002180000` adds the AC-903
+self-read surface for the MFA tables: security-invoker views
+`api_identity.mfa_factor_self_v1` and `api_identity.step_up_challenge_self_v1` over
+safe columns, one self-read policy per table and column-level `SELECT` for
+`authenticated` only (tables keep forced RLS and no table-level grant; pgTAP is
+`../tests/phase_02_slice_09_dec111_mfa_self_views.sql`). `20261002181000` adds the six
+sealed evidence members (counts and hashes) to `activationPreparation.dryRunRef` for
+a completed sealed dry run only. `20261002182000` makes the CMS-03A-09 idempotency
+binding path-independent so a same-actor same-key request against another source
+version is a 409 (AC-300). `20261002183000` extends the migration source set with the
+affected `cms_locale_variants` rows of a breaking locale-configuration change: the
+source-row functions and the six plan readers now take the (source, target) version
+pair (AC-1197; pgTAP `../tests/phase_02_slice_09_scan_locale_variants.sql`).
+`20261002184000` is the G1 consumer boundary: service-role `platform_api` reads for
+the MFA reconciler, the reconciling-age gauge, the security notification and the
+current capability grant, the append-only `platform_private.consumer_dead_letters`
+store with its idempotent RPC, and the outbox relay selector widened from
+`job.requested` to the four tuples the Worker accepts (pgTAP
+`../tests/phase_02_slice_09_g1_consumer_boundary.sql`; real consumers over the real
+database are exercised by `../../tests/db-integration/`). `20261002185000` adds the
+AC-916 in-app notification intent store (`identity.in_app_notification_intents`,
+append-only, forced RLS, recipient resolved server-side, idempotent by notification
+id) behind `platform_api.in_app_notification_record`, with a holder-only invoker view
+(pgTAP `../tests/phase_02_slice_09_ac916_in_app_notifications.sql`). `20261002186000`
+adds `reviewOpenAgeMs` to the operational snapshot and `20261002187000` admits the four
+review-lifecycle alert codes (`review_open_past_window`, `decision_denial_spike`,
+`assignment_denial_spike`, `capability_grant_denial_spike`) to the alert delivery log
+and claim RPC (pgTAP `../tests/phase_02_slice_09_operational_review_age.sql` and
+`../tests/phase_02_slice_09_operational_alert_codes.sql`).
+
 ## Related links
 
 - `../tests/README.md`

@@ -52,7 +52,7 @@ const toScan = async (...tail: StubResponse[]) => {
 };
 
 describe('MfaEnrollmentWizard empty state and name step', () => {
-  it('shows the empty state with the single action', () => {
+  it('[P2-S09-AC-1072] shows the empty state with the single action', () => {
     harness = mountWizard(stubFetch(), { factors: [] });
     const container = harness.mounted.container;
     expect(container.textContent).toContain('No authenticator is set up');
@@ -60,7 +60,7 @@ describe('MfaEnrollmentWizard empty state and name step', () => {
     expect(button(container, 'Set up an authenticator')).toBeDefined();
   });
 
-  it('asks for a 1 to 80 character name with a persistent label and no autocomplete', () => {
+  it('[P2-S09-AC-1084] asks for a 1 to 80 character name with a persistent label and no autocomplete', () => {
     harness = mountWizard(stubFetch(), { factors: [] });
     const container = harness.mounted.container;
     pressButton(container, 'Set up an authenticator');
@@ -85,7 +85,7 @@ describe('MfaEnrollmentWizard empty state and name step', () => {
     );
   });
 
-  it('starts enrollment with the expected version as If-Match', async () => {
+  it('[P2-S09-AC-1074] starts enrollment with the expected version as If-Match', async () => {
     const { fetchImpl } = await toScan();
     expect(fetchImpl.calls[0]?.method).toBe('POST');
     expect(fetchImpl.calls[0]?.headers.get('if-match')).toBe('"4"');
@@ -97,7 +97,7 @@ describe('MfaEnrollmentWizard empty state and name step', () => {
 });
 
 describe('MfaEnrollmentWizard scan step', () => {
-  it('renders a local inline SVG QR with an accessible name and no otpauth link or text', async () => {
+  it('[P2-S09-AC-1075] renders a local inline SVG QR with an accessible name and no otpauth link or text', async () => {
     const { container } = await toScan();
     const svg = container.querySelector('svg[role="img"]');
     expect(svg?.getAttribute('aria-label')).toBe(
@@ -111,13 +111,13 @@ describe('MfaEnrollmentWizard scan step', () => {
     expect(container.querySelector('img, iframe, script')).toBeNull();
   });
 
-  it('shows the manual key in groups of four, not translated', async () => {
+  it('[P2-S09-AC-1077] shows the manual key in groups of four, not translated', async () => {
     const { container } = await toScan();
     const code = container.querySelector('code[translate="no"]');
     expect(code?.textContent).toBe(GROUPED_KEY);
   });
 
-  it('copies the key and announces it politely', async () => {
+  it('[P2-S09-AC-1077] copies the key and announces it politely', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
@@ -130,7 +130,7 @@ describe('MfaEnrollmentWizard scan step', () => {
     expect(statusText(container)).toContain('Key copied');
   });
 
-  it('verifies with the version returned by enrollment and finishes with a fresh proof', async () => {
+  it('[P2-S09-AC-1074] [P2-S09-AC-1076] verifies with the version returned by enrollment and finishes with a fresh proof', async () => {
     const resource = factorsResource([factor(FACTOR_B)], '6', true);
     const { fetchImpl, container, h } = await toScan(
       json(200, resource, { etag: '"6"' }),
@@ -175,7 +175,7 @@ describe('MfaEnrollmentWizard scan step', () => {
     );
   });
 
-  it('clears the secret on pagehide and writes it nowhere', async () => {
+  it('[P2-S09-AC-1078] [P2-S09-AC-1079] clears the secret on pagehide and writes it nowhere', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const pushState = vi.spyOn(window.history, 'pushState');
     const replaceState = vi.spyOn(window.history, 'replaceState');
@@ -195,7 +195,7 @@ describe('MfaEnrollmentWizard scan step', () => {
     expect(document.title + document.body.innerHTML).not.toContain(OTPAUTH_URI);
   });
 
-  it('keeps the continue link on the list when entered without a return target', async () => {
+  it('[P2-S09-AC-1076] keeps the continue link on the list when entered without a return target', async () => {
     const resource = factorsResource([factor(FACTOR_B)], '6', true);
     const fetchImpl = stubFetch(
       json(201, enrollment('5')),
@@ -219,7 +219,7 @@ describe('MfaEnrollmentWizard scan step', () => {
 });
 
 describe('MfaEnrollmentWizard pending and reconciling rows', () => {
-  it('shows an unfinished setup with Start again and Cancel setup', async () => {
+  it('[P2-S09-AC-1073] shows an unfinished setup with Start again and Cancel setup', async () => {
     const fetchImpl = stubFetch(json(201, enrollment('5')));
     harness = mountWizard(fetchImpl, {
       factors: [factor(FACTOR_B, 'pending', 'Laptop')],
@@ -233,7 +233,7 @@ describe('MfaEnrollmentWizard pending and reconciling rows', () => {
     expect(container.querySelector('code[translate="no"]')).not.toBeNull();
   });
 
-  it('cancels a pending setup with reason user_request and no step-up confirmation', async () => {
+  it('[P2-S09-AC-1073] cancels a pending setup with reason user_request and no step-up confirmation', async () => {
     const fetchImpl = stubFetch(
       json(200, factorsResource([]), { etag: '"6"' }),
     );
@@ -248,7 +248,7 @@ describe('MfaEnrollmentWizard pending and reconciling rows', () => {
     expect(container.textContent).toContain('No authenticator is set up');
   });
 
-  it('shows Checking status with a refresh control that refetches the list', async () => {
+  it('[P2-S09-AC-1071] shows Checking status with a refresh control that refetches the list', async () => {
     const resource = factorsResource([factor(FACTOR_A)], '9');
     const fetchImpl = stubFetch(json(200, resource, { etag: '"9"' }));
     harness = mountWizard(fetchImpl, {

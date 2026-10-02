@@ -45,7 +45,7 @@ describe('CFG-05B-06 admin MFA reset proxy', () => {
     expect(new URL(upstream?.url ?? '').pathname).toBe(PATH);
   });
 
-  it('forwards only allowlisted headers and the exact body', async () => {
+  it('[P2-S09-AC-1112] forwards only allowlisted headers and the exact body', async () => {
     await post({
       headers: {
         cookie: 'wj_access=a; wj_csrf=c',

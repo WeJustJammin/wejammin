@@ -177,16 +177,22 @@ export const errorResponse = (
   result: ContentSchemaRegistryError,
   requestId: string,
 ): Response => {
-  const code = /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
-    ? result.code
-    : 'INTERNAL_ERROR';
+  // BE00 uses the single code DEPENDENCY_UNAVAILABLE for 502, 503 and 504; the
+  // finer internal reason codes never reach the wire.
+  const dependencyFailure =
+    result.status === 502 || result.status === 503 || result.status === 504;
+  const code = dependencyFailure
+    ? 'DEPENDENCY_UNAVAILABLE'
+    : /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
+      ? result.code
+      : 'INTERNAL_ERROR';
   const safeMessage =
     result.status >= 500
       ? code === 'INTERNAL_ERROR'
         ? 'An unexpected error occurred.'
-        : code === 'DEPENDENCY_DEADLINE_EXCEEDED'
+        : result.status === 504
           ? 'The CMS registry dependency exceeded its deadline.'
-          : code === 'DEPENDENCY_INVALID_RESPONSE'
+          : result.status === 502
             ? 'The CMS registry dependency returned an invalid response.'
             : 'The CMS registry dependency is temporarily unavailable.'
       : result.message;
@@ -198,10 +204,7 @@ export const errorResponse = (
   };
   context.header('cache-control', 'no-store');
   if (result.status === 502 || result.status === 503 || result.status === 504)
-    context.header(
-      CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER,
-      String(result.details?.retryable === true),
-    );
+    context.header(CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER, 'true');
   if (result.retryAfterSeconds !== undefined)
     context.header('retry-after', String(result.retryAfterSeconds));
   return context.json(body, result.status);

@@ -85,7 +85,7 @@ select is(pg_temp.s09d_outcome('p:activate'), 'OK', 'fixture: a protected type i
 
 -- The projection.
 select ok(pg_temp.s09e_evidence('a') = pg_temp.s09e_expected('a') and pg_temp.s09e_expected('a') is not null,
-  'an activated ordinary type resolves its bound seeded policy with the BE03b approval-evidence digest');
+  'an activated ordinary type resolves its bound seeded policy with the BE03b approval-evidence digest [P2-S09-AC-092] [P2-S09-AC-716]');
 select ok((select e->>'key' = 'editorial' and e->>'version' = '1' and e->>'riskClass' = 'ordinary'
     and (e->>'requiredDecisionCount')::int = 1 and e->'requiredCapabilities' = '["cms.reviewer"]'::jsonb
     and e->>'policyHash' ~ '^[a-f0-9]{64}$' and e->>'approvalEvidenceHash' ~ '^[a-f0-9]{64}$'
@@ -101,9 +101,9 @@ select ok(pg_temp.s09e_evidence('p') = pg_temp.s09e_expected('p') and pg_temp.s0
   and (pg_temp.s09e_evidence('p')->>'requiredDecisionCount')::int = 2,
   'a protected bound policy resolves with two decisions and the ordered specialist slot');
 select ok(pg_temp.s09e_evidence('b') is null or pg_temp.s09e_evidence('b') = 'null'::jsonb,
-  'a draft (never activated) version has no editorial policy evidence');
+  'a draft (never activated) version has no editorial policy evidence [P2-S09-AC-716]');
 select ok(platform_private.cms_editorial_workflow_policy_evidence(extensions.gen_random_uuid()) is null
-  and platform_private.cms_editorial_workflow_policy_evidence(null) is null, 'an absent or null version resolves to NULL');
+  and platform_private.cms_editorial_workflow_policy_evidence(null) is null, 'an absent or null version resolves to NULL [P2-S09-AC-716]');
 select ok(not (pg_temp.s09d_def('platform_private.cms_editorial_workflow_policy_evidence(uuid)') ilike '%select null::jsonb%'),
   'the fail-closed seam stub is replaced by a registry resolution');
 
@@ -171,22 +171,22 @@ select pg_temp.s09e_tamper('a', 'cms_content_type_versions', format(
   'update platform_private.cms_content_type_versions set workflow_key = %L where id = %L',
   'no.such.policy', pg_temp.s09d_id('a:version'))) as probe_key \gset
 select ok(pg_temp.s09e_closed(:'probe_key'::jsonb),
-  'an unregistered bound key resolves to NULL; entry create fails closed with DEPENDENCY_UNAVAILABLE and writes nothing');
+  'an unregistered bound key resolves to NULL; entry create fails closed with DEPENDENCY_UNAVAILABLE and writes nothing [P2-S09-AC-716]');
 select pg_temp.s09e_tamper('a', 'cms_content_type_versions', format(
   'update platform_private.cms_content_type_versions set workflow_version = 9 where id = %L',
   pg_temp.s09d_id('a:version'))) as probe_version \gset
 select ok(pg_temp.s09e_closed(:'probe_version'::jsonb),
-  'an unregistered bound version resolves to NULL; entry create fails closed');
+  'an unregistered bound version resolves to NULL; entry create fails closed [P2-S09-AC-716]');
 select pg_temp.s09e_tamper('a', 'cms_content_type_versions', format(
   'update platform_private.cms_content_type_versions set activation_workflow_policy_hash = %L where id = %L',
   repeat('0', 64), pg_temp.s09d_id('a:version'))) as probe_snapshot \gset
 select ok(pg_temp.s09e_closed(:'probe_snapshot'::jsonb),
-  'a frozen activation snapshot that differs from the registry member resolves to NULL; entry create fails closed');
+  'a frozen activation snapshot that differs from the registry member resolves to NULL; entry create fails closed [P2-S09-AC-716]');
 select pg_temp.s09e_tamper('a', 'cms_workflow_policies', format(
   'update platform_private.cms_workflow_policies set policy_hash = %L where policy_key = %L and policy_version = 1',
   repeat('0', 64), 'editorial')) as probe_row \gset
 select ok(pg_temp.s09e_closed(:'probe_row'::jsonb),
-  'a malformed (hash-mismatched) registry row resolves to NULL; entry create fails closed');
+  'a malformed (hash-mismatched) registry row resolves to NULL; entry create fails closed [P2-S09-AC-716]');
 select pg_temp.s09e_tamper('a', 'cms_workflow_policies', format(
   'insert into platform_private.cms_workflow_policies(owner_id, state, version, policy_key, policy_version, policy_hash, risk_class, required_decision_count, required_capabilities)
      select owner_id, state, version, %L, policy_version, policy_hash, risk_class, required_decision_count, required_capabilities

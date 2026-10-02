@@ -36,62 +36,62 @@ select ok((select count(*) = 1 from information_schema.columns
             where table_schema = 'identity' and table_name = 'auth_user_bindings'
               and column_name = 'mfa_version' and data_type = 'bigint' and is_nullable = 'NO'
               and column_default = '1'),
-  'auth_user_bindings.mfa_version is bigint NOT NULL DEFAULT 1');
+  'auth_user_bindings.mfa_version is bigint NOT NULL DEFAULT 1 [P2-S09-AC-902]');
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('identity.auth_user_bindings')
             and contype = 'c' and pg_get_constraintdef(oid) like '%mfa_version%> 0%'),
-  'mfa_version is CHECK > 0');
+  'mfa_version is CHECK > 0 [P2-S09-AC-902]');
 
 select is((select array_agg(column_name::text order by ordinal_position) from information_schema.columns
             where table_schema = 'identity' and table_name = 'mfa_factor_registry'),
   array['id', 'auth_user_id', 'method', 'provider_factor_id', 'friendly_name', 'state',
         'pending_expires_at', 'verified_at', 'last_used_at', 'removed_at', 'version',
         'created_at', 'updated_at'],
-  'mfa_factor_registry carries exactly the ledger columns (no secret, URI or code column)');
+  'mfa_factor_registry carries exactly the ledger columns (no secret, URI or code column) [P2-S09-AC-898]');
 select is((select array_agg(column_name::text order by ordinal_position) from information_schema.columns
             where table_schema = 'identity' and table_name = 'step_up_challenges'),
   array['id', 'auth_user_id', 'session_id', 'factor_id', 'provider_challenge_id', 'state',
         'expires_at', 'failed_attempt_count', 'consumed_at', 'failed_at', 'version',
         'created_at', 'updated_at'],
-  'step_up_challenges carries exactly the ledger columns (no code, no token)');
+  'step_up_challenges carries exactly the ledger columns (no code, no token) [P2-S09-AC-900]');
 select ok(not exists (select 1 from information_schema.columns
             where table_schema = 'identity' and table_name in ('mfa_factor_registry', 'step_up_challenges')
               and column_name ~* '(secret|otpauth|uri|code$|totp|token|key_material)'),
-  'neither table has a secret, URI, code or token column');
+  'neither table has a secret, URI, code or token column [P2-S09-AC-899] [P2-S09-AC-901]');
 
 -- Constraints and indexes the ledger names.
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('identity.mfa_factor_registry')
             and contype = 'u' and pg_get_constraintdef(oid) like '%provider_factor_id%'),
-  'provider_factor_id is UNIQUE');
+  'provider_factor_id is UNIQUE [P2-S09-AC-898]');
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('identity.mfa_factor_registry')
             and contype = 'f' and pg_get_constraintdef(oid) like '%auth.users%'
             and pg_get_constraintdef(oid) like '%RESTRICT%'),
   'auth_user_id REFERENCES auth.users ON DELETE RESTRICT');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'mfa_factor_registry'
             and indexdef ilike '%unique%(auth_user_id)%state = ''pending''%'),
-  'one pending factor per user (partial unique index)');
+  'one pending factor per user (partial unique index) [P2-S09-AC-899]');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'mfa_factor_registry'
             and indexdef ilike '%unique%lower(friendly_name)%pending%verified%reconciling%'),
-  'live friendly name unique per user case-insensitively (partial unique index)');
+  'live friendly name unique per user case-insensitively (partial unique index) [P2-S09-AC-736]');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'mfa_factor_registry'
             and indexdef ilike '%(auth_user_id, state)%'), 'index on (auth_user_id, state)');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'mfa_factor_registry'
             and indexdef ilike '%(state, pending_expires_at)%'), 'index on (state, pending_expires_at)');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'step_up_challenges'
             and indexdef ilike '%unique%(session_id, factor_id)%state = ''pending''%'),
-  'one pending challenge per (session, factor) (partial unique index)');
+  'one pending challenge per (session, factor) (partial unique index) [P2-S09-AC-901]');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'step_up_challenges'
             and indexdef ilike '%(auth_user_id, state)%'), 'challenge index on (auth_user_id, state)');
 select ok(exists (select 1 from pg_indexes where schemaname = 'identity' and tablename = 'step_up_challenges'
             and indexdef ilike '%(state, expires_at)%'), 'challenge index on (state, expires_at)');
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('identity.step_up_challenges')
             and contype = 'f' and pg_get_constraintdef(oid) like '%auth_session_index%'),
-  'challenge session_id REFERENCES identity.auth_session_index');
+  'challenge session_id REFERENCES identity.auth_session_index [P2-S09-AC-900]');
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('identity.step_up_challenges')
             and contype = 'f' and pg_get_constraintdef(oid) like '%mfa_factor_registry%'),
   'challenge factor_id REFERENCES identity.mfa_factor_registry');
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('identity.step_up_challenges')
             and contype = 'c' and pg_get_constraintdef(oid) like '%00:10:00%'),
-  'challenge expires_at <= created_at + 10 minutes');
+  'challenge expires_at <= created_at + 10 minutes [P2-S09-AC-900]');
 
 -- Row-level behavior, exercised with real rows made by the RPCs.
 select pg_temp.m_user(1);
@@ -100,31 +100,31 @@ select pg_temp.m_enroll(1, 'Phone');
 select is(pg_temp.m_out('en:s'), 'OK', 'fixture: a real enrollment reaches verified');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'sms', extensions.gen_random_uuid(), 'x', 'pending', clock_timestamp() + interval '5 minutes')$$),
-  'a non-totp method is refused');
+  'a non-totp method is refused [P2-S09-AC-898]');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), repeat('x', 81), 'pending', clock_timestamp() + interval '5 minutes')$$),
-  'an 81-character friendly name is refused');
+  'an 81-character friendly name is refused [P2-S09-AC-898]');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), '', 'pending', clock_timestamp() + interval '5 minutes')$$),
-  'an empty friendly name is refused');
+  'an empty friendly name is refused [P2-S09-AC-898]');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'x', 'pending', clock_timestamp() + interval '11 minutes')$$),
-  'a pending window longer than 10 minutes is refused');
+  'a pending window longer than 10 minutes is refused [P2-S09-AC-898]');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'x', 'pending')$$),
-  'a pending row without pending_expires_at is refused');
+  'a pending row without pending_expires_at is refused [P2-S09-AC-898]');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'x', 'verified')$$),
-  'a verified row without verified_at is refused');
+  'a verified row without verified_at is refused [P2-S09-AC-898]');
 select ok(pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'ok one', 'pending', clock_timestamp() + interval '5 minutes')$$),
   'a well-formed pending row is accepted (precondition for the uniqueness checks)');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'ok two', 'pending', clock_timestamp() + interval '5 minutes')$$),
-  'a second pending row for the same user is refused');
+  'a second pending row for the same user is refused [P2-S09-AC-899]');
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, verified_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'OK ONE', 'verified', clock_timestamp())$$),
-  'a live friendly name collides case-insensitively');
+  'a live friendly name collides case-insensitively [P2-S09-AC-736]');
 select ok(not pg_temp.m_try(format($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, verified_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', %L, 'dup provider', 'verified', clock_timestamp())$$,
   pg_temp.m_pfid(1))),
@@ -139,22 +139,22 @@ select ok(not pg_temp.m_try(format($$update identity.mfa_factor_registry set fri
   'friendly_name is immutable');
 select ok(not pg_temp.m_try(format($$update identity.mfa_factor_registry set state = 'pending', pending_expires_at = clock_timestamp() + interval '1 minute', verified_at = null, version = version + 1 where id = %L$$,
   pg_temp.m_fid(1))),
-  'verified -> pending is not a transition');
+  'verified -> pending is not a transition [P2-S09-AC-904]');
 select ok(not pg_temp.m_try(format($$update identity.mfa_factor_registry set state = 'removed', removed_at = clock_timestamp(), version = version + 1 where id = %L$$,
   pg_temp.m_fid(1))),
-  'verified -> removed must go through reconciling');
+  'verified -> removed must go through reconciling [P2-S09-AC-904]');
 select ok(not pg_temp.m_try(format($$update identity.mfa_factor_registry set last_used_at = clock_timestamp() where id = %L$$,
   pg_temp.m_fid(1))),
   'an update that does not advance the row version is refused');
 select ok(pg_temp.m_try(format($$update identity.mfa_factor_registry set state = 'reconciling', version = version + 1 where id = %L$$,
   pg_temp.m_fid(1))),
-  'verified -> reconciling is a transition');
+  'verified -> reconciling is a transition [P2-S09-AC-904]');
 select ok(pg_temp.m_try(format($$update identity.mfa_factor_registry set state = 'removed', removed_at = clock_timestamp(), version = version + 1 where id = %L$$,
   pg_temp.m_fid(1))),
-  'reconciling -> removed is a transition');
+  'reconciling -> removed is a transition [P2-S09-AC-904]');
 select ok(not pg_temp.m_try(format($$update identity.mfa_factor_registry set state = 'verified', verified_at = clock_timestamp(), removed_at = null, version = version + 1 where id = %L$$,
   pg_temp.m_fid(1))),
-  'removed is terminal');
+  'removed is terminal [P2-S09-AC-904]');
 select ok(not pg_temp.m_try(format($$delete from identity.mfa_factor_registry where id = %L$$,
   pg_temp.m_fid(1))),
   'a registry row cannot be deleted outside the retention sweep');
@@ -172,23 +172,23 @@ select is(pg_temp.m_out('ch:f'), 'OK', 'fixture: a real challenge is created');
 select ok(not pg_temp.m_try(format($$insert into identity.step_up_challenges(auth_user_id, session_id, factor_id, provider_challenge_id, state, expires_at)
   values (%L, %L, %L, extensions.gen_random_uuid(), 'pending', clock_timestamp() + interval '5 minutes')$$,
   pg_temp.m_uid(2), pg_temp.m_sid(2), pg_temp.m_one(format($q$select id::text from identity.mfa_factor_registry where auth_user_id = %L and friendly_name = 'Laptop'$q$, pg_temp.m_uid(2)))::uuid)),
-  'a second pending challenge for the same session and factor is refused');
+  'a second pending challenge for the same session and factor is refused [P2-S09-AC-901]');
 select ok(not pg_temp.m_try(format($$insert into identity.step_up_challenges(auth_user_id, session_id, factor_id, provider_challenge_id, state, expires_at)
   values (%L, %L, %L, extensions.gen_random_uuid(), 'expired', clock_timestamp() + interval '11 minutes')$$,
   pg_temp.m_uid(2), pg_temp.m_sid(2), pg_temp.m_one(format($q$select id::text from identity.mfa_factor_registry where auth_user_id = %L and friendly_name = 'Laptop'$q$, pg_temp.m_uid(2)))::uuid)),
-  'a challenge window longer than 10 minutes is refused');
+  'a challenge window longer than 10 minutes is refused [P2-S09-AC-900]');
 select ok(not pg_temp.m_try(format($$update identity.step_up_challenges set session_id = %L, version = version + 1$$, pg_temp.m_sid(1))),
-  'challenge session binding is immutable');
+  'challenge session binding is immutable [P2-S09-AC-900]');
 select ok(not pg_temp.m_try($$update identity.step_up_challenges set provider_challenge_id = extensions.gen_random_uuid(), version = version + 1$$),
   'provider_challenge_id is immutable');
 select ok(pg_temp.m_try($$update identity.step_up_challenges set failed_attempt_count = failed_attempt_count + 1, version = version + 1$$),
   'a wrong code may increment failed_attempt_count while pending');
 select ok(not pg_temp.m_try($$update identity.step_up_challenges set failed_attempt_count = -1, version = version + 1$$),
-  'failed_attempt_count cannot go negative');
+  'failed_attempt_count cannot go negative [P2-S09-AC-900]');
 select ok(pg_temp.m_try($$update identity.step_up_challenges set state = 'consumed', consumed_at = clock_timestamp(), version = version + 1$$),
-  'pending -> consumed is a transition');
+  'pending -> consumed is a transition [P2-S09-AC-905]');
 select ok(not pg_temp.m_try($$update identity.step_up_challenges set state = 'pending', consumed_at = null, version = version + 1$$),
-  'consumed is terminal');
+  'consumed is terminal [P2-S09-AC-905]');
 select ok(not pg_temp.m_try($$delete from identity.step_up_challenges$$),
   'a challenge row cannot be deleted outside the retention sweep');
 
@@ -227,10 +227,10 @@ select ok(
         or has_function_privilege('anon', p.oid, 'execute'))),
   'no private MFA/step-up helper is executable by any API role');
 select ok(to_regprocedure('identity.rpc_admin_reset_mfa_factors(uuid, uuid, uuid)') is not null,
-  'identity.rpc_admin_reset_mfa_factors(reset_id, target_person_id, operator_person_id) exists');
+  'identity.rpc_admin_reset_mfa_factors(reset_id, target_person_id, operator_person_id) exists [P2-S09-AC-892]');
 select ok(has_function_privilege('postgres', to_regprocedure('identity.rpc_admin_reset_mfa_factors(uuid, uuid, uuid)'), 'execute')
   and not has_function_privilege('service_role', to_regprocedure('identity.rpc_admin_reset_mfa_factors(uuid, uuid, uuid)'), 'execute'),
-  'the identity reset RPC is reachable only through the admin wrapper, never by a client role directly');
+  'the identity reset RPC is reachable only through the admin wrapper, never by a client role directly [P2-S09-AC-892]');
 
 select * from finish();
 

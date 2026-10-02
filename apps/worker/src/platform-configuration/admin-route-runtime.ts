@@ -5,6 +5,7 @@ import {
 
 import type { WorkerApp, WorkerContext, WorkerDependencies } from '../index';
 import { authError, responseForAuthError } from '../authentication/boundary';
+import { stepUpRequiredError } from '../authentication/step-up';
 import type { AuthenticationResult } from '../authentication/types';
 import type { Cfg05b05AuditDiagnosticRequest } from '@wejammin/contracts';
 import { registerAdminCapabilitySnapshotRoute } from './admin-capability-snapshot-route';
@@ -107,14 +108,7 @@ export const createAdminWorkspaceRouteRuntime = (
       const admitted = await admit(context, dependencies, operationId, signal);
       if ('response' in admitted) return admitted.response;
       if (!isConfigurationStepUpFresh(admitted.session))
-        return responseForAuthError(
-          context,
-          authError(
-            401,
-            'STEP_UP_REQUIRED',
-            'Recent verification is required.',
-          ),
-        );
+        return responseForAuthError(context, stepUpRequiredError());
       const csrf = await csrfIfCookie(context);
       if (!csrf.ok) return responseForAuthError(context, csrf);
       const rate = await enforceConfigurationRate(

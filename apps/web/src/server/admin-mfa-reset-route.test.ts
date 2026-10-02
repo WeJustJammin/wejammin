@@ -34,7 +34,7 @@ describe('/app/platform-configuration-admin/mfa-reset page', () => {
     expect(source).toContain("kind === 'unauthenticated'");
   });
 
-  it('answers every actor without the capability with a bare 404, never the form', () => {
+  it('[P2-S09-AC-1108] answers every actor without the capability with a bare 404, never the form', () => {
     expect(source).toMatch(/new Response\('Not found',\s*\{\s*status:\s*404/u);
     expect(source).toContain("kind === 'not_found'");
     expect(source).not.toContain('forbiddenHidden');

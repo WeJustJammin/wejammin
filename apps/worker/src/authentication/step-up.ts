@@ -9,7 +9,9 @@ export const STEP_UP_FRESHNESS_SECONDS = 600;
 export const STEP_UP_FORWARD_TOLERANCE_SECONDS = 30;
 
 /** Enabled MFA method ids. `allowedMethods` in every 401 echoes this list. */
-export const MFA_METHOD_REGISTRY = ['totp'] as const;
+export const MFA_METHOD_REGISTRY: readonly ['totp'] = Object.freeze([
+  'totp',
+] as const);
 
 /**
  * A proof is fresh when `-30 s <= now - proofAt <= 600 s`, so a just-minted

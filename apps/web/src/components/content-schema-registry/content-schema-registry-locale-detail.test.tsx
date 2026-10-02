@@ -24,7 +24,7 @@ const render = (overrides: Record<string, unknown>): string =>
   );
 
 describe('protected detail locale configuration', () => {
-  it('lists the languages, source, default and each fallback order', () => {
+  it('[P2-S09-AC-1239] [P2-S09-AC-1238] [P2-S09-AC-1232] lists the languages, source, default and each fallback order', () => {
     const markup = render({
       supportedLocales: ['en-US', 'fr', 'fr-CA'],
       fallbackChains: { fr: ['en-US'], 'fr-CA': ['fr', 'en-US'] },
@@ -53,7 +53,7 @@ describe('protected detail locale configuration', () => {
 });
 
 describe('review frozen evidence locale configuration', () => {
-  it('shows the frozen locale configuration hash beside the definition hash', async () => {
+  it('[P2-S09-AC-1238] [P2-S09-AC-1232] shows the frozen locale configuration hash beside the definition hash', async () => {
     const { default: ReviewFacts } =
       await import('./ContentSchemaRegistryReviewFacts');
     const { reviewResource } =

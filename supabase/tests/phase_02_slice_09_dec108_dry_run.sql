@@ -23,14 +23,14 @@ select is(pg_temp.s09d_resp('a:create')->'dryRunId', 'null'::jsonb,
   'a fresh draft resource reports dryRunId null until a real attempt is bound');
 create temp table s09d_before on commit drop as select pg_temp.s09d_fingerprint() as fingerprint;
 select pg_temp.s09d_dry_run('a', 'owner', null, null, 's09d-dry-replay-0001');
-select is(pg_temp.s09d_outcome('a:dryRun'), 'OK', 'CMS-03A-10 accepts a dry-run for a draft candidate');
+select is(pg_temp.s09d_outcome('a:dryRun'), 'OK', 'CMS-03A-10 accepts a dry-run for a draft candidate [P2-S09-AC-342]');
 select ok((select r->>'resourceKind' = 'schema_dry_run' and r->>'state' = 'queued'
     and r->>'contentTypeVersionId' = pg_temp.s09d_id('a:version')::text
     and r->>'classification' = 'additive' and r->>'migrationPlanId' is not null
     and r->>'jobId' is not null and r->>'attemptId' is not null
     and r->'transformKey' = 'null'::jsonb and r->'failureCode' = 'null'::jsonb
     from (select pg_temp.s09d_resp('a:dryRun') r) s),
-  'the 202 SchemaDryRunResource is queued with a server-derived classification, plan, job and attempt');
+  'the 202 SchemaDryRunResource is queued with a server-derived classification, plan, job and attempt [P2-S09-AC-330]');
 select ok((select r->'result' = 'null'::jsonb and r->'sourceCount' = 'null'::jsonb
     and r->'targetCount' = 'null'::jsonb and r->'rowErrorCount' = 'null'::jsonb
     and r->'sourceHash' = 'null'::jsonb and r->'targetHash' = 'null'::jsonb
@@ -48,7 +48,7 @@ select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
           and aggregate_id = %4$L and event_type = 'job.requested') = 1)::text$q$,
   pg_temp.s09d_id('a:dryRun'), pg_temp.s09d_id('a:version'), pg_temp.s09d_id('a:plan'),
   pg_temp.s09d_id('a:job')))::boolean, false),
-  'report, plan and the BE00 job commit together; the report is unsealed and carries no final evidence');
+  'report, plan and the BE00 job commit together; the report is unsealed and carries no final evidence [P2-S09-AC-348]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'dry_run_id', pg_temp.s09d_id('a:version')),
   pg_temp.s09d_id('a:dryRun')::text,
   'the report id is bound onto the still-draft candidate');
@@ -60,16 +60,16 @@ select ok((select first is not null and pg_temp.s09d_rpc('a:replay', 'platform_a
     jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
       'expectedVersion', '1', 'transformKey', null, 'transformVersion', null,
       'idempotencyKey', 's09d-dry-replay-0001')) = first from s09d_replay),
-  'a same-key retry returns the same report, plan and job');
+  'a same-key retry returns the same report, plan and job [P2-S09-AC-345]');
 select is(pg_temp.s09d_scalar(format($q$select count(*)::text from platform_private.cms_schema_dry_run_reports
     where target_version_id = %L and state in ('queued', 'running', 'completed', 'failed')$q$,
-    pg_temp.s09d_id('a:version'))), '1', 'the same-key retry created no second attempt');
+    pg_temp.s09d_id('a:version'))), '1', 'the same-key retry created no second attempt [P2-S09-AC-345]');
 
 select pg_temp.s09d_add_relation('a');
 select pg_temp.s09d_dry_run('a');
 select ok(pg_temp.s09d_outcome('a:dryRun') = 'OK'
   and (select (r->>'id') <> (first->>'id') from (select pg_temp.s09d_resp('a:dryRun') r, first from s09d_replay) s),
-  'changed candidate evidence starts a new explicit attempt with its own report id');
+  'changed candidate evidence starts a new explicit attempt with its own report id [P2-S09-AC-346] [P2-S09-AC-673]');
 select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
     (select count(*) from platform_private.cms_schema_dry_run_reports where target_version_id = %1$L) = 2
     and (select count(distinct attempt_no) = count(*) from platform_private.cms_schema_dry_run_reports where target_version_id = %1$L)
@@ -77,7 +77,7 @@ select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
     and (select count(*) from platform_private.cms_schema_migration_plans where to_version_id = %1$L and superseded_at is null) = 1
     and (select count(*) from platform_private.cms_schema_migration_plans where to_version_id = %1$L and superseded_at is not null) >= 1)::text$q$,
   pg_temp.s09d_id('a:version'), (select (first->>'id')::uuid from s09d_replay)))::boolean, false),
-  'earlier immutable attempts are retained with distinct attempt numbers; exactly one live plan remains and earlier ones are superseded');
+  'earlier immutable attempts are retained with distinct attempt numbers; exactly one live plan remains and earlier ones are superseded [P2-S09-AC-346] [P2-S09-AC-347] [P2-S09-AC-673]');
 
 select ok(pg_temp.s09d_outcome('a:dryRun') = 'OK'
   and coalesce(platform_private.cms_activation_references_valid(pg_temp.s09d_id('a:version')), false)
@@ -94,7 +94,7 @@ select pg_temp.s09d_rpc('a:extra:' || k, 'platform_api.cms_start_schema_dry_run'
 from (values ('sourceCount', '3'::jsonb), ('sourceHash', to_jsonb(repeat('a', 64))),
   ('classification', '"breaking"'::jsonb), ('report', '{"result":"pass"}'::jsonb)) as t(k, v);
 select is(pg_temp.s09d_outcome('a:extra:' || k), 'INVALID_REQUEST',
-  'the caller-supplied "' || k || '" is refused (the server derives all evidence)')
+  'the caller-supplied "' || k || '" is refused (the server derives all evidence) [P2-S09-AC-344]')
 from unnest(array['sourceCount', 'sourceHash', 'classification', 'report']) k;
 
 select pg_temp.s09d_rpc('a:pair1', 'platform_api.cms_start_schema_dry_run', 'owner',
@@ -108,7 +108,7 @@ select pg_temp.s09d_rpc('a:pair2', 'platform_api.cms_start_schema_dry_run', 'own
     'expectedVersion', pg_temp.s09d_version('a'), 'transformKey', 'cms.schema.migrate', 'transformVersion', '1',
     'idempotencyKey', 's09d-dry-pair-0002'));
 select is(pg_temp.s09d_outcome('a:pair2'), 'VALIDATION_FAILED',
-  'a transform pair on an additive candidate contradicts the server classification (422)');
+  'a transform pair on an additive candidate contradicts the server classification (422) [P2-S09-AC-322]');
 
 -- Refusals (atomic).
 create temp table s09d_refusal_baseline on commit drop as select pg_temp.s09d_fingerprint(false) as fingerprint;
@@ -120,12 +120,12 @@ select pg_temp.s09d_rpc('a:hidden', 'platform_api.cms_start_schema_dry_run', 'ot
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'transformKey', null, 'transformVersion', null,
     'idempotencyKey', 's09d-dry-hidden-0001'));
-select is(pg_temp.s09d_outcome('a:hidden'), 'NOT_FOUND', 'another organization''s candidate is concealed as 404');
+select is(pg_temp.s09d_outcome('a:hidden'), 'NOT_FOUND', 'another organization''s candidate is concealed as 404 [P2-S09-AC-343]');
 select pg_temp.s09d_rpc('a:denied', 'platform_api.cms_start_schema_dry_run', 'rev1',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'transformKey', null, 'transformVersion', null,
     'idempotencyKey', 's09d-dry-denied-0001'), false, jsonb_build_object('actingPartyId', pg_temp.s09d_id('ownerOrg')));
-select is(pg_temp.s09d_outcome('a:denied'), 'FORBIDDEN', 'a human without cms.schema_designer is a 403 FORBIDDEN');
+select is(pg_temp.s09d_outcome('a:denied'), 'FORBIDDEN', 'a human without cms.schema_designer is a 403 FORBIDDEN [P2-S09-AC-342]');
 select pg_temp.s09d_rpc('a:nokey', 'platform_api.cms_start_schema_dry_run', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'transformKey', null, 'transformVersion', null));
@@ -142,7 +142,7 @@ select pg_temp.s09d_rpc('r:redo', 'platform_api.cms_start_schema_dry_run', 'owne
     'expectedVersion', pg_temp.s09d_version('r'), 'transformKey', null, 'transformVersion', null,
     'idempotencyKey', 's09d-dry-locked-0001'));
 select ok(pg_temp.s09d_outcome('r:submit') = 'OK' and pg_temp.s09d_outcome('r:redo') = 'CONFLICT',
-  'a candidate already frozen in review is not still-draft: a new attempt is a 409 CONFLICT');
+  'a candidate already frozen in review is not still-draft: a new attempt is a 409 CONFLICT [P2-S09-AC-343]');
 
 -- The worker seals the scan; zero source is proven, never assumed.
 select ok((select r->>'state' = 'queued' and r->'result' = 'null'::jsonb
@@ -166,7 +166,7 @@ select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
     and (select count(*) from platform_private.cms_schema_dry_run_row_evidence where report_id = %1$L) = 0
     and (select state from platform_private.cms_schema_migration_plans where id = %2$L) = 'ready')::text$q$,
   pg_temp.s09d_id('z:dryRun'), pg_temp.s09d_id('z:plan')))::boolean, false),
-  'the sealed pass carries zero counts and hashes, no per-row evidence, and advances the plan to ready');
+  'the sealed pass carries zero counts and hashes, no per-row evidence, and advances the plan to ready [P2-S09-AC-087]');
 
 -- Server classification of a successor: a newly required field is conditional and
 -- needs one registered transform pair; the pair is refused on a no-transform
@@ -184,15 +184,15 @@ select pg_temp.s09d_rpc('kb:field', 'platform_api.cms_add_field_definition', 'ow
     'idempotencyKey', pg_temp.s09d_idem('kb', 'field')));
 select pg_temp.s09d_dry_run('kb', 'owner', null, null, 's09d-dry-class-none');
 select is(pg_temp.s09d_outcome('kb:dryRun'), 'VALIDATION_FAILED',
-  'a conditional candidate without a transform pair is refused (422)');
+  'a conditional candidate without a transform pair is refused (422) [P2-S09-AC-322] [P2-S09-AC-683]');
 select pg_temp.s09d_dry_run('kb', 'owner', 'cms.unregistered', '1', 's09d-dry-class-unregistered');
-select is(pg_temp.s09d_outcome('kb:dryRun'), 'VALIDATION_FAILED', 'an unregistered transform pair is refused (422)');
+select is(pg_temp.s09d_outcome('kb:dryRun'), 'VALIDATION_FAILED', 'an unregistered transform pair is refused (422) [P2-S09-AC-323] [P2-S09-AC-683]');
 select pg_temp.s09d_dry_run('kb', 'owner', 'identity.revalidate', '1', 's09d-dry-class-registered');
 select ok(pg_temp.s09d_outcome('kb:dryRun') = 'OK'
   and (select r->>'classification' = 'conditional' and r->>'transformKey' = 'identity.revalidate'
         and r->>'transformVersion' = '1' from (select pg_temp.s09d_resp('kb:dryRun') r) s)
   and pg_temp.s09d_read('cms_content_type_versions', 'compatibility', pg_temp.s09d_id('kb:version')) = 'conditional',
-  'the server derives conditional and a registered pair is admitted onto the attempt and the candidate');
+  'the server derives conditional and a registered pair is admitted onto the attempt and the candidate [P2-S09-AC-330]');
 
 select ok(pg_temp.s09d_service_only('platform_api.cms_start_schema_dry_run(jsonb)')
   and to_regprocedure('platform_private.cms_start_schema_dry_run(jsonb)') is not null

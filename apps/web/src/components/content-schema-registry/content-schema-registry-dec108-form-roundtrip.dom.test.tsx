@@ -69,7 +69,7 @@ const submitForm = async (
 };
 
 describe('[DEC-108] rendered form -> facade -> upstream', () => {
-  it('CMS-03A-09: successor keeps the locale configuration (both null) with the form idempotency key and ETag', async () => {
+  it('[P2-S09-AC-979] CMS-03A-09: successor keeps the locale configuration (both null) with the form idempotency key and ETag', async () => {
     const doc = render(
       activationPreparation({ permittedNextActions: ['create_successor'] }),
     );
@@ -92,7 +92,7 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
     expect(new URL(forwarded?.url ?? '').pathname).toMatch(/\/successors$/u);
   });
 
-  it('CMS-03A-10: blank transform fields serialize as an explicit null pair', async () => {
+  it('[P2-S09-AC-980] CMS-03A-10: blank transform fields serialize as an explicit null pair', async () => {
     const { response, forwardedBody } = await submitForm(
       render(startDryRunPreparation),
       'CMS-03A-10',
@@ -107,7 +107,7 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
     });
   });
 
-  it('CMS-03A-10: a filled transform pair is forwarded verbatim', async () => {
+  it('[P2-S09-AC-980] CMS-03A-10: a filled transform pair is forwarded verbatim', async () => {
     const { forwardedBody } = await submitForm(
       render(startDryRunPreparation),
       'CMS-03A-10',
@@ -127,7 +127,7 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
     });
   });
 
-  it('CMS-03A-10: a half-filled pair is refused locally with 422 and never forwarded', async () => {
+  it('[P2-S09-AC-980] CMS-03A-10: a half-filled pair is refused locally with 422 and never forwarded', async () => {
     const { response, fetch } = await submitForm(
       render(startDryRunPreparation),
       'CMS-03A-10',
@@ -138,7 +138,7 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('CMS-03A-11: submit-review sends the prefilled sealed dry-run id', async () => {
+  it('[P2-S09-AC-968] CMS-03A-11: submit-review sends the prefilled sealed dry-run id', async () => {
     const { response, forwardedBody, forwarded } = await submitForm(
       render(passedDryRunPreparation),
       'CMS-03A-11',
@@ -153,7 +153,7 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
     expect(forwarded?.headers.get('if-match')).toBe('"4"');
   });
 
-  it('CMS-03A-04: activation sends the approve-decision ids prefilled from the approved review', async () => {
+  it('[P2-S09-AC-968] [P2-S09-AC-973] CMS-03A-04: activation sends the approve-decision ids prefilled from the approved review', async () => {
     // G8: approvalIds are the approve-decision ids of exactly one approved review.
     const doc = render(approvedReviewPreparation, {
       initialReview: reviewSuccess(approvedProtectedReview()),

@@ -122,6 +122,7 @@ export const fakePersistence = (
     settleEnrollmentVerify: vi.fn(async () =>
       ok(snapshotOf([verifiedRow(), pendingRow({ state: 'verified' })], '6')),
     ),
+    recordVerificationFailure: vi.fn(async () => ok(null)),
     markFactorReconciling: vi.fn(async () => ok(null)),
     beginRemoval: vi.fn(async () =>
       ok({ providerFactorId: PROVIDER_FACTOR_ID, replay: null }),

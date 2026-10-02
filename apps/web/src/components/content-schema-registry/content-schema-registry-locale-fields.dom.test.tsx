@@ -79,7 +79,7 @@ const config = (view: Mounted) => ({
 });
 
 describe('supported languages tag list', () => {
-  it('renders the persistent label, help, input attributes and counter', () => {
+  it('[P2-S09-AC-1236] [P2-S09-AC-1207] [P2-S09-AC-1210] renders the persistent label, help, input attributes and counter', () => {
     const view = render();
     const input = inputByLabel(view.container, 'Add a language tag');
     expect(input.getAttribute('autocomplete')).toBe('off');
@@ -96,7 +96,7 @@ describe('supported languages tag list', () => {
     );
   });
 
-  it('adds a canonical tag to a native list with a uniquely named Remove button', () => {
+  it('[P2-S09-AC-1209] [P2-S09-AC-1234] adds a canonical tag to a native list with a uniquely named Remove button', () => {
     const view = render();
     addTags(view, 'en-US', 'fr');
     const items = view.container.querySelectorAll('ul[data-locale-tags] > li');
@@ -108,7 +108,7 @@ describe('supported languages tag list', () => {
     expect(config(view).supported).toEqual(['en-US', 'fr']);
   });
 
-  it('activates Add on Enter and never submits the form', () => {
+  it('[P2-S09-AC-1208] activates Add on Enter and never submits the form', () => {
     const view = render();
     let submitted = false;
     view.form.addEventListener('submit', () => {
@@ -122,7 +122,7 @@ describe('supported languages tag list', () => {
     expect(config(view).supported).toEqual(['de']);
   });
 
-  it('offers the canonical spelling without silently correcting', () => {
+  it('[P2-S09-AC-1211] offers the canonical spelling without silently correcting', () => {
     const view = render();
     addTags(view, 'EN-us');
     expect(view.container.textContent).toContain(CANONICAL);
@@ -136,7 +136,7 @@ describe('supported languages tag list', () => {
     expect(config(view).supported).toEqual(['en-US']);
   });
 
-  it('shows the exact unique message for a repeat', () => {
+  it('[P2-S09-AC-1212] shows the exact unique message for a repeat', () => {
     const view = render();
     addTags(view, 'en', 'en');
     expect(view.container.textContent).toContain(
@@ -145,7 +145,7 @@ describe('supported languages tag list', () => {
     expect(config(view).supported).toEqual(['en']);
   });
 
-  it('disables Add with its reason at 32 languages', () => {
+  it('[P2-S09-AC-1210] disables Add with its reason at 32 languages', () => {
     const view = render();
     const tags = Array.from(
       { length: 32 },
@@ -158,7 +158,7 @@ describe('supported languages tag list', () => {
     expect(buttonNamed(view.container, 'Add').disabled).toBe(true);
   });
 
-  it('moves focus to the Add input after the last Remove', () => {
+  it('[P2-S09-AC-1234] moves focus to the Add input after the last Remove', () => {
     const view = render();
     addTags(view, 'en');
     click(buttonNamed(view.container, 'Remove en from supported languages'));
@@ -177,7 +177,7 @@ describe('source, default and fallback groups', () => {
     return view;
   };
 
-  it('lists only supported tags in the source and default selects', () => {
+  it('[P2-S09-AC-1214] [P2-S09-AC-1215] lists only supported tags in the source and default selects', () => {
     const view = populated();
     const options = [
       ...select(view, 'Source language').querySelectorAll('option'),
@@ -191,7 +191,7 @@ describe('source, default and fallback groups', () => {
     expect(hiddenValue(view.form, 'sourceLocale')).toBe('en-US');
   });
 
-  it('renders one fieldset per non-default language with a fixed final default', () => {
+  it('[P2-S09-AC-1236] [P2-S09-AC-1217] renders one fieldset per non-default language with a fixed final default', () => {
     const view = populated();
     expect(
       view.container.querySelectorAll('fieldset[data-locale-chain]'),
@@ -204,11 +204,14 @@ describe('source, default and fallback groups', () => {
     expect(group.querySelector('li button')).toBeNull();
   });
 
-  it('adds, orders and removes intermediate entries with named buttons', () => {
+  it('[P2-S09-AC-1218] [P2-S09-AC-1219] [P2-S09-AC-1234] adds, orders and removes intermediate entries with named buttons', () => {
     const view = populated();
     addTags(view, 'es');
     const group = fieldsetFor(view, 'fr-CA');
     const picker = group.querySelector('select') as HTMLSelectElement;
+    expect(group.querySelector(`label[for="${picker.id}"]`)?.textContent).toBe(
+      'Add a fallback language',
+    );
     expect(
       [...picker.querySelectorAll('option')].map((option) => option.value),
     ).toEqual(['', 'fr', 'es']);
@@ -257,7 +260,7 @@ describe('source, default and fallback groups', () => {
     expect(config(view).chains['fr-CA']).toEqual(['es', 'en-US']);
   });
 
-  it('removes a language from every group in one announced action', () => {
+  it('[P2-S09-AC-1224] removes a language from every group in one announced action', () => {
     const view = populated();
     const group = fieldsetFor(view, 'fr-CA');
     choose(group.querySelector('select') as HTMLSelectElement, 'fr');
@@ -267,7 +270,7 @@ describe('source, default and fallback groups', () => {
     expect(config(view).chains).toEqual({ 'fr-CA': ['en-US'] });
   });
 
-  it('re-renders the groups when the default changes and keeps valid entries', () => {
+  it('[P2-S09-AC-1216] re-renders the groups when the default changes and keeps valid entries', () => {
     const view = populated();
     choose(select(view, 'Default language'), 'fr');
     expect(() => fieldsetFor(view, 'fr')).toThrow();
@@ -282,13 +285,13 @@ describe('source, default and fallback groups', () => {
 });
 
 describe('validation and review', () => {
-  it('shows nothing before the first blur or submit', () => {
+  it('[P2-S09-AC-1227] shows nothing before the first blur or submit', () => {
     const view = render();
     expect(view.container.querySelector('[data-locale-summary]')).toBeNull();
     expect(view.container.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('blocks submit, lists exact messages with paths and focuses the summary', () => {
+  it('[P2-S09-AC-1213] [P2-S09-AC-1228] blocks submit, lists exact messages with paths and focuses the summary', () => {
     const view = render();
     const allowed = submit(view.form);
     expect(allowed).toBe(false);
@@ -311,7 +314,25 @@ describe('validation and review', () => {
     expect(links.every((href) => href?.startsWith('#'))).toBe(true);
   });
 
-  it('marks the source and default selects invalid after a blur without a value', () => {
+  it('[P2-S09-AC-1228] moves focus to the control each summary link names when it is activated', () => {
+    const view = render();
+    submit(view.form);
+    const summary = view.container.querySelector(
+      '[data-locale-summary]',
+    ) as HTMLElement;
+    const links = [...summary.querySelectorAll<HTMLAnchorElement>('a')];
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      const target = view.container.querySelector<HTMLElement>(
+        `#${(link.getAttribute('href') ?? '').slice(1)}`,
+      );
+      expect(target).not.toBeNull();
+      click(link);
+      expect(document.activeElement).toBe(target);
+    }
+  });
+
+  it('[P2-S09-AC-1214] [P2-S09-AC-1215] marks the source and default selects invalid after a blur without a value', () => {
     const view = render();
     addTags(view, 'en');
     blur(select(view, 'Source language'));
@@ -323,7 +344,7 @@ describe('validation and review', () => {
     );
   });
 
-  it('names the languages on a cycle and focuses the first group involved', () => {
+  it('[P2-S09-AC-1221] names the languages on a cycle and focuses the first group involved', () => {
     const view = render();
     addTags(view, 'en', 'aa', 'bb');
     choose(select(view, 'Source language'), 'en');
@@ -357,7 +378,7 @@ describe('validation and review', () => {
     expect(hiddenValue(view.form, 'defaultLocale')).toBe('en-US');
   });
 
-  it('lists added languages and the breaking-change sentence in the review', () => {
+  it('[P2-S09-AC-1225] [P2-S09-AC-1226] lists added languages and the breaking-change sentence in the review', () => {
     const view = render();
     addTags(view, 'en-US', 'fr');
     const review = view.container.querySelector(
@@ -371,7 +392,7 @@ describe('validation and review', () => {
     );
   });
 
-  it('makes every locale control read-only while pending', () => {
+  it('[P2-S09-AC-1229] makes every locale control read-only while pending', () => {
     mounted = mount(
       React.createElement(ContentSchemaRegistryCreateForm, {
         action: '/app/cms-content-modeling',

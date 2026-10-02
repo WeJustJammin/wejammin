@@ -9,7 +9,7 @@ import {
 
 /** FE01 one-time code semantics: strip spaces and hyphens, then six ASCII digits. */
 describe('one-time code input semantics', () => {
-  it('tolerates a pasted "123 456" within maxlength 12', () => {
+  it('[P2-S09-AC-1086] tolerates a pasted "123 456" within maxlength 12', () => {
     expect(ONE_TIME_CODE_MAX_LENGTH).toBe(12);
     expect('123 456'.length).toBeLessThanOrEqual(ONE_TIME_CODE_MAX_LENGTH);
   });
@@ -39,14 +39,17 @@ describe('one-time code input semantics', () => {
     '12345a',
     '１２３４５６',
     '12.456',
-  ])('rejects %j with the exact invalid copy and no request value', (raw) => {
-    expect(validateOneTimeCode(raw)).toEqual({
-      ok: false,
-      message: 'Enter the 6-digit code from your authenticator app.',
-    });
-  });
+  ])(
+    '[P2-S09-AC-1087] rejects %j with the exact invalid copy and no request value',
+    (raw) => {
+      expect(validateOneTimeCode(raw)).toEqual({
+        ok: false,
+        message: 'Enter the 6-digit code from your authenticator app.',
+      });
+    },
+  );
 
-  it('exports the exact copy for the server-reported wrong code', () => {
+  it('[P2-S09-AC-1087] exports the exact copy for the server-reported wrong code', () => {
     expect(ONE_TIME_CODE_COPY.invalid).toBe(
       'Enter the 6-digit code from your authenticator app.',
     );

@@ -70,17 +70,17 @@ values (pg_temp.s09d_actor_id('rev3', 'person')::uuid, 'admin.identity.mfa_reset
 -- Refusals (each leaves the factor verified and nothing else changed).
 create temp table m_lf_before on commit drop as select pg_temp.m_ver(n)::bigint v, n from generate_series(11, 16) n;
 select pg_temp.m_rbegin('lf:owner', 11, pg_temp.m_fid(11), 'user_request', pg_temp.m_ver(11));
-select is(pg_temp.m_out('lf:owner'), 'LAST_FACTOR_REQUIRED', 'the receipt-derived owner (receipt + grant) cannot remove the last factor');
+select is(pg_temp.m_out('lf:owner'), 'LAST_FACTOR_REQUIRED', 'the receipt-derived owner (receipt + grant) cannot remove the last factor [P2-S09-AC-802]');
 select pg_temp.m_warp('identity_private.organization_actor_grant', 'active = false',
   format('person_id = %L', pg_temp.s09d_actor_id('owner', 'person')));
 select pg_temp.m_rbegin('lf:receipt', 11, pg_temp.m_fid(11), 'user_request', pg_temp.m_ver(11), 'a2', 'b3');
 select is(pg_temp.m_out('lf:receipt'), 'LAST_FACTOR_REQUIRED', 'the immutable owner-initialization receipt alone is enough to refuse');
 select pg_temp.m_rbegin('lf:grant', 12, pg_temp.m_fid(12), 'user_request', pg_temp.m_ver(12));
-select is(pg_temp.m_out('lf:grant'), 'LAST_FACTOR_REQUIRED', 'an effective cms.schema_designer grant refuses the last factor removal');
+select is(pg_temp.m_out('lf:grant'), 'LAST_FACTOR_REQUIRED', 'an effective cms.schema_designer grant refuses the last factor removal [P2-S09-AC-802]');
 select pg_temp.m_rbegin('lf:assign', 13, pg_temp.m_fid(13), 'user_request', pg_temp.m_ver(13));
-select is(pg_temp.m_out('lf:assign'), 'LAST_FACTOR_REQUIRED', 'an active cms.schema_review assignment refuses the last factor removal');
+select is(pg_temp.m_out('lf:assign'), 'LAST_FACTOR_REQUIRED', 'an active cms.schema_review assignment refuses the last factor removal [P2-S09-AC-802]');
 select pg_temp.m_rbegin('lf:admin', 15, pg_temp.m_fid(15), 'user_request', pg_temp.m_ver(15));
-select is(pg_temp.m_out('lf:admin'), 'LAST_FACTOR_REQUIRED', 'an effective admin capability grant refuses the last factor removal');
+select is(pg_temp.m_out('lf:admin'), 'LAST_FACTOR_REQUIRED', 'an effective admin capability grant refuses the last factor removal [P2-S09-AC-802]');
 select pg_temp.m_rbegin('lf:other', 16, pg_temp.m_fid(16), 'user_request', pg_temp.m_ver(16));
 select is(pg_temp.m_out('lf:other'), 'LAST_FACTOR_REQUIRED', 'a designer grant in another organization refuses as well');
 select is(pg_temp.m_one($q$select count(*)::text from identity.mfa_factor_registry where auth_user_id in (select uid from m_alias where n in (11, 12, 13, 15, 16)) and state = 'verified'$q$)::integer, 5,
@@ -90,12 +90,12 @@ select is((select count(*)::integer from m_lf_before b where n in (11, 12, 13, 1
 
 -- Permitted removals.
 select pg_temp.m_rbegin('lf:expired', 14, pg_temp.m_fid(14), 'user_request', pg_temp.m_ver(14));
-select is(pg_temp.m_out('lf:expired'), 'OK', 'an expired assignment plus a non-step-up capability (cms.author) does not block removal');
+select is(pg_temp.m_out('lf:expired'), 'OK', 'an expired assignment plus a non-step-up capability (cms.author) does not block removal [P2-S09-AC-804]');
 -- Lapse designer2's grant: valid_through before today.
 select pg_temp.m_warp('identity_private.organization_actor_grant', 'valid_from = current_date - 10, valid_through = current_date - 1',
   format($$person_id = %L and capability_code = 'cms.schema_designer'$$, pg_temp.s09d_actor_id('designer2', 'person')));
 select pg_temp.m_rbegin('lf:lapsed', 12, pg_temp.m_fid(12), 'user_request', pg_temp.m_ver(12), 'a3', 'b4');
-select is(pg_temp.m_out('lf:lapsed'), 'OK', 'a lapsed grant no longer counts (currently effective grants only)');
+select is(pg_temp.m_out('lf:lapsed'), 'OK', 'a lapsed grant no longer counts (currently effective grants only) [P2-S09-AC-803]');
 -- Revoke rev3's admin grant.
 select pg_temp.m_warp('platform_private.admin_capability_grants',
   format($$state = 'revoked', revoked_at = clock_timestamp(), revoked_by = %L$$, pg_temp.s09d_actor_id('owner', 'person')),

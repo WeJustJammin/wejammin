@@ -33,6 +33,7 @@ export type GrantCommandState =
 
 export const COMMAND_COPY = {
   stepUp: 'Verify your identity to change CMS access.',
+  noVerificationMethod: 'No verification method is available.',
   owner: 'Only the organization owner can manage CMS access.',
   personMissing:
     'That person could not be found as a member of your organization.',
@@ -100,6 +101,13 @@ export const stateForResult = (
       return successState(kind, result);
     case 'step-up-required':
       return failure(result, COMMAND_COPY.stepUp, { action: 'step-up' });
+    case 'step-up-unavailable':
+      return failure(result, COMMAND_COPY.noVerificationMethod);
+    case 'step-up-malformed':
+      return failure(result, COMMAND_COPY.unconfirmed, {
+        action: 'retry',
+        refetch: true,
+      });
     case 'unauthenticated':
       return failure(result, COMMAND_COPY.signIn, { action: 'sign-in' });
     case 'forbidden':

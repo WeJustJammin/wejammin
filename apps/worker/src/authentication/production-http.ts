@@ -4,7 +4,11 @@ import {
   MAX_RESPONSE_BYTES,
   type AuthProductionConfiguration,
 } from './production-configuration';
-import { mfaRpcFailures, type RpcFailure } from './production-mfa-failures';
+import {
+  mfaRpcFailures,
+  verificationLockFailure,
+  type RpcFailure,
+} from './production-mfa-failures';
 import { MFA_METHOD_REGISTRY } from './step-up';
 import type { AuthenticationError } from './types';
 import { supabaseRpcHeaders } from '../supabase-rpc-headers';
@@ -269,6 +273,8 @@ export const callRpc = async (
       code = null;
     }
     const rpcFailure = typeof code === 'string' ? code : '';
+    const locked = verificationLockFailure(rpcFailure);
+    if (locked !== null) throw locked;
     const mapped = knownRpcFailures.find(({ match }) =>
       rpcFailure.includes(match),
     );

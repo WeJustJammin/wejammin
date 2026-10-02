@@ -1,3 +1,5 @@
+import { stepUpHref as sharedStepUpHref } from '../identity-authority/step-up-mfa/step-up-return';
+
 /** Browser navigation seam so the console is testable without real navigation. */
 export const navigateTo = (target: string): void => {
   window.location.assign(target);
@@ -38,8 +40,14 @@ export const consumeStepUpDetour = (): boolean => {
   }
 };
 
-export const stepUpHref = (returnTo: string): string =>
-  `/step-up?returnTo=${encodeURIComponent(returnTo)}`;
+/** `/step-up?returnTo=` for the console's relative path plus query. */
+export const stepUpHref = (returnTo: string): string => {
+  const at = returnTo.indexOf('?');
+  return sharedStepUpHref(
+    at === -1 ? returnTo : returnTo.slice(0, at),
+    at === -1 ? '' : returnTo.slice(at),
+  );
+};
 
 export const signInHref = (returnTo: string): string =>
   `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`;

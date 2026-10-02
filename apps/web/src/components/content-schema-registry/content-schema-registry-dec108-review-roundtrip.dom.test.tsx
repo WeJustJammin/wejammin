@@ -57,7 +57,7 @@ describe('[DEC-108] CMS-03A-12 decision form -> facade -> upstream', () => {
     );
 
   it.each(['approve', 'reject'] as const)(
-    'selecting %s sends { expectedVersion, decision } to the review decisions path',
+    '[P2-S09-AC-982] selecting %s sends { expectedVersion, decision } to the review decisions path',
     async (decision) => {
       const doc = reviewer();
       const radio = requireForm(
@@ -108,7 +108,7 @@ describe('[DEC-108] CMS-03A-14 assignment form -> facade -> upstream', () => {
     );
   const expiresAt = '2026-10-05T12:00:00.000Z';
 
-  it('sends the create variant with the reviewer reference and omits a blank reason', async () => {
+  it('[P2-S09-AC-983] sends the create variant with the reviewer reference and omits a blank reason', async () => {
     const { response, forwardedBody, forwarded } = await submit(
       owner(),
       'CMS-03A-14',

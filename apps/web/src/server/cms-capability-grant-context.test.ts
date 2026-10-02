@@ -26,7 +26,7 @@ const pageOf = <T extends { kind: string }>(result: T) =>
   'page' in result ? (result.page as unknown as Record<string, unknown>) : null;
 
 describe('[DEC-119] console guard', () => {
-  it('redirects an absent session without calling the platform', async () => {
+  it('[P2-S09-AC-1022] redirects an absent session without calling the platform', async () => {
     const { result, bound } = await resolveGrantPage(
       {},
       { request: grantPageRequest({ cookie: null }) },
@@ -35,7 +35,7 @@ describe('[DEC-119] console guard', () => {
     expect(bound.fetch).not.toHaveBeenCalled();
   });
 
-  it('treats an upstream 401 as an unauthenticated session', async () => {
+  it('[P2-S09-AC-1022] treats an upstream 401 as an unauthenticated session', async () => {
     const { result } = await resolveGrantPage({
       status: 401,
       errorCode: 'UNAUTHENTICATED',
@@ -43,7 +43,7 @@ describe('[DEC-119] console guard', () => {
     expect(result.kind).toBe('unauthenticated');
   });
 
-  it('reports an authenticated non-owner as forbidden with no data', async () => {
+  it('[P2-S09-AC-991] [P2-S09-AC-1022] reports an authenticated non-owner as forbidden with no data', async () => {
     const { result } = await resolveGrantPage({ status: 403 });
     expect(result).toStrictEqual({ kind: 'forbidden' });
   });
@@ -56,7 +56,7 @@ describe('[DEC-119] console guard', () => {
     expect(result).toStrictEqual({ kind: 'not_found' });
   });
 
-  it('answers 502 degraded for a contract-invalid list and renders no rows', async () => {
+  it('[P2-S09-AC-992] answers 502 degraded for a contract-invalid list and renders no rows', async () => {
     const { result } = await resolveGrantPage({ body: { items: [{ id: 1 }] } });
     expect(result.kind).toBe('degraded');
     const page = pageOf(result);
@@ -65,7 +65,7 @@ describe('[DEC-119] console guard', () => {
   });
 
   it.each([502, 503, 504])(
-    'degrades on upstream %i with every command disabled',
+    '[P2-S09-AC-992] degrades on upstream %i with every command disabled',
     async (status) => {
       const { result } = await resolveGrantPage({ status, errorCode: 'X' });
       expect(result.kind).toBe('degraded');
@@ -73,7 +73,7 @@ describe('[DEC-119] console guard', () => {
     },
   );
 
-  it('degrades when the binding is unreachable', async () => {
+  it('[P2-S09-AC-992] degrades when the binding is unreachable', async () => {
     const { result } = await resolveGrantPage({ throws: true });
     expect(result.kind).toBe('degraded');
   });
@@ -93,7 +93,7 @@ describe('[DEC-119] console guard', () => {
 });
 
 describe('[DEC-119] authorized owner page', () => {
-  it('renders the first page of grants with the derived state', async () => {
+  it('[P2-S09-AC-990] [P2-S09-AC-995] renders the first page of grants with the derived state', async () => {
     const { result } = await resolveGrantPage({
       body: grantListPage([
         grantResource(),
@@ -119,7 +119,7 @@ describe('[DEC-119] authorized owner page', () => {
     expect(list.data.items).toHaveLength(2);
   });
 
-  it('is empty with no-records when no filter is set and filter-miss otherwise', async () => {
+  it('[P2-S09-AC-996] is empty with no-records when no filter is set and filter-miss otherwise', async () => {
     const none = await resolveGrantPage({ body: grantListPage([]) });
     expect(pageOf(none.result)?.initialList).toStrictEqual({
       status: 'empty',
@@ -188,7 +188,7 @@ describe('[DEC-119] authorized owner page', () => {
     expect(page?.stepUpFreshUntil).toBe(GRANT_STEP_UP_FRESH_UNTIL);
   });
 
-  it('requires step-up when the Worker supplies no freshness window', async () => {
+  it('[P2-S09-AC-1023] requires step-up when the Worker supplies no freshness window', async () => {
     const { result } = await resolveGrantPage({ omitStepUp: true });
     expect(pageOf(result)?.stepUpState).toBe('required');
     expect(pageOf(result)).not.toHaveProperty('stepUpFreshUntil');

@@ -56,7 +56,7 @@ describe('draft <-> submitted configuration', () => {
     expect(submitConfig(draft).fallbackChains).toEqual({});
   });
 
-  it('starts empty with nothing selected', () => {
+  it('[P2-S09-AC-1227] starts empty with nothing selected', () => {
     expect(emptyLocaleDraft()).toEqual({
       supportedLocales: [],
       sourceLocale: '',
@@ -73,7 +73,7 @@ describe('addTag', () => {
     expect(result.draft.supportedLocales).toEqual(['en-US']);
   });
 
-  it('never silently corrects: offers the canonical spelling instead', () => {
+  it('[P2-S09-AC-1211] never silently corrects: offers the canonical spelling instead', () => {
     const result = addTag(emptyLocaleDraft(), 'EN-us');
     expect(result.draft.supportedLocales).toEqual([]);
     expect(result.error).toEqual({
@@ -124,7 +124,7 @@ describe('addTag', () => {
 });
 
 describe('removeTag', () => {
-  it('removes the tag from every fallback group in the same action', () => {
+  it('[P2-S09-AC-1224] removes the tag from every fallback group in the same action', () => {
     const result = removeTag(filled(), 'fr');
     expect(result.draft.supportedLocales).toEqual(['en-US', 'fr-CA']);
     expect(result.draft.intermediates).toEqual({ 'fr-CA': [] });
@@ -133,7 +133,7 @@ describe('removeTag', () => {
     );
   });
 
-  it('names every affected group and says nothing extra when none use it', () => {
+  it('[P2-S09-AC-1224] names every affected group and says nothing extra when none use it', () => {
     const draft = draftFromConfig({
       sourceLocale: 'en',
       defaultLocale: 'en',
@@ -162,7 +162,7 @@ describe('removeTag', () => {
 });
 
 describe('source, default and group editing', () => {
-  it('changing the default keeps every still-valid intermediate', () => {
+  it('[P2-S09-AC-1216] changing the default keeps every still-valid intermediate', () => {
     const next = setDefaultLocale(filled(), 'fr');
     expect(next.defaultLocale).toBe('fr');
     expect(next.intermediates['en-US']).toEqual([]);
@@ -170,7 +170,7 @@ describe('source, default and group editing', () => {
     expect(next.intermediates.fr).toBeUndefined();
   });
 
-  it('keeps a retained intermediate when the default moves elsewhere', () => {
+  it('[P2-S09-AC-1216] keeps a retained intermediate when the default moves elsewhere', () => {
     const draft = draftFromConfig({
       sourceLocale: 'en',
       defaultLocale: 'en',
@@ -188,7 +188,7 @@ describe('source, default and group editing', () => {
     expect(setDefaultLocale(filled(), 'xx').defaultLocale).toBe('en-US');
   });
 
-  it('offers only supported tags that are not target, default or listed', () => {
+  it('[P2-S09-AC-1218] offers only supported tags that are not target, default or listed', () => {
     const draft = draftFromConfig({
       sourceLocale: 'en',
       defaultLocale: 'en',
@@ -199,7 +199,7 @@ describe('source, default and group editing', () => {
     expect(availableIntermediates(draft, 'cc')).toEqual(['aa', 'bb']);
   });
 
-  it('adds, removes and reorders intermediates with ordinal announcements', () => {
+  it('[P2-S09-AC-1219] [P2-S09-AC-1235] adds, removes and reorders intermediates with ordinal announcements', () => {
     let draft = draftFromConfig({
       sourceLocale: 'en',
       defaultLocale: 'en',
@@ -233,11 +233,11 @@ describe('source, default and group editing', () => {
 });
 
 describe('validation', () => {
-  it('reports no issue for a valid draft', () => {
+  it('[P2-S09-AC-1220] reports no issue for a valid draft', () => {
     expect(validateDraft(filled())).toEqual([]);
   });
 
-  it('reports the exact BE03a messages for an empty list and no selection', () => {
+  it('[P2-S09-AC-1213] [P2-S09-AC-1214] [P2-S09-AC-1215] reports the exact BE03a messages for an empty list and no selection', () => {
     expect(validateDraft(emptyLocaleDraft()).map((i) => i.message)).toEqual([
       'supportedLocales must contain 1 to 32 locales',
       'supportedLocales must include sourceLocale',
@@ -245,7 +245,7 @@ describe('validation', () => {
     ]);
   });
 
-  it('reports a cycle and names the languages involved', () => {
+  it('[P2-S09-AC-1221] reports a cycle and names the languages involved', () => {
     const draft: LocaleConfigDraft = {
       supportedLocales: ['en', 'aa', 'bb'],
       sourceLocale: 'en',
@@ -310,7 +310,7 @@ describe('server issue mapping', () => {
 });
 
 describe('review diff and sentences', () => {
-  it('lists added, removed and reordered languages against the source', () => {
+  it('[P2-S09-AC-1225] lists added, removed and reordered languages against the source', () => {
     const source = {
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',
@@ -328,7 +328,7 @@ describe('review diff and sentences', () => {
     });
   });
 
-  it('treats every language as added when there is no source', () => {
+  it('[P2-S09-AC-1225] treats every language as added when there is no source', () => {
     expect(diffAgainstSource(null, filled())).toEqual({
       added: ['en-US', 'fr', 'fr-CA'],
       removed: [],
@@ -336,7 +336,7 @@ describe('review diff and sentences', () => {
     });
   });
 
-  it('reports a changed default as a reorder of every retained language', () => {
+  it('[P2-S09-AC-1225] reports a changed default as a reorder of every retained language', () => {
     const source = {
       sourceLocale: 'en',
       defaultLocale: 'en',

@@ -71,6 +71,16 @@ export type MfaPersistencePort = Readonly<{
     input: Caller & Readonly<{ factorId: string; expectedVersion: string }>,
     signal: AbortSignal,
   ) => Promise<AuthenticationResult<Readonly<{ providerFactorId: string }>>>;
+  /**
+   * Charges one enrollment-verification failure to the account-wide budget
+   * shared with the step-up verification (BE01a: ten failures in 15 minutes
+   * lock both endpoints for 15 minutes). The lock itself is enforced by the
+   * verify-prepare transactions, before any provider call.
+   */
+  recordVerificationFailure: (
+    input: Caller & Readonly<{ outcome: 'ambiguous' | 'incorrect' }>,
+    signal: AbortSignal,
+  ) => Promise<AuthenticationResult<null>>;
   settleEnrollmentVerify: (
     input: Caller &
       Readonly<{

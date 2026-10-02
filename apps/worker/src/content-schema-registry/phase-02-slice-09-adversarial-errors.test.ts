@@ -120,7 +120,7 @@ describe('S09 adversarial worker admission errors', () => {
       ok({ items: Array.from({ length: 101 }, () => {}), nextCursor: null }),
     );
     const response = await harness.app.request(readRequest());
-    await expectError(response, 502, 'DEPENDENCY_INVALID_RESPONSE');
+    await expectError(response, 502, 'DEPENDENCY_UNAVAILABLE');
     expect(response.headers.get('cache-control')).toBe('no-store');
   });
 

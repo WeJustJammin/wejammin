@@ -5,3 +5,4 @@ export type {
   ContentSchemaRegistryAlertCode,
   ContentSchemaRegistryOperationalSnapshot,
 } from './content-schema-registry-alert-types';
+export { CONTENT_SCHEMA_REGISTRY_REVIEW_ALERT_THRESHOLDS } from './content-schema-registry-alert-review-thresholds';

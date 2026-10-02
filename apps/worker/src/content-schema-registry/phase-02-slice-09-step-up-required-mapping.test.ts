@@ -37,19 +37,19 @@ describe('BE00 STEP_UP_REQUIRED mapping', () => {
     expect(mapRpcFailure(401, { message: 'STEP_UP_REQUIRED' })).toMatchObject({
       status: 401,
       code: 'STEP_UP_REQUIRED',
-      details: { recoveryAction: 'step_up', allowedMethods: [] },
+      details: { recoveryAction: 'step_up', allowedMethods: ['totp'] },
     });
   });
 
   it('never forwards an RPC-supplied step-up method allowlist', () => {
     const mapped = mapRpcFailure(401, {
       message: 'STEP_UP_REQUIRED',
-      details: { allowedMethods: ['totp'], recoveryAction: 'step_up' },
+      details: { allowedMethods: ['sms', 'email'], recoveryAction: 'step_up' },
     });
 
     expect(mapped).toMatchObject({ code: 'STEP_UP_REQUIRED' });
     if (mapped.ok) return;
-    expect(mapped.details?.allowedMethods).toEqual([]);
+    expect(mapped.details?.allowedMethods).toEqual(['totp']);
   });
 
   it('keeps an ordinary 401 authentication failure unchanged', () => {
@@ -77,11 +77,18 @@ describe('CMS-03A-04 step-up refusal disclosure', () => {
     return { response, ports };
   };
 
-  it('refuses activation with 401 STEP_UP_REQUIRED and never mutates', async () => {
+  it('[P2-S09-AC-628] refuses activation with 401 STEP_UP_REQUIRED carrying exactly recoveryAction step_up and a string[] allowedMethods, never 400, 403 or reauthenticate, and never mutates', async () => {
     const { response, ports } = await activateWithoutStepUp();
     const body = await expectError(response, 401);
 
     expect(body.code).toBe('STEP_UP_REQUIRED');
+    expect(body.details).toEqual({
+      recoveryAction: 'step_up',
+      allowedMethods: expect.any(Array),
+    });
+    const methods = (body.details as { allowedMethods: unknown[] })
+      .allowedMethods;
+    expect(methods.every((method) => typeof method === 'string')).toBe(true);
     expect(ports['activateSchema']).not.toHaveBeenCalled();
   });
 

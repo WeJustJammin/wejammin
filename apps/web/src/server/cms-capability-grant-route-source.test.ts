@@ -37,7 +37,7 @@ describe('[DEC-119] capability grant console page', () => {
     expect(source).not.toContain('client:visible');
   });
 
-  it('redirects an unauthenticated visitor with a safe relative returnTo', () => {
+  it('[P2-S09-AC-1022] redirects an unauthenticated visitor with a safe relative returnTo', () => {
     expect(source).toContain('Astro.redirect');
     expect(source).toContain('/auth/sign-in?returnTo=');
     expect(source).toContain('303');
@@ -46,11 +46,14 @@ describe('[DEC-119] capability grant console page', () => {
   it.each([
     ['forbidden', '403'],
     ['not_found', '404'],
-  ])('answers %s with %s and a no-store header', (kind, status) => {
-    const branch = source.slice(source.indexOf(`'${kind}'`));
-    expect(branch).toContain(`status: ${status}`);
-    expect(branch.slice(0, 300)).toContain("'cache-control': 'no-store'");
-  });
+  ])(
+    '[P2-S09-AC-991] answers %s with %s and a no-store header',
+    (kind, status) => {
+      const branch = source.slice(source.indexOf(`'${kind}'`));
+      expect(branch).toContain(`status: ${status}`);
+      expect(branch.slice(0, 300)).toContain("'cache-control': 'no-store'");
+    },
+  );
 
   it('keeps a single h1 focused by the shared route-heading script', () => {
     expect(source).toContain('id="page-title"');
@@ -95,7 +98,7 @@ describe('[DEC-119] capability grant console page', () => {
 describe('[DEC-119] navigation reachability (vertical slice)', () => {
   const registry = read(REGISTRY_PAGE);
 
-  it('offers the grant console from the registry shell only when the owner probe succeeds', () => {
+  it('[P2-S09-AC-991] offers the grant console from the registry shell only when the owner probe succeeds', () => {
     expect(registry).toContain('/app/cms-content-modeling/capability-grants');
     expect(registry).toContain('probeCmsCapabilityGrantOwner');
     const link = registry.indexOf(

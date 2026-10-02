@@ -16,7 +16,7 @@ import {
  */
 
 describe('[DEC-119] owner navigation probe', () => {
-  it('is true for an upstream 2xx and reads exactly one row with no filters', async () => {
+  it('[P2-S09-AC-992] is true for an upstream 2xx and reads exactly one row with no filters', async () => {
     const bound = grantBinding();
     const owner = await probeCmsCapabilityGrantOwner(
       grantPageRequest(),

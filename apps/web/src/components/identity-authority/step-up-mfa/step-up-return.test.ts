@@ -20,9 +20,12 @@ describe('resolveStepUpReturnTo', () => {
     ],
     ['/settings/security', '/settings/security'],
     ['/settings/security/mfa?step=name', '/settings/security/mfa?step=name'],
-  ])('keeps the safe path %s', (raw, expected) => {
-    expect(resolveStepUpReturnTo(raw)).toBe(expected);
-  });
+  ])(
+    '[P2-S09-AC-1029] [P2-S09-AC-1066] keeps the safe path %s',
+    (raw, expected) => {
+      expect(resolveStepUpReturnTo(raw)).toBe(expected);
+    },
+  );
 
   it.each([
     ['null', null],
@@ -43,7 +46,7 @@ describe('resolveStepUpReturnTo', () => {
     expect(resolveStepUpReturnTo(raw)).toBe('/app');
   });
 
-  it('accepts exactly 512 characters', () => {
+  it('[P2-S09-AC-1066] accepts exactly 512 characters', () => {
     const exact = `/app/${'a'.repeat(507)}`;
     expect(exact).toHaveLength(512);
     expect(resolveStepUpReturnTo(exact)).toBe(exact);
@@ -67,7 +70,7 @@ describe('computeStepUpReturnTo', () => {
     ).toBe('/settings/security/mfa');
   });
 
-  it('uses /app when even the path alone is invalid', () => {
+  it('[P2-S09-AC-1029] uses /app when even the path alone is invalid', () => {
     expect(computeStepUpReturnTo('/billing', '?a=1')).toBe('/app');
     expect(computeStepUpReturnTo('//evil.example', '')).toBe('/app');
   });
@@ -79,7 +82,7 @@ describe('step-up navigation targets', () => {
     expect(MFA_SETTINGS_ROUTE).toBe('/settings/security/mfa');
   });
 
-  it('builds /step-up?returnTo= with the encoded current location', () => {
+  it('[P2-S09-AC-1029] builds /step-up?returnTo= with the encoded current location', () => {
     expect(stepUpHref('/app/x', '?tab=a&b=1')).toBe(
       '/step-up?returnTo=%2Fapp%2Fx%3Ftab%3Da%26b%3D1',
     );
@@ -92,13 +95,13 @@ describe('step-up navigation targets', () => {
     expect(mfaSettingsHref(null)).toBe('/settings/security/mfa');
   });
 
-  it('wraps /step-up in the sign-in return target', () => {
+  it('[P2-S09-AC-1067] wraps /step-up in the sign-in return target', () => {
     expect(stepUpSignInHref('/app/x')).toBe(
       `/auth/sign-in?returnTo=${encodeURIComponent('/step-up?returnTo=%2Fapp%2Fx')}`,
     );
   });
 
-  it('drops the nested returnTo when the combined sign-in value exceeds 512 characters', () => {
+  it('[P2-S09-AC-1067] drops the nested returnTo when the combined sign-in value exceeds 512 characters', () => {
     const long = `/app/${'a'.repeat(495)}`;
     expect(stepUpSignInHref(long)).toBe(
       `/auth/sign-in?returnTo=${encodeURIComponent('/step-up')}`,

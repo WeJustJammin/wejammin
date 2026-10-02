@@ -198,6 +198,77 @@ describe('TOTP enrollment verify (AUTH-API-18)', () => {
     },
   );
 
+  it.each([
+    ['wrong code', 422, 'incorrect'],
+    ['provider timeout', 504, 'ambiguous'],
+    ['provider invalid 2xx', 502, 'ambiguous'],
+  ] as const)(
+    'charges the shared account verification budget on a %s',
+    async (_name, status, outcome) => {
+      const provider = fakeProvider({
+        verify: async () => authError(status, 'PROVIDER_REFUSAL', 'no'),
+      });
+      const { service, persistence } = build(fakePersistence(), provider);
+      const result = await service.verifyTotpEnrollment(
+        verifyInput(),
+        env,
+        signal,
+      );
+      expect(result).toMatchObject({ ok: false, status });
+      expect(persistence.recordVerificationFailure).toHaveBeenCalledTimes(1);
+      expect(persistence.recordVerificationFailure).toHaveBeenCalledWith(
+        expect.objectContaining({ authUserId: AUTH_USER_ID, outcome }),
+        expect.anything(),
+      );
+    },
+  );
+
+  it.each([
+    ['provider rate refusal (429)', 429],
+    ['session rejected (401)', 401],
+  ] as const)('does not charge the budget on %s', async (_name, status) => {
+    const provider = fakeProvider({
+      verify: async () => authError(status, 'PROVIDER_REFUSAL', 'no'),
+    });
+    const { service, persistence } = build(fakePersistence(), provider);
+    await service.verifyTotpEnrollment(verifyInput(), env, signal);
+    expect(persistence.recordVerificationFailure).not.toHaveBeenCalled();
+  });
+
+  it('fails closed with the persistence error when a wrong code cannot be durably counted', async () => {
+    const provider = fakeProvider({
+      verify: async () => authError(422, 'VALIDATION_FAILED', 'wrong'),
+    });
+    const persistence = fakePersistence({
+      recordVerificationFailure: async () =>
+        authError(503, 'DEPENDENCY_UNAVAILABLE', 'down'),
+    });
+    const { service } = build(persistence, provider);
+    const result = await service.verifyTotpEnrollment(
+      verifyInput(),
+      env,
+      signal,
+    );
+    expect(result).toMatchObject({ ok: false, status: 503 });
+  });
+
+  it('refuses a locked account at prepare, before any provider call, and charges nothing', async () => {
+    const persistence = fakePersistence({
+      prepareEnrollmentVerify: async () =>
+        authError(429, 'RATE_LIMITED', 'locked', { retryAfterSeconds: 600 }),
+    });
+    const { service, provider } = build(persistence);
+    const result = await service.verifyTotpEnrollment(
+      verifyInput(),
+      env,
+      signal,
+    );
+    expect(result).toMatchObject({ ok: false, status: 429 });
+    expect(provider.challenge).not.toHaveBeenCalled();
+    expect(provider.verify).not.toHaveBeenCalled();
+    expect(persistence.recordVerificationFailure).not.toHaveBeenCalled();
+  });
+
   it('marks the factor reconciling and changes nothing when the returned session is invalid', async () => {
     const rotation = fakeRotation();
     rotation.validate.mockResolvedValue(

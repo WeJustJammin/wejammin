@@ -25,7 +25,7 @@ select pg_temp.s09x_arm();
 -- Ordinary first version.
 select pg_temp.s09d_create_type('o', 'pathone');
 select pg_temp.s09d_dry_run('o');
-select is(pg_temp.s09d_outcome('o:dryRun'), 'OK', 'CMS-03A-10 starts the first-version attempt');
+select is(pg_temp.s09d_outcome('o:dryRun'), 'OK', 'CMS-03A-10 starts the first-version attempt [P2-S09-AC-711]');
 select ok((select p.from_version_id is null and p.source_count = 0 and p.state = 'draft' and p.classification = 'additive'
     from platform_private.cms_schema_migration_plans p where p.id = pg_temp.s09d_id('o:plan')),
   'the plan of a first version has no source version and the database-proven zero row count');
@@ -46,9 +46,9 @@ select pg_temp.s09d_submit('o');
 select pg_temp.s09d_assign('o', 'rev1');
 select pg_temp.s09d_decide('o', 'rev1');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('o:review')), 'approved',
-  'one independent assigned decision approves an ordinary schema review');
+  'one independent assigned decision approves an ordinary schema review [P2-S09-AC-711]');
 select pg_temp.s09d_activate('o');
-select is(pg_temp.s09d_outcome('o:activate'), 'OK', 'CMS-03A-04 activates the first version over the sealed plan');
+select is(pg_temp.s09d_outcome('o:activate'), 'OK', 'CMS-03A-04 activates the first version over the sealed plan [P2-S09-AC-711]');
 select ok((select version_row.state = 'active' and plan.state = 'completed'
    from platform_private.cms_content_type_versions version_row
    join platform_private.cms_schema_migration_plans plan on plan.id = pg_temp.s09d_id('o:plan')
@@ -67,16 +67,16 @@ select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('p:re
   'a protected review stays open after the first of two required decisions');
 select pg_temp.s09d_decide('p', 'rev2');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('p:review')), 'approved',
-  'the second distinct human decision approves the protected review');
+  'the second distinct human decision approves the protected review [P2-S09-AC-091]');
 select pg_temp.s09d_activate('p');
-select is(pg_temp.s09d_outcome('p:activate'), 'OK', 'the protected first version activates over its sealed plan');
+select is(pg_temp.s09d_outcome('p:activate'), 'OK', 'the protected first version activates over its sealed plan [P2-S09-AC-091]');
 
 select ok(pg_temp.s09x_via_rpc('cms_schema_reviews') > 0 and pg_temp.s09x_via_rpc('cms_schema_review_decisions') > 0
   and pg_temp.s09x_via_rpc('cms_schema_review_assignments') > 0 and pg_temp.s09x_via_rpc('cms_schema_dry_run_reports') > 0
   and pg_temp.s09x_via_rpc('cms_schema_migration_plans') > 0,
-  'precondition: every producer table was written through named RPCs');
+  'precondition: every producer table was written through named RPCs [P2-S09-AC-711]');
 select is(pg_temp.s09x_direct(), 0::bigint,
-  'no review, decision, assignment, dry-run, plan or evidence row was written by a direct statement');
+  'no review, decision, assignment, dry-run, plan or evidence row was written by a direct statement [P2-S09-AC-711]');
 
 select * from finish();
 rollback;

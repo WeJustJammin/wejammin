@@ -66,7 +66,7 @@ const lock = async (retryAfter: number) => {
 
 /** FE01 lockout: countdown updates visually each second, announced politely at most once a minute. */
 describe('StepUpChallengeForm lockout', () => {
-  it('disables submit with a visible reason and announces the wait once at the start', async () => {
+  it('[P2-S09-AC-1096] [P2-S09-AC-1103] disables submit with a visible reason and announces the wait once at the start', async () => {
     const { container } = await lock(150);
     const submit = container.querySelector<HTMLButtonElement>(
       'button[type="submit"]',
@@ -76,7 +76,7 @@ describe('StepUpChallengeForm lockout', () => {
     expect(politeText(container)).toContain('Try again in 3 minutes.');
   });
 
-  it('updates the visible countdown each second without re-announcing', async () => {
+  it('[P2-S09-AC-1103] updates the visible countdown each second without re-announcing', async () => {
     const { container } = await lock(150);
     const visible = (): string =>
       container.querySelector('[data-lockout-countdown]')?.textContent ?? '';
@@ -94,7 +94,7 @@ describe('StepUpChallengeForm lockout', () => {
     ).toBeNull();
   });
 
-  it('announces again at each whole minute and at unlock, then re-enables submit', async () => {
+  it('[P2-S09-AC-1103] announces again at each whole minute and at unlock, then re-enables submit', async () => {
     const { container } = await lock(150);
     advance(30_000);
     expect(politeText(container)).toContain('Try again in 2 minutes.');
@@ -110,7 +110,7 @@ describe('StepUpChallengeForm lockout', () => {
 });
 
 describe('StepUpChallengeForm multi-tab and fresh proof', () => {
-  it('refetches AUTH-API-16 on another tab success and offers Continue without auto-redirect', async () => {
+  it('[P2-S09-AC-1064] [P2-S09-AC-1068] refetches AUTH-API-16 on another tab success and offers Continue without auto-redirect', async () => {
     const resource = factorsResource([factor(FACTOR_A)], '4', true);
     const fetchImpl = stubFetch(
       json(201, challenge()),
@@ -134,7 +134,7 @@ describe('StepUpChallengeForm multi-tab and fresh proof', () => {
     expect(harness.navigate).not.toHaveBeenCalled();
   });
 
-  it('does not copy proof when the refetch shows no fresh step-up', async () => {
+  it('[P2-S09-AC-1068] does not copy proof when the refetch shows no fresh step-up', async () => {
     const resource = factorsResource([factor(FACTOR_A)], '4', false);
     const fetchImpl = stubFetch(json(201, challenge()), json(200, resource));
     harness = mountForm(fetchImpl);

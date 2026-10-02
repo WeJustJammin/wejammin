@@ -141,9 +141,10 @@ export const errorCopy = (error: UiError): string => {
   switch (error.code) {
     case 'UNAUTHENTICATED':
       return 'Your session expired. Sign in again to manage account security.';
-    case 'FORBIDDEN':
     case 'STEP_UP_REQUIRED':
-      return 'Recent verification is required before this security change.';
+      return 'Recent verification is required before this security change. Continue to verify; your place is kept.';
+    case 'FORBIDDEN':
+      return 'Your current access does not allow this security change.';
     case 'NOT_FOUND':
       return 'That security record is no longer available.';
     case 'final_login_method':

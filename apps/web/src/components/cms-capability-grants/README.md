@@ -50,3 +50,14 @@ lines; split by form rather than growing the console.
 `apps/web/src/pages/app/cms-content-modeling/capability-grants.astro`,
 `apps/web/src/pages/api/v1/cms/capability-grants/`, and
 `.memory/wiki/specs/fe/03-cms-content-modeling.md`.
+
+## Session loss and history
+
+- A 401 `UNAUTHENTICATED` on a command or a list read sets `signedOut` in
+  `use-cms-capability-grants.ts`: the console renders only the sign-in notice
+  (rows, forms, filters and person IDs are removed) before the safe redirect.
+- Back and Forward re-derive the page query from the address with
+  `parseCmsCapabilityGrantPageQuery` (shared with the server) on `popstate` and
+  re-read the list without pushing a new entry.
+- The shared step-up recovery (`step-up-mfa/step-up-return.ts`) builds
+  `/step-up?returnTo=`; the console still persists no entries across the detour.

@@ -53,13 +53,15 @@ const commitControls = (root: HTMLElement): HTMLButtonElement[] => [
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-  vi.useFakeTimers({ toFake: [
+  vi.useFakeTimers({
+    toFake: [
       'Date',
       'setTimeout',
       'clearTimeout',
       'setInterval',
       'clearInterval',
-    ] });
+    ],
+  });
   vi.setSystemTime(NOW);
   window.sessionStorage.clear();
   window.history.replaceState(null, '', CONSOLE_PATH);
@@ -89,7 +91,7 @@ describe('[P2-S09-AC-990] grant console commit controls follow the step-up discl
     expect(textOf(root)).toContain('Verified until 12:05 UTC');
   });
 
-  it('[P2-S09-AC-990] [P2-S09-AC-999] [P2-S09-AC-1057] disables every commit control with the step-up recovery when step-up is required', () => {
+  it('[P2-S09-AC-1023] [P2-S09-AC-990] [P2-S09-AC-999] [P2-S09-AC-1057] disables every commit control with the step-up recovery when step-up is required', () => {
     const root = mount({
       contextEvidence: { stepUpState: 'required' },
     });
@@ -136,7 +138,9 @@ describe('[P2-S09-AC-990] grant console commit controls follow the step-up discl
     });
     for (const control of commitControls(root))
       expect(control.disabled).toBe(true);
-    expect(textOf(root)).toContain('Verify your identity to change CMS access.');
+    expect(textOf(root)).toContain(
+      'Verify your identity to change CMS access.',
+    );
     expect(textOf(root)).toContain('Step-up required before commit');
   });
 });
@@ -229,11 +233,7 @@ describe('[P2-S09-AC-1024] grant console URL normalization', () => {
   });
 
   it('[P2-S09-AC-1024] leaves an already canonical address untouched', () => {
-    window.history.replaceState(
-      null,
-      '',
-      `${CONSOLE_PATH}?sort=validThrough`,
-    );
+    window.history.replaceState(null, '', `${CONSOLE_PATH}?sort=validThrough`);
     const replace = vi.spyOn(window.history, 'replaceState');
     mount({
       query: { limit: 25, sort: 'validThrough', direction: 'desc' },

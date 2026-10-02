@@ -137,7 +137,7 @@ select ok(
         'cms_block_definition_versions','cms_release_nonce_receipts',
         'cms_block_definition_lifecycle_events']::name[])
   ), false),
-  'P2-S09-AC-002 every CMS table enables and forces RLS'
+  'P2-S09-AC-002 every CMS table enables and forces RLS [P2-S09-AC-181]'
 );
 
 select ok(
@@ -163,7 +163,7 @@ select ok(
       ('platform_private.cms_block_definition_lifecycle_events')
     ) as tables(table_name)
   ), false),
-  'P2-S09-AC-013 anon and authenticated receive no direct CMS table grants'
+  'P2-S09-AC-013 anon and authenticated receive no direct CMS table grants [P2-S09-AC-181]'
 );
 
 select ok(

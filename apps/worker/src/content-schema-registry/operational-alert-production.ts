@@ -150,7 +150,11 @@ const databaseSnapshot = async (
   input: OperationalAlertRunInput,
   timeoutMs: number,
 ): Promise<
-  Readonly<{ activationBlockedMs?: number; outboxAgeMs?: number }>
+  Readonly<{
+    activationBlockedMs?: number;
+    outboxAgeMs?: number;
+    reviewOpenAgeMs?: number;
+  }>
 > => {
   const value = await supabaseRpc(
     bindings,
@@ -166,6 +170,9 @@ const databaseSnapshot = async (
       : {}),
     ...(typeof value.outboxAgeMs === 'number'
       ? { outboxAgeMs: value.outboxAgeMs }
+      : {}),
+    ...(typeof value.reviewOpenAgeMs === 'number'
+      ? { reviewOpenAgeMs: value.reviewOpenAgeMs }
       : {}),
   };
 };

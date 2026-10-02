@@ -1,4 +1,5 @@
 import { createMfaService } from './mfa-service';
+import { withMfaProviderTelemetry } from './mfa-telemetry';
 import type { MfaAuthenticationMethods } from './mfa-types';
 import type { AuthProductionConfiguration } from './production-configuration';
 import { createSupabaseMfaProvider } from './production-mfa-provider';
@@ -17,7 +18,10 @@ export const createMfaDependencies = (
 ): Required<MfaAuthenticationMethods> =>
   createMfaService({
     persistence: createMfaPersistence(config),
-    provider: createSupabaseMfaProvider(config, { issuer }),
+    provider: withMfaProviderTelemetry(
+      createSupabaseMfaProvider(config, { issuer }),
+      config.now,
+    ),
     rotation: createSessionRotation(config),
     now: config.now,
   });

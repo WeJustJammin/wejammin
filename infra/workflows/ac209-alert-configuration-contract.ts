@@ -4,6 +4,7 @@ import {
   SafeReleaseIdSchema,
   SafeReleaseTimestampSchema,
 } from '../../packages/contracts/src/release-recovery-common.ts';
+import { CONTENT_SCHEMA_REGISTRY_REVIEW_ALERT_THRESHOLDS } from '../../packages/observability/src/content-schema-registry-alert-review-thresholds.ts';
 import { CONTENT_SCHEMA_REGISTRY_ALERT_THRESHOLDS } from '../../packages/observability/src/content-schema-registry-alert-thresholds.ts';
 const CLOUDFLARE_ACCOUNT_ID = /^[0-9a-f]{32}$/u;
 const SOURCE_REVISION = /^[0-9a-f]{40}$/u;
@@ -38,9 +39,12 @@ const condition = <T extends ContentSchemaRegistryAlertCondition>(
   threshold: number | string,
 ) => ({ name, rule, threshold });
 /**
- * The evaluator has twelve locked condition codes but eleven numeric constants.
- * The two boundary rules below are deliberately recorded as evaluator rules,
- * rather than inventing a numeric nonce or DLQ threshold.
+ * The evaluator has sixteen locked condition codes but twelve numeric constants.
+ * The two boundary rules below and the three denial-spike rules are deliberately
+ * recorded as evaluator rules, rather than inventing a numeric nonce, DLQ or
+ * denial threshold. The review-open window is the review lifecycle constant
+ * (the seven-day maximum assignment span), kept outside the thresholds object
+ * the report mirrors key for key.
  */
 export const AC209_ALERT_CONDITION_THRESHOLDS = Object.freeze([
   condition(
@@ -98,6 +102,26 @@ export const AC209_ALERT_CONDITION_THRESHOLDS = Object.freeze([
     'daily_dlq_rate_exceeded',
     `dailyDlqRate >= ${CONTENT_SCHEMA_REGISTRY_ALERT_THRESHOLDS.dailyDlqRate}`,
     CONTENT_SCHEMA_REGISTRY_ALERT_THRESHOLDS.dailyDlqRate,
+  ),
+  condition(
+    'review_open_past_window',
+    `reviewOpenAgeMs > ${CONTENT_SCHEMA_REGISTRY_REVIEW_ALERT_THRESHOLDS.reviewOpenWindowMs}`,
+    CONTENT_SCHEMA_REGISTRY_REVIEW_ALERT_THRESHOLDS.reviewOpenWindowMs,
+  ),
+  condition(
+    'decision_denial_spike',
+    'decisionDenialRate > decisionDenialBaseline',
+    'decisionDenialBaseline',
+  ),
+  condition(
+    'assignment_denial_spike',
+    'assignmentDenialRate > assignmentDenialBaseline',
+    'assignmentDenialBaseline',
+  ),
+  condition(
+    'capability_grant_denial_spike',
+    'capabilityGrantDenialRate > capabilityGrantDenialBaseline',
+    'capabilityGrantDenialBaseline',
   ),
 ] as const);
 const BindingSchema = z

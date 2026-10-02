@@ -33,7 +33,7 @@ language sql immutable as $body$
 
 -- ------------------------------------------------ the pure validator ----
 select ok(pg_temp.s09d_service_only('platform_api.cms_validate_locale_config(text, text, jsonb, jsonb)'),
-  'cms_validate_locale_config is a service-role-only wrapper');
+  'cms_validate_locale_config is a service-role-only wrapper [P2-S09-AC-1203]');
 select is(pg_temp.od4_v('en-US', 'en-US', '["en-US"]', '{}'), '[]'::jsonb,
   '{} chains are valid exactly when supportedLocales is [defaultLocale]');
 select is(pg_temp.od4_v('en-US', 'en-US', '["en-US","fr-FR","pt-BR"]',
@@ -128,15 +128,15 @@ select is(platform_private.cms_locale_config_hash('en-US', 'en-US', '["en-US"]',
 select is(platform_private.cms_locale_config_hash('en-US', 'en-US', '["en-US","fr-FR","pt-BR"]',
     '{"fr-FR":["en-US"],"pt-BR":["fr-FR","en-US"]}'),
   '74f1ad73d3f4bd74643824e7669afe78e44490419f3cfe34ba7cc8cc1fce4557',
-  'localeConfigHash equals the contract vector for a three-locale configuration');
+  'localeConfigHash equals the contract vector for a three-locale configuration [P2-S09-AC-1203]');
 select is(platform_private.cms_locale_config_hash('en-US', 'en-US', '["pt-BR","en-US","fr-FR"]',
     '{"pt-BR":["fr-FR","en-US"],"fr-FR":["en-US"]}'),
   '74f1ad73d3f4bd74643824e7669afe78e44490419f3cfe34ba7cc8cc1fce4557',
-  'localeConfigHash is stable under request reordering of supportedLocales and chain keys');
+  'localeConfigHash is stable under request reordering of supportedLocales and chain keys [P2-S09-AC-1158]');
 select isnt(platform_private.cms_locale_config_hash('en-US', 'en-US', '["en-US","fr-FR","pt-BR"]',
     '{"fr-FR":["en-US"],"pt-BR":["en-US","fr-FR"]}'),
   '74f1ad73d3f4bd74643824e7669afe78e44490419f3cfe34ba7cc8cc1fce4557',
-  'chain order is semantic: a reordered chain changes the hash');
+  'chain order is semantic: a reordered chain changes the hash [P2-S09-AC-1165]');
 
 
 select * from finish();

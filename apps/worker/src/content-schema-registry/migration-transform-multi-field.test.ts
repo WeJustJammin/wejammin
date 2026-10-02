@@ -99,13 +99,10 @@ describe('retired fields', () => {
     expect(fill(document, context([], ['legacy']))).toBe(document);
   });
 
-  it('still refuses when there is nothing at all to prove against', () => {
-    expect(codeOf(() => identity({ a: 1 }, context([], [])))).toBe(
-      'TRANSFORM_TARGET_CONSTRAINTS_MISSING',
-    );
-    expect(codeOf(() => fill({ a: 1 }, context([], [])))).toBe(
-      'TRANSFORM_DEFAULT_UNAVAILABLE',
-    );
+  it('carries every row unchanged for a field-neutral plan (no changed and no retired field)', () => {
+    const document = { a: 1, nested: { b: [1, null] } };
+    expect(identity(document, context([], []))).toBe(document);
+    expect(fill(document, context([], []))).toBe(document);
   });
 
   it('never fills or touches a retired key during default.fill_literal', () => {

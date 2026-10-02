@@ -80,7 +80,7 @@ select ok(
            where content_type_id = (select content_type_id from s09_ac217_ids)
              and state = 'active') = 1
    from s09_ac217_activation),
-  'AC217 switches the recovered schema once through the production worker RPC'
+  'AC217 switches the recovered schema once through the production worker RPC [P2-S09-AC-217]'
 );
 
 select is(
@@ -98,7 +98,7 @@ select is(
    join platform_private.cms_content_type_versions target on target.id = ids.target_version_id
    join s09_ac217_artifact artifact on artifact.target_version_id = target.id),
   (select response from s09_ac217_activation),
-  'AC217 activation replay returns the exact original response without a second switch'
+  'AC217 activation replay returns the exact original response without a second switch [P2-S09-AC-217]'
 );
 
 select is(
@@ -106,7 +106,7 @@ select is(
    where event_type = 'cms.schema.activated.v1'
      and payload->>'migrationPlanId' = (select plan_id::text from s09_ac217_ids)),
   1,
-  'AC217 exactly-once activation persists one durable event for the plan'
+  'AC217 exactly-once activation persists one durable event for the plan [P2-S09-AC-217]'
 );
 
 create temp table s09_ac217_event on commit drop as
@@ -138,7 +138,7 @@ select is(
     'reasonCode', 'SIMULATED_WORKER_LOSS'
   ))->>'accepted' from s09_ac217_event),
   'true',
-  'AC217 records a real activation event in the durable DLQ'
+  'AC217 records a real activation event in the durable DLQ [P2-S09-AC-217]'
 );
 
 select ok(
@@ -166,7 +166,7 @@ select is(
     'claimToken', 'a9090000-0000-4000-8000-000000000727', 'replay', true
   ))->>'status' from s09_ac217_event),
   'replayable',
-  'AC217 exposes the dead-lettered activation for explicit replay after repair'
+  'AC217 exposes the dead-lettered activation for explicit replay after repair [P2-S09-AC-217]'
 );
 
 select is(
@@ -225,5 +225,5 @@ select ok(
   and (select count(*) = 1 from platform_private.outbox_events
        where event_type = 'cms.schema.activated.v1'
          and payload->>'migrationPlanId' = (select plan_id::text from s09_ac217_ids)),
-  'AC217 final recovery state has one active schema and one activation event'
+  'AC217 final recovery state has one active schema and one activation event [P2-S09-AC-217]'
 );

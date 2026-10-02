@@ -41,6 +41,7 @@ export const event = {
     contentTypeId: CONTENT_TYPE_ID,
     schemaVersionId: TARGET_VERSION_ID,
     migrationPlanId: PLAN_ID,
+    localeConfigHash: HASH,
     activationEvidence: {
       key: 'editorial.default',
       version: '1',

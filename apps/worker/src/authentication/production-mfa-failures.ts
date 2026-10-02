@@ -108,3 +108,34 @@ export const mfaRpcFailures: readonly RpcFailure[] = [
     },
   },
 ];
+
+/** The 15-minute verification lock of BE01a (ten failures, AUTH-API-18 and -21). */
+const VERIFICATION_LOCK_SECONDS = 900;
+const VERIFICATION_LOCK_PATTERN =
+  /MFA_VERIFICATION_LOCKED:([0-9]{1,3})(?![0-9])/u;
+
+/**
+ * `MFA_VERIFICATION_LOCKED:<seconds>` is raised by the verify-prepare
+ * transactions while the account lock is held. It becomes the standard 429
+ * with the remaining lock as the retry delay; a suffix outside 1..900 is never
+ * trusted as a delay (it falls through to the dependency failure).
+ */
+export const verificationLockFailure = (
+  message: string,
+): AuthenticationError | null => {
+  const seconds = Number(VERIFICATION_LOCK_PATTERN.exec(message)?.[1]);
+  if (
+    !Number.isSafeInteger(seconds) ||
+    seconds < 1 ||
+    seconds > VERIFICATION_LOCK_SECONDS
+  )
+    return null;
+  return {
+    ok: false,
+    status: 429,
+    code: 'RATE_LIMITED',
+    message: 'Too many verification attempts.',
+    details: { retryAfterSeconds: seconds },
+    retryAfterSeconds: seconds,
+  };
+};

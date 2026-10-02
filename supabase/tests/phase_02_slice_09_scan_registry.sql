@@ -37,10 +37,10 @@ select ok((select bool_and(digest::text = platform_private.cms_transform_registr
     source_constraints, target_constraints, accepted_field_kinds, behavior))
   from platform_private.cms_schema_transform_registry), 'every stored digest equals the recomputation of its own columns');
 select is((select jsonb_array_length(accepted_field_kinds) from platform_private.cms_schema_transform_registry
-  where transform_key = 'identity.revalidate'), 14, 'identity.revalidate accepts every IA field kind');
+  where transform_key = 'identity.revalidate'), 14, 'identity.revalidate accepts every IA field kind [P2-S09-AC-680]');
 select is((select accepted_field_kinds from platform_private.cms_schema_transform_registry where transform_key = 'default.fill_literal'),
   '["short_text","long_text","boolean","integer","decimal","date","datetime","enum"]'::jsonb,
-  'default.fill_literal accepts exactly the eight literal-default kinds');
+  'default.fill_literal accepts exactly the eight literal-default kinds [P2-S09-AC-680]');
 select ok(platform_private.cms_transform_registry_member('identity.revalidate', 1)->>'digest' =
   '9088ab84f3c3ec40733e76e1e5a8320da14388e5a1be9272b5259140dc1d7578'
   and platform_private.cms_transform_registry_member_valid('default.fill_literal', 1),
@@ -80,7 +80,7 @@ begin
   end;
 end;
 $body$;
-select ok(pg_temp.s09r_tampered(), 'a member whose columns no longer match its digest resolves to NULL');
+select ok(pg_temp.s09r_tampered(), 'a member whose columns no longer match its digest resolves to NULL [P2-S09-AC-680]');
 
 -- CMS-03A-10 refuses an unregistered pair and accepts a registered one.
 select pg_temp.s09d_create_type('a', 'regscan');
@@ -91,14 +91,14 @@ select pg_temp.s09w_dry_run('b');
 select pg_temp.s09w_tighten('b', 50);
 select pg_temp.s09d_dry_run('b', 'owner', 'cms.schema.migrate', '1', 's09r-unreg-0001');
 select is(pg_temp.s09d_outcome('b:dryRun'), 'VALIDATION_FAILED',
-  'CMS-03A-10 refuses a conditional attempt whose transform pair is not a registered member');
+  'CMS-03A-10 refuses a conditional attempt whose transform pair is not a registered member [P2-S09-AC-323] [P2-S09-AC-683]');
 select pg_temp.s09d_dry_run('b', 'owner', 'identity.revalidate', '2', 's09r-unreg-0002');
 select is(pg_temp.s09d_outcome('b:dryRun'), 'VALIDATION_FAILED',
-  'CMS-03A-10 refuses a registered key with an unregistered version');
+  'CMS-03A-10 refuses a registered key with an unregistered version [P2-S09-AC-323]');
 select pg_temp.s09d_dry_run('b', 'owner', 'identity.revalidate', '1', 's09r-reg-0001');
 select is(pg_temp.s09d_outcome('b:dryRun'), 'OK', 'CMS-03A-10 accepts the registered identity.revalidate version 1 pair');
 select is((select transform_key || '@' || transform_version from platform_private.cms_schema_migration_plans
-  where id = pg_temp.s09d_id('b:plan')), 'identity.revalidate@1', 'the plan stores the resolved key and version');
+  where id = pg_temp.s09d_id('b:plan')), 'identity.revalidate@1', 'the plan stores the resolved key and version [P2-S09-AC-680]');
 
 select * from finish();
 rollback;

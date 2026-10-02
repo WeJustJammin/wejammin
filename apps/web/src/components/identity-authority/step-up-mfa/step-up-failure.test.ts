@@ -53,7 +53,7 @@ describe('stepUpFailureView', () => {
     [409, 'challenge_consumed'],
     [404, null],
   ])(
-    'treats %i %s as a challenge that is no longer valid',
+    '[P2-S09-AC-1089] treats %i %s as a challenge that is no longer valid',
     (status, reason) => {
       expect(
         stepUpFailureView(

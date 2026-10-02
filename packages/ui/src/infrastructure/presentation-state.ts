@@ -41,6 +41,14 @@ export function presentInfrastructureState(
         requiredCapability: parsed.requiredCapability,
         protectedLabelsVisible: false,
       };
+    case 'step_up_required':
+      return {
+        status: parsed.status,
+        returnTo: parsed.returnTo,
+        recoveryHref: `/step-up?returnTo=${encodeURIComponent(parsed.returnTo)}`,
+        allowedMethods: parsed.allowedMethods,
+        gateRendered: false,
+      };
     case 'not_found':
       return { status: parsed.status, disclosureSafe: true };
     case 'conflict':

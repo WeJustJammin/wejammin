@@ -45,7 +45,7 @@ const open = async (...responses: StubResponse[]) => {
 };
 
 describe('StepUpChallengeForm creating the challenge', () => {
-  it('never creates a challenge during server rendering', () => {
+  it('[P2-S09-AC-1060] never creates a challenge during server rendering', () => {
     const fetchImpl = stubFetch();
     const html = renderToString(
       <StepUpChallengeForm
@@ -61,7 +61,7 @@ describe('StepUpChallengeForm creating the challenge', () => {
     expect(html).not.toContain('name="code"');
   });
 
-  it('creates exactly one challenge on mount for a single verified factor', async () => {
+  it('[P2-S09-AC-1060] creates exactly one challenge on mount for a single verified factor', async () => {
     const { fetchImpl, container } = await open();
     expect(fetchImpl.calls).toHaveLength(1);
     expect(fetchImpl.calls[0]?.url).toBe('/api/v1/auth/step-up/challenges');
@@ -69,7 +69,7 @@ describe('StepUpChallengeForm creating the challenge', () => {
     expect(container.textContent).toContain('Phone a');
   });
 
-  it('lets a person choose among several verified factors first', async () => {
+  it('[P2-S09-AC-1059] lets a person choose among several verified factors first', async () => {
     const fetchImpl = stubFetch(json(201, challenge(FACTOR_B)));
     harness = mountForm(fetchImpl, {
       initialPhase: 'choosing-factor',
@@ -100,7 +100,7 @@ describe('StepUpChallengeForm creating the challenge', () => {
     });
   });
 
-  it('explains the missing authenticator and links to enrollment and back', async () => {
+  it('[P2-S09-AC-1058] [P2-S09-AC-1140] explains the missing authenticator and links to enrollment and back', async () => {
     harness = mountForm(stubFetch(), { initialPhase: 'no-factor' });
     await flush();
     const container = harness.mounted.container;
@@ -117,7 +117,7 @@ describe('StepUpChallengeForm creating the challenge', () => {
 });
 
 describe('StepUpChallengeForm one-time code field', () => {
-  it('renders the exact one-time-code semantics with a persistent label', async () => {
+  it('[P2-S09-AC-1061] [P2-S09-AC-1085] renders the exact one-time-code semantics with a persistent label', async () => {
     const { container } = await open();
     const input = codeInput(container);
     expect(input.getAttribute('type')).toBe('text');
@@ -142,7 +142,7 @@ describe('StepUpChallengeForm one-time code field', () => {
     );
   });
 
-  it('strips spaces and hyphens before the six-digit check and sends the digits only', async () => {
+  it('[P2-S09-AC-1086] strips spaces and hyphens before the six-digit check and sends the digits only', async () => {
     const { fetchImpl, container } = await open(json(200, stepUpResult));
     setValue(codeInput(container), '123 456');
     submitForm(container);
@@ -151,7 +151,7 @@ describe('StepUpChallengeForm one-time code field', () => {
     expect(fetchImpl.calls[1]?.body).toEqual({ code: '123456' });
   });
 
-  it('refuses a malformed code without any request and announces the error in the field', async () => {
+  it('[P2-S09-AC-1087] [P2-S09-AC-1102] refuses a malformed code without any request and announces the error in the field', async () => {
     const { fetchImpl, container } = await open();
     const input = codeInput(container);
     setValue(input, '12 ab');
@@ -170,7 +170,7 @@ describe('StepUpChallengeForm one-time code field', () => {
     expect(document.activeElement).toBe(input);
   });
 
-  it('clears and re-selects the field when the code is incorrect', async () => {
+  it('[P2-S09-AC-1102] clears and re-selects the field when the code is incorrect', async () => {
     const { container } = await open(violation('code_incorrect'));
     const input = codeInput(container);
     setValue(input, '654321');
@@ -184,7 +184,7 @@ describe('StepUpChallengeForm one-time code field', () => {
     expect(document.activeElement).toBe(input);
   });
 
-  it('makes the field read-only, not disabled, while verifying and ignores duplicate submits', async () => {
+  it('[P2-S09-AC-1062] makes the field read-only, not disabled, while verifying and ignores duplicate submits', async () => {
     let release: ((response: Response) => void) | undefined;
     const fetchImpl = stubFetch(json(201, challenge()), () => {
       throw new Error('replaced below');
@@ -218,7 +218,7 @@ describe('StepUpChallengeForm one-time code field', () => {
 });
 
 describe('StepUpChallengeForm outcomes', () => {
-  it('announces success, posts an invalidation-only message and does a full navigation to returnTo', async () => {
+  it('[P2-S09-AC-1063] [P2-S09-AC-1068] announces success, posts an invalidation-only message and does a full navigation to returnTo', async () => {
     const { container, h } = await open(json(200, stepUpResult));
     setValue(codeInput(container), '123456');
     submitForm(container);
@@ -230,7 +230,7 @@ describe('StepUpChallengeForm outcomes', () => {
     expect(h.channel.posts()).toBe(1);
   });
 
-  it('offers a fresh code request when the challenge expired and moves focus to it', async () => {
+  it('[P2-S09-AC-1089] [P2-S09-AC-1103] offers a fresh code request when the challenge expired and moves focus to it', async () => {
     const { fetchImpl, container } = await open(
       conflict('challenge_expired', 'new_challenge'),
       json(201, challenge()),
@@ -261,7 +261,7 @@ describe('StepUpChallengeForm outcomes', () => {
     );
   });
 
-  it('shows degraded copy with the request id and retries by creating a new challenge, never resending the code', async () => {
+  it('[P2-S09-AC-1097] shows degraded copy with the request id and retries by creating a new challenge, never resending the code', async () => {
     const { fetchImpl, container } = await open(
       apiError(503, 'DEPENDENCY_UNAVAILABLE', {
         dependencyClass: 'provider',

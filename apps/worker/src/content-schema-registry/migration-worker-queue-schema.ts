@@ -1,6 +1,7 @@
 import {
   failure,
   hasExactKeys,
+  isHash,
   isInstant,
   isRecord,
   isSafeToken,
@@ -31,6 +32,7 @@ export type SchemaMigrationQueueEnvelope = Readonly<{
     contentTypeId: string;
     schemaVersionId: string;
     migrationPlanId: string | null;
+    localeConfigHash: string;
     activationEvidence: SchemaActivationEvidence;
   }>;
 }>;
@@ -83,6 +85,7 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
         'contentTypeId',
         'schemaVersionId',
         'migrationPlanId',
+        'localeConfigHash',
         'activationEvidence',
       ])
     )
@@ -98,6 +101,11 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
       return failure(
         ['payload', 'migrationPlanId'],
         'migrationPlanId is invalid',
+      );
+    if (!isHash(value.payload.localeConfigHash))
+      return failure(
+        ['payload', 'localeConfigHash'],
+        'localeConfigHash is invalid',
       );
     const evidence = parseSchemaActivationEvidence(
       value.payload.activationEvidence,
@@ -120,6 +128,7 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
           contentTypeId: value.payload.contentTypeId,
           schemaVersionId: value.payload.schemaVersionId,
           migrationPlanId: value.payload.migrationPlanId,
+          localeConfigHash: value.payload.localeConfigHash,
           activationEvidence: evidence.data,
         },
       },
