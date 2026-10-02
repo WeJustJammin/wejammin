@@ -38,3 +38,6 @@ spec-graph compile are recorded in the dated session handoff.
 
 ### Phases into
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
+
+### References
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

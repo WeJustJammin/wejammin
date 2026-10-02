@@ -1,0 +1,515 @@
+-- CMS-03B-03 protected revision-history read.  Reuses the rolled-back entry,
+-- schema, field and assignment fixtures above.  These checks intentionally
+-- expose cursor and hash drift in the candidate 140000 migration.
+
+select ok(
+  pg_temp.s10_fn_exists('platform_api', 'cms_list_revisions', 'jsonb')
+    and pg_temp.s10_fn_privilege('platform_api', 'cms_list_revisions', 'jsonb', 'service_role')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_list_revisions', 'jsonb', 'anon')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_list_revisions', 'jsonb', 'authenticated'),
+  'CMS-03B-03 wrapper is executable only by the Worker service role'
+);
+select ok(
+  pg_temp.s10_capability_registered('cms.reviewer', 1),
+  'CMS-03B-03 read-only reviewer scope is registered at version 1'
+);
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+-- No real signing secret is provisioned by migrations. An unconfigured
+-- environment must refuse the history read rather than mint an unsigned cursor.
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_list_revisions('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-03 refuses an unconfigured Vault cursor-signing key'
+);
+
+-- This fixed key exists only inside the rolled-back pgTAP transaction. It is
+-- never a hosted or owner-approved operational signing value.
+select vault.create_secret(
+  repeat('a1', 32),
+  'cms_editorial_history_cursor_active',
+  'pgTAP transaction-only CMS-03B-03 test key'
+);
+create temp table s10_history_effects on commit drop as
+select pg_temp.s10_audit_total() as audit_total,
+       pg_temp.s10_outbox_total() as outbox_total;
+
+create temp table s10_history_first on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_list_revisions('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+) as response;
+
+select is(pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 authorized author can read history');
+select is((select jsonb_array_length(response->'items') from s10_history_first), 1,
+  'CMS-03B-03 returns the one seeded revision');
+select is((select response->'items'->0->>'contentHash' from s10_history_first),
+  (select btrim(payload_hash::text) from platform_private.cms_entry_revisions
+   where id = 'a9100000-0000-4000-8000-000000000302'),
+  'CMS-03B-03 summary contentHash equals the frozen revision content hash');
+select is((select response->'items'->0->>'authorClass' from s10_history_first),
+  'author', 'CMS-03B-03 derives the assigned author class');
+select ok((select response->'compare' = 'null'::jsonb
+             and response->'nextCursor' = 'null'::jsonb
+             and response->>'pageVersion' = '1' from s10_history_first),
+  'CMS-03B-03 emits a bounded one-page response with no comparison');
+select is(pg_temp.s10_audit_total(), (select audit_total from s10_history_effects),
+  'CMS-03B-03 history read writes no audit event');
+select is(pg_temp.s10_outbox_total(), (select outbox_total from s10_history_effects),
+  'CMS-03B-03 history read writes no outbox event');
+
+-- A matching field hash and revision hash do not make an invalid value safe.
+-- This extra immutable revision is rolled back with the probe: its declared
+-- title field is short_text, but its frozen value is an object.  History must
+-- refuse the summary instead of reporting schema-aware provenance for it.
+select pg_temp.s10_rpc_probe(
+  'history-value-wrong-kind',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000416'', 11,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''{"unexpected":"object"}''::jsonb);
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000416'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''{"unexpected":"object"}''::jsonb);',
+  'select platform_api.cms_list_revisions('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('history-value-wrong-kind'),
+  'P0001',
+  'CMS-03B-03 rejects a correctly hashed but wrong-kind stored value'
+);
+select is(
+  pg_temp.s10_probe_message('history-value-wrong-kind'),
+  'INTERNAL_ERROR',
+  'CMS-03B-03 wrong-kind value uses the scrubbed internal token'
+);
+
+-- CMS-03B-01 can store an explicit-null changed field with a null value hash.
+-- History must compare that immutable revision without inventing a hash for
+-- absence or treating a legitimate null as corrupt. The probe rolls back both
+-- the revision and the draft pointer before the pagination fixture begins.
+select pg_temp.s10_rpc_probe(
+  'history-explicit-null',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000417'', 12,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''null''::jsonb);
+   insert into platform_private.cms_entry_field_values(
+     owner_id, state, version, revision_id, field_id, field_definition_id,
+     locale, value, provenance, value_hash, created_at, updated_at
+   )
+   select ids_org.value::uuid, ''active'', 1,
+     ''a9100000-0000-4000-8000-000000000417''::uuid,
+     ids_field.value::uuid, ids_field.value::uuid,
+     ''en-US'', ''null''::jsonb, ''explicit_null'', null,
+     timestamptz ''2026-09-26T12:00:00Z'',
+     timestamptz ''2026-09-26T12:00:00Z''
+   from s10_ids ids_org, s10_ids ids_field
+   where ids_org.key = ''organization'' and ids_field.key = ''typeFieldId'';',
+  'select platform_api.cms_list_revisions('
+    || quote_literal(((select request from s10_detail_request)
+      || jsonb_build_object(
+        'compareRevisionId', 'a9100000-0000-4000-8000-000000000302'
+      ))::text)
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('history-explicit-null'), '00000',
+  'CMS-03B-03 reads an immutable explicit-null field revision'
+);
+select ok(
+  (select response->'compare'->'changes'->0->>'kind' = 'changed'
+      and response->'compare'->'changes'->0->'rightHash' = 'null'::jsonb
+      and response->'compare'->'changes'->0->>'leftHash' ~ '^[a-f0-9]{64}$'
+   from pg_temp.s10_probe_capture
+   where label = 'history-explicit-null'),
+  'CMS-03B-03 compares explicit null using a null hash, not a fabricated digest'
+);
+
+-- A second valid revision makes the limit-1 keyset boundary observable.
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id,
+  template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+  payload_hash, author_person_id, acting_party_id, state, version,
+  validation_state, validation_report, created_at, updated_at
+)
+select
+  'a9100000-0000-4000-8000-000000000303', owner_id, entry_id, 2,
+  schema_version_id, template_version_id, taxonomy_version_ids,
+  jsonb_build_array(id), locale,
+  platform_private.cms_jcs_sha256(
+    jsonb_build_object(
+      (select value from s10_ids where key = 'typeFieldId'), 'Updated draft title'
+    )
+  )::char(64),
+  author_person_id, acting_party_id, state, 1, validation_state,
+  validation_report, created_at + interval '1 minute',
+  updated_at + interval '1 minute'
+from platform_private.cms_entry_revisions
+where id = 'a9100000-0000-4000-8000-000000000302';
+
+insert into platform_private.cms_entry_field_values(
+  owner_id, state, version, revision_id, field_id, field_definition_id,
+  locale, value, provenance, value_hash, created_at, updated_at
+)
+select owner_id, state, 1, 'a9100000-0000-4000-8000-000000000303',
+       field_id, field_definition_id, locale,
+       to_jsonb('Updated draft title'::text), provenance,
+       platform_private.cms_jcs_sha256(to_jsonb('Updated draft title'::text))::char(64),
+       created_at + interval '1 minute', updated_at + interval '1 minute'
+from platform_private.cms_entry_field_values
+where revision_id = 'a9100000-0000-4000-8000-000000000302';
+
+create temp table s10_history_page_one on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_list_revisions('
+    || quote_literal(((select request from s10_detail_request)
+                      || '{"limit":1}'::jsonb)::text)
+    || '::jsonb)'
+) as response;
+select is(pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 limit-1 first page succeeds');
+select is((select response->'items'->0->>'revisionNumber' from s10_history_page_one),
+  '2', 'CMS-03B-03 first page starts with the newest revision');
+select ok((select response->>'nextCursor' is not null from s10_history_page_one),
+  'CMS-03B-03 provides a cursor when one visible revision remains');
+select ok(
+  (
+    select platform_private.cms_exact_keys(
+      convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+      array[
+        'queryHash', 'lastRevisionNumber', 'lastRevisionId', 'expiresAt',
+        'keyId', 'signature'
+      ]::text[],
+      array[
+        'queryHash', 'lastRevisionNumber', 'lastRevisionId', 'expiresAt',
+        'keyId', 'signature'
+      ]::text[]
+    ) and octet_length(response->>'nextCursor') <= 512
+    from s10_history_page_one
+  ),
+  'CMS-03B-03 cursor is a bounded six-key signed envelope'
+);
+
+create temp table s10_history_page_two on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_list_revisions('
+    || quote_literal(((select request from s10_detail_request)
+                      || jsonb_build_object('limit', 1, 'cursor',
+                           (select response->>'nextCursor' from s10_history_page_one)))::text)
+    || '::jsonb)'
+) as response;
+select is(pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 limit-1 continuation succeeds');
+select is((select response->'items'->0->>'revisionNumber' from s10_history_page_two),
+  '1', 'CMS-03B-03 keyset continuation does not skip the next visible revision');
+
+-- Rotation retains the previous Vault secret under a retired name for one
+-- cursor lifetime. A fresh active key signs new pages; an old signed cursor
+-- remains verifiable during the bounded grace period.
+savepoint s10_history_key_rotation;
+select vault.update_secret(
+  (select id from vault.secrets
+   where name = 'cms_editorial_history_cursor_active'),
+  new_name => 'cms_editorial_history_cursor_retired_test'
+);
+select vault.create_secret(
+  repeat('b2', 32),
+  'cms_editorial_history_cursor_active',
+  'pgTAP transaction-only rotated CMS-03B-03 test key'
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_list_revisions('
+    || quote_literal(((select request from s10_detail_request)
+                      || jsonb_build_object('limit', 1, 'cursor',
+                           (select response->>'nextCursor' from s10_history_page_one)))::text)
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 accepts a signed cursor from a freshly retired Vault key'
+);
+rollback to savepoint s10_history_key_rotation;
+release savepoint s10_history_key_rotation;
+
+-- A caller can decode a cursor, but altering even a single keyset position must
+-- invalidate its signature.  Context hashing alone is not a signature.
+create temp table s10_history_tampered_cursor on commit drop as
+select replace(encode(convert_to(
+  jsonb_set(
+    convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+    '{lastRevisionNumber}', to_jsonb('999'::text)
+  )::text,
+  'utf8'
+), 'base64'), E'\n', '') as cursor
+from s10_history_page_one;
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object('limit', 1, 'cursor',
+                             (select cursor from s10_history_tampered_cursor)))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 rejects a tampered but well-formed keyset cursor'
+);
+select is(pg_temp.s10_last_error_message(), 'CONFLICT',
+  'CMS-03B-03 cursor signature mismatch returns the conflict token');
+
+-- Even a valid MAC must not turn an issued 24-hour cursor into a longer-lived
+-- credential. This forges only with the transaction-scoped test key.
+create temp table s10_history_overlong_cursor on commit drop as
+with changed as (
+  select jsonb_set(
+    convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+    '{expiresAt}',
+    to_jsonb((floor(extract(epoch from clock_timestamp())) + 172800)::bigint::text)
+  ) as envelope
+  from s10_history_page_one
+), resigned as (
+  select envelope || jsonb_build_object(
+    'signature', encode(extensions.hmac(
+      convert_to(
+        'cms-03b-03:v1:' || (envelope->>'keyId') || ':' ||
+          platform_private.cms_jcs(envelope - 'keyId' - 'signature'),
+        'utf8'
+      ),
+      decode(repeat('a1', 32), 'hex'),
+      'sha256'
+    ), 'hex')
+  ) as envelope
+  from changed
+)
+select replace(encode(convert_to(platform_private.cms_jcs(envelope), 'utf8'),
+                      'base64'), E'\n', '') as cursor
+from resigned;
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_list_revisions('
+    || quote_literal(((select request from s10_detail_request)
+                      || jsonb_build_object('limit', 1, 'cursor',
+                           (select cursor from s10_history_overlong_cursor)))::text)
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'CONFLICT',
+  'CMS-03B-03 refuses a correctly signed cursor beyond the 24-hour maximum'
+);
+
+-- A signed envelope that is not structurally well-formed is a caller fault,
+-- not a verified-but-rejected cursor.  Wrong key set, a keyId that is not a
+-- UUID, and a non-64-hex signature must each return INVALID_REQUEST, while a
+-- valid-shaped envelope whose MAC fails stays CONFLICT.  The base cursor is
+-- the signed page-one cursor; each malformed probe removes or replaces one
+-- field of its decoded envelope.
+create temp table s10_history_malformed_cursor on commit drop as
+select 'missing-key' as kind,
+  replace(encode(convert_to(
+    (convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb
+     - 'signature')::text, 'utf8'), 'base64'), E'\n', '') as cursor
+from s10_history_page_one
+union all
+select 'bad-keyid',
+  replace(encode(convert_to(
+    jsonb_set(
+      convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+      '{keyId}', to_jsonb('not-a-uuid'::text)
+    )::text, 'utf8'), 'base64'), E'\n', '')
+from s10_history_page_one
+union all
+select 'bad-signature',
+  replace(encode(convert_to(
+    jsonb_set(
+      convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+      '{signature}', to_jsonb('zz'::text)
+    )::text, 'utf8'), 'base64'), E'\n', '')
+from s10_history_page_one
+union all
+select 'valid-shaped-bad-mac',
+  replace(encode(convert_to(
+    jsonb_set(
+      convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+      '{signature}', to_jsonb(repeat('ff', 32))
+    )::text, 'utf8'), 'base64'), E'\n', '')
+from s10_history_page_one;
+select ok(
+  (select count(*) = 4 from s10_history_malformed_cursor),
+  'CMS-03B-03 malformed-envelope fixtures build four distinct cursors'
+);
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object('limit', 1, 'cursor',
+                             (select cursor from s10_history_malformed_cursor
+                              where kind = 'missing-key')))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 rejects a signed cursor missing its signature key'
+);
+select is(pg_temp.s10_last_error_message(), 'INVALID_REQUEST',
+  'CMS-03B-03 wrong key set returns the invalid-request token');
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object('limit', 1, 'cursor',
+                             (select cursor from s10_history_malformed_cursor
+                              where kind = 'bad-keyid')))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 rejects a signed cursor with a non-UUID keyId'
+);
+select is(pg_temp.s10_last_error_message(), 'INVALID_REQUEST',
+  'CMS-03B-03 malformed keyId UUID returns the invalid-request token');
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object('limit', 1, 'cursor',
+                             (select cursor from s10_history_malformed_cursor
+                              where kind = 'bad-signature')))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 rejects a signed cursor with a non-hex signature'
+);
+select is(pg_temp.s10_last_error_message(), 'INVALID_REQUEST',
+  'CMS-03B-03 malformed signature hex returns the invalid-request token');
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object('limit', 1, 'cursor',
+                             (select cursor from s10_history_malformed_cursor
+                              where kind = 'valid-shaped-bad-mac')))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 rejects a valid-shaped cursor with a failing MAC'
+);
+select is(pg_temp.s10_last_error_message(), 'CONFLICT',
+  'CMS-03B-03 valid-shaped unverifiable cursor stays the conflict token');
+
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object('limit', 1, 'state', 'draft', 'cursor',
+                             (select response->>'nextCursor' from s10_history_page_one)))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 binds a valid cursor to its original filter context'
+);
+select is(pg_temp.s10_last_error_message(), 'CONFLICT',
+  'CMS-03B-03 filter context mismatch returns the conflict token');
+
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal(((select request from s10_detail_request)
+                        || jsonb_build_object(
+                             'limit', 1,
+                             'compareRevisionId',
+                               'a9100000-0000-4000-8000-000000000302',
+                             'cursor',
+                               (select response->>'nextCursor'
+                                from s10_history_page_one)))::text)
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 rejects a signed cursor replayed into a comparison context'
+);
+select is(pg_temp.s10_last_error_message(), 'CONFLICT',
+  'CMS-03B-03 comparison context mismatch returns the conflict token');
+
+create temp table s10_history_compare on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_list_revisions('
+    || quote_literal(((select request from s10_detail_request)
+                      || '{"compareRevisionId":"a9100000-0000-4000-8000-000000000302"}'::jsonb)::text)
+    || '::jsonb)'
+) as response;
+select is(pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 compares an authorized base to the latest readable revision');
+select is((select response->'compare'->'changes'->0->>'kind'
+           from s10_history_compare), 'changed',
+  'CMS-03B-03 compare identifies the changed stable-field path');
+select ok((select response->'compare'->'changes'->0->>'leftHash' ~ '^[a-f0-9]{64}$'
+             and response->'compare'->'changes'->0->>'rightHash' ~ '^[a-f0-9]{64}$'
+             and response->'compare'->'changes'->0->>'path' =
+                 '/fields/' || (select value from s10_ids where key = 'typeFieldId')
+           from s10_history_compare),
+  'CMS-03B-03 compare exposes only the stable path and safe hashes');
+select is((select response->'compare'->'changes'->0->>'leftHash'
+           from s10_history_compare),
+  (select btrim(value_hash::text) from platform_private.cms_entry_field_values
+   where revision_id = 'a9100000-0000-4000-8000-000000000302'),
+  'CMS-03B-03 comparison leftHash equals the frozen field-value hash');
+select is((select response->'compare'->'changes'->0->>'rightHash'
+           from s10_history_compare),
+  (select btrim(value_hash::text) from platform_private.cms_entry_field_values
+   where revision_id = 'a9100000-0000-4000-8000-000000000303'),
+  'CMS-03B-03 comparison rightHash equals the frozen field-value hash');
+
+-- A dedicated reviewer has only the bounded history read grant and assignment.
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select ids_org.value::uuid, ids_person.value::uuid, 'cms.reviewer',
+       current_date, current_date + 1, true
+from s10_ids ids_org, s10_ids ids_person
+where ids_org.key = 'organization' and ids_person.key = 'outsiderPerson';
+
+insert into platform_private.cms_entry_assignments(
+  owner_id, entry_id, assignee_person_id, capability_key,
+  state, version, created_at, updated_at
+)
+select ids_org.value::uuid,
+       'a9100000-0000-4000-8000-000000000301',
+       ids_person.value::uuid, 'cms.reviewer', 'active', 1,
+       timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+from s10_ids ids_org, s10_ids ids_person
+where ids_org.key = 'organization' and ids_person.key = 'outsiderPerson';
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000003'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select ok(
+  pg_temp.s10_rpc_exec(
+    'select platform_api.cms_list_revisions('
+      || quote_literal((select request::text from s10_detail_request))
+      || '::jsonb)'
+  )->'items'->0->>'revisionNumber' = '2',
+  'CMS-03B-03 permits a reviewer with only the registered grant and active assignment'
+);
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_get_entry_draft('
+      || quote_literal((select request::text from s10_detail_request))
+      || '::jsonb)'
+  ),
+  'CMS-03B-11 does not turn reviewer read scope into draft-detail edit scope'
+);
+select is(pg_temp.s10_last_error_message(), 'FORBIDDEN',
+  'CMS-03B-11 reviewer-only refusal has the exact contract token');
+
+update platform_private.cms_entry_assignments
+set state = 'revoked', version = version + 1
+where entry_id = 'a9100000-0000-4000-8000-000000000301'
+  and capability_key = 'cms.reviewer';
+select ok(
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_list_revisions('
+      || quote_literal((select request::text from s10_detail_request))
+      || '::jsonb)'
+  ),
+  'CMS-03B-03 refuses a reviewer after assignment revocation'
+);
+select is(pg_temp.s10_last_error_message(), 'FORBIDDEN',
+  'CMS-03B-03 revoked reviewer assignment is a visible-but-unscoped refusal');

@@ -529,6 +529,7 @@ export type Database = {
       }
       cms_add_field_definition: { Args: { p_request: Json }; Returns: Json }
       cms_advance_block_lifecycle: { Args: { p_request: Json }; Returns: Json }
+      cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
       cms_begin_schema_migration_verification: {
         Args: { p_request: Json }
         Returns: Json
@@ -551,16 +552,20 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_create_entry: { Args: { p_request: Json }; Returns: Json }
+      cms_create_revision: { Args: { p_request: Json }; Returns: Json }
       cms_create_type_draft: { Args: { p_request: Json }; Returns: Json }
       cms_dead_letter_schema_migration_event: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_define_template: { Args: { p_request: Json }; Returns: Json }
       cms_finalize_schema_migration_dry_run: {
         Args: { p_request: Json }
         Returns: Json
       }
       cms_get_content_type_version: { Args: { p_request: Json }; Returns: Json }
+      cms_get_entry_draft: { Args: { p_request: Json }; Returns: Json }
       cms_get_operational_alert_exercise_eligibility: {
         Args: { p_request: Json }
         Returns: Json
@@ -578,6 +583,7 @@ export type Database = {
         Returns: Json
       }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
+      cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_process_schema_migration_batch: {
         Args: { p_request: Json }
         Returns: Json
@@ -595,10 +601,13 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_template_context: { Args: { p_request: Json }; Returns: Json }
+      cms_template_latest: { Args: { p_request: Json }; Returns: Json }
       cms_verify_operational_alert_delivery: {
         Args: { p_request: Json }
         Returns: Json
@@ -3829,6 +3838,336 @@ export type Database = {
         }
         Relationships: []
       }
+      cms_composition_instances: {
+        Row: {
+          bindings: Json
+          block_key: string
+          block_registry_digest: string
+          block_version: number
+          created_at: string
+          created_by: string
+          id: string
+          link_mode: string
+          owner_id: string
+          parent_instance_id: string | null
+          path: string
+          pattern_id: string | null
+          pattern_version: number | null
+          props: Json
+          revision_id: string
+          slot_key: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          bindings?: Json
+          block_key: string
+          block_registry_digest: string
+          block_version: number
+          created_at?: string
+          created_by: string
+          id?: string
+          link_mode: string
+          owner_id: string
+          parent_instance_id?: string | null
+          path: string
+          pattern_id?: string | null
+          pattern_version?: number | null
+          props?: Json
+          revision_id: string
+          slot_key: string
+          state?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          bindings?: Json
+          block_key?: string
+          block_registry_digest?: string
+          block_version?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          link_mode?: string
+          owner_id?: string
+          parent_instance_id?: string | null
+          path?: string
+          pattern_id?: string | null
+          pattern_version?: number | null
+          props?: Json
+          revision_id?: string
+          slot_key?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_composition_instances_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_parent_instance_id_fkey"
+            columns: ["parent_instance_id"]
+            isOneToOne: false
+            referencedRelation: "cms_composition_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_parent_owner_fkey"
+            columns: ["parent_instance_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_composition_instances"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_parent_revision_owner_fkey"
+            columns: ["parent_instance_id", "revision_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_composition_instances"
+            referencedColumns: ["id", "revision_id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_pattern_owner_fkey"
+            columns: ["pattern_id", "pattern_version", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_pattern_versions"
+            referencedColumns: ["id", "version", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_pattern_version_fkey"
+            columns: ["pattern_id", "pattern_version"]
+            isOneToOne: false
+            referencedRelation: "cms_pattern_versions"
+            referencedColumns: ["id", "version"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_composition_instances_revision_owner_fkey"
+            columns: ["revision_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_conflict_records: {
+        Row: {
+          base_hash: string
+          base_revision_id: string
+          changed_paths: Json
+          conflict_hash: string
+          created_at: string
+          entry_id: string
+          id: string
+          owner_id: string
+          proposed_values: Json | null
+          proposed_values_hash: string | null
+          resolved_acting_party_id: string | null
+          resolved_at: string | null
+          resolved_by_person_id: string | null
+          resolved_revision_id: string | null
+          state: string
+          theirs_hash: string
+          theirs_revision_id: string
+          updated_at: string
+          version: number
+          yours_hash: string
+          yours_revision_id: string | null
+          yours_source: string
+        }
+        Insert: {
+          base_hash: string
+          base_revision_id: string
+          changed_paths: Json
+          conflict_hash: string
+          created_at?: string
+          entry_id: string
+          id?: string
+          owner_id: string
+          proposed_values?: Json | null
+          proposed_values_hash?: string | null
+          resolved_acting_party_id?: string | null
+          resolved_at?: string | null
+          resolved_by_person_id?: string | null
+          resolved_revision_id?: string | null
+          state: string
+          theirs_hash: string
+          theirs_revision_id: string
+          updated_at?: string
+          version?: number
+          yours_hash: string
+          yours_revision_id?: string | null
+          yours_source: string
+        }
+        Update: {
+          base_hash?: string
+          base_revision_id?: string
+          changed_paths?: Json
+          conflict_hash?: string
+          created_at?: string
+          entry_id?: string
+          id?: string
+          owner_id?: string
+          proposed_values?: Json | null
+          proposed_values_hash?: string | null
+          resolved_acting_party_id?: string | null
+          resolved_at?: string | null
+          resolved_by_person_id?: string | null
+          resolved_revision_id?: string | null
+          state?: string
+          theirs_hash?: string
+          theirs_revision_id?: string
+          updated_at?: string
+          version?: number
+          yours_hash?: string
+          yours_revision_id?: string | null
+          yours_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_conflict_records_base_revision_id_fkey"
+            columns: ["base_revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_resolved_acting_party_id_fkey"
+            columns: ["resolved_acting_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_resolved_by_person_id_fkey"
+            columns: ["resolved_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_resolved_by_person_id_fkey"
+            columns: ["resolved_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_resolved_by_person_id_fkey"
+            columns: ["resolved_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_resolved_revision_id_fkey"
+            columns: ["resolved_revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_theirs_revision_id_fkey"
+            columns: ["theirs_revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_conflict_records_yours_revision_id_fkey"
+            columns: ["yours_revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_content_entries: {
+        Row: {
+          content_type_id: string
+          created_at: string
+          created_by: string
+          current_draft_revision_id: string | null
+          id: string
+          lifecycle: string
+          owner_id: string
+          owner_party_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content_type_id: string
+          created_at?: string
+          created_by: string
+          current_draft_revision_id?: string | null
+          id?: string
+          lifecycle: string
+          owner_id: string
+          owner_party_id?: string | null
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          content_type_id?: string
+          created_at?: string
+          created_by?: string
+          current_draft_revision_id?: string | null
+          id?: string
+          lifecycle?: string
+          owner_id?: string
+          owner_party_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_content_entries_content_type_id_fkey"
+            columns: ["content_type_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_content_entries_current_draft_fkey"
+            columns: ["current_draft_revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_content_entries_owner_party_id_fkey"
+            columns: ["owner_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_content_entries_type_owner_fkey"
+            columns: ["content_type_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_types"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
       cms_content_type_capability_bindings: {
         Row: {
           capability_key: string
@@ -4027,6 +4366,13 @@ export type Database = {
             referencedRelation: "cms_content_type_versions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cms_content_type_versions_type_owner_fkey"
+            columns: ["content_type_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_types"
+            referencedColumns: ["id", "owner_id"]
+          },
         ]
       }
       cms_content_types: {
@@ -4067,6 +4413,633 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      cms_edit_presence: {
+        Row: {
+          acting_party_id: string | null
+          created_at: string
+          current_field_id: string | null
+          entry_id: string
+          id: string
+          last_seen_at: string
+          lease_until: string
+          owner_id: string
+          person_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          acting_party_id?: string | null
+          created_at?: string
+          current_field_id?: string | null
+          entry_id: string
+          id?: string
+          last_seen_at: string
+          lease_until: string
+          owner_id: string
+          person_id: string
+          state: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          acting_party_id?: string | null
+          created_at?: string
+          current_field_id?: string | null
+          entry_id?: string
+          id?: string
+          last_seen_at?: string
+          lease_until?: string
+          owner_id?: string
+          person_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_edit_presence_acting_party_id_fkey"
+            columns: ["acting_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_edit_presence_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_edit_presence_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_edit_presence_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_edit_presence_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      cms_editorial_decisions: {
+        Row: {
+          acting_party_id: string | null
+          capability: string
+          comment_hash: string | null
+          created_at: string
+          decided_at: string
+          decision: string
+          id: string
+          owner_id: string
+          reason: string
+          review_id: string
+          reviewed_hash: string
+          reviewer_person_id: string
+          state: string
+          step_up_at: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          acting_party_id?: string | null
+          capability: string
+          comment_hash?: string | null
+          created_at?: string
+          decided_at?: string
+          decision: string
+          id?: string
+          owner_id: string
+          reason: string
+          review_id: string
+          reviewed_hash: string
+          reviewer_person_id: string
+          state: string
+          step_up_at?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          acting_party_id?: string | null
+          capability?: string
+          comment_hash?: string | null
+          created_at?: string
+          decided_at?: string
+          decision?: string
+          id?: string
+          owner_id?: string
+          reason?: string
+          review_id?: string
+          reviewed_hash?: string
+          reviewer_person_id?: string
+          state?: string
+          step_up_at?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_editorial_decisions_acting_party_id_fkey"
+            columns: ["acting_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_decisions_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_editorial_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_decisions_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_decisions_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_decisions_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      cms_editorial_reviews: {
+        Row: {
+          activation_evidence: Json
+          approval_evidence_hash: string
+          created_at: string
+          dependency_hash: string
+          dependency_manifest: Json
+          frozen_hash: string
+          id: string
+          invalidated_reason: string | null
+          owner_id: string
+          recorded_decision_count: number
+          required_capabilities: Json
+          required_decision_count: number
+          revision_id: string
+          risk_class: string
+          state: string
+          submitted_at: string
+          submitted_by: string
+          updated_at: string
+          version: number
+          workflow_policy_hash: string
+          workflow_policy_key: string
+          workflow_policy_version: number
+        }
+        Insert: {
+          activation_evidence: Json
+          approval_evidence_hash: string
+          created_at?: string
+          dependency_hash: string
+          dependency_manifest: Json
+          frozen_hash: string
+          id?: string
+          invalidated_reason?: string | null
+          owner_id: string
+          recorded_decision_count?: number
+          required_capabilities: Json
+          required_decision_count: number
+          revision_id: string
+          risk_class: string
+          state: string
+          submitted_at?: string
+          submitted_by: string
+          updated_at?: string
+          version: number
+          workflow_policy_hash: string
+          workflow_policy_key: string
+          workflow_policy_version: number
+        }
+        Update: {
+          activation_evidence?: Json
+          approval_evidence_hash?: string
+          created_at?: string
+          dependency_hash?: string
+          dependency_manifest?: Json
+          frozen_hash?: string
+          id?: string
+          invalidated_reason?: string | null
+          owner_id?: string
+          recorded_decision_count?: number
+          required_capabilities?: Json
+          required_decision_count?: number
+          revision_id?: string
+          risk_class?: string
+          state?: string
+          submitted_at?: string
+          submitted_by?: string
+          updated_at?: string
+          version?: number
+          workflow_policy_hash?: string
+          workflow_policy_key?: string
+          workflow_policy_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_editorial_reviews_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_reviews_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_reviews_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_editorial_reviews_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      cms_entry_assignments: {
+        Row: {
+          assignee_person_id: string
+          capability_key: string
+          created_at: string
+          entry_id: string
+          id: string
+          owner_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          assignee_person_id: string
+          capability_key: string
+          created_at?: string
+          entry_id: string
+          id?: string
+          owner_id: string
+          state: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          assignee_person_id?: string
+          capability_key?: string
+          created_at?: string
+          entry_id?: string
+          id?: string
+          owner_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_entry_assignments_assignee_person_id_fkey"
+            columns: ["assignee_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_assignments_assignee_person_id_fkey"
+            columns: ["assignee_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_assignments_assignee_person_id_fkey"
+            columns: ["assignee_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_assignments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_assignments_entry_owner_fkey"
+            columns: ["entry_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_entry_field_values: {
+        Row: {
+          created_at: string
+          field_definition_id: string
+          field_id: string
+          id: string
+          locale: string
+          owner_id: string
+          provenance: string
+          revision_id: string
+          state: string
+          updated_at: string
+          value: Json | null
+          value_hash: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          field_definition_id: string
+          field_id: string
+          id?: string
+          locale: string
+          owner_id: string
+          provenance: string
+          revision_id: string
+          state: string
+          updated_at?: string
+          value?: Json | null
+          value_hash?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          field_definition_id?: string
+          field_id?: string
+          id?: string
+          locale?: string
+          owner_id?: string
+          provenance?: string
+          revision_id?: string
+          state?: string
+          updated_at?: string
+          value?: Json | null
+          value_hash?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_entry_field_values_definition_owner_fkey"
+            columns: ["field_definition_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_field_definition_versions"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "cms_field_definition_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_field_values_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_field_values_revision_owner_fkey"
+            columns: ["revision_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_entry_relations: {
+        Row: {
+          created_at: string
+          expected_target_version: number | null
+          field_definition_id: string
+          field_id: string
+          id: string
+          on_unavailable: string
+          owner_id: string
+          position: number
+          revision_id: string
+          state: string
+          target_id: string
+          target_kind: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          expected_target_version?: number | null
+          field_definition_id: string
+          field_id: string
+          id?: string
+          on_unavailable: string
+          owner_id: string
+          position: number
+          revision_id: string
+          state: string
+          target_id: string
+          target_kind: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          expected_target_version?: number | null
+          field_definition_id?: string
+          field_id?: string
+          id?: string
+          on_unavailable?: string
+          owner_id?: string
+          position?: number
+          revision_id?: string
+          state?: string
+          target_id?: string
+          target_kind?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_entry_relations_definition_owner_fkey"
+            columns: ["field_definition_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_field_definition_versions"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_relations_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "cms_field_definition_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_relations_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_relations_revision_owner_fkey"
+            columns: ["revision_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_entry_revisions: {
+        Row: {
+          acting_party_id: string | null
+          author_person_id: string
+          created_at: string
+          entry_id: string
+          id: string
+          locale: string
+          owner_id: string
+          parent_revision_ids: Json
+          payload_hash: string
+          revision_number: number
+          schema_version_id: string
+          state: string
+          taxonomy_version_ids: Json
+          template_version_id: string | null
+          updated_at: string
+          validation_report: Json
+          validation_state: string
+          version: number
+        }
+        Insert: {
+          acting_party_id?: string | null
+          author_person_id: string
+          created_at?: string
+          entry_id: string
+          id?: string
+          locale: string
+          owner_id: string
+          parent_revision_ids: Json
+          payload_hash: string
+          revision_number: number
+          schema_version_id: string
+          state: string
+          taxonomy_version_ids: Json
+          template_version_id?: string | null
+          updated_at?: string
+          validation_report: Json
+          validation_state: string
+          version: number
+        }
+        Update: {
+          acting_party_id?: string | null
+          author_person_id?: string
+          created_at?: string
+          entry_id?: string
+          id?: string
+          locale?: string
+          owner_id?: string
+          parent_revision_ids?: Json
+          payload_hash?: string
+          revision_number?: number
+          schema_version_id?: string
+          state?: string
+          taxonomy_version_ids?: Json
+          template_version_id?: string | null
+          updated_at?: string
+          validation_report?: Json
+          validation_state?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_entry_revisions_acting_party_id_fkey"
+            columns: ["acting_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_author_person_id_fkey"
+            columns: ["author_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_author_person_id_fkey"
+            columns: ["author_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_author_person_id_fkey"
+            columns: ["author_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_entry_owner_fkey"
+            columns: ["entry_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_schema_owner_fkey"
+            columns: ["schema_version_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_entry_revisions_schema_version_id_fkey"
+            columns: ["schema_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_field_definition_versions: {
         Row: {
@@ -4138,6 +5111,134 @@ export type Database = {
             columns: ["content_type_version_id"]
             isOneToOne: false
             referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_locale_variants: {
+        Row: {
+          approval_evidence: Json | null
+          created_at: string
+          created_by: string
+          entry_id: string
+          fallback_chain: Json
+          id: string
+          locale: string
+          no_fallback_field_ids: Json
+          owner_id: string
+          revision_id: string
+          source_hash: string
+          source_locale: string
+          source_revision_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          approval_evidence?: Json | null
+          created_at?: string
+          created_by: string
+          entry_id: string
+          fallback_chain?: Json
+          id?: string
+          locale: string
+          no_fallback_field_ids?: Json
+          owner_id: string
+          revision_id: string
+          source_hash: string
+          source_locale: string
+          source_revision_id: string
+          state?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          approval_evidence?: Json | null
+          created_at?: string
+          created_by?: string
+          entry_id?: string
+          fallback_chain?: Json
+          id?: string
+          locale?: string
+          no_fallback_field_ids?: Json
+          owner_id?: string
+          revision_id?: string
+          source_hash?: string
+          source_locale?: string
+          source_revision_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_locale_variants_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_entry_owner_fkey"
+            columns: ["entry_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_revision_entry_owner_fkey"
+            columns: ["revision_id", "entry_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "entry_id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_revision_locale_fkey"
+            columns: ["revision_id", "locale"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "locale"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_source_entry_owner_fkey"
+            columns: ["source_revision_id", "entry_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "entry_id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_source_locale_fkey"
+            columns: ["source_revision_id", "source_locale"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "locale"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_source_revision_hash_fkey"
+            columns: ["source_revision_id", "source_hash"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "payload_hash"]
+          },
+          {
+            foreignKeyName: "cms_locale_variants_source_revision_id_fkey"
+            columns: ["source_revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
             referencedColumns: ["id"]
           },
         ]
@@ -4247,6 +5348,439 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "person_party"
             referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      cms_pattern_versions: {
+        Row: {
+          block_registry_digest: string
+          block_tree: Json
+          content_hash: string
+          created_at: string
+          created_by: string
+          id: string
+          owner_capability: string
+          owner_id: string
+          pattern_key: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          block_registry_digest: string
+          block_tree: Json
+          content_hash: string
+          created_at?: string
+          created_by: string
+          id?: string
+          owner_capability: string
+          owner_id: string
+          pattern_key: string
+          state?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          block_registry_digest?: string
+          block_tree?: Json
+          content_hash?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          owner_capability?: string
+          owner_id?: string
+          pattern_key?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_pattern_versions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_preview_tokens: {
+        Row: {
+          acting_party_id: string | null
+          audience: string
+          capability_snapshot_hash: string
+          created_at: string
+          entry_id: string
+          expires_at: string
+          id: string
+          locale: string
+          nonce: string
+          owner_id: string
+          revision_id: string
+          revoked_at: string | null
+          route: string
+          state: string
+          token_hash: string
+          updated_at: string
+          user_id: string
+          version: number
+          version_set: Json
+        }
+        Insert: {
+          acting_party_id?: string | null
+          audience: string
+          capability_snapshot_hash: string
+          created_at?: string
+          entry_id: string
+          expires_at: string
+          id?: string
+          locale: string
+          nonce: string
+          owner_id: string
+          revision_id: string
+          revoked_at?: string | null
+          route: string
+          state: string
+          token_hash: string
+          updated_at?: string
+          user_id: string
+          version?: number
+          version_set: Json
+        }
+        Update: {
+          acting_party_id?: string | null
+          audience?: string
+          capability_snapshot_hash?: string
+          created_at?: string
+          entry_id?: string
+          expires_at?: string
+          id?: string
+          locale?: string
+          nonce?: string
+          owner_id?: string
+          revision_id?: string
+          revoked_at?: string | null
+          route?: string
+          state?: string
+          token_hash?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+          version_set?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_preview_tokens_acting_party_id_fkey"
+            columns: ["acting_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_preview_tokens_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_preview_tokens_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_publication_schedules: {
+        Row: {
+          action: string
+          activation_evidence_hash: string
+          actual_at_utc: string | null
+          created_at: string
+          created_by: string
+          dependency_hash: string
+          deviation_seconds: number | null
+          disambiguation: string
+          entry_id: string
+          expected_version: number
+          id: string
+          job_id: string | null
+          local_datetime: string
+          owner_id: string
+          resolved_at_utc: string
+          revision_id: string
+          state: string
+          timezone: string
+          tzdb_version: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          action: string
+          activation_evidence_hash: string
+          actual_at_utc?: string | null
+          created_at?: string
+          created_by: string
+          dependency_hash: string
+          deviation_seconds?: number | null
+          disambiguation: string
+          entry_id: string
+          expected_version: number
+          id?: string
+          job_id?: string | null
+          local_datetime: string
+          owner_id: string
+          resolved_at_utc: string
+          revision_id: string
+          state: string
+          timezone: string
+          tzdb_version: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          action?: string
+          activation_evidence_hash?: string
+          actual_at_utc?: string | null
+          created_at?: string
+          created_by?: string
+          dependency_hash?: string
+          deviation_seconds?: number | null
+          disambiguation?: string
+          entry_id?: string
+          expected_version?: number
+          id?: string
+          job_id?: string | null
+          local_datetime?: string
+          owner_id?: string
+          resolved_at_utc?: string
+          revision_id?: string
+          state?: string
+          timezone?: string
+          tzdb_version?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_publication_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_publication_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_publication_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_publication_schedules_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_publication_schedules_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_publication_versions: {
+        Row: {
+          activated_at: string | null
+          activation_evidence_hash: string
+          audience: string
+          created_at: string
+          dependency_hash: string
+          entry_id: string
+          id: string
+          locale: string
+          owner_id: string
+          publication_hash: string
+          revision_id: string
+          revoked_at: string | null
+          schema_artifact_hash: string
+          schema_artifact_id: string
+          schema_version_id: string
+          settings_version: number
+          state: string
+          taxonomy_version_ids: Json
+          template_version_id: string | null
+          updated_at: string
+          version: number
+          version_set: Json
+        }
+        Insert: {
+          activated_at?: string | null
+          activation_evidence_hash: string
+          audience: string
+          created_at?: string
+          dependency_hash: string
+          entry_id: string
+          id?: string
+          locale: string
+          owner_id: string
+          publication_hash: string
+          revision_id: string
+          revoked_at?: string | null
+          schema_artifact_hash: string
+          schema_artifact_id: string
+          schema_version_id: string
+          settings_version: number
+          state: string
+          taxonomy_version_ids: Json
+          template_version_id?: string | null
+          updated_at?: string
+          version?: number
+          version_set: Json
+        }
+        Update: {
+          activated_at?: string | null
+          activation_evidence_hash?: string
+          audience?: string
+          created_at?: string
+          dependency_hash?: string
+          entry_id?: string
+          id?: string
+          locale?: string
+          owner_id?: string
+          publication_hash?: string
+          revision_id?: string
+          revoked_at?: string | null
+          schema_artifact_hash?: string
+          schema_artifact_id?: string
+          schema_version_id?: string
+          settings_version?: number
+          state?: string
+          taxonomy_version_ids?: Json
+          template_version_id?: string | null
+          updated_at?: string
+          version?: number
+          version_set?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_publication_versions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_publication_versions_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_publication_versions_schema_artifact_id_fkey"
+            columns: ["schema_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "cms_schema_artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_publication_versions_schema_version_id_fkey"
+            columns: ["schema_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_related_content_rules: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          mode: string
+          owner_id: string
+          position: number | null
+          reason_code: string
+          rule_key: string | null
+          rule_version: number | null
+          source_entry_id: string
+          state: string
+          target_entry_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          mode: string
+          owner_id: string
+          position?: number | null
+          reason_code: string
+          rule_key?: string | null
+          rule_version?: number | null
+          source_entry_id: string
+          state?: string
+          target_entry_id?: string | null
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          mode?: string
+          owner_id?: string
+          position?: number | null
+          reason_code?: string
+          rule_key?: string | null
+          rule_version?: number | null
+          source_entry_id?: string
+          state?: string
+          target_entry_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_related_content_rules_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_related_content_rules_source_entry_id_fkey"
+            columns: ["source_entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_related_content_rules_source_owner_fkey"
+            columns: ["source_entry_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_related_content_rules_target_entry_id_fkey"
+            columns: ["target_entry_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_entries"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4610,6 +6144,390 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cms_content_type_versions"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_taxonomy_versions: {
+        Row: {
+          allowlisted_field_keys: Json
+          allowlisted_type_keys: Json
+          content_hash: string
+          created_at: string
+          created_by: string
+          id: string
+          owner_capability: string
+          owner_id: string
+          shape: string
+          state: string
+          taxonomy_key: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          allowlisted_field_keys: Json
+          allowlisted_type_keys: Json
+          content_hash: string
+          created_at?: string
+          created_by: string
+          id?: string
+          owner_capability: string
+          owner_id: string
+          shape: string
+          state?: string
+          taxonomy_key: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          allowlisted_field_keys?: Json
+          allowlisted_type_keys?: Json
+          content_hash?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          owner_capability?: string
+          owner_id?: string
+          shape?: string
+          state?: string
+          taxonomy_key?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_taxonomy_versions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_template_versions: {
+        Row: {
+          audience: string
+          bindings: Json
+          block_registry_digest: string
+          compatible_type_ids: Json
+          content_hash: string
+          created_at: string
+          created_by: string
+          id: string
+          locale: string
+          owner_id: string
+          reserved_regions: Json
+          slots: Json
+          state: string
+          supersedes_id: string | null
+          template_key: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          audience: string
+          bindings: Json
+          block_registry_digest: string
+          compatible_type_ids: Json
+          content_hash: string
+          created_at?: string
+          created_by: string
+          id?: string
+          locale: string
+          owner_id: string
+          reserved_regions: Json
+          slots: Json
+          state?: string
+          supersedes_id?: string | null
+          template_key: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          audience?: string
+          bindings?: Json
+          block_registry_digest?: string
+          compatible_type_ids?: Json
+          content_hash?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          locale?: string
+          owner_id?: string
+          reserved_regions?: Json
+          slots?: Json
+          state?: string
+          supersedes_id?: string | null
+          template_key?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_template_versions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_template_versions_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "cms_template_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_term_assignments: {
+        Row: {
+          created_at: string
+          created_by: string
+          field_definition_id: string
+          id: string
+          owner_id: string
+          position: number
+          provenance: string
+          revision_id: string
+          state: string
+          taxonomy_version_id: string
+          term_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          field_definition_id: string
+          id?: string
+          owner_id: string
+          position: number
+          provenance: string
+          revision_id: string
+          state?: string
+          taxonomy_version_id: string
+          term_id: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          field_definition_id?: string
+          id?: string
+          owner_id?: string
+          position?: number
+          provenance?: string
+          revision_id?: string
+          state?: string
+          taxonomy_version_id?: string
+          term_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_term_assignments_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "cms_field_definition_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_field_owner_fkey"
+            columns: ["field_definition_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_field_definition_versions"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_revision_owner_fkey"
+            columns: ["revision_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_entry_revisions"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_taxonomy_version_id_fkey"
+            columns: ["taxonomy_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_taxonomy_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_term_assignments_term_taxonomy_owner_fkey"
+            columns: ["term_id", "taxonomy_version_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id", "taxonomy_version_id", "owner_id"]
+          },
+        ]
+      }
+      cms_term_labels: {
+        Row: {
+          aliases: Json
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          label: string
+          locale: string
+          owner_id: string
+          state: string
+          term_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          aliases?: Json
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          label: string
+          locale: string
+          owner_id: string
+          state?: string
+          term_id: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          aliases?: Json
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          label?: string
+          locale?: string
+          owner_id?: string
+          state?: string
+          term_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_term_labels_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_term_labels_term_owner_fkey"
+            columns: ["term_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_terms: {
+        Row: {
+          aliases: Json
+          created_at: string
+          created_by: string
+          id: string
+          lifecycle: string
+          owner_id: string
+          parent_term_id: string | null
+          successor_id: string | null
+          taxonomy_version_id: string
+          term_key: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          aliases?: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          lifecycle?: string
+          owner_id: string
+          parent_term_id?: string | null
+          successor_id?: string | null
+          taxonomy_version_id: string
+          term_key: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          aliases?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          lifecycle?: string
+          owner_id?: string
+          parent_term_id?: string | null
+          successor_id?: string | null
+          taxonomy_version_id?: string
+          term_key?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_terms_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_terms_parent_taxonomy_owner_fkey"
+            columns: ["parent_term_id", "taxonomy_version_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id", "taxonomy_version_id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_terms_parent_term_id_fkey"
+            columns: ["parent_term_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_terms_successor_id_fkey"
+            columns: ["successor_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_terms_successor_taxonomy_owner_fkey"
+            columns: ["successor_id", "taxonomy_version_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_terms"
+            referencedColumns: ["id", "taxonomy_version_id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_terms_taxonomy_owner_fkey"
+            columns: ["taxonomy_version_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_taxonomy_versions"
+            referencedColumns: ["id", "owner_id"]
           },
         ]
       }
@@ -6263,6 +8181,16 @@ export type Database = {
       cms_actor: { Args: { p_request: Json }; Returns: string }
       cms_add_field_definition: { Args: { p_request: Json }; Returns: Json }
       cms_advance_block_lifecycle: { Args: { p_request: Json }; Returns: Json }
+      cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
+      cms_authority_origin: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_capability_key: string
+          p_entry_id: string
+        }
+        Returns: string
+      }
       cms_begin_schema_migration_verification: {
         Args: { p_request: Json }
         Returns: Json
@@ -6319,6 +8247,8 @@ export type Database = {
         Returns: Json
       }
       cms_correlation: { Args: { p_request: Json }; Returns: string }
+      cms_create_entry: { Args: { p_request: Json }; Returns: Json }
+      cms_create_revision: { Args: { p_request: Json }; Returns: Json }
       cms_create_type_draft: { Args: { p_request: Json }; Returns: Json }
       cms_data_source_registry_valid: {
         Args: { p_key: string }
@@ -6328,9 +8258,23 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_define_template: { Args: { p_request: Json }; Returns: Json }
       cms_definition_artifact_hash: {
         Args: { p_request: Json }
         Returns: string
+      }
+      cms_draft_content_hash: {
+        Args: { p_locale: string; p_revision_id: string }
+        Returns: string
+      }
+      cms_draft_field_value_valid: {
+        Args: {
+          p_field_id: string
+          p_provenance: string
+          p_schema_version_id: string
+          p_value: Json
+        }
+        Returns: boolean
       }
       cms_dry_run_report_valid: {
         Args: {
@@ -6345,6 +8289,10 @@ export type Database = {
           p_transform_version: number
         }
         Returns: boolean
+      }
+      cms_editorial_workflow_policy_evidence: {
+        Args: { p_version_id: string }
+        Returns: Json
       }
       cms_emit_event: {
         Args: {
@@ -6363,6 +8311,10 @@ export type Database = {
         }
         Returns: string
       }
+      cms_entry_tenant_visible: {
+        Args: { p_actor_id: string; p_owner_party_id: string }
+        Returns: boolean
+      }
       cms_exact_keys: {
         Args: { p_allowed: string[]; p_required: string[]; p_value: Json }
         Returns: boolean
@@ -6373,6 +8325,7 @@ export type Database = {
         Returns: Json
       }
       cms_get_content_type_version: { Args: { p_request: Json }; Returns: Json }
+      cms_get_entry_draft: { Args: { p_request: Json }; Returns: Json }
       cms_get_schema_migration_plan: {
         Args: { p_request: Json }
         Returns: Json
@@ -6380,6 +8333,10 @@ export type Database = {
       cms_heartbeat_schema_migration_lease: {
         Args: { p_request: Json }
         Returns: Json
+      }
+      cms_history_cursor_mac_equal: {
+        Args: { p_left: string; p_right: string }
+        Returns: boolean
       }
       cms_invalidate_activation_reviews: {
         Args: { p_candidate_id: string }
@@ -6405,6 +8362,8 @@ export type Database = {
       cms_json_depth: { Args: { p_value: Json }; Returns: number }
       cms_key_hash: { Args: { p_key: string }; Returns: string }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
+      cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
+      cms_list_revisions_signed: { Args: { p_request: Json }; Returns: Json }
       cms_lock_activation_authority: {
         Args: {
           p_actor_id: string
@@ -6443,6 +8402,7 @@ export type Database = {
         }
         Returns: string
       }
+      cms_pattern_tree_keys_valid: { Args: { p_tree: Json }; Returns: boolean }
       cms_persisted_dry_run_report_valid: {
         Args: {
           p_classification: string
@@ -6564,6 +8524,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      cms_require_entry_capability: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_capabilities: string[]
+          p_entry_id: string
+        }
+        Returns: string
+      }
       cms_require_read: {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: undefined
@@ -6592,6 +8561,42 @@ export type Database = {
         }
       }
       cms_reserved_key: { Args: { p_key: string }; Returns: boolean }
+      cms_resolution_policy_complete: {
+        Args: { p_version_id: string }
+        Returns: boolean
+      }
+      cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
+      cms_revision_author_class: {
+        Args: { p_author_person_id: string; p_entry_id: string }
+        Returns: string
+      }
+      cms_revision_content_hash: {
+        Args: {
+          p_locale: string
+          p_payload_hash: string
+          p_revision_id: string
+          p_schema_version_id: string
+        }
+        Returns: string
+      }
+      cms_revision_field_hash: { Args: { p_value: Json }; Returns: string }
+      cms_revision_field_payload: {
+        Args: {
+          p_locale: string
+          p_revision_id: string
+          p_schema_version_id: string
+        }
+        Returns: Json
+      }
+      cms_revision_page_disposition: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_revision: Database["platform_private"]["Tables"]["cms_entry_revisions"]["Row"]
+        }
+        Returns: string
+      }
+      cms_revision_reader_capabilities: { Args: never; Returns: string[] }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
         Returns: Json
@@ -6599,6 +8604,32 @@ export type Database = {
       cms_rpc_context_valid: { Args: never; Returns: boolean }
       cms_schema_ref_registry_valid: {
         Args: { p_ref: string }
+        Returns: boolean
+      }
+      cms_stale_locale_dependents: {
+        Args: { p_backfill: boolean; p_source_revision_id: string }
+        Returns: number
+      }
+      cms_template_binding_compatible: {
+        Args: {
+          p_content_type_id: string
+          p_owner_id: string
+          p_template_version_id: string
+        }
+        Returns: boolean
+      }
+      cms_template_block_digest: {
+        Args: { p_owner_id: string; p_slots: Json; p_type_ids: Json }
+        Returns: string
+      }
+      cms_template_context: { Args: { p_request: Json }; Returns: Json }
+      cms_template_designer_authorized: {
+        Args: { p_acting_party_id: string; p_actor_id: string }
+        Returns: boolean
+      }
+      cms_template_latest: { Args: { p_request: Json }; Returns: Json }
+      cms_template_manifest_valid: {
+        Args: { p_definition: Json }
         Returns: boolean
       }
       cms_template_registry_valid: { Args: { p_id: string }; Returns: boolean }

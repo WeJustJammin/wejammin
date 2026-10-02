@@ -100,12 +100,21 @@ export const statusIsSupported = (
     value,
   );
 
+/**
+ * This adapter has no configured source for a CMS step-up method allowlist.
+ * Keep the disclosure empty rather than infer factors from an RPC body or
+ * local Supabase defaults. This is not a claim about the hosted provider's
+ * configuration; real recovery requires a verified configured method source.
+ */
+export const CMS_STEP_UP_ALLOWED_METHODS: readonly string[] = Object.freeze([]);
+
 export const knownFailure = (
   code: string,
 ): Readonly<{
   status: ContentSchemaRegistryError['status'];
   code: string;
   message: string;
+  details?: Readonly<Record<string, unknown>>;
 }> | null => {
   const failures: Readonly<
     Record<
@@ -114,6 +123,7 @@ export const knownFailure = (
         status: ContentSchemaRegistryError['status'];
         code: string;
         message: string;
+        details?: Readonly<Record<string, unknown>>;
       }>
     >
   > = {
@@ -131,6 +141,16 @@ export const knownFailure = (
       status: 401,
       code: 'UNAUTHENTICATED',
       message: 'The authentication session is invalid.',
+      details: { recoveryAction: 'reauthenticate' },
+    },
+    STEP_UP_REQUIRED: {
+      status: 401,
+      code: 'STEP_UP_REQUIRED',
+      message: 'Recent verification is required.',
+      details: {
+        allowedMethods: CMS_STEP_UP_ALLOWED_METHODS,
+        recoveryAction: 'step_up',
+      },
     },
     FORBIDDEN: {
       status: 403,
@@ -180,6 +200,7 @@ const RPC_FAILURE_CODES = [
   'INVALID_REQUEST',
   'UNSUPPORTED_MEDIA_TYPE',
   'UNAUTHENTICATED',
+  'STEP_UP_REQUIRED',
   'FORBIDDEN',
   'NOT_FOUND',
   'IDEMPOTENCY_MISMATCH',
@@ -211,7 +232,7 @@ export const mapRpcFailure = (
       mapped.status,
       mapped.code,
       mapped.message,
-      safeDetails(payload),
+      mapped.details ?? safeDetails(payload),
     );
   if (status === 504) return deadlineExceeded();
   if (status === 502) return badGateway();

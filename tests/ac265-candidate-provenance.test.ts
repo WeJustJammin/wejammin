@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { verifyAc265CandidateProvenance } from '../infra/workflows/ac265-candidate-provenance.ts';
@@ -77,9 +79,11 @@ describe('AC265 read-only staging candidate provenance verifier', () => {
         environment: 'staging',
         webOrigin: WEB_ORIGIN,
         apiOrigin: API_ORIGIN,
+        artifactBytes: 128,
       },
       artifact: {
         artifactDigest: fixture.identity.artifactDigest,
+        axeReportSha256: expect.stringMatching(/^[a-f0-9]{64}$/u),
         buildId: `ci-${CI_RUN_ID}`,
         migrationVersion: fixture.identity.migrationVersion,
       },
@@ -399,5 +403,130 @@ describe('AC265 read-only staging candidate provenance verifier', () => {
       'staging-artifact-identity.json',
     );
     await expect(verify().result).rejects.toThrow();
+  });
+
+  it('binds the staging archive byte length from the authenticated artifact payload only', async () => {
+    const { result } = verify();
+    const provenance = await result;
+
+    // The value is the authenticated GitHub artifact length, reported as a
+    // bounded positive integer. It is a length, never a digest claim.
+    expect(provenance.staging.artifactBytes).toBe(128);
+    expect(Number.isSafeInteger(provenance.staging.artifactBytes)).toBe(true);
+    expect(typeof provenance.staging.artifactBytes).toBe('number');
+  });
+
+  it('preserves the accepted archive length bound of one gibibyte', async () => {
+    const base = createMockGitHubApi();
+    const stagingArtifact = asRecord(base.values.stagingArtifacts[0]);
+    const boundary = 1024 * 1024 * 1024;
+
+    await expect(
+      verify({
+        stagingArtifacts: [{ ...stagingArtifact, size_in_bytes: boundary }],
+      }).result,
+    ).resolves.toMatchObject({ staging: { artifactBytes: boundary } });
+  });
+
+  it('rejects missing, non-integer, non-positive, oversized, or non-number archive lengths', async () => {
+    const base = createMockGitHubApi();
+    const stagingArtifact = asRecord(base.values.stagingArtifacts[0]);
+    const invalid = [
+      undefined,
+      null,
+      '128',
+      128.5,
+      0,
+      -1,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      1024 * 1024 * 1024 + 1,
+    ];
+
+    for (const size of invalid) {
+      await expect(
+        verify({
+          stagingArtifacts: [{ ...stagingArtifact, size_in_bytes: size }],
+        }).result,
+      ).rejects.toThrow();
+    }
+  });
+
+  it('binds the axe report digest to the validated candidate axe bytes, distinct from archive digests', async () => {
+    const expectedDigest = createHash('sha256')
+      .update(candidateFileText(fixture, 'accessibility/axe.json'), 'utf8')
+      .digest('hex');
+    const provenance = await verify().result;
+
+    expect(provenance.artifact.axeReportSha256).toBe(expectedDigest);
+    // The axe report digest is the report file's digest; it is not the CI
+    // (ZIP) artifact digest and not the staging artifact digest.
+    expect(provenance.artifact.axeReportSha256).not.toBe(
+      provenance.artifact.artifactDigest,
+    );
+    expect(provenance.artifact.axeReportSha256).not.toBe(
+      provenance.staging.artifactDigest.slice('sha256:'.length),
+    );
+  });
+
+  it('re-derives the axe digest from re-validated bytes and rejects axe tampering without a matching sidecar', async () => {
+    const tampered = {
+      ...fixture.accessibilityReport,
+      browser: {
+        ...fixture.accessibilityReport.browser,
+        version: '124.0.0.0',
+      },
+    };
+    const tamperedBytes = Buffer.from(`${JSON.stringify(tampered)}\n`);
+    fixture.writeCandidateBytes('accessibility/axe.json', tamperedBytes);
+
+    // The unchanged sidecar still pins the original digest: fail closed.
+    await expect(verify().result).rejects.toThrow();
+
+    fixture.close();
+    fixture = createCandidateFixture();
+    const replacement = {
+      ...fixture.accessibilityReport,
+      browser: {
+        ...fixture.accessibilityReport.browser,
+        version: '124.0.0.0',
+      },
+    };
+    const replacementBytes = Buffer.from(`${JSON.stringify(replacement)}\n`);
+    const replacementDigest = createHash('sha256')
+      .update(replacementBytes)
+      .digest('hex');
+    fixture.writeCandidateBytes('accessibility/axe.json', replacementBytes);
+    fixture.writeCandidateBytes(
+      'accessibility/axe.sha256',
+      `${replacementDigest}  accessibility/axe.json\n`,
+    );
+
+    const provenance = await verify().result;
+    expect(provenance.artifact.axeReportSha256).toBe(replacementDigest);
+  });
+
+  it('returns a deeply frozen branded result so post-verification mutation cannot drift bindings', async () => {
+    const provenance = await verify().result;
+
+    expect(Object.isFrozen(provenance)).toBe(true);
+    expect(Object.isFrozen(provenance.staging)).toBe(true);
+    expect(Object.isFrozen(provenance.artifact)).toBe(true);
+    expect(Object.isFrozen(provenance.migration)).toBe(true);
+    expect(Object.isFrozen(provenance.provider)).toBe(true);
+    expect(Object.isFrozen(provenance.provider.workers)).toBe(true);
+    expect(Object.isFrozen(provenance.provider.workers[0])).toBe(true);
+
+    const archiveLength = provenance.staging.artifactBytes;
+    const axeDigest = provenance.artifact.axeReportSha256;
+    expect(() => {
+      (provenance.staging as { artifactBytes: number }).artifactBytes = 1;
+    }).toThrow(TypeError);
+    expect(() => {
+      (provenance.artifact as { axeReportSha256: string }).axeReportSha256 =
+        'f'.repeat(64);
+    }).toThrow(TypeError);
+    expect(provenance.staging.artifactBytes).toBe(archiveLength);
+    expect(provenance.artifact.axeReportSha256).toBe(axeDigest);
   });
 });

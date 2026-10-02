@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 105
-- **Unique decision titles**: 105
+- **Total decisions**: 107
+- **Unique decision titles**: 107
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -1548,6 +1548,34 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: Update the Phase 2 plan, active progress records, architecture/runbooks, validator, and focused tests. Retain dated historical records and prior decisions; this decision supersedes DEC-104's sentence that AC265 is the only Slice 10 prerequisite, not DEC-104's AC209/AC211 timing.
 - **Reversibility**: A future timing change requires a new owner decision and propagation. The hosted evidence requirements remain fail-closed.
 
+## DEC-106: CMS authors need protected entry bootstrap and draft-detail reads (2026-09-26)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-09-26T19:16:50Z
+- **Agents**: codex
+- **Sources**: Owner approval of protected entry-create and draft-detail API contracts for Slice 10
+- **Index**: [[index]]
+
+- **Problem**: IA03 CMS-05 promises creation and editing of content entries, but BE03b defines only `POST /api/v1/cms/entries/{entryId}/revisions`, which requires an existing active entry and a positive readable base revision. Its history GET returns summaries and hashes, not editable values. Direct browser database access is revoked. Consequently the current contracts cannot bootstrap the first revision or load an existing draft for the editor.
+- **Options considered**: Keep Slice 10 limited to out-of-band pre-provisioned entries and leave create/edit incomplete; or add protected entry-create and draft-detail routes with server-derived identity, assignment, active-schema validation, and a complete authorization boundary.
+- **Decision**: Add protected initial-entry-create and authorized draft-detail-read contracts to the locked CMS specifications and Slice 10 implementation scope. Initial creation must atomically create an active entry, its attributable first draft revision, assignment, audit/idempotency/outbox effects, and return an authorized canonical resource; retries may not duplicate effects. Draft detail must return only the caller-authorized editable values and provenance, with hidden entries concealed as 404 and visible-but-unauthorized entries denied as 403. Neither route may trust caller-supplied owner, acting party, capability, or authority. Browser direct table access stays revoked.
+- **Downstream**: Propagate through IA03/deep dive, BE03b route registry and Zod/authorization/data/error contracts, FE03 loader/form mapping, Phase 2 Slice 10 acceptance criteria and trackers, code, tests, runbooks, and spec graph. Preserve existing CMS-03B-01 through -09 operation IDs and existing Slice 09 evidence gates. Do not mark new criteria complete until implemented and verified.
+- **Reversibility**: Medium. Any removal of protected bootstrap or detail reads would again require an owner decision and downstream propagation because CMS-05 cannot otherwise fulfill its locked create/edit outcome.
+
+## DEC-107: CMS-06 conflict resolution requires a private durable conflict record (2026-09-26)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-09-26T20:35:12Z
+- **Agents**: codex
+- **Sources**: Owner approval of durable private CMS conflict record for Slice 10
+- **Index**: [[index]]
+
+- **Problem**: BE03b defines CMS-03B-02 conflict resolution with conflictId, current unresolved-conflict lookup, and atomic close, but its eleven-table canonical model contains no conflict record, field envelope, RLS boundary, or index. A wire-only conflictId cannot safely support durable resolution.
+- **Options considered**: Add a twelfth private canonical conflict table and propagate the locked BE03b model; or defer CMS-06 until an alternate persistence design is approved.
+- **Decision**: Add the private conflict table. The record must bind entry and base/theirs/yours revision identities, changed paths and safe hashes, open/resolved/superseded state, version and timestamps, one open conflict per entry, current actor/assignment and RLS authority, and atomic resolution with the resulting revision/audit/outbox. No browser table grants or caller authority assertions.
+- **Downstream**: Amend BE03b canonical records and all table counts, conflict data flow, authorization and tests; check IA03/FE03 references and Phase 2 Slice 10 plan for impact; add a forward migration and pgTAP tests. Preserve all eleven existing table definitions and operation IDs. Keep CMS-06 criteria unchecked until route, RPC, UI and evidence pass.
+- **Reversibility**: Medium. Replacing the durable record with a different persistence design requires another owner decision and propagation.
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -2987,3 +3015,29 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Other gates**: AC266 remains a separate pre-release real-device accessibility gate. AC209 remains a production-rollout/post-deployment alerting-readiness gate. AC211 remains post-launch operational SLO acceptance. No gate is deleted, and this decision does not authorize launch while AC265 or AC266 is unproven.
 - **Downstream**: Update the Phase 2 plan, active progress records, architecture/runbooks, validator, and focused tests. Retain dated historical records and prior decisions; this decision supersedes DEC-104's sentence that AC265 is the only Slice 10 prerequisite, not DEC-104's AC209/AC211 timing.
 - **Reversibility**: A future timing change requires a new owner decision and propagation. The hosted evidence requirements remain fail-closed.
+
+### DEC-106: CMS authors need protected entry bootstrap and draft-detail reads (2026-09-26)
+
+- **Timestamp**: 2026-09-26T19:16:50Z
+- **Agent**: codex
+- **Source**: Owner approval of protected entry-create and draft-detail API contracts for Slice 10
+- **Tags**: decision, phase-2, slice-10, cms, editorial, api, propagation, owner-directive
+
+- **Problem**: IA03 CMS-05 promises creation and editing of content entries, but BE03b defines only `POST /api/v1/cms/entries/{entryId}/revisions`, which requires an existing active entry and a positive readable base revision. Its history GET returns summaries and hashes, not editable values. Direct browser database access is revoked. Consequently the current contracts cannot bootstrap the first revision or load an existing draft for the editor.
+- **Options considered**: Keep Slice 10 limited to out-of-band pre-provisioned entries and leave create/edit incomplete; or add protected entry-create and draft-detail routes with server-derived identity, assignment, active-schema validation, and a complete authorization boundary.
+- **Decision**: Add protected initial-entry-create and authorized draft-detail-read contracts to the locked CMS specifications and Slice 10 implementation scope. Initial creation must atomically create an active entry, its attributable first draft revision, assignment, audit/idempotency/outbox effects, and return an authorized canonical resource; retries may not duplicate effects. Draft detail must return only the caller-authorized editable values and provenance, with hidden entries concealed as 404 and visible-but-unauthorized entries denied as 403. Neither route may trust caller-supplied owner, acting party, capability, or authority. Browser direct table access stays revoked.
+- **Downstream**: Propagate through IA03/deep dive, BE03b route registry and Zod/authorization/data/error contracts, FE03 loader/form mapping, Phase 2 Slice 10 acceptance criteria and trackers, code, tests, runbooks, and spec graph. Preserve existing CMS-03B-01 through -09 operation IDs and existing Slice 09 evidence gates. Do not mark new criteria complete until implemented and verified.
+- **Reversibility**: Medium. Any removal of protected bootstrap or detail reads would again require an owner decision and downstream propagation because CMS-05 cannot otherwise fulfill its locked create/edit outcome.
+
+### DEC-107: CMS-06 conflict resolution requires a private durable conflict record (2026-09-26)
+
+- **Timestamp**: 2026-09-26T20:35:12Z
+- **Agent**: codex
+- **Source**: Owner approval of durable private CMS conflict record for Slice 10
+- **Tags**: decision, phase-2, slice-10, cms, conflict, database, propagation, owner-directive
+
+- **Problem**: BE03b defines CMS-03B-02 conflict resolution with conflictId, current unresolved-conflict lookup, and atomic close, but its eleven-table canonical model contains no conflict record, field envelope, RLS boundary, or index. A wire-only conflictId cannot safely support durable resolution.
+- **Options considered**: Add a twelfth private canonical conflict table and propagate the locked BE03b model; or defer CMS-06 until an alternate persistence design is approved.
+- **Decision**: Add the private conflict table. The record must bind entry and base/theirs/yours revision identities, changed paths and safe hashes, open/resolved/superseded state, version and timestamps, one open conflict per entry, current actor/assignment and RLS authority, and atomic resolution with the resulting revision/audit/outbox. No browser table grants or caller authority assertions.
+- **Downstream**: Amend BE03b canonical records and all table counts, conflict data flow, authorization and tests; check IA03/FE03 references and Phase 2 Slice 10 plan for impact; add a forward migration and pgTAP tests. Preserve all eleven existing table definitions and operation IDs. Keep CMS-06 criteria unchecked until route, RPC, UI and evidence pass.
+- **Reversibility**: Medium. Replacing the durable record with a different persistence design requires another owner decision and propagation.

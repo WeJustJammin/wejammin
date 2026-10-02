@@ -1,6 +1,4 @@
 import { createLogger } from '@wejammin/observability/logging';
-import type { Logger } from '@wejammin/observability/logging';
-import { parseServerEnvironment } from '@wejammin/config/environment';
 
 import { createProductionAc265HostedDependencies } from './ac265-hosted/production';
 import type { Ac265HostedDependencies } from './ac265-hosted/types';
@@ -11,11 +9,18 @@ import {
 } from './jobs/job-status-production';
 import { createProductionAuthenticationDependencies } from './authentication/production';
 import type { AuthenticationDependencies } from './authentication/types';
+import type { CmsLocaleDependencies } from './cms-composition/locale-routes';
+import type { CmsPatternInstanceDependencies } from './cms-composition/pattern-instance-routes';
+import type { CmsRelatedContentDependencies } from './cms-composition/related-content-routes';
+import type { CmsTaxonomyDependencies } from './cms-composition/taxonomy-routes';
+import type { CmsTemplateDependencies } from './cms-composition/template-routes';
+import type { CmsEditorialDependencies } from './cms-editorial/types';
+import type { ProductionCmsEditorialOptions } from './production-worker-runtime-cms';
+import { createProductionCmsCompositionDependencies } from './production-worker-runtime-cms';
 import {
   createProductionContentSchemaRegistryDependencies,
   type ContentSchemaRegistryProductionOptions,
 } from './content-schema-registry/production';
-import { CONTENT_SCHEMA_REGISTRY_RUNBOOK } from './content-schema-registry/types';
 import type { ContentSchemaRegistryDependencies } from './content-schema-registry/types';
 import { createProductionIdentityAuthorityDependencies } from './identity-authority/production';
 import type { IdentityAuthorityDependencies } from './identity-authority/types';
@@ -29,15 +34,6 @@ import type { PlatformConfigurationDependencies } from './platform-configuration
 import type { PlatformConfigurationProductionOptions } from './platform-configuration/production';
 import type { UploadCompletionRouteDependencies } from './upload-completion/upload-intent-completion';
 import type { WorkerApp, WorkerBindings, WorkerDependencies } from './index';
-import { createSupabaseRpc } from './async-runtime-support';
-import {
-  createSchemaMigrationWorker,
-  type MigrationWorkerResult,
-  type MigrationWorkerTelemetryEvent,
-  type SchemaMigrationRpcName,
-  type SchemaMigrationWorkerDependencies,
-  type SchemaMigrationWorker,
-} from './content-schema-registry/migration-worker';
 
 type ProductionPlatformConfigurationOptions = Pick<
   PlatformConfigurationProductionOptions,
@@ -61,142 +57,21 @@ export type ProductionContentSchemaRegistryOptions = Pick<
   | 'logger'
 >;
 
-export type ProductionSchemaMigrationWorkerOptions = Readonly<
-  Pick<
-    SchemaMigrationWorkerDependencies,
-    'leaseDurationMs' | 'maxBatchRows' | 'maxBatchesPerInvocation' | 'now'
-  > & {
-    workerId?: string;
-    deadlineMs?: number;
-    maxResponseBytes?: number;
-    telemetry?: (event: MigrationWorkerTelemetryEvent) => void | Promise<void>;
-    logger?: Logger;
-  }
->;
-
-export const migrationQueueOutcome = (
-  result: MigrationWorkerResult,
-): 'ack' | 'retry' =>
-  result.outcome === 'retry' ||
-  result.outcome === 'failed_retryable' ||
-  result.outcome === 'progress'
-    ? 'retry'
-    : 'ack';
-
-const migrationTraceSteps = (
-  operation: MigrationWorkerTelemetryEvent['operation'],
-): readonly string[] =>
-  operation === 'migration.consume'
-    ? ['cms.migration.admission', 'cms.migration.claim', 'cms.migration.plan']
-    : operation === 'migration.batch'
-      ? ['cms.migration.lease', 'cms.migration.batch', 'cms.migration.cursor']
-      : [
-          'cms.migration.recovery',
-          'cms.migration.reconcile',
-          'cms.migration.dlq',
-        ];
-
-export const productionMigrationTelemetry =
-  (
-    logger: Logger,
-  ): NonNullable<SchemaMigrationWorkerDependencies['telemetry']> =>
-  (event) => {
-    const outcome =
-      event.outcome === 'failure' || event.outcome === 'dead_letter'
-        ? 'failure'
-        : event.retryable
-          ? 'retry'
-          : event.outcome === 'duplicate' || event.outcome === 'stale'
-            ? 'rejected'
-            : 'success';
-    logger.info(
-      {
-        eventName: 'cms.registry.migration',
-        operation: event.operation,
-        outcome,
-        ...(event.eventId === null && event.migrationPlanId === null
-          ? {}
-          : {
-              jobId: (event.eventId ?? event.migrationPlanId) as
-                string | undefined,
-            }),
-        ...(event.correlationId === null
-          ? {}
-          : { traceId: event.correlationId }),
-        ...(event.cursor === null ? {} : { entityVersion: event.cursor }),
-        ...(event.attempt < 1 ? {} : { attempt: event.attempt }),
-        ...(event.reasonCode === null ? {} : { errorCode: event.reasonCode }),
-        durationMs: event.durationMs,
-        traceSteps: [...migrationTraceSteps(event.operation)],
-        metrics: {
-          'cms.migration.requests.total': 1,
-          'cms.migration.retries.total': event.retryable ? 1 : 0,
-          'cms.migration.dlq.total': event.outcome === 'dead_letter' ? 1 : 0,
-        },
-        attributes: {
-          'slo.tier': 2,
-          'alert.class': 'content.schema.migration.tier2',
-          'alert.route': 'platform.on_call',
-          runbook: CONTENT_SCHEMA_REGISTRY_RUNBOOK,
-          'retry.alert.after': 3,
-          'dead-letter.alert.threshold': 0,
-        },
-      },
-      { samplingClass: 'always', highRisk: event.outcome !== 'success' },
-    );
-  };
-
-const productionMigrationWorkerId = (environment: WorkerBindings): string =>
-  `cms-schema-migration-${environment.APP_ENVIRONMENT}-${environment.APP_RELEASE}`;
-
 /**
- * Compose the S09 migration worker from the protected Supabase RPC transport.
- * The worker receives only the validated event/job input; all state and
- * authority remain behind named server-side RPCs.
+ * Deployment overrides for the CMS editorial bundle. Environment, transport,
+ * the server auth limiter, and the capability resolver are composed by the
+ * runtime, so this surface only carries deployment tuning plus the injectable
+ * session/rate seams used by focused composition tests.
  */
-export const createProductionSchemaMigrationWorker = (
-  environment: WorkerBindings,
-  fetchImpl: typeof fetch = globalThis.fetch,
-  options: ProductionSchemaMigrationWorkerOptions = {},
-): SchemaMigrationWorker => {
-  const validatedEnvironment = parseServerEnvironment(environment);
-  const rpc = createSupabaseRpc(fetchImpl, {
-    ...(options.deadlineMs === undefined
-      ? {}
-      : { deadlineMs: options.deadlineMs }),
-    ...(options.maxResponseBytes === undefined
-      ? {}
-      : { maxResponseBytes: options.maxResponseBytes }),
-  });
-  const port: SchemaMigrationWorkerDependencies['port'] = {
-    call: (operation: SchemaMigrationRpcName, request: unknown, signal) =>
-      rpc(validatedEnvironment, operation, { p_request: request }, signal),
-  };
-  const logger =
-    options.logger ??
-    createLogger({
-      environment: validatedEnvironment.APP_ENVIRONMENT,
-      release: validatedEnvironment.APP_RELEASE,
-      service: 'wejammin-cms-migration-worker',
-    });
-  const telemetry = options.telemetry ?? productionMigrationTelemetry(logger);
-  return createSchemaMigrationWorker({
-    port,
-    workerId:
-      options.workerId ?? productionMigrationWorkerId(validatedEnvironment),
-    ...(options.now === undefined ? {} : { now: options.now }),
-    ...(options.leaseDurationMs === undefined
-      ? {}
-      : { leaseDurationMs: options.leaseDurationMs }),
-    ...(options.maxBatchRows === undefined
-      ? {}
-      : { maxBatchRows: options.maxBatchRows }),
-    ...(options.maxBatchesPerInvocation === undefined
-      ? {}
-      : { maxBatchesPerInvocation: options.maxBatchesPerInvocation }),
-    telemetry,
-  });
-};
+export {
+  createProductionSchemaMigrationWorker,
+  migrationQueueOutcome,
+  productionMigrationTelemetry,
+} from './production-worker-runtime-cms';
+export type {
+  ProductionCmsEditorialOptions,
+  ProductionSchemaMigrationWorkerOptions,
+} from './production-worker-runtime-cms';
 
 export const createRuntimeDependencies = (
   jobs?: JobStatusDependencies,
@@ -210,6 +85,12 @@ export const createRuntimeDependencies = (
   resolveRequestContext?: WorkerDependencies['resolveRequestContext'],
   contentSchemaRegistry?: ContentSchemaRegistryDependencies,
   ac265Hosted?: Ac265HostedDependencies,
+  cmsEditorial?: CmsEditorialDependencies,
+  cmsTemplate?: CmsTemplateDependencies,
+  cmsLocale?: CmsLocaleDependencies,
+  cmsPatternInstance?: CmsPatternInstanceDependencies,
+  cmsTaxonomy?: CmsTaxonomyDependencies,
+  cmsRelatedContent?: CmsRelatedContentDependencies,
 ): WorkerDependencies => ({
   captureException: () => {},
   createLogger: (bindings) =>
@@ -227,6 +108,12 @@ export const createRuntimeDependencies = (
   ...(resolveRequestContext === undefined ? {} : { resolveRequestContext }),
   ...(contentSchemaRegistry === undefined ? {} : { contentSchemaRegistry }),
   ...(ac265Hosted === undefined ? {} : { ac265Hosted }),
+  ...(cmsEditorial === undefined ? {} : { cmsEditorial }),
+  ...(cmsTemplate === undefined ? {} : { cmsTemplate }),
+  ...(cmsLocale === undefined ? {} : { cmsLocale }),
+  ...(cmsPatternInstance === undefined ? {} : { cmsPatternInstance }),
+  ...(cmsTaxonomy === undefined ? {} : { cmsTaxonomy }),
+  ...(cmsRelatedContent === undefined ? {} : { cmsRelatedContent }),
   ...(jobs === undefined ? {} : { jobs }),
   ...(uploadCompletion === undefined ? {} : { uploadCompletion }),
   now: Date.now,
@@ -240,6 +127,7 @@ export const createProductionWorkerAppRuntime = (
   checkReadiness?: WorkerDependencies['checkReadiness'],
   platformConfigurationOptions?: ProductionPlatformConfigurationOptions,
   contentSchemaRegistryOptions?: ProductionContentSchemaRegistryOptions,
+  cmsEditorialOptions?: ProductionCmsEditorialOptions,
 ): WorkerApp => {
   const auth = createProductionAuthenticationDependencies({
     environment,
@@ -270,6 +158,20 @@ export const createProductionWorkerAppRuntime = (
     environment,
     fetchImpl,
   );
+  const {
+    cmsEditorial,
+    cmsTemplate,
+    cmsLocale,
+    cmsPatternInstance,
+    cmsTaxonomy,
+    cmsRelatedContent,
+  } = createProductionCmsCompositionDependencies(
+    environment,
+    fetchImpl,
+    auth,
+    resolveCapabilities,
+    cmsEditorialOptions,
+  );
   return createApp(
     createRuntimeDependencies(
       createProductionJobStatusDependencies({ environment, fetchImpl }),
@@ -283,6 +185,12 @@ export const createProductionWorkerAppRuntime = (
       resolveRequestContext,
       contentSchemaRegistry,
       ac265Hosted,
+      cmsEditorial,
+      cmsTemplate,
+      cmsLocale,
+      cmsPatternInstance,
+      cmsTaxonomy,
+      cmsRelatedContent,
     ),
   );
 };

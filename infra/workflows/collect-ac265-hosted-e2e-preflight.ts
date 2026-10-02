@@ -11,6 +11,10 @@ import {
 import { buildAc265CandidateEnrollment } from './ac265-candidate-enrollment.ts';
 import { verifyAc265CandidateProvenance } from './ac265-candidate-provenance.ts';
 import type { Ac265Fetch } from './ac265-candidate-provenance-common.ts';
+import {
+  assertAc265HostedE2eArtifactBinding,
+  validateAc265HostedE2eDownloadedArtifactIds,
+} from './ac265-hosted-e2e-artifact-binding.ts';
 
 const FAILURE = 'AC265 hosted E2E candidate preflight failed';
 
@@ -98,6 +102,8 @@ export const runAc265HostedE2ePreflight = async ({
     supabaseProjectRef: required(env, 'SUPABASE_PROJECT_REF'),
     supabaseOrigin: required(env, 'SUPABASE_URL'),
   };
+  const downloadedArtifactIds =
+    validateAc265HostedE2eDownloadedArtifactIds(env);
   const provenance = await verifyAc265CandidateProvenance(
     {
       repository,
@@ -114,6 +120,10 @@ export const runAc265HostedE2ePreflight = async ({
     },
     fetchImpl,
   );
+  assertAc265HostedE2eArtifactBinding(downloadedArtifactIds, {
+    ciArtifactId: provenance.ci.artifactId,
+    stagingArtifactId: provenance.staging.artifactId,
+  });
 
   const enrollmentRequest = await buildAc265CandidateEnrollment(
     provenance,

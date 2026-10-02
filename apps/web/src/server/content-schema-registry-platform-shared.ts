@@ -198,6 +198,7 @@ export type UpstreamResult =
       readonly presentationVariant: ContentSchemaRegistryPresentationVariant | null;
       readonly actorId: string | null;
       readonly actingPartyId: string | null;
+      readonly stepUpFreshUntil: string | null;
     }
   | {
       readonly kind: Exclude<ContentSchemaRegistryPlatformErrorKind, 'ok'>;

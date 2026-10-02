@@ -62,6 +62,9 @@ describe('validation toolchain contracts', () => {
     const s09RealPlaywright = readRepositoryFile(
       'playwright.s09-real.config.ts',
     );
+    const s09RealRunner = readRepositoryFile(
+      'tests/e2e/support/run-s09-real-suite.mjs',
+    );
     const webAstro = readRepositoryFile('apps/web/astro.config.mjs');
     const ciWorkflow = readRepositoryFile('.github/workflows/ci.yml');
     const packageDocument = readRepositoryJson('package.json');
@@ -117,6 +120,8 @@ describe('validation toolchain contracts', () => {
     expect(s09RealPlaywright).toContain('timeout: realRouteServerTimeout');
     expect(s09RealPlaywright).toContain("trace: 'off'");
     expect(s09RealPlaywright).toContain("channel: 'chrome'");
+    expect(s09RealRunner).toContain("'--config=playwright.s09-real.config.ts'");
+    expect(s09RealRunner).toContain('runRealRouteWithRetry');
     expect(e2e).toContain("metadata['docsOrigin']");
     expect(e2e).not.toContain('http://127.0.0.1:4322');
     expect(webAstro).toContain("'GITHUB_RUN_ID' in runtimeEnvironment");
@@ -133,9 +138,7 @@ describe('validation toolchain contracts', () => {
     expect(packageDocument.scripts).toMatchObject({
       'test:e2e': 'pnpm test:e2e:functional && pnpm test:e2e:s09-real',
       'test:e2e:functional': 'playwright test',
-      'test:e2e:s09-real': expect.stringContaining(
-        'playwright.s09-real.config.ts',
-      ),
+      'test:e2e:s09-real': 'node tests/e2e/support/run-s09-real-suite.mjs',
       'test:evidence:s09': expect.stringContaining(
         'phase-02-slice-09-evidence-map.test.ts',
       ),

@@ -270,6 +270,9 @@ const operation = (registry, definition) => {
     ...(registry.capabilities
       ? { 'x-capabilities': registry.capabilities }
       : {}),
+    ...(registry.capabilityMode
+      ? { 'x-capability-mode': registry.capabilityMode }
+      : {}),
     ...(registry.corsClass ? { 'x-cors': registry.corsClass } : {}),
     ...(registry.audience ? { 'x-audience': registry.audience } : {}),
     'x-cache-class': registry.cacheClass,

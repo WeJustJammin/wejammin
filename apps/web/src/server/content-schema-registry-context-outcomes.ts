@@ -217,6 +217,7 @@ export const resultForPlatformOutcome = (
     versionId: input.versionId ?? null,
     ...context,
     state: outcome.kind === 'error' ? 'ready' : 'degraded',
+    now: (input.now ?? Date.now)(),
   });
   if (outcome.kind === 'degraded') {
     return { kind: 'degraded', page, status: outcome.status };
@@ -249,6 +250,7 @@ export const genericDegradedResult = (
     versionId: input.versionId ?? null,
     ...context,
     state: 'degraded',
+    now: (input.now ?? Date.now)(),
   });
   return { kind: 'degraded', page, status: 503 };
 };

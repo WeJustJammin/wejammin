@@ -290,6 +290,7 @@ describe('content registry production context helpers', () => {
       actorPersonId: session.personId,
       actingPartyId: PARTY_ID,
       stepUpAt: null,
+      actingContextId: null,
     });
     expect(
       contextFor(

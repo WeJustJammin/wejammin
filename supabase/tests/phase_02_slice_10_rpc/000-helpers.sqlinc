@@ -1,0 +1,443 @@
+
+-- Shared inspection helpers for the Slice 10 RPC suite.  Everything resolves
+-- through pg_catalog by OID or by to_regprocedure so that an absent function,
+-- table, or grant yields false/empty instead of aborting the RED run.  This
+-- keeps the first RED evidence complete across every missing object rather
+-- than stopping at the first undefined RPC.
+
+-- Returns the SQLSTATE observed for p_sql, or '00000' when it succeeds.  RPC
+-- contract errors are raised as custom P0001 messages, so callers pair this
+-- with pg_temp.s10_last_error_message() to assert the exact contract token.
+create or replace function pg_temp.s10_rpc_sqlstate(p_sql text)
+returns text
+language plpgsql
+as $body$
+begin
+  begin
+    execute p_sql;
+    return '00000';
+  exception
+    when others then
+      return sqlstate;
+  end;
+end;
+$body$;
+
+-- Captures the message emitted by the most recent pg_temp.s10_rpc_call().
+create table if not exists pg_temp.s10_error_capture(
+  state text,
+  message text,
+  response jsonb
+);
+
+-- Executes p_sql inside a subtransaction and records both SQLSTATE and
+-- message.  Returns false when the statement succeeded and true when it
+-- raised, so a caller can negate the result directly in an ok() assertion.
+create or replace function pg_temp.s10_rpc_call(p_sql text)
+returns boolean
+language plpgsql
+as $body$
+begin
+  begin
+    execute p_sql;
+    delete from pg_temp.s10_error_capture;
+    insert into pg_temp.s10_error_capture(state, message, response)
+    values ('00000', null, null);
+    return false;
+  exception
+    when others then
+      delete from pg_temp.s10_error_capture;
+      insert into pg_temp.s10_error_capture(state, message, response)
+      values (sqlstate, sqlerrm, null);
+      return true;
+  end;
+end;
+$body$;
+
+-- Executes a single-row single-column statement in a subtransaction and
+-- returns its scalar result, or null when it raised.  The subtransaction keeps
+-- a missing or rejecting RPC from aborting the enclosing suite transaction, so
+-- a RED run still reports every assertion after the first absent function.
+create or replace function pg_temp.s10_rpc_exec(p_sql text)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  result jsonb;
+begin
+  begin
+    execute p_sql into result;
+    delete from pg_temp.s10_error_capture;
+    insert into pg_temp.s10_error_capture(state, message, response)
+    values ('00000', null, result);
+    return result;
+  exception
+    when others then
+      delete from pg_temp.s10_error_capture;
+      insert into pg_temp.s10_error_capture(state, message, response)
+      values (sqlstate, sqlerrm, null);
+      return null;
+  end;
+end;
+$body$;
+
+create or replace function pg_temp.s10_last_error_state()
+returns text
+language sql
+stable
+as $body$
+  select state from pg_temp.s10_error_capture limit 1
+$body$;
+
+create or replace function pg_temp.s10_last_error_message()
+returns text
+language sql
+stable
+as $body$
+  select message from pg_temp.s10_error_capture limit 1
+$body$;
+
+-- True when a function with p_schema.p_name and the exact argument type list
+-- exists.  p_args must be the canonical identity-argument rendering, e.g.
+-- 'jsonb' or 'uuid, uuid, text, uuid', so an overload with different
+-- parameter types cannot satisfy the assertion accidentally while parameter
+-- names stay free to change.
+create or replace function pg_temp.s10_fn_exists(
+  p_schema text,
+  p_name text,
+  p_args text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_or(
+    pg_catalog.oidvectortypes(p.proargtypes) = p_args
+  ), false)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = p_schema
+    and p.proname = p_name
+$body$;
+
+-- True when the given role holds EXECUTE on the function.  Used to prove that
+-- the browser roles cannot reach the protected wrappers.
+create or replace function pg_temp.s10_fn_privilege(
+  p_schema text,
+  p_name text,
+  p_args text,
+  p_role text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_or(has_function_privilege(p_role, p.oid, 'EXECUTE')), false)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = p_schema
+    and p.proname = p_name
+    and pg_catalog.oidvectortypes(p.proargtypes) = p_args
+$body$;
+
+-- True when p_role has no EXECUTE on any function in p_schema matching the
+-- p_name prefix.  p_name_prefix 'cms_' scopes the check to the CMS surface
+-- without depending on an exact overload list.
+create or replace function pg_temp.s10_no_execute_for(
+  p_schema text,
+  p_name_prefix text,
+  p_role text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(not has_function_privilege(p_role, p.oid, 'EXECUTE')), true)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = p_schema
+    and p.proname like p_name_prefix || '%'
+$body$;
+
+-- True when p_role has no table-level privilege on p_table.  The browser
+-- revocation requirement is asserted directly rather than inferred from RLS.
+create or replace function pg_temp.s10_no_table_privilege(
+  p_table text,
+  p_role text
+)
+returns boolean
+language sql
+stable
+as $body$
+  select to_regclass(p_table) is not null
+     and not has_table_privilege(p_role, p_table, 'SELECT')
+     and not has_table_privilege(p_role, p_table, 'INSERT')
+     and not has_table_privilege(p_role, p_table, 'UPDATE')
+     and not has_table_privilege(p_role, p_table, 'DELETE')
+$body$;
+
+-- Counts audit_private.audit_events rows for one action/target pair.  The
+-- audit row stores the caller-facing action in "action" and pins the resource
+-- in "target_id"; cms_emit_event writes exactly one row here.
+create or replace function pg_temp.s10_audit_count(
+  p_action text,
+  p_target_id uuid
+)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select count(*)::integer
+  from audit_private.audit_events e
+  where e.action = p_action
+    and e.target_id = p_target_id
+$body$;
+
+-- Counts outbox rows for one event type/aggregate pair.  cms_emit_event writes
+-- exactly one row here, so a duplicated emit (emit plus an explicit
+-- cms_record_audit) is detectable as a non-1 count.
+create or replace function pg_temp.s10_outbox_count(
+  p_event_type text,
+  p_aggregate_id uuid
+)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select count(*)::integer
+  from platform_private.outbox_events o
+  where o.event_type = p_event_type
+    and o.aggregate_id = p_aggregate_id
+$body$;
+
+-- Returns the emitted outbox payload for one event type/aggregate pair so
+-- tests can assert the canonical {entryId, revisionId} shape.
+create or replace function pg_temp.s10_outbox_payload(
+  p_event_type text,
+  p_aggregate_id uuid
+)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select o.payload
+  from platform_private.outbox_events o
+  where o.event_type = p_event_type
+    and o.aggregate_id = p_aggregate_id
+  limit 1
+$body$;
+
+create or replace function pg_temp.s10_outbox_aggregate_type(
+  p_event_type text,
+  p_aggregate_id uuid
+)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select o.aggregate_type
+  from platform_private.outbox_events o
+  where o.event_type = p_event_type
+    and o.aggregate_id = p_aggregate_id
+  limit 1
+$body$;
+
+-- Counts outbox rows regardless of naming so a duplicated emit (cms_emit_event
+-- plus an explicit cms_record_audit) is detectable as a non-1 count.
+create or replace function pg_temp.s10_outbox_total()
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select count(*)::integer from platform_private.outbox_events
+$body$;
+
+create or replace function pg_temp.s10_audit_total()
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select count(*)::integer from audit_private.audit_events
+$body$;
+
+-- Reads the stored idempotency reservation by the caller's plaintext key.  The
+-- table stores only a key hash, so the lookup reuses the production hash
+-- helper; an absent reservation yields null rather than raising.
+create or replace function pg_temp.s10_reservation_operation(p_key text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select r.operation
+  from platform_private.idempotency_records r
+  where r.key_hash = platform_private.cms_key_hash(p_key)
+$body$;
+
+create or replace function pg_temp.s10_reservation_status(p_key text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select r.state::text
+  from platform_private.idempotency_records r
+  where r.key_hash = platform_private.cms_key_hash(p_key)
+$body$;
+
+-- Counts idempotency reservations for one actor/operation pair, letting a test
+-- prove that a replay or rejection did not claim a second key.
+create or replace function pg_temp.s10_reservation_count(
+  p_actor_id uuid,
+  p_operation text
+)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select count(*)::integer
+  from platform_private.idempotency_records r
+  where r.actor_id = p_actor_id
+    and r.operation = p_operation
+$body$;
+
+-- True when the closed capability registry accepts p_key at p_version.  The
+-- function is IMMUTABLE and lives in platform_private, so a wrapper is not
+-- required; absent functions fall back to false.
+create or replace function pg_temp.s10_capability_registered(
+  p_key text,
+  p_version bigint
+)
+returns boolean
+language plpgsql
+stable
+as $body$
+begin
+  return platform_private.cms_capability_registry_valid(p_key, p_version);
+exception
+  when undefined_function then
+    return false;
+end;
+$body$;
+
+-- Convenience: extracts one scalar text field from a jsonb RPC response.
+create or replace function pg_temp.s10_json_text(p_payload jsonb, p_path text[])
+returns text
+language sql
+immutable
+as $body$
+  select case
+    when p_payload is null then null
+    else p_payload #>> p_path
+  end
+$body$;
+
+-- ---------------------------------------------------------------------------
+-- Rolled-back seam probes.
+--
+-- A runtime seam can only be observed by driving a violation through the RPC,
+-- and the violation has to be undone afterwards so the shared fixture stays
+-- pristine for the remaining assertions.  Each probe therefore runs inside a
+-- plpgsql subtransaction that is guaranteed to abort: the setup and the call
+-- execute, their outcome is captured, and then a sentinel exception rolls the
+-- whole subtransaction back.  Nothing a probe writes can survive into the
+-- enclosing suite transaction, so probes never have to be ordered against each
+-- other.
+--
+-- Outcomes are keyed by label rather than held in one shared slot: a caller
+-- asserts on a named probe with a single statement, so there is no dependence
+-- on the evaluation order of the probe call and the assertion.
+create table if not exists pg_temp.s10_probe_capture(
+  label text primary key,
+  state text,
+  message text,
+  response jsonb
+);
+
+create or replace function pg_temp.s10_rpc_probe(
+  p_label text,
+  p_setup text,
+  p_call text
+)
+returns void
+language plpgsql
+as $body$
+declare
+  observed_state text := '00000';
+  observed_message text := null;
+  observed_response jsonb := null;
+begin
+  begin
+    begin
+      if p_setup is not null then execute p_setup; end if;
+      execute p_call into observed_response;
+      observed_state := '00000';
+      observed_message := null;
+    exception
+      when others then
+        observed_state := sqlstate;
+        observed_message := sqlerrm;
+    end;
+    raise exception 'S10_PROBE_SENTINEL_9f3c1a' using errcode = 'P0001';
+  exception
+    when others then
+      if sqlerrm <> 'S10_PROBE_SENTINEL_9f3c1a' then raise; end if;
+  end;
+
+  insert into pg_temp.s10_probe_capture(label, state, message, response)
+  values (p_label, observed_state, observed_message, observed_response)
+  on conflict (label) do update
+    set state = excluded.state,
+        message = excluded.message,
+        response = excluded.response;
+end;
+$body$;
+
+-- SQLSTATE observed for one probe label, or 'MISSING' when the label was never
+-- run so an unexecuted probe can never satisfy an assertion vacuously.
+create or replace function pg_temp.s10_probe_state(p_label text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(
+    (select c.state from pg_temp.s10_probe_capture c where c.label = p_label),
+    'MISSING'
+  )
+$body$;
+
+create or replace function pg_temp.s10_probe_response(p_label text)
+returns jsonb
+language sql
+stable
+as $body$
+  select c.response from pg_temp.s10_probe_capture c where c.label = p_label
+$body$;
+
+-- Contract message observed for one probe label, or 'MISSING' when unrun.
+create or replace function pg_temp.s10_probe_message(p_label text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(
+    (select c.message from pg_temp.s10_probe_capture c where c.label = p_label),
+    'MISSING'
+  )
+$body$;

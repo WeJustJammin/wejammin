@@ -1,0 +1,207 @@
+-- CMS-03B-10 positive path under a transaction-local editorial policy fixture.
+-- This replaces only the policy lookup inside this rolled-back pgTAP test; it
+-- does not approve, configure, or seed any production workflow policy.
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select jsonb_build_object(
+    'key', 'editorial', 'version', '1',
+    'policyHash', repeat('c', 64), 'riskClass', 'ordinary',
+    'requiredDecisionCount', 1,
+    'requiredCapabilities', jsonb_build_array('cms.author'),
+    'approvalEvidenceHash', repeat('d', 64)
+  )
+  where p_version_id is not null
+$body$;
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table s10_positive_create on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_entry('
+    || quote_literal((select request::text from s10_create_request))
+    || '::jsonb)'
+) as response;
+
+select is(
+  pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-10 creates an entry when distinct server policy evidence matches'
+);
+select is(
+  (select response->>'revisionNumber' from s10_positive_create), '1',
+  'CMS-03B-10 returns initial immutable revision number one'
+);
+select is(
+  (select response->>'state' from s10_positive_create), 'draft',
+  'CMS-03B-10 returns draft state rather than publication'
+);
+select is(
+  (select response->>'locale' from s10_positive_create), 'en-US',
+  'CMS-03B-10 returns the validated source locale'
+);
+select is(
+  (select response->>'contentHash' from s10_positive_create),
+  platform_private.cms_jcs_sha256((select request->'values' from s10_create_request)),
+  'CMS-03B-10 returns the canonical hash of the first draft values'
+);
+
+select is(
+  (select count(*)::integer from platform_private.cms_content_entries entry
+   where entry.id = (select (response->'entry'->>'id')::uuid from s10_positive_create)
+     and entry.owner_id = (select value::uuid from s10_ids where key = 'organization')
+     and entry.owner_party_id = entry.owner_id
+     and entry.lifecycle = 'active'
+     and entry.version = 1
+     and entry.created_by = 'a9100000-0000-4000-8000-000000000001'::uuid
+     and entry.current_draft_revision_id =
+       (select (response->'revision'->>'id')::uuid from s10_positive_create)),
+  1,
+  'CMS-03B-10 atomically owns and points the active entry at its first draft'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions revision
+   where revision.id = (select (response->'revision'->>'id')::uuid from s10_positive_create)
+     and revision.entry_id = (select (response->'entry'->>'id')::uuid from s10_positive_create)
+     and revision.owner_id = (select value::uuid from s10_ids where key = 'organization')
+     and revision.schema_version_id = (select value::uuid from s10_ids where key = 'draftVersionId')
+     and revision.revision_number = 1
+     and revision.state = 'draft'
+     and revision.validation_state = 'valid'
+     and revision.payload_hash = (select response->>'contentHash' from s10_positive_create)
+     and revision.parent_revision_ids = '[]'::jsonb),
+  1,
+  'CMS-03B-10 stores one schema-pinned, parentless, valid draft revision'
+);
+select is(
+  (select value from platform_private.cms_entry_field_values
+   where revision_id = (select (response->'revision'->>'id')::uuid from s10_positive_create)
+     and field_id = (select value::uuid from s10_ids where key = 'typeFieldId')),
+  to_jsonb('First draft title'::text),
+  'CMS-03B-10 stores the normalized authored field value'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_assignments assignment
+   where assignment.entry_id = (select (response->'entry'->>'id')::uuid from s10_positive_create)
+     and assignment.owner_id = (select value::uuid from s10_ids where key = 'organization')
+     and assignment.assignee_person_id = (select value::uuid from s10_ids where key = 'creatorPerson')
+     and assignment.capability_key = 'cms.author'
+     and assignment.state = 'active'),
+  1,
+  'CMS-03B-10 assigns the canonical creator person without caller authority'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_relations relation
+   where relation.revision_id = (select (response->'revision'->>'id')::uuid from s10_positive_create)),
+  0,
+  'CMS-03B-10 does not invent relation rows absent from its request contract'
+);
+select is(
+  pg_temp.s10_audit_count(
+    'cms.entry.revision.create',
+    (select (response->'entry'->>'id')::uuid from s10_positive_create)
+  ), 1,
+  'CMS-03B-10 emits exactly one attributable audit event'
+);
+select is(
+  pg_temp.s10_outbox_count(
+    'cms.entry.revision-created.v1',
+    (select (response->'entry'->>'id')::uuid from s10_positive_create)
+  ), 1,
+  'CMS-03B-10 emits exactly one revision-created outbox event'
+);
+select is(
+  pg_temp.s10_outbox_payload(
+    'cms.entry.revision-created.v1',
+    (select (response->'entry'->>'id')::uuid from s10_positive_create)
+  ),
+  jsonb_build_object(
+    'entryId', (select response->'entry'->>'id' from s10_positive_create),
+    'revisionId', (select response->'revision'->>'id' from s10_positive_create)
+  ),
+  'CMS-03B-10 outbox payload names exactly the created entry and revision'
+);
+
+create temp table s10_positive_replay on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_entry('
+    || quote_literal((select request::text from s10_create_request))
+    || '::jsonb)'
+) as response;
+select is(
+  (select response from s10_positive_replay),
+  (select response from s10_positive_create),
+  'CMS-03B-10 exact-key retry returns the same entry and revision resource'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions revision
+   where revision.entry_id = (select (response->'entry'->>'id')::uuid from s10_positive_create)),
+  1,
+  'CMS-03B-10 exact-key retry adds no second revision'
+);
+select is(
+  pg_temp.s10_outbox_count(
+    'cms.entry.revision-created.v1',
+    (select (response->'entry'->>'id')::uuid from s10_positive_create)
+  ), 1,
+  'CMS-03B-10 exact-key retry adds no second outbox event'
+);
+
+create temp table s10_positive_trace_retry on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_entry('
+    || quote_literal((
+      select request || jsonb_build_object(
+        'context', request->'context' || jsonb_build_object(
+          'requestId', 'a9100000-0000-4000-8000-000000000194',
+          'correlationId', 'a9100000-0000-4000-8000-000000000195'
+        ),
+        'correlationId', 'a9100000-0000-4000-8000-000000000195'
+      ) from s10_create_request
+    )::text) || '::jsonb)'
+) as response;
+select is(pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-10 same-key retry accepts fresh Worker trace IDs');
+select is(
+  (select response from s10_positive_trace_retry),
+  (select response from s10_positive_create),
+  'CMS-03B-10 trace-only retry replays the original entry and revision'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_entry_revisions revision
+   where revision.entry_id = (select (response->'entry'->>'id')::uuid from s10_positive_create)),
+  1,
+  'CMS-03B-10 trace-only retry adds no revision'
+);
+select is(
+  pg_temp.s10_outbox_count(
+    'cms.entry.revision-created.v1',
+    (select (response->'entry'->>'id')::uuid from s10_positive_create)
+  ), 1,
+  'CMS-03B-10 trace-only retry adds no outbox event'
+);
+
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal((
+      select jsonb_set(request, '{values,a9100000-0000-4000-8000-000000000101}',
+        to_jsonb('Different title'::text))::text
+      from s10_create_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'IDEMPOTENCY_MISMATCH',
+  'CMS-03B-10 reused key with changed body returns the 409-mapped RPC token'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_content_entries entry
+   where entry.owner_id = (select value::uuid from s10_ids where key = 'organization')),
+  2,
+  'CMS-03B-10 changed-body key conflict leaves only seeded and created entries'
+);

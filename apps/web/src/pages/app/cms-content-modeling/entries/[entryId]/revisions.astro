@@ -1,0 +1,196 @@
+---
+import { env } from 'cloudflare:workers';
+import {
+  CmsUuidSchema,
+  RevisionHistoryPageSchema,
+  type RevisionHistoryPage,
+} from '@wejammin/contracts';
+
+import { forwardCmsEditorialRevisionHistoryRead } from '../../../../../server/cms-editorial-platform-reads';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const entryId = Astro.params.entryId ?? '';
+const routePath = `/app/cms-content-modeling/entries/${encodeURIComponent(entryId)}/revisions`;
+
+const document = (input: {
+  readonly title: string;
+  readonly heading: string;
+  readonly message: string;
+  readonly content?: string;
+}): string => `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <title>${escapeHtml(input.title)} | WeJammin</title>
+  </head>
+  <body>
+    <nav aria-label="Skip navigation"><a href="#cms-editorial-main">Skip to main content</a></nav>
+    <header aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation"><a href="/app/cms-content-modeling">Content modeling</a></nav>
+    </header>
+    <main id="cms-editorial-main" tabindex="-1">
+      <h1 id="page-title" tabindex="-1">${escapeHtml(input.heading)}</h1>
+      <p>${escapeHtml(input.message)}</p>
+      ${input.content ?? ''}
+    </main>
+    <script src="../../../../../lib/route-heading-focus.ts"></script>
+  </body>
+</html>`;
+
+const html = (input: {
+  readonly status: number;
+  readonly title: string;
+  readonly heading: string;
+  readonly message: string;
+  readonly content?: string;
+}): Response =>
+  new Response(document(input), {
+    status: input.status,
+    headers: {
+      'cache-control': 'no-store',
+      'content-type': 'text/html; charset=utf-8',
+    },
+  });
+
+const renderHistory = (page: RevisionHistoryPage): string => {
+  const current = new URL(Astro.request.url).searchParams;
+  const selectedState = current.get('state') ?? '';
+  const selectedLimit = current.get('limit') ?? '25';
+  const selectedLocale = current.get('locale') ?? '';
+  const stateOptions = [
+    '',
+    'draft',
+    'submitted',
+    'approved',
+    'rejected',
+    'scheduled',
+    'published',
+  ]
+    .map(
+      (state) =>
+        `<option value="${state}"${state === selectedState ? ' selected' : ''}>${state === '' ? 'All states' : state}</option>`,
+    )
+    .join('');
+  const filters = `<form method="get" action="${routePath}#history-list-title">
+    <label for="history-state">State</label><select id="history-state" name="state">${stateOptions}</select>
+    <label for="history-limit">Rows per page</label><input id="history-limit" name="limit" type="number" min="1" max="50" value="${escapeHtml(selectedLimit)}" />
+    <label for="history-locale">Locale</label><input id="history-locale" name="locale" value="${escapeHtml(selectedLocale)}" />
+    <button type="submit">Filter history</button>
+  </form>`;
+  const compareHref = (item: RevisionHistoryPage['items'][number]): string => {
+    const selection = new URLSearchParams(current);
+    // The filter/compare selection changes the signed cursor's query binding,
+    // so start that comparison at the first page instead of replaying it.
+    selection.delete('cursor');
+    selection.set('compareRevisionId', item.id);
+    return `${routePath}?${selection.toString()}#history-compare-title`;
+  };
+  const items =
+    page.items.length === 0
+      ? '<p>No revisions match these filters.</p>'
+      : `<ol>${page.items
+          .map(
+            (item) =>
+              `<li>Revision ${escapeHtml(item.revisionNumber)} · ${escapeHtml(item.state)} · Locale: ${escapeHtml(item.locale)} · <time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(item.createdAt)}</time> · ${escapeHtml(item.authorClass)} · Content hash: <code>${escapeHtml(item.contentHash)}</code> · <a href="${escapeHtml(compareHref(item))}">Compare with latest</a></li>`,
+          )
+          .join('')}</ol>`;
+  const compare =
+    page.compare === null
+      ? ''
+      : `<section aria-labelledby="history-compare-title"><h2 id="history-compare-title" tabindex="-1">Comparison</h2><ol>${page.compare.changes
+          .map(
+            (change) =>
+              `<li>${escapeHtml(change.path)}: ${escapeHtml(change.kind)} · Before hash: <code>${change.leftHash === null ? 'none' : escapeHtml(change.leftHash)}</code> · After hash: <code>${change.rightHash === null ? 'none' : escapeHtml(change.rightHash)}</code></li>`,
+          )
+          .join('')}</ol></section>`;
+  const next = new URLSearchParams(current);
+  if (page.nextCursor !== null) next.set('cursor', page.nextCursor);
+  const continuation =
+    page.nextCursor === null
+      ? ''
+      : `<a href="${escapeHtml(`${routePath}?${next.toString()}#history-list-title`)}">Next page</a>`;
+  return `${filters}<section aria-labelledby="history-list-title"><h2 id="history-list-title" tabindex="-1">Revisions</h2>${items}</section>${compare}${continuation}`;
+};
+
+if (!CmsUuidSchema.safeParse(entryId).success)
+  return html({
+    status: 404,
+    title: 'Not found',
+    heading: 'Not found',
+    message: 'This entry is not available.',
+  });
+
+const upstream = await forwardCmsEditorialRevisionHistoryRead(
+  Astro.request,
+  env.PLATFORM_API,
+  entryId,
+);
+
+if (upstream.status === 401)
+  return Astro.redirect(
+    `/auth/sign-in?returnTo=${encodeURIComponent(`${routePath}${new URL(Astro.request.url).search}`)}`,
+    303,
+  );
+
+if (upstream.status === 403)
+  return html({
+    status: 403,
+    title: 'Access denied',
+    heading: 'Access denied',
+    message: 'This entry is not available.',
+  });
+
+if (upstream.status === 404)
+  return html({
+    status: 404,
+    title: 'Not found',
+    heading: 'Not found',
+    message: 'This entry is not available.',
+  });
+
+if (upstream.status === 200) {
+  const parsed = RevisionHistoryPageSchema.safeParse(await upstream.json());
+  if (parsed.success)
+    return html({
+      status: 200,
+      title: 'Revision history',
+      heading: 'Revision history',
+      message:
+        'Authorized revision summaries and changes, without draft values.',
+      content: renderHistory(parsed.data),
+    });
+  return html({
+    status: 502,
+    title: 'Revision history',
+    heading: 'Revision history unavailable',
+    message: 'The history response could not be verified. Nothing was loaded.',
+  });
+}
+
+return html({
+  status: upstream.status,
+  title: 'Revision history',
+  heading: 'Revision history unavailable',
+  message:
+    upstream.status === 400 || upstream.status === 422
+      ? 'The history query is invalid. Clear the filters and try again.'
+      : upstream.status === 409
+        ? 'This history cursor is no longer valid. Start from the first page.'
+        : 'The protected history read could not be completed. Nothing was loaded.',
+  content: `<a href="${routePath}">Start from the first page</a>`,
+});
+---

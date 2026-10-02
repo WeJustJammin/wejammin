@@ -53,12 +53,13 @@ export const RouteRegistryEntrySchema = z
       .max(8)
       .readonly()
       .optional(),
+    capabilityMode: z.enum(['all_of', 'any_of']).optional(),
     corsClass: z.enum(['cms-console', 'release-worker']).optional(),
     audience: z.enum(['browser', 'release-worker']).optional(),
     csrf: z.enum(['required', 'forbidden', 'none']).optional(),
     rawBodySignature: z.enum(['required', 'none']).optional(),
     idempotency: z.enum(['required', 'none']).optional(),
-    ifMatch: z.enum(['required', 'none']).optional(),
+    ifMatch: z.enum(['required', 'conditional', 'none']).optional(),
     slo: RouteSloSchema.optional(),
   })
   .strict()

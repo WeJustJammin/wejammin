@@ -68,6 +68,8 @@ describe('content schema registry primitive boundaries', () => {
     const invalidBySchema = [
       [CmsUuidSchema, 'not-a-uuid'],
       [CmsVersionSchema, '0'],
+      [CmsVersionSchema, '1.5'],
+      [CmsVersionSchema, 'abc'],
       [CmsVersionSchema, '9223372036854775808'],
       [CmsHashSchema, 'a'.repeat(63)],
       [CmsTypeKeySchema, 'ReleaseNotes'],

@@ -1,0 +1,168 @@
+---
+import { env } from 'cloudflare:workers';
+import {
+  CmsTemplateKeySchema,
+  TemplateDesignerContextSchema,
+  TemplateVersionDetailSchema,
+  type TemplateDesignerContext,
+  type TemplateVersionDetail,
+} from '@wejammin/contracts';
+
+import CmsTemplateEditDesigner from '../../../../components/cms-composition/CmsTemplateEditDesigner';
+import '../../../../components/cms-composition/cms-template-designer.css';
+import { readCmsTemplateContext } from '../../../../server/cms-composition-platform-context';
+import { readCmsTemplateDetail } from '../../../../server/cms-composition-platform-detail';
+import { cmsEditorialCsrfCookie } from '../../../../server/cms-editorial-platform-shared';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+const key = CmsTemplateKeySchema.safeParse(Astro.params.templateKey);
+const templateKey = key.success ? key.data : null;
+let selector = new Response(null, { status: 404 });
+let latest = new Response(null, { status: 404 });
+if (templateKey !== null) {
+  [selector, latest] = await Promise.all([
+    readCmsTemplateContext(Astro.request, env.PLATFORM_API),
+    readCmsTemplateDetail(Astro.request, env.PLATFORM_API, templateKey),
+  ]);
+}
+if (selector.status === 401 || latest.status === 401) {
+  const returnTo = encodeURIComponent(
+    `/app/cms-content-modeling/templates/${templateKey}`,
+  );
+  return Astro.redirect(`/auth/sign-in?returnTo=${returnTo}`, 303);
+}
+
+let context: TemplateDesignerContext | null = null;
+let detail: TemplateVersionDetail | null = null;
+if (selector.ok && latest.ok) {
+  try {
+    const [selectorBody, latestBody] = await Promise.all([
+      selector.json(),
+      latest.json(),
+    ]);
+    const parsedContext = TemplateDesignerContextSchema.safeParse(selectorBody);
+    const parsedDetail = TemplateVersionDetailSchema.safeParse(latestBody);
+    if (
+      parsedContext.success &&
+      parsedDetail.success &&
+      parsedDetail.data.templateKey === templateKey &&
+      parsedDetail.data.version === String(parsedDetail.data.templateVersion) &&
+      latest.headers.get('etag') === `"${parsedDetail.data.version}"`
+    ) {
+      context = parsedContext.data;
+      detail = parsedDetail.data;
+    }
+  } catch {
+    // Never render a form from partial or malformed protected projections.
+  }
+}
+
+const unavailable = detail === null || context === null;
+const failure = latest.ok ? selector : latest;
+if (unavailable) {
+  Astro.response.status = failure.ok ? 502 : failure.status;
+  const retryAfter = failure.headers.get('retry-after');
+  if (
+    (failure.status === 429 ||
+      failure.status === 503 ||
+      failure.status === 504) &&
+    retryAfter !== null &&
+    /^[1-9]\d{0,4}$/u.test(retryAfter)
+  )
+    Astro.response.headers.set('Retry-After', retryAfter);
+}
+const csrfToken = cmsEditorialCsrfCookie(Astro.request) ?? '';
+const unavailableCopy =
+  templateKey === null
+    ? 'This template is not available.'
+    : failure.status === 403
+      ? 'Template designer access is required for the current acting context.'
+      : failure.status === 404
+        ? 'This template is unavailable to the current acting context.'
+        : failure.status === 429
+          ? 'Template choices are temporarily rate-limited. Wait and reload.'
+          : 'The template or its choices are unavailable. Reload when the service is ready.';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Edit an authorized private CMS template draft."
+    />
+    <title>
+      {templateKey === null ? 'Not found' : 'Edit template'} | WeJammin
+    </title>
+  </head>
+  <body class="cms-template-page">
+    <nav aria-label="Skip navigation">
+      <a class="cms-template-skip" href="#cms-template-main"
+        >Skip to main content</a
+      >
+    </nav>
+    <header class="cms-template-header" aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/cms-content-modeling">Content modeling</a>
+        <a href="/system/degraded">System status</a>
+      </nav>
+    </header>
+    <main id="cms-template-main" tabindex="-1">
+      <header class="cms-template-page-heading">
+        <p>Authenticated workspace · CMS composition</p>
+        <h1 id="page-title" tabindex="-1">
+          {templateKey === null ? 'Not found' : 'Edit template draft'}
+        </h1>
+        <p>
+          {
+            templateKey === null
+              ? 'This template is not available.'
+              : 'Save a private successor version from the latest authorized draft.'
+          }
+        </p>
+      </header>
+      {
+        unavailable ? (
+          <section
+            aria-labelledby="cms-template-unavailable-title"
+            role="status"
+          >
+            <h2 id="cms-template-unavailable-title">Designer unavailable</h2>
+            <p>{unavailableCopy}</p>
+            <a
+              href={
+                templateKey === null
+                  ? '/app/cms-content-modeling'
+                  : `/app/cms-content-modeling/templates/${templateKey}`
+              }
+            >
+              {templateKey === null ? 'Content modeling' : 'Reload template'}
+            </a>
+          </section>
+        ) : null
+      }
+      {
+        detail !== null && context !== null ? (
+          <CmsTemplateEditDesigner
+            context={context}
+            detail={detail}
+            csrfToken={csrfToken}
+            client:load
+          />
+        ) : null
+      }
+    </main>
+    <script src="../../../../lib/route-heading-focus.ts"></script>
+  </body>
+</html>

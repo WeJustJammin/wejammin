@@ -34,7 +34,27 @@ authority from browser headers or query parameters.
   `content-schema-registry-status-helpers.ts` — accessible status, retry, and
   HTTP error presentation.
 - `ContentSchemaRegistryWorkbenchIsland.tsx` — serializable hydrated boundary;
-  constructs canonical refetch and reconnect callbacks in the browser.
+  owns canonical refresh, loading/offline/status, and focus through React state
+  so the protected subtree keeps React event ownership across refreshes.
+- `content-schema-registry-canonical-refresh-scheduler.ts` — bounded
+  one-in-flight refresh: metadata bursts coalesce to a single protected GET, a
+  context change forces an immediate read, and the epoch guard discards stale
+  completions. The Island commits the disabled projection before navigating.
+- `content-schema-registry-canonical-read.ts` — maps one canonical read
+  (success, degraded, denial, opaque/browser redirect, network failure) into a
+  React-ownable outcome without touching the DOM.
+- `content-schema-registry-canonical-state-validate.ts` — exact per-status
+  structural validation of the refetched projection; unknown keys, unsupported
+  reason variants, and malformed payloads fail closed. Reuses the shared public
+  team zod list/detail aggregates.
+- `content-schema-registry-canonical-projection-state.ts` — React-ownable
+  projection state and its apply/fail-closed transitions.
+- `content-schema-registry-canonical-keys.ts` — typechecked keyset of the
+  accepted serialized island props (compile-time drift guard).
+- `content-schema-registry-island-props-scanner.ts` and
+  `content-schema-registry-island-props-codec.ts` — bounded, comment/raw-text
+  aware scanner plus devalue-tuple decoder for the refetch response, with no
+  second-document parse.
 - `content-schema-registry-runtime.ts` — bounded read/mutation retry and
   canonical reconciliation contracts.
 - `content-schema-registry-runtime-dom-mutations.ts` and
@@ -44,6 +64,9 @@ authority from browser headers or query parameters.
 - `content-schema-registry-runtime-dom-refetch.ts` — one canonical protected
   GET per invalidation/reconnect, delayed loading, live announcements, safe
   replacement, and focus preservation.
+  This is the legacy imperative DOM path retained for standalone compatibility
+  consumers; it is not the React Island path above. The barrel and its
+  colocated tests still exercise it, and it must not import the Island path.
 
 ## Extension rules
 

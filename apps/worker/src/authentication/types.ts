@@ -21,6 +21,12 @@ export type AuthenticationSession = Readonly<{
   accountState: SessionResource['accountState'];
   personId: string | null;
   actingPartyId: string | null;
+  /**
+   * Private acting-context binding id from the service-role session
+   * projection (`auth_session_read`). Internal only: it never reaches
+   * `SessionResource`, responses, logs, or telemetry.
+   */
+  actingContextId?: string | null;
   expiresAt: string;
   stepUpAt: string | null;
 }>;

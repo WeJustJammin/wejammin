@@ -34,10 +34,22 @@ export default function ContentSchemaRegistryStatus({
   activeFilterSummary,
 }: Props) {
   const retryAfterSeconds = retryAfterSecondsFor(state);
-  const [retryDeadline] = useState<number | null>(() =>
-    retryAfterSeconds === null ? null : Date.now() + retryAfterSeconds * 1_000,
+  const deadlineFor = (seconds: number | null): number | null =>
+    seconds === null ? null : Date.now() + seconds * 1_000;
+  const [retryDeadline, setRetryDeadline] = useState<number | null>(() =>
+    deadlineFor(retryAfterSeconds),
   );
   const [clock, setClock] = useState(() => Date.now());
+  // A new canonical projection (new state identity) re-arms the countdown even
+  // when the server sends the same retry-after value, so a repeat 429 restarts
+  // rather than staying expired. Adjusting derived state during render is the
+  // React-endorsed alternative to a cascading effect.
+  const [retryIdentity, setRetryIdentity] = useState(state);
+  if (retryIdentity !== state) {
+    setRetryIdentity(state);
+    setRetryDeadline(() => deadlineFor(retryAfterSeconds));
+    setClock(() => Date.now());
+  }
   useEffect(() => {
     if (retryDeadline === null || retryDeadline <= clock) return;
     const timer = window.setTimeout(() => setClock(Date.now()), 1_000);

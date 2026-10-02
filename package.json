@@ -18,7 +18,7 @@
     "ac266:reports": "node --experimental-strip-types infra/workflows/ac266-manual-accessibility-report-cli.ts",
     "test:e2e": "pnpm test:e2e:functional && pnpm test:e2e:s09-real",
     "test:e2e:functional": "playwright test",
-    "test:e2e:s09-real": "playwright test --config=playwright.s09-real.config.ts",
+    "test:e2e:s09-real": "node tests/e2e/support/run-s09-real-suite.mjs",
     "bundle:check": "node scripts/verify-bundle-budget.mjs",
     "performance:smoke": "node infra/performance/api-p95-smoke.mjs --mode local",
     "performance:smoke:staging": "node infra/performance/api-p95-smoke.mjs --mode staging --origin \"$STAGING_API_ORIGIN\"",

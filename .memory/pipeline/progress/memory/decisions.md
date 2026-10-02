@@ -2,6 +2,21 @@
 
 Canonical project decisions are compiled at .memory/wiki/decisions.md. This file records implementation-progress-local decisions only.
 
+## 2026-10-02 — Approve the Slice 09 activation producer amendment
+
+- Owner approved private CMS review/decision/assignment ownership, protected
+  CMS-03A-09 through CMS-03A-14 producers, approval-only review access, stable
+  private binding evidence, real scans/transforms and the minimum source/template
+  prerequisites in Slice 09. The owner remains the sole admin.
+- Cascade the originating IA/BE/FE contracts, capability/route inventory and
+  dependent plans; add open criteria and recompute the depth floor. Approval
+  creates no real identities, assignments, grants, deployment or acceptance.
+- Retain verified private-binding transport and AC250 regressions. The 17 open
+  activation criteria and new criteria need implementation evidence. AC209/AC211
+  remain post-deployment/post-launch and AC265/AC266 mandatory pre-release.
+- Exact scope and approved source digest:
+  [owner approval record](../verification/2026-10-02-slice-09-activation-amendment-approval.md).
+
 ## 2026-09-03 — Serialize the shared default Playwright server graph
 
 - The root Playwright configuration uses one worker and disables full

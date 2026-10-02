@@ -37,6 +37,8 @@ const identityFor = (
   reportArchivePath: fixture.reportArchivePath,
   authenticatedReportArchiveSha256: fixture.reportArchiveSha256,
   authenticatedReportArchiveBytes: fixture.reportArchiveBytes,
+  authenticatedStagingRunId: fixture.contract.identity.stagingRunId,
+  authenticatedStagingRunAttempt: fixture.contract.identity.stagingRunAttempt,
   authenticatedSourceRevision: fixture.contract.identity.sourceRevision,
   authenticatedDeploymentId: fixture.contract.identity.deploymentId,
 });
@@ -104,6 +106,22 @@ describe('AC265 hosted staging-scope verification route', () => {
     [
       'a source revision that does not match the run',
       { authenticatedSourceRevision: 'b'.repeat(40) },
+    ],
+    [
+      'a staging run ID that does not match the authenticated run',
+      { authenticatedStagingRunId: '34751910126' },
+    ],
+    [
+      'a staging run attempt that does not match the authenticated attempt',
+      { authenticatedStagingRunAttempt: 2 },
+    ],
+    [
+      'an absent authenticated staging run ID',
+      { authenticatedStagingRunId: undefined },
+    ],
+    [
+      'an absent authenticated staging run attempt',
+      { authenticatedStagingRunAttempt: undefined },
     ],
     [
       'a deployment identity that does not match the run',
@@ -224,6 +242,20 @@ describe('AC265 hosted staging-scope verification route', () => {
       verifyAc265HostedStagingEvidence({
         bundleBytes: bundleWithOverrides(fixture, { accepted: true }),
         reportBytes: fixture.reportBytes,
+        ...identityFor(fixture),
+      }),
+    ).toThrow(AC265_HOSTED_SCOPE_FAILURE);
+  });
+
+  it('rejects a valid JSON context bundle when its raw bytes exceed the bound', () => {
+    const fixture = createStagingScopeFixture();
+    const oversizedBundleBytes = Buffer.concat([
+      Buffer.from(fixture.bundleBytes),
+      Buffer.alloc(256 * 1024, 0x20),
+    ]);
+    expect(() =>
+      verifyAc265HostedStagingEvidence({
+        bundleBytes: oversizedBundleBytes,
         ...identityFor(fixture),
       }),
     ).toThrow(AC265_HOSTED_SCOPE_FAILURE);

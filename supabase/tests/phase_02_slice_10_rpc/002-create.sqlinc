@@ -1,0 +1,305 @@
+
+-- CMS-03B-10 (cms_create_entry) surface: existence, worker-only grant, closed
+-- registry widening, server-derived authority rejection, and the fail-closed
+-- editorial-workflow-policy dependency.
+--
+-- The positive create path is asserted separately in 007 under a rolled-back
+-- test-only policy projection. BE03b requires
+-- cms_create_entry to compare the request workflowPolicy against a server-side
+-- editorial workflow-policy record that is distinct from the 03a activation
+-- envelope, and no canonical source for that record exists yet.  Synthesizing
+-- one from the activation columns would assert a false equivalence, so this
+-- fragment asserts fail-closed behaviour and the draft-read GREEN lands
+-- independently in 003. The production policy dependency remains
+-- unimplemented, never accepted from the fixture-only positive path.
+
+select ok(
+  pg_temp.s10_fn_exists('platform_private', 'cms_create_entry', 'jsonb'),
+  'P2-S10-RPC platform_private.cms_create_entry(jsonb) exists'
+);
+select ok(
+  pg_temp.s10_fn_exists('platform_api', 'cms_create_entry', 'jsonb'),
+  'P2-S10-RPC platform_api.cms_create_entry(jsonb) wrapper exists'
+);
+select ok(
+  pg_temp.s10_fn_exists('platform_private', 'cms_get_entry_draft', 'jsonb'),
+  'P2-S10-RPC platform_private.cms_get_entry_draft(jsonb) exists'
+);
+select ok(
+  pg_temp.s10_fn_exists('platform_api', 'cms_get_entry_draft', 'jsonb'),
+  'P2-S10-RPC platform_api.cms_get_entry_draft(jsonb) wrapper exists'
+);
+
+-- The wrapper is the worker boundary.  It must be reachable by service_role and
+-- unreachable by the browser roles; the existence check is folded in so an
+-- absent function cannot satisfy the assertion vacuously.
+select ok(
+  pg_temp.s10_fn_exists('platform_api', 'cms_create_entry', 'jsonb')
+    and pg_temp.s10_fn_privilege('platform_api', 'cms_create_entry', 'jsonb', 'service_role')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_create_entry', 'jsonb', 'authenticated')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_create_entry', 'jsonb', 'anon'),
+  'P2-S10-RPC cms_create_entry is service_role-only'
+);
+select ok(
+  pg_temp.s10_fn_exists('platform_api', 'cms_get_entry_draft', 'jsonb')
+    and pg_temp.s10_fn_privilege('platform_api', 'cms_get_entry_draft', 'jsonb', 'service_role')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_get_entry_draft', 'jsonb', 'authenticated')
+    and not pg_temp.s10_fn_privilege('platform_api', 'cms_get_entry_draft', 'jsonb', 'anon'),
+  'P2-S10-RPC cms_get_entry_draft is service_role-only'
+);
+
+-- The private command surface stays unreachable from every Data API role, so a
+-- browser cannot bypass the worker by naming the private function directly.
+select ok(
+  pg_temp.s10_no_execute_for('platform_private', 'cms_create_entry', 'authenticated')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_create_entry', 'anon')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_get_entry_draft', 'authenticated')
+    and pg_temp.s10_no_execute_for('platform_private', 'cms_get_entry_draft', 'anon'),
+  'P2-S10-RPC private entry RPCs are not executable by a browser role'
+);
+
+-- The closed registry must be widened by the same migration that defines the
+-- RPCs, so a deployed create RPC can never be reached without cms.author being a
+-- registered capability, and the pre-existing 03a keys must survive.
+select ok(
+  pg_temp.s10_capability_registered('cms.author', 1)
+    and pg_temp.s10_capability_registered('cms.editor', 1)
+    and not pg_temp.s10_capability_registered('cms.author', 2)
+    and not pg_temp.s10_capability_registered('cms.authorx', 1),
+  'P2-S10-RPC capability registry admits exactly cms.author/cms.editor at v1'
+);
+select ok(
+  pg_temp.s10_capability_registered('cms.schema_designer', 1)
+    and pg_temp.s10_capability_registered('cms.schema_registry.read', 1)
+    and pg_temp.s10_capability_registered('cms.public_content.read', 1)
+    and pg_temp.s10_capability_registered('cms.content.article', 1)
+    and pg_temp.s10_capability_registered('cms.article.card', 1),
+  'P2-S10-RPC registry widening preserves the five 03a capability keys'
+);
+
+-- One create body.  schemaArtifact addresses the immutable compiled artifact by
+-- its own id; changedPaths addresses stable field ids; the two evidence classes
+-- are built from different fixture values on purpose.
+create temp table s10_create_request on commit drop as
+select jsonb_build_object(
+  'contentTypeId', ids_type.value,
+  'contentTypeVersionId', ids_version.value,
+  'locale', 'en-US',
+  'changedPaths', jsonb_build_array('/fields/' || ids_field.value),
+  'values', jsonb_build_object(ids_field.value, 'First draft title'),
+  'schemaArtifact', jsonb_build_object(
+    'id', ids_artifact.value,
+    'contentTypeVersionId', ids_version.value,
+    'artifactHash', ids_hash.value,
+    'compilerVersion', ids_compiler.value,
+    'zodContractRef', ids_zod.value
+  ),
+  'validatorRefs', jsonb_build_array(
+    jsonb_build_object('key', 'cms.text', 'version', '1')
+  ),
+  -- Editorial workflow-policy evidence is its own frozen item.  It carries
+  -- distinct hashes from the activation envelope so the two can never be
+  -- satisfied by one value.
+  'workflowPolicy', jsonb_build_object(
+    'key', 'editorial',
+    'version', '1',
+    'policyHash', repeat('c', 64),
+    'riskClass', 'ordinary',
+    'requiredDecisionCount', 1,
+    'requiredCapabilities', jsonb_build_array('cms.author'),
+    'approvalEvidenceHash', repeat('d', 64)
+  ),
+  -- Activation evidence mirrors the 03a activation envelope the fixture wrote
+  -- on the content-type version, independently reconstructed here.
+  'activationEvidence', jsonb_build_object(
+    'key', 'cms.entry.author',
+    'version', '1',
+    'policyHash', repeat('a', 64),
+    'riskClass', 'ordinary',
+    'requiredDecisionCount', 1,
+    'requiredCapabilities', jsonb_build_array('cms.author'),
+    'approvalEvidenceHash', repeat('b', 64)
+  ),
+  'idempotencyKey', 's10-entry-create-0001',
+  'context', jsonb_build_object(
+    'actingPartyId', ids_org.value,
+    'actingContextId', 'a9100000-0000-4000-8000-000000000092',
+    'correlationId', 'a9100000-0000-4000-8000-000000000093'
+  )
+) as request
+from s10_ids ids_type
+cross join s10_ids ids_version
+cross join s10_ids ids_artifact
+cross join s10_ids ids_hash
+cross join s10_ids ids_compiler
+cross join s10_ids ids_zod
+cross join s10_ids ids_field
+cross join s10_ids ids_org
+where ids_type.key = 'typeId'
+  and ids_version.key = 'draftVersionId'
+  and ids_artifact.key = 'typeArtifactId'
+  and ids_hash.key = 'typeArtifactHash'
+  and ids_compiler.key = 'typeArtifactCompiler'
+  and ids_zod.key = 'typeArtifactZodRef'
+  and ids_field.key = 'typeFieldId'
+  and ids_org.key = 'organization';
+
+-- Unauthenticated: no resolvable actor at all.
+select pg_temp.s10_rpc_clear_actor();
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal((select request::text from s10_create_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_state(),
+  'P0001',
+  'CMS-03B-10 create without an authenticated actor raises P0001'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'UNAUTHENTICATED',
+  'CMS-03B-10 create without an authenticated actor returns UNAUTHENTICATED'
+);
+
+-- Authenticated, confirmed member of the acting org, but no registered
+-- cms.author/cms.editor grant.  Authority is refused even though the caller is a
+-- legitimate organization member: presenting a key is never authority.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000003'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal((select request::text from s10_create_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'FORBIDDEN',
+  'CMS-03B-10 create without a registered grant returns FORBIDDEN'
+);
+
+-- Authorized creator: the grant chain resolves, so the call reaches the
+-- editorial workflow-policy dependency rather than an authority rejection.  That
+-- dependency has no registry source yet, so the RPC fails closed with
+-- DEPENDENCY_UNAVAILABLE and writes nothing.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_create_entry('
+    || quote_literal((select request::text from s10_create_request))
+    || '::jsonb)'
+);
+
+select is(
+  pg_temp.s10_last_error_state(),
+  'P0001',
+  'CMS-03B-10 authorized create fails closed on the missing editorial workflow policy (P0001)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-10 authorized create reports DEPENDENCY_UNAVAILABLE, never a synthesized policy match'
+);
+
+-- Field values must be checked against the pinned active schema before the
+-- separate editorial-policy dependency is reached.  A boolean in the declared
+-- short_text title or an authored JSON null is invalid data, not a policy
+-- outage; neither may become a persisted first revision if that dependency is
+-- later configured.
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal(
+         pg_catalog.jsonb_set(
+           (select request from s10_create_request),
+           array['values', (select value from s10_ids where key = 'typeFieldId')],
+           'true'::jsonb
+         )::text
+       )
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'VALIDATION_FAILED',
+  'CMS-03B-10 refuses wrong-kind field values before policy lookup'
+);
+
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal(
+         pg_catalog.jsonb_set(
+           (select request from s10_create_request),
+           array['values', (select value from s10_ids where key = 'typeFieldId')],
+           'null'::jsonb
+         )::text
+       )
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'VALIDATION_FAILED',
+  'CMS-03B-10 refuses authored JSON null before policy lookup'
+);
+
+-- Fail-closed atomicity: no entry, revision, field value, or assignment may
+-- survive a create that could not verify its evidence.  Only the fixture's
+-- seeded draft entry exists for this owner.
+select is(
+  (
+    select count(*)::integer
+    from platform_private.cms_content_entries entry
+    where entry.owner_party_id = (select value::uuid from s10_ids where key = 'organization')
+  ),
+  1,
+  'CMS-03B-10 fail-closed create persists no entry (only the seeded draft exists)'
+);
+select is(
+  (
+    select count(*)::integer
+    from platform_private.cms_entry_revisions revision
+    where revision.owner_id = (select value::uuid from s10_ids where key = 'organization')
+  ),
+  1,
+  'CMS-03B-10 fail-closed create persists no revision'
+);
+select is(
+  (
+    select count(*)::integer
+    from platform_private.cms_entry_assignments assignment
+    where assignment.owner_id = (select value::uuid from s10_ids where key = 'organization')
+  ),
+  2,
+  'CMS-03B-10 fail-closed create persists no assignment (only the fixture pair exists)'
+);
+
+-- A rejected create must not leave a completed reservation behind: the attempt
+-- aborted before cms_complete ran.
+select is(
+  (
+    select count(*)::integer
+    from platform_private.idempotency_records reservation
+    where reservation.actor_id = 'a9100000-0000-4000-8000-000000000001'
+      and reservation.operation = 'CMS-03B-10'
+      and reservation.state = 'completed'
+  ),
+  0,
+  'CMS-03B-10 fail-closed create leaves no completed idempotency reservation'
+);
+
+-- A body that names a capability or owner has no field to put it in: the strict
+-- request shape rejects any extra authority-looking key.
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal(
+         ((select request from s10_create_request)
+           || jsonb_build_object('capabilityKey', 'cms.author'))::text
+       )
+    || '::jsonb)'
+);
+select ok(
+  pg_temp.s10_last_error_message() in ('INVALID_REQUEST', 'FORBIDDEN'),
+  'CMS-03B-10 rejects a caller-supplied capability key instead of honouring it'
+);

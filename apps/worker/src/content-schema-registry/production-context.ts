@@ -50,11 +50,22 @@ export const contextFor = (
     fromServer?.actingPartyId ?? input.session?.actingPartyId ?? null;
   const sessionId = fromServer?.sessionId;
   const actorPersonId = fromServer?.actorPersonId;
+  // The activation operation performs its own step-up check against the
+  // validated acting-context binding. That binding id is private: it is
+  // projected into the activation RPC context only, never into any other
+  // operation, response, header, log, or telemetry projection.
+  const actingContextId =
+    input.operationId === 'CMS-03A-04' &&
+    typeof fromServer?.actingContextId === 'string' &&
+    fromServer.actingContextId.length > 0
+      ? fromServer.actingContextId
+      : undefined;
   return {
     ...(userId === undefined ? {} : { authUserId: userId }),
     ...(sessionId === undefined ? {} : { sessionId }),
     ...(actorPersonId === undefined ? {} : { actorPersonId }),
     actingPartyId,
+    ...(actingContextId === undefined ? {} : { actingContextId }),
     ...(fromServer === undefined
       ? { stepUpVerified: input.session?.mfaFresh ?? false }
       : {

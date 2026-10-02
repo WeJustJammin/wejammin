@@ -79,6 +79,7 @@ describe('content schema registry production authentication boundaries', () => {
         actingPartyId: PARTY_ID,
         capabilities: ['cms.schema_registry.read'],
         mfaFresh: true,
+        stepUpFreshUntil: '2026-09-02T12:05:00.000Z',
       },
     });
   });

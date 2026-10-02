@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
 export const CmsUuidSchema = z.uuid();
+const cmsVersionPattern = /^[1-9][0-9]{0,18}$/u;
 export const CmsVersionSchema = z
   .string()
-  .regex(/^[1-9][0-9]{0,18}$/u, 'version_invalid')
+  .regex(cmsVersionPattern, 'version_invalid')
   .refine(
-    (value) => BigInt(value) <= 9_223_372_036_854_775_807n,
+    (value) =>
+      !cmsVersionPattern.test(value) ||
+      BigInt(value) <= 9_223_372_036_854_775_807n,
     'version_out_of_range',
   );
 export const CmsHashSchema = z

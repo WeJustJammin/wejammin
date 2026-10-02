@@ -14,6 +14,7 @@ import {
   type UpstreamResult,
 } from './content-schema-registry-platform-shared';
 import type { ContentSchemaRegistryRefetchReason } from './content-schema-registry-platform-shared';
+import { CONTENT_SCHEMA_REGISTRY_ACTING_CONTEXTS_PATH } from './content-schema-registry-acting-context';
 
 /**
  * Build the production read ports. The upstream 2xx response is the trusted
@@ -80,6 +81,9 @@ export const createContentSchemaRegistryPlatformPorts = (
         ...(result.presentationVariant === null
           ? {}
           : { presentationVariant: result.presentationVariant }),
+        ...(result.stepUpFreshUntil === null
+          ? {}
+          : { stepUpFreshUntil: result.stepUpFreshUntil }),
       };
     },
     loadList: async ({ request }): Promise<unknown> =>
@@ -90,6 +94,17 @@ export const createContentSchemaRegistryPlatformPorts = (
       versionId,
     }): Promise<unknown> =>
       requireUpstream(request, apiPathForDetail(contentTypeId, versionId)),
+    // Presentation-only label read: the authorized list is fetched through
+    // the same private binding, and a failure degrades the disclosure rather
+    // than the protected read.
+    loadActingContexts: async ({ request }): Promise<Response> => {
+      const result = await requestOnce(
+        request,
+        CONTENT_SCHEMA_REGISTRY_ACTING_CONTEXTS_PATH,
+      );
+      if (result.kind !== 'ok') return new Response(null, { status: 502 });
+      return Response.json(result.data);
+    },
   };
 };
 

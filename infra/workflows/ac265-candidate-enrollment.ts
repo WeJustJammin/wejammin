@@ -76,8 +76,20 @@ export const buildAc265CandidateEnrollment = async (
         runAttempt: Number(verified.ci.runAttempt),
       },
       staging: {
-        ...verified.staging,
+        // The authenticated archive length is verifier-only: the frozen
+        // enrollment RPC key set does not accept it, so it is not copied
+        // into the persisted request.
+        runId: verified.staging.runId,
         runAttempt: Number(verified.staging.runAttempt),
+        workflowPath: verified.staging.workflowPath,
+        artifactName: verified.staging.artifactName,
+        artifactId: verified.staging.artifactId,
+        artifactDigest: verified.staging.artifactDigest,
+        deploymentId: verified.staging.deploymentId,
+        deployedAt: verified.staging.deployedAt,
+        environment: verified.staging.environment,
+        webOrigin: verified.staging.webOrigin,
+        apiOrigin: verified.staging.apiOrigin,
       },
       artifact: {
         buildId: verified.artifact.buildId,

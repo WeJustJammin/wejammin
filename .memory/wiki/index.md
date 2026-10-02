@@ -54,6 +54,8 @@
 - [[specs/audits/propagation-ac265-2026-09-09|Approved AC265 propagation]] — audit — spec-vault
 - [[specs/audits/propagation-ac265-pre-release-2026-09-26|Approved AC265 pre-release propagation]] — audit — spec-vault
 - [[specs/audits/propagation-ac266-2026-09-21|Approved AC266 Phase 2 completion-policy propagation]] — audit — spec-vault
+- [[specs/audits/propagation-cms-conflict-record-2026-09-26|Approved CMS conflict-record propagation]] — audit — spec-vault
+- [[specs/audits/propagation-cms-entry-bootstrap-2026-09-26|Approved CMS entry bootstrap and draft-read propagation]] — audit — spec-vault
 - [[specs/audits/propagation-github-repository-identity-2026-09-22|Approved AC265 GitHub repository identity propagation]] — audit — spec-vault
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]] — audit — spec-vault
 - [[specs/audits/propagation-option-a-2026-09-02|Slice 09 Option A propagation record]] — audit — spec-vault
@@ -65,6 +67,8 @@
 - [[specs/audits/propagation-scan-2026-09-22-repository-identity|GitHub repository identity propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-25|AC209/AC211 prelaunch production-evidence propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-26-ac265-pre-release|AC265 pre-release gate propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-26-cms-conflict-record|CMS conflict-record propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-26-cms-entry-bootstrap|CMS entry bootstrap and draft-read propagation scan]] — audit — spec-vault
 - [[specs/audits/remediation-state|Pipeline remediation state]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1255|Infrastructure Verification Report]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1353|Infrastructure Verification Report]] — audit — spec-vault
@@ -1560,6 +1564,8 @@
 
 ## Structured Memory
 
+- decision: DEC-107: CMS-06 conflict resolution requires a private durable conflict record (2026-09-26) — 2026-09-26T20:35:12Z
+- decision: DEC-106: CMS authors need protected entry bootstrap and draft-detail reads (2026-09-26) — 2026-09-26T19:16:50Z
 - decision: DEC-105: AC265 hosted acceptance is a mandatory pre-release gate, not a Slice 10 implementation prerequisite (2026-09-26) — 2026-09-26T18:02:36.994Z
 - decision: DEC-104: AC209 and AC211 move to post-implementation production-evidence gates without being passed or waived (2026-09-25) — 2026-09-25T20:30:00-04:00
 - decision: DEC-103: AC265 staging identities come from Cloud Identity Free, with exactly one narrow expiring CMS read grant (2026-09-25) — 2026-09-25T15:52:00-04:00

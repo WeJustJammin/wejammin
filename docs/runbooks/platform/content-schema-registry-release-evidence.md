@@ -725,6 +725,15 @@ distinct from the combined release sidecar, which remains unchanged and still
 requires all four evidence streams, including the production AC209 and AC211
 evidence.
 
+DEC-104's additive hosted-only Zod contract is now defined in
+`operational-release-evidence-hosted-scope.ts`: exactly `artifact`,
+`hostedE2e`, `accessibility`, and `verifiedAt`, with an expected identity that
+omits only the two production-deployment fields. It enforces the locked role,
+scenario, manual-check, candidate-identity, and chronology constraints. This
+contract is not an acceptance route by itself; do not consume a status/digest
+manifest as proof without authenticating and verifying the retained report
+bytes through the hosted report, axe, and manual verifiers.
+
 ## Collect AC211 evidence
 
 Wait until a UTC day has ended and that entire day follows the selected

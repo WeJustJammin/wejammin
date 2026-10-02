@@ -32,6 +32,10 @@ export const CONTENT_SCHEMA_REGISTRY_ACTOR_ID_HEADER =
 export const CONTENT_SCHEMA_REGISTRY_ACTING_PARTY_ID_HEADER =
   'x-content-schema-registry-acting-party-id' as const;
 
+/** Server-derived MFA disclosure expiry; private projection only, not authority. */
+export const CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER =
+  'x-content-schema-registry-step-up-fresh-until' as const;
+
 /** Host reserved for the web-to-API service binding projection request. */
 export const CONTENT_SCHEMA_REGISTRY_PRIVATE_SERVICE_HOST =
   'platform-api.internal' as const;

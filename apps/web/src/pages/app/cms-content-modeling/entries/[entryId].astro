@@ -1,0 +1,162 @@
+---
+import { env } from 'cloudflare:workers';
+
+import {
+  CmsEditorialEntryDraftDetailResourceSchema,
+  resolveCmsEditorialEntryDraftDetailPageState,
+} from '../../../../components/cms-editorial/cms-editorial-entry-draft-detail';
+import { forwardCmsEditorialEntryDraftDetailRead } from '../../../../server/cms-editorial-platform-reads';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Protected draft-detail surface for CMS-03B-11.
+ *
+ * The page owns addressing, not data. A non-UUID id addresses no entry and is
+ * answered as not-found without an upstream call, so a malformed probe never
+ * reaches the API. A well-formed id is forwarded through the first-party
+ * proxy, which relays whatever the authenticated API actually answers:
+ *
+ *   401 -> 303 to sign-in, so an expired session is a flow rather than an error;
+ *   403 -> visible entry without read scope, with no draft values disclosed;
+ *   404 -> concealed or absent entry, with no existence confirmation;
+ *   503 / 502 / other -> the degraded document at the upstream status.
+ *
+ * A 200 becomes a loaded draft. No draft is fabricated, no entry value is read
+ * in the browser, and no id is ever echoed into the document.
+ */
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const entryId = Astro.params.entryId ?? '';
+const resolution = resolveCmsEditorialEntryDraftDetailPageState({ entryId });
+
+/* One shared document shell so no state can drift from another. */
+const document = (input: {
+  readonly title: string;
+  readonly heading: string;
+  readonly message: string;
+}): string => `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Draft detail." />
+    <meta name="robots" content="noindex" />
+    <title>${input.title} | WeJammin</title>
+  </head>
+  <body>
+    <nav aria-label="Skip navigation">
+      <a href="#cms-editorial-main">Skip to main content</a>
+    </nav>
+    <header aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/cms-content-modeling">Content modeling</a>
+        <a href="/system/degraded">System status</a>
+      </nav>
+    </header>
+    <main id="cms-editorial-main" tabindex="-1">
+      <h1 id="page-title" tabindex="-1">${input.heading}</h1>
+      <p>${input.message}</p>
+    </main>
+    <script src="../../../../lib/route-heading-focus.ts"></script>
+  </body>
+</html>`;
+
+const html = (input: {
+  readonly title: string;
+  readonly heading: string;
+  readonly message: string;
+  readonly status: number;
+}): Response =>
+  new Response(document(input), {
+    status: input.status,
+    headers: {
+      'cache-control': 'no-store',
+      'content-type': 'text/html; charset=utf-8',
+    },
+  });
+
+if (resolution.kind === 'not-found')
+  return html({
+    title: 'Not found',
+    heading: 'Not found',
+    message: 'This entry is not available.',
+    status: 404,
+  });
+
+const upstream = await forwardCmsEditorialEntryDraftDetailRead(
+  Astro.request,
+  env.PLATFORM_API,
+  entryId,
+);
+
+if (upstream.status === 401) {
+  const returnTo = `/app/cms-content-modeling/entries/${encodeURIComponent(entryId)}`;
+  return Astro.redirect(
+    `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`,
+    303,
+  );
+}
+
+if (upstream.status === 403)
+  return html({
+    title: 'Access denied',
+    heading: 'Access denied',
+    message: 'This entry is not available.',
+    status: 403,
+  });
+
+if (upstream.status === 404)
+  return html({
+    title: 'Not found',
+    heading: 'Not found',
+    message: 'This entry is not available.',
+    status: 404,
+  });
+
+if (upstream.status === 200) {
+  /*
+   * The proxy already parsed the body against the locked resource schema and
+   * proved the returned entry matches the requested id, so this is a verified
+   * draft rather than an unchecked pass-through. Only non-disclosing metadata
+   * is rendered: the entry id is not echoed and no field value is inlined.
+   */
+  const parsed = CmsEditorialEntryDraftDetailResourceSchema.safeParse(
+    await upstream.json(),
+  );
+  if (parsed.success)
+    return html({
+      title: 'Draft detail',
+      heading: 'Draft detail',
+      message: escapeHtml(
+        `Lifecycle ${parsed.data.lifecycle}; state ${parsed.data.state}; locale ${parsed.data.locale}; validation ${parsed.data.validationState}; ${parsed.data.fields.length} field(s), ${parsed.data.relations.length} relation(s).`,
+      ),
+      status: 200,
+    });
+  return html({
+    title: 'Draft detail',
+    heading: 'Draft detail is unavailable',
+    message:
+      'The entry service returned data that could not be verified. Nothing was loaded.',
+    status: 502,
+  });
+}
+
+return html({
+  title: 'Draft detail',
+  heading: 'Draft detail is unavailable',
+  message:
+    'The protected entry read could not be completed. Nothing was loaded.',
+  status: upstream.status,
+});
+---

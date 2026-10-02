@@ -29,6 +29,7 @@ const MIGRATION_PATTERN = /^[0-9]{14,20}$/u;
 const MAX_JSON_BYTES = 1024 * 1024;
 
 export interface Ac265VerifiedCandidateEvidenceFiles {
+  readonly axeReportSha256: string;
   readonly migration: Readonly<{
     projectRef: string;
     remoteHistorySha256: string;
@@ -206,12 +207,10 @@ export const verifyAc265CandidateEvidenceFiles = (
   const axeDigestText = new TextDecoder('utf-8', { fatal: true }).decode(
     axeDigestBytes,
   );
+  const axeReportSha256 = sha256Ac265CandidateBytes(axeBytes);
   const axeDigestMatch =
     /^([a-f0-9]{64}) {2}accessibility\/axe\.json\n?$/u.exec(axeDigestText);
-  if (
-    axeDigestMatch === null ||
-    axeDigestMatch[1] !== sha256Ac265CandidateBytes(axeBytes)
-  )
+  if (axeDigestMatch === null || axeDigestMatch[1] !== axeReportSha256)
     return failAc265CandidateProvenance();
   const axeReport = ContentSchemaRegistryAutomatedAxeReportSchema.safeParse(
     parseJsonBytes(axeBytes),
@@ -246,6 +245,7 @@ export const verifyAc265CandidateEvidenceFiles = (
   if (marker.length !== 0) return failAc265CandidateProvenance();
 
   return {
+    axeReportSha256,
     migration,
     provider: {
       evidenceSha256: sha256Ac265CandidateBytes(providerEvidenceBytes),

@@ -24,6 +24,7 @@ const reportArtifact = (patch: Record<string, unknown> = {}) => ({
   archive_download_url: `https://api.github.com/repos/${REPOSITORY}/actions/artifacts/${REPORT_ARTIFACT_ID}/zip`,
   expired: false,
   created_at: '2026-09-08T13:25:00.000Z',
+  updated_at: '2026-09-08T13:25:00.000Z',
   digest: 'sha256:' + 'd'.repeat(64),
   workflow_run: {
     id: Number(STAGING_RUN_ID),
@@ -230,12 +231,64 @@ describe('AC265 hosted verification run provenance', () => {
     ).rejects.toThrow();
   });
 
+  it.each([
+    ['absent', undefined],
+    ['null', null],
+  ])(
+    'rejects a report artifact with %s updated_at',
+    async (_label, updatedAt) => {
+      await expect(
+        resolve({
+          stagingArtifacts: [reportArtifact({ updated_at: updatedAt })],
+        }),
+      ).rejects.toThrow();
+    },
+  );
+
+  it('rejects a parseable but noncanonical report artifact timestamp', async () => {
+    await expect(
+      resolve({
+        stagingArtifacts: [
+          reportArtifact({
+            created_at: 'Tue, 08 Sep 2026 13:25:00 GMT',
+            updated_at: '2026-09-08T13:25:00.000Z',
+          }),
+        ],
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects a parseable but noncanonical completed-run timestamp', async () => {
+    const baseline = createMockGitHubApi();
+    const stagingRun = baseline.values.stagingRun as Record<string, unknown>;
+    await expect(
+      resolve({
+        stagingRun: {
+          ...stagingRun,
+          updated_at: 'Tue, 08 Sep 2026 13:30:00 GMT',
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
   it('accepts an artifact created inside the verified attempt window', async () => {
     const provenance = await resolve({
       stagingArtifacts: [
         reportArtifact({
           created_at: '2026-09-08T13:06:00.000Z',
           updated_at: '2026-09-08T13:07:00.000Z',
+        }),
+      ],
+    });
+    expect(provenance.reportArtifactId).toBe(REPORT_ARTIFACT_ID);
+  });
+
+  it('accepts GitHub RFC3339 timestamps without fractional seconds', async () => {
+    const provenance = await resolve({
+      stagingArtifacts: [
+        reportArtifact({
+          created_at: '2026-09-08T13:25:00Z',
+          updated_at: '2026-09-08T13:25:00Z',
         }),
       ],
     });

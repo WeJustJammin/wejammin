@@ -31,12 +31,14 @@ Explicitly deferred: IDA-05 and IDA-09–18; PRF-08–09 and PRF-13–16; CMS-15
 
 ## Phase 2 completion policy
 
-**Phase 2 implementation-completion denominator**: 1996.  
+**Phase 2 implementation-completion denominator**: 2011.  
 **Slice 09 implementation-completion denominator**: 279.  
-**Slice 10 implementation prerequisites**: none.  
-**Authored criterion policy**: Slice 09 is **279/279 active** with 283 authored Slice 09 IDs retained; AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominators.
+**Slice 10 implementation prerequisites**: completion of the 17 reopened Slice 09 activation-chain criteria; AC250 is separately verified and no longer blocking; AC265 remains a separate pre-release gate.  
+**Authored criterion policy**: Slice 09 is **262/279 active** with 283 authored Slice 09 IDs retained; AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominators. The prior 279/279 checkpoint was superseded by the 2026-09-30 activation re-audit; the separately reopened AC250 was Chrome-verified and closed 2026-10-01, outside the 17 activation-chain criteria that remain open.
 
 DEC-101 preserves all **2000 authored acceptance criteria**, including all **283 contiguous authored Slice 09 IDs**, and deferred `P2-S09-AC-266` as the pre-release post-Phase 2 production-readiness/release gate. DEC-104 supersedes DEC-101's Slice 10 dependency sentence and additionally defers the production-evidence closure of `P2-S09-AC-209` and `P2-S09-AC-211`. DEC-105 supersedes DEC-104's AC265-only Slice 10 prerequisite sentence: `P2-S09-AC-265` moves to a mandatory pre-release production-readiness/release gate and is excluded only from the Slice 09 and Phase 2 active implementation denominators, not from its authored evidence obligations. DEC-104's AC209/AC211 timing is unchanged.
+
+DEC-106 adds fifteen authored Slice 10 criteria for protected initial-entry creation and authorized draft-detail reads, bringing Phase 2 to **2015 authored / 2011 active**. It does not alter the historical DEC-101 2000-criterion baseline or any Slice 09 evidence obligation.
 
 The four deferred criteria are mandatory on distinct timelines:
 
@@ -81,7 +83,7 @@ DEC-105 removes AC265 as a Slice 10 implementation prerequisite. Slice 10 implem
 | Slice 07 | CFG-05A-01, CFG-05A-02, CFG-05A-03, CFG-05A-04                                                                                                | BE05a  |
 | Slice 08 | CFG-05B-01, CFG-05B-04, CFG-05B-05                                                                                                            | BE05b  |
 | Slice 09 | CMS-03A-01, CMS-03A-02, CMS-03A-03, CMS-03A-04, CMS-03A-05                                                                                    | BE03a  |
-| Slice 10 | CMS-03B-01, CMS-03B-02, CMS-03B-03, CMS-03B-04                                                                                                | BE03b  |
+| Slice 10 | CMS-03B-01, CMS-03B-02, CMS-03B-03, CMS-03B-04, CMS-03B-10, CMS-03B-11                                                                        | BE03b  |
 | Slice 11 | CMS-03B-05, CMS-03B-06, CMS-03B-07, CMS-03B-08, CMS-03B-09                                                                                    | BE03b  |
 | Slice 12 | CMS-03C-01, CMS-03C-02, CMS-03C-03                                                                                                            | BE03c  |
 | Slice 13 | DLV-NAV-API-01, DLV-NAV-API-02, DLV-NAV-API-03, DLV-NAV-API-04                                                                                | BE04a  |
@@ -147,8 +149,8 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - Slice 06 — Public profiles and credit-backed portfolio: 121 criteria, L, depends on Slices 03 and 05.
 - Slice 07 — Typed settings registry, effective values, and rollback: 176 criteria, L, depends on Slice 01.
 - Slice 08 — Admin shell, task inbox, capability grants, and audit: 51 criteria, M, depends on Slices 03 and 07.
-- Slice 09 — Content schemas, relations, activation, and block registry: 283 authored criteria / 280 implementation-completion criteria, L, depends on Slices 07 and 08.
-- Slice 10 — Entry authoring, conflict resolution, and revision restore: 60 criteria, M, depends on Slice 09.
+- Slice 09 — Content schemas, relations, activation, and block registry: 283 authored criteria / 279 implementation-completion criteria, L, depends on Slices 07 and 08.
+- Slice 10 — Entry authoring, conflict resolution, and revision restore: 75 criteria, M, depends on Slice 09.
 - Slice 11 — Review, scheduling, preview, and safe publication: 45 criteria, M, depends on Slice 10.
 - Slice 12 — Templates, reusable patterns, and taxonomy governance: 50 criteria, M, depends on Slice 09.
 - Slice 13 — Menus, routes, slugs, and discovery metadata: 174 criteria, L, depends on Slices 11 and 12.
@@ -157,8 +159,8 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - Slice 16 — Content quality and privacy lifecycle foundation: 28 criteria, S, depends on Slices 08 and 15.
 - Slice 17 — Phase 2 integration, infrastructure verification, and close gate: 10 criteria, S, depends on Slices 01–16.
 
-**Total authored acceptance criteria**: 2000; every slice meets its computed depth floor.
-**Phase 2 implementation-completion denominator**: 1996; AC209, AC211, AC265, and AC266 remain authored, unchecked, and mandatory acceptance gates on their distinct timelines.
+**Total authored acceptance criteria**: 2015; every slice meets its computed depth floor.
+**Phase 2 implementation-completion denominator**: 2011; AC209, AC211, AC265, and AC266 remain authored, unchecked, and mandatory acceptance gates on their distinct timelines.
 
 ## Slice 01 — Authentication, recovery, session, and identity bootstrap
 
@@ -1802,7 +1804,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - [ ] **P2-S09-AC-247** — Native links/buttons/inputs/selects/textareas provide visible names, correct keyboard operation, logical Tab order, focus ring, and no pointer-only control. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [ ] **P2-S09-AC-248** — Form validation uses persistent labels, linked descriptions, JSON-pointer errors, first-invalid summary focus, polite status, and server authority after blur feedback. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [ ] **P2-S09-AC-249** — Tables/filters expose caption, headers, sort direction, result count, active-filter summary, 24 CSS px minimum targets (44 preferred), and no ARIA grid without full grid behavior. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
-- [ ] **P2-S09-AC-250** — High-risk activation confirmation exposes consequence, scope, version, acting context, and step-up; modal focus containment/Escape/return focus applies only when inline is insufficient. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
+- [x] **P2-S09-AC-250** — High-risk activation confirmation exposes consequence, scope, version, acting context, and step-up; modal focus containment/Escape/return focus applies only when inline is insufficient. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations — Closed 2026-10-01: production-built Chrome verified the disclosure clause (6/6 GREEN, 23:06 UTC, exit 0) on the frozen production source; not real MFA, activation, or hosted acceptance.
 - [ ] **P2-S09-AC-251** — Reduced-motion mode removes nonessential animation; statuses combine text/icon/structure and never rely on color. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [ ] **P2-S09-AC-252** — Reads show loading only after 250 ms, use known-layout skeletons, preserve safe prior shell, and announce parsed results within the FE timing contract. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [ ] **P2-S09-AC-253** — 429 honors Retry-After and preserves input; safe 502/503/504 attempts are bounded and mutation retries reconcile status first. [FE03](../fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
@@ -1839,20 +1841,20 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 
 ## Slice 10 — Entry authoring, conflict resolution, and revision restore
 
-**Status**: not started; awaiting plan approval  
+**Status**: in progress under approved DEC-106; criteria remain open pending implementation evidence  
 **Complexity**: M  
 **Depends on**: Slice 09 implementation completion. AC265 is a mandatory pre-release production-readiness/release gate that does not gate Slice 10 implementation. AC209 remains a production-rollout/post-deployment evidence gate before alerting is declared ready, AC211 remains post-launch operational SLO acceptance, and AC266 remains the pre-release post-Phase 2 production-readiness/release gate.  
 **Surface scope**: `web` — responsive Astro/PWA, bounded React islands, Hono REST/API, PostgreSQL/RLS, and admin/operator surface where applicable.  
 **Implementation layers**: Contract/data, API/policies, user-facing or system UI, admin/operator UI where applicable, QA, documentation/runbooks.  
 **IA flows**: CMS-05, CMS-06, CMS-07  
-**BE endpoints**: CMS-03B-01, CMS-03B-02, CMS-03B-03, CMS-03B-04  
+**BE endpoints**: CMS-03B-01, CMS-03B-02, CMS-03B-03, CMS-03B-04, CMS-03B-10, CMS-03B-11  
 **Feature ledger**: `25.02.01`, `25.02.02`
 
 **TDD order**: Contract → QA-RED → data/API and SSR/island implementation → QA-GREEN → refactor → validation.
 
-**Spec depth floor**: 60 criteria  
-**Breakdown**: locked gates 3 + BE happy paths 4 + BE field validation 4 + BE authorization 4 + BE concurrency 4 + BE failures 4 + BE recovery 4 + BE validation rows 22 + IA acceptance 3 + IA recovery 3 + FE interactions 3 + TDD/validation 2  
-**Authored criteria**: 60 (PASS)
+**Spec depth floor**: 75 criteria  
+**Breakdown**: prior locked floor 60 + protected entry-create operation coverage 6 + authorized draft-detail read coverage 6 + explicit new field validation 3  
+**Authored criteria**: 75 (PASS)
 
 ### Acceptance criteria
 
@@ -1904,10 +1906,10 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - [ ] **P2-S10-AC-046** — Enforce CMS-03B-08: versionSet; strict exact schema/template/taxonomy/settings/blocks/patterns IDs and hashes; 422; stale set 409. [BE03b](../be/03b-editorial-workflow-publication.md) §Request/Response Contracts validation table at line 154
 - [ ] **P2-S10-AC-047** — Enforce CMS-03B-08: audience/route; audience 1–64 safe chars; route 1–2048 normalized path; no external URL; 422. [BE03b](../be/03b-editorial-workflow-publication.md) §Request/Response Contracts validation table at line 154
 - [ ] **P2-S10-AC-048** — Enforce CMS-03B-09: frozenHash/expectedVersionSet; 64 lowercase hex and strict version/hash set equal to approved candidate; 422/409. [BE03b](../be/03b-editorial-workflow-publication.md) §Request/Response Contracts validation table at line 154
-- [ ] **P2-S10-AC-049** — Enforce All mutation routes: headers; Idempotency-Key 8–128 printable ASCII; exact strong If-Match; Content-Type application/json; 400 INVALID_REQUEST. [BE03b](../be/03b-editorial-workflow-publication.md) §Request/Response Contracts validation table at line 154
-- [ ] **P2-S10-AC-050** — CMS-05 Create/edit entry: given Actor holds the CMS author capability and is assigned to the target entry, the entry lifecycle is active with a compiled active schema version, and every autosave carries the changed field paths plus the base revision the draft was loaded from., implement locked behavior and completion exactly. [IA03](../ia/03-cms-content-modeling.md) §§Acceptance Criteria, Interactions, Contracts, Access Control, Edge Cases
+- [ ] **P2-S10-AC-049** — Enforce mutation headers: Idempotency-Key 8–128 printable ASCII and Content-Type application/json; existing-resource mutations require exact strong If-Match, while initial entry creation uses the explicit create precondition and no fabricated existing version; malformed headers return 400 INVALID_REQUEST. [BE03b](../be/03b-editorial-workflow-publication.md) §Route field validation matrix
+- [ ] **P2-S10-AC-050** — CMS-05 Create/edit entry: atomically bootstrap an authorized active entry with its first attributable draft revision, load only its protected current editable draft, then autosave changed paths against an explicit readable base revision; server derives owner, assignment, and acting context. [IA03](../ia/03-cms-content-modeling.md) §§Acceptance Criteria, Interactions, Contracts, Access Control, Edge Cases
 - [ ] **P2-S10-AC-051** — CMS-05 Create/edit entry: preserve declared failure and recovery across invalid authority, concurrency, revocation, deletion, and cascade. [IA03](../ia/03-cms-content-modeling.md) §§Acceptance Criteria, Interactions, Contracts, Access Control, Edge Cases
-- [ ] **P2-S10-AC-052** — `CMS-05` Create/edit entry: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success. [FE03](../fe/03-cms-content-modeling.md) §§Interaction Specification, Data Mapping, Navigation, Degradation, and Concurrency
+- [ ] **P2-S10-AC-052** — `CMS-05` Create/edit entry: implement native create/edit forms with protected draft-detail loading; focus stays until navigation or named result heading; server-derived actor/context/capability, strict Zod input, create idempotency, update ETag/idempotency; render canonical response/version/provenance/next action and announce status; map exact `ApiError`, retain unsent input, focus summary/field, reconcile unknown mutation before retry; URL for navigation/filter, scoped draft before commit, server after success. [FE03](../fe/03-cms-content-modeling.md) §§Interaction Specification, Data Mapping, Navigation, Degradation, and Concurrency
 - [ ] **P2-S10-AC-053** — CMS-06 Resolve concurrent edit: given A same-field divergence from the same base revision is recorded on an entry the actor may edit, and both competing revisions plus their common base are still readable., implement locked behavior and completion exactly. [IA03](../ia/03-cms-content-modeling.md) §§Acceptance Criteria, Interactions, Contracts, Access Control, Edge Cases
 - [ ] **P2-S10-AC-054** — CMS-06 Resolve concurrent edit: preserve declared failure and recovery across invalid authority, concurrency, revocation, deletion, and cascade. [IA03](../ia/03-cms-content-modeling.md) §§Acceptance Criteria, Interactions, Contracts, Access Control, Edge Cases
 - [ ] **P2-S10-AC-055** — `CMS-06` Resolve concurrent edit: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success. [FE03](../fe/03-cms-content-modeling.md) §§Interaction Specification, Data Mapping, Navigation, Degradation, and Concurrency
@@ -1916,6 +1918,22 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - [ ] **P2-S10-AC-058** — `CMS-07` Compare/restore revision: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success. [FE03](../fe/03-cms-content-modeling.md) §§Interaction Specification, Data Mapping, Navigation, Degradation, and Concurrency
 - [ ] **P2-S10-AC-059** — Execute Contract → QA-RED → data, API, SSR and island implementation → QA-GREEN → refactor; retain failing-test evidence and run canonical validation. [Engineering Standards](../ENGINEERING-STANDARDS.md); [Architecture §Phasing](../2026-08-02-architecture-design.md#phasing)
 - [ ] **P2-S10-AC-060** — Update slice tracking, feature-ledger assignments, applicable runbooks, and architecture graph in the same change; leave no unresolved implementation boundary or undocumented drift. [Engineering Standards](../ENGINEERING-STANDARDS.md); [Architecture §Phasing](../2026-08-02-architecture-design.md#phasing)
+
+- [ ] **P2-S10-AC-061** — CMS-03B-10 initial-entry create: define strict Zod request, header, and success contracts; POST /api/v1/cms/entries atomically creates an active entry and attributable first draft revision, returning 201 EntryCreateResource without requiring an existing base revision. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-062** — CMS-03B-10: reject unknown fields, malformed IDs, off-registry schema or values, invalid locale, and oversized payloads with stable field violations and no mutation. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-063** — CMS-03B-10: derive actor, acting party, owner, capability, and initial assignment server-side; require authorized CMS author/editor and active compiled schema; preserve policy-safe 401/403/404 and RLS boundaries. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-064** — CMS-03B-10: require Idempotency-Key and exact create preconditions, reject duplicate/conflicting keys, and replay the same entry/revision result without a second effect; do not require update-only If-Match for a nonexistent entry. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-065** — CMS-03B-10: map validation, capability, schema, rate, dependency, deadline, and internal failures to BE00 ApiError with safe recovery; no entry or first revision remains after a failed transaction. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-066** — CMS-03B-10: commit entry, first revision, normalized values, assignment, audit, idempotency, and outbox atomically; expose only canonical resource metadata and redacted telemetry. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-067** — CMS-03B-11 draft-detail read: define strict UUID path/query and 200 EntryDraftDetailResource contract for GET /api/v1/cms/entries/{entryId}, including only authorized current editable values, field provenance, schema identity, and canonical versions. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-068** — CMS-03B-11: reject malformed path/query, unsupported body/media, and invalid response values with stable ApiError and no fallback to private or untyped content. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-069** — CMS-03B-11: derive session and acting context server-side; require entry-read assignment/capability; return 404 for concealed/absent entry and 403 only for a visible entry lacking assignment or read scope. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-070** — CMS-03B-11: bind the read to current entry/revision versions, return a strong authenticated ETag and no-store response, and prohibit mutation headers, browser table grants, and cross-context cache reuse. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-071** — CMS-03B-11: map authentication, concealment, rate, dependency, timeout, and internal failures to BE00 ApiError with safe recovery; never disclose hidden values, ownership, or authority. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-072** — CMS-03B-11: perform a read-only canonical fetch with no audit/outbox mutation, safe redacted telemetry, and bounded data so the CMS-05 editor loads a truthful draft before autosave. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-073** — CMS-03B-10 field validation: contentTypeId/contentTypeVersionId must be UUIDs resolving to the same active compiled schema with non-null activation evidence, exact SchemaArtifact and protected validator refs; reject stale or off-registry identity before mutation. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-074** — CMS-03B-10 field validation: locale is bounded BCP 47; changedPaths are 1-128 unique stable JSON Pointers; values are strict stable-field-ID structured JSON within 128 keys, depth 8, and 256 KiB; no caller owner, assignee, authority, or executable content. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
+- [ ] **P2-S10-AC-075** — CMS-03B-11 field validation: entryId is UUID and the authorized current draft must resolve to a readable immutable revision; response values/provenance are schema-valid and bounded, with absent or concealed targets returning 404 and no fabricated empty draft. [BE03b](../be/03b-editorial-workflow-publication.md) §§Route Registry, Request/Response Contracts, Middleware & Policies, Data Flow, Error Handling, Verification and Test Strategy
 
 ## Slice 11 — Review, scheduling, preview, and safe publication
 
@@ -1984,7 +2002,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 
 ## Slice 12 — Templates, reusable patterns, and taxonomy governance
 
-**Status**: not started; awaiting plan approval  
+**Status**: in progress under the approved Slices 10–17 continuation; criteria remain open  
 **Complexity**: M  
 **Depends on**: Slice 09  
 **Surface scope**: `web` — responsive Astro/PWA, bounded React islands, Hono REST/API, PostgreSQL/RLS, and admin/operator surface where applicable.  
@@ -2505,12 +2523,14 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 
 Review this plan and approve or request changes. Until approval, all Phase 2 slices remain `not started`; the only valid implementation command after approval is `/implement-slice`.
 
-
 <!-- spec-graph: auto-generated -->
+
 ## Related Specs
 
 ### Phases into
+
 - [[specs/phases/phase-1|Phase 1 — Operational foundation]]
 
 ### References
+
 - [[specs/phases/phase-1|Phase 1 — Operational foundation]]

@@ -9,6 +9,13 @@ import { registerAc265HostedRoutes } from './ac265-hosted/routes';
 import { registerDiagnosticsRoute } from './diagnostics';
 import { registerAuthenticationRoutes } from './authentication/routes';
 import { createContentSchemaRegistryApp } from './content-schema-registry/routes';
+import { registerCmsEditorialRoutes } from './cms-editorial';
+import { registerCmsTemplateRoutes } from './cms-composition/template-routes';
+import { registerCmsLocaleRoutes } from './cms-composition/locale-routes';
+import { registerCmsTaxonomyRoutes } from './cms-composition/taxonomy-routes';
+import { registerCmsPatternInstanceRoutes } from './cms-composition/pattern-instance-routes';
+import { registerCmsRelatedContentRoutes } from './cms-composition/related-content-routes';
+import { registerCmsTemplateDetailRoutes } from './cms-composition/template-detail-routes';
 import { registerJobStatusRoute } from './jobs/job-status';
 import { registerUploadCompletionRoute } from './upload-completion/upload-intent-completion';
 import { registerIdentityAuthorityRoutes } from './identity-authority/routes';
@@ -210,6 +217,25 @@ export const registerWorkerRoutes = (
       '/',
       createContentSchemaRegistryApp(dependencies.contentSchemaRegistry),
     );
+  }
+  if (dependencies.cmsEditorial !== undefined) {
+    registerCmsEditorialRoutes(app, dependencies.cmsEditorial);
+  }
+  if (dependencies.cmsTemplate !== undefined) {
+    registerCmsTemplateRoutes(app, dependencies.cmsTemplate);
+    registerCmsTemplateDetailRoutes(app, dependencies.cmsTemplate);
+  }
+  if (dependencies.cmsLocale !== undefined) {
+    registerCmsLocaleRoutes(app, dependencies.cmsLocale);
+  }
+  if (dependencies.cmsTaxonomy !== undefined) {
+    registerCmsTaxonomyRoutes(app, dependencies.cmsTaxonomy);
+  }
+  if (dependencies.cmsPatternInstance !== undefined) {
+    registerCmsPatternInstanceRoutes(app, dependencies.cmsPatternInstance);
+  }
+  if (dependencies.cmsRelatedContent !== undefined) {
+    registerCmsRelatedContentRoutes(app, dependencies.cmsRelatedContent);
   }
   registerIdentityAuthorityRoutes(app, dependencies);
   registerProfileOwnershipRoutes(app, dependencies);

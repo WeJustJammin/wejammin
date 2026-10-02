@@ -7,6 +7,7 @@ import {
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS,
   CONTENT_SCHEMA_REGISTRY_PRIVATE_SERVICE_HOST,
   CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER,
+  CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
   contentSchemaRegistryRoutePolicies,
 } from '@wejammin/contracts';
 
@@ -96,6 +97,7 @@ export const setContentSchemaRegistryCapabilityHeader = (
   presentationVariant?: string,
   actorId?: string,
   actingPartyId?: string | null,
+  stepUpFreshUntil?: string,
 ): void => {
   const safeCapabilities = capabilities.filter((capability) =>
     humanCapabilities.has(capability),
@@ -124,12 +126,27 @@ export const setContentSchemaRegistryCapabilityHeader = (
       CONTENT_SCHEMA_REGISTRY_ACTING_PARTY_ID_HEADER,
       actingPartyId,
     );
+  if (stepUpFreshUntil !== undefined && isCanonicalInstant(stepUpFreshUntil))
+    context.header(
+      CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
+      stepUpFreshUntil,
+    );
 };
 
 const isCmsContextUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
     value,
   );
+
+/**
+ * A canonical RFC3339 instant with millisecond precision. A malformed
+ * disclosure instant is dropped rather than forwarded; the browser fails
+ * closed to "required" when the header is absent.
+ */
+const isCanonicalInstant = (value: string): boolean => {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+};
 
 /** Select the least-privileged presentation from authenticated server data. */
 export const presentationVariantForSession = (

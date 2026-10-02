@@ -5,6 +5,7 @@ import {
   CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES,
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANT_HEADER,
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS,
+  CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
 } from '@wejammin/contracts';
 
 const humanCapabilities = new Set<string>(
@@ -45,6 +46,20 @@ export const parseContentSchemaRegistryPresentationVariant = (
     ? (value as ContentSchemaRegistryPresentationVariant)
     : null;
 
+/**
+ * Accept only a canonical RFC3339 millisecond instant so a malformed private
+ * disclosure header is dropped rather than forwarded to the browser.
+ */
+const parseContentSchemaRegistryStepUpFreshUntil = (
+  value: string | null,
+): string | null => {
+  if (value === null || value.length === 0) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value
+    ? value
+    : null;
+};
+
 export const isSafeUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
     value,
@@ -66,6 +81,9 @@ export const parseContentSchemaRegistryContextHeaders = (headers: Headers) => ({
   ),
   presentationVariant: parseContentSchemaRegistryPresentationVariant(
     headers.get(CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANT_HEADER),
+  ),
+  stepUpFreshUntil: parseContentSchemaRegistryStepUpFreshUntil(
+    headers.get(CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER),
   ),
 });
 

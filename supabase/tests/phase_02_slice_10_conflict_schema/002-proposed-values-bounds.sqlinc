@@ -1,0 +1,144 @@
+
+-- proposed_values bound hardening (forward migration 20260927110000).
+--
+-- The shape-only CHECK admitted any JSON object; an uncommitted candidate
+-- autosave is caller-supplied private data, so the frozen 256 KiB / depth-8 /
+-- 128-key / 128-array ceiling is now enforced through the existing immutable
+-- Slice 09 helper platform_private.cms_json_bounded.
+--
+-- Assertion strategy: PostgreSQL evaluates CHECK constraints before foreign-key
+-- triggers, so a payload that satisfies the bound proceeds to the FK check
+-- (23503) while a payload that breaches the bound is rejected in place with
+-- 23514 on the named constraint. That differential isolates the bound without
+-- standing up the full entry/revision fixture graph.
+
+-- The frozen predicate is delegated, not re-inlined, so assert the exact
+-- helper call signature the constraint must carry.
+select ok(
+  pg_temp.s10c_has_check(
+    'platform_private.cms_conflict_records',
+    'platform_private.cms_json_bounded(proposed_values, 262144, 8, 128, 128)'
+  )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      'jsonb_typeof(proposed_values) = ''object'''
+    ),
+  'proposed_values is bounded by the shared immutable json bound helper'
+);
+
+-- Helper-level boundary evidence: the cap is inclusive at 128 keys, depth 8
+-- and 262144 serialized bytes, and excludes the first breach of each.
+select ok(
+  platform_private.cms_json_bounded(
+    (select jsonb_object_agg('key' || key_number, to_jsonb(key_number))
+       from generate_series(1, 128) as keys(key_number)),
+    262144, 8, 128, 128
+  )
+    and not platform_private.cms_json_bounded(
+      (select jsonb_object_agg('key' || key_number, to_jsonb(key_number))
+         from generate_series(1, 129) as keys(key_number)),
+      262144, 8, 128, 128
+    ),
+  'the bound admits 128 object keys and rejects the 129th'
+);
+
+select ok(
+  (with recursive nested(depth, value) as (
+    values (0, '"safe"'::jsonb)
+    union all
+    select depth + 1, jsonb_build_object('child', value)
+    from nested where depth < 8
+  )
+  select platform_private.cms_json_bounded(value, 262144, 8, 128, 128)
+  from nested where depth = 8)
+    and not (with recursive nested(depth, value) as (
+      values (0, '"safe"'::jsonb)
+      union all
+      select depth + 1, jsonb_build_object('child', value)
+      from nested where depth < 9
+    )
+    select platform_private.cms_json_bounded(value, 262144, 8, 128, 128)
+    from nested where depth = 9),
+  'the bound admits depth eight and rejects depth nine'
+);
+
+select ok(
+  platform_private.cms_json_bounded(
+    jsonb_build_object('b', repeat('x', 262135)), 262144, 8, 128, 128
+  )
+    and not platform_private.cms_json_bounded(
+      jsonb_build_object('b', repeat('x', 262136)), 262144, 8, 128, 128
+    ),
+  'the bound admits 262144 serialized bytes and rejects 262145'
+);
+
+-- Differential insert probe. The write guard admits the row once app.cms_rpc is
+-- set, so the only rejection a caller sees is the constraint under test.
+create or replace function pg_temp.s10c_probe_values(p_values jsonb)
+returns text
+language plpgsql
+as $body$
+declare
+  violated text;
+  previous_setting text;
+begin
+  previous_setting := current_setting('app.cms_rpc', true);
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    insert into platform_private.cms_conflict_records (
+      owner_id, entry_id, base_revision_id, theirs_revision_id,
+      yours_source, proposed_values, proposed_values_hash,
+      changed_paths, base_hash, theirs_hash, yours_hash, conflict_hash, state
+    ) values (
+      gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid(),
+      'proposed', p_values, repeat('a', 64),
+      jsonb_build_array(jsonb_build_object('path', 'title')),
+      repeat('b', 64), repeat('c', 64), repeat('d', 64),
+      md5(random()::text) || md5(random()::text), 'open'
+    );
+    return 'accepted';
+  exception
+    when others then
+      get stacked diagnostics violated = constraint_name;
+      return sqlstate || ':' || coalesce(violated, 'none');
+  end;
+end;
+$body$;
+
+-- A payload inside the bound clears the CHECK and is stopped only by the
+-- entry foreign key, proving the bound did not reject a legitimate value.
+select ok(
+  pg_temp.s10c_probe_values(
+    (select jsonb_object_agg('key' || key_number, to_jsonb(key_number))
+       from generate_series(1, 128) as keys(key_number))
+  ) = '23503:cms_conflict_records_entry_id_fkey',
+  'a 128-key proposed payload clears the bound and reaches the foreign key'
+);
+
+select ok(
+  pg_temp.s10c_probe_values(
+    (select jsonb_object_agg('key' || key_number, to_jsonb(key_number))
+       from generate_series(1, 129) as keys(key_number))
+  ) = '23514:cms_conflict_records_proposed_values_check',
+  'a 129-key proposed payload is rejected by the proposed_values bound'
+);
+
+select ok(
+  pg_temp.s10c_probe_values(
+    (with recursive nested(depth, value) as (
+      values (0, '"safe"'::jsonb)
+      union all
+      select depth + 1, jsonb_build_object('child', value)
+      from nested where depth < 9
+    )
+    select value from nested where depth = 9)
+  ) = '23514:cms_conflict_records_proposed_values_check',
+  'a depth-nine proposed payload is rejected by the proposed_values bound'
+);
+
+select ok(
+  pg_temp.s10c_probe_values(
+    jsonb_build_object('b', repeat('x', 262200))
+  ) = '23514:cms_conflict_records_proposed_values_check',
+  'an over-256KiB proposed payload is rejected by the proposed_values bound'
+);

@@ -14,6 +14,12 @@ import type {
   AuthenticationSession,
 } from './authentication/types';
 import type { ContentSchemaRegistryDependencies } from './content-schema-registry/types';
+import type { CmsEditorialDependencies } from './cms-editorial/types';
+import type { CmsTemplateDependencies } from './cms-composition/template-routes';
+import type { CmsLocaleDependencies } from './cms-composition/locale-routes';
+import type { CmsTaxonomyDependencies } from './cms-composition/taxonomy-routes';
+import type { CmsPatternInstanceDependencies } from './cms-composition/pattern-instance-routes';
+import type { CmsRelatedContentDependencies } from './cms-composition/related-content-routes';
 import type { IdentityAuthorityDependencies } from './identity-authority/types';
 import type { ProfileOwnershipDependencies } from './profile-ownership/types';
 import type { ProfilePortfolioDependencies } from './profile-portfolio/types';
@@ -69,6 +75,12 @@ export type WorkerDependencies = {
   ac265Hosted?: Ac265HostedDependencies;
   auth?: AuthenticationDependencies;
   contentSchemaRegistry?: ContentSchemaRegistryDependencies;
+  cmsEditorial?: CmsEditorialDependencies;
+  cmsTemplate?: CmsTemplateDependencies;
+  cmsLocale?: CmsLocaleDependencies;
+  cmsTaxonomy?: CmsTaxonomyDependencies;
+  cmsPatternInstance?: CmsPatternInstanceDependencies;
+  cmsRelatedContent?: CmsRelatedContentDependencies;
   identityAuthority?: IdentityAuthorityDependencies;
   profileOwnership?: ProfileOwnershipDependencies;
   profilePortfolio?: ProfilePortfolioDependencies;

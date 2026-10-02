@@ -1,0 +1,80 @@
+---
+import {
+  CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY,
+  CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON,
+} from '../../../../components/cms-editorial/cms-editorial-entry-create';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Fail-closed create surface for CMS-03B-10.
+ *
+ * FE03 authorises the protected create, packages/contracts/src/cms-editorial
+ * registers it, and apps/web/src/server/cms-editorial-platform-mutation.ts now
+ * provides a real first-party proxy, and the Worker serves the protected
+ * create route. The locked request still requires workflowPolicy evidence
+ * that no protected served response exposes, while the private policy source
+ * is unconfigured. A browser cannot populate it without fabrication.
+ *
+ * Rendering a form now would let an author fill in a draft that cannot be
+ * committed, so every method answers one honest 503 instead. The precise reason
+ * comes from CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY below.
+ */
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+/*
+ * Both the safe copy and the reason come from the owning module, so the message
+ * stays traceable to the boundary rather than drifting into the page, and so a
+ * future edit to the blocker propagates without a second copy. Nothing here
+ * names an entry, so the page cannot disclose whether one already exists.
+ */
+const reason = escapeHtml(CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY.blocker);
+const copy = escapeHtml(CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON);
+
+return new Response(
+  `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Entry creation is unavailable." />
+    <meta name="robots" content="noindex" />
+    <title>Create entry | WeJammin</title>
+  </head>
+  <body>
+    <nav aria-label="Skip navigation">
+      <a href="#cms-editorial-main">Skip to main content</a>
+    </nav>
+    <header aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/cms-content-modeling">Content modeling</a>
+        <a href="/system/degraded">System status</a>
+      </nav>
+    </header>
+    <main id="cms-editorial-main" tabindex="-1">
+      <h1 id="page-title" tabindex="-1">Entry creation is unavailable</h1>
+      <p>${copy}</p>
+      <p>${reason}</p>
+    </main>
+    <script src="../../../../lib/route-heading-focus.ts"></script>
+  </body>
+</html>`,
+  {
+    status: 503,
+    headers: {
+      'cache-control': 'no-store',
+      'content-type': 'text/html; charset=utf-8',
+    },
+  },
+);
+---

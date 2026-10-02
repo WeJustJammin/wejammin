@@ -52,9 +52,7 @@ const implementationFiles = [
 ];
 const contractSurface = [...contractFiles, ...workerFiles];
 const s09MigrationSource = migrationFiles
-  .filter(({ source }) =>
-    /CMS-03A|P2-S09|cms_create_type_draft|cms_content_types/iu.test(source),
-  )
+  .filter(({ source }) => /CMS-03A|P2-S09|cms_create_type_draft/iu.test(source))
   .map(({ source }) => source)
   .join('\n');
 
@@ -352,7 +350,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-267] separates the 283 authored IDs from the 279-item active completion policy', () => {
+  it('[P2-S09-AC-267] separates the 283 authored IDs from the 279-item active completion policy after the 2026-09-30 activation and AC250 reopens', () => {
     expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(283);
     expect(sliceTracker).toMatch(
       /\*\*Acceptance criteria \(authored\)\*\*:\s*283\b/iu,
@@ -364,7 +362,10 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /\*\*Slice 09 implementation-completion denominator\*\*:\s*279\b/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Local QA-GREEN \(active\)\*\*:\s*279\/279\s+verified;\s*283\s+authored IDs remain/iu,
+      /\*\*Local QA-GREEN \(historical, 2026-09-26\)\*\*:\s*279\/279\s+verified at that checkpoint;\s*283\s+authored IDs remain/iu,
+    );
+    expect(sliceTracker).toMatch(
+      /\*\*Current active verification\*\*:\s*262\/279\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
     );
 
     const ac266Row = sliceTracker
@@ -375,7 +376,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /AC266[\s\S]{0,500}owner-deferred[\s\S]{0,500}remains unchecked and excluded from active Phase 2/iu,
     );
     expect(sliceTracker).toMatch(
-      /Slice 10 implementation prerequisites\*\*:\s*none\b/iu,
+      /Slice 10 implementation prerequisites\*\*:\s*completion of the 17 reopened Slice 09 activation-chain criteria;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
     );
     expect(sliceTracker).toMatch(
       /AC266[\s\S]{0,300}mandatory[\s\S]{0,100}pre-release[\s\S]{0,100}production-readiness\/release/iu,

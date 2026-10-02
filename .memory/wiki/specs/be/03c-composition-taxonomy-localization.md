@@ -140,6 +140,7 @@ This is the sole authoritative 03c route registry. CI must match discovered Hono
 | Operation ID | IA     | Method and path                                              | Request → success                                        | Auth / ownership / 403 versus 404                                                                            | Middleware incl. CORS                                                      | Idempotency / concurrency                                                                           | Rate / timeout / cache / SLO                                                   | Error envelope                                      | Event                                                                                    |
 | ------------ | ------ | ------------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | CMS-03C-01   | CMS-11 | POST /api/v1/cms/templates/versions                          | TemplateVersionRequest → 201 TemplateVersionResource     | template_designer in scope; hidden owner/template is 404; readable template without capability is 403        | BE00 order; CORS cms-console; CSRF; strict JSON; registry read             | key + If-Match when editing parent; unique key/version and CAS; server-computed blockRegistryDigest | 30/min/user, 60/min/party; 15,000ms, target <2s; no-store; Tier 2 p95 <1,200ms | BE00 ApiError { code, message, requestId, details } | cms.template.activated.v1 only after governed activation                                 |
+| cmsTemplateContextRead | CMS-11 | GET /api/v1/cms/templates/context | EmptyRequest → 200 TemplateDesignerContext | authenticated human with confirmed acting-party membership and active `cms.template_designer` grant; no owner selector accepted | BE00 order; cms-console origin; no CSRF or request body; server-derived context | read-only; no idempotency or If-Match | 60/min/user, 60/min/party; 15,000ms; no-store; Tier 2 | BE00 ApiError { code, message, requestId, details } | none |
 | CMS-03C-02   | CMS-12 | POST /api/v1/cms/compositions/pattern-instances              | PatternInstanceRequest → 201 CompositionInstanceResource | assigned author/editor on revision/template draft; hidden target is 404; visible target without edit is 403  | BE00 order; CORS cms-console; CSRF; strict JSON; block registry read       | key + If-Match; CAS revision; unique revision/slot path; server recomputes pattern digest           | 120/min/user, 240/min/party; 15,000ms; no-store; Tier 2                        | BE00 ApiError { code, message, requestId, details } | none                                                                                     |
 | CMS-03C-03   | CMS-14 | POST /api/v1/cms/taxonomies/{taxonomyId}/terms/actions       | TaxonomyTermActionRequest → 200 TaxonomyTermResource     | taxonomy_curator for vocabulary; hidden taxonomy/term is 404; known vocabulary without capability is 403     | BE00 order; CORS cms-console; CSRF; strict JSON; canonical-overlap check   | key + If-Match; term lock/CAS; merge unique survivor and redirect                                   | 60/min/user, 120/min/party; 15,000ms; no-store; Tier 2                         | BE00 ApiError { code, message, requestId, details } | cms.taxonomy.changed.v1                                                                  |
 | CMS-03C-04   | CMS-15 | POST /api/v1/cms/entries/{entryId}/locales/{locale}/variants | LocaleVariantRequest → 201 LocaleVariantResource         | assigned author/editor for localizable fields; hidden entry/locale is 404; visible entry without edit is 403 | BE00 order; CORS cms-console; CSRF; strict JSON; source revision read      | key + If-Match; CAS source/entry; unique entry/locale/source revision                               | 60/min/user, 120/min/party; 15,000ms; no-store; Tier 2                         | BE00 ApiError { code, message, requestId, details } | cms.localization.changed.v1                                                              |
@@ -147,12 +148,86 @@ This is the sole authoritative 03c route registry. CI must match discovered Hono
 
 ### Registry invariants
 
+`cmsTemplateContextRead` is a narrowly scoped supporting read for the CMS-11
+human form, not another template mutation or a grant in the general auth
+session. Its strict `TemplateDesignerContext` contains at most 64 owned active,
+compiled content-type selectors (`id`, `typeKey`, `activeVersionId`,
+`activeVersion`, `sourceLocale`) and 128 owned registered, currently supported
+block selectors (`blockKey`, `blockVersion`). It excludes owner IDs, grant
+records, renderer refs, manifests, and policy internals. The private RPC
+rechecks the actor, acting party, confirmed membership, and current designer
+grant on each read; the browser and authenticated database roles cannot call
+that RPC or read its source tables directly. A denied read is 403, an invalid
+query is 400, malformed provider projection is 502, and dependency/deadline
+failures are 503/504. The POST independently rechecks all authority and
+compatibility; a context read never reserves permission for a later write.
+
 - TemplateVersion and PatternVersion are immutable after activation; CompositionInstance updates create a new version/row, preserving prior revision evidence.
 - BlockDefinitionVersion is consumed from 03a by immutable key/version, `propsSchemaRef`, `propsSchemaHash`, and compatibility/release digest. The normalized props snapshot is derived evidence whose signature must bind the ref/hash, block key/version, and `releaseDigest`; unknown, withdrawn, or incompatible blocks fail before mutation.
 - Taxonomy terms retain stable IDs through rename/alias/merge; merged IDs resolve permanently to a survivor and cannot reactivate.
 - Locale variants are source-hash aware; source changes mark dependent fields stale. Related-content exclusions always win and recommendations never grant access.
 - All routes return BE00 ApiError { code, message, requestId, details } on failure. No route exposes hidden target existence, draft content, token material, private locale text, or reviewer authority.
 - Browser/protected response envelopes contain no ownership identifiers or release-principal/signature evidence; authorization context stays server-side. Template, composition, taxonomy, locale, pattern, and related-content resources expose only their exact closed state/lifecycle enums.
+
+### Named template compatibility resolver (DEC-108)
+
+03a's DEC-108 activation preflight, and this shard's own mutation preflight,
+consume one non-mutating service-only resolver rather than reading template rows
+directly or trusting a caller-supplied compatibility claim:
+
+```ts
+// platform_api.cms_resolve_template_compatibility
+const TemplateCompatibilityRequest = z.strictObject({
+  templateVersionId: UUID,
+  contentTypeId: UUID,
+  // The exact candidate content-type version. The resolver verifies this
+  // version belongs to contentTypeId under the same owner/actor scope; it
+  // never resolves a "current" version implicitly.
+  contentTypeVersionId: UUID,
+  // Optional caller-side assertion of the template's own version number
+  // (not the content-type version). A mismatch is a typed failure; it never
+  // selects or substitutes a template version.
+  expectedTemplateVersionNo: Version.optional(),
+});
+const TemplateCompatibilityProjection = z.strictObject({
+  templateVersionId: UUID,
+  templateKey: z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/),
+  templateVersionNo: Version,
+  state: z.enum(['draft', 'review', 'approved', 'scheduled', 'active', 'superseded', 'retired']),
+  // Success is a typed invariant, never a caller-supplied claim.
+  compatible: z.literal(true),
+  withdrawn: z.literal(false),
+  templateDigest: Hash,
+  contentTypeId: UUID,
+  // Echoes the exact verified candidate version reference.
+  contentTypeVersionId: UUID,
+});
+```
+
+The resolver is a pure read: it performs no INSERT, UPDATE, DELETE,
+idempotency reservation, audit/outbox write, or state transition on success or
+failure, and a GET or read path never derives a mutation from it. It resolves the
+exact template-version, content-type, and candidate content-type-version
+references under the server-verified actor/owner scope; the candidate version
+must belong to the named content type under the same owner, and no "current" or
+"latest" version is ever resolved implicitly. It conceals an inaccessible or
+cross-owner template/version/type as 404. An incompatible, withdrawn, or
+version-mismatched reference is a typed failure response, so a success response
+is the literal invariant `compatible: true` and `withdrawn: false` — the
+resolver never returns a soft `compatible: false` success body. It returns only
+the safe projection above (no owner IDs, binding manifests, slot internals, or
+renderer refs) and echoes the exact candidate `contentTypeVersionId` it proved.
+Its compatibility reflects 03c's immutable `compatible_type_ids` snapshot and
+the draft-binding compatibility guard; it never grants public delivery or
+activation authority. Only the service-role Worker may execute it (no browser
+or authenticated table access), and it is the reciprocal dependency the 03a
+activation preflight and the CMS-03C-01 create preflight both cite.
+
+Consuming an immutable compatible template-version UUID is sufficient for the
+AC169 reference. Public template activation remains an explicit, unresolved 03c
+contract gap owned here; a draft binding is never proof that public template
+activation works, and DEC-108 does not make public activation an AC169
+prerequisite.
 
 ### Block registry record and digest invariants
 
@@ -763,6 +838,7 @@ None.
 | Date       | Change                                                                                                                                                                                                                                                                        | Workflow                | Sections affected                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------- |
 | 2026-09-02 | Reconciled all nine persisted 03c models to the IA common envelope and explicit lifecycle exception, added TermLabel, aligned the safe 03a registry record, fixed canonical BlockKey grammar, and made server-computed RFC 8785/JCS blockRegistryDigest checkpoints explicit. | /implement-slice        | Source maps, contracts, database schema, data flow, tests, ambiguity gate              |
+| 2026-10-02 | DEC-108: added the reciprocal draft-compatible template creation `POST /api/v1/cms/templates/versions` (CMS-03C-01) and the named non-mutating service-only `platform_api.cms_resolve_template_compatibility` resolver contract with its safe projection, and reaffirmed public template activation as a separate unresolved 03c gap. | /propagate-decision     | Endpoint reconciliation note, Route Registry invariants |
 | 2026-09-02 | Reconciled 03a SchemaArtifact and protected dependency evidence and adopted immutable block props ref/hash with a normalized signed snapshot bound to the release digest.                                                                                                     | /implement-slice        | Referenced Material, Contracts, Database Schema, Cross-shard direction, Ambiguity Gate |
 | 2026-09-02 | Added the bounded max-64/depth-8 pattern override refinement, ArtifactRef traversal/URL guard, and explicit safe block lifecycle-event/discriminator consumption.                                                                                                             | /implement-slice        | Contracts, Data Flow, Events, Testing Strategy                                         |
 | 2026-09-02 | Closed browser response state/lifecycle enums against the IA and SQL matrices and removed ownership identifiers from ResourceMeta/resources while retaining server/DB authorization context.                                                                                  | /implement-slice        | Source Map, Route Registry, Contracts, Testing Strategy                                |

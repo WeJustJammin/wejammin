@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import ContentSchemaRegistryStepUpDisclosure from './ContentSchemaRegistryStepUpDisclosure';
+
 export type ContentSchemaRegistryStepUpState =
   'required' | 'pending' | 'verified';
 
@@ -9,6 +11,13 @@ export interface ContentSchemaRegistryConfirmationStepProps {
   readonly expectedVersion: string;
   readonly stepUpState: ContentSchemaRegistryStepUpState;
   readonly idempotencyKey: string;
+  /**
+   * Human-readable acting-context label resolved server-side from the
+   * authorized identity read. Raw identifiers are never passed here.
+   */
+  readonly actingContextLabel?: string;
+  /** Server-derived expiry of the verified step-up disclosure window. */
+  readonly stepUpFreshUntil?: string;
   readonly onCancel?: () => void;
   readonly triggerRef?: React.RefObject<HTMLElement | null>;
 }
@@ -20,6 +29,8 @@ export function ContentSchemaRegistryConfirmationStep({
   expectedVersion,
   stepUpState,
   idempotencyKey,
+  actingContextLabel,
+  stepUpFreshUntil,
   onCancel,
   triggerRef,
 }: ContentSchemaRegistryConfirmationStepProps): React.ReactElement {
@@ -35,7 +46,10 @@ export function ContentSchemaRegistryConfirmationStep({
     onCancel?.();
     triggerRef?.current?.focus({ preventScroll: true });
   };
-  const verified = stepUpState === 'verified';
+  // A verified window that expires while mounted must drop acknowledgement.
+  const handleStepUpExpired = React.useCallback((): void => {
+    setConfirmed(false);
+  }, []);
   return (
     <section
       className="content-schema-registry-confirmation"
@@ -60,13 +74,24 @@ export function ContentSchemaRegistryConfirmationStep({
         <dd>
           <code>{expectedVersion}</code>
         </dd>
+        <dt>Acting context</dt>
+        <dd>
+          {actingContextLabel === undefined || actingContextLabel.length === 0
+            ? 'Server-verified acting context unavailable'
+            : actingContextLabel}
+        </dd>
         <dt>Step-up</dt>
         <dd>
-          {stepUpState === 'pending'
-            ? 'Verification pending'
-            : verified
-              ? 'Verified'
-              : 'Step-up required before commit'}
+          {stepUpState === 'pending' ? (
+            'Verification pending'
+          ) : stepUpState === 'verified' ? (
+            <ContentSchemaRegistryStepUpDisclosure
+              freshUntil={stepUpFreshUntil}
+              onExpired={handleStepUpExpired}
+            />
+          ) : (
+            'Step-up required before commit'
+          )}
         </dd>
         <dt>Idempotency key</dt>
         <dd>

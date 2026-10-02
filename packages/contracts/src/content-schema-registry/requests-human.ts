@@ -7,6 +7,7 @@ import {
   CmsFieldKindSchema,
   CmsFieldLifecycleSchema,
   CmsLocalizationModeSchema,
+  CmsSchemaReviewDecisionSchema,
   FieldConstraintsSchema,
   FieldDefinitionInputSchema,
   FieldEditorConfigSchema,
@@ -17,6 +18,7 @@ import {
   CmsCapabilityKeySchema,
   CmsFieldKeySchema,
   CmsHashSchema,
+  CmsInstantSchema,
   CmsLocaleSchema,
   CmsUuidSchema,
   CmsValidatorKeySchema,
@@ -105,4 +107,64 @@ export const SchemaActivationRequestSchema = z
         message: 'approval_ids_must_be_distinct',
       });
   })
+  .readonly();
+
+export const SchemaSuccessorRequestSchema = z
+  .strictObject({
+    expectedVersion: CmsVersionSchema,
+  })
+  .readonly();
+
+export const SchemaDryRunRequestSchema = z
+  .strictObject({
+    expectedVersion: CmsVersionSchema,
+    transformKey: CmsValidatorKeySchema.nullable(),
+    transformVersion: CmsVersionSchema.nullable(),
+  })
+  .superRefine((value, context) => {
+    if ((value.transformKey === null) !== (value.transformVersion === null))
+      context.addIssue({
+        code: 'custom',
+        path: ['transformVersion'],
+        message: 'transform_pair_must_be_both_present_or_both_absent',
+      });
+  })
+  .readonly();
+
+export const SchemaReviewSubmissionRequestSchema = z
+  .strictObject({
+    expectedVersion: CmsVersionSchema,
+    dryRunId: CmsUuidSchema,
+  })
+  .readonly();
+
+export const SchemaReviewDecisionRequestSchema = z
+  .strictObject({
+    expectedVersion: CmsVersionSchema,
+    decision: CmsSchemaReviewDecisionSchema,
+  })
+  .readonly();
+
+const SchemaReviewAssignmentReasonSchema = z.string().min(1).max(256);
+
+export const SchemaReviewAssignmentRequestSchema = z
+  .discriminatedUnion('action', [
+    z
+      .strictObject({
+        action: z.literal('create'),
+        expectedVersion: CmsVersionSchema,
+        reviewerPersonId: CmsUuidSchema,
+        expiresAt: CmsInstantSchema,
+        reason: SchemaReviewAssignmentReasonSchema.optional(),
+      })
+      .readonly(),
+    z
+      .strictObject({
+        action: z.literal('revoke'),
+        expectedVersion: CmsVersionSchema,
+        assignmentId: CmsUuidSchema,
+        reason: SchemaReviewAssignmentReasonSchema.optional(),
+      })
+      .readonly(),
+  ])
   .readonly();

@@ -111,6 +111,7 @@ export const createExecutor =
         presentationVariantForSession(input.session),
         input.session.userId,
         input.session.actingPartyId,
+        input.session.stepUpFreshUntil,
       );
     context.header('cache-control', 'no-store');
     const etag = etagFor(result.value);

@@ -51,6 +51,7 @@ const session = {
   actingPartyId: PARTY_ID,
   capabilities: ['cms.schema_designer', 'cms.schema_registry.read'],
   mfaFresh: true,
+  stepUpFreshUntil: '2026-09-02T12:05:00.000Z',
 } as const;
 
 const releasePrincipal = {
