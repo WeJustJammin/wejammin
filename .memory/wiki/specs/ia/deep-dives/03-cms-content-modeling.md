@@ -106,7 +106,8 @@ It is append-only, unique per review/human, and forbids submitter/self approval.
 `cms_schema_review_assignments` records owner/review, reviewer/grantor humans,
 fixed `cms.schema_review` read/decide scope, active/revoked state, starts/ends and
 reason. Starts must be current and ends finite, no later than seven days or
-grantor authority expiry. Recheck effective interval and binding authority on
+the grantor authority end, which is the earlier of the owner initialization
+receipt grant end and the end of the owner's CMS grant valid-through day. Recheck effective interval and binding authority on
 decision and activation; assignments create no identity or owner context and
 cannot be delegated or broadened. The existing owner alone assigns/revokes
 through `cms.schema_review.assign` with current binding-bound MFA.
@@ -128,9 +129,11 @@ requires a new frozen review.
 Review and activation evidence snapshots are immutable server results. They
 contain the protected workflow policy `key`, `version`, `policyHash`,
 `requiredDecisionCount` (`1..8`), `requiredCapabilities`, and
-`approvalEvidenceHash`; approval IDs are request references only. The server
-resolves the IDs to distinct humans, capabilities, and recent MFA, and a
-protected policy always has `requiredDecisionCount>=2`.
+`approvalEvidenceHash`; approval IDs are request references only: the approve-decision IDs of
+exactly one approved review for the candidate. The server resolves the IDs to
+distinct humans and capabilities under current assignment authority (each
+decision having recorded recent MFA at commit), and a protected policy always
+has `requiredDecisionCount>=2`.
 
 Relation definitions require finite non-null bounds: `min` is integer `0..128`,
 `max` is integer `1..128`, `min<=max`; `one` requires `min` `0|1` and `max=1`,
@@ -377,6 +380,7 @@ template-version activation.
 | 2026-09-02 | Applied Slice 09 IA-first contract clarification: atomic initial aggregate, model envelope exceptions, locale/workflow/template references, bounded relations, policy-derived approvals, immutable artifacts, protected reads, and release-only block registration                                                                                                                               | /implement-slice                 | Canonical Field Contracts, Schema Compilation, Composition, Cross-Shard Contracts                              |
 | 2026-09-02 | Locked Slice 09 remediation: finite relation bounds and opaque placeholder fallback; server-frozen policy/approval evidence; canonical block-registry digest; always-present nullable migrationPlanId; Ed25519 release envelope and immutable verification evidence                                                                                                                              | /implement-slice                 | Canonical Field Contracts, Model Envelope, Review/Publication, Composition, Abuse Verification                 |
 | 2026-09-26 | DEC-106: added protected initial-entry create (BE03b `CMS-03B-10`) and authorized draft-detail read (BE03b `CMS-03B-11`); atomic active entry plus first attributable draft revision with server-derived identity/assignment and create idempotency, authorized draft-detail loading with 404/403 concealment and no-store/ETag, no browser authority fields, browser table grants still revoked | /propagate-decision              | Resolved Architecture Choices, Entry Validation and Revision Merge, Abuse and Recovery Verification, Changelog |
+| 2026-10-02 | DEC-108 consistency closure: `approvalIds` are the approve-decision IDs of one approved review resolved under current assignment authority, and the grantor authority end is defined.                                                                                                                                                                                                            |
 
 DEC-108 (2026-10-02, owner-approved): private schema-review ownership and bounded
 assignment, reachable successor/dry-run/review producers, stable private evidence

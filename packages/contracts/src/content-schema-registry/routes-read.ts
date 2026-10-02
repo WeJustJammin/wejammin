@@ -13,6 +13,7 @@ const readDefaults = {
   audience: 'browser',
   cors: 'cms-console',
   csrf: 'none',
+  stepUp: 'none',
   rawBodySignature: 'none',
   idempotency: 'none',
   ifMatch: 'none',

@@ -1,6 +1,8 @@
 export type ContentSchemaRegistryCapability =
   | 'cms.schema_designer'
   | 'cms.schema_registry.read'
+  | 'cms.schema_review'
+  | 'cms.schema_review.assign'
   | 'release.block_registry.write';
 
 export type ContentSchemaRegistryRequestSchemaName =
@@ -11,7 +13,13 @@ export type ContentSchemaRegistryRequestSchemaName =
   | 'BlockRegistrationRequestSchema'
   | 'ContentSchemaRegistryListQuerySchema'
   | 'ContentSchemaRegistryDetailParamsSchema'
-  | 'BlockLifecycleAdvanceRequestSchema';
+  | 'BlockLifecycleAdvanceRequestSchema'
+  | 'SchemaSuccessorRequestSchema'
+  | 'SchemaDryRunRequestSchema'
+  | 'SchemaReviewSubmissionRequestSchema'
+  | 'SchemaReviewDecisionRequestSchema'
+  | 'SchemaReviewDetailParamsSchema'
+  | 'SchemaReviewAssignmentRequestSchema';
 
 export type ContentSchemaRegistrySuccessSchemaName =
   | 'ContentTypeVersionResourceSchema'
@@ -21,7 +29,11 @@ export type ContentSchemaRegistrySuccessSchemaName =
   | 'BlockDefinitionVersionResourceSchema'
   | 'ContentSchemaRegistryListPageSchema'
   | 'ContentSchemaRegistryDetailSchema'
-  | 'BlockLifecycleEventResourceSchema';
+  | 'BlockLifecycleEventResourceSchema'
+  | 'SchemaDryRunResourceSchema'
+  | 'SchemaReviewResourceSchema'
+  | 'SchemaReviewDecisionResourceSchema'
+  | 'SchemaReviewAssignmentResourceSchema';
 
 export type ContentSchemaRegistryOpenApiSuccessSchemaName =
   | 'ContentTypeVersionResourceSchema'
@@ -31,7 +43,11 @@ export type ContentSchemaRegistryOpenApiSuccessSchemaName =
   | 'BlockDefinitionRegistryRecordSchema'
   | 'ContentSchemaRegistryListPageSchema'
   | 'ContentSchemaRegistryDetailSchema'
-  | 'BlockLifecycleEventReceiptSchema';
+  | 'BlockLifecycleEventReceiptSchema'
+  | 'SchemaDryRunResourceSchema'
+  | 'SchemaReviewResourceSchema'
+  | 'SchemaReviewDecisionResourceSchema'
+  | 'SchemaReviewAssignmentResourceSchema';
 
 export type ContentSchemaRegistryPath =
   | '/api/v1/cms/content-types'
@@ -40,11 +56,18 @@ export type ContentSchemaRegistryPath =
   | '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/activate'
   | '/api/v1/cms/blocks/versions'
   | '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}'
-  | '/api/v1/cms/blocks/versions/{blockDefinitionVersionId}/lifecycle';
+  | '/api/v1/cms/blocks/versions/{blockDefinitionVersionId}/lifecycle'
+  | '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/successors'
+  | '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/dry-runs'
+  | '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/reviews'
+  | '/api/v1/cms/schema-reviews/{reviewId}/decisions'
+  | '/api/v1/cms/schema-reviews/{reviewId}'
+  | '/api/v1/cms/schema-reviews/{reviewId}/assignments';
 
 export type ContentSchemaRegistryErrorCode =
   | 'INVALID_REQUEST'
   | 'UNAUTHENTICATED'
+  | 'STEP_UP_REQUIRED'
   | 'WEBHOOK_REJECTED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
@@ -68,12 +91,20 @@ export type RouteContract = {
   openApiSuccessSchema?: ContentSchemaRegistryOpenApiSuccessSchemaName;
   successStatus: 200 | 201 | 202;
   successStatuses?: readonly (200 | 201 | 202)[];
-  auth: 'schema_designer' | 'registry_reader' | 'signed_release_worker';
+  auth:
+    | 'schema_designer'
+    | 'registry_reader'
+    | 'schema_reviewer'
+    | 'review_reader'
+    | 'review_assigner'
+    | 'signed_release_worker';
   capability: ContentSchemaRegistryCapability;
   capabilities?: readonly ContentSchemaRegistryCapability[];
   audience: 'browser' | 'release-worker';
   cors: 'cms-console' | 'release-worker';
   csrf: 'required' | 'forbidden' | 'none';
+  /** `required` when missing or stale MFA is 401 `STEP_UP_REQUIRED`. */
+  stepUp: 'required' | 'none';
   rawBodySignature: 'required' | 'none';
   idempotency: 'required' | 'none';
   ifMatch: 'required' | 'none';

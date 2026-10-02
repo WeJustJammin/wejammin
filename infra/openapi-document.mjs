@@ -35,6 +35,12 @@ const contentSchemaRegistryOperationIds = new Set([
   'CMS-03A-06',
   'CMS-03A-07',
   'CMS-03A-08',
+  'CMS-03A-09',
+  'CMS-03A-10',
+  'CMS-03A-11',
+  'CMS-03A-12',
+  'CMS-03A-13',
+  'CMS-03A-14',
 ]);
 
 const contentSchemaRegistryComponentSchemas =

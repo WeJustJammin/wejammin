@@ -138,6 +138,10 @@ export const SchemaReviewSubmissionRequestSchema = z
   })
   .readonly();
 
+export const SchemaReviewDetailParamsSchema = z
+  .strictObject({ reviewId: CmsUuidSchema })
+  .readonly();
+
 export const SchemaReviewDecisionRequestSchema = z
   .strictObject({
     expectedVersion: CmsVersionSchema,

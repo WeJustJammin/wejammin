@@ -7,6 +7,7 @@ const releaseDefaults = {
   capability: 'release.block_registry.write',
   cors: 'release-worker',
   csrf: 'forbidden',
+  stepUp: 'none',
   rawBodySignature: 'required',
   idempotency: 'required',
   rateClass: 'release-registry-write',

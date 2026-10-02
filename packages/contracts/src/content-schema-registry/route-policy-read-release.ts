@@ -18,6 +18,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'release-worker';
     cors: 'release-worker';
     csrf: 'forbidden';
+    stepUp: 'none';
     rawBodySignature: 'required';
     idempotency: 'required';
     ifMatch: 'none';
@@ -38,6 +39,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'none';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'none';
     ifMatch: 'none';
@@ -59,6 +61,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'none';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'none';
     ifMatch: 'none';
@@ -80,6 +83,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'release-worker';
     cors: 'release-worker';
     csrf: 'forbidden';
+    stepUp: 'none';
     rawBodySignature: 'required';
     idempotency: 'required';
     ifMatch: 'required';

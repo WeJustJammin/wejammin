@@ -51,6 +51,7 @@ export const operation = (
     'x-timeout-ms': route.timeoutMs,
     'x-slo': route.slo,
     'x-csrf': route.csrf,
+    'x-step-up': route.stepUp,
     'x-idempotency': route.idempotency,
     'x-if-match': route.ifMatch,
     'x-raw-body-signature': route.rawBodySignature,

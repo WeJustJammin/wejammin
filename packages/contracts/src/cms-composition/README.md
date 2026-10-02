@@ -22,6 +22,10 @@ strong mutation headers, and closed variant status resource;
 `related-content.ts` defines the CMS-03C-05 explicit pin/exclusion command,
 strong headers, and safe rule resource; `related-content.test.ts` probes
 overlap, size, and disclosure boundaries.
+`template-compatibility.ts` defines the request, safe projection, and typed
+failure codes of the service-only resolver that 03a activation preflight and
+the CMS-03C-01 create preflight consume; `template-compatibility.test.ts`
+probes its exact-reference, literal-success, and closed-failure boundary.
 `index.ts` is the public export surface for this domain.
 
 ## Ownership

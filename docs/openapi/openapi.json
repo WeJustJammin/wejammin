@@ -14145,7 +14145,7 @@
             }
           },
           "401": {
-            "description": "Authentication is required",
+            "description": "Authentication or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
@@ -15113,6 +15113,1716 @@
           },
           "504": {
             "description": "Signed content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/successors": {
+      "post": {
+        "operationId": "CMS-03A-09",
+        "deprecated": false,
+        "x-auth-class": "schema_designer",
+        "x-capability": "cms.schema_designer",
+        "x-capabilities": [
+          "cms.schema_designer"
+        ],
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-definition-write",
+        "x-rate-limit": {
+          "class": "cms-definition-write",
+          "limit": 30,
+          "partyLimit": 60,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "SchemaSuccessorRequestSchema",
+        "x-success-schema": "ContentTypeVersionResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller scope reads the immutable source version",
+        "parameters": [
+          {
+            "name": "contentTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaSuccessorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successor schema draft created",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentTypeVersionResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/dry-runs": {
+      "post": {
+        "operationId": "CMS-03A-10",
+        "deprecated": false,
+        "x-auth-class": "schema_designer",
+        "x-capability": "cms.schema_designer",
+        "x-capabilities": [
+          "cms.schema_designer"
+        ],
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-definition-write",
+        "x-rate-limit": {
+          "class": "cms-definition-write",
+          "limit": 30,
+          "partyLimit": 60,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "SchemaDryRunRequestSchema",
+        "x-success-schema": "SchemaDryRunResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller scope owns the draft candidate version",
+        "parameters": [
+          {
+            "name": "contentTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaDryRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Schema dry run accepted",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaDryRunResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/reviews": {
+      "post": {
+        "operationId": "CMS-03A-11",
+        "deprecated": false,
+        "x-auth-class": "schema_designer",
+        "x-capability": "cms.schema_designer",
+        "x-capabilities": [
+          "cms.schema_designer"
+        ],
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-definition-write",
+        "x-rate-limit": {
+          "class": "cms-definition-write",
+          "limit": 30,
+          "partyLimit": 60,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "SchemaReviewSubmissionRequestSchema",
+        "x-success-schema": "SchemaReviewResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller scope owns the draft candidate with a passed dry run",
+        "parameters": [
+          {
+            "name": "contentTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaReviewSubmissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schema review submitted",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaReviewResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/schema-reviews/{reviewId}/decisions": {
+      "post": {
+        "operationId": "CMS-03A-12",
+        "deprecated": false,
+        "x-auth-class": "schema_reviewer",
+        "x-capability": "cms.schema_review",
+        "x-capabilities": [
+          "cms.schema_review"
+        ],
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-activation",
+        "x-rate-limit": {
+          "class": "cms-activation",
+          "limit": 30,
+          "partyLimit": 60,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "SchemaReviewDecisionRequestSchema",
+        "x-success-schema": "SchemaReviewDecisionResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "assigned reviewer decides only the assigned frozen review",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaReviewDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schema review decision recorded",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaReviewDecisionResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/schema-reviews/{reviewId}": {
+      "get": {
+        "operationId": "CMS-03A-13",
+        "deprecated": false,
+        "x-auth-class": "review_reader",
+        "x-capability": "cms.schema_designer",
+        "x-capabilities": [
+          "cms.schema_designer",
+          "cms.schema_review"
+        ],
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-definition-read",
+        "x-rate-limit": {
+          "class": "cms-definition-read",
+          "limit": 120,
+          "partyLimit": 240,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "SchemaReviewDetailParamsSchema",
+        "x-success-schema": "SchemaReviewResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "submitter, designer, or assigned reviewer reads only its review",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Capability-safe schema review",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaReviewResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Schema review path is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Schema review read capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Schema review is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Schema review read rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Schema review read failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Schema review projection returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Schema review projection unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Schema review projection timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/schema-reviews/{reviewId}/assignments": {
+      "post": {
+        "operationId": "CMS-03A-14",
+        "deprecated": false,
+        "x-auth-class": "review_assigner",
+        "x-capability": "cms.schema_review.assign",
+        "x-capabilities": [
+          "cms.schema_review.assign"
+        ],
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-activation",
+        "x-rate-limit": {
+          "class": "cms-activation",
+          "limit": 10,
+          "partyLimit": 20,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "SchemaReviewAssignmentRequestSchema",
+        "x-success-schema": "SchemaReviewAssignmentResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "owner assigns only reviewers on its own frozen review",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaReviewAssignmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schema review assignment revoked or created",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaReviewAssignmentResource"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Schema review assignment revoked or created",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaReviewAssignmentResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
             "content": {
               "application/json": {
                 "schema": {
@@ -28218,6 +29928,83 @@
           "no_fallback"
         ]
       },
+      "CmsSchemaDryRunFailureCode": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+      },
+      "CmsSchemaDryRunResult": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "passed",
+          "failed"
+        ]
+      },
+      "CmsSchemaDryRunState": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "completed",
+          "failed"
+        ]
+      },
+      "CmsSchemaReviewAssignmentAction": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "read",
+          "decide"
+        ]
+      },
+      "CmsSchemaReviewAssignmentState": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "active",
+          "revoked"
+        ]
+      },
+      "CmsSchemaReviewDecision": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "approve",
+          "reject"
+        ]
+      },
+      "CmsSchemaReviewNextAction": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "create_successor",
+          "start_dry_run",
+          "submit_review",
+          "assign_reviewer",
+          "record_decision",
+          "activate"
+        ]
+      },
+      "CmsSchemaReviewRiskClass": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "ordinary",
+          "protected"
+        ]
+      },
+      "CmsSchemaReviewState": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "open",
+          "approved",
+          "rejected",
+          "invalidated"
+        ]
+      },
       "FieldConstraints": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "readOnly": true,
@@ -30071,6 +31858,192 @@
         ],
         "additionalProperties": false
       },
+      "SchemaDryRunRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "transformKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transformVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "transformKey",
+          "transformVersion"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewAssignmentRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "oneOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "const": "create"
+              },
+              "expectedVersion": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "reviewerPersonId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "action",
+              "expectedVersion",
+              "reviewerPersonId",
+              "expiresAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "const": "revoke"
+              },
+              "expectedVersion": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "assignmentId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "action",
+              "expectedVersion",
+              "assignmentId"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SchemaReviewDecisionRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "decision"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewDetailParams": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "reviewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "reviewId"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewSubmissionRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "dryRunId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "dryRunId"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaSuccessorRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
       "BlockDefinitionRegistryRecord": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "readOnly": true,
@@ -31045,6 +33018,221 @@
               ],
               "additionalProperties": false
             }
+          },
+          "activationPreparation": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "dryRunRef": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "queued",
+                          "running",
+                          "completed",
+                          "failed"
+                        ]
+                      },
+                      "result": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "passed",
+                              "failed"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "jobId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "state",
+                      "result",
+                      "jobId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "jobRef": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "queued",
+                          "running",
+                          "succeeded",
+                          "failed",
+                          "cancelled"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reviewRef": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "open",
+                          "approved",
+                          "rejected",
+                          "invalidated"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "templateCompatibility": {
+                "type": "object",
+                "properties": {
+                  "templateVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "templateKey": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                  },
+                  "templateVersionNo": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "review",
+                      "approved",
+                      "scheduled",
+                      "active",
+                      "superseded",
+                      "retired"
+                    ]
+                  },
+                  "compatible": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "withdrawn": {
+                    "type": "boolean",
+                    "const": false
+                  },
+                  "templateDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "contentTypeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "contentTypeVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "templateVersionId",
+                  "templateKey",
+                  "templateVersionNo",
+                  "state",
+                  "compatible",
+                  "withdrawn",
+                  "templateDigest",
+                  "contentTypeId",
+                  "contentTypeVersionId"
+                ],
+                "additionalProperties": false
+              },
+              "permittedNextActions": {
+                "readOnly": true,
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "create_successor",
+                    "start_dry_run",
+                    "submit_review",
+                    "assign_reviewer",
+                    "record_decision",
+                    "activate"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "dryRunRef",
+              "jobRef",
+              "reviewRef",
+              "permittedNextActions"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -31055,7 +33243,8 @@
           "schemaArtifact",
           "templateBindings",
           "capabilityBindings",
-          "blockDefinitions"
+          "blockDefinitions",
+          "activationPreparation"
         ],
         "additionalProperties": false
       },
@@ -33230,6 +35419,222 @@
         ],
         "additionalProperties": false
       },
+      "SchemaActivationPreparation": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "dryRunRef": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "queued",
+                      "running",
+                      "completed",
+                      "failed"
+                    ]
+                  },
+                  "result": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "passed",
+                          "failed"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "jobId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "state",
+                  "result",
+                  "jobId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jobRef": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "queued",
+                      "running",
+                      "succeeded",
+                      "failed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "state"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewRef": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "approved",
+                      "rejected",
+                      "invalidated"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "state"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "templateCompatibility": {
+            "type": "object",
+            "properties": {
+              "templateVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "templateKey": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+              },
+              "templateVersionNo": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "review",
+                  "approved",
+                  "scheduled",
+                  "active",
+                  "superseded",
+                  "retired"
+                ]
+              },
+              "compatible": {
+                "type": "boolean",
+                "const": true
+              },
+              "withdrawn": {
+                "type": "boolean",
+                "const": false
+              },
+              "templateDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "contentTypeId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentTypeVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "templateVersionId",
+              "templateKey",
+              "templateVersionNo",
+              "state",
+              "compatible",
+              "withdrawn",
+              "templateDigest",
+              "contentTypeId",
+              "contentTypeVersionId"
+            ],
+            "additionalProperties": false
+          },
+          "permittedNextActions": {
+            "readOnly": true,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "create_successor",
+                "start_dry_run",
+                "submit_review",
+                "assign_reviewer",
+                "record_decision",
+                "activate"
+              ]
+            }
+          }
+        },
+        "required": [
+          "dryRunRef",
+          "jobRef",
+          "reviewRef",
+          "permittedNextActions"
+        ],
+        "additionalProperties": false
+      },
       "SchemaActivationResource": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "readOnly": true,
@@ -33445,6 +35850,892 @@
           "createdAt",
           "updatedAt",
           "compiledAt"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaDryRunResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "resourceKind": {
+            "type": "string",
+            "const": "schema_dry_run"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "contentTypeVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "additive",
+              "conditional",
+              "breaking",
+              "unknown"
+            ]
+          },
+          "attemptId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "jobId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "migrationPlanId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "compilerVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "transformKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transformVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "passed",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rowErrorCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reportHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "contentHash",
+          "createdAt",
+          "updatedAt",
+          "resourceKind",
+          "state",
+          "contentTypeVersionId",
+          "classification",
+          "attemptId",
+          "jobId",
+          "migrationPlanId",
+          "compilerVersion",
+          "transformKey",
+          "transformVersion",
+          "result",
+          "failureCode",
+          "sourceCount",
+          "targetCount",
+          "rowErrorCount",
+          "sourceHash",
+          "targetHash",
+          "reportHash"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewAssignmentResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "resourceKind": {
+            "type": "string",
+            "const": "schema_review_assignment"
+          },
+          "reviewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked"
+            ]
+          },
+          "capability": {
+            "type": "string",
+            "const": "cms.schema_review"
+          },
+          "actions": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string",
+                "const": "read"
+              },
+              {
+                "type": "string",
+                "const": "decide"
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "contentHash",
+          "createdAt",
+          "updatedAt",
+          "resourceKind",
+          "reviewId",
+          "state",
+          "capability",
+          "actions",
+          "startsAt",
+          "expiresAt",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewDecisionResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "resourceKind": {
+            "type": "string",
+            "const": "schema_review_decision"
+          },
+          "reviewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "capability": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "contentHash",
+          "createdAt",
+          "updatedAt",
+          "resourceKind",
+          "reviewId",
+          "decision",
+          "capability",
+          "decidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewDecisionSummary": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "capability": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "id",
+          "decision",
+          "capability",
+          "decidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewFrozenEvidence": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "contentTypeVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentTypeVersionNo": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "definitionHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "schemaArtifact": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "state": {
+                "type": "string",
+                "const": "compiled"
+              },
+              "compilerVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "zodContractRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "artifactHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "id",
+              "state",
+              "compilerVersion",
+              "zodContractRef",
+              "artifactHash"
+            ],
+            "additionalProperties": false
+          },
+          "dependencyManifestHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "dryRun": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "running",
+                  "completed",
+                  "failed"
+                ]
+              },
+              "result": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "passed",
+                      "failed"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reportHash": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "state",
+              "result",
+              "reportHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contentTypeVersionId",
+          "contentTypeVersionNo",
+          "definitionHash",
+          "schemaArtifact",
+          "dependencyManifestHash",
+          "dryRun"
+        ],
+        "additionalProperties": false
+      },
+      "SchemaReviewResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "resourceKind": {
+            "type": "string",
+            "const": "schema_review"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "approved",
+              "rejected",
+              "invalidated"
+            ]
+          },
+          "contentTypeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentTypeVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "contentTypeVersionNo": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "riskClass": {
+            "type": "string",
+            "enum": [
+              "ordinary",
+              "protected"
+            ]
+          },
+          "requiredDecisionCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "requiredCapabilities": {
+            "readOnly": true,
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+            }
+          },
+          "distinctApprovalCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "recordedDecisionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "frozenEvidence": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "contentTypeVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentTypeVersionNo": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "definitionHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "schemaArtifact": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "const": "compiled"
+                  },
+                  "compilerVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "zodContractRef": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "artifactHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "id",
+                  "state",
+                  "compilerVersion",
+                  "zodContractRef",
+                  "artifactHash"
+                ],
+                "additionalProperties": false
+              },
+              "dependencyManifestHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "dryRun": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "queued",
+                      "running",
+                      "completed",
+                      "failed"
+                    ]
+                  },
+                  "result": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "passed",
+                          "failed"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "reportHash": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "state",
+                  "result",
+                  "reportHash"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "contentTypeVersionId",
+              "contentTypeVersionNo",
+              "definitionHash",
+              "schemaArtifact",
+              "dependencyManifestHash",
+              "dryRun"
+            ],
+            "additionalProperties": false
+          },
+          "dryRunId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "policyKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+          },
+          "policyVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "policyHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "approvalEvidenceHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "decidedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisions": {
+            "readOnly": true,
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "decision": {
+                  "type": "string",
+                  "enum": [
+                    "approve",
+                    "reject"
+                  ]
+                },
+                "capability": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "id",
+                "decision",
+                "capability",
+                "decidedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "permittedNextActions": {
+            "readOnly": true,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "create_successor",
+                "start_dry_run",
+                "submit_review",
+                "assign_reviewer",
+                "record_decision",
+                "activate"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "contentHash",
+          "createdAt",
+          "updatedAt",
+          "resourceKind",
+          "state",
+          "contentTypeId",
+          "contentTypeVersionId",
+          "contentTypeVersionNo",
+          "riskClass",
+          "requiredDecisionCount",
+          "requiredCapabilities",
+          "distinctApprovalCount",
+          "recordedDecisionCount",
+          "frozenEvidence",
+          "dryRunId",
+          "policyKey",
+          "policyVersion",
+          "policyHash",
+          "approvalEvidenceHash",
+          "submittedAt",
+          "decidedAt",
+          "decisions",
+          "permittedNextActions"
         ],
         "additionalProperties": false
       },

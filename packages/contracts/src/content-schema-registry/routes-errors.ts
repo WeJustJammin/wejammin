@@ -13,6 +13,11 @@ export const humanMutationErrors = {
   INTERNAL_ERROR: 500,
 } as const;
 
+export const humanStepUpMutationErrors = {
+  ...humanMutationErrors,
+  STEP_UP_REQUIRED: 401,
+} as const;
+
 export const humanListErrors = {
   INVALID_REQUEST: 400,
   UNAUTHENTICATED: 401,
@@ -28,6 +33,19 @@ export const humanListErrors = {
 export const humanDetailErrors = {
   ...humanListErrors,
   NOT_FOUND: 404,
+} as const;
+
+/** CMS-03A-13: path-only read, so no 422 is emitted (BE03a error matrix). */
+export const reviewDetailErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
 } as const;
 
 export const releaseErrors = {

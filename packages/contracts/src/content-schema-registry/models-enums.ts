@@ -73,18 +73,12 @@ export const CmsSchemaReviewNextActionSchema = z.enum([
   'record_decision',
   'activate',
 ]);
-export const CmsSchemaReviewAssignmentActionSchema = z.enum([
-  'read',
-  'decide',
-]);
+export const CmsSchemaReviewAssignmentActionSchema = z.enum(['read', 'decide']);
 export const CmsSchemaDryRunResultSchema = z.enum(['passed', 'failed']);
 export const CmsSchemaDryRunFailureCodeSchema = z
   .string()
   .regex(/^[A-Z][A-Z0-9_]{0,63}$/u, 'dry_run_failure_code_invalid');
-export const CmsSchemaReviewRiskClassSchema = z.enum([
-  'ordinary',
-  'protected',
-]);
+export const CmsSchemaReviewRiskClassSchema = z.enum(['ordinary', 'protected']);
 
 export type CmsFieldKind = z.infer<typeof CmsFieldKindSchema>;
 export type CmsDefinitionState = z.infer<typeof CmsDefinitionStateSchema>;

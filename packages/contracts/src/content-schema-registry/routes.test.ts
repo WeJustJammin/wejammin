@@ -37,10 +37,28 @@ const expected = [
     'POST',
     '/api/v1/cms/blocks/versions/{blockDefinitionVersionId}/lifecycle',
   ],
+  [
+    'CMS-03A-09',
+    'POST',
+    '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/successors',
+  ],
+  [
+    'CMS-03A-10',
+    'POST',
+    '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/dry-runs',
+  ],
+  [
+    'CMS-03A-11',
+    'POST',
+    '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/reviews',
+  ],
+  ['CMS-03A-12', 'POST', '/api/v1/cms/schema-reviews/{reviewId}/decisions'],
+  ['CMS-03A-13', 'GET', '/api/v1/cms/schema-reviews/{reviewId}'],
+  ['CMS-03A-14', 'POST', '/api/v1/cms/schema-reviews/{reviewId}/assignments'],
 ] as const;
 
 describe('content schema registry route registry', () => {
-  it('contains exactly the eight locked operations and method/path pairs', () => {
+  it('contains exactly the fourteen locked operations and method/path pairs', () => {
     expect(
       contentSchemaRegistryRoutePolicies.map(
         ({ operationId, method, path }) => [operationId, method, path],
@@ -60,6 +78,10 @@ describe('content schema registry route registry', () => {
     expect(byId['CMS-03A-07']?.auth).toBe('registry_reader');
     expect(byId['CMS-03A-05']?.auth).toBe('signed_release_worker');
     expect(byId['CMS-03A-08']?.auth).toBe('signed_release_worker');
+    expect(byId['CMS-03A-09']?.auth).toBe('schema_designer');
+    expect(byId['CMS-03A-12']?.auth).toBe('schema_reviewer');
+    expect(byId['CMS-03A-13']?.auth).toBe('review_reader');
+    expect(byId['CMS-03A-14']?.auth).toBe('review_assigner');
     expect(byId['CMS-03A-05']?.csrf).toBe('forbidden');
     expect(byId['CMS-03A-08']?.rawBodySignature).toBe('required');
   });
@@ -84,6 +106,11 @@ describe('content schema registry route registry', () => {
       'CMS-03A-03',
       'CMS-03A-04',
       'CMS-03A-08',
+      'CMS-03A-09',
+      'CMS-03A-10',
+      'CMS-03A-11',
+      'CMS-03A-12',
+      'CMS-03A-14',
     ]) {
       const route = contentSchemaRegistryRoutePolicies.find(
         (candidate) => candidate.operationId === operationId,
@@ -93,7 +120,7 @@ describe('content schema registry route registry', () => {
     }
   });
 
-  it('publishes all eight routes in OpenAPI without worker secrets', () => {
+  it('publishes all fourteen routes in OpenAPI without worker secrets', () => {
     const document = buildContentSchemaRegistryOpenApiDocument();
     const serialized = JSON.stringify(document);
     for (const [, method, path] of expected) {
@@ -127,8 +154,8 @@ describe('content schema registry route registry', () => {
 
     expect(internal['x-audience']).toBe('internal-worker');
     expect(browser['x-audience']).toBe('browser');
-    expect(Object.keys(internal.paths)).toHaveLength(7);
-    expect(Object.keys(browser.paths)).toHaveLength(5);
+    expect(Object.keys(internal.paths)).toHaveLength(13);
+    expect(Object.keys(browser.paths)).toHaveLength(11);
     expect(internalList).toBeDefined();
     expect(browserList).toBeDefined();
     expect(internalList?.['x-slo']).toEqual({

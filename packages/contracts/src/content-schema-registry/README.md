@@ -75,6 +75,23 @@ time inside the protected run, and the resolve envelope reports only the bound
 handle and its digest. The schemas are sharded so every shard stays inside the
 repository schema line cap.
 
+The DEC-108 activation producers CMS-03A-09 through CMS-03A-14 (successor,
+dry run, review submission, review decision, review read, review assignment)
+are declared in `route-policy-review.ts` (types) and `routes-review.ts`
+(policies), alongside the 03A-01 through 03A-08 policies. Each policy carries a
+`stepUp` flag; missing or stale MFA on a `stepUp: 'required'` route is 401
+`STEP_UP_REQUIRED` with the details of `step-up-required.ts`
+(`{ recoveryAction: 'step_up', allowedMethods }`). Their request and resource
+schemas live in `requests-human.ts` and `resources-workflow.ts`; the safe
+`activationPreparation` projection reuses the BE00 job states and may carry the
+`templateCompatibility` projection from `../cms-composition/`.
+`openapi-tuple.ts` pins fixed-length tuples (the read/decide assignment actions)
+to `prefixItems` with equal `minItems`/`maxItems` in generated OpenAPI. Contract
+tests for these live in `routes-review.test.ts`,
+`requests-review.coverage.test.ts`, `resources-workflow.coverage.test.ts`, and
+`openapi-tuple.test.ts`; `review-fixtures.test-support.ts` holds their shared
+valid fixtures.
+
 ## Ownership
 
 These schemas define the cross-surface boundary. They do not grant authority,

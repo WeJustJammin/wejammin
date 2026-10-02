@@ -195,6 +195,17 @@ const contentSchemaRegistryHumanMutationErrors = [
   { status: 504, description: 'Content schema dependency timed out' },
 ];
 
+const contentSchemaRegistryStepUpMutationErrors =
+  contentSchemaRegistryHumanMutationErrors.map((error) =>
+    error.status === 401
+      ? {
+          status: 401,
+          description:
+            'Authentication or recent step-up verification is required',
+        }
+      : error,
+  );
+
 const contentSchemaRegistryListErrors = [
   { status: 400, description: 'Content schema list query is malformed' },
   { status: 401, description: 'Authentication is required' },
@@ -223,6 +234,21 @@ const contentSchemaRegistryDetailErrors = [
   },
   { status: 503, description: 'Content schema projection unavailable' },
   { status: 504, description: 'Content schema projection timed out' },
+];
+
+const contentSchemaRegistryReviewDetailErrors = [
+  { status: 400, description: 'Schema review path is malformed' },
+  { status: 401, description: 'Authentication is required' },
+  { status: 403, description: 'Schema review read capability is forbidden' },
+  { status: 404, description: 'Schema review is absent or concealed' },
+  { status: 429, description: 'Schema review read rate limit exceeded' },
+  { status: 500, description: 'Schema review read failed safely' },
+  {
+    status: 502,
+    description: 'Schema review projection returned invalid data',
+  },
+  { status: 503, description: 'Schema review projection unavailable' },
+  { status: 504, description: 'Schema review projection timed out' },
 ];
 
 const contentSchemaRegistryReleaseErrors = [
@@ -1517,7 +1543,7 @@ export const routeDefinitions = {
     responses: contentSchemaRegistryResponses(
       [200, 202],
       'Schema activation accepted',
-      contentSchemaRegistryHumanMutationErrors,
+      contentSchemaRegistryStepUpMutationErrors,
       'mutation',
     ),
   },
@@ -1550,6 +1576,54 @@ export const routeDefinitions = {
       [201],
       'Block lifecycle event appended',
       contentSchemaRegistryReleaseErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-09': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Successor schema draft created',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-10': {
+    responses: contentSchemaRegistryResponses(
+      [202],
+      'Schema dry run accepted',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-11': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Schema review submitted',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-12': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Schema review decision recorded',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-13': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Capability-safe schema review',
+      contentSchemaRegistryReviewDetailErrors,
+      'entity',
+    ),
+  },
+  'CMS-03A-14': {
+    responses: contentSchemaRegistryResponses(
+      [200, 201],
+      'Schema review assignment revoked or created',
+      contentSchemaRegistryStepUpMutationErrors,
       'mutation',
     ),
   },

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { TemplateCompatibilityProjectionSchema } from '../cms-composition/template-compatibility.ts';
+import { JobStateSchema } from '../job-status.ts';
 import {
   CmsCapabilityKeySchema,
   CmsHashSchema,
@@ -13,21 +15,13 @@ import {
   CmsSchemaDryRunResultSchema,
   CmsSchemaDryRunStateSchema,
   CmsSchemaReviewAssignmentActionSchema,
+  CmsSchemaReviewAssignmentStateSchema,
   CmsSchemaReviewDecisionSchema,
   CmsSchemaReviewNextActionSchema,
   CmsSchemaReviewRiskClassSchema,
   CmsSchemaReviewStateSchema,
 } from './models.ts';
 import { resourceMetaShape } from './resources-meta.ts';
-
-const CmsSchemaDryRunJobStateSchema = z.enum([
-  'queued',
-  'running',
-  'retrying',
-  'completed',
-  'failed_retryable',
-  'failed_terminal',
-]);
 
 const NullableCountSchema = z.number().int().nonnegative().nullable();
 
@@ -42,7 +36,10 @@ export const SchemaDryRunResourceSchema = z
     jobId: CmsUuidSchema,
     migrationPlanId: CmsUuidSchema,
     compilerVersion: z.string().min(1).max(32),
-    transformKey: z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/u).nullable(),
+    transformKey: z
+      .string()
+      .regex(/^[a-z][a-z0-9._-]{0,127}$/u)
+      .nullable(),
     transformVersion: CmsVersionSchema.nullable(),
     result: CmsSchemaDryRunResultSchema.nullable(),
     failureCode: CmsSchemaDryRunFailureCodeSchema.nullable(),
@@ -76,21 +73,13 @@ export const SchemaDryRunResourceSchema = z
         path: ['state'],
         message: 'unsealed_dry_run_forbids_final_evidence',
       });
-    if (
-      sealed &&
-      value.result === 'passed' &&
-      value.rowErrorCount !== 0
-    )
+    if (sealed && value.result === 'passed' && value.rowErrorCount !== 0)
       context.addIssue({
         code: 'custom',
         path: ['rowErrorCount'],
         message: 'passed_dry_run_requires_zero_row_error_count',
       });
-    if (
-      sealed &&
-      value.result === 'failed' &&
-      (value.rowErrorCount ?? 0) === 0
-    )
+    if (sealed && value.result === 'failed' && (value.rowErrorCount ?? 0) === 0)
       context.addIssue({
         code: 'custom',
         path: ['rowErrorCount'],
@@ -255,7 +244,7 @@ export const SchemaReviewAssignmentResourceSchema = z
     ...resourceMetaShape,
     resourceKind: z.literal('schema_review_assignment'),
     reviewId: CmsUuidSchema,
-    state: z.enum(['active', 'revoked']),
+    state: CmsSchemaReviewAssignmentStateSchema,
     capability: z.literal('cms.schema_review'),
     actions: z.tuple([
       z.literal(CmsSchemaReviewAssignmentActionSchema.options[0]),
@@ -280,7 +269,7 @@ export const SchemaActivationPreparationSchema = z
     jobRef: z
       .strictObject({
         id: CmsUuidSchema,
-        state: CmsSchemaDryRunJobStateSchema,
+        state: JobStateSchema,
       })
       .nullable(),
     reviewRef: z
@@ -289,6 +278,8 @@ export const SchemaActivationPreparationSchema = z
         state: CmsSchemaReviewStateSchema,
       })
       .nullable(),
+    /** Safe resolver projection; the resolver itself is service-only. */
+    templateCompatibility: TemplateCompatibilityProjectionSchema.optional(),
     permittedNextActions: z
       .array(CmsSchemaReviewNextActionSchema)
       .max(6)

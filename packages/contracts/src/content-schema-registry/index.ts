@@ -18,6 +18,7 @@ export * from './primitives.ts';
 export * from './requests.ts';
 export * from './resources.ts';
 export * from './route-policy.ts';
+export * from './step-up-required.ts';
 export {
   CONTENT_SCHEMA_REGISTRY_ACTING_PARTY_ID_HEADER,
   CONTENT_SCHEMA_REGISTRY_ACTOR_ID_HEADER,

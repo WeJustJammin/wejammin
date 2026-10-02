@@ -4,3 +4,4 @@ export * from './pattern-instance.ts';
 export * from './taxonomy-term.ts';
 export * from './locale-variant.ts';
 export * from './related-content.ts';
+export * from './template-compatibility.ts';
