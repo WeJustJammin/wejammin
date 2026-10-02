@@ -16,7 +16,7 @@ describe('authentication OpenAPI contract', () => {
     paths: Readonly<Record<string, Readonly<Record<string, OpenApiOperation>>>>;
   }>;
 
-  it('publishes every Slice 01 and Slice 02 authentication route with its canonical operation', () => {
+  it('publishes every Slice 01, Slice 02 and DEC-111 authentication route with its canonical operation', () => {
     expect(
       Object.entries(document.paths)
         .flatMap(([path, methods]) =>
@@ -48,6 +48,15 @@ describe('authentication OpenAPI contract', () => {
       ['/api/v1/auth/session/refresh', 'authSessionRefresh'],
       ['/api/v1/auth/bootstrap', 'authPersonBootstrap'],
       ['/api/v1/auth/logout', 'authLogout'],
+      ['/api/v1/account/mfa/factors', 'authMfaFactorsRead'],
+      ['/api/v1/account/mfa/factors', 'authMfaEnrollmentStart'],
+      ['/api/v1/account/mfa/factors/{factorId}/verify', 'authMfaFactorVerify'],
+      ['/api/v1/account/mfa/factors/{factorId}', 'authMfaFactorRemove'],
+      ['/api/v1/auth/step-up/challenges', 'authStepUpChallengeCreate'],
+      [
+        '/api/v1/auth/step-up/challenges/{challengeId}/verify',
+        'authStepUpVerify',
+      ],
     ]);
   });
 

@@ -1,12 +1,18 @@
 import {
   BlockDefinitionVersionResourceSchema,
   BlockLifecycleEventResourceSchema,
+  CmsCapabilityGrantListPageSchema,
+  CmsCapabilityGrantResourceSchema,
   ContentSchemaRegistryDetailSchema,
   ContentSchemaRegistryListPageSchema,
   ContentTypeVersionResourceSchema,
   FieldDefinitionVersionResourceSchema,
   RelationDefinitionResourceSchema,
   SchemaActivationResourceSchema,
+  SchemaDryRunResourceSchema,
+  SchemaReviewAssignmentResourceSchema,
+  SchemaReviewDecisionResourceSchema,
+  SchemaReviewResourceSchema,
 } from './contracts';
 import type {
   ContentSchemaRegistryDependencies,
@@ -34,6 +40,16 @@ const responseSchemas: Readonly<
   'CMS-03A-06': ContentSchemaRegistryListPageSchema,
   'CMS-03A-07': ContentSchemaRegistryDetailSchema,
   'CMS-03A-08': BlockLifecycleEventResourceSchema,
+  'CMS-03A-09': ContentTypeVersionResourceSchema,
+  'CMS-03A-10': SchemaDryRunResourceSchema,
+  'CMS-03A-11': SchemaReviewResourceSchema,
+  'CMS-03A-12': SchemaReviewDecisionResourceSchema,
+  'CMS-03A-13': SchemaReviewResourceSchema,
+  'CMS-03A-14': SchemaReviewAssignmentResourceSchema,
+  'CMS-03A-15': CmsCapabilityGrantResourceSchema,
+  'CMS-03A-16': CmsCapabilityGrantResourceSchema,
+  'CMS-03A-17': CmsCapabilityGrantResourceSchema,
+  'CMS-03A-18': CmsCapabilityGrantListPageSchema,
 };
 
 const portNames: Readonly<
@@ -50,6 +66,16 @@ const portNames: Readonly<
   'CMS-03A-06': 'listContentTypes',
   'CMS-03A-07': 'getContentTypeVersion',
   'CMS-03A-08': 'advanceBlockLifecycle',
+  'CMS-03A-09': 'createSchemaSuccessor',
+  'CMS-03A-10': 'startSchemaDryRun',
+  'CMS-03A-11': 'submitSchemaReview',
+  'CMS-03A-12': 'decideSchemaReview',
+  'CMS-03A-13': 'getSchemaReview',
+  'CMS-03A-14': 'assignSchemaReview',
+  'CMS-03A-15': 'grantCapability',
+  'CMS-03A-16': 'renewCapabilityGrant',
+  'CMS-03A-17': 'revokeCapabilityGrant',
+  'CMS-03A-18': 'listCapabilityGrants',
 };
 
 const unavailable = (): ContentSchemaRegistryError => ({

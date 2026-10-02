@@ -1,0 +1,271 @@
+-- DEC-108 shared helpers (BE03a CMS-03A-09..14).  Every RPC call runs inside a
+-- plpgsql sub-transaction so an absent producer yields a captured error and a
+-- failed assertion instead of aborting the suite transaction; a rejected call
+-- also rolls back every partial effect it attempted.  Helpers only ever *call*
+-- named RPCs and *read* private tables: no review, decision, dry-run, approved
+-- or completed-plan row is ever written here.
+
+create temp table if not exists s09d_probe(
+  label text primary key, state text, message text, response jsonb
+) on commit drop;
+create temp table if not exists s09d_ids(name text primary key, id uuid) on commit drop;
+create temp table if not exists s09d_sql_errors(statement text, message text) on commit drop;
+create temp table if not exists s09d_actor(
+  key text primary key, auth_user_id uuid not null, person_id uuid,
+  party_id uuid, binding_id uuid
+) on commit drop;
+
+-- Calls one RPC, records SQLSTATE/message/response under p_label.
+create or replace function pg_temp.s09d_call(p_label text, p_function text, p_request jsonb)
+returns jsonb language plpgsql as $body$
+declare result jsonb;
+begin
+  begin
+    execute format('select %s($1)', p_function) into result using p_request;
+    insert into s09d_probe values (p_label, '00000', null, result)
+    on conflict (label) do update
+      set state = excluded.state, message = excluded.message, response = excluded.response;
+    return result;
+  exception when others then
+    insert into s09d_probe values (p_label, sqlstate, sqlerrm, null)
+    on conflict (label) do update
+      set state = excluded.state, message = excluded.message, response = excluded.response;
+    return null;
+  end;
+end;
+$body$;
+
+-- Contract token of the last call under p_label: the ApiError code, 'OK', or
+-- 'MISSING' when the label was never run (never satisfies an assertion).
+create or replace function pg_temp.s09d_outcome(p_label text) returns text
+language sql stable as $body$
+  select coalesce((select case when state = '00000' then 'OK' else message end
+                   from s09d_probe where label = p_label), 'MISSING')
+$body$;
+create or replace function pg_temp.s09d_resp(p_label text) returns jsonb
+language sql stable as $body$ select response from s09d_probe where label = p_label $body$;
+create or replace function pg_temp.s09d_id(p_name text) returns uuid
+language sql stable as $body$ select id from s09d_ids where name = p_name $body$;
+create or replace function pg_temp.s09d_remember(p_name text, p_id uuid) returns void
+language sql as $body$
+  insert into s09d_ids values (p_name, p_id)
+  on conflict (name) do update set id = excluded.id $body$;
+create or replace function pg_temp.s09d_actor_id(p_key text, p_field text) returns text
+language sql stable as $body$
+  select case p_field when 'auth' then auth_user_id::text when 'person' then person_id::text
+         when 'party' then party_id::text when 'binding' then binding_id::text end
+  from s09d_actor where key = p_key $body$;
+
+-- Reads one private column by id; null when the relation/column is absent so a
+-- RED run keeps going.  Only a fixed relation allowlist is accepted.
+create or replace function pg_temp.s09d_read(p_relation text, p_column text, p_id uuid)
+returns text language plpgsql as $body$
+declare result text;
+begin
+  execute format('select %I::text from platform_private.%I where id = $1', p_column, p_relation)
+    into result using p_id;
+  return result;
+exception when others then
+  insert into s09d_sql_errors values (p_relation || '.' || p_column, sqlerrm);
+  return null;
+end;
+$body$;
+create or replace function pg_temp.s09d_scalar(p_sql text) returns text
+language plpgsql as $body$
+declare result text;
+begin
+  execute p_sql into result;
+  return result;
+exception when others then
+  insert into s09d_sql_errors values (left(p_sql, 200), sqlerrm);
+  return null;
+end;
+$body$;
+
+-- Verified server-actor envelope exactly as the service-role Worker sends it.
+create or replace function pg_temp.s09d_context(
+  p_actor text, p_with_binding boolean default false, p_override jsonb default '{}'::jsonb
+) returns jsonb language sql as $body$
+  select jsonb_strip_nulls(jsonb_build_object(
+    'authUserId', a.auth_user_id, 'sessionId', extensions.gen_random_uuid(),
+    'actorPersonId', a.person_id, 'actingPartyId', a.party_id,
+    'stepUpVerified', true, 'stepUpAt', clock_timestamp() - interval '1 minute',
+    'requestId', extensions.gen_random_uuid(), 'correlationId', extensions.gen_random_uuid(),
+    'actingContextId', case when p_with_binding then a.binding_id end
+  )) || p_override
+  from s09d_actor a where a.key = p_actor
+$body$;
+
+-- Selects the actor/session the private actor resolver reads.
+create or replace function pg_temp.s09d_session(p_actor text, p_role text default 'service_role')
+returns void language plpgsql as $body$
+declare a s09d_actor%rowtype;
+begin
+  select * into a from s09d_actor where key = p_actor;
+  perform set_config('request.jwt.claim.role', p_role, true);
+  perform set_config('request.jwt.claim.sub', a.auth_user_id::text, true);
+  perform set_config('app.auth_user_id', a.auth_user_id::text, true);
+  perform set_config('app.actor_auth_user_id', a.auth_user_id::text, true);
+  perform set_config('app.actor_person_id', a.person_id::text, true);
+  perform set_config('app.acting_party_id', coalesce(a.party_id::text, ''), true);
+  perform set_config('app.acting_context_id', coalesce(a.binding_id::text, ''), true);
+end;
+$body$;
+
+-- Calls an RPC as an actor with the service-role envelope appended as `context`.
+create or replace function pg_temp.s09d_rpc(
+  p_label text, p_function text, p_actor text, p_request jsonb,
+  p_binding boolean default false, p_override jsonb default '{}'::jsonb
+) returns jsonb language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session(p_actor);
+  return pg_temp.s09d_call(p_label, p_function, p_request || jsonb_build_object(
+    'context', pg_temp.s09d_context(p_actor, p_binding, p_override)));
+end;
+$body$;
+
+-- Catalog helpers that never raise for an absent object.
+create or replace function pg_temp.s09d_rls(p_table text) returns boolean language sql stable as $body$
+  select coalesce((select c.relrowsecurity and c.relforcerowsecurity from pg_class c
+                   where c.oid = to_regclass('platform_private.' || p_table)), false) $body$;
+create or replace function pg_temp.s09d_no_direct_grants(p_table text) returns boolean
+language sql stable as $body$
+  select to_regclass('platform_private.' || p_table) is not null and not exists (
+    select 1 from unnest(array['anon','authenticated','service_role']) r(role_name)
+    cross join unnest(array['SELECT','INSERT','UPDATE','DELETE']) p(privilege)
+    where has_table_privilege(r.role_name, to_regclass('platform_private.' || p_table), p.privilege)) $body$;
+create or replace function pg_temp.s09d_has_columns(p_table text, p_columns text[]) returns boolean
+language sql stable as $body$
+  select to_regclass('platform_private.' || p_table) is not null and (
+    select count(*) from information_schema.columns
+    where table_schema = 'platform_private' and table_name = p_table
+      and column_name = any(p_columns)) = cardinality(p_columns) $body$;
+create or replace function pg_temp.s09d_service_only(p_function text) returns boolean
+language sql stable as $body$
+  select to_regprocedure(p_function) is not null
+    and has_function_privilege('service_role', to_regprocedure(p_function), 'execute')
+    and not has_function_privilege('authenticated', to_regprocedure(p_function), 'execute')
+    and not has_function_privilege('anon', to_regprocedure(p_function), 'execute') $body$;
+create or replace function pg_temp.s09d_constraint_has(p_table text, p_fragment text) returns boolean
+language sql stable as $body$
+  select exists (select 1 from pg_constraint
+    where conrelid = to_regclass('platform_private.' || p_table)
+      and pg_get_constraintdef(oid) ilike '%' || p_fragment || '%') $body$;
+create or replace function pg_temp.s09d_trigger_count(p_table text) returns integer
+language sql stable as $body$
+  select count(*)::integer from pg_trigger
+  where tgrelid = to_regclass('platform_private.' || p_table) and not tgisinternal $body$;
+
+-- Time travel for authority windows only: shifts stored instants of a REAL row
+-- (never creates one) with that table's user triggers disabled, so "N minutes
+-- later" is observable without sleeping.  Returns false when p_sql errors; the
+-- sub-transaction then also rolls the trigger toggle back.
+create or replace function pg_temp.s09d_timewarp(p_table text, p_sql text) returns boolean
+language plpgsql as $body$
+begin
+  begin
+    execute format('alter table platform_private.%I disable trigger user', p_table);
+    execute p_sql;
+    execute format('alter table platform_private.%I enable trigger user', p_table);
+  exception when others then
+    return false;
+  end;
+  return true;
+end;
+$body$;
+
+-- Runs a statement that may legitimately fail (a negative-control forgery) and
+-- reports whether it was accepted; never aborts the suite transaction.
+create or replace function pg_temp.s09d_try(p_sql text) returns boolean
+language plpgsql as $body$
+begin
+  execute p_sql;
+  return true;
+exception when others then
+  return false;
+end;
+$body$;
+
+-- Definition text of a function (empty when absent) for structural regressions.
+create or replace function pg_temp.s09d_def(p_function text) returns text
+language sql stable as $body$
+  select coalesce(pg_get_functiondef(to_regprocedure(p_function)), '')
+$body$;
+
+-- Session snapshot/restore so a chain can run inside a long legacy fixture
+-- without leaving its own actor GUCs behind.
+create temp table if not exists s09d_guc_saved(name text primary key, value text) on commit drop;
+create or replace function pg_temp.s09d_guc_save() returns void language plpgsql as $body$
+declare n text;
+begin
+  delete from s09d_guc_saved;
+  foreach n in array array['request.jwt.claim.role','request.jwt.claim.sub','app.auth_user_id',
+    'app.actor_auth_user_id','app.actor_person_id','app.acting_party_id','app.acting_context_id',
+    'app.cms_rpc','app.cfg_rpc'] loop
+    insert into s09d_guc_saved values (n, coalesce(current_setting(n, true), ''));
+  end loop;
+end;
+$body$;
+create or replace function pg_temp.s09d_guc_restore() returns void language plpgsql as $body$
+declare r record;
+begin
+  for r in select name, value from s09d_guc_saved loop
+    perform set_config(r.name, r.value, true);
+  end loop;
+end;
+$body$;
+
+-- Registers an already-bootstrapped human of a long legacy fixture as an actor.
+create or replace function pg_temp.s09d_legacy_actor(
+  p_key text, p_auth_user uuid, p_party uuid, p_binding uuid default null
+) returns void language plpgsql as $body$
+declare person uuid;
+begin
+  select person_id into person from identity.auth_user_bindings where auth_user_id = p_auth_user;
+  insert into s09d_actor(key, auth_user_id, person_id, party_id, binding_id)
+  values (p_key, p_auth_user, person, coalesce(p_party, person), p_binding)
+  on conflict (key) do update set auth_user_id = excluded.auth_user_id, person_id = excluded.person_id,
+    party_id = excluded.party_id, binding_id = excluded.binding_id;
+  if p_binding is null then
+    insert into platform_private.acting_context_binding(
+      person_id, acting_party_id, context_kind, client_binding_id, state, selected_at,
+      last_seen_at, expires_at, projection_version, version)
+    values (person, coalesce(p_party, person),
+      case when coalesce(p_party, person) = person then 'person' else 'organization' end,
+      's09d-legacy-' || p_key, 'active', clock_timestamp(), clock_timestamp(),
+      clock_timestamp() + interval '2 hours', 1, 1)
+    on conflict (person_id, client_binding_id) where state = 'active' do nothing;
+    update s09d_actor set binding_id = (select id from platform_private.acting_context_binding
+      where client_binding_id = 's09d-legacy-' || p_key and person_id = person limit 1)
+    where key = p_key;
+  end if;
+end;
+$body$;
+
+-- Owner initialization receipt for a legacy fixture whose CMS grants already
+-- exist (so the one-time operator command is unavailable): the same alias and
+-- receipt rows the command writes, bound to the fixture's owner and
+-- organization.  This is test-human provisioning (D3), not review evidence.
+create or replace function pg_temp.s09d_legacy_owner_receipt(p_auth_user uuid, p_org uuid)
+returns void language plpgsql as $body$
+declare person uuid; alias_id uuid; handle text;
+begin
+  select person_id into person from identity.auth_user_bindings where auth_user_id = p_auth_user;
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  perform set_config('request.jwt.claim.sub', p_auth_user::text, true);
+  perform set_config('app.auth_user_id', p_auth_user::text, true);
+  perform set_config('app.actor_auth_user_id', p_auth_user::text, true);
+  perform set_config('app.actor_person_id', person::text, true);
+  perform set_config('app.acting_party_id', '', true);
+  perform set_config('app.acting_context_id', '', true);
+  perform set_config('app.idempotency_key_hash', 's09d-legacy-alias-' || p_auth_user, true);
+  perform set_config('app.request_hash', 's09d-legacy-alias-request-' || p_auth_user, true);
+  perform set_config('app.correlation_id', extensions.gen_random_uuid()::text, true);
+  handle := 'S09d' || substr(replace(extensions.gen_random_uuid()::text, '-', ''), 1, 10);
+  alias_id := (platform_api.identity_alias_create(handle, handle, 'private')->>'aliasId')::uuid;
+  insert into platform_private.cms_owner_initialization(
+    auth_user_id, person_id, alias_id, organization_id, authorization_ref, operator_role, grant_ends_at)
+  values (p_auth_user, person, alias_id, p_org, extensions.gen_random_uuid(), current_user,
+    clock_timestamp() + interval '3 days');
+end;
+$body$;

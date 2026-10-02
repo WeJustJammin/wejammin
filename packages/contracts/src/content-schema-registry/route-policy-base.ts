@@ -15,6 +15,10 @@ export const CONTENT_SCHEMA_REGISTRY_OPERATION_IDS = [
   'CMS-03A-12',
   'CMS-03A-13',
   'CMS-03A-14',
+  'CMS-03A-15',
+  'CMS-03A-16',
+  'CMS-03A-17',
+  'CMS-03A-18',
 ] as const;
 
 export type ContentSchemaRegistryOperationId =
@@ -46,10 +50,15 @@ export const CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER =
 export const CONTENT_SCHEMA_REGISTRY_PRIVATE_SERVICE_HOST =
   'platform-api.internal' as const;
 
-/** Human-read capabilities that may cross the private web/API boundary. */
+/**
+ * Human capabilities that may cross the private web/API boundary. The
+ * review-only `cms.schema_review` human (DEC-108) must survive it so the
+ * assigned-review projection can render.
+ */
 export const CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES = [
   'cms.schema_designer',
   'cms.schema_registry.read',
+  'cms.schema_review',
 ] as const satisfies readonly ContentSchemaRegistryCapability[];
 
 /** Variants are server-selected presentation scopes, never browser roles. */
@@ -68,6 +77,7 @@ export const CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS = [
 
 export type {
   ContentSchemaRegistryCapability,
+  ContentSchemaRegistryCapabilityMode,
   ContentSchemaRegistryErrorCode,
   ContentSchemaRegistryErrorStatus,
   ContentSchemaRegistryOpenApiSuccessSchemaName,

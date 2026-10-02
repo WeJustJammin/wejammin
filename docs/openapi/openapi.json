@@ -854,6 +854,7 @@
         "operationId": "authOAuthStart",
         "deprecated": false,
         "x-auth-class": "public",
+        "x-step-up": "conditional",
         "x-cache-class": "no_store",
         "x-timeout-ms": 8000,
         "x-rate-class": "authentication",
@@ -899,17 +900,24 @@
             }
           },
           "401": {
-            "description": "Protected OAuth intent requires authentication",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "Protected OAuth intent requires fresh self authority",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -1294,6 +1302,7 @@
         "operationId": "authLoginMethodLinkIntentCreate",
         "deprecated": false,
         "x-auth-class": "authenticated_step_up",
+        "x-step-up": "required",
         "x-cache-class": "no_store",
         "x-timeout-ms": 15000,
         "x-rate-class": "authentication",
@@ -1434,17 +1443,24 @@
             }
           },
           "401": {
-            "description": "Verified session is required",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "Fresh self step-up and CSRF are required",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -1581,6 +1597,7 @@
         "operationId": "authLoginMethodUnlink",
         "deprecated": false,
         "x-auth-class": "authenticated_step_up",
+        "x-step-up": "required",
         "x-cache-class": "no_store",
         "x-timeout-ms": 15000,
         "x-rate-class": "authentication",
@@ -1718,17 +1735,24 @@
             }
           },
           "401": {
-            "description": "Verified session is required",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "Fresh self step-up and CSRF are required",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -1875,6 +1899,7 @@
         "operationId": "authAccountMergeCreate",
         "deprecated": false,
         "x-auth-class": "authenticated_step_up",
+        "x-step-up": "required",
         "x-cache-class": "no_store",
         "x-timeout-ms": 15000,
         "x-rate-class": "authentication",
@@ -2000,17 +2025,24 @@
             }
           },
           "401": {
-            "description": "Verified session is required",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "Fresh self step-up and CSRF are required",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -2310,6 +2342,7 @@
         "operationId": "authAccountMergeProofCreate",
         "deprecated": false,
         "x-auth-class": "authenticated_step_up",
+        "x-step-up": "required",
         "x-cache-class": "no_store",
         "x-timeout-ms": 15000,
         "x-rate-class": "authentication",
@@ -2456,17 +2489,24 @@
             }
           },
           "401": {
-            "description": "Verified session is required",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "Fresh survivor step-up and CSRF are required",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -2603,6 +2643,7 @@
         "operationId": "authAccountMergeConfirm",
         "deprecated": false,
         "x-auth-class": "authenticated_step_up",
+        "x-step-up": "required",
         "x-cache-class": "no_store",
         "x-timeout-ms": 15000,
         "x-rate-class": "authentication",
@@ -2748,17 +2789,24 @@
             }
           },
           "401": {
-            "description": "Verified session is required",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "Fresh survivor step-up and CSRF are required",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -3352,6 +3400,7 @@
         "operationId": "authLogout",
         "deprecated": false,
         "x-auth-class": "authenticated",
+        "x-step-up": "conditional",
         "x-cache-class": "no_store",
         "x-timeout-ms": 15000,
         "x-rate-class": "authentication",
@@ -3423,17 +3472,24 @@
             }
           },
           "401": {
-            "description": "Verified session is required",
+            "description": "Verified session or recent step-up verification is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
           },
           "403": {
-            "description": "CSRF or global-logout step-up verification failed",
+            "description": "Account is not eligible or CSRF verification failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -3494,6 +3550,1468 @@
           },
           "503": {
             "description": "Logout dependency unavailable after local recovery boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/mfa/factors": {
+      "get": {
+        "operationId": "authMfaFactorsRead",
+        "deprecated": false,
+        "x-auth-class": "authenticated",
+        "x-step-up": "none",
+        "x-cache-class": "no_store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "authenticated_read",
+        "x-slo-tier": "tier_1",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "EmptyRequestSchema",
+        "x-success-schema": "MfaFactorsResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "server-derived current person can read only its MFA factors",
+        "responses": {
+          "200": {
+            "description": "Current MFA factors and step-up state",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaFactorsResource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is not eligible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MFA factor read rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "MFA factor read failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "MFA factor dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "MFA factor read timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "authMfaEnrollmentStart",
+        "deprecated": false,
+        "x-auth-class": "authenticated_step_up_conditional",
+        "x-step-up": "conditional",
+        "x-cache-class": "no_store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "authentication",
+        "x-slo-tier": "tier_2",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "TotpEnrollmentStartApiRequestSchema",
+        "x-success-schema": "TotpEnrollmentStartSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "enrollment is bound to the current self account only",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "totp"
+                    ]
+                  },
+                  "friendlyName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "method",
+                  "friendlyName"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "TOTP enrollment started; secret shown once",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpEnrollmentStart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Enrollment request or headers are malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is not eligible or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Enrollment target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MFA state, factor, or version conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Enrollment body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Enrollment media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MFA fields fail semantic validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MFA rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Enrollment failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Authentication provider returned an invalid response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Enrollment dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Enrollment dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/mfa/factors/{factorId}/verify": {
+      "post": {
+        "operationId": "authMfaFactorVerify",
+        "deprecated": false,
+        "x-auth-class": "authenticated",
+        "x-step-up": "none",
+        "x-cache-class": "no_store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "authentication",
+        "x-slo-tier": "tier_2",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "MfaFactorVerifyApiRequestSchema",
+        "x-success-schema": "MfaFactorsResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "factor ownership is concealed from every other person",
+        "parameters": [
+          {
+            "name": "factorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MFA factor verified and session rotated to aal2",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaFactorsResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Factor verification request or headers are malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is not eligible or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Factor is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MFA state, factor, or version conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Factor verification body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Factor verification media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MFA fields fail semantic validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MFA rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Factor verification failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Authentication provider returned an invalid response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Factor verification dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Factor verification dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/mfa/factors/{factorId}": {
+      "delete": {
+        "operationId": "authMfaFactorRemove",
+        "deprecated": false,
+        "x-auth-class": "authenticated_step_up_conditional",
+        "x-step-up": "conditional",
+        "x-cache-class": "no_store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "authentication",
+        "x-slo-tier": "tier_2",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "MfaFactorRemoveApiRequestSchema",
+        "x-success-schema": "MfaFactorsResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "factor ownership is concealed from every other person",
+        "parameters": [
+          {
+            "name": "factorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]+$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "user_request",
+                      "factor_compromise"
+                    ]
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MFA factor removed",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaFactorsResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Factor removal request or headers are malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is not eligible or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Factor is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MFA state, factor, or version conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Factor removal body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Factor removal media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MFA fields fail semantic validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MFA rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Factor removal failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Authentication provider returned an invalid response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Factor removal dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Factor removal dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/step-up/challenges": {
+      "post": {
+        "operationId": "authStepUpChallengeCreate",
+        "deprecated": false,
+        "x-auth-class": "authenticated",
+        "x-step-up": "none",
+        "x-cache-class": "no_store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "authentication",
+        "x-slo-tier": "tier_2",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "StepUpChallengeApiRequestSchema",
+        "x-success-schema": "StepUpChallengeSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "challenge is bound to the current Auth user and session",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "totp"
+                    ]
+                  },
+                  "factorId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "method"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Step-up challenge created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StepUpChallenge"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Challenge request or headers are malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is not eligible or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Factor is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MFA state, factor, or version conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Challenge body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Challenge media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MFA fields fail semantic validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MFA rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Challenge failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Authentication provider returned an invalid response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Challenge dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Challenge dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/step-up/challenges/{challengeId}/verify": {
+      "post": {
+        "operationId": "authStepUpVerify",
+        "deprecated": false,
+        "x-auth-class": "authenticated",
+        "x-step-up": "none",
+        "x-cache-class": "no_store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "authentication",
+        "x-slo-tier": "tier_2",
+        "x-criticality": "high",
+        "x-owner": "Identity",
+        "x-runbook": "docs/runbooks/platform/request-security-and-interaction.md",
+        "x-request-schema": "StepUpVerifyApiRequestSchema",
+        "x-success-schema": "StepUpResultSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "challenge is concealed unless it belongs to the same Auth user and session",
+        "parameters": [
+          {
+            "name": "challengeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Step-up verified and session rotated to aal2",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StepUpResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Step-up verification request or headers are malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Verified session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is not eligible or CSRF failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Challenge is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Challenge is expired or already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Step-up verification body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Step-up verification media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MFA fields fail semantic validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MFA rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Step-up verification failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Authentication provider returned an invalid response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Step-up verification dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Step-up verification dependency timed out",
             "content": {
               "application/json": {
                 "schema": {
@@ -12800,6 +14318,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -13064,6 +14583,7 @@
           "cms.schema_registry.read",
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -13371,6 +14891,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -13664,6 +15185,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -13957,6 +15479,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "required",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -14149,7 +15672,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
@@ -14296,6 +15826,7 @@
         "x-capabilities": [
           "release.block_registry.write"
         ],
+        "x-step-up": "none",
         "x-cors": "release-worker",
         "x-audience": "release-worker",
         "x-cache-class": "no_store",
@@ -14593,6 +16124,7 @@
           "cms.schema_registry.read",
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -14818,6 +16350,7 @@
         "x-capabilities": [
           "release.block_registry.write"
         ],
+        "x-step-up": "none",
         "x-cors": "release-worker",
         "x-audience": "release-worker",
         "x-cache-class": "no_store",
@@ -15133,6 +16666,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -15426,6 +16960,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -15719,6 +17254,7 @@
         "x-capabilities": [
           "cms.schema_designer"
         ],
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -16012,6 +17548,7 @@
         "x-capabilities": [
           "cms.schema_review"
         ],
+        "x-step-up": "required",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -16149,7 +17686,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
@@ -16297,6 +17841,8 @@
           "cms.schema_designer",
           "cms.schema_review"
         ],
+        "x-capability-mode": "any_of",
+        "x-step-up": "none",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -16513,6 +18059,7 @@
         "x-capabilities": [
           "cms.schema_review.assign"
         ],
+        "x-step-up": "required",
         "x-cors": "cms-console",
         "x-audience": "browser",
         "x-cache-class": "no_store",
@@ -16696,7 +18243,1133 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/capability-grants": {
+      "post": {
+        "operationId": "CMS-03A-15",
+        "deprecated": false,
+        "x-auth-class": "cms_owner",
+        "x-step-up": "required",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-activation",
+        "x-rate-limit": {
+          "class": "cms-activation",
+          "limit": 10,
+          "partyLimit": 20,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "CapabilityGrantRequestSchema",
+        "x-success-schema": "CmsCapabilityGrantResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "receipt-derived owner grants only to existing members of its own organization",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityGrantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CMS capability grant created",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsCapabilityGrantResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "CMS-03A-18",
+        "deprecated": false,
+        "x-auth-class": "cms_owner",
+        "x-step-up": "none",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-definition-read",
+        "x-rate-limit": {
+          "class": "cms-definition-read",
+          "limit": 120,
+          "partyLimit": 240,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "CmsCapabilityGrantListQuerySchema",
+        "x-success-schema": "CmsCapabilityGrantListPageSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "receipt-derived owner lists only grants in its own organization",
+        "parameters": [
+          {
+            "name": "subjectPersonId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "capability",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/GrantableCmsCapability"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CmsCapabilityGrantState"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "updatedAt",
+                "validThrough"
+              ],
+              "default": "updatedAt"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner CMS capability grant page",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsCapabilityGrantListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Capability grant list query is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Owner authority is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Capability grant list query fails validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Capability grant list rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Capability grant list failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Capability grant projection returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Capability grant projection unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Capability grant projection timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/capability-grants/{grantId}/renewals": {
+      "post": {
+        "operationId": "CMS-03A-16",
+        "deprecated": false,
+        "x-auth-class": "cms_owner",
+        "x-step-up": "required",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-activation",
+        "x-rate-limit": {
+          "class": "cms-activation",
+          "limit": 10,
+          "partyLimit": 20,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "CapabilityGrantRenewalRequestSchema",
+        "x-success-schema": "CmsCapabilityGrantResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "receipt-derived owner renews only grants in its own organization",
+        "parameters": [
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityGrantRenewalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CMS capability grant renewed",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsCapabilityGrantResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Content schema capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content schema target is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Content schema version or idempotency conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Content schema fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Content schema rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Content schema request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Content schema dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Content schema dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Content schema dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/capability-grants/{grantId}/revocations": {
+      "post": {
+        "operationId": "CMS-03A-17",
+        "deprecated": false,
+        "x-auth-class": "cms_owner",
+        "x-step-up": "required",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 15000,
+        "x-rate-class": "cms-activation",
+        "x-rate-limit": {
+          "class": "cms-activation",
+          "limit": 10,
+          "partyLimit": 20,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_2",
+        "x-slo": {
+          "tier": 2,
+          "commandP95Ms": 1200,
+          "protectedRpcP95Ms": 300,
+          "acceptanceP99Ms": 1000
+        },
+        "x-csrf": "required",
+        "x-idempotency": "required",
+        "x-if-match": "required",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "ContentSchema",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "CapabilityGrantRevocationRequestSchema",
+        "x-success-schema": "CmsCapabilityGrantResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "receipt-derived owner revokes only grants in its own organization",
+        "parameters": [
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[\\x20-\\x7e]{8,128}$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,18}\"$",
+              "description": "Strong quoted decimal PostgreSQL bigint version."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityGrantRevocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CMS capability grant revoked",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the canonical affected object.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "description": "Canonical URL of the created or accepted resource.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsCapabilityGrantResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Content schema request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication or recent step-up verification is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CmsUnauthenticatedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CmsStepUpRequiredError"
+                    }
+                  ]
                 }
               }
             }
@@ -25617,6 +28290,245 @@
         ],
         "additionalProperties": false
       },
+      "MfaFactorRemoveApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "factorId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "headers": {
+            "type": "object",
+            "properties": {
+              "idempotencyKey": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 128,
+                "pattern": "^[\\x20-\\x7e]+$"
+              },
+              "ifMatch": {
+                "type": "string",
+                "pattern": "^\"[1-9][0-9]{0,18}\"$"
+              },
+              "xCsrfToken": {
+                "type": "string",
+                "minLength": 16,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "idempotencyKey",
+              "ifMatch",
+              "xCsrfToken"
+            ],
+            "additionalProperties": false
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "user_request",
+                  "factor_compromise"
+                ]
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "factorId",
+          "headers",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "MfaFactorVerifyApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "factorId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "headers": {
+            "type": "object",
+            "properties": {
+              "ifMatch": {
+                "type": "string",
+                "pattern": "^\"[1-9][0-9]{0,18}\"$"
+              },
+              "xCsrfToken": {
+                "type": "string",
+                "minLength": 16,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "ifMatch",
+              "xCsrfToken"
+            ],
+            "additionalProperties": false
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[0-9]{6}$"
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "factorId",
+          "headers",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "MfaFactorsResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "factors": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "method": {
+                  "type": "string",
+                  "enum": [
+                    "totp"
+                  ]
+                },
+                "friendlyName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "verified",
+                    "reconciling"
+                  ]
+                },
+                "verifiedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "lastUsedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pendingExpiresAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "method",
+                "friendlyName",
+                "state",
+                "verifiedAt",
+                "lastUsedAt",
+                "pendingExpiresAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "allowedMethods": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "totp"
+              ]
+            }
+          },
+          "stepUp": {
+            "type": "object",
+            "properties": {
+              "fresh": {
+                "type": "boolean"
+              },
+              "freshUntil": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "fresh",
+              "freshUntil"
+            ],
+            "additionalProperties": false
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          }
+        },
+        "required": [
+          "factors",
+          "allowedMethods",
+          "stepUp",
+          "version"
+        ],
+        "additionalProperties": false
+      },
       "OAuthStartRequest": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -25938,6 +28850,269 @@
           "headers",
           "body",
           "claimId"
+        ],
+        "additionalProperties": false
+      },
+      "StepUpChallengeApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "headers": {
+            "type": "object",
+            "properties": {
+              "xCsrfToken": {
+                "type": "string",
+                "minLength": 16,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "xCsrfToken"
+            ],
+            "additionalProperties": false
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "totp"
+                ]
+              },
+              "factorId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "method"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "headers",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "StepUpChallenge": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "totp"
+            ]
+          },
+          "factorId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "friendlyName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "challengeId",
+          "method",
+          "factorId",
+          "friendlyName",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "StepUpResult": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "verified": {
+            "type": "boolean",
+            "const": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "totp"
+            ]
+          },
+          "stepUpAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "freshUntil": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "verified",
+          "method",
+          "stepUpAt",
+          "freshUntil"
+        ],
+        "additionalProperties": false
+      },
+      "StepUpVerifyApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "headers": {
+            "type": "object",
+            "properties": {
+              "xCsrfToken": {
+                "type": "string",
+                "minLength": 16,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "xCsrfToken"
+            ],
+            "additionalProperties": false
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[0-9]{6}$"
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "challengeId",
+          "headers",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "TotpEnrollmentStartApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "headers": {
+            "type": "object",
+            "properties": {
+              "ifMatch": {
+                "type": "string",
+                "pattern": "^\"[1-9][0-9]{0,18}\"$"
+              },
+              "xCsrfToken": {
+                "type": "string",
+                "minLength": 16,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "ifMatch",
+              "xCsrfToken"
+            ],
+            "additionalProperties": false
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "totp"
+                ]
+              },
+              "friendlyName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "method",
+              "friendlyName"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "headers",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "TotpEnrollmentStart": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "factorId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "totp"
+            ]
+          },
+          "friendlyName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "otpauthUri": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^otpauth:\\/\\/totp\\/"
+          },
+          "manualEntryKey": {
+            "type": "string",
+            "pattern": "^[A-Z2-7]{26,128}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          }
+        },
+        "required": [
+          "factorId",
+          "method",
+          "friendlyName",
+          "otpauthUri",
+          "manualEntryKey",
+          "expiresAt",
+          "version"
         ],
         "additionalProperties": false
       },
@@ -29857,6 +33032,30 @@
           "withdrawn"
         ]
       },
+      "CmsCapabilityGrantLastAction": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "granted",
+          "renewed",
+          "revoked"
+        ]
+      },
+      "CmsCapabilityGrantReason": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "CmsCapabilityGrantState": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "active",
+          "lapsed",
+          "revoked"
+        ]
+      },
       "CmsCompatibility": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
@@ -29888,6 +33087,15 @@
           "superseded",
           "retired",
           "blocked"
+        ]
+      },
+      "CmsDryRunClassification": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "additive",
+          "conditional",
+          "breaking"
         ]
       },
       "CmsFieldKind": {
@@ -30004,6 +33212,11 @@
           "rejected",
           "invalidated"
         ]
+      },
+      "CmsUtcDate": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
       },
       "FieldConstraints": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -30301,6 +33514,27 @@
           "order"
         ],
         "additionalProperties": false
+      },
+      "GrantableCmsCapability": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "enum": [
+          "cms.schema_registry.read",
+          "cms.schema_designer",
+          "cms.template_designer",
+          "cms.taxonomy_curator",
+          "cms.author",
+          "cms.editor",
+          "cms.reviewer",
+          "cms.reviewer.policy",
+          "cms.reviewer.legal",
+          "cms.reviewer.security",
+          "cms.reviewer.financial",
+          "cms.publisher",
+          "cms.navigation_editor",
+          "cms.media_contributor",
+          "cms.media_curator"
+        ]
       },
       "OpaqueRelationPlaceholder": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -31027,6 +34261,166 @@
             ]
           }
         }
+      },
+      "CapabilityGrantRenewalRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "validThrough": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "validThrough"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityGrantRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "subjectPersonId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "capability": {
+            "type": "string",
+            "enum": [
+              "cms.schema_registry.read",
+              "cms.schema_designer",
+              "cms.template_designer",
+              "cms.taxonomy_curator",
+              "cms.author",
+              "cms.editor",
+              "cms.reviewer",
+              "cms.reviewer.policy",
+              "cms.reviewer.legal",
+              "cms.reviewer.security",
+              "cms.reviewer.financial",
+              "cms.publisher",
+              "cms.navigation_editor",
+              "cms.media_contributor",
+              "cms.media_curator"
+            ]
+          },
+          "validThrough": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "subjectPersonId",
+          "capability",
+          "validThrough"
+        ],
+        "additionalProperties": false
+      },
+      "CapabilityGrantRevocationRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "CmsCapabilityGrantListQuery": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "subjectPersonId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "capability": {
+            "type": "string",
+            "enum": [
+              "cms.schema_registry.read",
+              "cms.schema_designer",
+              "cms.template_designer",
+              "cms.taxonomy_curator",
+              "cms.author",
+              "cms.editor",
+              "cms.reviewer",
+              "cms.reviewer.policy",
+              "cms.reviewer.legal",
+              "cms.reviewer.security",
+              "cms.reviewer.financial",
+              "cms.publisher",
+              "cms.navigation_editor",
+              "cms.media_contributor",
+              "cms.media_curator"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "lapsed",
+              "revoked"
+            ]
+          },
+          "limit": {
+            "default": 25,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "sort": {
+            "default": "updatedAt",
+            "type": "string",
+            "enum": [
+              "updatedAt",
+              "validThrough"
+            ]
+          },
+          "direction": {
+            "default": "desc",
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "ContentSchemaRegistryDetailParams": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -32251,6 +35645,268 @@
         ],
         "additionalProperties": false
       },
+      "CmsCapabilityGrantListPage": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "items": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "version": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "contentHash": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "resourceKind": {
+                  "type": "string",
+                  "const": "cms_capability_grant"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "lapsed",
+                    "revoked"
+                  ]
+                },
+                "subjectPersonId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "capability": {
+                  "type": "string",
+                  "enum": [
+                    "cms.schema_registry.read",
+                    "cms.schema_designer",
+                    "cms.template_designer",
+                    "cms.taxonomy_curator",
+                    "cms.author",
+                    "cms.editor",
+                    "cms.reviewer",
+                    "cms.reviewer.policy",
+                    "cms.reviewer.legal",
+                    "cms.reviewer.security",
+                    "cms.reviewer.financial",
+                    "cms.publisher",
+                    "cms.navigation_editor",
+                    "cms.media_contributor",
+                    "cms.media_curator"
+                  ]
+                },
+                "validFrom": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+                },
+                "validThrough": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "lastAction": {
+                  "type": "string",
+                  "enum": [
+                    "granted",
+                    "renewed",
+                    "revoked"
+                  ]
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "contentHash",
+                "createdAt",
+                "updatedAt",
+                "resourceKind",
+                "state",
+                "subjectPersonId",
+                "capability",
+                "validFrom",
+                "validThrough",
+                "endsAt",
+                "lastAction",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "CmsCapabilityGrantResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "resourceKind": {
+            "type": "string",
+            "const": "cms_capability_grant"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "lapsed",
+              "revoked"
+            ]
+          },
+          "subjectPersonId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "capability": {
+            "type": "string",
+            "enum": [
+              "cms.schema_registry.read",
+              "cms.schema_designer",
+              "cms.template_designer",
+              "cms.taxonomy_curator",
+              "cms.author",
+              "cms.editor",
+              "cms.reviewer",
+              "cms.reviewer.policy",
+              "cms.reviewer.legal",
+              "cms.reviewer.security",
+              "cms.reviewer.financial",
+              "cms.publisher",
+              "cms.navigation_editor",
+              "cms.media_contributor",
+              "cms.media_curator"
+            ]
+          },
+          "validFrom": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+          },
+          "validThrough": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "lastAction": {
+            "type": "string",
+            "enum": [
+              "granted",
+              "renewed",
+              "revoked"
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "contentHash",
+          "createdAt",
+          "updatedAt",
+          "resourceKind",
+          "state",
+          "subjectPersonId",
+          "capability",
+          "validFrom",
+          "validThrough",
+          "endsAt",
+          "lastAction",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "ContentSchemaRegistryDetail": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "readOnly": true,
@@ -33146,68 +36802,75 @@
                 ]
               },
               "templateCompatibility": {
-                "type": "object",
-                "properties": {
-                  "templateVersionId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "templateVersionId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "templateKey": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                      },
+                      "templateVersionNo": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "draft",
+                          "review",
+                          "approved",
+                          "scheduled",
+                          "active",
+                          "superseded",
+                          "retired"
+                        ]
+                      },
+                      "compatible": {
+                        "type": "boolean",
+                        "const": true
+                      },
+                      "withdrawn": {
+                        "type": "boolean",
+                        "const": false
+                      },
+                      "templateDigest": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "contentTypeId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "contentTypeVersionId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      }
+                    },
+                    "required": [
+                      "templateVersionId",
+                      "templateKey",
+                      "templateVersionNo",
+                      "state",
+                      "compatible",
+                      "withdrawn",
+                      "templateDigest",
+                      "contentTypeId",
+                      "contentTypeVersionId"
+                    ],
+                    "additionalProperties": false
                   },
-                  "templateKey": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9._-]{0,127}$"
-                  },
-                  "templateVersionNo": {
-                    "type": "string",
-                    "pattern": "^[1-9][0-9]{0,18}$"
-                  },
-                  "state": {
-                    "type": "string",
-                    "enum": [
-                      "draft",
-                      "review",
-                      "approved",
-                      "scheduled",
-                      "active",
-                      "superseded",
-                      "retired"
-                    ]
-                  },
-                  "compatible": {
-                    "type": "boolean",
-                    "const": true
-                  },
-                  "withdrawn": {
-                    "type": "boolean",
-                    "const": false
-                  },
-                  "templateDigest": {
-                    "type": "string",
-                    "pattern": "^[a-f0-9]{64}$"
-                  },
-                  "contentTypeId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "contentTypeVersionId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  {
+                    "type": "null"
                   }
-                },
-                "required": [
-                  "templateVersionId",
-                  "templateKey",
-                  "templateVersionNo",
-                  "state",
-                  "compatible",
-                  "withdrawn",
-                  "templateDigest",
-                  "contentTypeId",
-                  "contentTypeVersionId"
-                ],
-                "additionalProperties": false
+                ]
               },
               "permittedNextActions": {
                 "readOnly": true,
@@ -35547,68 +39210,75 @@
             ]
           },
           "templateCompatibility": {
-            "type": "object",
-            "properties": {
-              "templateVersionId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "templateVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "templateKey": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                  },
+                  "templateVersionNo": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "review",
+                      "approved",
+                      "scheduled",
+                      "active",
+                      "superseded",
+                      "retired"
+                    ]
+                  },
+                  "compatible": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "withdrawn": {
+                    "type": "boolean",
+                    "const": false
+                  },
+                  "templateDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "contentTypeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "contentTypeVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "templateVersionId",
+                  "templateKey",
+                  "templateVersionNo",
+                  "state",
+                  "compatible",
+                  "withdrawn",
+                  "templateDigest",
+                  "contentTypeId",
+                  "contentTypeVersionId"
+                ],
+                "additionalProperties": false
               },
-              "templateKey": {
-                "type": "string",
-                "pattern": "^[a-z][a-z0-9._-]{0,127}$"
-              },
-              "templateVersionNo": {
-                "type": "string",
-                "pattern": "^[1-9][0-9]{0,18}$"
-              },
-              "state": {
-                "type": "string",
-                "enum": [
-                  "draft",
-                  "review",
-                  "approved",
-                  "scheduled",
-                  "active",
-                  "superseded",
-                  "retired"
-                ]
-              },
-              "compatible": {
-                "type": "boolean",
-                "const": true
-              },
-              "withdrawn": {
-                "type": "boolean",
-                "const": false
-              },
-              "templateDigest": {
-                "type": "string",
-                "pattern": "^[a-f0-9]{64}$"
-              },
-              "contentTypeId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "contentTypeVersionId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "templateVersionId",
-              "templateKey",
-              "templateVersionNo",
-              "state",
-              "compatible",
-              "withdrawn",
-              "templateDigest",
-              "contentTypeId",
-              "contentTypeVersionId"
-            ],
-            "additionalProperties": false
+            ]
           },
           "permittedNextActions": {
             "readOnly": true,
@@ -35904,8 +39574,7 @@
             "enum": [
               "additive",
               "conditional",
-              "breaking",
-              "unknown"
+              "breaking"
             ]
           },
           "attemptId": {
@@ -36794,6 +40463,127 @@
           "position",
           "version",
           "state"
+        ],
+        "additionalProperties": false
+      },
+      "CmsStepUpRequiredDetails": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "recoveryAction": {
+            "type": "string",
+            "const": "step_up"
+          },
+          "allowedMethods": {
+            "readOnly": true,
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        },
+        "required": [
+          "recoveryAction",
+          "allowedMethods"
+        ],
+        "additionalProperties": false
+      },
+      "CmsStepUpRequiredError": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "const": "STEP_UP_REQUIRED"
+          },
+          "details": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "recoveryAction": {
+                "type": "string",
+                "const": "step_up"
+              },
+              "allowedMethods": {
+                "readOnly": true,
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              }
+            },
+            "required": [
+              "recoveryAction",
+              "allowedMethods"
+            ],
+            "additionalProperties": false
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "code",
+          "details",
+          "message",
+          "requestId"
+        ],
+        "additionalProperties": false
+      },
+      "CmsUnauthenticatedError": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "const": "UNAUTHENTICATED"
+          },
+          "details": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "recoveryAction": {
+                "type": "string",
+                "const": "reauthenticate"
+              }
+            },
+            "required": [
+              "recoveryAction"
+            ],
+            "additionalProperties": false
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "code",
+          "details",
+          "message",
+          "requestId"
         ],
         "additionalProperties": false
       }

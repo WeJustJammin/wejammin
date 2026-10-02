@@ -17,29 +17,73 @@ const digestHex = async (value: BufferSource): Promise<string> =>
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
 
+/** The decision that leaves the least room: refused first, then fewest remaining. */
+const stricterDecision = (
+  first: RateLimitDecision,
+  second: RateLimitDecision,
+): RateLimitDecision => {
+  if (first.allowed !== second.allowed) return first.allowed ? second : first;
+  if (first.remaining !== second.remaining)
+    return first.remaining < second.remaining ? first : second;
+  return first.limit <= second.limit ? first : second;
+};
+
+/**
+ * Enforces the per-user bucket and, for a human with an acting party, the
+ * per-party bucket (BE03a rate rows). The party bucket is keyed by party only:
+ * no user id, a distinct digest, and the route's party limit. A user refused
+ * by their own bucket is not charged to the party. If the party bucket cannot
+ * be evaluated the request fails closed.
+ */
 const authRateLimiter = (
   options: ContentSchemaRegistryProductionOptions,
 ): ContentSchemaRegistryDependencies['rateLimit'] | undefined => {
   const limiter = options.auth?.rateLimit;
   if (limiter === undefined) return undefined;
   return async (input, signal) => {
-    const identifierDigest = await digestHex(
-      new TextEncoder().encode(`${input.principalClass}:${input.actorId}`),
+    const bucket = async (
+      authUserId: string | null,
+      identifier: string,
+      limit: number,
+    ): Promise<ContentSchemaRegistryResult<RateLimitDecision>> =>
+      mapAuthResult(
+        await limiter(
+          {
+            operationId: input.operationId,
+            request: input.request,
+            authUserId,
+            actingPartyId: input.actingPartyId,
+            identifierDigest: await digestHex(
+              new TextEncoder().encode(identifier),
+            ),
+            limit,
+            windowSeconds: input.windowSeconds,
+          },
+          options.environment,
+          signal,
+        ),
+      );
+    const user = await bucket(
+      input.principalClass === 'human' ? input.actorId : null,
+      `${input.principalClass}:${input.actorId}`,
+      input.limit,
     );
-    const result = await limiter(
-      {
-        operationId: input.operationId,
-        request: input.request,
-        authUserId: input.principalClass === 'human' ? input.actorId : null,
-        actingPartyId: input.actingPartyId,
-        identifierDigest,
-        limit: input.limit,
-        windowSeconds: input.windowSeconds,
-      },
-      options.environment,
-      signal,
+    if (
+      !user.ok ||
+      !user.value.allowed ||
+      input.principalClass !== 'human' ||
+      input.actingPartyId === null ||
+      input.partyLimit === undefined
+    )
+      return user;
+    const party = await bucket(
+      null,
+      `party:${input.actingPartyId}`,
+      input.partyLimit,
     );
-    return mapAuthResult(result);
+    return party.ok
+      ? { ok: true, value: stricterDecision(user.value, party.value) }
+      : party;
   };
 };
 

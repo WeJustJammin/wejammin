@@ -24,9 +24,9 @@ import {
   block,
   activation,
   lifecycleEvent,
-  detail,
   ok,
 } from './phase-02-slice-09-test-values';
+import { detailWithPreparation } from './phase-02-slice-09-dec108-test-values';
 export * from './phase-02-slice-09-test-values';
 
 export type PortMocks = Record<
@@ -124,7 +124,7 @@ export const makeHarness = (
     registerBlock: block,
     advanceBlockLifecycle: lifecycleEvent,
     listContentTypes: { items: [resource, safeBlock], nextCursor: null },
-    getContentTypeVersion: detail,
+    getContentTypeVersion: detailWithPreparation,
   };
   const names = [
     'createTypeDraft',

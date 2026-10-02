@@ -92,6 +92,31 @@ tests for these live in `routes-review.test.ts`,
 `openapi-tuple.test.ts`; `review-fixtures.test-support.ts` holds their shared
 valid fixtures.
 
+CMS-03A-13 declares `capabilityMode: 'any_of'` (submitter/schema-designer scope
+or assigned review-only scope); `routeCapabilitiesSatisfied` in
+`route-policy.ts` is the one evaluation of that field, and generated OpenAPI
+carries it as `x-capability-mode`. Every `stepUp: 'required'` route publishes
+its 401 as the exact union of `CmsUnauthenticatedErrorSchema`
+(`reauthenticate`) and `CmsStepUpRequiredErrorSchema` (`step_up`) and emits
+`x-step-up: required`; `openapi-errors.ts` builds the package documents and
+`infra/openapi-definitions.mjs` plus `infra/openapi-document.mjs` build the
+canonical one. `SchemaReviewResourceSchema` refuses frozen evidence that names
+another candidate version or dry run, or a frozen dry run that is not
+completed and passed with a report hash (`resources-review-binding.test.ts`).
+
+The DEC-119 owner CMS capability grant operations CMS-03A-15 through
+CMS-03A-18 (grant, renew, revoke, list) are declared in
+`route-policy-grants.ts` and `routes-grants.ts`. The owner is derived from the
+immutable owner initialization receipt, so these routes carry the `cms_owner`
+auth class and no capability key. `models-grants.ts` holds the closed
+`GRANTABLE_CMS_CAPABILITIES` registry (extended only by code plus a forward
+migration), the derived grant states, and the UTC-date helpers;
+`requests-grants.ts` and `resources-grants.ts` hold the strict requests, the
+list query, and `CmsCapabilityGrantResourceSchema`. The owner may grant any
+grantable capability, including to itself, so no self-grant refusal code
+exists. Their tests are `grants.contract.test.ts`, `routes-grants.test.ts`, and
+`step-up-openapi.test.ts`.
+
 ## Ownership
 
 These schemas define the cross-surface boundary. They do not grant authority,

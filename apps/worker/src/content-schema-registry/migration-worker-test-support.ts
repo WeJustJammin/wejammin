@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 
 import {
+  SCHEMA_MIGRATION_RPC,
   type MigrationPlanRecord,
   type MigrationWorkerPort,
   type SchemaMigrationRpcName,
@@ -69,7 +70,7 @@ export const basePlan = (
   migratedCount: '0',
   failedCount: '0',
   classification: 'breaking',
-  transformKey: 'article.v2',
+  transformKey: 'identity.revalidate',
   transformVersion: '1',
   compilerHash: HASH,
   sourceHash: HASH,
@@ -86,6 +87,15 @@ type Handler = (
   signal: AbortSignal,
 ) => unknown | Promise<unknown>;
 
+/** The worker reads source rows before every batch; a port without rows serves an empty finished page. */
+export const emptySourcePage = (
+  request: unknown,
+): Readonly<{ rows: []; nextCursor: string; done: true }> => ({
+  rows: [],
+  nextCursor: String((request as { cursor?: unknown }).cursor ?? '0'),
+  done: true,
+});
+
 export const makePort = (
   handlers: Partial<Record<SchemaMigrationRpcName, Handler>> = {},
 ): MigrationWorkerPort & {
@@ -100,7 +110,10 @@ export const makePort = (
     ) => {
       calls.push({ rpc, request });
       const handler = handlers[rpc];
-      if (handler === undefined) return {};
+      if (handler === undefined)
+        return rpc === SCHEMA_MIGRATION_RPC.readSourceRows
+          ? emptySourcePage(request)
+          : {};
       return handler(request, signal);
     },
   );

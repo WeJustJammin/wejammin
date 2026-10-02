@@ -164,7 +164,11 @@ describe('Phase 2 Slice 02 login methods and account merge RED acceptance', () =
       undefined,
       bindings,
     );
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'STEP_UP_REQUIRED',
+      details: { recoveryAction: 'step_up', allowedMethods: ['totp'] },
+    });
     expect(slice.unlinkLoginMethod).not.toHaveBeenCalled();
   });
 
@@ -182,7 +186,7 @@ describe('Phase 2 Slice 02 login methods and account merge RED acceptance', () =
     expect(await response.text()).not.toContain(IDENTITY_ID);
   });
 
-  it('P2-S02-AC-003 keeps the complete AUTH-API-09 through AUTH-API-15 policy set locked', () => {
+  it('P2-S02-AC-003 keeps the complete AUTH-API-09 through AUTH-API-21 policy set locked', () => {
     expect(
       authRoutePolicies
         .filter(({ operationId }) => Number(operationId.slice(-2)) >= 9)
@@ -199,6 +203,12 @@ describe('Phase 2 Slice 02 login methods and account merge RED acceptance', () =
       { operationId: 'AUTH-API-13', rateLimit: 300, timeoutMs: 8_000 },
       { operationId: 'AUTH-API-14', rateLimit: 5, timeoutMs: 15_000 },
       { operationId: 'AUTH-API-15', rateLimit: 10, timeoutMs: 15_000 },
+      { operationId: 'AUTH-API-16', rateLimit: 300, timeoutMs: 8_000 },
+      { operationId: 'AUTH-API-17', rateLimit: 5, timeoutMs: 15_000 },
+      { operationId: 'AUTH-API-18', rateLimit: 10, timeoutMs: 15_000 },
+      { operationId: 'AUTH-API-19', rateLimit: 5, timeoutMs: 15_000 },
+      { operationId: 'AUTH-API-20', rateLimit: 10, timeoutMs: 8_000 },
+      { operationId: 'AUTH-API-21', rateLimit: 10, timeoutMs: 8_000 },
     ]);
   });
 });

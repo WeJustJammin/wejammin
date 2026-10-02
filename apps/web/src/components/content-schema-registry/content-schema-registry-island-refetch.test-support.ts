@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import type { ContentSchemaRegistryWorkbenchIslandProps } from './ContentSchemaRegistryWorkbenchIsland';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
+import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
 
 /** Shared fixtures/helpers for the island canonical-refetch test suites. */
 
@@ -67,6 +68,7 @@ export const DETAIL = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [],
+  activationPreparation: emptyActivationPreparation,
 };
 
 export const workbenchProps = (

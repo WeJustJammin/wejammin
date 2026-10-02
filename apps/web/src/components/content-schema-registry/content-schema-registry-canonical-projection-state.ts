@@ -4,6 +4,7 @@ import type {
   ContentSchemaRegistryAccess,
   ContentSchemaRegistryDetailState,
   ContentSchemaRegistryListState,
+  ContentSchemaRegistryReviewState,
   ContentSchemaRegistryVariant,
 } from './content-schema-registry-types';
 
@@ -11,10 +12,9 @@ import type {
 export interface ContentSchemaRegistryProjectionState {
   readonly access: ContentSchemaRegistryAccess;
   readonly variant: ContentSchemaRegistryVariant;
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
   readonly initialList: ContentSchemaRegistryListState;
   readonly initialDetail: ContentSchemaRegistryDetailState | null;
+  readonly initialReview: ContentSchemaRegistryReviewState | null;
   readonly actingContextLabel?: string;
   readonly stepUpState?: ContentSchemaRegistryStepUpState;
   readonly stepUpFreshUntil?: string;
@@ -23,20 +23,18 @@ export interface ContentSchemaRegistryProjectionState {
 export const initialProjectionState = (props: {
   readonly access: ContentSchemaRegistryAccess;
   readonly variant: ContentSchemaRegistryVariant;
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
   readonly initialList: ContentSchemaRegistryListState;
   readonly initialDetail: ContentSchemaRegistryDetailState | null;
+  readonly initialReview?: ContentSchemaRegistryReviewState | null | undefined;
   readonly actingContextLabel?: string;
   readonly stepUpState?: ContentSchemaRegistryStepUpState;
   readonly stepUpFreshUntil?: string;
 }): ContentSchemaRegistryProjectionState => ({
   access: props.access,
   variant: props.variant,
-  actorId: props.actorId,
-  actingPartyId: props.actingPartyId,
   initialList: props.initialList,
   initialDetail: props.initialDetail,
+  initialReview: props.initialReview ?? null,
   ...(props.actingContextLabel === undefined
     ? {}
     : { actingContextLabel: props.actingContextLabel }),
@@ -54,10 +52,9 @@ export const applyProjection = (
 ): ContentSchemaRegistryProjectionState => ({
   access: projection.access,
   variant: projection.variant,
-  actorId: projection.actorId,
-  actingPartyId: projection.actingPartyId,
   initialList: projection.initialList,
   initialDetail: projection.initialDetail,
+  initialReview: projection.initialReview,
   ...(projection.actingContextLabel === undefined
     ? {}
     : { actingContextLabel: projection.actingContextLabel }),
@@ -79,4 +76,6 @@ export const toDisabledProjection = (
   initialList: { status: 'disabled', reason },
   initialDetail:
     current.initialDetail === null ? null : { status: 'disabled', reason },
+  initialReview:
+    current.initialReview === null ? null : { status: 'disabled', reason },
 });

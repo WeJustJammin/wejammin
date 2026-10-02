@@ -1,3 +1,4 @@
+import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
 export const ACTOR_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132d8';
 export const PARTY_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132d9';
 export const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
@@ -74,4 +75,5 @@ export const detail = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [],
+  activationPreparation: emptyActivationPreparation,
 } as const;

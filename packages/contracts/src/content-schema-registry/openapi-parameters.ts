@@ -89,6 +89,57 @@ export const listQueryParameters = (
   },
 ];
 
+export const capabilityGrantListQueryParameters = (
+  contracts: Readonly<Record<string, z.ZodTypeAny>>,
+): ReadonlyArray<Record<string, unknown>> => [
+  {
+    name: 'subjectPersonId',
+    in: 'query',
+    required: false,
+    schema: { type: 'string', format: 'uuid' },
+  },
+  {
+    name: 'capability',
+    in: 'query',
+    required: false,
+    schema: schemaReference('GrantableCmsCapabilitySchema', contracts),
+  },
+  {
+    name: 'state',
+    in: 'query',
+    required: false,
+    schema: schemaReference('CmsCapabilityGrantStateSchema', contracts),
+  },
+  {
+    name: 'limit',
+    in: 'query',
+    required: false,
+    schema: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+  },
+  {
+    name: 'cursor',
+    in: 'query',
+    required: false,
+    schema: { type: 'string', minLength: 1, maxLength: 512 },
+  },
+  {
+    name: 'sort',
+    in: 'query',
+    required: false,
+    schema: {
+      type: 'string',
+      enum: ['updatedAt', 'validThrough'],
+      default: 'updatedAt',
+    },
+  },
+  {
+    name: 'direction',
+    in: 'query',
+    required: false,
+    schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+  },
+];
+
 export const mutationHeaderParameters = (
   route: ContentSchemaRegistryRoutePolicy,
 ): ReadonlyArray<Record<string, unknown>> => {

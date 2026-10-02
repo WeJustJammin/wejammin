@@ -27,6 +27,7 @@ import type {
   ContentSchemaRegistryResult,
   ResolveInput,
 } from './content-schema-registry-context-presentation';
+import { readContentSchemaRegistryReview } from './content-schema-registry-review-state';
 import {
   genericDegradedResult,
   platformFailure,
@@ -262,6 +263,14 @@ export const resolveContentSchemaRegistryPage = async (
     ) {
       return { kind: 'not_found' };
     }
+    const review = await readContentSchemaRegistryReview({
+      ports: input.ports,
+      request: input.request,
+      session,
+      authority,
+      reviewId: parsed.data.activationPreparation.reviewRef?.id ?? null,
+      requestId: input.requestId,
+    });
     return {
       kind: 'authorized',
       page: pageFor({
@@ -272,6 +281,7 @@ export const resolveContentSchemaRegistryPage = async (
         query: queryResult.data,
         list: { status: 'empty', reason: 'no-records' },
         detail: detailState(parsed.data),
+        review,
         contentTypeId,
         versionId,
         state: 'ready',

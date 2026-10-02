@@ -53,28 +53,31 @@ their existing `config_change_review` and `config_approval` ownership.
 
 ### Portability, Quality, and Lifecycle
 
-| Model                    | Fields and constraints                                                                                                                                                      |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `import_job`             | `id, source_format/version, object_id, target_scope, mapping_version, duplicate_policy, state, cursor, counts, dry_run/quarantine refs, actor/context, version`.            |
-| `export_artifact`        | `id, export_type, scope_manifest, field_manifest, object_id, checksum, encryption_ref?, expires_at, max/download_count, state, actor/context, version`.                     |
-| `restore_verification`   | `id, source_artifact/backup, target_environment, schema/count/hash/reference/RLS/render/a11y results, state, reviewer, completed_at, version`.                              |
-| `quality_check_run`      | `id, checker_key/version, target_type/id/version, state, findings jsonb, blocking_count, evidence_ref?, run_at`; findings schema bounded.                                   |
-| `data_lifecycle_request` | `id, request_type archive\|delete\|anonymize\|hold\|release_hold\|erasure, requester/subject, scope, verification, store_manifest, conflict/decision refs, state, version`. |
-| `lifecycle_store_result` | `request_id, store/processor, item_count, action, state, evidence_ref, attempted/completed_at, error_code?`; unique request/store/action.                                   |
+| Model                    | Fields and constraints                                                                                                                                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `import_job`             | `id, source_format/version, object_id, mapper_key, mapping_version, target_scope, field_manifest, duplicate_policy, state, cursor, row_count, counts, dry_run_report/report_hash, quarantine ref, failure_code, approved_by/at, actor/context, version`.                                                                                         |
+| `import_row_result`      | `job_id, row_index, source_row_id, natural_key_hash, row_hash, classification create\|update\|duplicate\|conflict\|quarantine\|unsupported\|blocked, rule_code?, state planned\|committed\|quarantined\|blocked\|failed, target_type/id/version?`; unique job/row_index; no source bytes.                                                        |
+| `export_artifact`        | `id, export_type, scope_manifest, field_manifest, object_id?, checksum?, manifest_hash?, byte_size?, encryption_mode, encryption_ref?, contains_protected, expires_at, max/download_count, state, failure_code?, actor/context, version`; checksum, manifest hash, size and encryption reference are required once `ready`.                      |
+| `restore_verification`   | `id, source_artifact, evidence_version, check_set_version, target_environment, schema/count/hash/reference/RLS/render/a11y/secret results, attempt_count, lease expiry/token digest, verifier ref, failure_code?, state, reviewer (none in Phase 2), completed_at, version`; `verified` requires every result pass and a matching manifest hash. |
+| `quality_check_run`      | `id, checker_key/version, target_type/id/version, state requested\|running\|healthy\|blocked\|stale\|failed, findings jsonb (QualityFinding document, at most 500), blocking/warning counts, input_hash, timeout_ms, failure_code?, evidence_ref?, run_at, expires_at`; findings schema bounded.                                                 |
+| `data_lifecycle_request` | `id, request_type archive\|delete\|anonymize\|hold\|release_hold\|erasure, requester/subject, scope, verification, store_manifest, conflict/decision refs, state, version`.                                                                                                                                                                      |
+| `lifecycle_store_result` | `request_id, store/processor, item_count, action, state, evidence_ref, attempted/completed_at, error_code?`; unique request/store/action.                                                                                                                                                                                                        |
 
 ## State Machines
 
-| Aggregate         | Allowed transitions                                                                                                               |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Definition        | `draft → active → deprecated → retired`; key never reused; retired definitions remain readable for history.                       |
-| Value/change      | `draft → review → approved → scheduled\|active → superseded\|rolled_back`; changed hash/authority invalidates review.             |
-| Flag              | `draft → active → paused\|expired\|retired`; absent/expired evaluates fallback.                                                   |
-| Experiment        | `draft → approved → running → paused\|stopped\|completed`; assignment immutable per user/cohort/version.                          |
-| Kill activation   | `requested → active → resolving → ended`; emergency failure still records/reconciles canonical evidence.                          |
-| Capability grant  | `pending → active → expired\|revoked`; revocation immediate, no restoration without new grant.                                    |
-| Bulk/import       | `draft → dry_run → approved → running → completed\|partial\|failed\|cancelled`; resumes exact target/cursor only.                 |
-| Export            | `requested → generating → ready → expired\|revoked\|failed`; expiry/revoke removes delivery before bytes.                         |
-| Lifecycle request | `requested → verifying → planned → approved\|blocked → executing → completed\|partial\|failed`; hold conflict may remain blocked. |
+| Aggregate         | Allowed transitions                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Definition        | `draft → active → deprecated → retired`; key never reused; retired definitions remain readable for history.                                                                                                   |
+| Value/change      | `draft → review → approved → scheduled\|active → superseded\|rolled_back`; changed hash/authority invalidates review.                                                                                         |
+| Flag              | `draft → active → paused\|expired\|retired`; absent/expired evaluates fallback.                                                                                                                               |
+| Experiment        | `draft → approved → running → paused\|stopped\|completed`; assignment immutable per user/cohort/version.                                                                                                      |
+| Kill activation   | `requested → active → resolving → ended`; emergency failure still records/reconciles canonical evidence.                                                                                                      |
+| Capability grant  | `pending → active → expired\|revoked`; revocation immediate, no restoration without new grant.                                                                                                                |
+| Bulk/import       | `draft → dry_run → approved → running → completed\|partial\|failed\|cancelled`; resumes exact target/cursor only. An import commit names the dry-run report hash and cancel is valid before a terminal state. |
+| Export            | `requested → generating → ready → expired\|revoked\|failed`; expiry/revoke removes delivery before bytes; every download claim rechecks state, expiry, revocation and count.                                  |
+| Restore           | `requested → restoring → verifying → verified\|failed`; an isolated verifier leases and reports, the server derives the terminal state, and `verified` needs all eight checks to pass.                        |
+| Quality run       | `requested → running → healthy\|blocked\|failed`; `healthy\|blocked → stale` when the checker version, input hash or freshness window no longer matches.                                                      |
+| Lifecycle request | `requested → verifying → planned → approved\|blocked → executing → completed\|partial\|failed`; hold conflict may remain blocked.                                                                             |
 
 ## Effective-Value Resolution
 
@@ -115,22 +118,23 @@ their existing `config_change_review` and `config_approval` ownership.
 
 ### Import
 
-1. Private upload and scan source; identify format/version/encoding.
-2. Map only supported CMS schemas, fields, terms, routes, media manifests and settings definitions/values.
-3. Validate every row/reference/value and classify create/update/duplicate/conflict/quarantine/unsupported.
-4. Dry run emits counts, sampled/bounded errors, route/media/rights/accessibility impact and target versions.
-5. Approved execution uses exact mapping/source hash and bounded batches; imported claims remain source-marked and cannot create authority/verification/consent/rights/money truth.
+1. Private upload through the governed object lifecycle: the source is a `ready` object (size, media type, SHA-256 and malware scan verified) within the Phase 2 plan-limit profile of 50 MiB; identify format/version/encoding.
+2. Map only through a registered mapper and mapping version over supported CMS schemas, fields, terms, routes, media manifests and settings definitions/values. Phase 2 registers a CMS-entry mapper and a settings-value mapper; any other row kind is unsupported.
+3. Validate every row/reference/value (at most 500 rows) and classify create/update/duplicate/conflict/quarantine/unsupported/blocked. Duplicates are classified against the ledger of previously committed rows, never by heuristic matching against canonical tables.
+4. Dry run emits counts, sampled/bounded errors, route/media/rights/accessibility impact and target versions, and a report hash.
+5. Approved execution is a separate explicit commit bound to the report hash; it uses exact mapping/source hash and bounded batches, writes drafts only through the owning domain's ordinary command, and quarantines any row whose target changed since the dry run. Imported claims remain source-marked and cannot create authority/verification/consent/rights/money truth.
 
 ### Export and Restore
 
-- Export compiler uses exact allowlisted scope/fields, canonical versions and referenced-object manifest; excludes secrets and unrelated protected evidence.
-- Artifact is encrypted where required, checksummed, short-lived, download-limited and audited; link/token possession does not replace authorization.
-- Restore runs only in isolated non-production target first, applies supported migrations, restores objects/metadata, then verifies schema, counts, hashes, references, RLS, representative rendering, accessibility and absence of secrets.
-- Supabase Free has no production PITR or RPO/RTO guarantee. Shard 00 therefore keeps protected writes closed; synthetic/local restore and CMS export are diagnostic portability evidence only and cannot open the recovery gate.
+- Export compiler uses exact allowlisted scope/fields, canonical versions and referenced-object manifest; excludes secrets and unrelated protected evidence. Phase 2 bundles carry object manifests, not object bytes.
+- Artifact is encrypted with a per-artifact data key under a managed key or a recipient public key, checksummed, short-lived (at most seven days), download-limited (one to three) and audited; link/token possession does not replace authorization, and the only delivery path is a download claim that rechecks grant, step-up, state, expiry, revocation and count atomically. Explicit revoke removes delivery before bytes.
+- Restore runs only in a registered isolated non-production target first. An isolated verifier pulls the request over an authenticated channel, restores the requested scope with per-resource restore adapters, then verifies schema, counts, hashes, references, RLS, rendering, accessibility and absence of secrets; the server alone derives `verified`, and any unknown or failed check keeps it failed.
+- Supabase Free has no production PITR or RPO/RTO guarantee. Shard 00 therefore keeps protected writes closed; synthetic/local restore and CMS export are diagnostic portability evidence only and cannot open the recovery gate. No production promotion command exists in Phase 2.
 
 ## Quality and Lifecycle Algorithms
 
 - Quality checker registry is code-owned/versioned; results are evidence against exact target/version and expire when target/checker dependency changes.
+- The Phase 2 accessibility checker runs in the Worker as pure structural checks over the `rich_text.v1` AST and the block/template registry: alt text and caption/transcript metadata from governed asset accessibility records, heading order and link text over the AST, and landmark/region labels from block accessibility manifests. It is bounded by a registered 100–2,000 ms timeout, returns bounded location-only findings with severity and rule, never audits a rendered DOM, and never replaces human review or build-time accessibility tests. Timeout or dependency failure fails the run; it is never healthy. Publish preflights always run the current checker version fresh.
 - Blocking set includes invalid structure/schema/reference, inaccessible required content/block, privacy/rights/legal/route blocker and failed required rendition. Readability/style are warnings unless explicit policy says otherwise.
 - Lifecycle planner enumerates canonical DB rows, revisions, projections, objects/renditions, caches/search/sitemap, exports/backups/processors and shared/third-party references.
 - Legal hold prevents destructive actions but does not grant broad access; held data is sealed/minimized and every access audited.
@@ -139,18 +143,21 @@ their existing `config_change_review` and `config_approval` ownership.
 
 ## Abuse and Recovery Verification
 
-| Threat/failure                   | Required proof                                                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Arbitrary key/secret/invariant   | Unknown definition, secret-like value, protected category and scope escalation reject before persistence. |
-| Authorization by flag            | Same user/party/resource remains denied by endpoint/RLS across all flag variants.                         |
-| Experiment discrimination        | Protected/private dimensions rejected; consent/eligibility/assignment tests deterministic.                |
-| Break-glass abuse                | MFA, reason, bounded scope/term, notification, evidence and automatic expiry/revocation tests pass.       |
-| Search/count leak                | Wrong capability cannot infer protected existence through result, snippet, facet or count.                |
-| Bulk mass overreach              | Execution target set equals dry-run manifest exactly; query drift cannot add items.                       |
-| Export exfiltration              | Field/scope allowlist, expiry/download/revocation and wrong-user/party tests deny.                        |
-| Restore false confidence         | Count-only success fails when RLS/reference/render/a11y checks fail.                                      |
-| Erasure destroys shared evidence | Conflict planner holds/minimizes/routes exception; no silent cascade.                                     |
-| Diagnostic false healthy         | timeout/unavailable/stale dependency yields unknown/stale, never healthy.                                 |
+| Threat/failure                   | Required proof                                                                                                                                                   |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Arbitrary key/secret/invariant   | Unknown definition, secret-like value, protected category and scope escalation reject before persistence.                                                        |
+| Authorization by flag            | Same user/party/resource remains denied by endpoint/RLS across all flag variants.                                                                                |
+| Experiment discrimination        | Protected/private dimensions rejected; consent/eligibility/assignment tests deterministic.                                                                       |
+| Break-glass abuse                | MFA, reason, bounded scope/term, notification, evidence and automatic expiry/revocation tests pass.                                                              |
+| Search/count leak                | Wrong capability cannot infer protected existence through result, snippet, facet or count.                                                                       |
+| Bulk mass overreach              | Execution target set equals dry-run manifest exactly; query drift cannot add items.                                                                              |
+| Export exfiltration              | Field/scope allowlist, expiry/download/revocation and wrong-user/party tests deny.                                                                               |
+| Restore false confidence         | Count-only success fails when RLS/reference/render/a11y checks fail.                                                                                             |
+| Download exhaustion or replay    | Concurrent or repeated claims never exceed the download cap; an idempotent retry reuses its claim; revoked, expired or exhausted artifacts serve no byte.        |
+| Verifier impersonation           | Only the registered verifier principal with a live lease token (stored as a digest) can read the artifact or report; a contradictory report is refused.          |
+| Checker false pass               | Timeout, dependency failure, missing accessibility record or unlisted language never yields healthy; stale or mismatched input hash cannot gate current content. |
+| Erasure destroys shared evidence | Conflict planner holds/minimizes/routes exception; no silent cascade.                                                                                            |
+| Diagnostic false healthy         | timeout/unavailable/stale dependency yields unknown/stale, never healthy.                                                                                        |
 
 ## Cross-Shard Contracts
 
@@ -171,10 +178,11 @@ their existing `config_change_review` and `config_approval` ownership.
 
 ## Changelog
 
-| Date       | Change                                                                                   | Workflow                         | Sections Affected |
-| ---------- | ---------------------------------------------------------------------------------------- | -------------------------------- | ----------------- |
-| 2026-08-02 | Initial deep-dive skeleton                                                               | /decompose-architecture-validate | All               |
-| 2026-08-02 | Authored resolution, runtime, admin, portability, quality, lifecycle and abuse contracts | /write-architecture-spec-deepen  | All               |
+| Date       | Change                                                                                                                                                                   | Workflow                         | Sections Affected                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------- |
+| 2026-08-02 | Initial deep-dive skeleton                                                                                                                                               | /decompose-architecture-validate | All                                                                              |
+| 2026-08-02 | Authored resolution, runtime, admin, portability, quality, lifecycle and abuse contracts                                                                                 | /write-architecture-spec-deepen  | All                                                                              |
+| 2026-10-02 | DEC-114 Phase 2 portability scope (import commit/cancel, export delivery/revoke, isolated verifier restore, Free-tier boundary) and D25 structural accessibility checker | /propagate-decision              | Field contracts, state machines, portability and quality algorithms, abuse table |
 
 ## Dependency References
 

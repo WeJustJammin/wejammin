@@ -1,15 +1,4 @@
-import {
-  ApiErrorSchema,
-  ContentTypeDraftRequestSchema,
-  ContentTypeVersionResourceSchema,
-  FieldDefinitionVersionResourceSchema,
-  FieldSchemaChangeRequestSchema,
-  RelationBindingRequestSchema,
-  RelationDefinitionResourceSchema,
-  SchemaActivationRequestSchema,
-  SchemaActivationResourceSchema,
-  createRequestId,
-} from '@wejammin/contracts';
+import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 import {
   CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS,
   isSafeUuid,
@@ -37,57 +26,65 @@ const MUTATION_RESPONSE_HEADERS = new Set([
   'x-request-id',
 ]);
 
+const pathIdentifiers = (
+  target: ContentSchemaRegistryMutationTarget,
+  scope: 'none' | 'version' | 'review',
+): Readonly<Record<string, string>> | null => {
+  if (scope === 'none') return {};
+  if (scope === 'review')
+    return target.reviewId !== undefined && isSafeUuid(target.reviewId)
+      ? { reviewId: target.reviewId }
+      : null;
+  return target.contentTypeId !== undefined &&
+    target.versionId !== undefined &&
+    isSafeUuid(target.contentTypeId) &&
+    isSafeUuid(target.versionId)
+    ? { contentTypeId: target.contentTypeId, versionId: target.versionId }
+    : null;
+};
+
 export const mutationPath = (
   target: ContentSchemaRegistryMutationTarget,
 ): string | null => {
   const operation =
     CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS[target.operationId];
   if (operation === undefined) return null;
-  if (target.operationId === 'CMS-03A-01') return operation.path;
-  if (
-    target.contentTypeId === undefined ||
-    target.versionId === undefined ||
-    !isSafeUuid(target.contentTypeId) ||
-    !isSafeUuid(target.versionId)
-  ) {
-    return null;
-  }
-  return operation.path
-    .replace('{contentTypeId}', encodeURIComponent(target.contentTypeId))
-    .replace('{versionId}', encodeURIComponent(target.versionId));
+  const identifiers = pathIdentifiers(target, operation.scope);
+  if (identifiers === null) return null;
+  return Object.entries(identifiers).reduce(
+    (path, [name, value]) =>
+      path.replace(`{${name}}`, encodeURIComponent(value)),
+    operation.path as string,
+  );
 };
 
+interface SchemaParser {
+  readonly safeParse: (value: unknown) =>
+    | { readonly success: true; readonly data: unknown }
+    | {
+        readonly success: false;
+      };
+}
+
+/** Strictly validate a browser payload against the generated request schema. */
 export const schemaParseMutation = (
   operationId: ContentSchemaRegistryMutationOperationId,
   value: unknown,
-) => {
-  switch (operationId) {
-    case 'CMS-03A-01':
-      return ContentTypeDraftRequestSchema.safeParse(value);
-    case 'CMS-03A-02':
-      return FieldSchemaChangeRequestSchema.safeParse(value);
-    case 'CMS-03A-03':
-      return RelationBindingRequestSchema.safeParse(value);
-    case 'CMS-03A-04':
-      return SchemaActivationRequestSchema.safeParse(value);
-  }
-};
+) =>
+  (
+    CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS[operationId]
+      .requestSchema as SchemaParser
+  ).safeParse(value);
 
+/** Strictly validate the private service success body for the operation. */
 export const schemaParseSuccess = (
   operationId: ContentSchemaRegistryMutationOperationId,
   value: unknown,
-) => {
-  switch (operationId) {
-    case 'CMS-03A-01':
-      return ContentTypeVersionResourceSchema.safeParse(value);
-    case 'CMS-03A-02':
-      return FieldDefinitionVersionResourceSchema.safeParse(value);
-    case 'CMS-03A-03':
-      return RelationDefinitionResourceSchema.safeParse(value);
-    case 'CMS-03A-04':
-      return SchemaActivationResourceSchema.safeParse(value);
-  }
-};
+) =>
+  (
+    CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS[operationId]
+      .successSchema as SchemaParser
+  ).safeParse(value);
 
 export const sameOriginMutationRequest = (request: Request): boolean => {
   let requestOrigin: string;

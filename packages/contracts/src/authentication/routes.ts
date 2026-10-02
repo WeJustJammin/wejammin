@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { AUTH_MFA_ROUTE_POLICIES } from './routes-mfa.ts';
+
 export const AuthOperationIdSchema = z.enum([
   'AUTH-API-01',
   'AUTH-API-02',
@@ -16,6 +18,12 @@ export const AuthOperationIdSchema = z.enum([
   'AUTH-API-13',
   'AUTH-API-14',
   'AUTH-API-15',
+  'AUTH-API-16',
+  'AUTH-API-17',
+  'AUTH-API-18',
+  'AUTH-API-19',
+  'AUTH-API-20',
+  'AUTH-API-21',
 ]);
 
 export type AuthOperationId = z.infer<typeof AuthOperationIdSchema>;
@@ -24,7 +32,17 @@ export type AuthRoutePolicy = Readonly<{
   operationId: AuthOperationId;
   method: 'GET' | 'POST' | 'DELETE';
   path: string;
-  auth: 'public' | 'callback_state' | 'session' | 'session_step_up';
+  /**
+   * `session_conditional_step_up` needs a fresh step-up proof only when the
+   * account already holds a verified factor (AUTH-API-17) or the target
+   * factor is verified (AUTH-API-19).
+   */
+  auth:
+    | 'public'
+    | 'callback_state'
+    | 'session'
+    | 'session_step_up'
+    | 'session_conditional_step_up';
   rateLimit: number;
   rateWindowSeconds: number;
   timeoutMs: number;
@@ -214,6 +232,7 @@ export const AUTH_ROUTE_POLICIES = [
     'required',
     'required',
   ],
+  ...AUTH_MFA_ROUTE_POLICIES,
 ] as const satisfies readonly (readonly [
   AuthOperationId,
   AuthRoutePolicy['method'],

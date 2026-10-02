@@ -4,6 +4,7 @@ export { parseJsonBody, parseRequestPathId, readBytes } from './admission-body';
 export {
   checkOrigin,
   csrfErrorIfCookie,
+  parseGrantListQuery,
   parseMutationHeaders,
   parseQuery,
   rejectDetailQuery,

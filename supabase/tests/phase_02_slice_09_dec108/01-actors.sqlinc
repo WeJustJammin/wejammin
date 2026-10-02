@@ -1,0 +1,91 @@
+-- DEC-108 actors, provisioned through the repository's real authority commands.
+--   owner     - WeBeJammin owner: platform_private.initialize_cms_owner receipt
+--               identity, cms.schema_designer, org acting context.
+--   designer2 - second schema designer in the owner organization (non-owner).
+--   rev1/rev2/rev3 - independently authenticated humans, own person context,
+--               no CMS capability (assignment is their only authority).
+--   other     - owner of a second organization (cross-owner concealment).
+-- Test humans' CMS grants are provisioned here (D3); no review, decision,
+-- dry-run, approved or completed-plan row is ever inserted by this suite.
+insert into auth.users(id, email, email_confirmed_at) values
+  ('a9d10000-0000-4000-8000-000000000001', 'dec108-owner@example.test', clock_timestamp()),
+  ('a9d10000-0000-4000-8000-000000000002', 'dec108-designer2@example.test', clock_timestamp()),
+  ('a9d10000-0000-4000-8000-000000000003', 'dec108-rev1@example.test', clock_timestamp()),
+  ('a9d10000-0000-4000-8000-000000000004', 'dec108-rev2@example.test', clock_timestamp()),
+  ('a9d10000-0000-4000-8000-000000000005', 'dec108-rev3@example.test', clock_timestamp()),
+  ('a9d10000-0000-4000-8000-000000000006', 'dec108-other@example.test', clock_timestamp());
+select platform_api.auth_bootstrap(
+  ('a9d10000-0000-4000-8000-00000000000' || n)::uuid, decode(repeat('a' || n, 32), 'hex'),
+  decode(repeat('b' || n, 32), 'hex'),
+  ('a9d10000-0000-4000-8000-0000000001' || n || '0')::uuid,
+  ('a9d10000-0000-4000-8000-0000000001' || n || '1')::uuid
+) from generate_series(1, 6) as n;
+
+insert into s09d_actor(key, auth_user_id, person_id)
+select k.key, k.auth_user_id::uuid, binding.person_id
+from (values
+  ('owner', 'a9d10000-0000-4000-8000-000000000001'),
+  ('designer2', 'a9d10000-0000-4000-8000-000000000002'),
+  ('rev1', 'a9d10000-0000-4000-8000-000000000003'),
+  ('rev2', 'a9d10000-0000-4000-8000-000000000004'),
+  ('rev3', 'a9d10000-0000-4000-8000-000000000005'),
+  ('other', 'a9d10000-0000-4000-8000-000000000006')
+) k(key, auth_user_id)
+join identity.auth_user_bindings binding on binding.auth_user_id = k.auth_user_id::uuid;
+
+-- Owner initialization: the real operator command (receipt + org + grants).
+select pg_temp.s09d_remember('ownerOrg', (platform_private.initialize_cms_owner(
+  (select auth_user_id from s09d_actor where key = 'owner'),
+  (select person_id from s09d_actor where key = 'owner'),
+  'dec108-owner@example.test', clock_timestamp() + interval '3 days',
+  'a9d10000-0000-4000-8000-000000000099', false)->>'organizationId')::uuid);
+
+-- designer2 joins the owner organization with the schema-designer grant.
+insert into identity_private.membership_tenure(
+  organization_id, person_id, state, provenance, governance_mode,
+  starts_on, accepted_at, actor_id, version
+)
+select pg_temp.s09d_id('ownerOrg'), designer2.person_id, 'confirmed', 'invitation',
+       'ungoverned', current_date, clock_timestamp(), owner.person_id, 1
+from s09d_actor designer2, s09d_actor owner
+where designer2.key = 'designer2' and owner.key = 'owner';
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.schema_designer',
+       current_date, current_date + 1, true
+from s09d_actor where key = 'designer2';
+
+-- A second organization with its own designer (cross-owner scope).
+select pg_temp.s09d_session('other', 'authenticated');
+select set_config('app.correlation_id', 'a9d10000-0000-4000-8000-000000000091', true);
+select set_config('app.idempotency_key_hash', 's09d-other-org-create', true);
+select set_config('app.request_hash', 's09d-other-org-create-request', true);
+select pg_temp.s09d_remember('otherOrg', (platform_api.rpc_create_organization(
+  'self_member', '{}'::text[])->>'organizationId')::uuid);
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select pg_temp.s09d_id('otherOrg'), person_id, 'cms.schema_designer',
+       current_date, current_date + 1, true
+from s09d_actor where key = 'other';
+
+-- Acting parties and private context bindings (recent heartbeat = recent MFA).
+update s09d_actor set party_id = case key
+  when 'owner' then pg_temp.s09d_id('ownerOrg')
+  when 'designer2' then pg_temp.s09d_id('ownerOrg')
+  when 'other' then pg_temp.s09d_id('otherOrg')
+  else person_id end;
+insert into platform_private.acting_context_binding(
+  person_id, acting_party_id, context_kind, client_binding_id, state,
+  selected_at, last_seen_at, expires_at, projection_version, version
+)
+select person_id, party_id,
+       case when party_id = person_id then 'person' else 'organization' end,
+       's09d-' || key, 'active', clock_timestamp(), clock_timestamp(),
+       clock_timestamp() + interval '2 hours', 1, 1
+from s09d_actor;
+update s09d_actor actor set binding_id = binding.id
+from platform_private.acting_context_binding binding
+where binding.client_binding_id = 's09d-' || actor.key
+  and binding.person_id = actor.person_id;

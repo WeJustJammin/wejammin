@@ -42,6 +42,16 @@ export const CmsCompatibilitySchema = z.enum([
   'breaking',
   'unknown',
 ]);
+/**
+ * A dry-run resource, report, or plan never carries `unknown`: a candidate
+ * whose classification cannot be derived is refused before any attempt
+ * exists (BE03a CMS-03A-10).
+ */
+export const CmsDryRunClassificationSchema = z.enum([
+  'additive',
+  'conditional',
+  'breaking',
+]);
 export const CmsDefaultModeSchema = z.enum(['none', 'literal', 'inherited']);
 export const CmsLocalizationModeSchema = z.enum([
   'none',

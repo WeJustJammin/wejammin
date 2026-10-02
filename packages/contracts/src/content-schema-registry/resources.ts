@@ -5,3 +5,4 @@ export * from './resources-blocks.ts';
 export * from './resources-bindings.ts';
 export * from './resources-workflow.ts';
 export * from './resources-aggregates.ts';
+export * from './resources-grants.ts';

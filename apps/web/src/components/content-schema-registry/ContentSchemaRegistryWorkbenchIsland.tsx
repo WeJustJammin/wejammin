@@ -15,18 +15,22 @@ import {
   toDisabledProjection,
   type ContentSchemaRegistryProjectionState,
 } from './content-schema-registry-canonical-state-validate';
+import { initialFailureOf } from './content-schema-registry-initial-failure';
 import { restoreContentSchemaRegistryFocus } from './content-schema-registry-runtime-dom-refetch-support';
 import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
 import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
 
+/**
+ * Serializable island props (FE03 island invariant): safe display context
+ * only. No actor, person, party or binding identifier, and no session or
+ * correlation value, in any spelling, ever crosses into the island.
+ */
 export type ContentSchemaRegistryWorkbenchIslandProps = Omit<
   ContentSchemaRegistryWorkbenchProps,
-  'onCanonicalRefetch' | 'actorId' | 'actingPartyId'
+  'onCanonicalRefetch' | 'contextEpoch'
 > & {
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
   readonly canonicalRefetchUrl: string;
 };
 
@@ -38,8 +42,11 @@ export type ContentSchemaRegistryWorkbenchIslandProps = Omit<
 export default function ContentSchemaRegistryWorkbenchIsland(
   props: ContentSchemaRegistryWorkbenchIslandProps,
 ): React.ReactElement {
+  // The server withholds protected access from a page that carries no
+  // verified authority, so a usable access level is the only signal needed.
   const ssrHasAuthority =
-    props.actorId !== null && props.actingPartyId !== null;
+    props.access === 'full' || props.access === 'read-only';
+  const [contextEpoch, setContextEpoch] = React.useState(0);
   const [projectionState, setProjectionState] =
     React.useState<ContentSchemaRegistryProjectionState>(() =>
       initialProjectionState(props),
@@ -113,6 +120,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
     // Context change forces an immediate read and invalidates the in-flight one.
     const onActingContextChanged = (): void => {
       scheduler?.bumpEpoch();
+      setContextEpoch((current) => current + 1);
       setProjectionState((current) =>
         toDisabledProjection(current, 'context-change'),
       );
@@ -172,14 +180,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
     );
   }
 
-  const initialFailure =
-    projectionState.initialList.status === 'error' ||
-    projectionState.initialList.status === 'degraded'
-      ? projectionState.initialList
-      : projectionState.initialDetail?.status === 'error' ||
-          projectionState.initialDetail?.status === 'degraded'
-        ? projectionState.initialDetail
-        : null;
+  const initialFailure = initialFailureOf(projectionState);
 
   if (
     projectionState.access === 'disabled' &&
@@ -197,14 +198,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
     );
   }
 
-  const currentActorId = projectionState.actorId;
-  const currentActingPartyId = projectionState.actingPartyId;
-  if (
-    projectionState.access === 'disabled' ||
-    !ssrHasAuthority ||
-    currentActorId === null ||
-    currentActingPartyId === null
-  ) {
+  if (projectionState.access === 'disabled' || !ssrHasAuthority) {
     return (
       <ContentSchemaRegistryCapabilityGate
         variant="disabled"
@@ -240,8 +234,9 @@ export default function ContentSchemaRegistryWorkbenchIsland(
       {...(projectionState.stepUpFreshUntil === undefined
         ? {}
         : { stepUpFreshUntil: projectionState.stepUpFreshUntil })}
-      actorId={currentActorId}
-      actingPartyId={currentActingPartyId}
+      reviewId={props.reviewId ?? null}
+      initialReview={projectionState.initialReview}
+      contextEpoch={contextEpoch}
       onCanonicalRefetch={onCanonicalRefetch}
       loading={loading}
       offline={offline}

@@ -30,6 +30,7 @@ import {
   configureRoute,
   missingSliceDependency,
 } from './routes-provider-access';
+import { stepUpRequiredError } from './step-up';
 import type { AuthenticationDependencies } from './types';
 
 const invalidPersistence = (context: WorkerContext): Response =>
@@ -48,10 +49,7 @@ const requireRecentVerification = (
 ): Response | null =>
   isStepUpFresh(session, Date.now())
     ? null
-    : responseForAuthError(
-        context,
-        authError(403, 'FORBIDDEN', 'Recent verification is required.'),
-      );
+    : responseForAuthError(context, stepUpRequiredError());
 
 export const registerAccountMergeRoutes = (
   app: WorkerApp,

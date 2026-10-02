@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseCanonicalWorkbenchOutcome } from './content-schema-registry-runtime-dom-refetch-project';
 import { CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS } from './content-schema-registry-canonical-keys';
+import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -64,6 +65,7 @@ const DETAIL = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [],
+  activationPreparation: emptyActivationPreparation,
 };
 
 const ACTOR_ID = '10000000-0000-4000-8000-000000000001';

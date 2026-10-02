@@ -77,15 +77,40 @@ export const AuthIdempotencyKeySchema = z
   .regex(/^[\x20-\x7e]+$/u)
   .refine((value) => value.trim() === value);
 
+const authStrongVersionPattern = /^"[1-9][0-9]{0,18}"$/u;
+
 export const AuthStrongVersionSchema = z
   .string()
-  .regex(/^"[1-9][0-9]{0,18}"$/u)
+  .regex(authStrongVersionPattern)
   .refine(
-    (value) => BigInt(value.slice(1, -1)) <= 9_223_372_036_854_775_807n,
+    (value) =>
+      !authStrongVersionPattern.test(value) ||
+      BigInt(value.slice(1, -1)) <= 9_223_372_036_854_775_807n,
     'version_out_of_range',
   );
 
 export const AuthEmptyBodySchema = z.object({}).strict();
+
+export const AuthCsrfHeaderSchema = z.string().min(16).max(256);
+
+/** Enabled MFA method registry ids; launch contents are exactly `totp`. */
+export const AuthMfaMethodSchema = z.enum(['totp']);
+
+export const isNfcWithoutControl = (value: string): boolean =>
+  value === value.normalize('NFC') && !/\p{Cc}/u.test(value);
+
+/** NFC, trimmed, 1-80 characters, no control character or newline. */
+export const AuthMfaFriendlyNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'friendly_name_invalid')
+  .max(80, 'friendly_name_invalid')
+  .refine(isNfcWithoutControl, 'friendly_name_invalid');
+
+/** Exactly six ASCII digits; no spaces, hyphens, or other characters. */
+export const AuthTotpCodeSchema = z
+  .string()
+  .regex(/^[0-9]{6}$/u, 'code_invalid');
 
 export const AuthProviderLaunchStateSchema = z.enum([
   'enabled',

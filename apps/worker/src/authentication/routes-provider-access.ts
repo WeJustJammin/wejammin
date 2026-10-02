@@ -26,6 +26,7 @@ import {
   policyFor,
   requireSession,
 } from './route-support';
+import { stepUpRequiredError } from './step-up';
 import type { AuthenticationDependencies } from './types';
 
 export const missingDependencies = (context: WorkerContext): Response =>
@@ -143,7 +144,7 @@ export const registerProviderAccessRoutes = (
       if (!isStepUpFresh(session, Date.now())) {
         return responseForAuthError(
           context,
-          authError(403, 'FORBIDDEN', 'Recent verification is required.'),
+          stepUpRequiredError(),
         );
       }
     }

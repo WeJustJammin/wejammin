@@ -14,7 +14,8 @@ type RouteLike = Readonly<{
   method: string;
   path: string;
   auth: string;
-  capability: string;
+  capability?: string;
+  capabilityMode?: string;
   cors: string;
   audience: string;
   csrf: string;
@@ -136,6 +137,7 @@ describe('CMS-03A-09..14 route policies (BE03a Route Registry)', () => {
       auth: 'review_reader',
       capability: 'cms.schema_designer',
       capabilities: ['cms.schema_designer', 'cms.schema_review'],
+      capabilityMode: 'any_of',
       csrf: 'none',
       stepUp: 'none',
       idempotency: 'none',
@@ -170,12 +172,19 @@ describe('CMS-03A-09..14 route policies (BE03a Route Registry)', () => {
     });
   });
 
-  it('flags step-up on exactly activation, decision, and assignment', () => {
+  it('flags step-up on activation, decision, assignment, and grant mutations', () => {
     expect(
       routes
         .filter(({ stepUp }) => stepUp === 'required')
         .map(({ operationId }) => operationId),
-    ).toEqual(['CMS-03A-04', 'CMS-03A-12', 'CMS-03A-14']);
+    ).toEqual([
+      'CMS-03A-04',
+      'CMS-03A-12',
+      'CMS-03A-14',
+      'CMS-03A-15',
+      'CMS-03A-16',
+      'CMS-03A-17',
+    ]);
   });
 
   it('declares the matrix error statuses, with 401 STEP_UP_REQUIRED where required', () => {
@@ -312,7 +321,7 @@ describe('CMS-03A-09..14 OpenAPI parity', () => {
   });
 });
 
-describe('platform registry rows for CMS-03A-01..14', () => {
+describe('platform registry rows for CMS-03A-01..18', () => {
   it('mirrors every route policy in the canonical platform registry', () => {
     const rows = platformRegistrySet.routes.filter(({ operationId }) =>
       operationId.startsWith('CMS-03A-'),
@@ -328,9 +337,8 @@ describe('platform registry rows for CMS-03A-01..14', () => {
         method: route.method,
         path: route.path,
         authClass: route.auth,
-        capability: route.capability,
-        capabilities: route.capabilities ?? [route.capability],
         corsClass: route.cors,
+        stepUp: route.stepUp,
         audience: route.audience,
         csrf: route.csrf,
         rawBodySignature: route.rawBodySignature,
@@ -346,6 +354,12 @@ describe('platform registry rows for CMS-03A-01..14', () => {
         cacheControl: route.cacheControl,
       });
       expect(row?.partyRateLimit).toBe(route.partyRateLimit);
+      expect(row?.capability).toBe(route.capability);
+      expect(row?.capabilities).toEqual(
+        route.capabilities ??
+          (route.capability === undefined ? undefined : [route.capability]),
+      );
+      expect(row?.capabilityMode).toBe(route.capabilityMode);
     }
   });
 });

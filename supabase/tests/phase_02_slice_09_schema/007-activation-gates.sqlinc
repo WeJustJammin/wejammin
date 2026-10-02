@@ -19,21 +19,6 @@ select throws_ok(
   'AC095 rejects edits to a child whose parent version is already superseded'
 );
 
-create temp table s09_activation_dependency_review on commit drop as
-select extensions.gen_random_uuid() as review_id;
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, effective_context_hash,
-  risk_class, required_approvals, state, submitted_by, submitted_at, version_no
-)
-select review.review_id, 'setting_value', version_row.id, version_row.version,
-       version_row.definition_hash, '{}'::jsonb,
-       platform_private.cfg_hash_json('{}'::jsonb), null,
-       'high', 1, 'approved',
-       'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1
-from s09_activation_dependency_review review
-cross join platform_private.cms_content_type_versions version_row
-where version_row.id = (select version_id from s09_type_ids);
 select throws_ok(
   $$update platform_private.cms_relation_definitions
     set projection_key = 'public.summary'
@@ -41,21 +26,29 @@ select throws_ok(
   'P0001', 'IMMUTABLE_RECORD',
   'AC102 rejects relation edits after the parent version leaves draft/review'
 );
-update platform_private.cfg_config_change_reviews
-set state = 'approved', version_no = version_no + 1
-where id = (select review_id from s09_activation_dependency_review);
+-- AC189 over real evidence: an approved CMS review (built only through the
+-- named producers on a fresh candidate in the same owner organization) is
+-- invalidated when the owning type's capability authority changes.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('dep', 'articledep');
+select pg_temp.s09d_to_approved('dep', array['rev1']);
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
+select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('dep:review')), 'approved',
+  'AC189 fixture: the dependency candidate holds a real approved CMS review');
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_registry.read'
-where id = (select content_type_id from s09_type_ids);
+where id = pg_temp.s09d_id('dep:type');
 select ok(
-  (select state = 'review'
-   from platform_private.cfg_config_change_reviews
-   where id = (select review_id from s09_activation_dependency_review)),
-  'AC189 owner-capability authority changes reset approved activation review evidence'
+  (select state = 'invalidated'
+   from platform_private.cms_schema_reviews
+   where id = pg_temp.s09d_id('dep:review')),
+  'AC189 owner-capability authority changes invalidate approved activation review evidence'
 );
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_designer'
-where id = (select content_type_id from s09_type_ids);
+where id = pg_temp.s09d_id('dep:type');
 
 -- An active source requires a durable plan even for a zero-row additive
 -- switch.  The target artifact is intentionally minimal but fully immutable.

@@ -1,102 +1,73 @@
--- A moved relation invalidates approvals on both the old and new candidate
--- parents. Both parents remain in review so the parent-state guard allows the
--- move while the trigger proves its two-sided scope.
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values
-  ('a9090000-0000-4000-8000-000000000170', (select owner_id from platform_private.cms_content_type_versions where id = 'a9090000-0000-4000-8000-000000000103'), 'review', 1, (select content_type_id from s09_type_ids), 8, '{"label":"Move A"}', 'editorial', 1, 'en-US', 'en-US', 'a9090000-0000-4000-8000-000000000172', repeat('1', 64), 'additive', 'a9090000-0000-4000-8000-000000000410', 'a9090000-0000-4000-8000-000000000001'),
-  ('a9090000-0000-4000-8000-000000000171', (select owner_id from platform_private.cms_content_type_versions where id = 'a9090000-0000-4000-8000-000000000103'), 'review', 1, (select content_type_id from s09_type_ids), 9, '{"label":"Move B"}', 'editorial', 1, 'en-US', 'en-US', 'a9090000-0000-4000-8000-000000000173', repeat('2', 64), 'additive', 'a9090000-0000-4000-8000-000000000411', 'a9090000-0000-4000-8000-000000000001');
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-)
-select rows.id, version_row.owner_id, 'compiled', 1, rows.version_id, '1', 'cms/content-type/articlex/v1',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey','articlex','label',rows.label,'ownerCapability','cms.schema_designer',
-    'sourceLocale','en-US','defaultLocale','en-US','workflowKey','editorial',
-    'workflowVersion','1','defaultTemplateVersionId',null,'fields','[]'::jsonb,
-    'relations','[]'::jsonb,'templateBindings','[]'::jsonb,'capabilityBindings','[]'::jsonb
-  ), 'fields','[]'::jsonb),
-  jsonb_build_object('relations','[]'::jsonb,'templateBindings','[]'::jsonb,'capabilityBindings','[]'::jsonb),
-  rows.hash, clock_timestamp()
-from (values
-  ('a9090000-0000-4000-8000-000000000172'::uuid, 'a9090000-0000-4000-8000-000000000170'::uuid, 'Move A', repeat('1',64)),
-  ('a9090000-0000-4000-8000-000000000173'::uuid, 'a9090000-0000-4000-8000-000000000171'::uuid, 'Move B', repeat('2',64))
-) rows(id, version_id, label, hash)
-join platform_private.cms_content_type_versions version_row on version_row.id = rows.version_id;
-insert into platform_private.cms_field_definition_versions(
-  id, owner_id, state, version, content_type_version_id, stable_field_id,
-  field_key, kind, constraints, required, default_mode, localization_mode,
-  editor_config, created_by
-)
-select rows.field_id, version_row.owner_id, 'active', 1, version_row.id, rows.field_id,
-       rows.key_name, 'relation', '{}'::jsonb, false, 'none', 'none',
-       jsonb_build_object('label', rows.key_name, 'order', 0),
-       'a9090000-0000-4000-8000-000000000001'
-from (values
-  ('a9090000-0000-4000-8000-000000000174'::uuid, 'a9090000-0000-4000-8000-000000000170'::uuid, 'related_a'),
-  ('a9090000-0000-4000-8000-000000000175'::uuid, 'a9090000-0000-4000-8000-000000000171'::uuid, 'related_b')
-) rows(field_id, version_id, key_name)
-join platform_private.cms_content_type_versions version_row on version_row.id = rows.version_id;
-insert into platform_private.cms_relation_definitions(
-  id, owner_id, state, version, field_definition_id, target_kind, target_type,
-  projection_key, cardinality, min_count, max_count, ordered, on_unavailable, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000176',
-  (select owner_id from platform_private.cms_content_type_versions where id = 'a9090000-0000-4000-8000-000000000170'),
-  'active', 1, 'a9090000-0000-4000-8000-000000000174', 'content', 'profile',
-  'profile.summary', 'one', 0, 1, false, 'omit', 'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, risk_class, required_approvals,
-  state, submitted_by, submitted_at, version_no
-) values
-  ('a9090000-0000-4000-8000-000000000177', 'setting_value', 'a9090000-0000-4000-8000-000000000170', 1, repeat('1',64), '{}'::jsonb, platform_private.cfg_hash_json('{}'::jsonb), 'high', 1, 'approved', 'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1),
-  ('a9090000-0000-4000-8000-000000000178', 'setting_value', 'a9090000-0000-4000-8000-000000000171', 1, repeat('2',64), '{}'::jsonb, platform_private.cfg_hash_json('{}'::jsonb), 'high', 1, 'approved', 'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1);
-update platform_private.cms_relation_definitions
-set field_definition_id = 'a9090000-0000-4000-8000-000000000175'
-where id = 'a9090000-0000-4000-8000-000000000176';
+-- AC189 move invalidation over REAL review evidence.  Every candidate below
+-- reaches an open (or approved) CMS review only through the named producers;
+-- real reviews are terminal once invalidated, so each scenario builds its own
+-- candidates.  Non-review child rows (relation/binding rows being moved) are the
+-- objects under test and are the only rows written by hand.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_legacy_actor('two', 'a9090000-0000-4000-8000-000000000002',
+  (select organization_id from s09_fixture_org_two));
+
+-- A relation moved between two candidates' fields invalidates BOTH parents'
+-- open reviews.  Both parents stay in review so the parent-state guard allows
+-- the move while the trigger proves its two-sided scope.
+select pg_temp.s09d_create_type('ma', 'articlemovea');
+select pg_temp.s09d_add_relation('ma');
+select pg_temp.s09d_create_type('mb', 'articlemoveb');
+select pg_temp.s09d_add_field_only('mb');
+select pg_temp.s09d_to_review('ma');
+select pg_temp.s09d_to_review('mb');
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
 select ok(
-  (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000177')
-  and (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000178'),
+  pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('ma:review')) = 'open'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mb:review')) = 'open'
+  and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('ma:version')) = 'review'
+  and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('mb:version')) = 'review',
+  'AC189 fixture: both move candidates hold real open reviews'
+);
+update platform_private.cms_relation_definitions
+set field_definition_id = pg_temp.s09d_id('mb:fieldId')
+where field_definition_id = pg_temp.s09d_id('ma:fieldId');
+select ok(
+  pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('ma:review')) = 'invalidated'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mb:review')) = 'invalidated',
   'AC189 relation moves invalidate activation evidence for both old and new parents'
 );
 
--- Binding moves have the same two-sided invalidation scope.  Reset the two
--- reviews to a known approved baseline, move one binding, and require both
--- parent reviews to return to review.
-update platform_private.cfg_config_change_reviews
-set state = 'approved', updated_at = clock_timestamp()
-where id in (
-  'a9090000-0000-4000-8000-000000000177',
-  'a9090000-0000-4000-8000-000000000178'
-);
+-- A template binding written into a candidate invalidates that candidate's open
+-- review, and moving the binding invalidates the new parent's open review.  The
+-- old parent's review is already terminal, so it must not be resurrected.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('mc', 'articlemovec');
+select pg_temp.s09d_create_type('md', 'articlemoved');
+select pg_temp.s09d_to_review('mc');
+select pg_temp.s09d_to_review('md');
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
 insert into platform_private.cms_content_type_template_bindings(
   id, owner_id, state, version, content_type_version_id,
   template_version_id, position
 ) values (
   'a9090000-0000-4000-8000-000000000179',
   (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000170'),
-  'active', 1, 'a9090000-0000-4000-8000-000000000170',
+   where id = pg_temp.s09d_id('mc:version')),
+  'active', 1, pg_temp.s09d_id('mc:version'),
   'a9090000-0000-4000-8000-000000000179', 0
 );
-update platform_private.cfg_config_change_reviews
-set state = 'approved', updated_at = clock_timestamp()
-where id in (
-  'a9090000-0000-4000-8000-000000000177',
-  'a9090000-0000-4000-8000-000000000178'
+select ok(
+  pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mc:review')) = 'invalidated'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('md:review')) = 'open',
+  'AC189 a new child binding invalidates only its own candidate''s open review'
 );
 update platform_private.cms_content_type_template_bindings
-set content_type_version_id = 'a9090000-0000-4000-8000-000000000171'
+set content_type_version_id = pg_temp.s09d_id('md:version')
 where id = 'a9090000-0000-4000-8000-000000000179';
 select ok(
-  (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000177')
-  and (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000178'),
-  'AC189 binding moves invalidate activation evidence for both old and new parents'
+  pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mc:review')) = 'invalidated'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('md:review')) = 'invalidated',
+  'AC189 binding moves invalidate the new parent''s review and never revive the old parent''s'
 );
 select throws_ok(
   $$insert into platform_private.cms_content_type_template_bindings(
@@ -113,71 +84,29 @@ select throws_ok(
   'AC189 active parent guard rejects a new child binding'
 );
 
--- A moved organization authority row invalidates candidates owned by both the
--- old and new organizations.  The second candidate is intentionally owned by
--- tenant two so the new-owner side is observable in the same transaction.
-insert into platform_private.cms_content_types(
-  id, owner_id, state, version, type_key, owner_capability, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000184',
-  (select organization_id from s09_fixture_org_two), 'retired', 1,
-  'articlex_two', 'cms.schema_designer',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000181',
-  (select organization_id from s09_fixture_org_two), 'review', 1,
-  'a9090000-0000-4000-8000-000000000184', 1,
-  '{"label":"Move tenant two"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
-  'a9090000-0000-4000-8000-000000000182', repeat('3', 64), 'additive',
-  'a9090000-0000-4000-8000-000000000412',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000182',
-  (select organization_id from s09_fixture_org_two), 'compiled', 1,
-  'a9090000-0000-4000-8000-000000000181', '1',
-  'cms/content-type/articlex_two/v1',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey','articlex_two','label','Move tenant two',
-    'ownerCapability','cms.schema_designer','sourceLocale','en-US',
-    'defaultLocale','en-US','workflowKey','editorial','workflowVersion','1',
-    'defaultTemplateVersionId',null,'fields','[]'::jsonb,
-    'relations','[]'::jsonb,'templateBindings','[]'::jsonb,
-    'capabilityBindings','[]'::jsonb
-  ), 'fields','[]'::jsonb),
-  jsonb_build_object('relations','[]'::jsonb,'templateBindings','[]'::jsonb,
-    'capabilityBindings','[]'::jsonb), repeat('3', 64), clock_timestamp()
-);
-update platform_private.cfg_config_change_reviews
-set state = 'approved', updated_at = clock_timestamp()
-where id in (
-  'a9090000-0000-4000-8000-000000000177',
-  'a9090000-0000-4000-8000-000000000178'
-);
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, risk_class, required_approvals,
-  state, submitted_by, submitted_at, version_no
-) values (
-  'a9090000-0000-4000-8000-000000000183', 'setting_value',
-  'a9090000-0000-4000-8000-000000000181', 1, repeat('3',64), '{}'::jsonb,
-  platform_private.cfg_hash_json('{}'::jsonb), 'high', 1, 'approved',
-  'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1
+-- A moved organization authority row invalidates the open reviews of candidates
+-- owned by both the old and the new organization.  The second candidate is
+-- intentionally owned by tenant two so the new-owner side is observable.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('me', 'articlemovetwo', 'editorial', 'two');
+select pg_temp.s09d_dry_run('me', 'two');
+select pg_temp.s09d_seal('me', '0', 'two');
+select pg_temp.s09d_submit('me', 'two');
+select pg_temp.s09d_create_type('mf', 'articlemoveone');
+select pg_temp.s09d_to_review('mf');
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
+select ok(
+  pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('me:review')) = 'open'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mf:review')) = 'open',
+  'AC189 fixture: one open review in each organization'
 );
 update identity_private.membership_tenure
 set organization_id = (select organization_id from s09_fixture_org_two)
 where id = 'a9090000-0000-4000-8000-000000000201';
 select ok(
-  (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000177')
-  and (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000178')
-  and (select state = 'review' from platform_private.cfg_config_change_reviews where id = 'a9090000-0000-4000-8000-000000000183'),
+  pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('me:review')) = 'invalidated'
+  and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mf:review')) = 'invalidated',
   'AC189 organization moves invalidate activation evidence for old and new owners'
 );

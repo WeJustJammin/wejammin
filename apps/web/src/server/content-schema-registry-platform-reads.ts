@@ -5,6 +5,7 @@ import type {
 } from './content-schema-registry-context-types';
 import {
   apiPathForDetail,
+  apiPathForReview,
   apiPathForRequest,
   DETAIL_PATH,
   hasSessionCookie,
@@ -94,6 +95,8 @@ export const createContentSchemaRegistryPlatformPorts = (
       versionId,
     }): Promise<unknown> =>
       requireUpstream(request, apiPathForDetail(contentTypeId, versionId)),
+    loadReview: async ({ request, reviewId }): Promise<unknown> =>
+      requireUpstream(request, apiPathForReview(reviewId)),
     // Presentation-only label read: the authorized list is fetched through
     // the same private binding, and a failure degrades the disclosure rather
     // than the protected read.

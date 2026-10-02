@@ -199,6 +199,7 @@ export const createSessionDependencies = (
           actingPartyId: indexed.value.resource.actingPartyId,
           actingContextId: indexed.value.actingContextId,
           expiresAt: verified.value.expiresAt,
+          primaryAuthAt: verified.value.primaryAuthAt,
           stepUpAt:
             sessionReference.verifier !== '' &&
             Number.isFinite(Date.parse(sessionReference.verifier)) &&

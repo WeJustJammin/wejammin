@@ -4,6 +4,7 @@ import {
   focusWithoutScroll,
   safeOutcomeMessage,
   safeReauthentication,
+  safeStepUp,
   sameOriginLocation,
   setFormBusy,
 } from './content-schema-registry-runtime-dom-feedback';
@@ -34,6 +35,16 @@ export const completeContentSchemaRegistryMutation = (
     );
     focusWithoutScroll(status);
     safeReauthentication(form, windowObject, navigate);
+    return;
+  }
+  if (result.outcome === 'step-up-required') {
+    const status = announce(
+      form,
+      safeOutcomeMessage(result.outcome, null),
+      false,
+    );
+    focusWithoutScroll(status);
+    safeStepUp(windowObject, navigate);
     return;
   }
   if (result.outcome === 'forbidden') {

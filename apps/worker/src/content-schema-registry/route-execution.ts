@@ -7,6 +7,7 @@ import type {
 } from './types';
 import { CONTENT_SCHEMA_REGISTRY_RUNBOOK } from './types';
 import type { FeatureContext } from './route-types';
+import { readOperationIds } from './route-types';
 import {
   errorResponse,
   etagFor,
@@ -100,8 +101,9 @@ export const createExecutor =
     });
     if (!result.ok)
       return errorResponse(context, result, context.get('requestId'));
+    const isRead = readOperationIds.has(operationId);
     if (
-      (operationId === 'CMS-03A-06' || operationId === 'CMS-03A-07') &&
+      isRead &&
       input.session !== undefined &&
       isContentSchemaRegistryPrivateServiceRequest(input.request)
     )
@@ -115,14 +117,8 @@ export const createExecutor =
       );
     context.header('cache-control', 'no-store');
     const etag = etagFor(result.value);
-    if (
-      etag !== null &&
-      operationId !== 'CMS-03A-06' &&
-      operationId !== 'CMS-03A-07'
-    )
-      context.header('etag', etag);
-    if (operationId !== 'CMS-03A-06' && operationId !== 'CMS-03A-07')
-      context.header('location', context.req.path);
+    if (etag !== null && !isRead) context.header('etag', etag);
+    if (!isRead) context.header('location', context.req.path);
     return context.json(
       result.value,
       successStatusFor(operationId, result.value),

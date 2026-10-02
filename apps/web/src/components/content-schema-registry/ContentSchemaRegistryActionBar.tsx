@@ -5,6 +5,30 @@ import type {
   ContentSchemaRegistryOperationId,
 } from './content-schema-registry-types';
 
+/** Plain-language noun for every BE03a operation, human and release-worker. */
+export const OPERATION_LABELS: Readonly<
+  Record<ContentSchemaRegistryOperationId, string>
+> = {
+  'CMS-03A-01': 'content type draft',
+  'CMS-03A-02': 'field schema',
+  'CMS-03A-03': 'relation binding',
+  'CMS-03A-04': 'schema activation',
+  'CMS-03A-05': 'block registration (release worker only)',
+  'CMS-03A-06': 'registry list read',
+  'CMS-03A-07': 'registry detail read',
+  'CMS-03A-08': 'block lifecycle (release worker only)',
+  'CMS-03A-09': 'successor draft',
+  'CMS-03A-10': 'dry-run request',
+  'CMS-03A-11': 'review submission',
+  'CMS-03A-12': 'review decision',
+  'CMS-03A-13': 'review read',
+  'CMS-03A-14': 'reviewer assignment',
+  'CMS-03A-15': 'capability grant',
+  'CMS-03A-16': 'capability grant renewal',
+  'CMS-03A-17': 'capability grant revocation',
+  'CMS-03A-18': 'capability grant list read',
+};
+
 export interface ContentSchemaRegistryActionBarProps {
   readonly formId?: string;
   readonly operationId: ContentSchemaRegistryOperationId;
@@ -37,19 +61,9 @@ export function ContentSchemaRegistryActionBar({
   }, [state, triggerRef]);
   const pending = state === 'pending';
   const unavailable = state === 'disabled' || formId === undefined;
-  const operationLabel: Record<ContentSchemaRegistryOperationId, string> = {
-    'CMS-03A-01': 'content type draft',
-    'CMS-03A-02': 'field schema',
-    'CMS-03A-03': 'relation binding',
-    'CMS-03A-04': 'schema activation',
-    'CMS-03A-05': 'block registration (release worker only)',
-    'CMS-03A-06': 'registry list read',
-    'CMS-03A-07': 'registry detail read',
-    'CMS-03A-08': 'block lifecycle (release worker only)',
-  };
   const label = pending
-    ? `Saving ${operationLabel[operationId]}`
-    : `Save ${operationLabel[operationId]}`;
+    ? `Saving ${OPERATION_LABELS[operationId]}`
+    : `Save ${OPERATION_LABELS[operationId]}`;
   return (
     <div
       className="content-schema-registry-action-bar"

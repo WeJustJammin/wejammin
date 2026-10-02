@@ -265,124 +265,39 @@ select ok(
   'AC099 persists the conditional plan and advances its zero-row state'
 );
 
--- Worker evidence must remain fresh and bound to the current review version
--- and an active recent context binding.
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000160',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000103'),
-  'approved', 1, (select content_type_id from s09_type_ids), 7,
-  '{"label":"Article X worker evidence"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
-  'a9090000-0000-4000-8000-000000000161', repeat('a', 64), 'additive',
-  'a9090000-0000-4000-8000-000000000408',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000161',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000160'),
-  'compiled', 1, 'a9090000-0000-4000-8000-000000000160', '1',
-  'cms/content-type/articlex/v1',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey', 'articlex', 'label', 'Article X worker evidence',
-    'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
-    'defaultTemplateVersionId', null, 'fields', '[]'::jsonb,
-    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb
-  ), 'fields', '[]'::jsonb),
-  jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb), repeat('a', 64), clock_timestamp()
-);
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, effective_context_hash,
-  risk_class, required_approvals, state, submitted_by, submitted_at, version_no
-) values (
-  'a9090000-0000-4000-8000-000000000409', 'setting_value',
-  'a9090000-0000-4000-8000-000000000160', 1, repeat('a', 64), '{}'::jsonb,
-  platform_private.cfg_hash_json('{}'::jsonb),
-  platform_private.cfg_hash_json(jsonb_build_object(
-    'actingContextId', 'a9090000-0000-4000-8000-000000000090'
-  )), 'high', 1, 'review',
-  'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1
-);
-insert into platform_private.cfg_config_approvals(
-  review_id, reviewer_person_id, acting_party_id, capability, decision,
-  reason, reviewed_hash, decided_at, review_version
-) values (
-  'a9090000-0000-4000-8000-000000000409',
-  'a9090000-0000-4000-8000-000000000002',
-  (select organization_id from s09_fixture_org), 'cms.schema_designer',
-  'approve', 'worker freshness', repeat('a', 64), clock_timestamp(), 1
-);
-with approval_digest as (
-  select encode(extensions.digest(convert_to(
-    coalesce(jsonb_agg(jsonb_build_object(
-      'reviewId', approval.review_id, 'reviewerAuthUserId', approval.reviewer_person_id,
-      'capability', approval.capability, 'reviewedHash', approval.reviewed_hash,
-      'reviewVersion', approval.review_version, 'decidedAt', approval.decided_at
-    ) order by approval.review_id, approval.reviewer_person_id)::text, '[]'),
-    'utf8'), 'sha256'), 'hex') as hash
-  from platform_private.cfg_config_approvals approval
-  where approval.review_id = 'a9090000-0000-4000-8000-000000000409'
-)
-update platform_private.cms_content_type_versions candidate
-set activation_workflow_policy_key = 'cms.schema.activate',
-    activation_workflow_policy_version = 1,
-    activation_workflow_policy_hash = encode(extensions.digest(convert_to(
-      'cms.schema.activate:1:1:["cms.schema_designer"]', 'utf8'), 'sha256'), 'hex'),
-    activation_required_decision_count = 1,
-    activation_required_capabilities = jsonb_build_array('cms.schema_designer'),
-    activation_approval_evidence_hash = encode(extensions.digest(convert_to(
-  jsonb_build_object(
-    'key', 'cms.schema.activate', 'version', '1',
-    'policyHash', encode(extensions.digest(convert_to(
-      'cms.schema.activate:1:1:["cms.schema_designer"]', 'utf8'), 'sha256'), 'hex'),
-    'riskClass', 'ordinary',
-    'requiredDecisionCount', 1,
-    'requiredCapabilities', jsonb_build_array('cms.schema_designer'),
-    'approvalEvidenceHash', approval_digest.hash
-  )::text, 'utf8'), 'sha256'), 'hex')
-from approval_digest
-where candidate.id = 'a9090000-0000-4000-8000-000000000160';
-update platform_private.cfg_config_change_reviews
-set state = 'approved', updated_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000409';
+-- Worker evidence is the real CMS review chain: a candidate approved through
+-- the named producers is valid for the worker hand-off until the evidence
+-- drifts.  An earlier decision's MFA age is NOT re-required (DEC-108 G10), so a
+-- stale binding never invalidates a recorded approval.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('wk', 'articlewk');
+select pg_temp.s09d_to_approved('wk', array['rev1']);
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
 select ok(
-  platform_private.cms_worker_human_approval_valid(
-    'a9090000-0000-4000-8000-000000000160'
-  ),
-  'AC102 worker accepts fresh approval, review version, and active MFA context'
+  platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
+  'AC102 worker accepts a real approved CMS review with current assignment authority'
 );
-update platform_private.cfg_config_change_reviews
-set version_no = version_no + 1, updated_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000409';
-select ok(
-  not platform_private.cms_worker_human_approval_valid(
-    'a9090000-0000-4000-8000-000000000160'
-  ),
-  'AC102 worker rejects an approval tied to a stale review version'
-);
-update platform_private.cfg_config_change_reviews
-set version_no = version_no - 1, updated_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000409';
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp() - interval '11 minutes'
-where id = 'a9090000-0000-4000-8000-000000000090';
+where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid
+   or id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select ok(
-  not platform_private.cms_worker_human_approval_valid(
-    'a9090000-0000-4000-8000-000000000160'
-  ),
-  'AC102 worker rejects a stale MFA/context binding'
+  platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
+  'AC102 worker does not re-require MFA freshness for a recorded decision'
 );
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000090';
+where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid
+   or id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
+update platform_private.cms_content_types
+set owner_capability = 'cms.schema_registry.read'
+where id = pg_temp.s09d_id('wk:type');
+update platform_private.cms_content_types
+set owner_capability = 'cms.schema_designer'
+where id = pg_temp.s09d_id('wk:type');
+select ok(
+  not platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
+  'AC102 worker rejects an approval whose review evidence drifted and was invalidated'
+);

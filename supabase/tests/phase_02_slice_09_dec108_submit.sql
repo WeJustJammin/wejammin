@@ -1,0 +1,151 @@
+commit;
+create extension if not exists pgtap with schema extensions;
+commit;
+
+begin;
+select no_plan();
+
+-- Slice 09 DEC-108 QA-RED: CMS-03A-11 submit schema review (BE03a route row,
+-- field matrix, SchemaReview table, "State machine and concurrency", G13).
+-- Only a persisted, sealed, passed attempt produced by CMS-03A-10 and sealed by
+-- the worker can be frozen; every refusal is atomic.
+
+\ir phase_02_slice_09_dec108/00-helpers.sqlinc
+\ir phase_02_slice_09_dec108/01-actors.sqlinc
+\ir phase_02_slice_09_dec108/02-chain.sqlinc
+\ir phase_02_slice_09_dec108/03-support.sqlinc
+
+select pg_temp.s09d_create_type('a', 'dec108sub');
+select pg_temp.s09d_dry_run('a');
+select pg_temp.s09d_seal('a');
+select pg_temp.s09d_submit('a');
+select is(pg_temp.s09d_outcome('a:submit'), 'OK', 'CMS-03A-11 freezes a sealed, passed dry-run into a review');
+select ok((select r->>'resourceKind' = 'schema_review' and r->>'state' = 'open'
+    and r->>'contentTypeVersionId' = pg_temp.s09d_id('a:version')::text
+    and r->>'riskClass' = 'ordinary' and (r->>'requiredDecisionCount')::int = 1
+    and (r->>'distinctApprovalCount')::int = 0 and (r->>'recordedDecisionCount')::int = 0
+    and jsonb_array_length(r->'decisions') = 0 and r->'approvalEvidenceHash' = 'null'::jsonb
+    and r->'decidedAt' = 'null'::jsonb and r->>'dryRunId' = pg_temp.s09d_id('a:dryRun')::text
+    and (r->'permittedNextActions') ? 'assign_reviewer'
+    from (select pg_temp.s09d_resp('a:submit') r) s),
+  'the 201 SchemaReviewResource is open, ordinary (1 decision), undecided, and points the owner to assignment');
+select ok((select r->'frozenEvidence' ?& array['contentTypeVersionId','contentTypeVersionNo','definitionHash',
+      'schemaArtifact','dependencyManifestHash','dryRun']
+    and r->'frozenEvidence'->>'definitionHash' ~ '^[a-f0-9]{64}$'
+    and r->>'policyHash' ~ '^[a-f0-9]{64}$' and r->>'policyKey' is not null
+    from (select pg_temp.s09d_resp('a:submit') r) s),
+  'the frozen evidence summary and the code-owned policy snapshot are present');
+select ok(coalesce((select bool_and(position(needle in pg_temp.s09d_resp('a:submit')::text) = 0)
+    from (values (pg_temp.s09d_actor_id('owner', 'auth')), (pg_temp.s09d_actor_id('owner', 'person')),
+      (pg_temp.s09d_actor_id('owner', 'binding')), (pg_temp.s09d_actor_id('owner', 'party'))) n(needle)
+    where pg_temp.s09d_resp('a:submit') is not null), false),
+  'the resource carries no actor, person, party or private acting-context binding identifier');
+select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'review',
+  'draft -> review commits atomically with the review');
+select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
+    review.state = 'open' and review.definition_hash = version.definition_hash
+    and review.schema_artifact_id = version.schema_artifact_id
+    and review.content_type_version_id = version.id and review.dry_run_id = %2$L
+    and review.dry_run_report_hash ~ '^[a-f0-9]{64}$' and review.context_hash ~ '^[a-f0-9]{64}$'
+    and review.dependency_manifest_hash ~ '^[a-f0-9]{64}$' and review.compiler_version = '1'
+    and review.candidate_version_no = version.version_no
+    and review.required_decision_count between 1 and 8
+    and review.submitter_person_ref = %3$L and review.owner_id = version.owner_id)::text
+  from platform_private.cms_schema_reviews review
+  join platform_private.cms_content_type_versions version on version.id = review.content_type_version_id
+  where review.id = %1$L$q$, pg_temp.s09d_id('a:review'), pg_temp.s09d_id('a:dryRun'),
+  pg_temp.s09d_actor_id('owner', 'person')))::boolean, false),
+  'the persisted review freezes the candidate hash, artifact, dry-run, dependency, context and submitter');
+select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
+    (select count(*) from audit_private.audit_events where target_id = %1$L) >= 1
+    and (select count(*) from platform_private.outbox_events where aggregate_id = %1$L) >= 1)::text$q$,
+  pg_temp.s09d_id('a:review')))::boolean, false),
+  'the freeze writes its audit and outbox evidence in the same transaction');
+
+-- Same-key replay on a fresh candidate.
+select pg_temp.s09d_create_type('r', 'dec108subreplay');
+select pg_temp.s09d_dry_run('r');
+select pg_temp.s09d_seal('r');
+select ok(pg_temp.s09d_replay_pair('r:submit', 'platform_api.cms_submit_schema_review', 'owner',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id('r:type'), 'versionId', pg_temp.s09d_id('r:version'),
+      'expectedVersion', pg_temp.s09d_version('r'), 'dryRunId', pg_temp.s09d_id('r:dryRun'),
+      'idempotencyKey', 's09d-submit-replay-0001'), true),
+  'a same-key replay returns the exact original review and freezes nothing twice');
+select is(pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_schema_reviews where content_type_version_id = %L',
+    pg_temp.s09d_id('r:version'))), '1', 'exactly one review exists for the replayed submission');
+
+-- Evidence a review must refuse.
+select pg_temp.s09d_create_type('u', 'dec108subqueued');
+select pg_temp.s09d_dry_run('u');
+select pg_temp.s09d_rpc('u:submit', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('u:type'), 'versionId', pg_temp.s09d_id('u:version'),
+    'expectedVersion', pg_temp.s09d_version('u'), 'dryRunId', pg_temp.s09d_id('u:dryRun'),
+    'idempotencyKey', 's09d-submit-queued-0001'), true);
+select is(pg_temp.s09d_outcome('u:submit'), 'CONFLICT',
+  'a queued (unsealed) dry-run is not a passed dry-run: 409 CONFLICT');
+select pg_temp.s09d_create_type('p', 'dec108subpseudo');
+select pg_temp.s09d_rpc('p:submit', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('p:type'), 'versionId', pg_temp.s09d_id('p:version'),
+    'expectedVersion', pg_temp.s09d_version('p'),
+    'dryRunId', extensions.gen_random_uuid(), 'idempotencyKey', 's09d-submit-pseudo-0001'), true);
+select ok(pg_temp.s09d_outcome('p:create') = 'OK'
+  and pg_temp.s09d_outcome('p:submit') in ('CONFLICT', 'VALIDATION_FAILED', 'NOT_FOUND'),
+  'a dryRunId that is no persisted CMS-03A-10 attempt (a candidate with no dry-run at all) cannot be frozen');
+select pg_temp.s09d_rpc('p:foreign', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('p:type'), 'versionId', pg_temp.s09d_id('p:version'),
+    'expectedVersion', pg_temp.s09d_version('p'), 'dryRunId', pg_temp.s09d_id('r:dryRun'),
+    'idempotencyKey', 's09d-submit-foreign-0001'), true);
+select ok(pg_temp.s09d_id('r:dryRun') is not null and pg_temp.s09d_outcome('p:foreign') in ('CONFLICT', 'VALIDATION_FAILED'),
+  'a sealed dry-run of a different candidate cannot be reused (same candidate/evidence only)');
+select pg_temp.s09d_create_type('d', 'dec108subdrift');
+select pg_temp.s09d_dry_run('d');
+select pg_temp.s09d_seal('d');
+select pg_temp.s09d_add_relation('d');
+select pg_temp.s09d_rpc('d:submit', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('d:type'), 'versionId', pg_temp.s09d_id('d:version'),
+    'expectedVersion', pg_temp.s09d_version('d'), 'dryRunId', pg_temp.s09d_id('d:dryRun'),
+    'idempotencyKey', 's09d-submit-drift-0001'), true);
+select ok(pg_temp.s09d_outcome('d:relation') <> 'MISSING' and pg_temp.s09d_outcome('d:submit') in ('CONFLICT', 'VALIDATION_FAILED'),
+  'a candidate edited after its dry-run sealed no longer matches that evidence and cannot be frozen');
+
+-- One live review, authority and request shape (all atomic).
+create temp table s09d_refusal_baseline on commit drop as select pg_temp.s09d_fingerprint(false) as fingerprint;
+select pg_temp.s09d_rpc('a:again', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+    'expectedVersion', pg_temp.s09d_version('a'), 'dryRunId', pg_temp.s09d_id('a:dryRun'),
+    'idempotencyKey', 's09d-submit-second-0001'), true);
+select is(pg_temp.s09d_outcome('a:again'), 'CONFLICT', 'a second live review for the exact frozen evidence is a 409 CONFLICT');
+select pg_temp.s09d_rpc('a:stale', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+    'expectedVersion', '999', 'dryRunId', pg_temp.s09d_id('a:dryRun'), 'idempotencyKey', 's09d-submit-stale-0001'), true);
+select is(pg_temp.s09d_outcome('a:stale'), 'CONFLICT', 'a stale draft CAS version is a 409 CONFLICT');
+select pg_temp.s09d_rpc('a:hidden', 'platform_api.cms_submit_schema_review', 'other',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+    'expectedVersion', pg_temp.s09d_version('a'), 'dryRunId', pg_temp.s09d_id('a:dryRun'),
+    'idempotencyKey', 's09d-submit-hidden-0001'), true);
+select is(pg_temp.s09d_outcome('a:hidden'), 'NOT_FOUND', 'another organization''s candidate is concealed as 404');
+select pg_temp.s09d_rpc('a:denied', 'platform_api.cms_submit_schema_review', 'rev1',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+    'expectedVersion', pg_temp.s09d_version('a'), 'dryRunId', pg_temp.s09d_id('a:dryRun'),
+    'idempotencyKey', 's09d-submit-denied-0001'), true, jsonb_build_object('actingPartyId', pg_temp.s09d_id('ownerOrg')));
+select is(pg_temp.s09d_outcome('a:denied'), 'FORBIDDEN', 'a human without cms.schema_designer is a 403 FORBIDDEN');
+select pg_temp.s09d_rpc('a:extra', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+    'expectedVersion', pg_temp.s09d_version('a'), 'dryRunId', pg_temp.s09d_id('a:dryRun'),
+    'idempotencyKey', 's09d-submit-extra-0001', 'requiredDecisionCount', 1), true);
+select is(pg_temp.s09d_outcome('a:extra'), 'INVALID_REQUEST',
+  'a caller-supplied policy field is an unknown key: the policy is never caller-authoritative');
+select pg_temp.s09d_rpc('a:nokey', 'platform_api.cms_submit_schema_review', 'owner',
+  jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+    'expectedVersion', pg_temp.s09d_version('a'), 'dryRunId', pg_temp.s09d_id('a:dryRun')), true);
+select is(pg_temp.s09d_outcome('a:nokey'), 'INVALID_REQUEST', 'a missing Idempotency-Key is a 400 INVALID_REQUEST');
+select ok(pg_temp.s09d_outcome('a:submit') = 'OK'
+  and pg_temp.s09d_fingerprint(false) = (select fingerprint from s09d_refusal_baseline),
+  'every refusal leaves versions, reviews, idempotency and outbox unchanged');
+select ok(pg_temp.s09d_service_only('platform_api.cms_submit_schema_review(jsonb)')
+  and to_regprocedure('platform_private.cms_submit_schema_review(jsonb)') is not null
+  and not coalesce(has_function_privilege('authenticated', to_regprocedure('platform_private.cms_submit_schema_review(jsonb)'), 'execute'), true),
+  'the submit RPC is service-role only; the private implementation is not browser-executable');
+
+select * from finish();
+rollback;

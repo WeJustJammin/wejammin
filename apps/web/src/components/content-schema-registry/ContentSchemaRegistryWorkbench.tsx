@@ -3,13 +3,15 @@ import ContentSchemaRegistryFilterBar, {
   contentSchemaRegistryFilterSummary,
 } from './ContentSchemaRegistryFilterBar';
 import ContentSchemaRegistryList from './ContentSchemaRegistryList';
-import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
-import ContentSchemaRegistryActivationForm from './ContentSchemaRegistryActivationForm';
+import ContentSchemaRegistryActivationPreparation from './ContentSchemaRegistryActivationPreparation';
 import ContentSchemaRegistryCreateForm from './ContentSchemaRegistryCreateForm';
-import ContentSchemaRegistryFieldForm from './ContentSchemaRegistryFieldForm';
-import ContentSchemaRegistryRelationForm from './ContentSchemaRegistryRelationForm';
+import ContentSchemaRegistryReviewMode from './ContentSchemaRegistryReviewMode';
+import ContentSchemaRegistryReviewPanel from './ContentSchemaRegistryReviewPanel';
+import ContentSchemaRegistryVersionCommands from './ContentSchemaRegistryVersionCommands';
+import ContentSchemaRegistryWorkbenchBanners from './ContentSchemaRegistryWorkbenchBanners';
 import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
+import { contentSchemaRegistryWorkbenchGate } from './ContentSchemaRegistryWorkbenchGate';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
 
 export default function ContentSchemaRegistryWorkbench({
@@ -26,76 +28,47 @@ export default function ContentSchemaRegistryWorkbench({
   csrfToken,
   onCanonicalRefetch,
   actingContextLabel,
-  actingPartyId,
   stepUpState,
   stepUpFreshUntil,
+  reviewId = null,
+  initialReview = null,
+  contextEpoch = 0,
   loading = false,
   offline = false,
   message = null,
 }: ContentSchemaRegistryWorkbenchProps) {
-  if (access === 'not-rendered') {
-    return (
-      <ContentSchemaRegistryCapabilityGate
-        variant="not-rendered"
-        reasonCode="FORBIDDEN"
-      />
-    );
-  }
+  const gate = contentSchemaRegistryWorkbenchGate({
+    access,
+    variant,
+    initialList,
+    initialDetail,
+    initialReview,
+    requestId,
+    retryUrl,
+    canonicalUrl,
+  });
+  if (gate !== null) return gate;
 
-  const initialFailure =
-    initialList.status === 'error' || initialList.status === 'degraded'
-      ? initialList
-      : initialDetail?.status === 'error' ||
-          initialDetail?.status === 'degraded'
-        ? initialDetail
-        : null;
-  if (access === 'disabled' && initialFailure !== null) {
-    return (
-      <ContentSchemaRegistryInitialFailureBoundary
-        failure={initialFailure}
-        access="disabled"
-        variant={variant}
-        requestId={requestId}
-        retryUrl={retryUrl}
-      />
-    );
-  }
-
-  const disabledReason =
-    initialList.status === 'disabled'
-      ? initialList.reason
-      : 'A server capability prerequisite is not satisfied.';
-  if (access === 'disabled') {
-    return (
-      <ContentSchemaRegistryCapabilityGate
-        variant="disabled"
-        reasonCode="SCHEMA_REGISTRY_UNAVAILABLE"
-        disclosure={disabledReason}
-        recoveryHref={canonicalUrl}
-      />
-    );
-  }
-
+  const reviewMode = reviewId !== null;
   const hasListState =
-    initialDetail === null ||
-    initialList.status !== 'empty' ||
-    initialList.reason !== 'no-records';
+    !reviewMode &&
+    (initialDetail === null ||
+      initialList.status !== 'empty' ||
+      initialList.reason !== 'no-records');
   const activeFilterSummary = contentSchemaRegistryFilterSummary(query);
   const resultCount =
     initialList.status === 'success'
       ? initialList.data.items.length
       : undefined;
   const detailAction = retryUrl.split('?')[0] ?? retryUrl;
-  const expectedVersion =
-    initialDetail?.status === 'success' ? initialDetail.version : null;
-  const ifMatch = expectedVersion === null ? null : `"${expectedVersion}"`;
   const idempotencyKey = (operationId: string): string =>
     `cms-schema-${operationId.toLowerCase()}-${requestId}`;
-  // The function proves that the server route owns canonical refetch. The
-  // browser enhancement receives only the safe URL and asks the server for a
-  // fresh projection; event payloads never become registry state.
+  // Event payloads never become registry state; the server refetch does.
   const canonicalRefetchBinding =
     onCanonicalRefetch === undefined ? 'unbound' : 'bound';
+  const ready = initialDetail?.status === 'success' ? initialDetail : null;
+  const detail = ready?.data ?? null;
+  const expectedVersion = ready?.version ?? '1';
 
   return (
     <section
@@ -121,43 +94,18 @@ export default function ContentSchemaRegistryWorkbench({
           disclosure-safe block references.
         </p>
       </header>
-      {offline ? (
-        <section
-          className="content-schema-registry-offline-status"
-          data-cms-offline-status="true"
-          role="status"
-          aria-live="polite"
-        >
-          <h3>Registry is offline</h3>
-          <p>
-            Canonical registry reads are unavailable. No registry intent was
-            retained offline.
-          </p>
-        </section>
-      ) : null}
-      {loading ? (
-        <div
-          className="content-schema-registry-loading-skeleton"
-          data-cms-loading-skeleton="true"
-          aria-hidden="true"
-        />
-      ) : null}
-      {message === null ? null : (
-        <p
-          className="visually-hidden"
-          data-cms-canonical-status="true"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {message}
-        </p>
-      )}
-      <ContentSchemaRegistryCapabilityGate
-        variant={access}
-        reasonCode={variant}
+      <ContentSchemaRegistryWorkbenchBanners
+        loading={loading}
+        offline={offline}
+        message={message}
       />
-      {access === 'read-only' || access === 'full' ? (
+      {variant === 'schemaReviewAssigned' ? null : (
+        <ContentSchemaRegistryCapabilityGate
+          variant={access}
+          reasonCode={variant}
+        />
+      )}
+      {!reviewMode && (access === 'read-only' || access === 'full') ? (
         <ContentSchemaRegistryFilterBar
           query={query}
           canonicalUrl={canonicalUrl}
@@ -174,65 +122,76 @@ export default function ContentSchemaRegistryWorkbench({
           activeFilterSummary={activeFilterSummary}
         />
       ) : null}
-      <div className="content-schema-registry-grid">
-        <div>
-          {hasListState && initialList.status === 'success' ? (
-            <ContentSchemaRegistryList
-              page={initialList.data}
-              canonicalUrl={canonicalUrl}
-              listUrl={listUrl}
-            />
-          ) : null}
-          {access === 'full' && initialDetail === null ? (
-            <ContentSchemaRegistryCreateForm
-              action={canonicalUrl}
+      {reviewMode ? (
+        <ContentSchemaRegistryReviewMode
+          reviewId={reviewId}
+          state={initialReview}
+          variant={variant}
+          access={access}
+          retryUrl={retryUrl}
+          requestId={requestId}
+          csrfToken={csrfToken}
+          idempotencyKey={idempotencyKey}
+          stepUpState={stepUpState ?? 'required'}
+          stepUpFreshUntil={stepUpFreshUntil}
+          actingContextLabel={actingContextLabel}
+        />
+      ) : (
+        <div className="content-schema-registry-grid">
+          <div>
+            {hasListState && initialList.status === 'success' ? (
+              <ContentSchemaRegistryList
+                page={initialList.data}
+                canonicalUrl={canonicalUrl}
+                listUrl={listUrl}
+              />
+            ) : null}
+            {access === 'full' && initialDetail === null ? (
+              <ContentSchemaRegistryCreateForm
+                action={canonicalUrl}
+                csrfToken={csrfToken}
+                idempotencyKey={idempotencyKey('CMS-03A-01')}
+              />
+            ) : null}
+          </div>
+          <ContentSchemaRegistryDetail
+            state={initialDetail}
+            backUrl={listUrl}
+            retryUrl={retryUrl}
+            requestId={requestId}
+          />
+          {detail === null ? null : (
+            <div className="content-schema-registry-version-side">
+              <ContentSchemaRegistryActivationPreparation
+                preparation={detail.activationPreparation}
+                review={initialReview}
+                onCanonicalRefetch={() => {
+                  void onCanonicalRefetch('detail-read');
+                }}
+              />
+              <ContentSchemaRegistryReviewPanel
+                state={initialReview}
+                retryUrl={retryUrl}
+                requestId={requestId}
+              />
+            </div>
+          )}
+          {access === 'full' && detail !== null ? (
+            <ContentSchemaRegistryVersionCommands
+              detail={detail}
+              review={initialReview}
+              action={detailAction}
               csrfToken={csrfToken}
-              idempotencyKey={idempotencyKey('CMS-03A-01')}
+              idempotencyKey={idempotencyKey}
+              expectedVersion={expectedVersion}
+              actingContextLabel={actingContextLabel}
+              stepUpState={stepUpState}
+              stepUpFreshUntil={stepUpFreshUntil}
+              contextEpoch={contextEpoch}
             />
           ) : null}
         </div>
-        <ContentSchemaRegistryDetail
-          state={initialDetail}
-          backUrl={listUrl}
-          retryUrl={retryUrl}
-          requestId={requestId}
-        />
-        {access === 'full' && initialDetail?.status === 'success' ? (
-          <div className="content-schema-registry-command-stack">
-            <ContentSchemaRegistryFieldForm
-              action={detailAction}
-              contentTypeId={initialDetail.data.resource.contentTypeId}
-              versionId={initialDetail.data.resource.id}
-              csrfToken={csrfToken}
-              idempotencyKey={idempotencyKey('CMS-03A-02')}
-              ifMatch={ifMatch ?? '"1"'}
-            />
-            <ContentSchemaRegistryRelationForm
-              action={detailAction}
-              contentTypeId={initialDetail.data.resource.contentTypeId}
-              versionId={initialDetail.data.resource.id}
-              csrfToken={csrfToken}
-              idempotencyKey={idempotencyKey('CMS-03A-03')}
-              ifMatch={ifMatch ?? '"1"'}
-            />
-            <ContentSchemaRegistryActivationForm
-              action={detailAction}
-              contentTypeId={initialDetail.data.resource.contentTypeId}
-              versionId={initialDetail.data.resource.id}
-              csrfToken={csrfToken}
-              idempotencyKey={idempotencyKey('CMS-03A-04')}
-              ifMatch={ifMatch ?? '"1"'}
-              expectedVersion={expectedVersion ?? '1'}
-              actingPartyId={actingPartyId}
-              {...(actingContextLabel === undefined
-                ? {}
-                : { actingContextLabel })}
-              {...(stepUpState === undefined ? {} : { stepUpState })}
-              {...(stepUpFreshUntil === undefined ? {} : { stepUpFreshUntil })}
-            />
-          </div>
-        ) : null}
-      </div>
+      )}
       <span
         className="visually-hidden"
         data-canonical-refetch={canonicalRefetchBinding}

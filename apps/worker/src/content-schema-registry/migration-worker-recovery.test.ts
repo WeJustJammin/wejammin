@@ -7,6 +7,7 @@ import {
   type MigrationWorkerPort,
   type SchemaMigrationRpcName,
 } from './migration-worker';
+import { emptySourcePage } from './migration-worker-test-support';
 
 const CONTENT_TYPE_ID = '10000000-0000-4000-8000-000000000001';
 const OLD_VERSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -40,7 +41,7 @@ const plan = (
   migratedCount: '0',
   failedCount: '0',
   classification: 'breaking',
-  transformKey: 'article.v2',
+  transformKey: 'identity.revalidate',
   transformVersion: '1',
   compilerHash: HASH,
   sourceHash: HASH,
@@ -62,7 +63,12 @@ const portFor = (
     calls,
     call: vi.fn(async (rpc: SchemaMigrationRpcName, request: unknown) => {
       calls.push(rpc);
-      return handlers[rpc]?.(request) ?? {};
+      return (
+        handlers[rpc]?.(request) ??
+        (rpc === SCHEMA_MIGRATION_RPC.readSourceRows
+          ? emptySourcePage(request)
+          : {})
+      );
     }),
   };
 };
@@ -121,9 +127,11 @@ describe('schema migration recovery paths', () => {
       SCHEMA_MIGRATION_RPC.readPlan,
       SCHEMA_MIGRATION_RPC.claimLease,
       SCHEMA_MIGRATION_RPC.heartbeatLease,
+      SCHEMA_MIGRATION_RPC.readSourceRows,
       SCHEMA_MIGRATION_RPC.processDryRunBatch,
       SCHEMA_MIGRATION_RPC.finalizeDryRun,
       SCHEMA_MIGRATION_RPC.heartbeatLease,
+      SCHEMA_MIGRATION_RPC.readSourceRows,
       SCHEMA_MIGRATION_RPC.processBatch,
       SCHEMA_MIGRATION_RPC.beginVerification,
       SCHEMA_MIGRATION_RPC.verify,

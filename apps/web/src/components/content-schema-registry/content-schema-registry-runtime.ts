@@ -26,6 +26,7 @@ export type ContentSchemaRegistryMutationOutcome =
   | 'success'
   | 'validation'
   | 'unauthenticated'
+  | 'step-up-required'
   | 'forbidden'
   | 'not-found'
   | 'conflict'
@@ -93,6 +94,28 @@ const mutationErrorDetails = async (
   }
 };
 
+/** BE03a: a 401 whose recovery is exactly `step_up` routes to /step-up. */
+const isStepUpRequired = async (response: Response): Promise<boolean> => {
+  if (response.status !== 401) return false;
+  try {
+    const body: unknown = await response.clone().json();
+    if (typeof body !== 'object' || body === null) return false;
+    const { code, details } = body as {
+      readonly code?: unknown;
+      readonly details?: unknown;
+    };
+    return (
+      code === 'STEP_UP_REQUIRED' &&
+      typeof details === 'object' &&
+      details !== null &&
+      (details as { readonly recoveryAction?: unknown }).recoveryAction ===
+        'step_up'
+    );
+  } catch {
+    return false;
+  }
+};
+
 const mutationServerVersion = async (
   response: Response,
 ): Promise<string | null> => {
@@ -132,11 +155,13 @@ export const executeContentSchemaRegistryMutation = async (input: {
   const outcomeFor = (
     response: Response | null,
     authoritative: boolean,
+    stepUp: boolean,
   ): ContentSchemaRegistryMutationOutcome => {
     if (response === null || authoritative)
       return authoritative ? 'success' : 'degraded';
     if (response.status === 400 || response.status === 422) return 'validation';
-    if (response.status === 401) return 'unauthenticated';
+    if (response.status === 401)
+      return stepUp ? 'step-up-required' : 'unauthenticated';
     if (response.status === 403) return 'forbidden';
     if (response.status === 404) return 'not-found';
     if (response.status === 409) return 'conflict';
@@ -157,7 +182,11 @@ export const executeContentSchemaRegistryMutation = async (input: {
           input.operationId,
           response,
         )));
-    const outcome = outcomeFor(response, isAuthoritative);
+    const outcome = outcomeFor(
+      response,
+      isAuthoritative,
+      response !== null && (await isStepUpRequired(response)),
+    );
     return {
       outcome,
       attempts,

@@ -4,6 +4,8 @@ import {
   MAX_RESPONSE_BYTES,
   type AuthProductionConfiguration,
 } from './production-configuration';
+import { mfaRpcFailures, type RpcFailure } from './production-mfa-failures';
+import { MFA_METHOD_REGISTRY } from './step-up';
 import type { AuthenticationError } from './types';
 import { supabaseRpcHeaders } from '../supabase-rpc-headers';
 
@@ -85,14 +87,8 @@ export const callAuthJson = async (
   return response.status === 204 ? {} : readBoundedJson(response);
 };
 
-type RpcFailure = Readonly<{
-  match: string;
-  status: AuthenticationError['status'];
-  code: string;
-  message: string;
-}>;
-
 const knownRpcFailures: readonly RpcFailure[] = [
+  ...mfaRpcFailures,
   {
     match: 'IDEMPOTENCY_MISMATCH',
     status: 409,
@@ -179,9 +175,13 @@ const knownRpcFailures: readonly RpcFailure[] = [
   },
   {
     match: 'STEP_UP_REQUIRED',
-    status: 403,
+    status: 401,
     code: 'STEP_UP_REQUIRED',
     message: 'Recent verification is required.',
+    details: {
+      recoveryAction: 'step_up',
+      allowedMethods: [...MFA_METHOD_REGISTRY],
+    },
   },
   {
     match: 'FORBIDDEN',
@@ -273,7 +273,12 @@ export const callRpc = async (
       rpcFailure.includes(match),
     );
     if (mapped !== undefined) {
-      throw authError(mapped.status, mapped.code, mapped.message);
+      throw authError(
+        mapped.status,
+        mapped.code,
+        mapped.message,
+        mapped.details,
+      );
     }
     throw authError(
       503,

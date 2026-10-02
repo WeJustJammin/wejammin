@@ -2,7 +2,17 @@
 
 ## Contents
 
-This module defines authentication primitives, strict request and resource schemas, provider metadata, and the authoritative AUTH-API-01 through AUTH-API-15 policy registry.
+This module defines authentication primitives, strict request and resource schemas, provider metadata, and the authoritative AUTH-API-01 through AUTH-API-21 policy registry.
+
+AUTH-API-16 through AUTH-API-21 (MFA factor list, TOTP enrollment start and
+verify, factor removal, step-up challenge and verify) are declared in
+`routes.ts`; their strict requests and resources live in `requests-mfa.ts` and
+`resources-mfa.ts`. Enrollment start and verify and factor removal carry the
+strong MFA-version `If-Match`; only removal carries an `Idempotency-Key`. A
+`session_conditional_step_up` route needs a fresh step-up proof only when a
+verified factor already exists. The enrollment secret exists only in the
+one-time `TotpEnrollmentStart` body, and no resource carries a token or a
+provider identifier.
 
 ## Ownership
 

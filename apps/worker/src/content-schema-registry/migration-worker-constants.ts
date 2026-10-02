@@ -44,6 +44,7 @@ export const SCHEMA_MIGRATION_RPC = {
   readPlan: 'cms_get_schema_migration_plan',
   claimLease: 'cms_claim_schema_migration_lease',
   heartbeatLease: 'cms_heartbeat_schema_migration_lease',
+  readSourceRows: 'cms_read_schema_migration_source_rows',
   processDryRunBatch: 'cms_process_schema_migration_dry_run_batch',
   finalizeDryRun: 'cms_finalize_schema_migration_dry_run',
   processBatch: 'cms_process_schema_migration_batch',

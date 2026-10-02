@@ -1,6 +1,7 @@
 import {
   ApiErrorSchema,
   CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER,
+  CmsStepUpRequiredDetailsSchema,
 } from '@wejammin/contracts';
 import type { ApiError, JsonValue } from '@wejammin/contracts';
 
@@ -50,9 +51,31 @@ const safeTextFields = (
     }),
   );
 
+/**
+ * BE03a 401 `STEP_UP_REQUIRED`: only the exact recovery action and the
+ * allowlisted method identifiers cross the boundary. Anything else, including
+ * a malformed method list, collapses to no details so the browser falls back
+ * to plain re-authentication rather than a step-up route it cannot verify.
+ */
+const safeStepUpDetails = (
+  details: Readonly<Record<string, JsonValue>>,
+): Readonly<Record<string, JsonValue>> => {
+  const parsed = CmsStepUpRequiredDetailsSchema.safeParse({
+    recoveryAction: details.recoveryAction,
+    allowedMethods: details.allowedMethods,
+  });
+  return parsed.success
+    ? {
+        recoveryAction: parsed.data.recoveryAction,
+        allowedMethods: [...parsed.data.allowedMethods],
+      }
+    : {};
+};
+
 const safeDetails = (
   status: number,
   details: Readonly<Record<string, JsonValue>>,
+  code: string,
 ): Readonly<Record<string, JsonValue>> => {
   if (status === 400 || status === 422) {
     const violations = Array.isArray(details.violations)
@@ -71,6 +94,7 @@ const safeDetails = (
     };
   }
   if (status === 401) {
+    if (code === 'STEP_UP_REQUIRED') return safeStepUpDetails(details);
     return details.recoveryAction === 'reauthenticate'
       ? { recoveryAction: 'reauthenticate' }
       : {};
@@ -136,7 +160,7 @@ export const parseContentSchemaRegistryErrorMetadata = async (
     if (parsed.success)
       apiError = {
         ...parsed.data,
-        details: safeDetails(status, parsed.data.details),
+        details: safeDetails(status, parsed.data.details, parsed.data.code),
       };
   } catch {
     apiError = null;

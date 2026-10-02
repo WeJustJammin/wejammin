@@ -7,6 +7,15 @@
 
 All 43 frontend shard specifications are complete and independently ambiguity-passed. Read Shard 00 first, then Shards 01–42 in dependency order.
 
+DEC-111 (owner-approved 2026-10-02) adds two protected identity routes to
+[01-identity-authority.md](01-identity-authority.md): `/step-up` (the page every
+401 `STEP_UP_REQUIRED` navigates to as `/step-up?returnTo=`, over BE01a
+AUTH-API-20 and AUTH-API-21) and `/settings/security/mfa` (TOTP enrollment and
+factor list, over AUTH-API-16 through AUTH-API-19). Shards 00, 03 and 05 treat
+`STEP_UP_REQUIRED` as step-up navigation, never as a 403 gate, and
+[05-platform-configuration-admin.md](05-platform-configuration-admin.md) carries
+the admin MFA factor-reset form for BE05b CFG-05B-06.
+
 ## Conventions
 
 Every FE specification defines typed component props and named variants, complete IA-flow ownership, server/URL/local state, all async and error states, guarded routes with metadata, three-breakpoint behavior, WCAG 2.2 AA interaction rules, numeric performance budgets, form/auth security, exhaustive BE field/error ownership, and full source maps. Inheritance cites Shard 00 or the design system; implicit behavior is not accepted.
@@ -78,9 +87,11 @@ The next valid pipeline stage is `/plan-phase`.
 
 ## Changelog
 
-| Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-02 | DEC-108 consistency closure for FE shard 03: review-detail and dry-run `AsyncState` enumerations, the `activationPreparation` data mapping, prefilled approve-decision `approvalIds`, a validated UUID reviewer-selection input with helper copy, review-read scope without `cms.schema_registry.read`, and the resolver projection surfaced only through `activationPreparation.templateCompatibility`. |
+| Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-02 | DEC-108 consistency closure for FE shard 03: review-detail and dry-run `AsyncState` enumerations, the `activationPreparation` data mapping, prefilled approve-decision `approvalIds`, a validated UUID reviewer-selection input with helper copy, review-read scope without `cms.schema_registry.read`, and the resolver projection surfaced only through `activationPreparation.templateCompatibility`.        |
+| 2026-10-02 | DEC-119 for FE shard 03: the owner-only `CmsCapabilityGrantConsole` at `/app/cms-content-modeling/capability-grants` for CMS-03A-15 through CMS-03A-18 with list and command states, per-field validation, owner-only role variants and accessibility.                                                                                                                                                          |
+| 2026-10-02 | Spec follow-ups: DEC-111 index entries for the `/step-up` and `/settings/security/mfa` routes and AUTH-API-16 through AUTH-API-21; `STEP_UP_REQUIRED` as 401 step-up navigation in shards 00, 03 and 05; first-factor reauthentication and last-factor copy in shard 01; the admin MFA factor-reset form (CFG-05B-06) in shard 05; DEC-119 owner self-grant and Delivery and media capability group in shard 03 |
 
 <!-- spec-graph: auto-generated -->
 

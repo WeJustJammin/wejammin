@@ -116,7 +116,16 @@ export const createOperationalDependencies = (
           'INVALID_REQUEST',
           'The authentication rate limit request is invalid.',
         );
-      const ip = input.request.headers.get('cf-connecting-ip') ?? 'unknown';
+      // A party bucket (no user id, an acting party) is the quota of the whole
+      // party, so it must not fragment by client address. User and anonymous
+      // buckets stay scoped to the client address.
+      const isPartyBucket =
+        input.authUserId === null &&
+        typeof input.actingPartyId === 'string' &&
+        input.actingPartyId !== '';
+      const ip = isPartyBucket
+        ? ''
+        : (input.request.headers.get('cf-connecting-ip') ?? 'unknown');
       const bucket = await sha256Hex(
         `${input.operationId}\u0000${ip}\u0000${input.authUserId ?? ''}\u0000${input.actingPartyId ?? ''}\u0000${input.identifierDigest ?? ''}`,
       );

@@ -3,6 +3,28 @@ import { z } from 'zod';
 import type { ContentSchemaRegistryRoutePolicy } from './route-policy.ts';
 import { schemaReference } from './openapi-contracts.ts';
 
+/**
+ * A 401 group that carries `STEP_UP_REQUIRED` publishes the exact
+ * unauthenticated/step-up union, so a client can tell an expired session
+ * (`reauthenticate`) from recoverable MFA (`step_up` plus `allowedMethods`).
+ */
+const errorSchemaForStatus = (
+  codes: readonly string[],
+  errorRef: Readonly<{ $ref: string }>,
+  contracts: Readonly<Record<string, z.ZodTypeAny>>,
+): unknown => {
+  if (!codes.includes('STEP_UP_REQUIRED')) return errorRef;
+  const stepUp = schemaReference('CmsStepUpRequiredErrorSchema', contracts);
+  return codes.includes('UNAUTHENTICATED')
+    ? {
+        oneOf: [
+          schemaReference('CmsUnauthenticatedErrorSchema', contracts),
+          stepUp,
+        ],
+      }
+    : stepUp;
+};
+
 export const apiErrorResponses = (
   route: ContentSchemaRegistryRoutePolicy,
   contracts: Readonly<Record<string, z.ZodTypeAny>>,
@@ -21,7 +43,11 @@ export const apiErrorResponses = (
         String(status),
         {
           description: codes.sort().join(', '),
-          content: { 'application/json': { schema: errorRef } },
+          content: {
+            'application/json': {
+              schema: errorSchemaForStatus(codes, errorRef, contracts),
+            },
+          },
         },
       ]),
   );

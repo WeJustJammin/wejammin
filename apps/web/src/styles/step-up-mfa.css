@@ -1,0 +1,66 @@
+@layer components {
+  .mfa-qr {
+    display: block;
+    inline-size: min(100%, 16rem);
+    block-size: auto;
+    border: 1px solid var(--infra-border, #c8c7c1);
+  }
+
+  .mfa-scan-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .mfa-table-wrap {
+    overflow-x: auto;
+  }
+
+  .mfa-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+  }
+
+  .mfa-table th,
+  .mfa-table td {
+    padding: 0.5rem 0.75rem;
+    border-block-end: 1px solid var(--infra-border, #c8c7c1);
+    text-align: start;
+    vertical-align: middle;
+  }
+
+  @media (min-width: 48rem) {
+    .mfa-scan-grid {
+      grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .mfa-table thead {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .mfa-table,
+    .mfa-table tbody,
+    .mfa-table tr,
+    .mfa-table th,
+    .mfa-table td {
+      display: block;
+    }
+
+    .mfa-table tr {
+      padding-block: 0.5rem;
+      border-block-end: 1px solid var(--infra-border, #c8c7c1);
+    }
+
+    .mfa-table th,
+    .mfa-table td {
+      border: 0;
+      padding: 0.15rem 0;
+    }
+  }
+}

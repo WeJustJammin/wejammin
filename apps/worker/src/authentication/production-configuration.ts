@@ -42,6 +42,8 @@ export type VerifiedAuthToken = Readonly<{
   sessionId: string;
   expiresAt: string;
   stepUpAt: string | null;
+  primaryAuthAt: string | null;
+  aal: 'aal1' | 'aal2' | null;
   providerSubjectDigest: string | null;
 }>;
 

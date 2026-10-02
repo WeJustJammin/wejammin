@@ -1,0 +1,93 @@
+import type { AuthOperationId, AuthRoutePolicy } from './routes.ts';
+
+/**
+ * AUTH-API-16 through AUTH-API-21 (DEC-111 MFA factors and step-up), in the
+ * tuple layout of `AUTH_ROUTE_POLICIES`. Only AUTH-API-19 carries a client
+ * `Idempotency-Key`; AUTH-API-17 through AUTH-API-19 carry the strong MFA
+ * version `If-Match`.
+ */
+export const AUTH_MFA_ROUTE_POLICIES = [
+  [
+    'AUTH-API-16',
+    'GET',
+    '/api/v1/account/mfa/factors',
+    'session',
+    300,
+    60,
+    8_000,
+    'no-store',
+    'none',
+    'none',
+  ],
+  [
+    'AUTH-API-17',
+    'POST',
+    '/api/v1/account/mfa/factors',
+    'session_conditional_step_up',
+    5,
+    3600,
+    15_000,
+    'no-store',
+    'none',
+    'required',
+  ],
+  [
+    'AUTH-API-18',
+    'POST',
+    '/api/v1/account/mfa/factors/:factorId/verify',
+    'session',
+    10,
+    900,
+    15_000,
+    'no-store',
+    'none',
+    'required',
+  ],
+  [
+    'AUTH-API-19',
+    'DELETE',
+    '/api/v1/account/mfa/factors/:factorId',
+    'session_conditional_step_up',
+    5,
+    3600,
+    15_000,
+    'no-store',
+    'required',
+    'required',
+  ],
+  [
+    'AUTH-API-20',
+    'POST',
+    '/api/v1/auth/step-up/challenges',
+    'session',
+    10,
+    900,
+    8_000,
+    'no-store',
+    'none',
+    'none',
+  ],
+  [
+    'AUTH-API-21',
+    'POST',
+    '/api/v1/auth/step-up/challenges/:challengeId/verify',
+    'session',
+    10,
+    900,
+    8_000,
+    'no-store',
+    'none',
+    'none',
+  ],
+] as const satisfies readonly (readonly [
+  AuthOperationId,
+  AuthRoutePolicy['method'],
+  string,
+  AuthRoutePolicy['auth'],
+  number,
+  number,
+  number,
+  AuthRoutePolicy['cacheControl'],
+  AuthRoutePolicy['idempotency'],
+  AuthRoutePolicy['ifMatch'],
+])[];

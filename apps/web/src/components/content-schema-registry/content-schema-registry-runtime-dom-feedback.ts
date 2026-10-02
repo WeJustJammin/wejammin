@@ -9,6 +9,8 @@ export const safeOutcomeMessage = (
   if (outcome === 'validation') return 'Check the highlighted fields.';
   if (outcome === 'unauthenticated')
     return 'Your session expired. Sign in again.';
+  if (outcome === 'step-up-required')
+    return 'Recent verification is required. Redirecting to confirm your identity.';
   if (outcome === 'forbidden')
     return 'You do not have permission for this schema change.';
   if (outcome === 'not-found')
@@ -96,4 +98,15 @@ export const safeReauthentication = (
   const current = windowObject.location;
   const returnTo = `${current.pathname}${current.search}`;
   navigate(`/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
+};
+
+/** Route to the DEC-111 step-up page with the current relative page as returnTo. */
+export const safeStepUp = (
+  windowObject: Window,
+  navigate: (target: string) => void = (target) =>
+    windowObject.location.assign(target),
+): void => {
+  const current = windowObject.location;
+  const returnTo = `${current.pathname}${current.search}`;
+  navigate(`/step-up?returnTo=${encodeURIComponent(returnTo)}`);
 };

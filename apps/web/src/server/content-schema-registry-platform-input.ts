@@ -17,11 +17,14 @@ const FORM_NULLABLE_FIELDS = new Set([
   'validatorKey',
   'validatorVersion',
   'migrationPlanId',
+  'transformKey',
+  'transformVersion',
 ]);
 const FORM_OPTIONAL_FIELDS = new Set([
   'stableFieldId',
   'defaultValue',
   'expectedActivationEvidenceHash',
+  'reason',
 ]);
 const FORM_TRANSPORT_FIELDS = new Set([
   'operationId',
@@ -33,7 +36,23 @@ const FORM_TRANSPORT_FIELDS = new Set([
   'confirmed',
   'contentTypeId',
   'versionId',
+  'reviewId',
 ]);
+
+const PATH_IDENTIFIERS = ['contentTypeId', 'versionId', 'reviewId'] as const;
+
+/**
+ * A browser may echo the path identifier the route already bound, but it can
+ * never introduce one the target does not declare or contradict one it does.
+ */
+const pathIdentifiersMatch = (
+  target: ContentSchemaRegistryMutationTarget,
+  supplied: (name: (typeof PATH_IDENTIFIERS)[number]) => string | null,
+): boolean =>
+  PATH_IDENTIFIERS.every((name) => {
+    const value = supplied(name);
+    return value === null || target[name] === value;
+  });
 
 export type MutationTransport = {
   readonly operationId: string | null;
@@ -86,21 +105,8 @@ export const parseFormDataInput = async (
   }
 
   const suppliedOperation = values.get('operationId') ?? null;
-  const suppliedContentTypeId = values.get('contentTypeId');
-  const suppliedVersionId = values.get('versionId');
-  if (
-    (target.contentTypeId === undefined &&
-      suppliedContentTypeId !== undefined) ||
-    (target.contentTypeId !== undefined &&
-      suppliedContentTypeId !== undefined &&
-      suppliedContentTypeId !== target.contentTypeId) ||
-    (target.versionId === undefined && suppliedVersionId !== undefined) ||
-    (target.versionId !== undefined &&
-      suppliedVersionId !== undefined &&
-      suppliedVersionId !== target.versionId)
-  ) {
+  if (!pathIdentifiersMatch(target, (name) => values.get(name) ?? null))
     throw new MutationInputError('path_id_mismatch');
-  }
 
   const payload: Record<string, unknown> = {};
   let confirmed: boolean | null = null;
@@ -173,23 +179,16 @@ export const parseJsonInput = async (
     throw new MutationInputError('json_invalid');
   const input = { ...(value as Record<string, unknown>) };
   const suppliedOperation = textOrNull(input.operationId, 'operationId');
-  const suppliedContentTypeId = textOrNull(
-    input.contentTypeId,
-    'contentTypeId',
+  const suppliedIdentifiers = new Map(
+    PATH_IDENTIFIERS.map((name) => [name, textOrNull(input[name], name)]),
   );
-  const suppliedVersionId = textOrNull(input.versionId, 'versionId');
   if (
-    (target.contentTypeId === undefined && suppliedContentTypeId !== null) ||
-    (target.contentTypeId !== undefined &&
-      suppliedContentTypeId !== null &&
-      suppliedContentTypeId !== target.contentTypeId) ||
-    (target.versionId === undefined && suppliedVersionId !== null) ||
-    (target.versionId !== undefined &&
-      suppliedVersionId !== null &&
-      suppliedVersionId !== target.versionId)
-  ) {
+    !pathIdentifiersMatch(
+      target,
+      (name) => suppliedIdentifiers.get(name) ?? null,
+    )
+  )
     throw new MutationInputError('path_id_mismatch');
-  }
   const csrfToken = textOrNull(input.csrf, 'csrf');
   const idempotencyKey = textOrNull(
     input['idempotency-key'],
@@ -212,8 +211,7 @@ export const parseJsonInput = async (
               })();
   for (const key of [
     'operationId',
-    'contentTypeId',
-    'versionId',
+    ...PATH_IDENTIFIERS,
     'csrf',
     'idempotency-key',
     'if-match',

@@ -166,10 +166,10 @@ const contentSchemaRegistryResponses = (
     schema: 'success',
     headers: successHeaders,
   })),
-  ...errors.map(({ status, description }) => ({
+  ...errors.map(({ status, description, schema = 'error' }) => ({
     status: String(status),
     description,
-    schema: 'error',
+    schema,
     ...(status === 429 ? { headers: 'rate' } : {}),
   })),
 ];
@@ -202,6 +202,7 @@ const contentSchemaRegistryStepUpMutationErrors =
           status: 401,
           description:
             'Authentication or recent step-up verification is required',
+          schema: 'stepUpUnauthorized',
         }
       : error,
   );
@@ -219,6 +220,21 @@ const contentSchemaRegistryListErrors = [
   },
   { status: 503, description: 'Content schema projection unavailable' },
   { status: 504, description: 'Content schema projection timed out' },
+];
+
+const contentSchemaRegistryGrantListErrors = [
+  { status: 400, description: 'Capability grant list query is malformed' },
+  { status: 401, description: 'Authentication is required' },
+  { status: 403, description: 'Owner authority is required' },
+  { status: 422, description: 'Capability grant list query fails validation' },
+  { status: 429, description: 'Capability grant list rate limit exceeded' },
+  { status: 500, description: 'Capability grant list failed safely' },
+  {
+    status: 502,
+    description: 'Capability grant projection returned invalid data',
+  },
+  { status: 503, description: 'Capability grant projection unavailable' },
+  { status: 504, description: 'Capability grant projection timed out' },
 ];
 
 const contentSchemaRegistryDetailErrors = [
@@ -277,6 +293,60 @@ const contentSchemaRegistryReleaseErrors = [
   { status: 503, description: 'Signed content schema dependency unavailable' },
   { status: 504, description: 'Signed content schema dependency timed out' },
 ];
+
+const authMfaCommandErrors = (
+  subject,
+  { stepUp = false, notFound, conflict, validation, rate },
+) => [
+  { status: '400', description: `${subject} request or headers are malformed` },
+  {
+    status: '401',
+    description: stepUp
+      ? 'Verified session or recent step-up verification is required'
+      : 'Verified session is required',
+    ...(stepUp ? { schema: 'stepUpUnauthorized' } : {}),
+  },
+  { status: '403', description: 'Account is not eligible or CSRF failed' },
+  { status: '404', description: notFound },
+  { status: '409', description: conflict },
+  { status: '413', description: `${subject} body is too large` },
+  { status: '415', description: `${subject} media type is unsupported` },
+  { status: '422', description: validation },
+  { status: '429', description: rate },
+  { status: '500', description: `${subject} failed safely` },
+  {
+    status: '502',
+    description: 'Authentication provider returned an invalid response',
+  },
+  { status: '503', description: `${subject} dependency unavailable` },
+  { status: '504', description: `${subject} dependency timed out` },
+];
+
+const authMfaResponses = (
+  successStatus,
+  successDescription,
+  errors,
+  headers,
+) => [
+  {
+    status: successStatus,
+    description: successDescription,
+    schema: 'success',
+    ...(headers ? { headers } : {}),
+  },
+  ...errors.map((error) => ({
+    schema: 'error',
+    ...error,
+    ...(error.status === '429' ? { headers: 'rate' } : {}),
+  })),
+];
+
+const authMfaFactorErrors = {
+  notFound: 'Factor is absent or concealed',
+  conflict: 'MFA state, factor, or version conflicts',
+  validation: 'MFA fields fail semantic validation',
+  rate: 'MFA rate limit exceeded',
+};
 
 export const routeDefinitions = {
   authProviderCatalogRead: {
@@ -348,12 +418,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Protected OAuth intent requires authentication',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Protected OAuth intent requires fresh self authority',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -531,12 +602,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'CSRF or global-logout step-up verification failed',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -609,12 +681,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh self step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -680,12 +753,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh self step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -756,12 +830,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh self step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -868,12 +943,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh survivor step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -939,12 +1015,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh survivor step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -994,6 +1071,96 @@ export const routeDefinitions = {
         schema: 'error',
       },
     ],
+  },
+  authMfaFactorsRead: {
+    responses: [
+      {
+        status: '200',
+        description: 'Current MFA factors and step-up state',
+        schema: 'success',
+        headers: 'entity',
+      },
+      {
+        status: '401',
+        description: 'Verified session is required',
+        schema: 'error',
+      },
+      {
+        status: '403',
+        description: 'Account is not eligible',
+        schema: 'error',
+      },
+      {
+        status: '429',
+        description: 'MFA factor read rate limit exceeded',
+        schema: 'error',
+        headers: 'rate',
+      },
+      {
+        status: '503',
+        description: 'MFA factor dependency unavailable',
+        schema: 'error',
+      },
+      {
+        status: '504',
+        description: 'MFA factor read timed out',
+        schema: 'error',
+      },
+      {
+        status: '500',
+        description: 'MFA factor read failed safely',
+        schema: 'error',
+      },
+    ],
+  },
+  authMfaEnrollmentStart: {
+    responses: authMfaResponses(
+      '201',
+      'TOTP enrollment started; secret shown once',
+      authMfaCommandErrors('Enrollment', {
+        stepUp: true,
+        ...authMfaFactorErrors,
+        notFound: 'Enrollment target is absent or concealed',
+      }),
+      'entity',
+    ),
+  },
+  authMfaFactorVerify: {
+    responses: authMfaResponses(
+      '200',
+      'MFA factor verified and session rotated to aal2',
+      authMfaCommandErrors('Factor verification', authMfaFactorErrors),
+      'entity',
+    ),
+  },
+  authMfaFactorRemove: {
+    responses: authMfaResponses(
+      '200',
+      'MFA factor removed',
+      authMfaCommandErrors('Factor removal', {
+        stepUp: true,
+        ...authMfaFactorErrors,
+      }),
+      'entity',
+    ),
+  },
+  authStepUpChallengeCreate: {
+    responses: authMfaResponses(
+      '201',
+      'Step-up challenge created',
+      authMfaCommandErrors('Challenge', authMfaFactorErrors),
+    ),
+  },
+  authStepUpVerify: {
+    responses: authMfaResponses(
+      '200',
+      'Step-up verified and session rotated to aal2',
+      authMfaCommandErrors('Step-up verification', {
+        ...authMfaFactorErrors,
+        notFound: 'Challenge is absent or concealed',
+        conflict: 'Challenge is expired or already consumed',
+      }),
+    ),
   },
   identityCreate: {
     responses: identityResponse(
@@ -1625,6 +1792,38 @@ export const routeDefinitions = {
       'Schema review assignment revoked or created',
       contentSchemaRegistryStepUpMutationErrors,
       'mutation',
+    ),
+  },
+  'CMS-03A-15': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'CMS capability grant created',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-16': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'CMS capability grant renewed',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-17': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'CMS capability grant revoked',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-18': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Owner CMS capability grant page',
+      contentSchemaRegistryGrantListErrors,
+      'entity',
     ),
   },
   'CMS-03B-01': {

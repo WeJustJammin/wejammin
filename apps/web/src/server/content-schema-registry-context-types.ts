@@ -84,6 +84,16 @@ export interface ContentSchemaRegistryPorts {
     readonly versionId: string;
   }) => Awaitable<unknown>;
   /**
+   * CMS-03A-13 read of the review named by `activationPreparation.reviewRef`.
+   * Optional: a port set without it simply renders no review state.
+   */
+  readonly loadReview?: (input: {
+    readonly request: Request;
+    readonly session: ContentSchemaRegistrySession;
+    readonly authority: ContentSchemaRegistryAuthority;
+    readonly reviewId: string;
+  }) => Awaitable<unknown>;
+  /**
    * Server-only read of the authorized acting-context list, used solely to
    * resolve a human-readable context label for disclosure. It carries no
    * authority and its identifiers never reach the browser projection.

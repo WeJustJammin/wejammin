@@ -7,14 +7,43 @@ import type {
 } from './types';
 import { UUID_PATTERN } from './admission-common';
 
+const DESIGNER = ['cms.schema_designer'] as const;
+
+/**
+ * Human operations opened by any one listed capability (BE03a authorization
+ * matrix). Capabilities never substitute across rows: reviewers and assigners
+ * cannot design, and CMS-03A-13 admits the designer scope or the assigned
+ * review scope but not the registry-read scope. The owner-only grant
+ * operations (CMS-03A-15..18) carry no capability key; the named RPC derives
+ * the owner from the immutable owner initialization receipt.
+ */
+const CAPABILITIES_BY_OPERATION: Readonly<
+  Partial<Record<ContentSchemaRegistryOperationId, readonly string[]>>
+> = {
+  'CMS-03A-01': DESIGNER,
+  'CMS-03A-02': DESIGNER,
+  'CMS-03A-03': DESIGNER,
+  'CMS-03A-04': DESIGNER,
+  'CMS-03A-06': ['cms.schema_registry.read', 'cms.schema_designer'],
+  'CMS-03A-07': ['cms.schema_registry.read', 'cms.schema_designer'],
+  'CMS-03A-09': DESIGNER,
+  'CMS-03A-10': DESIGNER,
+  'CMS-03A-11': DESIGNER,
+  'CMS-03A-12': ['cms.schema_review'],
+  'CMS-03A-13': ['cms.schema_designer', 'cms.schema_review'],
+  'CMS-03A-14': ['cms.schema_review.assign'],
+};
+
+const OWNER_DERIVED_OPERATIONS: ReadonlySet<ContentSchemaRegistryOperationId> =
+  new Set(['CMS-03A-15', 'CMS-03A-16', 'CMS-03A-17', 'CMS-03A-18']);
+
 export const requireCapability = (
   session: ContentSchemaRegistrySession,
   operationId: ContentSchemaRegistryOperationId,
 ): ContentSchemaRegistryError | null => {
-  const required =
-    operationId === 'CMS-03A-06' || operationId === 'CMS-03A-07'
-      ? ['cms.schema_registry.read', 'cms.schema_designer']
-      : ['cms.schema_designer'];
+  if (OWNER_DERIVED_OPERATIONS.has(operationId)) return null;
+  // An operation without a mapped capability fails closed.
+  const required = CAPABILITIES_BY_OPERATION[operationId] ?? [];
   return required.some((capability) =>
     session.capabilities.includes(capability),
   )

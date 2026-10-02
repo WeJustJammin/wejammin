@@ -33,6 +33,12 @@ export const successStatusFor = (
     value !== null
   )
     return (value as { jobId?: unknown }).jobId === null ? 200 : 202;
+  if (
+    operationId === 'CMS-03A-14' &&
+    typeof value === 'object' &&
+    value !== null
+  )
+    return (value as { state?: unknown }).state === 'revoked' ? 200 : 201;
   return statusFor[operationId] as 200 | 201 | 202;
 };
 

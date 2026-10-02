@@ -8,9 +8,18 @@ import {
   CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
 } from '@wejammin/contracts';
 
-const humanCapabilities = new Set<string>(
-  CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES,
-);
+/**
+ * Capabilities the web projection accepts from the private boundary. The
+ * review-only `cms.schema_review` human (DEC-108) must survive the boundary
+ * so the `schemaReviewAssigned` route can render; the shared contract list is
+ * kept as the base so a later contract addition is a no-op here.
+ */
+const WEB_HUMAN_CAPABILITIES: readonly string[] = [
+  ...CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES,
+  'cms.schema_review',
+].filter((capability, index, all) => all.indexOf(capability) === index);
+
+const humanCapabilities = new Set<string>(WEB_HUMAN_CAPABILITIES);
 const presentationVariants = new Set<string>(
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS,
 );
@@ -31,10 +40,7 @@ export const parseContentSchemaRegistryCapabilities = (
     if (!humanCapabilities.has(capability) || capabilities.includes(capability))
       continue;
     capabilities.push(capability);
-    if (
-      capabilities.length === CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES.length
-    )
-      break;
+    if (capabilities.length === WEB_HUMAN_CAPABILITIES.length) break;
   }
   return capabilities;
 };

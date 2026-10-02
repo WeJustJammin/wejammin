@@ -186,9 +186,29 @@ resolves the bound immutable row and returns NULL on absence, ambiguity or a
 malformed row, in which case `cms_create_entry` raises `DEPENDENCY_UNAVAILABLE`
 rather than trusting a caller hash. Policy changes ship only as code plus a
 forward migration, and a caller-supplied policy is never authority. This
-specification states the mechanism only: which policy keys are protected, their
-decision counts and their specialist capabilities are an open owner decision and
-are not enumerated here. The DEC-108
+specification applies the members that 03a's Workflow policy registry enumerates
+(DEC-110; 03a holds the single authoritative table). The ordinary members
+`editorial`, `editorial.default`, `cms.content.workflow` and `cms.standard`
+(version 1) each require one independent decision under `cms.reviewer`. The
+protected members `cms.disclosure.policy`, `cms.disclosure.legal`,
+`cms.disclosure.security` and `cms.disclosure.financial` (version 1) each require
+two distinct humans, at least one of whom holds the class specialist capability
+`cms.reviewer.policy`, `cms.reviewer.legal`, `cms.reviewer.security` or
+`cms.reviewer.financial` respectively. `requiredCapabilities` is
+`["cms.reviewer"]` for an ordinary member and `["cms.reviewer",
+"cms.reviewer.<class>"]` for a protected one, read as ordered reviewer slots, and
+`policyHash` is the JCS canonical SHA-256 of the member defined in 03a. For
+editorial use the policy is the member bound to the entry's content-type version
+through its `workflow_key`/`workflow_version`; an editorial review freezes that
+member's evidence, counts only decisions whose humans currently qualify, and is
+approved when the transactional count of distinct qualifying approvers reaches
+`requiredDecisionCount` and every specialist slot is held by a counted approver.
+An approve decision is refused with 409 `CONFLICT` when the decisions that would
+remain unrecorded after it are fewer than the specialist slots no counted
+approver holds, because `recordedDecisionCount` never exceeds
+`requiredDecisionCount`; a reject decision is never refused on this ground.
+Reviewer and specialist grants are provisioned by the owner CMS capability grant
+command (03a CMS-03A-15). The DEC-108
 `cms_schema_reviews`/`cms_schema_review_decisions`/`cms_schema_review_assignments`
 records and CMS-03A-09…14 commands are a distinct CMS-registry-surface
 authority under 03a, not this shard's editorial review (`editorial_review` /
@@ -261,6 +281,7 @@ const WorkflowPolicyEvidence = z
     riskClass: z.enum(['ordinary', 'protected']),
     requiredDecisionCount: z.number().int().min(1).max(8),
     requiredCapabilities: z.array(CapabilityKey).max(16),
+    // Decision-independent approval-basis digest (see approvalEvidenceHash).
     approvalEvidenceHash: Hash,
   })
   .superRefine((value, ctx) => {
@@ -502,6 +523,27 @@ only. The server resolves distinct humans, capabilities, and recent MFA and
 binds that evidence atomically to the review/decision. A protected workflow
 requires at least two recorded decisions; caller-supplied owner, capability,
 approval, activation, or other authority metadata is never trusted.
+
+`approvalEvidenceHash` on the editorial `WorkflowPolicyEvidence` is a
+decision-independent approval-basis digest, so it exists and is identical from
+entry bootstrap onward, when no editorial decision can yet exist. It is the
+lowercase SHA-256 hex of the RFC 8785/JCS canonical JSON of
+`{ "activationApprovalEvidenceHash": <the bound content-type version's frozen
+03a activation approval evidence hash>, "policyHash": <the bound policy member's
+policyHash>, "schemaVersionId": <the entry's active ContentTypeVersion id> }`.
+It binds the editorial rule set to the exact schema approval that activated the
+version and contains no editorial decision, assignment, entry, revision,
+reviewer or caller input, so it is the same for every entry and revision of that
+content-type version. `cms_create_entry` and CMS-03B-01 compare the request's
+`workflowPolicy`, including this hash, to the server value and refuse a
+mismatch. CMS-03B-05 freezes the value as
+`cms_editorial_reviews.approval_evidence_hash`, and each decision is bound to the
+review's exact policy, this hash and its `reviewed_hash`. Approval progress is
+carried only by `recordedDecisionCount` and the append-only decision rows, never
+by this hash, and the hash is not an assertion that any editorial approval has
+occurred. It is distinct from 03a `SchemaReviewResource.approvalEvidenceHash`, a
+digest of the approved schema review's sorted decisions that is the
+`activationEvidence.approvalEvidenceHash` consumed above.
 
 Success resources are strict, hash/version aware, and expose only data authorized for the caller:
 
@@ -1132,6 +1174,7 @@ None.
 | 2026-08-28 | Classified IA Shard 03 into registry, editorial/publication, and composition/taxonomy/localization backend boundaries.                                                                                                                                                                                                                                                                                                                                                        | /write-be-spec-classify | Split Group, Classification                                                                       |
 | 2026-08-28 | Authored complete editorial workflow and publication backend contract for CMS-05–09 and CMS-13.                                                                                                                                                                                                                                                                                                                                                                               | /write-be-spec-write    | All                                                                                               |
 | 2026-10-02 | DEC-108 consistency closure: the 03a schema/block-definition routes are CMS-03A-01 through CMS-03A-14; editorial workflow-policy evidence resolves from a code-owned versioned policy registry seeded by a forward-only migration, with membership left as an open owner decision.                                                                                                                                                                                            |
+| 2026-10-02 | DEC-109/DEC-110: applied the 03a workflow policy registry membership (four ordinary and four protected `cms.disclosure.*` members with ordered reviewer slots) to editorial reviews, added the specialist-slot evaluation rule, and defined the editorial `approvalEvidenceHash` as a decision-independent approval-basis digest that exists at entry bootstrap.                                                                                                              | /propagate-decision     | Route Registry invariants, Contracts, Frozen evidence                                             |
 
 ## Dependency References
 

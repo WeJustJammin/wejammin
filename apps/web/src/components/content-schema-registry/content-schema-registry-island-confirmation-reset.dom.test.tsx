@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
+import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
 
 type Mounted = Readonly<{ container: HTMLDivElement; root: Root }>;
 
@@ -65,6 +66,7 @@ const DETAIL = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [],
+  activationPreparation: emptyActivationPreparation,
 };
 
 const props = (

@@ -16,11 +16,23 @@ adds the reciprocal immutable template-draft/compatibility-resolver contract.
 Public template activation remains a separate 03c gap, and no new acceptance is
 claimed by this amendment.
 
+DEC-111 (owner-approved 2026-10-02) adds server-mediated step-up MFA and TOTP
+enrollment to [01a-auth-account-linking.md](01a-auth-account-linking.md):
+AUTH-API-16 (list factors), AUTH-API-17 (start enrollment), AUTH-API-18 (verify
+enrollment), AUTH-API-19 (remove factor), AUTH-API-20 (step-up challenge) and
+AUTH-API-21 (step-up verify). Every `STEP_UP_REQUIRED` is a 401 that routes the
+browser to `/step-up?returnTo=` ([00-infrastructure.md](00-infrastructure.md)),
+TOTP management lives at `/settings/security/mfa`, and the administrative
+factor reset for a lost factor is CFG-05B-06 in
+[05b-admin-workspace-operations.md](05b-admin-workspace-operations.md).
+
 ## Changelog
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-10-02 | DEC-108 consistency closure across IA 03, its deep dive, BE 03a/03b/03c and FE 03: dry-run creates the attempt-scoped migration plan and activation only advances it, typed dry-run attempts and per-row evidence, the transform registry contract, complete review-decision columns, approve-decision `approvalIds`, BE00 job states, 401 step-up semantics, typed resolver failures surfaced only through `activationPreparation`, owner-authority end definition, aligned error and rate-class rows, and the code-owned editorial policy-registry mechanism (membership remains an open owner decision). |
+| 2026-10-02 | DEC-109/DEC-110/DEC-119 for BE shard 03: the code-owned workflow policy registry membership and `policyHash` in 03a with the editorial application and decision-independent `approvalEvidenceHash` in 03b, the two initial transform-registry members, the dry-run classification correction, and the owner-only CMS capability grant, renewal, revocation and list operations CMS-03A-15 through CMS-03A-18.                                                                                                                                                                                               |
+| 2026-10-02 | Spec follow-ups: DEC-111 index entries for AUTH-API-16 through AUTH-API-21, the `/step-up` and `/settings/security/mfa` routes and CFG-05B-06; first-factor primary-authentication recency and last-verified-factor refusal in 01a; BE01c acknowledgement of the CMS grant RPCs as `organization_actor_grant` projection writers; DEC-119 owner self-grant of any grantable capability, strictest-of downgrade guard and navigation/media grantable capabilities in 03a; shard 04 internal-principal context for DLV-DEL-API-03/04, ClamAV signature freshness gate and default decoded-pixel profile       |
 
 ## Quality Gate
 

@@ -45,7 +45,19 @@ export const CMS_SCHEMA_REGISTRY_RPC = {
   listContentTypes: 'cms_list_content_types',
   getContentTypeVersion: 'cms_get_content_type_version',
   advanceBlockLifecycle: 'cms_advance_block_lifecycle',
-} as const;
+  createSchemaSuccessor: 'cms_create_schema_successor',
+  startSchemaDryRun: 'cms_start_schema_dry_run',
+  submitSchemaReview: 'cms_submit_schema_review',
+  decideSchemaReview: 'cms_decide_schema_review',
+  getSchemaReview: 'cms_get_schema_review',
+  assignSchemaReview: 'cms_assign_schema_review',
+  grantCapability: 'cms_grant_capability',
+  renewCapabilityGrant: 'cms_renew_capability_grant',
+  revokeCapabilityGrant: 'cms_revoke_capability_grant',
+  listCapabilityGrants: 'cms_list_capability_grants',
+} as const satisfies Readonly<
+  Record<keyof ContentSchemaRegistryDependencies['ports'], string>
+>;
 
 export const createProductionContentSchemaRegistryDependencies = (
   options: ContentSchemaRegistryProductionOptions,
@@ -157,41 +169,24 @@ export const createProductionContentSchemaRegistryDependencies = (
     );
   };
 
-  const port = <K extends keyof ContentSchemaRegistryDependencies['ports']>(
-    rpc: string,
-  ): ContentSchemaRegistryDependencies['ports'][K] =>
-    (async (input: ContentSchemaRegistryPortInput, signal: AbortSignal) =>
-      callRpc(
-        input,
-        signal,
-        rpc,
-      )) as unknown as ContentSchemaRegistryDependencies['ports'][K];
+  const port =
+    (rpc: string) =>
+    (
+      input: ContentSchemaRegistryPortInput,
+      signal: AbortSignal,
+    ): Promise<ContentSchemaRegistryResult<unknown>> =>
+      callRpc(input, signal, rpc);
+
+  // One adapter per named RPC; the response schema is enforced by the port runner.
+  const ports = Object.fromEntries(
+    Object.entries(CMS_SCHEMA_REGISTRY_RPC).map(([name, rpc]) => [
+      name,
+      port(rpc),
+    ]),
+  ) as unknown as ContentSchemaRegistryDependencies['ports'];
 
   return {
-    ports: {
-      createTypeDraft: port<'createTypeDraft'>(
-        CMS_SCHEMA_REGISTRY_RPC.createTypeDraft,
-      ),
-      addFieldDefinition: port<'addFieldDefinition'>(
-        CMS_SCHEMA_REGISTRY_RPC.addFieldDefinition,
-      ),
-      bindRelation: port<'bindRelation'>(CMS_SCHEMA_REGISTRY_RPC.bindRelation),
-      activateSchema: port<'activateSchema'>(
-        CMS_SCHEMA_REGISTRY_RPC.activateSchema,
-      ),
-      registerBlock: port<'registerBlock'>(
-        CMS_SCHEMA_REGISTRY_RPC.registerBlock,
-      ),
-      listContentTypes: port<'listContentTypes'>(
-        CMS_SCHEMA_REGISTRY_RPC.listContentTypes,
-      ),
-      getContentTypeVersion: port<'getContentTypeVersion'>(
-        CMS_SCHEMA_REGISTRY_RPC.getContentTypeVersion,
-      ),
-      advanceBlockLifecycle: port<'advanceBlockLifecycle'>(
-        CMS_SCHEMA_REGISTRY_RPC.advanceBlockLifecycle,
-      ),
-    },
+    ports,
     resolveSession,
     verifyRelease: createReleaseVerification(options, configuration),
     rateLimit: createRateLimiter(options),

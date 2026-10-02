@@ -1,5 +1,4 @@
 import {
-  CmsUuidSchema,
   ContentSchemaRegistryDetailSchema,
   ContentSchemaRegistryListPageSchema,
 } from '@wejammin/contracts';
@@ -10,8 +9,19 @@ import type {
   ContentSchemaRegistryAccess,
   ContentSchemaRegistryDetailState,
   ContentSchemaRegistryListState,
+  ContentSchemaRegistryReviewState,
   ContentSchemaRegistryVariant,
 } from './content-schema-registry-types';
+import {
+  CanonicalStateError,
+  isRecord,
+  validateError,
+  validateRouteMeta,
+  optionalString,
+  rejectUnknownKeys,
+  requireString,
+} from './content-schema-registry-canonical-validate-primitives';
+import { validateReviewState } from './content-schema-registry-canonical-review-validate';
 
 /**
  * Exact per-status structural validation for the canonical refetch projection.
@@ -23,24 +33,22 @@ import type {
 export interface ContentSchemaRegistryWorkbenchProjection {
   readonly access: ContentSchemaRegistryAccess;
   readonly variant: ContentSchemaRegistryVariant;
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
   readonly requestId: string;
   readonly initialList: ContentSchemaRegistryListState;
   readonly initialDetail: ContentSchemaRegistryDetailState | null;
+  readonly initialReview: ContentSchemaRegistryReviewState | null;
   readonly actingContextLabel?: string;
   readonly stepUpState?: ContentSchemaRegistryStepUpState;
   readonly stepUpFreshUntil?: string;
 }
 
+export { CanonicalStateError } from './content-schema-registry-canonical-validate-primitives';
 export {
   applyProjection,
   initialProjectionState,
   toDisabledProjection,
 } from './content-schema-registry-canonical-projection-state';
 export type { ContentSchemaRegistryProjectionState } from './content-schema-registry-canonical-projection-state';
-
-export class CanonicalStateError extends Error {}
 
 const ACCESS_VALUES = new Set([
   'full',
@@ -57,22 +65,11 @@ const VARIANT_VALUES = new Set([
   'businessMandate',
   'staffCaseScoped',
   'adminStepUp',
+  'schemaReviewAssigned',
   'forbiddenHidden',
   'disabledPrerequisite',
 ]);
 const STEP_UP_VALUES = new Set(['required', 'pending', 'verified']);
-const ERROR_CODES = new Set([
-  'INVALID_REQUEST',
-  'UNAUTHENTICATED',
-  'FORBIDDEN',
-  'NOT_FOUND',
-  'VALIDATION_FAILED',
-  'RATE_LIMITED',
-  'DEPENDENCY_INVALID_RESPONSE',
-  'DEPENDENCY_UNAVAILABLE',
-  'DEPENDENCY_DEADLINE_EXCEEDED',
-  'INTERNAL_ERROR',
-]);
 const DEGRADED_CODES = new Set([
   'DEPENDENCY_INVALID_RESPONSE',
   'DEPENDENCY_UNAVAILABLE',
@@ -100,59 +97,6 @@ const DEGRADED_KEYS = new Set([
   'etag',
 ]);
 const DISABLED_KEYS = new Set(['status', 'reason']);
-const ERROR_DETAIL_KEYS = new Set(['code', 'message', 'requestId']);
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-export const requireString = (
-  value: Record<string, unknown>,
-  key: string,
-): string => {
-  const entry = value[key];
-  if (typeof entry !== 'string' || entry.length === 0)
-    throw new CanonicalStateError(key);
-  return entry;
-};
-
-export const optionalString = (
-  value: Record<string, unknown>,
-  key: string,
-): string | undefined => {
-  const entry = value[key];
-  if (entry === undefined) return undefined;
-  if (typeof entry !== 'string') throw new CanonicalStateError(key);
-  return entry;
-};
-
-export const rejectUnknownKeys = (
-  value: Record<string, unknown>,
-  allowed: ReadonlySet<string>,
-): void => {
-  for (const key of Object.keys(value))
-    if (!allowed.has(key)) throw new CanonicalStateError('unknown');
-};
-
-const validateError = (value: unknown): void => {
-  if (!isRecord(value)) throw new CanonicalStateError('error');
-  rejectUnknownKeys(value, ERROR_DETAIL_KEYS);
-  if (!ERROR_CODES.has(requireString(value, 'code')))
-    throw new CanonicalStateError('error code');
-  requireString(value, 'message');
-  requireString(value, 'requestId');
-};
-
-const validateRouteMeta = (value: Record<string, unknown>): void => {
-  if (value.httpStatus !== undefined && !Number.isInteger(value.httpStatus))
-    throw new CanonicalStateError('httpStatus');
-  if (
-    value.retryAfterSeconds !== undefined &&
-    value.retryAfterSeconds !== null &&
-    !Number.isInteger(value.retryAfterSeconds)
-  )
-    throw new CanonicalStateError('retryAfterSeconds');
-};
-
 const validateListState = (value: unknown): ContentSchemaRegistryListState => {
   if (!isRecord(value)) throw new CanonicalStateError('list');
   const status = requireString(value, 'status');
@@ -257,19 +201,6 @@ export const buildProjection = (
   if (!ACCESS_VALUES.has(access)) throw new CanonicalStateError('access');
   const variant = requireString(props, 'variant');
   if (!VARIANT_VALUES.has(variant)) throw new CanonicalStateError('variant');
-  const actorId = props.actorId;
-  if (
-    actorId !== null &&
-    (typeof actorId !== 'string' || !CmsUuidSchema.safeParse(actorId).success)
-  )
-    throw new CanonicalStateError('actorId');
-  const actingPartyId = props.actingPartyId;
-  if (
-    actingPartyId !== null &&
-    (typeof actingPartyId !== 'string' ||
-      !CmsUuidSchema.safeParse(actingPartyId).success)
-  )
-    throw new CanonicalStateError('actingPartyId');
   const requestId = requireString(props, 'requestId');
   const actingContextLabel = optionalString(props, 'actingContextLabel');
   const stepUpState = optionalString(props, 'stepUpState');
@@ -279,11 +210,10 @@ export const buildProjection = (
   return {
     access: access as ContentSchemaRegistryAccess,
     variant: variant as ContentSchemaRegistryVariant,
-    actorId: (actorId ?? null) as string | null,
-    actingPartyId: (actingPartyId ?? null) as string | null,
     requestId,
     initialList: validateListState(props.initialList),
     initialDetail: validateDetailState(props.initialDetail),
+    initialReview: validateReviewState(props.initialReview),
     ...(actingContextLabel === undefined ? {} : { actingContextLabel }),
     ...(stepUpState === undefined
       ? {}

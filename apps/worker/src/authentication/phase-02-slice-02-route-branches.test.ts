@@ -229,7 +229,11 @@ describe('Phase 2 Slice 02 route branch coverage', () => {
         bindings,
       );
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toMatchObject({
+        code: 'STEP_UP_REQUIRED',
+        details: { recoveryAction: 'step_up', allowedMethods: ['totp'] },
+      });
       expect(
         Object.values(slice).every((mock) => !mock.mock.calls.length),
       ).toBe(true);

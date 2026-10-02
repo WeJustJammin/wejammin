@@ -1,3 +1,5 @@
+import { readAndScanBatch } from './migration-batch-read';
+import { resolveTransform } from './migration-transform-registry';
 import { SCHEMA_MIGRATION_RPC } from './migration-worker-constants';
 import type {
   SchemaMigrationJobPayload,
@@ -15,6 +17,24 @@ import {
   planWithBatch,
 } from './migration-worker-validation';
 
+const stopped = (
+  current: MigrationPlanRecord,
+  outcome: 'retry' | 'failure',
+  reasonCode: string,
+): BatchRunResult => ({
+  outcome,
+  done: false,
+  version: current.version,
+  cursor: current.cursor,
+  progress: current.progress,
+  sourceCount: current.sourceCount,
+  targetCount: current.targetCount,
+  rowErrorCount: current.rowErrorCount,
+  migratedCount: current.migratedCount,
+  failedCount: current.failedCount,
+  reasonCode,
+});
+
 export const runMigrationBatches = async (
   runtime: MigrationWorkerRuntime,
   plan: MigrationPlanRecord,
@@ -27,6 +47,14 @@ export const runMigrationBatches = async (
   batchLimit: number,
 ): Promise<BatchRunResult> => {
   let current = plan;
+  const transform = resolveTransform(
+    runtime.transformRegistry,
+    plan.transformKey,
+    plan.transformVersion,
+  );
+  if (transform.kind === 'unregistered')
+    return stopped(current, 'failure', 'TRANSFORM_NOT_REGISTERED');
+  const entry = transform.kind === 'entry' ? transform.entry : null;
   for (let batch = 0; batch < batchLimit; batch += 1) {
     const heartbeat = await runtime.call(
       SCHEMA_MIGRATION_RPC.heartbeatLease,
@@ -69,6 +97,19 @@ export const runMigrationBatches = async (
         failedCount: current.failedCount,
         reasonCode: 'LEASE_EXPIRED',
       };
+    const scan = await readAndScanBatch(
+      runtime,
+      current,
+      leaseToken,
+      entry,
+      signal,
+    );
+    if (!scan.ok)
+      return stopped(
+        current,
+        scan.retryable ? 'retry' : 'failure',
+        scan.reasonCode,
+      );
     const rpc = dryRun
       ? SCHEMA_MIGRATION_RPC.processDryRunBatch
       : SCHEMA_MIGRATION_RPC.processBatch;
@@ -81,6 +122,7 @@ export const runMigrationBatches = async (
         cursor: current.cursor,
         limit: runtime.maxBatchRows,
         leaseToken,
+        rowEvidence: scan.evidence,
         transformKey: current.transformKey,
         transformVersion: current.transformVersion,
         compilerHash: current.compilerHash,

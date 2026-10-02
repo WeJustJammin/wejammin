@@ -2,6 +2,7 @@ import type {
   MigrationState,
   SchemaMigrationRpcName,
 } from './migration-worker-constants';
+import type { TransformRegistry } from './migration-transform-types';
 import type {
   SchemaMigrationJobPayload,
   SchemaMigrationQueueEnvelope,
@@ -71,6 +72,8 @@ export type SchemaMigrationWorkerDependencies = Readonly<{
   leaseDurationMs?: number;
   maxBatchRows?: number;
   maxBatchesPerInvocation?: number;
+  /** Code-owned transform registry; defaults to the built-in members. */
+  transformRegistry?: TransformRegistry;
   eventClaimTokenFactory?: () => string;
   telemetry?: (event: MigrationWorkerTelemetryEvent) => void | Promise<void>;
 }>;

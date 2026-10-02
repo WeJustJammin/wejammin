@@ -29,6 +29,7 @@ import {
   configureRoute,
   missingSliceDependency,
 } from './routes-provider-access';
+import { stepUpRequiredError } from './step-up';
 import type { AuthenticationDependencies } from './types';
 
 export const registerLoginMethodRoutes = (
@@ -100,7 +101,7 @@ export const registerLoginMethodRoutes = (
       if (!isStepUpFresh(resolved.value, Date.now())) {
         return responseForAuthError(
           context,
-          authError(403, 'FORBIDDEN', 'Recent verification is required.'),
+          stepUpRequiredError(),
         );
       }
       const rateError = await enforceRate(
@@ -172,7 +173,7 @@ export const registerLoginMethodRoutes = (
     if (!isStepUpFresh(resolved.value, Date.now())) {
       return responseForAuthError(
         context,
-        authError(403, 'FORBIDDEN', 'Recent verification is required.'),
+        stepUpRequiredError(),
       );
     }
     const rateError = await enforceRate(

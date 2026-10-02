@@ -39,6 +39,24 @@ export const correlationFor = (
   return parsed.success ? parsed.data : input.requestId;
 };
 
+/**
+ * Operations whose RPC rechecks the caller's validated acting-context binding
+ * (activation, review submission, decision and assignment, and the owner
+ * capability grant commands and list). The binding id is private: it is
+ * projected into these RPC contexts only, never into any other operation,
+ * response, header, log, or telemetry projection.
+ */
+const PRIVATE_BINDING_OPERATIONS: ReadonlySet<string> = new Set([
+  'CMS-03A-04',
+  'CMS-03A-11',
+  'CMS-03A-12',
+  'CMS-03A-14',
+  'CMS-03A-15',
+  'CMS-03A-16',
+  'CMS-03A-17',
+  'CMS-03A-18',
+]);
+
 export const contextFor = (
   input: ContentSchemaRegistryPortInput,
   contexts: WeakMap<Request, ServerSessionContext>,
@@ -50,12 +68,8 @@ export const contextFor = (
     fromServer?.actingPartyId ?? input.session?.actingPartyId ?? null;
   const sessionId = fromServer?.sessionId;
   const actorPersonId = fromServer?.actorPersonId;
-  // The activation operation performs its own step-up check against the
-  // validated acting-context binding. That binding id is private: it is
-  // projected into the activation RPC context only, never into any other
-  // operation, response, header, log, or telemetry projection.
   const actingContextId =
-    input.operationId === 'CMS-03A-04' &&
+    PRIVATE_BINDING_OPERATIONS.has(input.operationId) &&
     typeof fromServer?.actingContextId === 'string' &&
     fromServer.actingContextId.length > 0
       ? fromServer.actingContextId

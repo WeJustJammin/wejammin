@@ -91,6 +91,7 @@ export const reviewRoutePolicies = [
     auth: 'review_reader',
     capability: 'cms.schema_designer',
     capabilities: ['cms.schema_designer', 'cms.schema_review'],
+    capabilityMode: 'any_of',
     csrf: 'none',
     stepUp: 'none',
     idempotency: 'none',

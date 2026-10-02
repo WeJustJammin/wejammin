@@ -12,16 +12,23 @@ export interface ContentSchemaRegistryMutationReconciliation {
   readonly response: Response | null;
 }
 
-const successStatusesFor = (operationId: string): readonly number[] => {
-  if (
-    operationId === 'CMS-03A-01' ||
-    operationId === 'CMS-03A-02' ||
-    operationId === 'CMS-03A-03'
-  )
-    return [201];
-  if (operationId === 'CMS-03A-04') return [200, 202];
-  return [];
+/** BE03a success statuses per human command; unknown operations have none. */
+const SUCCESS_STATUSES: Readonly<Record<string, readonly number[]>> = {
+  'CMS-03A-01': [201],
+  'CMS-03A-02': [201],
+  'CMS-03A-03': [201],
+  'CMS-03A-04': [200, 202],
+  'CMS-03A-09': [201],
+  'CMS-03A-10': [202],
+  'CMS-03A-11': [201],
+  'CMS-03A-12': [201],
+  'CMS-03A-14': [200, 201],
 };
+
+const successStatusesFor = (operationId: string): readonly number[] =>
+  Object.hasOwn(SUCCESS_STATUSES, operationId)
+    ? (SUCCESS_STATUSES[operationId] ?? [])
+    : [];
 
 const copyFormData = (source: FormData): FormData => {
   const copy = new FormData();

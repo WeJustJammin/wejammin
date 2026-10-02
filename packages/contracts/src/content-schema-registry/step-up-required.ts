@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { RequestIdSchema } from '../identifiers.ts';
 
 /**
- * Details of the 401 `STEP_UP_REQUIRED` response (BE03a: CMS-03A-04, -12, and
- * -14). Missing or stale MFA is recoverable by recent verification, so the
+ * Details of the 401 `STEP_UP_REQUIRED` response (BE03a: CMS-03A-04, -12, -14,
+ * -15, -16, and -17). Missing or stale MFA is recoverable by recent verification, so the
  * recovery is exactly `step_up` and never `reauthenticate`. `allowedMethods`
  * lists only configured allowlisted method identifiers and may be empty.
  */
@@ -25,6 +25,25 @@ export const CmsStepUpRequiredErrorSchema = z
   })
   .readonly();
 
+/**
+ * The 401 `UNAUTHENTICATED` alternative of the step-up routes (BE00 error
+ * detail schema): a missing, expired, or revoked session recovers only by
+ * re-authentication.
+ */
+export const CmsUnauthenticatedErrorSchema = z
+  .strictObject({
+    code: z.literal('UNAUTHENTICATED'),
+    details: z
+      .strictObject({ recoveryAction: z.literal('reauthenticate') })
+      .readonly(),
+    message: z.string().min(1).max(500),
+    requestId: RequestIdSchema,
+  })
+  .readonly();
+
 export type CmsStepUpRequiredDetails = z.infer<
   typeof CmsStepUpRequiredDetailsSchema
+>;
+export type CmsUnauthenticatedError = z.infer<
+  typeof CmsUnauthenticatedErrorSchema
 >;

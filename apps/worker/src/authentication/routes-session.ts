@@ -23,6 +23,7 @@ import {
   requireSession,
 } from './route-support';
 import { configureRoute } from './routes-provider-access';
+import { stepUpRequiredError } from './step-up';
 import type { AuthenticationDependencies } from './types';
 
 export const registerSessionRoutes = (
@@ -141,7 +142,7 @@ export const registerSessionRoutes = (
     if (scope === 'all' && !isStepUpFresh(resolved.value, Date.now())) {
       return responseForAuthError(
         context,
-        authError(403, 'FORBIDDEN', 'Recent verification is required.'),
+        stepUpRequiredError(),
       );
     }
     const rateError = await enforceRate(

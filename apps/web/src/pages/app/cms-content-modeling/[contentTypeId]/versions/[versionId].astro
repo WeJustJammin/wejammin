@@ -14,6 +14,10 @@ import {
   forwardContentSchemaRegistryMutation,
 } from '../../../../../server/content-schema-registry-platform-api';
 import { safeContentSchemaRegistryReturnPath } from '../../../../../server/content-schema-registry-contracts';
+import {
+  createdResourceId,
+  mutationFailureCode,
+} from '../../../../../server/content-schema-registry-mutation-outcome';
 
 export const prerender = false;
 
@@ -29,7 +33,10 @@ if (Astro.request.method === 'POST') {
   if (
     operationId !== 'CMS-03A-02' &&
     operationId !== 'CMS-03A-03' &&
-    operationId !== 'CMS-03A-04'
+    operationId !== 'CMS-03A-04' &&
+    operationId !== 'CMS-03A-09' &&
+    operationId !== 'CMS-03A-10' &&
+    operationId !== 'CMS-03A-11'
   ) {
     return new Response('Bad request', {
       status: 400,
@@ -43,7 +50,32 @@ if (Astro.request.method === 'POST') {
     env.PLATFORM_API,
     { operationId, contentTypeId, versionId },
   );
-  if (!mutation.ok) return mutation;
+  if (!mutation.ok) {
+    if ((await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED')
+      return Astro.redirect(
+        `/step-up?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
+        303,
+      );
+    return mutation;
+  }
+  // A submitted review continues on the protected review route, carrying only
+  // the review id; a successor draft continues on its own version page.
+  if (operationId === 'CMS-03A-11') {
+    const reviewId = await createdResourceId(mutation);
+    if (reviewId !== null)
+      return Astro.redirect(
+        `/app/cms-content-modeling/schema-reviews/${encodeURIComponent(reviewId)}`,
+        303,
+      );
+  }
+  if (operationId === 'CMS-03A-09') {
+    const successorId = await createdResourceId(mutation);
+    if (successorId !== null)
+      return Astro.redirect(
+        `/app/cms-content-modeling/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(successorId)}`,
+        303,
+      );
+  }
   return Astro.redirect(
     `/app/cms-content-modeling/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(versionId)}${new URL(Astro.request.url).search}`,
     303,

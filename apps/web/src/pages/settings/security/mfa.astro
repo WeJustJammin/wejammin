@@ -1,0 +1,93 @@
+---
+import { createRequestId } from '@wejammin/contracts';
+import { env } from 'cloudflare:workers';
+import '@wejammin/ui/styles.css';
+import '../../../styles/infrastructure.css';
+import '../../../styles/step-up-mfa.css';
+
+import MfaEnrollmentWizard from '../../../components/identity-authority/step-up-mfa/MfaEnrollmentWizard.tsx';
+import { resolveMfaSettingsPage } from '../../../server/mfa-settings-page-context.ts';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const requestId = createRequestId(
+  Astro.request.headers.get('x-request-id') ?? undefined,
+);
+const resolved = await resolveMfaSettingsPage({
+  request: Astro.request,
+  binding: env.PLATFORM_API,
+  returnToParam: Astro.url.searchParams.get('returnTo'),
+  requestId,
+});
+if (resolved.kind === 'unauthenticated')
+  return Astro.redirect(resolved.location, 303);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Add or remove the authenticators that protect your WeJammin account."
+    />
+    <title>Two-step verification | WeJammin</title>
+  </head>
+  <body class="infra-page">
+    <nav aria-label="Skip navigation">
+      <a class="infra-skip-link" href="#main-content">Skip to main content</a>
+    </nav>
+    <header class="infra-shell-header" aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/settings/security">Security settings</a>
+        <a href="/app">Workspace</a>
+      </nav>
+    </header>
+    <main id="main-content" class="infra-main" tabindex="-1">
+      <div class="infra-shell-header">
+        <p class="infra-eyebrow">Account security</p>
+        <h1 id="page-title" tabindex="-1">
+          Two-step verification
+        </h1>
+        <p>
+          Authenticators protect your account. Your own account is always the
+          one changed here, whichever profile or role you are acting as.
+        </p>
+      </div>
+      {
+        resolved.kind === 'ready' ? (
+          <MfaEnrollmentWizard
+            variant="authPage"
+            returnTo={resolved.page.returnTo}
+            factors={resolved.page.factors}
+            allowedMethods={resolved.page.allowedMethods}
+            stepUp={resolved.page.stepUp}
+            expectedVersion={resolved.page.expectedVersion}
+            client:load
+          />
+        ) : (
+          <section
+            class="infra-capability-gate"
+            role="status"
+            aria-live="polite"
+          >
+            <h2>Two-step verification is temporarily unavailable</h2>
+            <p>
+              We could not load your authenticators. Nothing was changed.
+            </p>
+            <a href="/settings/security/mfa">Try again</a>
+            <p class="infra-request-id">
+              Request ID: <code>{resolved.requestId}</code>
+            </p>
+          </section>
+        )
+      }
+      <p><a href="/settings/security">Back to security settings</a></p>
+    </main>
+    <script src="../../../components/identity-authority/step-up-mfa/focus-page-heading.ts"></script>
+  </body>
+</html>

@@ -14,7 +14,14 @@ import {
   RelationDefinitionResourceSchema,
   SchemaActivationRequestSchema,
   SchemaActivationResourceSchema,
+  SchemaReviewResourceSchema,
 } from '@wejammin/contracts';
+import type {
+  SchemaActivationPreparation,
+  SchemaReviewResource,
+} from '@wejammin/contracts';
+
+export type { SchemaActivationPreparation, SchemaReviewResource };
 
 export {
   BlockDefinitionRegistryRecordSchema as ContentSchemaRegistrySafeBlockProjectionSchema,
@@ -31,6 +38,7 @@ export {
   RelationDefinitionResourceSchema,
   SchemaActivationRequestSchema,
   SchemaActivationResourceSchema,
+  SchemaReviewResourceSchema,
 };
 
 export type ContentSchemaRegistrySafeBlockProjection = z.infer<

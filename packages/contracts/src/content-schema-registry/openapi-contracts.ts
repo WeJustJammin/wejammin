@@ -7,6 +7,7 @@ import { pinTupleLengths } from './openapi-tuple.ts';
 import * as primitives from './primitives.ts';
 import * as requests from './requests.ts';
 import * as resources from './resources.ts';
+import * as stepUpErrors from './step-up-required.ts';
 
 const excludedWorkerEvidence = new Set([
   'BlockDefinitionVersionResourceSchema',
@@ -14,7 +15,7 @@ const excludedWorkerEvidence = new Set([
 ]);
 
 const featureSchemaContracts: Record<string, z.ZodTypeAny> = Object.fromEntries(
-  [primitives, models, requests, resources]
+  [primitives, models, requests, resources, stepUpErrors]
     .flatMap((module) => Object.entries(module))
     .filter(
       ([name, schema]) =>

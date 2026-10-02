@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import ContentSchemaRegistryWorkbenchIsland from './ContentSchemaRegistryWorkbenchIsland';
+import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
 import { CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS } from './content-schema-registry-types';
 import type {
   ContentSchemaRegistryDetail,
@@ -124,6 +125,7 @@ const detail = {
   blockDefinitions: list.items.filter(
     (item) => item.resourceKind === 'block_definition_registry_record',
   ),
+  activationPreparation: emptyActivationPreparation,
 } satisfies ContentSchemaRegistryDetail;
 
 const query: ContentSchemaRegistryQuery = {

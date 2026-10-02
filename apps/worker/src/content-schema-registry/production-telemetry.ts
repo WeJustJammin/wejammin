@@ -2,6 +2,13 @@ import { createLogger, type Logger } from '@wejammin/observability/logging';
 
 import { CONTENT_SCHEMA_REGISTRY_RUNBOOK, type TelemetryEvent } from './types';
 
+const PROTECTED_READS: ReadonlySet<string> = new Set([
+  'CMS-03A-06',
+  'CMS-03A-07',
+  'CMS-03A-13',
+  'CMS-03A-18',
+]);
+
 export const productionTelemetry =
   (logger: Logger): ((event: TelemetryEvent) => void) =>
   (event) => {
@@ -44,10 +51,8 @@ export const productionTelemetry =
         { samplingClass: 'always', highRisk: event.outcome !== 'success' },
       );
     };
-    if (
-      event.operationId !== 'CMS-03A-06' &&
-      event.operationId !== 'CMS-03A-07'
-    )
+    // Protected reads are measured as rpc and acceptance, never as commands.
+    if (!PROTECTED_READS.has(event.operationId))
       measurement('cms.registry.command');
     measurement('cms.registry.rpc');
     measurement('cms.registry.acceptance');

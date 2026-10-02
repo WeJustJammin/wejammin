@@ -14,7 +14,9 @@ import type {
   SchemaActivationRequest,
   SchemaActivationResource,
 } from '../../server/content-schema-registry-contracts';
+import type { ContentSchemaRegistryReviewState } from './content-schema-registry-review-types';
 
+export type { ContentSchemaRegistryReviewState } from './content-schema-registry-review-types';
 export type {
   ContentSchemaRegistryDetail,
   ContentSchemaRegistryListPage,
@@ -28,8 +30,10 @@ export type {
   FieldSchemaChangeRequest,
   RelationBindingRequest,
   RelationDefinitionResource,
+  SchemaActivationPreparation,
   SchemaActivationRequest,
   SchemaActivationResource,
+  SchemaReviewResource,
 } from '../../server/content-schema-registry-contracts';
 
 export type ContentSchemaRegistryAccess =
@@ -43,6 +47,7 @@ export type ContentSchemaRegistryVariant =
   | 'businessMandate'
   | 'staffCaseScoped'
   | 'adminStepUp'
+  | 'schemaReviewAssigned'
   | 'forbiddenHidden'
   | 'disabledPrerequisite';
 
@@ -214,9 +219,6 @@ export interface ContentSchemaRegistryWorkbenchProps {
   readonly contractFields: ContentSchemaRegistryContractFields;
   readonly variant: ContentSchemaRegistryVariant;
   readonly access: ContentSchemaRegistryAccess;
-  /** Required for an authorized Workbench; unavailable pages are outside it. */
-  readonly actorId: string;
-  readonly actingPartyId: string;
   /** Server-resolved human acting-context label; never a raw identifier. */
   readonly actingContextLabel?: string;
   /** Server-derived disclosure state for the activation step-up clause. */
@@ -226,6 +228,10 @@ export interface ContentSchemaRegistryWorkbenchProps {
   readonly query: ContentSchemaRegistryQuery;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
+  /** The exact protected review the route reads; null off the review route. */
+  readonly reviewId?: string | null;
+  /** CMS-03A-13 read named by `activationPreparation.reviewRef`, if any. */
+  readonly initialReview?: ContentSchemaRegistryReviewState | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
   readonly requestId: string;
@@ -233,6 +239,11 @@ export interface ContentSchemaRegistryWorkbenchProps {
   readonly listUrl: string;
   readonly retryUrl: string;
   readonly csrfToken: string;
+  /**
+   * Browser-owned counter the island bumps on a trusted acting-context change
+   * so a local confirmation resets without any identifier crossing the boundary.
+   */
+  readonly contextEpoch?: number;
   /** Browser-owned canonical refresh presentation (island only). */
   readonly loading?: boolean;
   readonly offline?: boolean;
@@ -246,14 +257,13 @@ export interface ContentSchemaRegistryPage {
   readonly state: 'ready' | 'degraded';
   readonly variant: ContentSchemaRegistryVariant;
   readonly access: ContentSchemaRegistryAccess;
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
   readonly actingContextLabel?: string;
   readonly stepUpState?: ContentSchemaRegistryStepUpState;
   readonly stepUpFreshUntil?: string;
   readonly query: ContentSchemaRegistryQuery;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
+  readonly reviewId: string | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
   readonly requestId: string;
@@ -263,5 +273,6 @@ export interface ContentSchemaRegistryPage {
   readonly csrfToken: string;
   readonly initialList: ContentSchemaRegistryListState;
   readonly initialDetail: ContentSchemaRegistryDetailState | null;
+  readonly initialReview: ContentSchemaRegistryReviewState | null;
   readonly contractFields: ContentSchemaRegistryContractFields;
 }

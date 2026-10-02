@@ -73,6 +73,8 @@ export type ReviewRouteContractByOperation = {
     auth: 'review_reader';
     capability: 'cms.schema_designer';
     capabilities: readonly ['cms.schema_designer', 'cms.schema_review'];
+    /** Submitter/designer scope OR assigned review-only scope. */
+    capabilityMode: 'any_of';
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'none';

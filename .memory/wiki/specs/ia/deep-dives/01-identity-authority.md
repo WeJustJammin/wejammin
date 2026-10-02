@@ -44,6 +44,10 @@ This deep dive makes Shard 01's high-risk mechanics deterministic without moving
 | Identifier procurement | Record/verify/resolve only; helping obtain identifiers requires provider/legal evolution. |
 | Estate without nomination | No automatic successor. Verified legal authority is required through a counsel-approved case before administration. |
 | Estate profile removal | Approved suppression removes optional public biography/discovery while preserving minimal citation and third-party provenance. |
+| Step-up surface (DEC-111) | Server-mediated: the Worker calls Supabase MFA on the caller's behalf and rotates the first-party session to `aal2`; a protected step-up page with a safe relative return target is the single browser entry. The browser never holds a Supabase token or runs an MFA client. |
+| TOTP enrollment (DEC-111) | A TOTP enrollment surface exists for the signed-in person: enroll, verify, list, remove. The secret is shown once and never stored. Launch enables TOTP only. |
+| Lost second factor | No account recovery codes. Recovery uses the existing account recovery flow plus an administrative factor reset by an operator holding the named capability (recent step-up, reason, audit; never self-reset); the only administrator uses the audited runbook; there is no self-service bypass. |
+| First factor | Requires recent primary authentication in the same 600-second window as step-up, else the person signs in again; the last verified factor cannot be removed while the person holds a capability whose operations require step-up. |
 
 ## Deterministic Policy Values
 
@@ -59,6 +63,9 @@ These values are versioned protected policy/configuration records with the liste
 | Departure publication | Mutual embargo maximum 180 days, auto-publishes on expiry, and either party may publish earlier; access revocation and effective end remain immediate. |
 | Unadministrable succession | Offer the uncapped owning mandate to the longest-tenured remaining confirmed permanent member, notify all members, wait 14 days, and route any contest; no candidate means no automatic authority. |
 | Alias transfer | Offer expires after 7 days; public transfer banner remains 30 days; full ownership history remains permanently available. |
+| Step-up freshness | A proof is fresh for 600 seconds measured from the original MFA timestamp in the session token (never token issue or refresh time), with a 30-second forward tolerance for clock skew. This is the 10-minute test the Worker already applies; it is a protected constant, not a settings value, and a consuming spec may only tighten it with an explicit number. |
+| Factor and challenge bounds | At most 10 live factors per person (the same bound as login methods); enrollment and challenge expiry at most 10 minutes (the same bound as auth intents); TOTP code is exactly six digits. |
+| Verification abuse limits | Enrollment start and removal 5 per hour per person; challenge creation 10 per 15 minutes per IP and account; verification failures 10 per 15 minutes per IP and account, then a 15-minute verification lock (the login-failure limits of BE01a). |
 
 ## Canonical Field Contracts
 
@@ -74,6 +81,14 @@ These values are versioned protected policy/configuration records with the liste
 | `handle_reservation` | `id, normalized_handle unique, display_handle, party_id, state active\|redirect\|retired, successor_handle_id?`; normalized 3..40 code points; no reuse. |
 | `legal_identity` | `id, person_id, effective_from/to, encrypted/protected field references, verification_ref?, version`; periods cannot overlap. |
 | `legal_disclosure_event` | append-only `id, legal_identity_id, version, recipient_party_id, purpose_code, field_codes[], actor_id, acting_party_id, occurred_at`. |
+
+### Authentication Assurance
+
+| Model | Fields and constraints |
+|---|---|
+| `mfa_factor` | `id uuid PK` (the only factor id a client sees); `auth_user_id uuid`; `method` closed enum, launch `totp`; `provider_factor_id` protected and never returned; `friendly_name` 1..80, unique per person among live factors; `state pending\|verified\|reconciling\|removed\|expired`; `pending_expires_at` at most 10 minutes after creation; `verified_at?`, `last_used_at?`, `removed_at?`; `version`. One `pending` row per person. Stores no secret, URI, or code. |
+| `step_up_challenge` | `id uuid PK`; bound at creation to `auth_user_id`, exact `session_id`, and `factor_id`; `state pending\|consumed\|failed\|expired`; `expires_at` at most 10 minutes after creation; `failed_attempt_count >= 0`; protected `provider_challenge_id`. Stores no code and no token. |
+| `mfa_version` | Per-account counter on the Auth binding; the optimistic-concurrency target for every factor mutation. |
 
 ### Organization, Relationships, and Authority
 
@@ -111,6 +126,8 @@ These values are versioned protected policy/configuration records with the liste
 | Membership | `invited → confirmed\|rejected\|expired`; `asserted → confirmed\|rejected\|disputed`; `confirmed → ended\|disputed`; immediate authority revocation is independent of contested historic end date. |
 | Representation | `draft → pending → active\|rejected\|expired`; `active → revoked\|expired`; no authority outside active term. |
 | Governance terms | `draft → proposed → active\|rejected\|withdrawn`; active → superseded; proposed content/member set is immutable. |
+| MFA factor | `pending → verified\|expired`; `pending\|verified → reconciling`; `reconciling → verified\|pending\|removed` only by provider-status reconciliation or the confirming provider response; `removed` and `expired` are terminal. |
+| Step-up challenge | `pending → consumed\|failed\|expired`; a wrong code leaves it `pending`; `consumed`, `failed`, and `expired` never reopen; a new challenge supersedes the old `pending` one for the same session and factor. |
 | Identifier claim | `self_asserted → verifying → verified\|mismatch\|collision\|self_asserted`; any non-revoked → revoked; collision clears only by evidence/withdrawal. |
 | Memorialisation | `reported → reviewing → verified\|rejected\|contested`; verified triggers account/authority termination and optional estate edge. |
 
@@ -147,6 +164,7 @@ For every protected command, evaluate in this order:
 - Relationship revocation commits revocation, authority-projection invalidation, audit, and context-revoked outbox event atomically.
 - Identifier verification locks claim/collision rows; a provider result based on stale claim version is retained as attempt evidence but cannot transition state.
 - Memorialisation verification locks account/case/person versions and revokes sessions/authority through an idempotent protected job.
+- Every factor mutation locks the Auth binding and compare-and-swaps `mfa_version`; enrollment start supersedes the previous `pending` row in the same transaction. Enrollment start, enrollment verify, challenge creation, and step-up verify carry no client idempotency key because their effect is a one-time secret or a single-use code; their duplicate guard is the state transition (`pending → verified`, `pending → consumed`) or the supersession compare-and-swap. Factor removal uses an idempotency key and `If-Match`.
 
 ## Disclosure, Retention, and Counsel Gates
 
@@ -184,6 +202,11 @@ Every downstream command stores the `actingPartyId`, human actor, authority sour
 | Stale/forged JWT role | User metadata never changes authority; server projection is sole source. |
 | Handle homoglyph/squatting | Confusable normalization, rate controls, permanent reservation, and no display-name uniqueness. |
 | Shared-account damage | Binding/legal/money actions require current human identity and step-up; acting party remains explicit. |
+| Hijacked low-assurance session adds a factor | Adding a second factor and removing a verified factor need fresh step-up; the first-factor path needs recent primary authentication (600 s), is rate limited, audited, and triggers a security notification. |
+| TOTP brute force or replay | Six-digit code, single-use challenge bound to session, 10-failure/15-minute lock, provider single-use enforcement; no code in logs, URLs, or stores. |
+| Secret leakage at enrollment | Secret shown once, `no-store`, never persisted, never replayed on retry; a lost response is recovered by starting again. |
+| Lost second factor | Existing recovery flow and administrative factor reset by a capable operator (never self-reset); the only administrator uses the audited runbook; no recovery codes; no support or self-service bypass. |
+| Stale step-up on a protected command | Typed step-up-required refusal before any mutation, regardless of shard; the freshness boundary is tested at the window edge. |
 | Forged membership/representation | No authority before subject acceptance; assertions remain labelled/invisible on victim profile. |
 | Sub-delegation escalation | Grant subset/term/ceiling is database-checked against grantor snapshot. |
 | Manager royalty/alias capture | Representation cannot transfer/retire alias or exceed scope; identifiers do not transfer with authority. |
@@ -216,6 +239,8 @@ Every downstream command stores the `actingPartyId`, human actor, authority sour
 | 2026-08-02 | Authored field, state, authority, concurrency, disclosure, dependency, and abuse contracts | /write-architecture-spec-deepen | All |
 | 2026-08-05 | A-24: retargeted three Cross-Shard Contracts consumer rows from ideation-domain numbers to IA shard numbers (20→37 fanbase, 23→41 finance, 24→06 moderation) | /resolve-ambiguity | Cross-Shard Contracts |
 | 2026-08-28 | F10 P-06/P-07 — made consumer-owned purpose capability conjunctive and documented the reciprocal Shard-30 exact-booking/precondition `announce_waive` boundary with P-07 policy owned by Shard 30. | /resolve-ambiguity | Authority Resolution, Cross-Shard Contracts, Verification Questions |
+| 2026-10-02 | DEC-111: added server-mediated step-up and TOTP enrollment choices, freshness/bound/limit policy values, `mfa_factor`/`step_up_challenge` field contracts and state machines, concurrency rules, and abuse/recovery proofs | /propagate-decision | Resolved Choices, Deterministic Policy Values, Canonical Field Contracts, State Machines, Concurrency, Abuse and Recovery |
+| 2026-10-02 | DEC-111 follow-ups: recent primary authentication for the first factor, last-verified-factor refusal while step-up-gated capabilities are held, administrative factor reset and sole-administrator runbook | /propagate-decision | Resolved choices, Abuse |
 
 ## Dependency References
 

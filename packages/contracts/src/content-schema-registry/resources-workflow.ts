@@ -10,7 +10,7 @@ import {
   CmsVersionSchema,
 } from './primitives.ts';
 import {
-  CmsCompatibilitySchema,
+  CmsDryRunClassificationSchema,
   CmsSchemaDryRunFailureCodeSchema,
   CmsSchemaDryRunResultSchema,
   CmsSchemaDryRunStateSchema,
@@ -31,7 +31,7 @@ export const SchemaDryRunResourceSchema = z
     resourceKind: z.literal('schema_dry_run'),
     state: CmsSchemaDryRunStateSchema,
     contentTypeVersionId: CmsUuidSchema,
-    classification: CmsCompatibilitySchema,
+    classification: CmsDryRunClassificationSchema,
     attemptId: CmsUuidSchema,
     jobId: CmsUuidSchema,
     migrationPlanId: CmsUuidSchema,
@@ -171,6 +171,29 @@ export const SchemaReviewResourceSchema = z
       (decision) => decision.decision === 'approve',
     ).length;
     const decisionIds = new Set(value.decisions.map((decision) => decision.id));
+    const frozen = value.frozenEvidence;
+    if (value.contentTypeVersionId !== frozen.contentTypeVersionId)
+      context.addIssue({
+        code: 'custom',
+        path: ['frozenEvidence', 'contentTypeVersionId'],
+        message: 'frozen_evidence_must_name_the_review_candidate_version',
+      });
+    if (value.dryRunId !== frozen.dryRun.id)
+      context.addIssue({
+        code: 'custom',
+        path: ['frozenEvidence', 'dryRun', 'id'],
+        message: 'frozen_dry_run_must_be_the_review_dry_run',
+      });
+    if (
+      frozen.dryRun.state !== 'completed' ||
+      frozen.dryRun.result !== 'passed' ||
+      frozen.dryRun.reportHash === null
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['frozenEvidence', 'dryRun'],
+        message: 'frozen_dry_run_must_be_completed_and_passed_with_report_hash',
+      });
     if (decisionIds.size !== value.decisions.length)
       context.addIssue({
         code: 'custom',
@@ -279,7 +302,8 @@ export const SchemaActivationPreparationSchema = z
       })
       .nullable(),
     /** Safe resolver projection; the resolver itself is service-only. */
-    templateCompatibility: TemplateCompatibilityProjectionSchema.optional(),
+    templateCompatibility:
+      TemplateCompatibilityProjectionSchema.nullable().optional(),
     permittedNextActions: z
       .array(CmsSchemaReviewNextActionSchema)
       .max(6)

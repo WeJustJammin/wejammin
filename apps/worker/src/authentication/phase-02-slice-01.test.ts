@@ -572,6 +572,12 @@ describe('Phase 2 Slice 01 authentication acceptance', () => {
       expect(
         payload.providers?.some((provider) => provider.code === 'bandlab'),
       ).toBe(false);
+    } else if (name === 'step-up blocks global logout') {
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toMatchObject({
+        code: 'STEP_UP_REQUIRED',
+        details: { recoveryAction: 'step_up', allowedMethods: ['totp'] },
+      });
     } else {
       expect([400, 403, 422]).toContain(response.status);
     }
@@ -665,7 +671,7 @@ describe('Phase 2 Slice 01 authentication route branches', () => {
           bindings,
         )
       ).status,
-    ).toBe(403);
+    ).toBe(401);
     const fresh = createApp();
     expect(
       (
