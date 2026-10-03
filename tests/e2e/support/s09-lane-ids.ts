@@ -45,7 +45,8 @@ export const LANE_CAPABILITIES: Readonly<Record<LaneRole, readonly string[]>> =
   };
 
 const SESSION_PREFIX = '80000000-0000-4000-8000-';
-const SESSION_PATTERN = /^80000000-0000-4000-8000-([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{8})$/u;
+const SESSION_PATTERN =
+  /^80000000-0000-4000-8000-([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{8})$/u;
 
 export type LaneSessionParts = Readonly<{
   generation: number;
@@ -70,14 +71,19 @@ export const parseLaneSessionId = (value: unknown): LaneSessionParts | null => {
   return { generation, role, testId: match[3] as string };
 };
 
+// Prefix 11 keeps lane users disjoint from the legacy fixtures' single user
+// (10000000-...-000000000001), which the designer code 01 once collided with.
 export const laneUserId = (role: LaneRole): string =>
-  `10000000-0000-4000-8000-0000000000${LANE_ROLES[role]}`;
+  `11000000-0000-4000-8000-0000000000${LANE_ROLES[role]}`;
 
 export const lanePersonId = (role: LaneRole): string =>
   `20000000-0000-4000-8000-0000000000${LANE_ROLES[role]}`;
 
 const USER_ROLE = new Map(
-  (Object.keys(LANE_ROLES) as LaneRole[]).map((role) => [laneUserId(role), role]),
+  (Object.keys(LANE_ROLES) as LaneRole[]).map((role) => [
+    laneUserId(role),
+    role,
+  ]),
 );
 
 export const laneRoleOfUser = (userId: unknown): LaneRole | null =>

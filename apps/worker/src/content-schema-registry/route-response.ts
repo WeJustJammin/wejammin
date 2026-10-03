@@ -21,6 +21,7 @@ import { CONTENT_SCHEMA_REGISTRY_RUNBOOK } from './types';
 import type { FeatureContext } from './route-types';
 import { statusFor } from './route-types';
 export { safeDetails } from './route-response-details';
+import { boundedRetryAfterSeconds } from './error-detail-values';
 import { safeDetails } from './route-response-details';
 
 export const successStatusFor = (
@@ -205,8 +206,9 @@ export const errorResponse = (
   context.header('cache-control', 'no-store');
   if (result.status === 502 || result.status === 503 || result.status === 504)
     context.header(CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER, 'true');
-  if (result.retryAfterSeconds !== undefined)
-    context.header('retry-after', String(result.retryAfterSeconds));
+  const retryAfterSeconds = boundedRetryAfterSeconds(result.retryAfterSeconds);
+  if (retryAfterSeconds !== null)
+    context.header('retry-after', String(retryAfterSeconds));
   return context.json(body, result.status);
 };
 

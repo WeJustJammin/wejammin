@@ -96,22 +96,16 @@ describe('content registry production error helpers', () => {
     expect(safeDetails(hostile, 400)).toEqual({});
     expect(safeDetails(hostile, 422)).toEqual({});
     expect(safeDetails(hostile, 401)).toEqual({ recoveryAction: 'retry' });
-    expect(safeDetails(hostile, 403)).toEqual({
-      reasonCode: 'R',
-      recoveryAction: 'retry',
-    });
-    expect(safeDetails(hostile, 409)).toEqual({
-      expectedVersion: '7',
-      currentVersion: 8,
-    });
+    // Values outside the registered sets and bounds ('R', 'rpc', a numeric
+    // version, a numeric instant) are dropped at the adapter.
+    expect(safeDetails(hostile, 403)).toEqual({ recoveryAction: 'retry' });
+    expect(safeDetails(hostile, 409)).toEqual({ expectedVersion: '7' });
     expect(safeDetails(hostile, 429)).toEqual({
       limit: 9,
-      resetAt: 10,
       retryAfterSeconds: 11,
     });
     for (const status of [502, 503, 504])
       expect(safeDetails(hostile, status)).toEqual({
-        dependencyClass: 'rpc',
         retryable: true,
         retryAfterSeconds: 11,
       });
@@ -166,12 +160,16 @@ describe('content registry production error helpers', () => {
         status: 418 as never,
         code: 'AUTH_FAILURE',
         message: 'safe',
-        details: { dependencyClass: 'auth', limit: 2, secret: 'hide' },
+        details: {
+          dependencyClass: 'authentication',
+          limit: 2,
+          secret: 'hide',
+        },
       }),
     ).toMatchObject({
       status: 503,
       code: 'AUTH_FAILURE',
-      details: { dependencyClass: 'auth' },
+      details: { dependencyClass: 'authentication' },
     });
     expect(statusIsSupported(400)).toBe(true);
     expect(statusIsSupported(418)).toBe(false);

@@ -13,7 +13,9 @@ export const WORKER_ORIGIN = 'http://127.0.0.1:8788';
 export const WEB_ORIGIN = 'http://127.0.0.1:4324';
 
 export const uuidIn = (url: string): string[] =>
-  url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/giu) ?? [];
+  url.match(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/giu,
+  ) ?? [];
 
 export const waitForWorkbench = async (page: Page): Promise<void> => {
   await expect(
@@ -41,16 +43,30 @@ export const createTypeViaUi = async (
     await tags.fill(tag);
     await page.getByRole('button', { name: 'Add', exact: true }).click();
   }
-  await page.getByRole('combobox', { name: 'Source language' }).selectOption('en-US');
-  await page.getByRole('combobox', { name: 'Default language' }).selectOption('en-US');
+  await page
+    .getByRole('combobox', { name: 'Source language' })
+    .selectOption('en-US');
+  await page
+    .getByRole('combobox', { name: 'Default language' })
+    .selectOption('en-US');
   await page
     .locator('#content-schema-registry-create-form-locale-chain-fr-CA-add')
     .selectOption('fr');
-  await page.getByRole('button', { name: 'Add to the fallback order for fr-CA' }).click();
-  await page.getByRole('textbox', { name: 'Type key' }).fill(options.typeKey ?? 'release_note');
-  await page.getByRole('textbox', { name: 'Display label' }).fill(options.label ?? 'Release note');
-  await page.getByRole('textbox', { name: 'Owner capability' }).fill('cms.content.article');
-  await page.getByRole('textbox', { name: 'Workflow key' }).fill('editorial.default');
+  await page
+    .getByRole('button', { name: 'Add to the fallback order for fr-CA' })
+    .click();
+  await page
+    .getByRole('textbox', { name: 'Type key' })
+    .fill(options.typeKey ?? 'release_note');
+  await page
+    .getByRole('textbox', { name: 'Display label' })
+    .fill(options.label ?? 'Release note');
+  await page
+    .getByRole('textbox', { name: 'Owner capability' })
+    .fill('cms.content.article');
+  await page
+    .getByRole('textbox', { name: 'Workflow key' })
+    .fill('editorial.default');
   await page.getByRole('textbox', { name: 'Workflow version' }).fill('1');
   await page.getByRole('button', { name: 'Save content type draft' }).click();
   await page.waitForURL(/\/versions\//u);
@@ -96,8 +112,12 @@ export const assignReviewerViaUi = async (
   await page
     .getByRole('textbox', { name: /Expires at/u })
     .fill(new Date(Date.now() + hours * 3_600_000).toISOString());
-  await page.getByRole('textbox', { name: /Reason/u }).fill('Schema review for release notes');
-  await page.getByRole('button', { name: /Save reviewer assignment|Assign/u }).click();
+  await page
+    .getByRole('textbox', { name: /Reason/u })
+    .fill('Schema review for release notes');
+  await page
+    .getByRole('button', { name: /Save reviewer assignment|Assign/u })
+    .click();
 };
 
 /** Open the authenticator name step, retrying until the island is hydrated. */
@@ -105,14 +125,21 @@ const openEnrollment = async (page: Page): Promise<void> => {
   await page.goto('/settings/security/mfa', { waitUntil: 'networkidle' });
   const name = page.getByRole('textbox', { name: 'Authenticator name' });
   await expect(async () => {
-    await page.getByRole('button', { name: /Set up an authenticator|Add another authenticator/u }).click();
+    await page
+      .getByRole('button', {
+        name: /Set up an authenticator|Add another authenticator/u,
+      })
+      .click();
     await expect(name).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 };
 
 /** The manual entry key as an authenticator app would take it (no spaces). */
 export const readManualKey = async (page: Page): Promise<string> => {
-  const code = page.locator('code').filter({ hasText: /^[A-Z2-7 ]{30,}$/u }).first();
+  const code = page
+    .locator('code')
+    .filter({ hasText: /^[A-Z2-7 ]{30,}$/u })
+    .first();
   await expect(code).toBeVisible({ timeout: 15_000 });
   return (await code.innerText()).replaceAll(/\s/gu, '');
 };
@@ -123,14 +150,18 @@ export const enrollFactorViaUi = async (
   friendlyName = 'Phone authenticator',
 ): Promise<string> => {
   await openEnrollment(page);
-  await page.getByRole('textbox', { name: 'Authenticator name' }).fill(friendlyName);
+  await page
+    .getByRole('textbox', { name: 'Authenticator name' })
+    .fill(friendlyName);
   await page.getByRole('button', { name: 'Continue' }).click();
   const secret = await readManualKey(page);
   await page
     .getByRole('textbox', { name: '6-digit code from the app' })
     .fill(await totpCode(secret, Date.now()));
   await page.getByRole('button', { name: 'Verify and finish' }).click();
-  await expect(page.getByRole('table')).toContainText(friendlyName, { timeout: 15_000 });
+  await expect(page.getByRole('table')).toContainText(friendlyName, {
+    timeout: 15_000,
+  });
   return secret;
 };
 
@@ -140,9 +171,12 @@ export const expireStepUp = async (
   testId: string,
   role: LaneRole,
 ): Promise<void> => {
-  const response = await page.request.post(`${WORKER_ORIGIN}/_s09/lane/expire-step-up`, {
-    data: { testId, role },
-  });
+  const response = await page.request.post(
+    `${WORKER_ORIGIN}/_s09/lane/expire-step-up`,
+    {
+      data: { testId, role },
+    },
+  );
   expect(response.status()).toBe(200);
 };
 
@@ -191,10 +225,16 @@ export const decideViaUi = async (
     })
     .check();
   await page.getByRole('button', { name: 'Save review decision' }).click();
-  await expect(page.getByText(/decision (was )?recorded/iu)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/decision (was )?recorded/iu)).toBeVisible({
+    timeout: 15_000,
+  });
 };
 
-export type SmallControl = Readonly<{ name: string; width: number; height: number }>;
+export type SmallControl = Readonly<{
+  name: string;
+  width: number;
+  height: number;
+}>;
 
 /**
  * Interactive controls under `scope` smaller than `minimum` CSS px on either
@@ -223,13 +263,29 @@ export const smallControls = async (
         )
           .trim()
           .slice(0, 48);
-      const hitArea = (element: Element): Element => {
+      // A radio or checkbox's real hit area is the larger of its own box and
+      // the label that targets it (an inline label can be shorter than a
+      // 44 px control it wraps).
+      const hitBox = (
+        element: Element,
+      ): { target: Element; width: number; height: number } => {
+        const own = element.getBoundingClientRect();
         if (
           element instanceof HTMLInputElement &&
           (element.type === 'radio' || element.type === 'checkbox')
-        )
-          return element.closest('label') ?? element.labels?.[0] ?? element;
-        return element;
+        ) {
+          const wrapper =
+            element.closest('label') ?? element.labels?.[0] ?? null;
+          if (wrapper !== null) {
+            const outer = wrapper.getBoundingClientRect();
+            return {
+              target: wrapper,
+              width: Math.max(own.width, outer.width),
+              height: Math.max(own.height, outer.height),
+            };
+          }
+        }
+        return { target: element, width: own.width, height: own.height };
       };
       const seen = new Set<Element>();
       const out: { name: string; width: number; height: number }[] = [];
@@ -237,15 +293,14 @@ export const smallControls = async (
         'button, input:not([type="hidden"]), select, textarea, a[href], summary',
       )) {
         if (!visible(element)) continue;
-        const target = hitArea(element);
+        const { target, width, height } = hitBox(element);
         if (seen.has(target)) continue;
         seen.add(target);
-        const box = target.getBoundingClientRect();
-        if (box.width < min - 0.5 || box.height < min - 0.5)
+        if (width < min - 0.5 || height < min - 0.5)
           out.push({
             name: label(element) || label(target),
-            width: Math.round(box.width * 10) / 10,
-            height: Math.round(box.height * 10) / 10,
+            width: Math.round(width * 10) / 10,
+            height: Math.round(height * 10) / 10,
           });
       }
       return out;
@@ -261,7 +316,10 @@ export const horizontalOverflow = async (page: Page): Promise<number> =>
   );
 
 /** Control left edges under `scope` (distinct, rounded) for single-column checks. */
-export const columnEdges = async (page: Page, scope: string): Promise<number[]> =>
+export const columnEdges = async (
+  page: Page,
+  scope: string,
+): Promise<number[]> =>
   page.evaluate((scopeSelector) => {
     const root = document.querySelector(scopeSelector) ?? document.body;
     const edges = new Set<number>();
@@ -275,7 +333,10 @@ export const columnEdges = async (page: Page, scope: string): Promise<number[]> 
   }, scope);
 
 /** True when every labelled control has its label above (not beside) it. */
-export const labelsAbove = async (page: Page, scope: string): Promise<string[]> =>
+export const labelsAbove = async (
+  page: Page,
+  scope: string,
+): Promise<string[]> =>
   page.evaluate((scopeSelector) => {
     const root = document.querySelector(scopeSelector) ?? document.body;
     const beside: string[] = [];
@@ -286,7 +347,8 @@ export const labelsAbove = async (page: Page, scope: string): Promise<string[]> 
       if (label === undefined) continue;
       const a = label.getBoundingClientRect();
       const b = field.getBoundingClientRect();
-      if (a.bottom > b.top + 1) beside.push(label.innerText.trim().slice(0, 40));
+      if (a.bottom > b.top + 1)
+        beside.push(label.innerText.trim().slice(0, 40));
     }
     return beside;
   }, scope);

@@ -28,6 +28,13 @@ export type ReconcilableFactor = Readonly<{
 
 export type FactorSettlement = 'verified' | 'pending' | 'removed';
 
+/**
+ * `stale` means the factor row's version moved after the Worker read it, so
+ * the provider status that was polled describes an older operation. The
+ * database applied nothing; the newer operation has its own delivery.
+ */
+export type FactorSettlementResult = 'settled' | 'stale';
+
 export type ReconcilerFactorPort = Readonly<{
   read: (
     factorId: string,
@@ -38,11 +45,13 @@ export type ReconcilerFactorPort = Readonly<{
       authUserId: string;
       factorId: string;
       outcome: FactorSettlement;
+      /** The `version` observed by `read`; the settlement compares and sets on it. */
+      expectedVersion: string;
       requestId: string;
       correlationId: string;
     }>,
     signal: AbortSignal,
-  ) => Promise<void>;
+  ) => Promise<FactorSettlementResult>;
 }>;
 
 /**
@@ -165,12 +174,14 @@ export const createAuthStateReconciler = (
       if (status === 'unavailable') return retry('PROVIDER_STATUS_UNAVAILABLE');
 
       const settlement = SETTLEMENT[status];
+      let settled: FactorSettlementResult;
       try {
-        await dependencies.factors.settle(
+        settled = await dependencies.factors.settle(
           {
             authUserId: factor.authUserId,
             factorId: envelope.aggregateId,
             outcome: settlement,
+            expectedVersion: factor.version,
             requestId: clock.randomUuid(),
             correlationId: envelope.correlationId,
           },
@@ -178,6 +189,15 @@ export const createAuthStateReconciler = (
         );
       } catch {
         return retry('FACTOR_SETTLE_FAILED');
+      }
+      // Compare-and-set by version: the factor changed while the provider was
+      // polled, so this delivery is stale. Acknowledge without effect; the
+      // newer state change was published with its own event.
+      if (settled === 'stale') {
+        emit('success', null, {
+          'identity.mfa.reconcile.stale_version.total': 1,
+        });
+        return { outcome: 'ack' };
       }
       emit('success', null, {
         [`identity.mfa.reconcile.${settlement}.total`]: 1,

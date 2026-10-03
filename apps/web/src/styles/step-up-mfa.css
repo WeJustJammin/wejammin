@@ -1,4 +1,12 @@
 @layer components {
+  /* A link that stands alone on its line is a control, not running text: it
+     gets the same 44 px target as a button (inline anchors ignore block-size). */
+  .mfa-standalone-link {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+  }
+
   .mfa-qr {
     display: block;
     inline-size: min(100%, 16rem);
@@ -28,10 +36,28 @@
     vertical-align: middle;
   }
 
+  .mfa-scan-pair {
+    display: grid;
+    gap: 1rem;
+  }
+
+  /* Tablet: the QR and the manual key sit side by side above the steps. */
   @media (min-width: 48rem) {
+    .mfa-scan-pair {
+      grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  /* Desktop: two columns, the QR (with its key below) left and the steps right. */
+  @media (min-width: 64rem) {
     .mfa-scan-grid {
       grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
       align-items: start;
+    }
+
+    .mfa-scan-pair {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 

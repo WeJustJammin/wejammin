@@ -24,7 +24,7 @@ import {
   type LaneRole,
 } from './s09-lane-ids';
 import { laneJobs } from './s09-lane-jobs';
-import { laneMfaMethods } from './s09-lane-mfa';
+import { armAmbiguousVerify, laneMfaMethods } from './s09-lane-mfa';
 import { laneRegistryPorts } from './s09-lane-registry';
 import { iso, worldFor } from './s09-lane-world';
 
@@ -48,42 +48,49 @@ export const dispatchRegistryPorts = (
   const merged: Record<string, AnyPort> = {};
   // Ports only the lane implements answer a non-lane session like the legacy
   // fixture does for an unwired port: persistence temporarily unavailable.
-  for (const name of new Set([...Object.keys(legacyPorts), ...Object.keys(lane)])) {
+  for (const name of new Set([
+    ...Object.keys(legacyPorts),
+    ...Object.keys(lane),
+  ])) {
     const legacyPort = legacyPorts[name];
     const lanePort = lane[name];
     merged[name] =
       lanePort === undefined
         ? (legacyPort as AnyPort)
         : (input, signal) =>
-            laneClaimOf((input as unknown as { request: Request }).request) !== null ||
-            legacyPort === undefined
+            laneClaimOf((input as unknown as { request: Request }).request) !==
+              null || legacyPort === undefined
               ? lanePort(input, signal)
               : legacyPort(input, signal);
   }
   return merged as unknown as ContentSchemaRegistryPorts;
 };
 
-export const laneActingContexts = (): AuthenticationResult<ActingContextListResource> => ({
-  ok: true,
-  value: {
-    projectionVersion: '1',
-    items: [
-      {
-        contextId: LANE_ACTING_PARTY_ID,
-        partyId: LANE_ACTING_PARTY_ID,
-        kind: 'organization',
-        label: LANE_ACTING_LABEL,
-        avatarRef: null,
-        selectable: true,
-        authorityFreshUntil: iso(Date.now() + 3_600_000),
-      },
-    ],
-    nextCursor: null,
-    hasMore: false,
-  },
-});
+export const laneActingContexts =
+  (): AuthenticationResult<ActingContextListResource> => ({
+    ok: true,
+    value: {
+      projectionVersion: '1',
+      items: [
+        {
+          contextId: LANE_ACTING_PARTY_ID,
+          partyId: LANE_ACTING_PARTY_ID,
+          kind: 'organization',
+          label: LANE_ACTING_LABEL,
+          avatarRef: null,
+          selectable: true,
+          authorityFreshUntil: iso(Date.now() + 3_600_000),
+        },
+      ],
+      nextCursor: null,
+      hasMore: false,
+    },
+  });
 
-type LegacyDependencies = Readonly<{ auth: unknown; identityAuthority: unknown }>;
+type LegacyDependencies = Readonly<{
+  auth: unknown;
+  identityAuthority: unknown;
+}>;
 
 /** Dependencies the lane adds or wraps on top of the legacy composition. */
 export const laneDependencies = (
@@ -114,7 +121,9 @@ export const laneDependencies = (
           ? {
               ok: true as const,
               value: {
-                personId: lanePersonId(laneRoleOfUser(input.session.authUserId) as LaneRole),
+                personId: lanePersonId(
+                  laneRoleOfUser(input.session.authUserId) as LaneRole,
+                ),
                 partyKind: 'person' as const,
                 accountState: 'active' as const,
                 version: '1',
@@ -138,7 +147,8 @@ export const laneDependencies = (
     } as unknown as WorkerDependencies['identityAuthority'],
     jobs: laneJobs as unknown as WorkerDependencies['jobs'],
     resolveRequestContext: (request: Request) => laneRequestContext(request),
-    adminWorkspace: laneAdminWorkspace as unknown as WorkerDependencies['adminWorkspace'],
+    adminWorkspace:
+      laneAdminWorkspace as unknown as WorkerDependencies['adminWorkspace'],
   };
 };
 
@@ -147,14 +157,55 @@ export const laneDependencies = (
  * proof past its ten-minute window (what elapsed time does in production)
  * without waiting. It cannot create, approve or complete any domain record.
  */
-export const handleLaneControl = async (request: Request): Promise<Response | null> => {
+export const handleLaneControl = async (
+  request: Request,
+): Promise<Response | null> => {
   const url = new URL(request.url);
+  if (
+    url.pathname === '/_s09/lane/ambiguous-verify' &&
+    request.method === 'POST'
+  ) {
+    try {
+      const { testId } = (await request.json()) as { testId?: unknown };
+      if (typeof testId !== 'string' || !/^[0-9a-f]{8}$/u.test(testId))
+        return Response.json({ armed: false }, { status: 400 });
+      armAmbiguousVerify(testId);
+      return Response.json({ armed: true });
+    } catch {
+      return Response.json({ armed: false }, { status: 400 });
+    }
+  }
+  if (
+    url.pathname === '/_s09/lane/degrade-reads' &&
+    request.method === 'POST'
+  ) {
+    try {
+      const { testId, on } = (await request.json()) as {
+        testId?: unknown;
+        on?: unknown;
+      };
+      if (
+        typeof testId !== 'string' ||
+        !/^[0-9a-f]{8}$/u.test(testId) ||
+        typeof on !== 'boolean'
+      )
+        return Response.json({ degraded: false }, { status: 400 });
+      worldFor(testId).degradedReads = on;
+      return Response.json({ degraded: on });
+    } catch {
+      return Response.json({ degraded: false }, { status: 400 });
+    }
+  }
   if (url.pathname !== '/_s09/lane/expire-step-up' || request.method !== 'POST')
     return null;
   try {
     const body = (await request.json()) as { testId?: unknown; role?: unknown };
     const { testId, role } = body;
-    if (typeof testId !== 'string' || !/^[0-9a-f]{8}$/u.test(testId) || typeof role !== 'string')
+    if (
+      typeof testId !== 'string' ||
+      !/^[0-9a-f]{8}$/u.test(testId) ||
+      typeof role !== 'string'
+    )
       return Response.json({ expired: false }, { status: 400 });
     delete worldFor(testId).stepUpAt[role as LaneRole];
     return Response.json({ expired: true });

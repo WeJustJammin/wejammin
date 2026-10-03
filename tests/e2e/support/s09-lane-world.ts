@@ -111,7 +111,7 @@ export type MfaFactorRecord = {
   providerFactorId: string;
   friendlyName: string;
   secret: string;
-  state: 'pending' | 'verified';
+  state: 'pending' | 'verified' | 'reconciling';
   verifiedAt: string | null;
   lastUsedAt: string | null;
   pendingExpiresAt: string | null;
@@ -146,6 +146,8 @@ export type World = {
   grants: GrantRecord[];
   idem: Map<string, unknown>;
   mfaResets: { id: string; target: string; removed: number }[];
+  /** Loopback-only switch: registry reads answer 503 DEPENDENCY_UNAVAILABLE. */
+  degradedReads: boolean;
 };
 
 const worlds = new Map<string, World>();
@@ -166,6 +168,7 @@ export const worldFor = (testId: string): World => {
     grants: [],
     idem: new Map(),
     mfaResets: [],
+    degradedReads: false,
   };
   worlds.set(testId, created);
   return created;
@@ -200,18 +203,14 @@ export const nextId = (world: World, kind: number): string => {
 
 /** Recover the world a job id belongs to (the job port has no session). */
 export const worldForId = (id: string): World | null => {
-  const match = /^[0-9a-f]{8}-[0-9a-f]{4}-4000-8000-([0-9a-f]{8})[0-9a-f]{4}$/u.exec(
-    id,
-  );
+  const match =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4000-8000-([0-9a-f]{8})[0-9a-f]{4}$/u.exec(id);
   return match === null ? null : (worlds.get(match[1] as string) ?? null);
 };
 
 export const iso = (ms: number): string => new Date(ms).toISOString();
 
-export const worldAccount = (
-  world: World,
-  role: LaneRole,
-): MfaAccount => {
+export const worldAccount = (world: World, role: LaneRole): MfaAccount => {
   const existing = world.mfa[role];
   if (existing !== undefined) return existing;
   const created: MfaAccount = {

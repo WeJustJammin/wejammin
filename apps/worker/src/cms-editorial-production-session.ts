@@ -1,4 +1,5 @@
 import { CorrelationIdSchema } from '@wejammin/contracts';
+import { isFreshProof } from './authentication/step-up';
 import {
   type CmsEditorialProductionOperationId,
   type CmsEditorialSession,
@@ -10,10 +11,9 @@ export {
 } from './cms-editorial-production-session-configuration';
 export { createCmsEditorialSessionResolver } from './cms-editorial-production-session-resolver';
 
-const STEP_UP_FRESHNESS_MS = 10 * 60 * 1000;
-
 /**
- * The single freshness test for a step-up proof. Both `mfaFresh` on the session
+ * The single freshness test for a step-up proof (the shared DEC-111 window
+ * `-30 s <= now - stepUpAt <= 600 s` from `authentication/step-up`). Both `mfaFresh` on the session
  * and `stepUpVerified` in the RPC context are derived from this, so a stale or
  * future-dated proof can never be reported as verified transport evidence to the
  * RPC (today a no-op for -01, but the proof is forwarded for later -04/-09 work).
@@ -23,12 +23,7 @@ export const stepUpIsFresh = (
   now: number,
 ): boolean => {
   if (stepUpAt === null || stepUpAt === undefined) return false;
-  const stepUpMs = Date.parse(stepUpAt);
-  return (
-    Number.isFinite(stepUpMs) &&
-    stepUpMs <= now &&
-    now - stepUpMs <= STEP_UP_FRESHNESS_MS
-  );
+  return isFreshProof(stepUpAt, now);
 };
 
 /** Server-bound port input; browsers never supply session or context values. */

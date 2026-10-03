@@ -285,13 +285,51 @@ export const rateLimitedDetails = (
   resetAt: new Date(decision.resetAt * 1000).toISOString(),
 });
 
+/**
+ * BE00 single-decision contract for a 429: the `RateLimit-*` headers,
+ * `Retry-After` and the body details are all written from the one decision the
+ * error carries (`limit`, `resetAt`, `retryAfterSeconds`), overwriting whatever
+ * an earlier, allowing local limiter already set. An error that carries no
+ * complete decision came from the limiter that already wrote its own headers
+ * for this response, so those headers are left as that decision set them.
+ */
+const applyCanonical429Headers = <E extends AuthBoundaryEnvironment>(
+  context: AuthBoundaryContext<E>,
+  error: AuthenticationError,
+): void => {
+  const details =
+    typeof error.details === 'object' && error.details !== null
+      ? (error.details as Readonly<Record<string, unknown>>)
+      : {};
+  const limit = details.limit;
+  const resetMs =
+    typeof details.resetAt === 'string' ? Date.parse(details.resetAt) : NaN;
+  if (
+    typeof limit === 'number' &&
+    Number.isSafeInteger(limit) &&
+    limit >= 1 &&
+    Number.isFinite(resetMs)
+  ) {
+    context.header('ratelimit-limit', String(limit));
+    context.header('ratelimit-remaining', '0');
+    context.header('ratelimit-reset', String(Math.ceil(resetMs / 1000)));
+  }
+  const retryAfter =
+    typeof details.retryAfterSeconds === 'number'
+      ? details.retryAfterSeconds
+      : error.retryAfterSeconds;
+  if (retryAfter !== undefined)
+    context.header('retry-after', String(retryAfter));
+};
+
 export const responseForAuthError = <E extends AuthBoundaryEnvironment>(
   context: AuthBoundaryContext<E>,
   error: AuthenticationError,
 ): Response => {
   context.set('errorCode', error.code);
   context.header('cache-control', 'no-store');
-  if (error.retryAfterSeconds !== undefined) {
+  if (error.status === 429) applyCanonical429Headers(context, error);
+  else if (error.retryAfterSeconds !== undefined) {
     context.header('retry-after', String(error.retryAfterSeconds));
   }
   const payload = ApiErrorSchema.parse({

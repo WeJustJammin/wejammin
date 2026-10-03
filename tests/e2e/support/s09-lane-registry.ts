@@ -18,7 +18,13 @@ import {
 } from './s09-lane-result';
 import { createLaneReviewPorts } from './s09-lane-review';
 import { bodyOf, laneContext, touch, versionFor } from './s09-lane-support';
-import { ID_KIND, iso, nextId, type VersionRecord, type World } from './s09-lane-world';
+import {
+  ID_KIND,
+  iso,
+  nextId,
+  type VersionRecord,
+  type World,
+} from './s09-lane-world';
 
 const newVersion = (
   world: World,
@@ -43,7 +49,9 @@ const newVersion = (
   return version;
 };
 
-const createTypeDraft: ContentSchemaRegistryPorts['createTypeDraft'] = async (input) => {
+const createTypeDraft: ContentSchemaRegistryPorts['createTypeDraft'] = async (
+  input,
+) => {
   const lane = laneContext(input);
   if (lane === null) return unavailable();
   const { world } = lane;
@@ -67,7 +75,10 @@ const createTypeDraft: ContentSchemaRegistryPorts['createTypeDraft'] = async (in
         sourceLocale: String(body.sourceLocale),
         defaultLocale: String(body.defaultLocale),
         supportedLocales: [...(body.supportedLocales as string[])],
-        fallbackChains: structuredClone(body.fallbackChains) as Record<string, string[]>,
+        fallbackChains: structuredClone(body.fallbackChains) as Record<
+          string,
+          string[]
+        >,
       },
     },
     1,
@@ -75,9 +86,12 @@ const createTypeDraft: ContentSchemaRegistryPorts['createTypeDraft'] = async (in
   return ok(versionResource(world, version)) as never;
 };
 
-const listContentTypes: ContentSchemaRegistryPorts['listContentTypes'] = async (input) => {
+const listContentTypes: ContentSchemaRegistryPorts['listContentTypes'] = async (
+  input,
+) => {
   const lane = laneContext(input);
   if (lane === null) return unavailable();
+  if (lane.world.degradedReads) return unavailable();
   const { world } = lane;
   const items = world.types.flatMap((type) => [
     typeResource(world, type.id),
@@ -88,91 +102,106 @@ const listContentTypes: ContentSchemaRegistryPorts['listContentTypes'] = async (
   return ok({ items, nextCursor: null }) as never;
 };
 
-const getContentTypeVersion: ContentSchemaRegistryPorts['getContentTypeVersion'] = async (input) => {
-  const lane = laneContext(input);
-  if (lane === null) return unavailable();
-  const version = versionFor(lane.world, input);
-  return version === null
-    ? notFound()
-    : (ok(detailFor(lane.world, version)) as never);
-};
-
-const startSchemaDryRun: ContentSchemaRegistryPorts['startSchemaDryRun'] = async (input) => {
-  const lane = laneContext(input);
-  if (lane === null) return unavailable();
-  const { world, claim } = lane;
-  const version = versionFor(world, input);
-  if (version === null) return notFound();
-  if (bodyOf(input).expectedVersion !== String(version.rev))
-    return versionMismatch();
-  if (version.state !== 'draft') return conflict('not_a_draft');
-  const current = world.dryRuns.find((entry) => entry.id === version.dryRunId);
-  if (current !== undefined && current.state !== 'completed')
-    return conflict('dry_run_in_progress');
-  const now = iso(Date.now());
-  const run = {
-    id: nextId(world, ID_KIND.dryRun),
-    jobId: nextId(world, ID_KIND.job),
-    versionId: version.id,
-    attemptId: nextId(world, ID_KIND.attempt),
-    planId: nextId(world, ID_KIND.plan),
-    version: 1,
-    state: 'queued' as const,
-    result: null,
-    createdAt: now,
-    updatedAt: now,
-    sourceCount: null,
-    targetCount: null,
-    rowErrorCount: null,
-    sourceHash: null,
-    targetHash: null,
-    reportHash: null,
+const getContentTypeVersion: ContentSchemaRegistryPorts['getContentTypeVersion'] =
+  async (input) => {
+    const lane = laneContext(input);
+    if (lane === null) return unavailable();
+    const version = versionFor(lane.world, input);
+    return version === null
+      ? notFound()
+      : (ok(detailFor(lane.world, version)) as never);
   };
-  world.dryRuns.push(run);
-  world.jobs.push({
-    id: run.jobId,
-    actor: claim.role,
-    dryRunId: run.id,
-    reads: 0,
-    createdAt: now,
-  });
-  version.dryRunId = run.id;
-  touch(version);
-  return ok(dryRunResource(run, version)) as never;
-};
 
-const createSchemaSuccessor: ContentSchemaRegistryPorts['createSchemaSuccessor'] = async (input) => {
-  const lane = laneContext(input);
-  if (lane === null) return unavailable();
-  const { world } = lane;
-  const source = versionFor(world, input);
-  if (source === null) return notFound();
-  const body = bodyOf(input);
-  if (body.expectedVersion !== String(source.rev)) return versionMismatch();
-  if (source.state !== 'active') return conflict('source_not_active');
-  const replacing = body.supportedLocales !== null;
-  const locale = replacing
-    ? {
-        sourceLocale: source.locale.sourceLocale,
-        defaultLocale: source.locale.defaultLocale,
-        supportedLocales: [...(body.supportedLocales as string[])],
-        fallbackChains: structuredClone(body.fallbackChains) as Record<string, string[]>,
-      }
-    : structuredClone(source.locale);
-  if (
-    !locale.supportedLocales.includes(locale.sourceLocale) ||
-    !locale.supportedLocales.includes(locale.defaultLocale)
-  )
-    return invalid('inherited_locale_unsupported');
-  const next = newVersion(
-    world,
-    { typeId: source.typeId, typeKey: source.typeKey, label: source.label, locale },
-    source.versionNo + 1,
-  );
-  return ok(versionResource(world, next)) as never;
-};
+const startSchemaDryRun: ContentSchemaRegistryPorts['startSchemaDryRun'] =
+  async (input) => {
+    const lane = laneContext(input);
+    if (lane === null) return unavailable();
+    const { world, claim } = lane;
+    const version = versionFor(world, input);
+    if (version === null) return notFound();
+    if (bodyOf(input).expectedVersion !== String(version.rev))
+      return versionMismatch();
+    if (version.state !== 'draft') return conflict('not_a_draft');
+    const current = world.dryRuns.find(
+      (entry) => entry.id === version.dryRunId,
+    );
+    if (current !== undefined && current.state !== 'completed')
+      return conflict('dry_run_in_progress');
+    const now = iso(Date.now());
+    const run = {
+      id: nextId(world, ID_KIND.dryRun),
+      jobId: nextId(world, ID_KIND.job),
+      versionId: version.id,
+      attemptId: nextId(world, ID_KIND.attempt),
+      planId: nextId(world, ID_KIND.plan),
+      version: 1,
+      state: 'queued' as const,
+      result: null,
+      createdAt: now,
+      updatedAt: now,
+      sourceCount: null,
+      targetCount: null,
+      rowErrorCount: null,
+      sourceHash: null,
+      targetHash: null,
+      reportHash: null,
+    };
+    world.dryRuns.push(run);
+    world.jobs.push({
+      id: run.jobId,
+      actor: claim.role,
+      dryRunId: run.id,
+      reads: 0,
+      createdAt: now,
+    });
+    version.dryRunId = run.id;
+    touch(version);
+    return ok(dryRunResource(run, version)) as never;
+  };
 
-const activateSchema: ContentSchemaRegistryPorts['activateSchema'] = async (input) => {
+const createSchemaSuccessor: ContentSchemaRegistryPorts['createSchemaSuccessor'] =
+  async (input) => {
+    const lane = laneContext(input);
+    if (lane === null) return unavailable();
+    const { world } = lane;
+    const source = versionFor(world, input);
+    if (source === null) return notFound();
+    const body = bodyOf(input);
+    if (body.expectedVersion !== String(source.rev)) return versionMismatch();
+    if (source.state !== 'active') return conflict('source_not_active');
+    const replacing = body.supportedLocales !== null;
+    const locale = replacing
+      ? {
+          sourceLocale: source.locale.sourceLocale,
+          defaultLocale: source.locale.defaultLocale,
+          supportedLocales: [...(body.supportedLocales as string[])],
+          fallbackChains: structuredClone(body.fallbackChains) as Record<
+            string,
+            string[]
+          >,
+        }
+      : structuredClone(source.locale);
+    if (
+      !locale.supportedLocales.includes(locale.sourceLocale) ||
+      !locale.supportedLocales.includes(locale.defaultLocale)
+    )
+      return invalid('inherited_locale_unsupported');
+    const next = newVersion(
+      world,
+      {
+        typeId: source.typeId,
+        typeKey: source.typeKey,
+        label: source.label,
+        locale,
+      },
+      source.versionNo + 1,
+    );
+    return ok(versionResource(world, next)) as never;
+  };
+
+const activateSchema: ContentSchemaRegistryPorts['activateSchema'] = async (
+  input,
+) => {
   const lane = laneContext(input);
   if (lane === null) return unavailable();
   const { world } = lane;
@@ -188,7 +217,10 @@ const activateSchema: ContentSchemaRegistryPorts['activateSchema'] = async (inpu
     .filter((entry) => entry.decision === 'approve')
     .map((entry) => entry.id);
   const given = body.approvalIds as string[];
-  if (given.length !== approvals.length || !given.every((id) => approvals.includes(id)))
+  if (
+    given.length !== approvals.length ||
+    !given.every((id) => approvals.includes(id))
+  )
     return conflict('approval_set_mismatch');
   for (const entry of world.versions)
     if (entry.typeId === version.typeId && entry.state === 'active') {
@@ -218,10 +250,15 @@ const activateSchema: ContentSchemaRegistryPorts['activateSchema'] = async (inpu
 
 const refused = async () => lanePlaceholderRefusal();
 const lanePlaceholderRefusal = () =>
-  fail(503, 'DEPENDENCY_UNAVAILABLE', 'This producer is not part of the Slice 09 lane.', {
-    dependencyClass: 'cms_registry',
-    retryable: false,
-  });
+  fail(
+    503,
+    'DEPENDENCY_UNAVAILABLE',
+    'This producer is not part of the Slice 09 lane.',
+    {
+      dependencyClass: 'cms_registry',
+      retryable: false,
+    },
+  );
 
 export const laneRegistryPorts = {
   createTypeDraft,
@@ -236,4 +273,3 @@ export const laneRegistryPorts = {
   registerBlock: refused,
   advanceBlockLifecycle: refused,
 } as unknown as Partial<ContentSchemaRegistryPorts>;
-

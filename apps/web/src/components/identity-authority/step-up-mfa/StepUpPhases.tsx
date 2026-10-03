@@ -14,10 +14,14 @@ export function StepUpNoFactor({
         come back to continue.
       </p>
       <p>
-        <a href={mfaSettingsHref(returnTo)}>Set up an authenticator</a>
+        <a className="mfa-standalone-link" href={mfaSettingsHref(returnTo)}>
+          Set up an authenticator
+        </a>
       </p>
       <p>
-        <a href={returnTo}>Go back</a>
+        <a className="mfa-standalone-link" href={returnTo}>
+          Go back
+        </a>
       </p>
     </div>
   );

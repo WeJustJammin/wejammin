@@ -129,12 +129,12 @@ describe('content schema registry safe error details', () => {
           502,
           'DEPENDENCY',
           'safe',
-          { dependencyClass: 'supabase', retryable: true },
+          { dependencyClass: 'release_verifier', retryable: true },
           4,
         ),
       ),
     ).toEqual({
-      dependencyClass: 'supabase',
+      dependencyClass: 'release_verifier',
       retryable: true,
       retryAfterSeconds: 4,
     });

@@ -1,5 +1,6 @@
 import type {
   FactorSettlement,
+  FactorSettlementResult,
   MfaFactorState,
   ReconcilableFactor,
   ReconcilerFactorPort,
@@ -56,12 +57,26 @@ const parseView = (value: unknown): ReconcilableFactor | null => {
   };
 };
 
+const parseSettlement = (value: unknown): FactorSettlementResult => {
+  if (isRecord(value) && Object.keys(value).join(',') === 'stale') {
+    if (value.stale === true) return 'stale';
+  } else if (
+    isRecord(value) &&
+    typeof value.state === 'string' &&
+    SETTLED.has(value.state) &&
+    !('stale' in value)
+  )
+    return 'settled';
+  throw new Error('Malformed factor settlement response');
+};
+
 /**
  * Backs the reconciler with the protected identity RPCs. The read RPC is the
  * only place a provider factor reference leaves PostgreSQL, and only into
  * Worker memory; the settle RPC is the existing BE01a reconcile function,
- * which locks the binding, compare-and-sets `reconciling`, bumps
- * `mfa_version` and writes the security event and outbox row.
+ * which locks the binding, compare-and-sets the observed factor `version`
+ * (and `reconciling`), bumps `mfa_version` and writes the security event and
+ * outbox row. A version mismatch applies nothing and answers `{ stale: true }`.
  */
 export const createRpcReconcilerFactorPort = (
   rpc: EventConsumerRpc,
@@ -81,16 +96,12 @@ export const createRpcReconcilerFactorPort = (
         p_auth_user_id: input.authUserId,
         p_factor_id: input.factorId,
         p_outcome: input.outcome,
+        p_expected_version: input.expectedVersion,
         p_request_id: input.requestId,
         p_correlation_id: input.correlationId,
       },
       signal,
     );
-    if (
-      !isRecord(settled) ||
-      typeof settled.state !== 'string' ||
-      !SETTLED.has(settled.state)
-    )
-      throw new Error('Malformed factor settlement response');
+    return parseSettlement(settled);
   },
 });

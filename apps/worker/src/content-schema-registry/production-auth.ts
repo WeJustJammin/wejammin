@@ -7,6 +7,7 @@ import type {
   AuthenticationResult,
   AuthenticationSession,
 } from '../authentication/types';
+import { freshUntilFor, isFreshProof } from '../authentication/step-up';
 import type { ContentSchemaRegistryDependencies } from './types';
 import { capabilitiesFromResolver } from './production-context';
 import {
@@ -144,15 +145,9 @@ export const createSessionResolver = (
       presentationVariant = resolvedVariant ?? undefined;
     }
     const stepUpAt = result.value.stepUpAt;
-    const stepUpMs = stepUpAt === null ? Number.NaN : Date.parse(stepUpAt);
-    const now = configuration.now();
-    const mfaFresh =
-      Number.isFinite(stepUpMs) &&
-      stepUpMs <= now &&
-      now - stepUpMs <= 10 * 60 * 1000;
-    const stepUpFreshUntil = mfaFresh
-      ? new Date(stepUpMs + 10 * 60 * 1000).toISOString()
-      : undefined;
+    const mfaFresh = isFreshProof(stepUpAt, configuration.now());
+    const stepUpFreshUntil =
+      mfaFresh && stepUpAt !== null ? freshUntilFor(stepUpAt) : undefined;
     sessionContexts.set(request, {
       authUserId: result.value.authUserId,
       sessionId: result.value.sessionId,

@@ -130,7 +130,12 @@ export function StepUpChallengeForm({
       )}
       {state.phase !== 'signed-out' && (
         <p className="infra-help">
-          <a href={recoverySignInHref(returnTo)}>{LOST_ACCESS_LABEL}</a>
+          <a
+            className="mfa-standalone-link"
+            href={recoverySignInHref(returnTo)}
+          >
+            {LOST_ACCESS_LABEL}
+          </a>
         </p>
       )}
     </section>

@@ -32,11 +32,13 @@ const build = (
     status?: ProviderFactorStatus;
     readFails?: boolean;
     settleFails?: boolean;
+    settleStale?: boolean;
     providerFails?: boolean;
   }> = {},
 ) => {
   const settle = vi.fn(async () => {
     if (options.settleFails) throw new Error('rpc down');
+    return options.settleStale ? ('stale' as const) : ('settled' as const);
   });
   const readStatus = vi.fn(async () => {
     if (options.providerFails) throw new Error('provider threw');
@@ -86,6 +88,7 @@ describe('identity.auth-state-reconciler', () => {
           authUserId: IDS.authUser,
           factorId: IDS.aggregate,
           outcome,
+          expectedVersion: '5',
           requestId: IDS.request,
           correlationId: IDS.correlation,
         },
@@ -173,5 +176,84 @@ describe('identity.auth-state-reconciler', () => {
       consumer: 'identity.auth-state-reconciler',
       outcome: 'success',
     });
+  });
+});
+
+/**
+ * A fake database row behind the port, with the compare-and-set the
+ * `auth_mfa_factor_reconcile` RPC must enforce: a settlement only applies when
+ * the version the Worker observed is still the row's version.
+ */
+const racingPort = (initial: ReconcilableFactor) => {
+  const db = { ...initial, settled: [] as string[] };
+  const port = {
+    read: vi.fn(async () => ({
+      state: db.state,
+      authUserId: db.authUserId,
+      providerFactorId: db.providerFactorId,
+      version: db.version,
+    })),
+    settle: vi.fn(
+      async (input: {
+        outcome: string;
+        expectedVersion?: string;
+      }): Promise<'settled' | 'stale'> => {
+        if (input.expectedVersion !== db.version) return 'stale';
+        db.settled.push(input.outcome);
+        return 'settled';
+      },
+    ),
+  };
+  return { db, port };
+};
+
+describe('identity.auth-state-reconciler delayed-poll race', () => {
+  it('[P2-S09-AC-913] acknowledges a stale delivery without effect when the factor re-entered reconciling during the provider poll', async () => {
+    const { db, port } = racingPort(factor({ version: '5' }));
+    const { telemetry, logs } = recordingTelemetry();
+    const reconciler = createAuthStateReconciler({
+      factors: port,
+      provider: {
+        readStatus: vi.fn(async () => {
+          // The older poll is in flight: another operation settles the factor
+          // and a newer one puts it back into reconciling at a newer version.
+          db.version = '7';
+          return 'absent' as const;
+        }),
+      },
+      deadLetter: recordingDeadLetter().port,
+      telemetry,
+      clock: { now: () => NOW, randomUuid: () => IDS.request },
+    });
+    await expect(consume(reconciler)).resolves.toEqual({ outcome: 'ack' });
+    expect(port.settle).toHaveBeenCalledTimes(1);
+    expect(port.settle).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedVersion: '5' }),
+      expect.any(AbortSignal),
+    );
+    expect(db.settled).toEqual([]);
+    expect(logs.at(-1)?.details).toMatchObject({
+      outcome: 'success',
+      metrics: { 'identity.mfa.reconcile.stale_version.total': 1 },
+    });
+  });
+
+  it('[P2-S09-AC-913] settles when the observed version is still current', async () => {
+    const { db, port } = racingPort(factor({ version: '5' }));
+    const { telemetry } = recordingTelemetry();
+    const reconciler = createAuthStateReconciler({
+      factors: port,
+      provider: { readStatus: vi.fn(async () => 'verified' as const) },
+      deadLetter: recordingDeadLetter().port,
+      telemetry,
+      clock: { now: () => NOW, randomUuid: () => IDS.request },
+    });
+    await expect(consume(reconciler)).resolves.toEqual({ outcome: 'ack' });
+    expect(db.settled).toEqual(['verified']);
+  });
+
+  it('a stale settle is never retried or dead-lettered', async () => {
+    const { reconciler } = build({ settleStale: true });
+    await expect(consume(reconciler, 3)).resolves.toEqual({ outcome: 'ack' });
   });
 });

@@ -1,5 +1,12 @@
 import { MFA_METHOD_REGISTRY } from '../authentication/step-up';
 import type { AuthenticationResult } from '../authentication/types';
+import {
+  boundedRateLimit,
+  boundedRetryAfterSeconds,
+  registeredDependencyClass,
+  registeredReasonCode,
+  withinDetailsCeiling,
+} from './error-detail-values';
 import type {
   ContentSchemaRegistryError,
   ContentSchemaRegistryResult,
@@ -134,6 +141,48 @@ const DETAIL_KEYS_BY_STATUS: Readonly<Record<number, readonly string[]>> = {
   504: ['dependencyClass', 'retryable', 'retryAfterSeconds'],
 };
 
+const VERSION_VALUE = /^[1-9][0-9]{0,18}$/u;
+const RFC3339_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
+const RECOVERY_ACTION = /^[a-z][a-z0-9_]{0,31}$/u;
+
+/**
+ * One value per allowlisted key: registered tokens, bounded integers, or a
+ * canonical instant. Anything else (SQL text, provider names, oversized or
+ * non-finite values) is dropped so it can never reach the wire.
+ */
+const registeredDetailValue = (
+  key: string,
+  value: unknown,
+): string | number | boolean | null => {
+  switch (key) {
+    case 'reasonCode':
+      return registeredReasonCode(value);
+    case 'dependencyClass':
+      return registeredDependencyClass(value);
+    case 'retryAfterSeconds':
+      return boundedRetryAfterSeconds(value);
+    case 'limit':
+      return boundedRateLimit(value);
+    case 'retryable':
+      return typeof value === 'boolean' ? value : null;
+    case 'resetAt':
+      return typeof value === 'string' && RFC3339_UTC.test(value)
+        ? value
+        : null;
+    case 'expectedVersion':
+    case 'currentVersion':
+      return typeof value === 'string' && VERSION_VALUE.test(value)
+        ? value
+        : null;
+    case 'recoveryAction':
+      return typeof value === 'string' && RECOVERY_ACTION.test(value)
+        ? value
+        : null;
+    default:
+      return null;
+  }
+};
+
 export const safeDetails = (
   value: unknown,
   status?: number,
@@ -142,17 +191,15 @@ export const safeDetails = (
   const details = detailRecord(value);
   const primitives = Object.fromEntries(
     (DETAIL_KEYS_BY_STATUS[status] ?? []).flatMap((key) => {
-      const candidate = details[key];
-      return typeof candidate === 'string' ||
-        typeof candidate === 'number' ||
-        typeof candidate === 'boolean'
-        ? [[key, candidate]]
-        : [];
+      const candidate = registeredDetailValue(key, details[key]);
+      return candidate === null ? [] : [[key, candidate]];
     }),
   );
   const violations =
     status === 400 || status === 422 ? safeViolations(details.violations) : [];
-  return violations.length === 0 ? primitives : { ...primitives, violations };
+  return withinDetailsCeiling(
+    violations.length === 0 ? primitives : { ...primitives, violations },
+  );
 };
 
 export const statusIsSupported = (

@@ -59,6 +59,12 @@ export default defineConfig({
     'phase-02-slice-09-schema-review-real-route.spec.ts',
     'phase-02-slice-09-schema-version-real-route.spec.ts',
     'phase-02-slice-09-capability-grants-real-route.spec.ts',
+    'phase-02-slice-09-mfa-real-route.spec.ts',
+    'phase-02-slice-09-admin-mfa-reset-real-route.spec.ts',
+    'phase-02-slice-09-review-layout-real-route.spec.ts',
+    'phase-02-slice-09-locale-fields-real-route.spec.ts',
+    'phase-02-slice-09-step-up-return-real-route.spec.ts',
+    'phase-02-slice-09-registry-browser-real-route.spec.ts',
   ],
   use: {
     baseURL: webOrigin,

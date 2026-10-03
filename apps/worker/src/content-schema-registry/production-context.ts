@@ -6,6 +6,8 @@ import {
 
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
+import { isFreshProof } from '../authentication/step-up';
+
 import type {
   ContentSchemaRegistryPortInput,
   ContentSchemaRegistryResult,
@@ -83,10 +85,7 @@ export const contextFor = (
     ...(fromServer === undefined
       ? { stepUpVerified: input.session?.mfaFresh ?? false }
       : {
-          stepUpVerified:
-            fromServer.stepUpAt !== null &&
-            Number.isFinite(Date.parse(fromServer.stepUpAt)) &&
-            Date.parse(fromServer.stepUpAt) <= now(),
+          stepUpVerified: isFreshProof(fromServer.stepUpAt, now()),
           stepUpAt: fromServer.stepUpAt,
         }),
     ...(input.principal === undefined

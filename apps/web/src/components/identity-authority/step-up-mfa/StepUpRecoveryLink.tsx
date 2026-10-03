@@ -24,7 +24,11 @@ export function StepUpRecoveryLink({
     () => stepUpHref(window.location.pathname, window.location.search),
     () => stepUpHref(fallbackPath),
   );
-  return <a href={href}>{label}</a>;
+  return (
+    <a className="mfa-standalone-link" href={href}>
+      {label}
+    </a>
+  );
 }
 
 export default StepUpRecoveryLink;

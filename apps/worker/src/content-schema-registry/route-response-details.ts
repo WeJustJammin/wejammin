@@ -1,3 +1,11 @@
+import {
+  DEFAULT_DEPENDENCY_CLASS,
+  boundedRateLimit,
+  boundedRetryAfterSeconds,
+  registeredDependencyClass,
+  registeredReasonCode,
+  withinDetailsCeiling,
+} from './error-detail-values';
 import type { ContentSchemaRegistryError } from './types';
 
 /**
@@ -41,8 +49,17 @@ const safeStepUpMethods = (value: unknown): readonly string[] | null => {
   return [...new Set(methods)].slice(0, STEP_UP_METHOD_MAX_COUNT);
 };
 
-/** Keep only bounded error details that are useful to a human client. */
+/**
+ * Keep only bounded error details that are useful to a human client. Every
+ * value is checked against its registered set or bound, and the serialized
+ * result is held to the BE00 ceiling at this final wire boundary.
+ */
 export const safeDetails = (
+  result: ContentSchemaRegistryError,
+): Readonly<Record<string, unknown>> =>
+  withinDetailsCeiling(registeredDetails(result));
+
+const registeredDetails = (
   result: ContentSchemaRegistryError,
 ): Readonly<Record<string, unknown>> => {
   if (result.status === 404 || result.status === 500) return {};
@@ -98,20 +115,22 @@ export const safeDetails = (
       ? { recoveryAction: 'reauthenticate' }
       : {};
   }
-  if (result.status === 403)
-    return typeof result.details?.reasonCode === 'string'
-      ? { reasonCode: result.details.reasonCode }
-      : {};
+  if (result.status === 403) {
+    const reasonCode = registeredReasonCode(result.details?.reasonCode);
+    return reasonCode === null ? {} : { reasonCode };
+  }
   if (result.status === 409) return safeVersionDetails(result.details ?? {});
   if (result.status === 429) {
     const details = result.details ?? {};
     // BE00 RATE_LIMITED: { retryAfterSeconds: number, limit: number,
     // resetAt: string }. `resetAt` is an RFC 3339 UTC instant, never a number.
+    const retryAfterSeconds = boundedRetryAfterSeconds(
+      details.retryAfterSeconds,
+    );
+    const limit = boundedRateLimit(details.limit);
     return {
-      ...(typeof details.retryAfterSeconds === 'number'
-        ? { retryAfterSeconds: details.retryAfterSeconds }
-        : {}),
-      ...(typeof details.limit === 'number' ? { limit: details.limit } : {}),
+      ...(retryAfterSeconds === null ? {} : { retryAfterSeconds }),
+      ...(limit === null ? {} : { limit }),
       ...(typeof details.resetAt === 'string' &&
       RFC3339_UTC.test(details.resetAt)
         ? { resetAt: details.resetAt }
@@ -120,15 +139,15 @@ export const safeDetails = (
   }
   if (result.status === 502 || result.status === 503 || result.status === 504) {
     const details = result.details ?? {};
+    const retryAfterSeconds = boundedRetryAfterSeconds(
+      result.retryAfterSeconds,
+    );
     return {
       dependencyClass:
-        typeof details.dependencyClass === 'string'
-          ? details.dependencyClass
-          : 'cms_registry',
+        registeredDependencyClass(details.dependencyClass) ??
+        DEFAULT_DEPENDENCY_CLASS,
       retryable: true,
-      ...(typeof result.retryAfterSeconds === 'number'
-        ? { retryAfterSeconds: result.retryAfterSeconds }
-        : {}),
+      ...(retryAfterSeconds === null ? {} : { retryAfterSeconds }),
     };
   }
   return {};

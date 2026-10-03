@@ -10,6 +10,9 @@ const maxCapturedOutput = 65_536;
 const runOnce = () =>
   new Promise((resolve) => {
     let output = '';
+    // The Wrangler crash line can scroll out of the bounded tail while later
+    // tests keep printing, so the newest log-path line is kept separately.
+    let lastLogLine = '';
     let launchError = false;
     const child = spawn(
       'pnpm',
@@ -25,6 +28,9 @@ const runOnce = () =>
         const text = chunk.toString('utf8');
         destination.write(chunk);
         output = (output + text).slice(-maxCapturedOutput);
+        const logLines = text.match(/Logs were written to "[^"\r\n]+"/gu);
+        if (logLines !== null)
+          lastLogLine = logLines[logLines.length - 1] ?? '';
       });
     };
     relay(child.stdout, process.stdout);
@@ -34,7 +40,10 @@ const runOnce = () =>
       process.stderr.write(`Real-route test launch failed: ${error.message}\n`);
     });
     child.once('close', (code) =>
-      resolve({ exitCode: launchError ? 1 : (code ?? 1), output }),
+      resolve({
+        exitCode: launchError ? 1 : (code ?? 1),
+        output: lastLogLine === '' ? output : `${output}\n${lastLogLine}`,
+      }),
     );
   });
 

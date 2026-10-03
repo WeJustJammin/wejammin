@@ -28,22 +28,47 @@ export const authenticateLane = async (
 ): Promise<void> => {
   const sessionId = laneSessionId(role, testId, options.generation ?? 0);
   const userId = laneUserId(role);
-  const base = { domain: '127.0.0.1', path: '/', secure: false, sameSite: 'Lax' as const };
+  const base = {
+    domain: '127.0.0.1',
+    path: '/',
+    secure: false,
+    sameSite: 'Lax' as const,
+  };
   const cookies = await laneCookieSet({
     userId,
     sessionId,
     csrfRandom: options.csrfRandom ?? `lane${testId}${role}`,
-    ...(options.expiresAt === undefined ? {} : { expiresAt: options.expiresAt }),
+    ...(options.expiresAt === undefined
+      ? {}
+      : { expiresAt: options.expiresAt }),
   });
   await context.addCookies([
     { ...base, name: 'wj_access', value: cookies.access, httpOnly: true },
-    { ...base, name: 'wj_session_ref', value: cookies.sessionRef, httpOnly: true },
+    {
+      ...base,
+      name: 'wj_session_ref',
+      value: cookies.sessionRef,
+      httpOnly: true,
+    },
     { ...base, name: 'wj_csrf', value: cookies.csrf, httpOnly: false },
   ]);
 };
 
 const WEB_PORT = process.env.S09_WEB_PORT ?? '4324';
 export const LANE_BASE_URL = `http://127.0.0.1:${WEB_PORT}`;
+
+const opened: BrowserContext[] = [];
+
+/**
+ * Close every context the test opened. The shared worker browser would
+ * otherwise keep each finished test's pages (and their polling islands) alive
+ * for the rest of the run, loading the local servers more with every test.
+ */
+export const closeLaneContexts = async (): Promise<void> => {
+  await Promise.all(
+    opened.splice(0).map((context) => context.close().catch(() => undefined)),
+  );
+};
 
 /** A fresh browser context for one lane role (its own cookie jar). */
 export const newLaneContext = async (
@@ -53,6 +78,7 @@ export const newLaneContext = async (
   options: LaneAuthOptions = {},
 ): Promise<BrowserContext> => {
   const context = await browser.newContext({ baseURL: LANE_BASE_URL });
+  opened.push(context);
   await authenticateLane(context, role, testId, options);
   return context;
 };

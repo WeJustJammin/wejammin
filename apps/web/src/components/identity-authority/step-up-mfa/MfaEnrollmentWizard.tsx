@@ -151,11 +151,17 @@ export function MfaEnrollmentWizard(
             no recovery codes.
           </p>
           {props.returnTo === null ? (
-            <a href="#mfa-factor-list-heading" onClick={actions.dismissDone}>
+            <a
+              className="mfa-standalone-link"
+              href="#mfa-factor-list-heading"
+              onClick={actions.dismissDone}
+            >
               Back to your authenticators
             </a>
           ) : (
-            <a href={props.returnTo}>Continue</a>
+            <a className="mfa-standalone-link" href={props.returnTo}>
+              Continue
+            </a>
           )}
         </section>
       )}

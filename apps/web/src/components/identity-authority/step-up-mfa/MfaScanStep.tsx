@@ -38,16 +38,20 @@ export function MfaScanStep({
     <div className="mfa-scan-grid">
       <div>
         <h3 id="mfa-scan-heading">Scan the code</h3>
-        <MfaQrCode payload={secret.otpauthUri} />
-        <p id="mfa-key-label">Or enter this key in your app:</p>
-        <p>
-          <code translate="no" aria-labelledby="mfa-key-label">
-            {groupsOfFour(secret.manualEntryKey)}
-          </code>
-        </p>
-        <button type="button" onClick={onCopy}>
-          Copy key
-        </button>
+        <div className="mfa-scan-pair">
+          <MfaQrCode payload={secret.otpauthUri} />
+          <div>
+            <p id="mfa-key-label">Or enter this key in your app:</p>
+            <p>
+              <code translate="no" aria-labelledby="mfa-key-label">
+                {groupsOfFour(secret.manualEntryKey)}
+              </code>
+            </p>
+            <button type="button" onClick={onCopy}>
+              Copy key
+            </button>
+          </div>
+        </div>
       </div>
       <form
         noValidate

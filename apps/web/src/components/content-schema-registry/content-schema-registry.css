@@ -153,6 +153,8 @@
   align-items: center;
   display: flex;
   gap: 0.35rem;
+  /* The whole row is the target: 44 px tall on every width (WCAG 2.5.8 floor is 24). */
+  min-block-size: 2.75rem;
 }
 
 .content-schema-registry-checkbox-field input {

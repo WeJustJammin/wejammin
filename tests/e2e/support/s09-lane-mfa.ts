@@ -38,6 +38,12 @@ import {
 const ENROLLMENT_MS = 600_000;
 const CHALLENGE_MS = 300_000;
 const providerSecrets = new Map<string, string>();
+// Test ids whose next enrollment verification times out at the provider (armed
+// by the loopback-only lane control; consumed by exactly one verification).
+const ambiguousVerifyTests = new Set<string>();
+export const armAmbiguousVerify = (testId: string): void => {
+  ambiguousVerifyTests.add(testId);
+};
 
 const ok = <T>(value: T): AuthenticationResult<T> => ({ ok: true, value });
 const conflict = (reasonCode: string, recoveryAction: string) =>
@@ -47,31 +53,45 @@ const conflict = (reasonCode: string, recoveryAction: string) =>
     recoveryAction,
   });
 const stale = () =>
-  authError(409, 'CONFLICT', 'The authenticator list changed; reload and try again.', {
-    conflict: 'VERSION_MISMATCH',
-    recoveryAction: 'refetch',
-  });
-const notFound = () => authError(404, 'NOT_FOUND', 'The requested resource was not found.', {});
+  authError(
+    409,
+    'CONFLICT',
+    'The authenticator list changed; reload and try again.',
+    {
+      conflict: 'VERSION_MISMATCH',
+      recoveryAction: 'refetch',
+    },
+  );
+const notFound = () =>
+  authError(404, 'NOT_FOUND', 'The requested resource was not found.', {});
 
 type Caller = Readonly<{ authUserId: string; request: Request }>;
 
-const accountOf = (caller: Caller): { world: World; account: MfaAccount; role: NonNullable<ReturnType<typeof laneRoleOfUser>> } => {
+const accountOf = (
+  caller: Caller,
+): {
+  world: World;
+  account: MfaAccount;
+  role: NonNullable<ReturnType<typeof laneRoleOfUser>>;
+} => {
   const claim = laneClaimOf(caller.request);
   const role = laneRoleOfUser(caller.authUserId);
-  if (claim === null || role === null) throw new Error('lane MFA caller is not a lane session');
+  if (claim === null || role === null)
+    throw new Error('lane MFA caller is not a lane session');
   const world = worldOfClaim(claim);
   return { world, account: worldAccount(world, role), role };
 };
 
-const rowOf = (factor: MfaFactorRecord): MfaFactorRow => ({
-  id: factor.id,
-  method: 'totp',
-  friendlyName: factor.friendlyName,
-  state: factor.state,
-  verifiedAt: factor.verifiedAt,
-  lastUsedAt: factor.lastUsedAt,
-  pendingExpiresAt: factor.pendingExpiresAt,
-}) as MfaFactorRow;
+const rowOf = (factor: MfaFactorRecord): MfaFactorRow =>
+  ({
+    id: factor.id,
+    method: 'totp',
+    friendlyName: factor.friendlyName,
+    state: factor.state,
+    verifiedAt: factor.verifiedAt,
+    lastUsedAt: factor.lastUsedAt,
+    pendingExpiresAt: factor.pendingExpiresAt,
+  }) as MfaFactorRow;
 
 const snapshot = (account: MfaAccount): MfaRegistrySnapshot => ({
   factors: account.factors.map(rowOf),
@@ -88,7 +108,9 @@ const persistence: MfaPersistencePort = {
     const mismatch = guardVersion(account, input.expectedVersion);
     if (mismatch !== null) return mismatch;
     const pending = account.factors.find((entry) => entry.state === 'pending');
-    account.factors = account.factors.filter((entry) => entry.state !== 'pending');
+    account.factors = account.factors.filter(
+      (entry) => entry.state !== 'pending',
+    );
     account.version += 1;
     return ok({
       supersededProviderFactorId: pending?.providerFactorId ?? null,
@@ -123,7 +145,8 @@ const persistence: MfaPersistencePort = {
     if (mismatch !== null) return mismatch;
     const factor = account.factors.find((entry) => entry.id === input.factorId);
     if (factor === undefined) return notFound();
-    if (factor.state !== 'pending') return conflict('factor_state_conflict', 'refetch');
+    if (factor.state !== 'pending')
+      return conflict('factor_state_conflict', 'refetch');
     return ok({ providerFactorId: factor.providerFactorId });
   },
   recordVerificationFailure: async (input) => {
@@ -144,15 +167,25 @@ const persistence: MfaPersistencePort = {
     revokeLaneSession(input.sessionId);
     return ok(snapshot(account));
   },
-  markFactorReconciling: async () => ok(null),
+  markFactorReconciling: async (input) => {
+    const factor = accountOf(input).account.factors.find(
+      (entry) => entry.id === input.factorId,
+    );
+    if (factor !== undefined) factor.state = 'reconciling';
+    return ok(null);
+  },
   beginRemoval: async (input) => {
     const { world, account } = accountOf(input);
     const replay = world.idem.get(`mfa-remove:${input.idempotencyKey}`) as
-      | MfaRegistrySnapshot
-      | undefined;
+      MfaRegistrySnapshot | undefined;
     if (replay !== undefined) {
-      const factor = account.factors.find((entry) => entry.id === input.factorId);
-      return ok({ providerFactorId: factor?.providerFactorId ?? input.factorId, replay });
+      const factor = account.factors.find(
+        (entry) => entry.id === input.factorId,
+      );
+      return ok({
+        providerFactorId: factor?.providerFactorId ?? input.factorId,
+        replay,
+      });
     }
     const mismatch = guardVersion(account, input.expectedVersion);
     if (mismatch !== null) return mismatch;
@@ -162,7 +195,9 @@ const persistence: MfaPersistencePort = {
   },
   finishRemoval: async (input) => {
     const { world, account } = accountOf(input);
-    account.factors = account.factors.filter((entry) => entry.id !== input.factorId);
+    account.factors = account.factors.filter(
+      (entry) => entry.id !== input.factorId,
+    );
     account.version += 1;
     const result = snapshot(account);
     world.idem.set(`mfa-remove:${input.idempotencyKey}`, result);
@@ -170,12 +205,15 @@ const persistence: MfaPersistencePort = {
   },
   beginChallenge: async (input) => {
     const { account } = accountOf(input);
-    const verified = account.factors.filter((entry) => entry.state === 'verified');
+    const verified = account.factors.filter(
+      (entry) => entry.state === 'verified',
+    );
     const factor =
       input.factorId === null
         ? verified[0]
         : verified.find((entry) => entry.id === input.factorId);
-    if (factor === undefined) return conflict('no_verified_factor', 'enroll_factor');
+    if (factor === undefined)
+      return conflict('no_verified_factor', 'enroll_factor');
     return ok({
       factorId: factor.id,
       providerFactorId: factor.providerFactorId,
@@ -196,9 +234,14 @@ const persistence: MfaPersistencePort = {
   },
   prepareChallengeVerify: async (input) => {
     const { account } = accountOf(input);
-    const challenge = account.challenges.find((entry) => entry.id === input.challengeId);
-    if (challenge === undefined || challenge.state !== 'pending') return notFound();
-    const factor = account.factors.find((entry) => entry.id === challenge.factorId);
+    const challenge = account.challenges.find(
+      (entry) => entry.id === input.challengeId,
+    );
+    if (challenge === undefined || challenge.state !== 'pending')
+      return notFound();
+    const factor = account.factors.find(
+      (entry) => entry.id === challenge.factorId,
+    );
     if (factor === undefined) return notFound();
     return ok({
       factorId: factor.id,
@@ -211,15 +254,21 @@ const persistence: MfaPersistencePort = {
     const { account } = accountOf(input);
     account.failures += 1;
     if (input.outcome === 'ambiguous')
-      account.challenges = account.challenges.filter((entry) => entry.id !== input.challengeId);
+      account.challenges = account.challenges.filter(
+        (entry) => entry.id !== input.challengeId,
+      );
     return ok(null);
   },
   settleChallengeVerify: async (input) => {
     const { world, account, role } = accountOf(input);
-    const challenge = account.challenges.find((entry) => entry.id === input.challengeId);
+    const challenge = account.challenges.find(
+      (entry) => entry.id === input.challengeId,
+    );
     if (challenge === undefined) return notFound();
     challenge.state = 'settled';
-    const factor = account.factors.find((entry) => entry.id === challenge.factorId);
+    const factor = account.factors.find(
+      (entry) => entry.id === challenge.factorId,
+    );
     if (factor !== undefined) factor.lastUsedAt = input.rotation.issuedAt;
     world.stepUpAt[role] = input.rotation.issuedAt;
     revokeLaneSession(input.sessionId);
@@ -248,12 +297,25 @@ const provider: MfaProviderPort = {
       expiresAt: iso(Date.now() + CHALLENGE_MS),
     }),
   verify: async (input) => {
+    const claim = laneClaimOf(input.request);
+    if (claim !== null && ambiguousVerifyTests.delete(claim.testId))
+      return authError(
+        504,
+        'UPSTREAM_TIMEOUT',
+        'The identity provider did not answer in time.',
+        {},
+      );
     const secret = providerSecrets.get(input.providerFactorId);
-    return secret !== undefined && (await totpMatches(secret, input.code, Date.now()))
+    return secret !== undefined &&
+      (await totpMatches(secret, input.code, Date.now()))
       ? ok({ aal: 'aal2' })
       : authError(422, 'VALIDATION_FAILED', 'Check the highlighted fields.', {
           violations: [
-            { path: '/code', code: 'code_incorrect', message: 'The value is invalid.' },
+            {
+              path: '/code',
+              code: 'code_incorrect',
+              message: 'The value is invalid.',
+            },
           ],
         });
   },
@@ -263,9 +325,18 @@ const rotation: SessionRotationPort = {
   validate: async ({ session }) => {
     const parsed = parseLaneSessionId(session.sessionId);
     if (parsed === null)
-      return authError(401, 'UNAUTHENTICATED', 'Sign in again to continue.', {});
+      return authError(
+        401,
+        'UNAUTHENTICATED',
+        'Sign in again to continue.',
+        {},
+      );
     const now = Date.now();
-    const sessionId = laneSessionId(parsed.role, parsed.testId, parsed.generation + 1);
+    const sessionId = laneSessionId(
+      parsed.role,
+      parsed.testId,
+      parsed.generation + 1,
+    );
     return ok({
       stepUpAt: iso(now),
       freshUntil: iso(now + 600_000),

@@ -3,6 +3,7 @@ import {
   traceFor,
   type AuthProductionConfiguration,
 } from '../authentication/production-configuration';
+import { isFreshProof } from '../authentication/step-up';
 import { callConfiguration, type ConfigurationSchema } from './production-http';
 import type { ConfigurationPortInput } from './types';
 
@@ -26,6 +27,7 @@ export const configurationDatabaseContext = (
     ConfigurationPortInput,
     'request' | 'session' | 'servicePrincipalId' | 'serviceConsumerKey'
   >,
+  now: () => number = Date.now,
 ): Readonly<Record<string, unknown>> => {
   const trace = traceFor(input.request);
   const session = input.session;
@@ -37,7 +39,7 @@ export const configurationDatabaseContext = (
           sessionId: session.sessionId,
           actorPersonId: session.personId,
           actingPartyId: session.actingPartyId,
-          stepUpVerified: session.stepUpAt !== null,
+          stepUpVerified: isFreshProof(session.stepUpAt, now()),
           stepUpAt: session.stepUpAt,
         }),
     ...(input.servicePrincipalId === undefined
