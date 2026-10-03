@@ -2,8 +2,10 @@
  * OD-4 RPC error DETAIL mapping (BE03a CMS-03A-01 / CMS-03A-09). PostgREST
  * returns a raised exception as `{ code, message, details, hint }` where
  * `details` is the machine DETAIL text. The adapter parses the bounded OD-4
- * shapes and nothing else: 422 `{"violations":[{"pointer","message"}]}` and
- * the 409 `reasonCode` only (the active chain belongs to BE03c, never BE03a).
+ * shapes and nothing else: 422 `{"violations":[{"pointer"|"path","message"}]}`
+ * (the database DETAIL names the member `pointer`; the Worker always produces
+ * the BE00 name `path`) and no 409 `reasonCode` (the active chain belongs to
+ * BE03c, never BE03a).
  */
 import { describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +19,13 @@ import {
   session,
 } from './production-test-support';
 
+/** The DETAIL JSON as the OD-4 migrations raise it. */
 const violation = (pointer: string, message: string) => ({ pointer, message });
+/** The same violation as the Worker reports it (BE00 FieldViolation). */
+const wireViolation = (path: string, message: string) => ({ path, message });
+const toWire = (
+  violations: readonly { pointer: string; message: string }[],
+) => violations.map((entry) => wireViolation(entry.pointer, entry.message));
 const postgrest = (message: string, details: unknown) => ({
   code: 'P0001',
   message,
@@ -45,7 +53,7 @@ describe('registry RPC error DETAIL mapping', () => {
       ok: false,
       status: 422,
       code: 'VALIDATION_FAILED',
-      details: { violations },
+      details: { violations: toWire(violations) },
     });
   });
 
@@ -53,14 +61,28 @@ describe('registry RPC error DETAIL mapping', () => {
     const violations = [violation('/defaultLocale', 'must be canonical case')];
     expect(
       mapRpcFailure(422, postgrest('VALIDATION_FAILED', { violations })),
-    ).toMatchObject({ status: 422, details: { violations } });
+    ).toMatchObject({ status: 422, details: { violations: toWire(violations) } });
     expect(
       mapRpcFailure(422, {
         code: 'P0001',
         message: 'something else',
         details: JSON.stringify({ violations }),
       }),
-    ).toMatchObject({ status: 422, details: { violations } });
+    ).toMatchObject({ status: 422, details: { violations: toWire(violations) } });
+    // A DETAIL that already uses the BE00 member name is read the same way.
+    expect(
+      mapRpcFailure(
+        422,
+        postgrest('VALIDATION_FAILED', {
+          violations: [wireViolation('/defaultLocale', 'must be canonical case')],
+        }),
+      ),
+    ).toMatchObject({
+      status: 422,
+      details: {
+        violations: [wireViolation('/defaultLocale', 'must be canonical case')],
+      },
+    });
   });
 
   it('bounds violations to 50 entries and drops unsafe pointers, messages and shapes', () => {
@@ -71,7 +93,7 @@ describe('registry RPC error DETAIL mapping', () => {
       422,
       postgrest('VALIDATION_FAILED', JSON.stringify({ violations: many })),
     );
-    expect(bounded.details?.violations).toEqual(many.slice(0, 50));
+    expect(bounded.details?.violations).toEqual(toWire(many.slice(0, 50)));
 
     const mixed = mapRpcFailure(
       422,
@@ -92,8 +114,8 @@ describe('registry RPC error DETAIL mapping', () => {
       ),
     );
     expect(mixed.details?.violations).toEqual([
-      violation('/ok', 'fine'),
-      { pointer: '/extra', message: 'kept' },
+      wireViolation('/ok', 'fine'),
+      wireViolation('/extra', 'kept'),
     ]);
     expect(JSON.stringify(mixed)).not.toContain('hide');
   });
@@ -167,7 +189,7 @@ describe('registry RPC error DETAIL mapping', () => {
       ok: false,
       status: 422,
       code: 'VALIDATION_FAILED',
-      details: { violations },
+      details: { violations: toWire(violations) },
     });
   });
 });

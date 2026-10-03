@@ -5,6 +5,8 @@ import {
 } from '@wejammin/contracts';
 import type { ApiError, JsonValue } from '@wejammin/contracts';
 
+import { rfc3339ResetAt } from './rate-limit-reset-at';
+
 export interface ContentSchemaRegistryErrorMetadata {
   readonly apiError: ApiError | null;
   readonly retryable: boolean | null;
@@ -25,19 +27,20 @@ const boundedText = (value: unknown, maximum: number): string | null =>
 const boundedNumber = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
+/**
+ * BE00 `FieldViolation`: `{ path, code, message }`, `path` a JSON Pointer. A
+ * violation needs a bounded printable `path` and `message`; `code` is kept
+ * only when it is a bounded printable token. Unknown members are never copied.
+ */
 const safeViolation = (value: JsonValue): JsonValue | null => {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     return null;
   const object = value as { readonly [key: string]: JsonValue };
-  const pointer = boundedText(object.pointer, 256);
+  const path = boundedText(object.path, 256);
   const message = boundedText(object.message, 500);
+  if (path === null || message === null) return null;
   const code = boundedText(object.code, 64);
-  if (pointer === null && message === null && code === null) return null;
-  return {
-    ...(pointer === null ? {} : { pointer }),
-    ...(message === null ? {} : { message }),
-    ...(code === null ? {} : { code }),
-  };
+  return { path, ...(code === null ? {} : { code }), message };
 };
 
 const safeTextFields = (
@@ -111,13 +114,14 @@ const safeDetails = (
     ]);
   }
   if (status === 429) {
-    const values = ['limit', 'resetAt', 'retryAfterSeconds'] as const;
-    return Object.fromEntries(
-      values.flatMap((key) => {
-        const value = boundedNumber(details[key]);
-        return value === null ? [] : [[key, value]];
-      }),
-    );
+    const limit = boundedNumber(details.limit);
+    const resetAt = rfc3339ResetAt(details.resetAt);
+    const retryAfterSeconds = boundedNumber(details.retryAfterSeconds);
+    return {
+      ...(limit === null ? {} : { limit }),
+      ...(resetAt === null ? {} : { resetAt }),
+      ...(retryAfterSeconds === null ? {} : { retryAfterSeconds }),
+    };
   }
   if (status === 502 || status === 503 || status === 504) {
     const dependencyClass = boundedText(details.dependencyClass, 128);

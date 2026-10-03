@@ -84,33 +84,125 @@ describe('[DEC-108] reviewState AsyncState (CMS-03A-13)', () => {
     expect(commandForm(doc, 'CMS-03A-12')).toBeNull();
   });
 
-  it('[P2-S09-AC-953] error: shows the support reference, never a request id, and offers retry only for a retryable failure', () => {
+  it('[P2-S09-AC-953] error: renders the typed ApiError with its request ID', () => {
     const error = {
       code: 'RATE_LIMITED',
       message: 'provider detail must never be shown',
-    };
-    const retryable = renderDocument(
+      requestId: REQUEST_ID,
+    } as const;
+    const doc = renderDocument(
       reviewState({ status: 'error', error, retryable: true, httpStatus: 429 }),
     );
-    const region = requireRegion(retryable, /schema review/iu);
-    expect(region.textContent).toContain(SUPPORT_REFERENCE);
-    expect(region.textContent).not.toContain(REQUEST_ID);
-    expect(region.textContent).not.toContain('provider detail');
-    expect(region.querySelector('[data-cms-retry-control]')).not.toBeNull();
+    const region = requireRegion(doc, /schema review/iu);
+    expect(region.textContent).toContain(`Request ID: ${REQUEST_ID}`);
+  });
 
-    const terminal = renderDocument(
+  it('[P2-S09-AC-953] error: the rendered request ID is the ApiError one, not the page support reference', () => {
+    const doc = renderDocument(
       reviewState({
         status: 'error',
-        error: { ...error, code: 'INTERNAL_ERROR' },
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'x',
+          requestId: REQUEST_ID,
+        },
+        retryable: true,
+        httpStatus: 429,
+      }),
+    );
+    expect(requireRegion(doc, /schema review/iu).textContent).not.toContain(
+      SUPPORT_REFERENCE,
+    );
+  });
+
+  it('[P2-S09-AC-953] error: never shows provider detail from the ApiError message', () => {
+    const doc = renderDocument(
+      reviewState({
+        status: 'error',
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'provider detail must never be shown',
+          requestId: REQUEST_ID,
+        },
+        retryable: true,
+        httpStatus: 429,
+      }),
+    );
+    expect(requireRegion(doc, /schema review/iu).textContent).not.toContain(
+      'provider detail',
+    );
+  });
+
+  it('[P2-S09-AC-953] error: offers retry for a retryable 429', () => {
+    const doc = renderDocument(
+      reviewState({
+        status: 'error',
+        error: { code: 'RATE_LIMITED', message: 'x', requestId: REQUEST_ID },
+        retryable: true,
+        httpStatus: 429,
+      }),
+    );
+    expect(
+      requireRegion(doc, /schema review/iu).querySelector(
+        '[data-cms-retry-control]',
+      ),
+    ).not.toBeNull();
+  });
+
+  it('[P2-S09-AC-953] error: offers no retry for a terminal 500', () => {
+    const doc = renderDocument(
+      reviewState({
+        status: 'error',
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'x',
+          requestId: REQUEST_ID,
+        },
         retryable: false,
         httpStatus: 500,
       }),
     );
     expect(
-      requireRegion(terminal, /schema review/iu).querySelector(
+      requireRegion(doc, /schema review/iu).querySelector(
         '[data-cms-retry-control]',
       ),
     ).toBeNull();
+  });
+
+  it('[P2-S09-AC-953] degraded 502, 503 and 504: render the request ID and offer retry', () => {
+    for (const code of [
+      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
+      'DEPENDENCY_DEADLINE_EXCEEDED',
+    ] as const) {
+      const doc = renderDocument(
+        reviewState({
+          status: 'degraded',
+          data: null,
+          code,
+          requestId: REQUEST_ID,
+          lastVerifiedAt: null,
+          retryable: true,
+        }),
+      );
+      const region = requireRegion(doc, /schema review/iu);
+      expect(region.textContent).toContain(`Request ID: ${REQUEST_ID}`);
+      expect(region.querySelector('[data-cms-retry-control]')).not.toBeNull();
+    }
+  });
+
+  it('[P2-S09-AC-953] error without a request ID falls back to the support reference', () => {
+    const doc = renderDocument(
+      reviewState({
+        status: 'error',
+        error: { code: 'INTERNAL_ERROR', message: 'x' },
+        retryable: false,
+        httpStatus: 500,
+      }),
+    );
+    expect(requireRegion(doc, /schema review/iu).textContent).toContain(
+      `Support reference: ${SUPPORT_REFERENCE}`,
+    );
   });
 
   it('[P2-S09-AC-954] degraded: keeps the last verified review and disables decision controls', () => {

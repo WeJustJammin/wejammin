@@ -19,6 +19,7 @@ import {
   cmsEditorialSameOriginRequest,
   isCmsEditorialPlatformBinding,
 } from './cms-editorial-platform-shared';
+import { relayedResetAt } from './rate-limit-reset-at';
 
 const PATH = '/api/v1/cms/compositions/pattern-instances';
 const ERROR_CODES = {
@@ -95,8 +96,8 @@ const safeDetails = (
         input[key] >= 0
       )
         output[key] = input[key];
-    if (typeof input.resetAt === 'string' && /^\d{1,13}$/u.test(input.resetAt))
-      output.resetAt = input.resetAt;
+    const resetAt = relayedResetAt(input.resetAt, 'epoch-string');
+    if (resetAt !== null) output.resetAt = resetAt;
     return output;
   }
   if (status === 502 || status === 503 || status === 504)

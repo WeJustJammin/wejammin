@@ -280,4 +280,35 @@ describe('CMS-03C-02 first-party private forwarding', () => {
     expect(forwarded.headers.get('cookie')).toContain('wj_csrf=csrf-token-123');
     expect(forwarded.headers.get('cookie')).not.toContain('unrelated=');
   });
+
+  it('relays a 429 resetAt only as a valid RFC 3339 UTC instant (BE00 RATE_LIMITED)', async () => {
+    const respond = async (details: Record<string, unknown>) => {
+      const result = await forwardCmsPatternInstanceMutation(
+        request(),
+        binding(error(429, 'RATE_LIMITED', details)),
+      );
+      expect(result.status).toBe(429);
+      return ((await result.json()) as { details: unknown }).details;
+    };
+    expect(
+      await respond({
+        retryAfterSeconds: 43,
+        limit: 60,
+        resetAt: '2026-09-02T10:41:00.000Z',
+        secret: 'private',
+      }),
+    ).toEqual({
+      retryAfterSeconds: 43,
+      limit: 60,
+      resetAt: '2026-09-02T10:41:00.000Z',
+    });
+    for (const unsafe of [
+      '2026-02-30T10:41:00.000Z',
+      '2026-09-02T10:41:00+02:00',
+      'private',
+    ])
+      expect(
+        await respond({ retryAfterSeconds: 43, limit: 60, resetAt: unsafe }),
+      ).toEqual({ retryAfterSeconds: 43, limit: 60 });
+  });
 });

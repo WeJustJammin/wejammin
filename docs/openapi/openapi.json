@@ -33501,7 +33501,7 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
         "minLength": 1,
-        "maxLength": 256
+        "maxLength": 2048
       },
       "CmsCapabilityGrantState": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -34734,7 +34734,7 @@
           "reason": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 256
+            "maxLength": 2048
           }
         },
         "required": [
@@ -34780,7 +34780,7 @@
           "reason": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 256
+            "maxLength": 2048
           }
         },
         "required": [
@@ -34802,7 +34802,7 @@
           "reason": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 256
+            "maxLength": 2048
           }
         },
         "required": [
@@ -36290,7 +36290,7 @@
                     {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256
+                      "maxLength": 2048
                     },
                     {
                       "type": "null"
@@ -36427,7 +36427,7 @@
               {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 256
+                "maxLength": 2048
               },
               {
                 "type": "null"

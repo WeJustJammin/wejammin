@@ -124,11 +124,11 @@ describe('runGrantCommand', () => {
           apiError('VALIDATION_FAILED', {
             violations: [
               {
-                pointer: '/validThrough',
+                path: '/validThrough',
                 code: 'grant_term_spans_at_most_ninety_utc_days',
                 value: SUBJECT_ID,
               },
-              { pointer: '/capability', code: 'not_grantable' },
+              { path: '/capability', code: 'not_grantable' },
             ],
           }),
         ),

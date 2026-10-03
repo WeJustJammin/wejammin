@@ -7,7 +7,14 @@ The FE05 `AdminMfaFactorResetForm` for BE05b `CFG-05B-06`
 failure mapping, state hook, and the form, confirmation and notice components.
 Served by `src/pages/app/platform-configuration-admin/mfa-reset.astro`.
 
-## Extension pattern
+## Ownership
+
+These components own presentation and island-local state for the FE05 admin MFA
+factor reset form. The API Worker and database own the operator capability
+check, the organization and step-up derivation, idempotency and the reset
+itself; the client sends only `{ targetPersonId, reason }`.
+
+## Extension
 
 New outcomes are added in `admin-mfa-reset-failure.ts` with exact copy in
 `admin-mfa-reset-values.ts` (`ADMIN_RESET_COPY`) and a matching case in
@@ -27,7 +34,7 @@ New outcomes are added in `admin-mfa-reset-failure.ts` with exact copy in
 - Failure mapping reuses `../../identity-authority/step-up-mfa/` (`mfa-api.ts`,
   `mfa-failure.ts`, `use-lockout.ts`, `step-up-return.ts`).
 
-## Related
+## Related links
 
 - Runbook for the sole administrator: `docs/runbooks/platform/sole-admin-mfa-lockout.md`
 - Spec: `.memory/wiki/specs/fe/05-platform-configuration-admin.md`

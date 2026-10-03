@@ -266,7 +266,7 @@ describe('[DEC-120] term bound is not decided by the facade', () => {
         body: grantApiError('VALIDATION_FAILED', {
           violations: [
             {
-              pointer: '/validThrough',
+              path: '/validThrough',
               code: 'grant_term_spans_at_most_ninety_utc_days',
             },
           ],

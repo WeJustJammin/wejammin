@@ -217,4 +217,34 @@ describe('CMS-11 first-party template mutation boundary', () => {
       expect(response.headers.get('retry-after')).toBe(expected);
     }
   });
+
+  it('relays a 429 resetAt only as a valid RFC 3339 UTC instant (BE00 RATE_LIMITED)', async () => {
+    const respond = async (details: Record<string, unknown>) => {
+      const response = await forwardCmsTemplateDefineMutation(request(), {
+        fetch: vi.fn(async () => failure(429, 'RATE_LIMITED', details)),
+      });
+      expect(response.status).toBe(429);
+      return ((await response.json()) as { details: unknown }).details;
+    };
+    expect(
+      await respond({
+        retryAfterSeconds: 43,
+        limit: 60,
+        resetAt: '2026-09-02T10:41:00.000Z',
+        secret: 'private',
+      }),
+    ).toEqual({
+      retryAfterSeconds: 43,
+      limit: 60,
+      resetAt: '2026-09-02T10:41:00.000Z',
+    });
+    for (const unsafe of [
+      '2026-02-30T10:41:00.000Z',
+      '2026-09-02T10:41:00+02:00',
+      'private',
+    ])
+      expect(
+        await respond({ retryAfterSeconds: 43, limit: 60, resetAt: unsafe }),
+      ).toEqual({ retryAfterSeconds: 43, limit: 60 });
+  });
 });

@@ -29,7 +29,10 @@ const base32Decode = (value: string): Uint8Array => {
   return Uint8Array.from(out);
 };
 
-export const totpCode = async (secret: string, atMs: number): Promise<string> => {
+export const totpCode = async (
+  secret: string,
+  atMs: number,
+): Promise<string> => {
   const counter = Math.floor(atMs / 30_000);
   const message = new Uint8Array(8);
   new DataView(message.buffer).setUint32(4, counter >>> 0);

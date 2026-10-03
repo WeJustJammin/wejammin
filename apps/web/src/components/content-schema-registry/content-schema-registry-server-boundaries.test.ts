@@ -129,7 +129,7 @@ describe('content schema registry server boundaries', () => {
                 requestId: upstreamRequestId,
                 details: {
                   currentVersion: '7',
-                  violations: [{ pointer: '/limit' }],
+                  violations: [{ path: '/limit' }],
                 },
               },
               retryAfterSeconds: null,
@@ -153,9 +153,13 @@ describe('content schema registry server boundaries', () => {
         },
       },
     });
-    // The upstream request id never survives into hydrated page state.
+    // FE03: the typed ApiError request id of the failed read reaches the
+    // error state so the user can quote it; the page-level id never does.
     if (result.kind !== 'error') throw new Error('expected an error result');
-    expect(JSON.stringify(result.page)).not.toContain(upstreamRequestId);
+    expect(result.page.initialList).toMatchObject({
+      error: { requestId: upstreamRequestId },
+    });
+    expect(Object.keys(result.page)).not.toContain('requestId');
   });
 
   it('keeps a platform outage during session verification degraded', async () => {

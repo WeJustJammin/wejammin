@@ -6,6 +6,7 @@ import {
   rejectUnknownKeys,
   requireString,
   validateError,
+  validateRequestId,
   validateRouteMeta,
 } from './content-schema-registry-canonical-validate-primitives';
 import type { ContentSchemaRegistryReviewState } from './content-schema-registry-review-types';
@@ -23,6 +24,7 @@ const ERROR_KEYS = new Set([
 const DEGRADED_KEYS = new Set([
   'status',
   'data',
+  'requestId',
   'lastVerifiedAt',
   'retryable',
   'httpStatus',
@@ -75,6 +77,7 @@ export const validateReviewState = (
     if (value.retryable !== undefined && typeof value.retryable !== 'boolean')
       throw new CanonicalStateError('retryable');
     validateRouteMeta(value);
+    validateRequestId(value);
   } else if (status === 'disabled') {
     rejectUnknownKeys(value, DISABLED_KEYS);
     requireString(value, 'reason');

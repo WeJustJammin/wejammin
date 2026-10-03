@@ -31,7 +31,7 @@ export interface GrantCommandResult {
   readonly retryAfterSeconds: number | null;
   /** Present only for a verified 2xx that parses as the grant contract. */
   readonly resource: CmsCapabilityGrantResource | null;
-  /** Violation pointers and codes only; submitted values are never read. */
+  /** Violation paths (JSON Pointers) and codes only; submitted values are never read. */
   readonly violations: readonly GrantViolation[];
   /** The platform request id of the last response, for recovery copy. */
   readonly requestId: string | null;
@@ -56,14 +56,14 @@ const violationsOf = (body: unknown): readonly GrantViolation[] => {
   if (!Array.isArray(list)) return [];
   return list
     .flatMap((entry: unknown): GrantViolation[] => {
-      const { pointer, code } = (entry ?? {}) as {
-        readonly pointer?: unknown;
+      const { path, code } = (entry ?? {}) as {
+        readonly path?: unknown;
         readonly code?: unknown;
       };
-      return typeof pointer === 'string' && pointer.length <= 256
+      return typeof path === 'string' && path.length <= 256
         ? [
             {
-              pointer,
+              pointer: path,
               code:
                 typeof code === 'string' && SAFE_CODE.test(code) ? code : null,
             },

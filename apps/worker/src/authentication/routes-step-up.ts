@@ -78,7 +78,7 @@ export const registerStepUpRoutes = (
       const challengeId = parsePathId(
         context,
         AuthStepUpChallengePathSchema.shape.challengeId,
-        context.req.param('challengeId') ?? '',
+        context.req.param('challengeId'),
       );
       if (!challengeId.ok)
         return responseForMfaError(context, 'AUTH-API-21', challengeId);

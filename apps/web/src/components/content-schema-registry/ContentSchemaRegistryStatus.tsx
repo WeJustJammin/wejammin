@@ -3,6 +3,7 @@ import type {
   ContentSchemaRegistryDetailState,
   ContentSchemaRegistryListState,
 } from './content-schema-registry-types';
+import ContentSchemaRegistryDiagnosticReference from './ContentSchemaRegistryDiagnosticReference';
 import {
   isError,
   retryAfterMessage,
@@ -118,9 +119,10 @@ export default function ContentSchemaRegistryStatus({
         <h3>{regionLabel} needs attention</h3>
         <p>{message}</p>
         {filterSummary !== null ? <p>{filterSummary}</p> : null}
-        <p>
-          Support reference: <code>{supportReference}</code>
-        </p>
+        <ContentSchemaRegistryDiagnosticReference
+          requestId={state.error.requestId}
+          supportReference={supportReference}
+        />
         {httpStatus === null ? null : (
           <p data-http-status={httpStatus}>Status: {httpStatus}</p>
         )}
@@ -143,9 +145,10 @@ export default function ContentSchemaRegistryStatus({
       >
         <p>{message}</p>
         {filterSummary !== null ? <p>{filterSummary}</p> : null}
-        <p>
-          Support reference: <code>{supportReference}</code>.
-        </p>
+        <ContentSchemaRegistryDiagnosticReference
+          requestId={state.requestId}
+          supportReference={supportReference}
+        />
         {httpStatus === null ? null : (
           <p data-http-status={httpStatus}>Status: {httpStatus}</p>
         )}

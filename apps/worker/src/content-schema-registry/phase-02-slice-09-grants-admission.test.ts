@@ -174,23 +174,27 @@ describe('grant admission: CMS-03A-18 protected list', () => {
   );
 
   it.each([
-    '?unknown=1',
-    '?limit=0',
-    '?limit=101',
-    '?capability=cms.schema_review',
-    '?state=pending',
-    '?sort=createdAt',
-    '?direction=sideways',
-    '?subjectPersonId=not-a-uuid',
-    '?state=active&state=revoked',
-  ])('rejects the query %s with 400 and no port call', async (query) => {
-    const harness = makeGrantHarness();
-    const response = await harness.app.request(
-      grantRequestFor(LIST, { path: `${LIST.path}${query}` }),
-    );
-    await expectStatus(response, 400, 'INVALID_REQUEST');
-    expect(calledPorts(harness.ports)).toBe(0);
-  });
+    ['?unknown=1', 400, 'INVALID_REQUEST'],
+    ['?state=active&state=revoked', 400, 'INVALID_REQUEST'],
+    ['?cursor=', 400, 'INVALID_REQUEST'],
+    ['?limit=0', 422, 'VALIDATION_FAILED'],
+    ['?limit=101', 422, 'VALIDATION_FAILED'],
+    ['?capability=cms.schema_review', 422, 'VALIDATION_FAILED'],
+    ['?state=pending', 422, 'VALIDATION_FAILED'],
+    ['?sort=createdAt', 422, 'VALIDATION_FAILED'],
+    ['?direction=sideways', 422, 'VALIDATION_FAILED'],
+    ['?subjectPersonId=not-a-uuid', 422, 'VALIDATION_FAILED'],
+  ] as const)(
+    'rejects the query %s with %i %s and no port call',
+    async (query, status, code) => {
+      const harness = makeGrantHarness();
+      const response = await harness.app.request(
+        grantRequestFor(LIST, { path: `${LIST.path}${query}` }),
+      );
+      await expectStatus(response, status, code);
+      expect(calledPorts(harness.ports)).toBe(0);
+    },
+  );
 
   it('forwards the strict query with its documented defaults', async () => {
     const harness = makeGrantHarness();

@@ -12,7 +12,11 @@ export const fixtureHash = (text: string): string => {
     const code = text.charCodeAt(index);
     for (let lane = 0; lane < lanes.length; lane += 1) {
       const previous = lanes[(lane + 7) % lanes.length] as number;
-      lanes[lane] = Math.imul((lanes[lane] as number) ^ code ^ previous, 0x01000193 + lane * 2) >>> 0;
+      lanes[lane] =
+        Math.imul(
+          (lanes[lane] as number) ^ code ^ previous,
+          0x01000193 + lane * 2,
+        ) >>> 0;
     }
   }
   return lanes.map((value) => value.toString(16).padStart(8, '0')).join('');

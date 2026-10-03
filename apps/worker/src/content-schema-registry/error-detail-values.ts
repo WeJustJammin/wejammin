@@ -33,6 +33,63 @@ export const REGISTERED_DEPENDENCY_CLASSES: ReadonlySet<string> = new Set([
 
 export const DEFAULT_DEPENDENCY_CLASS = 'cms_registry';
 
+/**
+ * BE00 `CONFLICT` details: `conflict` is one of three values and
+ * `recoveryAction` is always present. The recovery action is a closed lookup
+ * of the conflict, never database text.
+ */
+export const CONFLICT_RECOVERY_ACTIONS = {
+  VERSION_MISMATCH: 'reload',
+  IDEMPOTENCY_MISMATCH: 'use_new_idempotency_key',
+  INVALID_TRANSITION: 'refresh',
+} as const;
+
+export type ConflictKind = keyof typeof CONFLICT_RECOVERY_ACTIONS;
+
+export const registeredConflict = (value: unknown): ConflictKind | null =>
+  typeof value === 'string' &&
+  Object.prototype.hasOwnProperty.call(CONFLICT_RECOVERY_ACTIONS, value)
+    ? (value as ConflictKind)
+    : null;
+
+/**
+ * The conflict a 409 reports when the producer did not name one: the adapter's
+ * internal code decides, and any other 409 is a state conflict.
+ */
+export const conflictForCode = (code: string): ConflictKind =>
+  code === 'VERSION_MISMATCH'
+    ? 'VERSION_MISMATCH'
+    : code === 'IDEMPOTENCY_MISMATCH' || code === 'IDEMPOTENCY_CONFLICT'
+      ? 'IDEMPOTENCY_MISMATCH'
+      : 'INVALID_TRANSITION';
+
+const OWNER_ONLY_OPERATIONS: ReadonlySet<string> = new Set([
+  'CMS-03A-15',
+  'CMS-03A-16',
+  'CMS-03A-17',
+  'CMS-03A-18',
+]);
+const RELEASE_OPERATIONS: ReadonlySet<string> = new Set([
+  'CMS-03A-05',
+  'CMS-03A-08',
+]);
+
+/**
+ * BE00 makes `reasonCode` required on every 403. A refusal that raised no
+ * registered code (the database FORBIDDEN carries no DETAIL) reports the one
+ * registered value that names the missing authority for the operation: the
+ * owner for the owner grant commands, a release policy for the release
+ * worker, and the capability otherwise.
+ */
+export const defaultForbiddenReasonCode = (
+  operationId: string | undefined,
+): string =>
+  operationId !== undefined && OWNER_ONLY_OPERATIONS.has(operationId)
+    ? 'OWNER_REQUIRED'
+    : operationId !== undefined && RELEASE_OPERATIONS.has(operationId)
+      ? 'POLICY_NOT_MET'
+      : 'CAPABILITY_REQUIRED';
+
 export const MAX_RETRY_AFTER_SECONDS = 86_400;
 export const MAX_RATE_LIMIT = 1_000_000;
 

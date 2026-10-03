@@ -245,6 +245,12 @@ const listRequest = (query: string): Request =>
 type QueryCase = Readonly<{
   marker: string;
   title: string;
+  /**
+   * BE03a matrix: 400 INVALID_REQUEST for a malformed query (unknown or
+   * repeated key) or a malformed cursor, 422 VALIDATION_FAILED for a filter,
+   * sort or page validation failure.
+   */
+  refusal: 400 | 422;
   rejected: readonly string[];
   accepted: ReadonlyArray<readonly [query: string, forwarded: object]>;
 }>;
@@ -254,6 +260,7 @@ const defaults = { limit: 25, sort: 'updatedAt', direction: 'desc' };
 const QUERY_CASES: readonly QueryCase[] = [
   {
     marker: '[P2-S09-AC-604]',
+    refusal: 400,
     title:
       'CmsCapabilityGrantListQuery is a strict object and rejects unknown query keys',
     rejected: [
@@ -267,6 +274,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-605]',
+    refusal: 422,
     title: 'subjectPersonId is an optional UUID filter',
     rejected: [
       '?subjectPersonId=not-a-uuid',
@@ -282,6 +290,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-606]',
+    refusal: 422,
     title: 'capability is an optional member of the grantable capability set',
     rejected: [
       '?capability=cms.schema_review',
@@ -296,6 +305,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-607]',
+    refusal: 422,
     title: 'state is an optional filter of active, lapsed or revoked',
     rejected: ['?state=pending', '?state=ACTIVE', '?state=', '?state=expired'],
     accepted: ['active', 'lapsed', 'revoked'].map(
@@ -304,6 +314,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-608]',
+    refusal: 422,
     title: 'limit is an integer from 1 to 100 with default 25',
     rejected: [
       '?limit=0',
@@ -321,6 +332,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-609]',
+    refusal: 400,
     title: 'cursor is an optional opaque string of 1 to 512 characters',
     rejected: [`?cursor=${'a'.repeat(513)}`, '?cursor='],
     accepted: [
@@ -331,6 +343,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-610]',
+    refusal: 422,
     title: 'sort is updatedAt or validThrough with default updatedAt',
     rejected: [
       '?sort=createdAt',
@@ -346,6 +359,7 @@ const QUERY_CASES: readonly QueryCase[] = [
   },
   {
     marker: '[P2-S09-AC-611]',
+    refusal: 422,
     title: 'direction is asc or desc with default desc',
     rejected: [
       '?direction=up',
@@ -364,13 +378,13 @@ const QUERY_CASES: readonly QueryCase[] = [
 describe('BE03a CMS-03A-18 list query', () => {
   it.each(QUERY_CASES)(
     '$marker CMS-03A-18 $title',
-    async ({ rejected, accepted }) => {
+    async ({ refusal, rejected, accepted }) => {
       for (const query of rejected) {
         const harness = harnessFor(LIST);
         const response = await harness.app.request(listRequest(query));
-        expect(response.status, `must refuse ${query}`).toBe(400);
+        expect(response.status, `must refuse ${query}`).toBe(refusal);
         expect(((await response.json()) as { code: string }).code).toBe(
-          'INVALID_REQUEST',
+          refusal === 400 ? 'INVALID_REQUEST' : 'VALIDATION_FAILED',
         );
         expect(calledPorts(harness.ports)).toBe(0);
       }

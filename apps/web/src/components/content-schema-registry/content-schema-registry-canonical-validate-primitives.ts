@@ -44,7 +44,22 @@ const ERROR_CODES = new Set([
   'INTERNAL_ERROR',
 ]);
 
-const ERROR_DETAIL_KEYS = new Set(['code', 'message']);
+const ERROR_DETAIL_KEYS = new Set(['code', 'message', 'requestId']);
+
+const REQUEST_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
+/**
+ * The BE00 `ApiError.requestId` of a failed read is the one diagnostic
+ * identifier the island may carry (FE03: typed ApiError with request ID). It
+ * is optional and must be a UUID; any other shape fails closed.
+ */
+export const validateRequestId = (value: Record<string, unknown>): void => {
+  const requestId = value.requestId;
+  if (requestId === undefined) return;
+  if (typeof requestId !== 'string' || !REQUEST_ID_PATTERN.test(requestId))
+    throw new CanonicalStateError('requestId');
+};
 
 export const validateError = (value: unknown): void => {
   if (!isRecord(value)) throw new CanonicalStateError('error');
@@ -52,6 +67,7 @@ export const validateError = (value: unknown): void => {
   if (!ERROR_CODES.has(requireString(value, 'code')))
     throw new CanonicalStateError('error code');
   requireString(value, 'message');
+  validateRequestId(value);
 };
 
 export const validateRouteMeta = (value: Record<string, unknown>): void => {

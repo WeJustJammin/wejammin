@@ -44,6 +44,8 @@ describe('content schema registry route defensive coverage', () => {
       ).request(humanRequest('/api/v1/cms/content-types'))
     ).json()) as { details: unknown };
     expect(conflictBody.details).toEqual({
+      conflict: 'INVALID_TRANSITION',
+      recoveryAction: 'refresh',
       expectedVersion: '1',
       currentVersion: '2',
     });

@@ -57,7 +57,7 @@ const factorPath = (context: WorkerContext): ReturnType<typeof parsePathId> =>
   parsePathId(
     context,
     AuthMfaFactorPathSchema.shape.factorId,
-    context.req.param('factorId') ?? '',
+    context.req.param('factorId'),
   );
 
 export const registerMfaFactorRoutes = (

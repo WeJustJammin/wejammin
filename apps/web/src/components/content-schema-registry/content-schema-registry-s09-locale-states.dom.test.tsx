@@ -122,7 +122,7 @@ describe('locale configuration pending state', () => {
           new Response(
             JSON.stringify({
               code: 'VALIDATION_FAILED',
-              details: { violations: [{ pointer: '/typeKey' }] },
+              details: { violations: [{ path: '/typeKey' }] },
             }),
             { status: 422, headers: { 'content-type': 'application/json' } },
           ),

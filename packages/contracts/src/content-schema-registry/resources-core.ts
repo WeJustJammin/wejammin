@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   CmsCapabilityKeySchema,
   CmsHashSchema,
+  CmsLabelSchema,
   CmsTypeKeySchema,
   CmsUuidSchema,
   CmsWorkflowKeySchema,
@@ -52,7 +53,7 @@ export const ContentTypeVersionResourceSchema = z
     state: ContentTypeVersionStateSchema,
     contentTypeId: CmsUuidSchema,
     typeKey: CmsTypeKeySchema,
-    label: z.string().trim().min(2).max(120),
+    label: CmsLabelSchema,
     ownerCapability: CmsCapabilityKeySchema,
     sourceLocale: CmsCanonicalLocaleSchema,
     defaultLocale: CmsCanonicalLocaleSchema,

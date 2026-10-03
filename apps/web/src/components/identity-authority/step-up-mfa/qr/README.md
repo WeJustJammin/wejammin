@@ -10,7 +10,12 @@ used only to draw the otpauth enrollment URI inside the browser.
 - `qr-penalty.ts` mask scoring
 - `qr-encode.ts` `encodeQr` and `qrSvgPath`, the public entry points
 
-## Extension pattern
+## Ownership
+
+This directory owns the pure QR matrix and SVG-path encoding only. Rendering
+lives in `../MfaQrCode.tsx`, and the enrollment payload is issued by the server.
+
+## Extension
 
 Change behavior only together with `qr-encode.test.ts`, which pins known
 reference matrices. Keep every module pure: no DOM, no network, no storage.
@@ -20,6 +25,6 @@ reference matrices. Keep every module pure: no DOM, no network, no storage.
 The encoded payload is the one-time otpauth URI. Nothing here logs, stores or
 transmits it.
 
-## Related
+## Related links
 
 `../MfaQrCode.tsx` renders the matrix as an SVG.

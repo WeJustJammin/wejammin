@@ -89,32 +89,49 @@ describe('grant handler error mapping (BE03a error matrix)', () => {
       403,
       'FORBIDDEN',
       { reasonCode: 'OWNER_REQUIRED' },
+      'FORBIDDEN',
       { reasonCode: 'OWNER_REQUIRED' },
     ],
-    [404, 'NOT_FOUND', { leak: 'hidden' }, {}],
+    [404, 'NOT_FOUND', { leak: 'hidden' }, 'NOT_FOUND', {}],
     [
       409,
       'CONFLICT',
       { expectedVersion: '1', currentVersion: '2', secret: 'x' },
-      { expectedVersion: '1', currentVersion: '2' },
+      'CONFLICT',
+      {
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
+        expectedVersion: '1',
+        currentVersion: '2',
+      },
     ],
-    [409, 'IDEMPOTENCY_CONFLICT', {}, {}],
-    [500, 'INTERNAL_ERROR', { stack: 'trace' }, {}],
+    [
+      409,
+      'IDEMPOTENCY_MISMATCH',
+      {},
+      'CONFLICT',
+      {
+        conflict: 'IDEMPOTENCY_MISMATCH',
+        recoveryAction: 'use_new_idempotency_key',
+      },
+    ],
+    [500, 'INTERNAL_ERROR', { stack: 'trace' }, 'INTERNAL_ERROR', {}],
   ] as const;
 
   it.each(
     GRANT_OPERATIONS.flatMap((spec) =>
-      failures.map(([status, code, details, safe]) => ({
+      failures.map(([status, code, details, wireCode, safe]) => ({
         spec,
         status,
         code,
         details,
+        wireCode,
         safe,
       })),
     ),
   )(
     '$spec.operationId maps a $status $code port failure to the allowlisted envelope',
-    async ({ spec, status, code, details, safe }) => {
+    async ({ spec, status, code, details, wireCode, safe }) => {
       const harness = makeGrantHarness({
         port: error(status, code, 'Port message.', { ...details }),
       });
@@ -122,17 +139,17 @@ describe('grant handler error mapping (BE03a error matrix)', () => {
       expect(harness.ports[spec.portName]).toHaveBeenCalledTimes(1);
       expect(response.status).toBe(status);
       const body = (await response.json()) as Record<string, unknown>;
-      expect(body.code).toBe(code);
+      expect(body.code).toBe(wireCode);
       expect(body.requestId).toBe(REQUEST_ID);
       expect(body.details).toEqual(safe);
     },
   );
 
   it.each(MUTATIONS)(
-    '$operationId maps a 422 port failure to at most 50 pointer violations',
+    '$operationId maps a 422 port failure to at most 50 path violations',
     async (spec) => {
       const violations = Array.from({ length: 60 }, (_, index) => ({
-        pointer: `/validThrough/${index}`,
+        path: `/validThrough/${index}`,
         code: 'GRANT_TERM_EXCEEDS_CEILING',
         message: 'The value is invalid.',
       }));
@@ -185,47 +202,40 @@ describe('grant handler error mapping (BE03a error matrix)', () => {
   );
 
   it.each(GRANT_OPERATIONS)(
-    '$operationId converts a thrown port error into a scrubbed 503',
+    '$operationId converts an unexpected thrown port error into a scrubbed 500',
     async (spec) => {
       const harness = makeGrantHarness();
       harness.ports[spec.portName]?.mockRejectedValueOnce(
         new Error('select * from cms_capability_grants'),
       );
       const response = await harness.app.request(grantRequestFor(spec));
-      expect(response.status).toBe(503);
+      expect(response.status).toBe(500);
       expect(await response.text()).not.toContain('cms_capability_grants');
     },
   );
 });
 
-describe('grant handler idempotency (BE03a: same key replays, changed body conflicts)', () => {
+describe('grant handler idempotency (BE00: the database owns the binding)', () => {
   it.each(MUTATIONS)(
-    '$operationId replays the same key and body once and rejects a changed body with 409',
+    '$operationId forwards the Idempotency-Key and the actor to the RPC on every attempt and keeps no Worker replay of its own',
     async (spec) => {
       const harness = makeGrantHarness();
       const first = await harness.app.request(grantRequestFor(spec));
       const second = await harness.app.request(grantRequestFor(spec));
       expect(first.status).toBe(spec.status);
       expect(second.status).toBe(spec.status);
-      expect(harness.ports[spec.portName]).toHaveBeenCalledTimes(1);
-      const changed =
-        spec.operationId === 'CMS-03A-15'
-          ? { ...spec.body, capability: 'cms.editor' }
-          : { ...spec.body, expectedVersion: '2' };
-      const conflict = await harness.app.request(
-        grantRequestFor(spec, {
-          body: changed,
-          ...(spec.ifMatch &&
-          'expectedVersion' in changed &&
-          changed.expectedVersion === '2'
-            ? { headers: { 'if-match': '"2"' } }
-            : {}),
-        }),
-      );
-      expect(conflict.status).toBe(409);
-      expect(((await conflict.json()) as { code: string }).code).toBe(
-        'IDEMPOTENCY_CONFLICT',
-      );
+      const calls = harness.ports[spec.portName]?.mock.calls as unknown as ReadonlyArray<
+        readonly [{ idempotencyKey?: string; session?: { userId: string } }]
+      >;
+      expect(calls).toHaveLength(2);
+      expect(calls.map(([input]) => input.idempotencyKey)).toEqual([
+        'cms-grant-key-0001',
+        'cms-grant-key-0001',
+      ]);
+      expect(calls.map(([input]) => input.session?.userId)).toEqual([
+        USER_ID,
+        USER_ID,
+      ]);
     },
   );
 });

@@ -192,8 +192,8 @@ describe('DEC-111 proof survives refresh without being extended', () => {
   it('[P2-S09-AC-884] a refresh preserves the original MFA timestamp even when the refreshed token carries a newer one', async () => {
     const original = iso(-400);
     for (const claims of [
-      {},
-      { amr: [{ method: 'totp', timestamp: second(-1) }] },
+      { aal: 'aal2', amr: [{ method: 'totp', timestamp: second(-400) }] },
+      { aal: 'aal2', amr: [{ method: 'totp', timestamp: second(-1) }] },
     ]) {
       const { value } = await refreshWith(original, claims);
       const reference = value('wj_session_ref');
@@ -205,6 +205,43 @@ describe('DEC-111 proof survives refresh without being extended', () => {
       expect(opened?.verifier).toBe(original);
     }
   });
+
+  it('[P2-S09-AC-884] a refresh keeps the older MFA timestamp of the token when the refreshed token proves an earlier one', async () => {
+    const { value } = await refreshWith(iso(-400), {
+      aal: 'aal2',
+      amr: [{ method: 'totp', timestamp: second(-500) }],
+    });
+    const opened = await openFlowCookie(
+      value('wj_session_ref') ?? '',
+      config(userOk as never),
+    );
+    expect(opened?.verifier).toBe(iso(-500));
+  });
+
+  it.each([
+    [
+      'an aal1 token that carries an MFA amr entry',
+      { aal: 'aal1', amr: [{ method: 'totp', timestamp: second(-1) }] },
+    ],
+    [
+      'an aal2 token without an MFA amr entry',
+      { aal: 'aal2', amr: [{ method: 'password', timestamp: second(-1) }] },
+    ],
+    [
+      'a token without an aal claim',
+      { amr: [{ method: 'totp', timestamp: second(-1) }] },
+    ],
+  ])(
+    '[P2-S09-AC-884] a refresh seals no proof when the refreshed token is %s',
+    async (_label, claims) => {
+      const { value } = await refreshWith(iso(-400), claims);
+      const opened = await openFlowCookie(
+        value('wj_session_ref') ?? '',
+        config(userOk as never),
+      );
+      expect(opened?.verifier).toBe('');
+    },
+  );
 
   it('[P2-S09-AC-884] a refresh never invents a proof for a session that had none', async () => {
     const { value } = await refreshWith('', {
@@ -219,6 +256,7 @@ describe('DEC-111 proof survives refresh without being extended', () => {
 
   it('[P2-S09-AC-891] primaryAuthAt is the latest valid non-MFA amr time and survives a refresh through the verified access token', async () => {
     const claims = {
+      aal: 'aal2',
       amr: [
         { method: 'oauth', timestamp: second(-3000) },
         { method: 'password', timestamp: second(-2500) },

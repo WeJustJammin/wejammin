@@ -220,9 +220,20 @@ describe('BE03a CMS-03A-04 activation response', () => {
         'CONFLICT',
         'CONFLICT',
         { expectedVersion: '1', currentVersion: '2', x: 1 },
-        { expectedVersion: '1', currentVersion: '2' },
+        {
+          conflict: 'INVALID_TRANSITION',
+          recoveryAction: 'refresh',
+          expectedVersion: '1',
+          currentVersion: '2',
+        },
       ],
-      [409, 'CONFLICT', 'CONFLICT', { sql: 'locale_config_hash_mismatch' }, {}],
+      [
+        409,
+        'CONFLICT',
+        'CONFLICT',
+        { sql: 'locale_config_hash_mismatch' },
+        { conflict: 'INVALID_TRANSITION', recoveryAction: 'refresh' },
+      ],
       [
         422,
         'VALIDATION_FAILED',
@@ -230,7 +241,7 @@ describe('BE03a CMS-03A-04 activation response', () => {
         {
           violations: [
             {
-              pointer: '/approvalIds',
+              path: '/approvalIds',
               message: 'approvals must match one approved review',
               code: 'APPROVAL',
             },
@@ -239,7 +250,7 @@ describe('BE03a CMS-03A-04 activation response', () => {
         {
           violations: [
             {
-              pointer: '/approvalIds',
+              path: '/approvalIds',
               message: 'approvals must match one approved review',
               code: 'APPROVAL',
             },
@@ -300,7 +311,9 @@ describe('BE03a CMS-03A-04 activation response', () => {
     const scrubbed = await createContentSchemaRegistryApp(
       thrown.dependencies,
     ).request(humanRequest(ACTIVATE, activationBody, { 'if-match': '"1"' }));
-    expect(scrubbed.status).toBe(503);
+    // A port that throws instead of returning a result is a defect, not a
+    // dependency outage: 500 INTERNAL_ERROR, nothing of the exception.
+    expect(scrubbed.status).toBe(500);
     expect(await scrubbed.text()).not.toContain('pg down');
   });
 });

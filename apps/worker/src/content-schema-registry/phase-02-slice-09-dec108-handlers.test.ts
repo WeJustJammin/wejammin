@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   REQUEST_ID,
   TYPE_ID,
+  USER_ID,
   error,
   ok,
 } from './phase-02-slice-09-test-values';
@@ -105,32 +106,49 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
       403,
       'FORBIDDEN',
       { reasonCode: 'CAPABILITY_REQUIRED' },
+      'FORBIDDEN',
       { reasonCode: 'CAPABILITY_REQUIRED' },
     ],
-    [404, 'NOT_FOUND', { leak: 'hidden' }, {}],
+    [404, 'NOT_FOUND', { leak: 'hidden' }, 'NOT_FOUND', {}],
     [
       409,
       'CONFLICT',
       { expectedVersion: '1', currentVersion: '2', secret: 'x' },
-      { expectedVersion: '1', currentVersion: '2' },
+      'CONFLICT',
+      {
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
+        expectedVersion: '1',
+        currentVersion: '2',
+      },
     ],
-    [409, 'IDEMPOTENCY_CONFLICT', {}, {}],
-    [500, 'INTERNAL_ERROR', { stack: 'trace' }, {}],
+    [
+      409,
+      'IDEMPOTENCY_MISMATCH',
+      {},
+      'CONFLICT',
+      {
+        conflict: 'IDEMPOTENCY_MISMATCH',
+        recoveryAction: 'use_new_idempotency_key',
+      },
+    ],
+    [500, 'INTERNAL_ERROR', { stack: 'trace' }, 'INTERNAL_ERROR', {}],
   ] as const;
 
   it.each(
     OPERATIONS.flatMap((spec) =>
-      failures.map(([status, code, details, safe]) => ({
+      failures.map(([status, code, details, wireCode, safe]) => ({
         spec,
         status,
         code,
         details,
+        wireCode,
         safe,
       })),
     ),
   )(
     '$spec.operationId maps a $status $code port failure to the allowlisted envelope',
-    async ({ spec, status, code, details, safe }) => {
+    async ({ spec, status, code, details, wireCode, safe }) => {
       const harness = makeDec108Harness({
         session: sessionResult(spec),
         port: error(status, code, 'Port message.', { ...details }),
@@ -139,7 +157,7 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
       expect(harness.ports[spec.portName]).toHaveBeenCalledTimes(1);
       expect(response.status).toBe(status);
       const body = (await response.json()) as Record<string, unknown>;
-      expect(body.code).toBe(code);
+      expect(body.code).toBe(wireCode);
       expect(body.requestId).toBe(REQUEST_ID);
       expect(body.details).toEqual(safe);
       expect(response.headers.get('cache-control')).toBe('no-store');
@@ -147,10 +165,10 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
   );
 
   it.each(MUTATIONS)(
-    '$operationId maps a 422 port failure to VALIDATION_FAILED with at most 50 pointer violations',
+    '$operationId maps a 422 port failure to VALIDATION_FAILED with at most 50 path violations',
     async (spec) => {
       const violations = Array.from({ length: 60 }, (_, index) => ({
-        pointer: `/field/${index}`,
+        path: `/field/${index}`,
         code: 'INVALID_VALUE',
         message: 'The value is invalid.',
       }));
@@ -217,7 +235,7 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
   );
 
   it.each(OPERATIONS)(
-    '$operationId converts a thrown port error into scrubbed 503 and never leaks the message',
+    '$operationId converts an unexpected thrown port error into scrubbed 500 and never leaks the message',
     async (spec) => {
       const harness = makeDec108Harness({ session: sessionResult(spec) });
       harness.ports[spec.portName]?.mockRejectedValueOnce(
@@ -225,7 +243,7 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
       );
       const response = await harness.app.request(requestFor(spec));
       expect(harness.ports[spec.portName]).toHaveBeenCalledTimes(1);
-      expect(response.status).toBe(503);
+      expect(response.status).toBe(500);
       expect(await response.text()).not.toContain('cms_schema_reviews');
     },
   );
@@ -233,32 +251,27 @@ describe('DEC-108 handler error mapping (BE03a contract and error matrix)', () =
 
 describe('DEC-108 handler idempotency (BE03a Idempotency / concurrency column)', () => {
   it.each(MUTATIONS)(
-    '$operationId replays the same key and body once and rejects a changed body with 409 IDEMPOTENCY_CONFLICT',
+    '$operationId forwards the Idempotency-Key and the actor to the RPC on every attempt and keeps no Worker replay of its own',
     async (spec) => {
       const harness = makeDec108Harness({ session: sessionResult(spec) });
       const first = await harness.app.request(requestFor(spec));
       const second = await harness.app.request(requestFor(spec));
       expect(first.status).toBe(spec.status);
       expect(second.status).toBe(spec.status);
-      expect(harness.ports[spec.portName]).toHaveBeenCalledTimes(1);
-      const changed =
-        spec.operationId === 'CMS-03A-12'
-          ? { expectedVersion: '1', decision: 'reject' }
-          : spec.operationId === 'CMS-03A-14'
-            ? assignRevokeBody
-            : { ...spec.body, expectedVersion: '2' };
-      const conflict = await harness.app.request(
-        requestFor(spec, {
-          body: changed,
-          ...('expectedVersion' in changed && changed.expectedVersion === '2'
-            ? { headers: { 'if-match': '"2"' } }
-            : {}),
-        }),
-      );
-      expect(conflict.status).toBe(409);
-      expect(((await conflict.json()) as { code: string }).code).toBe(
-        'IDEMPOTENCY_CONFLICT',
-      );
+      // BE00: (actor, operation, key) is the database's unique serialization
+      // point, so a retry is always handed to the RPC (the database replays).
+      const calls = harness.ports[spec.portName]?.mock.calls as unknown as ReadonlyArray<
+        readonly [{ idempotencyKey?: string; session?: { userId: string } }]
+      >;
+      expect(calls).toHaveLength(2);
+      expect(calls.map(([input]) => input.idempotencyKey)).toEqual([
+        'cms-dec108-key-001',
+        'cms-dec108-key-001',
+      ]);
+      expect(calls.map(([input]) => input.session?.userId)).toEqual([
+        USER_ID,
+        USER_ID,
+      ]);
     },
   );
 });

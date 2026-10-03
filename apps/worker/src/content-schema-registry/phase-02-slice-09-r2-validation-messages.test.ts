@@ -39,7 +39,7 @@ describe('R2 validation messages and pointers on the wire', () => {
     expect(
       await violationsFor('CMS-03A-15', grant({ validThrough: '2026-02-30' })),
     ).toEqual([
-      { pointer: '/validThrough', message: 'not a real calendar date' },
+      { path: '/validThrough', message: 'not a real calendar date' },
     ]);
   });
 
@@ -47,7 +47,7 @@ describe('R2 validation messages and pointers on the wire', () => {
     expect(
       await violationsFor('CMS-03A-15', grant({ validThrough: '2026-04-31' })),
     ).toEqual([
-      { pointer: '/validThrough', message: 'not a real calendar date' },
+      { path: '/validThrough', message: 'not a real calendar date' },
     ]);
   });
 
@@ -59,7 +59,7 @@ describe('R2 validation messages and pointers on the wire', () => {
         validThrough: '2026-02-30',
       }),
     ).toEqual([
-      { pointer: '/validThrough', message: 'not a real calendar date' },
+      { path: '/validThrough', message: 'not a real calendar date' },
     ]);
   });
 
@@ -67,7 +67,7 @@ describe('R2 validation messages and pointers on the wire', () => {
     expect(
       await violationsFor('CMS-03A-15', grant({ validThrough: 'tomorrow' })),
     ).toContainEqual({
-      pointer: '/validThrough',
+      path: '/validThrough',
       code: 'utc_date_invalid',
       message: 'The value is invalid.',
     });
@@ -82,7 +82,7 @@ describe('R2 validation messages and pointers on the wire', () => {
       }),
     ).toEqual([
       {
-        pointer: '/transformVersion',
+        path: '/transformVersion',
         message: 'transform key and version must be both null or both present',
       },
     ]);
@@ -96,7 +96,7 @@ describe('R2 validation messages and pointers on the wire', () => {
         fallbackChains: { 'en-US': ['en-US'] },
       }),
     ).toContainEqual({
-      pointer: '/supportedLocales/1',
+      path: '/supportedLocales/1',
       message: 'supportedLocales must be unique',
     });
   });
@@ -110,7 +110,7 @@ describe('R2 validation messages and pointers on the wire', () => {
       }),
     ).toEqual([
       {
-        pointer: '/fallbackChains',
+        path: '/fallbackChains',
         message:
           'supportedLocales and fallbackChains must be both null or both present',
       },
@@ -125,7 +125,7 @@ describe('R2 validation messages and pointers on the wire', () => {
       ),
     ).toEqual([
       {
-        pointer: '/subjectPersonId',
+        path: '/subjectPersonId',
         code: expect.stringMatching(/^[a-z][a-z0-9_]*$/u),
         message: 'The value is invalid.',
       },
@@ -139,7 +139,7 @@ describe('R2 validation messages and pointers on the wire', () => {
     );
     expect(violations).toEqual([
       {
-        pointer: '/callerOwned',
+        path: '/callerOwned',
         code: 'unrecognized_keys',
         message: 'The value is invalid.',
       },

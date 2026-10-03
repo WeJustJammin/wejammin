@@ -14,7 +14,10 @@ const base64Url = (value: Uint8Array | string): string => {
   const bytes = typeof value === 'string' ? encoder.encode(value) : value;
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/gu, '-').replace(/\//gu, '_').replace(/=+$/u, '');
+  return btoa(binary)
+    .replace(/\+/gu, '-')
+    .replace(/\//gu, '_')
+    .replace(/=+$/u, '');
 };
 
 export const accessToken = async (input: {
@@ -40,7 +43,11 @@ export const accessToken = async (input: {
     ['sign'],
   );
   const signature = new Uint8Array(
-    await crypto.subtle.sign('HMAC', key, encoder.encode(`${header}.${payload}`)),
+    await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(`${header}.${payload}`),
+    ),
   );
   return `${header}.${payload}.${base64Url(signature)}`;
 };
@@ -53,7 +60,13 @@ export const sessionReference = async (input: {
     'SHA-256',
     encoder.encode(`wejammin-auth-flow-v1\u0000${AUTH_SECRET}`),
   );
-  const key = await crypto.subtle.importKey('raw', material, { name: 'AES-GCM' }, false, ['encrypt']);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    material,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt'],
+  );
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const flow = JSON.stringify({
     state: input.sessionId,
@@ -64,19 +77,28 @@ export const sessionReference = async (input: {
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
   });
   const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(flow)),
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encoder.encode(flow),
+    ),
   );
   return `${base64Url(iv)}.${base64Url(ciphertext)}`;
 };
 
 const hex = (bytes: ArrayBuffer): string =>
-  [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  [...new Uint8Array(bytes)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 
 /**
  * Double-submit CSRF token bound to the session reference cookie exactly as the
  * Worker verifies it (`<random>.<sha256(sessionRef NUL random)>`).
  */
-export const csrfToken = async (sessionRef: string, random: string): Promise<string> =>
+export const csrfToken = async (
+  sessionRef: string,
+  random: string,
+): Promise<string> =>
   `${random}.${hex(await crypto.subtle.digest('SHA-256', encoder.encode(`${sessionRef}\u0000${random}`)))}`;
 
 export type LaneCookieSet = Readonly<{

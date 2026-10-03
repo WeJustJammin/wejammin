@@ -6,6 +6,7 @@ import {
   asRecord,
   traceFor,
   type AuthProductionConfiguration,
+  type VerifiedAuthToken,
 } from './production-configuration';
 import { callAuthJson, callRpc, mapProductionFailure } from './production-http';
 import {
@@ -85,6 +86,25 @@ const sessionProjection = (
         },
       }
     : actingContextId;
+};
+
+/**
+ * BE01a "Step-Up Proof": the proof is a verified session whose token carries
+ * `aal: "aal2"` and a valid MFA `amr` entry, and it is evaluated per request.
+ * The sealed session reference only anchors the instant so a refreshed token
+ * can never extend freshness: the proof instant is the older of the token's own
+ * MFA `amr` time and the sealed instant, and any token that is not `aal2` with
+ * an MFA `amr` entry carries no proof at all, however fresh the sealed instant.
+ */
+export const sessionStepUpAt = (
+  token: Pick<VerifiedAuthToken, 'aal' | 'stepUpAt'>,
+  sealedInstant: string,
+  nowMs: number,
+): string | null => {
+  if (token.aal !== 'aal2' || token.stepUpAt === null) return null;
+  const sealed = Date.parse(sealedInstant);
+  if (!Number.isFinite(sealed) || sealed > nowMs + 30_000) return null;
+  return sealed <= Date.parse(token.stepUpAt) ? sealedInstant : token.stepUpAt;
 };
 
 const readIndexedSession = async (
@@ -200,12 +220,11 @@ export const createSessionDependencies = (
           actingContextId: indexed.value.actingContextId,
           expiresAt: verified.value.expiresAt,
           primaryAuthAt: verified.value.primaryAuthAt,
-          stepUpAt:
-            sessionReference.verifier !== '' &&
-            Number.isFinite(Date.parse(sessionReference.verifier)) &&
-            Date.parse(sessionReference.verifier) <= config.now() + 30_000
-              ? sessionReference.verifier
-              : null,
+          stepUpAt: sessionStepUpAt(
+            verified.value,
+            sessionReference.verifier,
+            config.now(),
+          ),
         },
       };
     } catch (error) {
@@ -266,12 +285,11 @@ export const createSessionDependencies = (
       }
       const preservedToken = {
         ...token.value,
-        stepUpAt:
-          sessionReference.verifier !== '' &&
-          Number.isFinite(Date.parse(sessionReference.verifier)) &&
-          Date.parse(sessionReference.verifier) <= config.now() + 30_000
-            ? sessionReference.verifier
-            : null,
+        stepUpAt: sessionStepUpAt(
+          token.value,
+          sessionReference.verifier,
+          config.now(),
+        ),
       };
       const trace = traceFor(request);
       await callRpc(

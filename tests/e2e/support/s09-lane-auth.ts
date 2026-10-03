@@ -45,7 +45,9 @@ const decode = (value: string): Uint8Array | null => {
     const padded =
       value.replace(/-/gu, '+').replace(/_/gu, '/') +
       '='.repeat((4 - (value.length % 4)) % 4);
-    return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
+    return Uint8Array.from(atob(padded), (character) =>
+      character.charCodeAt(0),
+    );
   } catch {
     return null;
   }
@@ -67,14 +69,18 @@ const verifyLaneToken = async (token: string): Promise<LaneClaim | null> => {
   const signature = decode(encodedSignature);
   if (header === null || payload === null || signature === null) return null;
   try {
-    const head = JSON.parse(new TextDecoder().decode(header)) as { alg?: unknown; typ?: unknown };
+    const head = JSON.parse(new TextDecoder().decode(header)) as {
+      alg?: unknown;
+      typ?: unknown;
+    };
     const body = JSON.parse(new TextDecoder().decode(payload)) as {
       exp?: unknown;
       session_id?: unknown;
       sub?: unknown;
     };
     const parsed = parseLaneSessionId(body.session_id);
-    if (head.alg !== 'HS256' || head.typ !== 'JWT' || parsed === null) return null;
+    if (head.alg !== 'HS256' || head.typ !== 'JWT' || parsed === null)
+      return null;
     if (
       laneRoleOfUser(body.sub) !== parsed.role ||
       typeof body.exp !== 'number' ||
@@ -110,7 +116,9 @@ const verifyLaneToken = async (token: string): Promise<LaneClaim | null> => {
 };
 
 /** Verify a lane session cookie pair (the browser session shape). */
-export const verifyLaneRequest = async (request: Request): Promise<LaneClaim | null> => {
+export const verifyLaneRequest = async (
+  request: Request,
+): Promise<LaneClaim | null> => {
   if (cookieValue(request, 'wj_session_ref') === null) return null;
   const token = cookieValue(request, 'wj_access');
   return token === null ? null : verifyLaneToken(token);
@@ -124,7 +132,9 @@ const bearerToken = (request: Request): string | null => {
 };
 
 /** Verify the bearer the web job boundary forwards (the cookie's token). */
-export const verifyLaneBearer = async (request: Request): Promise<LaneClaim | null> => {
+export const verifyLaneBearer = async (
+  request: Request,
+): Promise<LaneClaim | null> => {
   const token = bearerToken(request);
   return token === null ? null : verifyLaneToken(token);
 };
@@ -156,7 +166,10 @@ export const laneClaimOf = (request: Request): LaneClaim | null => {
 export const worldOfClaim = (claim: LaneClaim): World => worldFor(claim.testId);
 
 /** Server-owned step-up freshness for one role of one world (never client input). */
-export const stepUpFreshUntil = (world: World, role: LaneRole): string | null => {
+export const stepUpFreshUntil = (
+  world: World,
+  role: LaneRole,
+): string | null => {
   const at = world.stepUpAt[role];
   if (at === undefined) return null;
   const until = Date.parse(at) + STEP_UP_WINDOW_MS;

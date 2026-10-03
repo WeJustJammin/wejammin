@@ -7,7 +7,15 @@ challenge form (`StepUpChallengeForm`), the `/settings/security/mfa`
 enrollment wizard (`MfaEnrollmentWizard`), their hooks, API client, failure
 mapping, return-target rules and the client-side QR encoder under `qr/`.
 
-## Extension pattern
+## Ownership
+
+These components own presentation and island-local interaction state for the
+step-up challenge and MFA enrollment. The worker/API and database contracts stay
+authoritative for factor lifecycle, step-up proof, lockout and return-target
+safety; the browser holds no Supabase token and only calls the same-origin
+proxies.
+
+## Extension
 
 Add a call to `mfa-api.ts` (every call goes through `mfaApiCall`, parses the
 contract schema and returns an `ApiOutcome`). Map its failures in
@@ -28,7 +36,7 @@ in `../../platform-configuration/admin-mfa-reset/` is the reference consumer.
 - Tests sit next to their source; `*.test-support.*` files are shared fixtures.
 - Components stay at or under 200 lines and hooks at or under 300.
 
-## Related
+## Related links
 
 - Pages: `src/pages/step-up.astro`, `src/pages/settings/security/mfa.astro`
 - Server projections: `src/server/step-up-page-context.ts`,

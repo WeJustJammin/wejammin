@@ -104,6 +104,26 @@ const invalidResponse = (): ContentSchemaRegistryError => ({
   details: { dependencyClass: 'cms_registry', retryable: false },
 });
 
+/**
+ * A port reports every expected dependency fault as a result: the production
+ * adapter turns a transport failure into 503, a deadline into 504 and an
+ * invalid body into 502. An exception that still escapes a port is therefore a
+ * defect, not a dependency outage, and answers 500 INTERNAL_ERROR with nothing
+ * of the exception on the wire. Only an abort is a deadline.
+ */
+const unexpectedFailure = (): ContentSchemaRegistryError => ({
+  ok: false,
+  status: 500,
+  code: 'INTERNAL_ERROR',
+  message: 'An unexpected error occurred.',
+  details: {},
+});
+
+const isAbort = (value: unknown): boolean =>
+  typeof value === 'object' &&
+  value !== null &&
+  (value as { name?: unknown }).name === 'AbortError';
+
 const withDeadline = async <T>(
   invoke: (signal: AbortSignal) => Promise<ContentSchemaRegistryResult<T>>,
   deadlineMs: number,
@@ -118,8 +138,8 @@ const withDeadline = async <T>(
   });
   try {
     return await Promise.race([invoke(controller.signal), timeout]);
-  } catch {
-    return unavailable();
+  } catch (failure) {
+    return isAbort(failure) ? timedOut() : unexpectedFailure();
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }

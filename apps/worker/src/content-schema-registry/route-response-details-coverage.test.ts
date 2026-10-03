@@ -20,9 +20,9 @@ const failure = (
 
 describe('content schema registry safe error details', () => {
   it('keeps only bounded printable validation details', () => {
-    const valid = { pointer: '/title', message: 'Required', code: 'REQUIRED' };
+    const valid = { path: '/title', message: 'Required', code: 'REQUIRED' };
     const invalid = {
-      pointer: 'x'.repeat(257),
+      path: 'x'.repeat(257),
       message: 'bad\nmessage',
       code: 'bad-code',
     };
@@ -35,9 +35,9 @@ describe('content schema registry safe error details', () => {
           violations: [
             valid,
             invalid,
-            { pointer: '/only-pointer', message: null, code: null },
-            { pointer: null, message: 'Only message', code: null },
-            { pointer: null, message: null, code: 'ONLY_CODE' },
+            { path: '/only-pointer', message: null, code: null },
+            { path: null, message: 'Only message', code: null },
+            { path: null, message: null, code: 'ONLY_CODE' },
             null,
             'text',
             {},
@@ -46,8 +46,8 @@ describe('content schema registry safe error details', () => {
       ),
     ).toEqual({
       violations: [
-        { pointer: '/title', message: 'Required', code: 'REQUIRED' },
-        { pointer: '/only-pointer' },
+        { path: '/title', message: 'Required', code: 'REQUIRED' },
+        { path: '/only-pointer' },
         { message: 'Only message' },
         { code: 'ONLY_CODE' },
       ],
@@ -60,7 +60,7 @@ describe('content schema registry safe error details', () => {
     expect(
       safeDetails(
         failure(400, 'INVALID_REQUEST', 'safe', {
-          violations: [{ pointer: null, message: null, code: null }],
+          violations: [{ path: null, message: null, code: null }],
         }),
       ),
     ).toEqual({});
@@ -82,9 +82,17 @@ describe('content schema registry safe error details', () => {
     expect(
       safeDetails(failure(403, 'AUTH', 'safe', { reasonCode: 'MFA_REQUIRED' })),
     ).toEqual({ reasonCode: 'MFA_REQUIRED' });
+    // BE00 makes reasonCode required on a 403: an unregistered value is
+    // replaced by the registered value that names the missing authority.
     expect(
       safeDetails(failure(403, 'AUTH', 'safe', { reasonCode: 7 })),
-    ).toEqual({});
+    ).toEqual({ reasonCode: 'CAPABILITY_REQUIRED' });
+    expect(
+      safeDetails(failure(403, 'AUTH', 'safe', {}), 'CMS-03A-16'),
+    ).toEqual({ reasonCode: 'OWNER_REQUIRED' });
+    expect(
+      safeDetails(failure(403, 'AUTH', 'safe', {}), 'CMS-03A-05'),
+    ).toEqual({ reasonCode: 'POLICY_NOT_MET' });
     expect(
       safeDetails(
         failure(409, 'CONFLICT', 'safe', {
@@ -94,8 +102,27 @@ describe('content schema registry safe error details', () => {
           secret: 'hide',
         }),
       ),
-    ).toEqual({ expectedVersion: '7', currentVersion: '8' });
-    expect(safeDetails(failure(409))).toEqual({});
+    ).toEqual({
+      conflict: 'INVALID_TRANSITION',
+      recoveryAction: 'refresh',
+      expectedVersion: '7',
+      currentVersion: '8',
+    });
+    expect(safeDetails(failure(409))).toEqual({
+      conflict: 'INVALID_TRANSITION',
+      recoveryAction: 'refresh',
+    });
+    expect(
+      safeDetails(failure(409, 'VERSION_MISMATCH', 'safe', { conflict: 'x' })),
+    ).toEqual({ conflict: 'VERSION_MISMATCH', recoveryAction: 'reload' });
+    expect(
+      safeDetails(
+        failure(409, 'CONFLICT', 'safe', { conflict: 'IDEMPOTENCY_MISMATCH' }),
+      ),
+    ).toEqual({
+      conflict: 'IDEMPOTENCY_MISMATCH',
+      recoveryAction: 'use_new_idempotency_key',
+    });
     expect(
       safeDetails(
         failure(429, 'RATE', 'safe', {

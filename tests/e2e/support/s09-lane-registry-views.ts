@@ -51,7 +51,10 @@ export const dryRunResource = (run: DryRunRecord, version: VersionRecord) => ({
   reportHash: run.reportHash,
 });
 
-const activationEvidence = (version: VersionRecord, review: ReviewRecord | null) =>
+const activationEvidence = (
+  version: VersionRecord,
+  review: ReviewRecord | null,
+) =>
   version.state === 'active' || version.state === 'superseded'
     ? {
         key: 'cms.standard',
@@ -108,13 +111,16 @@ const nextActions = (world: World, version: VersionRecord) => {
   const run = dryRunOf(world, version);
   const actions: string[] = [];
   if (version.state === 'draft') {
-    if (run === null || run.state === 'completed') actions.push('start_dry_run');
+    if (run === null || run.state === 'completed')
+      actions.push('start_dry_run');
     if (run?.state === 'completed' && run.result === 'passed')
       actions.push('submit_review');
   }
   if (version.state === 'approved') actions.push('activate');
   if (version.state === 'active') actions.push('create_successor');
-  return actions as ('start_dry_run' | 'submit_review' | 'activate' | 'create_successor')[];
+  return actions as (
+    'start_dry_run' | 'submit_review' | 'activate' | 'create_successor'
+  )[];
 };
 
 const jobState = (run: DryRunRecord) =>
@@ -195,7 +201,9 @@ export const reviewResource = (
   const run = world.dryRuns.find((entry) => entry.id === version?.dryRunId);
   if (version === undefined || run === undefined)
     throw new Error('lane review is detached');
-  const approves = review.decisions.filter((entry) => entry.decision === 'approve');
+  const approves = review.decisions.filter(
+    (entry) => entry.decision === 'approve',
+  );
   const owner = viewer === 'owner';
   const reviewer = viewer === 'reviewer' || viewer === 'reviewer2';
   const actions: ('assign_reviewer' | 'record_decision' | 'activate')[] = [];
@@ -211,7 +219,12 @@ export const reviewResource = (
   if (review.state === 'approved' && (owner || viewer === 'designer'))
     actions.push('activate');
   return {
-    ...meta(review.id, review.version, review.submittedAt, review.decidedAt ?? review.submittedAt),
+    ...meta(
+      review.id,
+      review.version,
+      review.submittedAt,
+      review.decidedAt ?? review.submittedAt,
+    ),
     resourceKind: 'schema_review' as const,
     state: review.state,
     contentTypeId: version.typeId,
@@ -220,7 +233,8 @@ export const reviewResource = (
     riskClass: 'ordinary' as const,
     requiredDecisionCount: 1,
     requiredCapabilities: ['cms.schema_review'],
-    distinctApprovalCount: new Set(approves.map((entry) => entry.reviewer)).size,
+    distinctApprovalCount: new Set(approves.map((entry) => entry.reviewer))
+      .size,
     recordedDecisionCount: review.decisions.length,
     frozenEvidence: {
       contentTypeVersionId: version.id,

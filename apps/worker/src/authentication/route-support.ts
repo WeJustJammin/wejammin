@@ -8,7 +8,7 @@ import {
   responseForAuthError,
 } from './boundary';
 import { parseClientBindingIdHeader } from './client-binding-header';
-import { isFreshProof, stepUpRequiredError } from './step-up';
+import { isFreshProof } from './step-up';
 import type {
   AuthenticationDependencies,
   AuthenticationError,
@@ -84,15 +84,6 @@ export const isStepUpFresh = (
   session: AuthenticationSession,
   nowMs: number,
 ): boolean => isFreshProof(session.stepUpAt, nowMs);
-
-/** 401 `STEP_UP_REQUIRED` response when the session proof is stale, else null. */
-export const stepUpShortfall = (
-  context: WorkerContext,
-  session: AuthenticationSession,
-): Response | null =>
-  isStepUpFresh(session, Date.now())
-    ? null
-    : responseForAuthError(context, stepUpRequiredError());
 
 export const jsonSuccess = (
   context: WorkerContext,

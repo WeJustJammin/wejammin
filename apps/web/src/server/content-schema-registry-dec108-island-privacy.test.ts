@@ -238,8 +238,8 @@ describe('[DEC-108] review page island props carry no private identifier', () =>
   });
 });
 
-describe('[DEC-108] diagnostic identifiers never reach hydrated state', () => {
-  const page = () =>
+describe('[DEC-108] diagnostic identifiers in hydrated state', () => {
+  const page = (overrides: Record<string, unknown> = {}) =>
     pageFor({
       request: new Request('https://app.example.test/app/cms-content-modeling'),
       requestId: REQUEST_ID,
@@ -249,18 +249,71 @@ describe('[DEC-108] diagnostic identifiers never reach hydrated state', () => {
       contentTypeId: null,
       versionId: null,
       state: 'degraded',
+      ...overrides,
     });
 
-  it('strips the request id from the top level and from nested degraded states', () => {
-    const serialized = serializeIslandProps(page());
-    for (const spelling of spellings(REQUEST_ID))
-      expect(serialized).not.toContain(spelling);
-    expect(
-      keyPaths(page()).filter((path) =>
-        isDiagnosticKey(path.split('.').at(-1) ?? path),
-      ),
-    ).toStrictEqual([]);
+  it('strips the page-level request id from the top level', () => {
+    expect(Object.keys(page())).not.toContain('requestId');
   });
+
+  it('keeps the ApiError request id on a degraded list and detail state so FE03 can show it', () => {
+    const hydrated = page() as unknown as {
+      initialList: { requestId?: string };
+      initialDetail: { requestId?: string };
+    };
+    expect(hydrated.initialList.requestId).toBe(REQUEST_ID);
+    expect(hydrated.initialDetail.requestId).toBe(REQUEST_ID);
+  });
+
+  it('keeps the ApiError request id on an error member', () => {
+    const hydrated = page({
+      list: {
+        status: 'error',
+        error: { code: 'RATE_LIMITED', message: 'x', requestId: REQUEST_ID },
+        retryable: true,
+      },
+    }) as unknown as { initialList: { error: { requestId?: string } } };
+    expect(hydrated.initialList.error.requestId).toBe(REQUEST_ID);
+  });
+
+  it('keeps no request id on a state that is neither degraded nor an error member', () => {
+    const hydrated = page({
+      list: {
+        status: 'success',
+        data: { items: [] },
+        version: '1',
+        stale: false,
+        requestId: REQUEST_ID,
+      },
+    }) as unknown as { initialList: Record<string, unknown> };
+    expect(Object.keys(hydrated.initialList)).not.toContain('requestId');
+  });
+
+  it.each(['traceId', 'spanId', 'correlationId', 'causationId', 'xRequestId'])(
+    'strips %s even from a degraded state and an error member',
+    (key) => {
+      const hydrated = page({
+        list: {
+          status: 'degraded',
+          data: null,
+          lastVerifiedAt: null,
+          requestId: REQUEST_ID,
+          [key]: 'opaque-value',
+        },
+        detail: {
+          status: 'error',
+          error: {
+            code: 'RATE_LIMITED',
+            message: 'x',
+            requestId: REQUEST_ID,
+            [key]: 'opaque-value',
+          },
+          retryable: true,
+        },
+      });
+      expect(serializeIslandProps(hydrated)).not.toContain('opaque-value');
+    },
+  );
 
   it.each([
     'requestId',

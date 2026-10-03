@@ -48,7 +48,7 @@ type ResetSignal =
   | 'rejected'
   | 'stale_step_up';
 
-type Trace = {
+export type Trace = {
   authUserId: string | null;
   targetPersonId: string | null;
   failure: AuthenticationResult<unknown> | null;
@@ -89,7 +89,7 @@ const readBody = async (
  * a reset exists), actor and target hashes, state, removed-factor count and a
  * closed signal. No factor, provider or reason detail is ever attached.
  */
-const logReset = async (
+export const logReset = async (
   context: WorkerContext,
   trace: Trace,
   response: Response,

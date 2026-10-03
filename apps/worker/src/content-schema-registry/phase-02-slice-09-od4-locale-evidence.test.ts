@@ -20,7 +20,7 @@ import {
   makeDependencies,
 } from './routes.coverage.fixtures';
 
-type Violation = Readonly<{ pointer?: string; message?: string }>;
+type Violation = Readonly<{ path?: string; message?: string }>;
 type Body = Record<string, unknown>;
 
 const M = {
@@ -92,8 +92,8 @@ const expectAccepted = async (overrides: Body): Promise<void> => {
   expect(forwarded.fallbackChains).toEqual(body.fallbackChains);
 };
 
-const at = (pointer: string, message: string): Violation => ({
-  pointer,
+const at = (path: string, message: string): Violation => ({
+  path,
   message,
 });
 
@@ -146,7 +146,7 @@ describe('OD-4 CMS-03A-01 source and default locale fields', () => {
     expect(
       (await violationsOf(nonCanonical.response)).some(
         (entry) =>
-          entry.pointer === '/defaultLocale' && entry.message === M.canonical,
+          entry.path === '/defaultLocale' && entry.message === M.canonical,
       ),
     ).toBe(true);
     await expectAccepted({
@@ -458,6 +458,16 @@ describe('OD-4 CMS-03A-01 exact 422 messages and paths', () => {
     await expectRefused({ fallbackChains: { 'fr-FR': ['de-DE', 'en-US'] } }, [
       at('/fallbackChains/fr-FR/0', M.chainUnsupported),
     ]);
+    await expectRefused(
+      {
+        supportedLocales: THREE,
+        fallbackChains: {
+          'fr-FR': ['pt-BR', 'de-DE', 'en-US'],
+          'pt-BR': ['en-US'],
+        },
+      },
+      [at('/fallbackChains/fr-FR/1', M.chainUnsupported)],
+    );
   });
 
   it('[P2-S09-AC-1177] reports fallback chain locales must be unique at [fallbackChains, target, index] when a chain repeats a locale', async () => {
@@ -556,15 +566,7 @@ describe('OD-4 CMS-03A-09 successor locale pair and ordering', () => {
     }
   });
 
-  it('[P2-S09-AC-1182] CMS-03A-01 and CMS-03A-09 return every locale-configuration issue of a request with several defects in the order of the exact-refusal table, each as { path, message } in ApiError.details', async () => {
-    const expected = [
-      M.canonical,
-      M.unique,
-      M.missingSource,
-      M.keyUnsupported,
-      M.forDefault,
-      M.missing,
-    ];
+  it('[P2-S09-AC-1182] CMS-03A-01 returns every locale-configuration issue of a request with several defects in the order of the exact-refusal table, each as exactly { path, message }', async () => {
     const created = await send(
       draft({
         sourceLocale: 'de-DE',
@@ -572,26 +574,40 @@ describe('OD-4 CMS-03A-09 successor locale pair and ordering', () => {
         fallbackChains: { 'es-ES': ['en-US'], 'en-US': ['fr-FR'] },
       }),
     );
-    expect(
-      (await violationsOf(created.response)).map((entry) => entry.message),
-    ).toEqual(expected);
+    expect(created.response.status).toBe(422);
+    const violations = await violationsOf(created.response);
+    expect(violations).toEqual([
+      at('/supportedLocales/1', M.canonical),
+      at('/supportedLocales/2', M.unique),
+      at('/supportedLocales', M.missingSource),
+      at('/fallbackChains/es-ES', M.keyUnsupported),
+      at('/fallbackChains/en-US', M.forDefault),
+      at('/fallbackChains', M.missing),
+    ]);
+    for (const entry of violations)
+      expect(Object.keys(entry).sort()).toEqual(['message', 'path']);
+    for (const port of Object.values(created.ports))
+      expect(port).not.toHaveBeenCalled();
+  });
+
+  it('[P2-S09-AC-1182] CMS-03A-09 returns every locale-configuration issue of a request with several defects in the order of the exact-refusal table, each as exactly { path, message }', async () => {
     const successor = await sendSuccessor({
       expectedVersion: '1',
       supportedLocales: ['en-US', 'fr-fr', 'en-US'],
       fallbackChains: { 'es-ES': ['en-US'], 'en-US': ['fr-FR'] },
     });
     expect(successor.response.status).toBe(422);
-    const messages = (await violationsOf(successor.response)).map(
-      (entry) => entry.message,
-    );
-    expect(messages).toEqual([
-      M.canonical,
-      M.unique,
-      M.keyUnsupported,
-      M.chainUnsupported,
+    const violations = await violationsOf(successor.response);
+    expect(violations).toEqual([
+      at('/supportedLocales/1', M.canonical),
+      at('/supportedLocales/2', M.unique),
+      at('/fallbackChains/es-ES', M.keyUnsupported),
+      at('/fallbackChains/en-US/0', M.chainUnsupported),
     ]);
-    const rank = messages.map((message) =>
-      Object.values(M).indexOf(message as never),
+    for (const entry of violations)
+      expect(Object.keys(entry).sort()).toEqual(['message', 'path']);
+    const rank = violations.map((entry) =>
+      Object.values(M).indexOf(entry.message as never),
     );
     expect(rank).toEqual([...rank].sort((left, right) => left - right));
     expect(successor.port).not.toHaveBeenCalled();

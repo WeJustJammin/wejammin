@@ -18,7 +18,9 @@ const ADMIN_CAPABILITIES: Partial<Record<LaneRole, readonly string[]>> = {
 
 const uuidFrom = (header: string | null): string =>
   header !== null &&
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(header)
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+    header,
+  )
     ? header
     : crypto.randomUUID();
 
@@ -37,7 +39,8 @@ export const laneRequestContext = (request: Request): unknown => {
     traceId: `lane-${requestId}`,
     userId: claim === null ? null : laneUserId(claim.role),
     actingPartyId: claim === null ? null : LANE_ACTING_PARTY_ID,
-    capabilities: claim === null ? [] : [...(ADMIN_CAPABILITIES[claim.role] ?? [])],
+    capabilities:
+      claim === null ? [] : [...(ADMIN_CAPABILITIES[claim.role] ?? [])],
     locale: 'en-US',
     clientVersion: 'lane',
   };
@@ -53,7 +56,11 @@ const refuse: AdminMfaFactorResetPort = async () =>
 const resetMfaFactors: AdminMfaFactorResetPort = async (input) => {
   const claim = laneClaimOf(input.request);
   const target = lanePersonRole(input.body.targetPersonId);
-  if (claim === null || laneRoleOfUser(claim.userId) !== 'admin' || target === null)
+  if (
+    claim === null ||
+    laneRoleOfUser(claim.userId) !== 'admin' ||
+    target === null
+  )
     return authError(404, 'NOT_FOUND', 'The target person was not found.', {});
   const world = worldOfClaim(claim);
   const replay = world.idem.get(`mfa-reset:${input.idempotencyKey}`);

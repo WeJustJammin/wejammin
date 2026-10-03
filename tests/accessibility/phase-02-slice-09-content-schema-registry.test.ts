@@ -236,12 +236,10 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     expect(reducedMotion).toContain('role="status"');
     expect(reducedMotion).toContain('aria-live="polite"');
     expect(reducedMotion).toContain('The registry is temporarily unavailable.');
-    // The browser shows the opaque support reference; the server-side request
-    // identifier never crosses into the island markup (FE03 context evidence).
-    expect(reducedMotion).toContain(
-      `Support reference: <code>${SUPPORT_REFERENCE}</code>`,
-    );
-    expect(reducedMotion).not.toContain(REQUEST_ID);
+    // FE03 degraded state: the scoped state shows the request ID of the
+    // failed read, and the support reference is only the fallback.
+    expect(reducedMotion).toContain(`Request ID: <code>${REQUEST_ID}</code>`);
+    expect(reducedMotion).not.toContain(SUPPORT_REFERENCE);
     expect(reducedMotion).toContain('Retry');
   });
 

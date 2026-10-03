@@ -1,5 +1,7 @@
 # Event consumers
 
+## Contents
+
 Registered Queue consumers for the platform jobs queue. Each consumer receives an
 identifier-only envelope (`packages/contracts/src/consumer-queue-events.ts`), rereads
 current state through a protected `platform_api` RPC, and returns an outcome the queue
@@ -20,6 +22,13 @@ family (any version), so an unknown version still reaches its consumer.
 `reconciling-age.ts` is the BE01a reconciling-age gauge, sampled once per scheduled
 outbox-sweep tick; a failed sample is reported and never fails the sweep.
 
+## Ownership
+
+This directory owns consumer admission, routing, retry and dead-letter
+behavior for the platform jobs queue. The database owns every durable decision
+through protected `platform_api` RPCs; a consumer rereads current state and
+never treats an event as proof of permission.
+
 ## Files
 
 - `types.ts`, `rpc-names.ts`, `retry-schedule.ts`, `deadline.ts` – shared consumer vocabulary.
@@ -30,7 +39,9 @@ outbox-sweep tick; a failed sample is reported and never fails the sweep.
 - `reconciling-age.ts` – gauge probe and RPC port.
 - `registry.ts`, `production.ts` – routing and production composition (called from `../production-async-entrypoint.ts`).
 
-## Adding a consumer
+## Extension
+
+Adding a consumer:
 
 1. Add the family to `CONSUMER_EVENT_TYPE` and an envelope schema in `consumer-queue-events.ts`.
 2. Write the consumer with `admitConsumerEvent`, a typed read port and `runWithDeadline`; return `retryAfterAttempt(attempts)` for retries.
@@ -50,4 +61,13 @@ the unchanged 15/60/300 second schedule. `createUnconfiguredNotificationProvider
 deployment that must refuse delivery, and `ProductionEventConsumerOptions.notificationProvider`
 replaces the default.
 
-Related: `../async-entrypoint.ts` (queue routing), `../authentication/` (MFA provider breaker and persistence).
+## Conventions
+
+- Envelopes are identifier-only and validated by `admitConsumerEvent`.
+- Retries follow `retryAfterAttempt`; an unrecordable dead letter retries.
+- Tests sit next to their source and carry the `[P2-S09-AC-NNN]` criterion tag.
+
+## Related links
+
+- `../async-entrypoint.ts` (queue routing)
+- `../authentication/` (MFA provider breaker and persistence)

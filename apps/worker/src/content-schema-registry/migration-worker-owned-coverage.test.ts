@@ -86,20 +86,14 @@ describe('migration worker owned coverage', () => {
     });
   });
 
-  it('rejects an in-flight idempotency key with a different request fingerprint', async () => {
+  it('hands an in-flight idempotency key with a different request to the database instead of answering from a Worker cache', async () => {
     const harness = makeHarness();
-    let resolveFirst: (
-      value: ContentSchemaRegistryResult<unknown>,
-    ) => void = () => undefined;
-    const firstResponse = new Promise<ContentSchemaRegistryResult<unknown>>(
-      (resolve) => {
-        resolveFirst = resolve;
-      },
-    );
     const createTypeDraft = harness.ports.createTypeDraft;
     if (createTypeDraft === undefined)
       throw new Error('createTypeDraft fixture is missing');
-    createTypeDraft.mockImplementation(() => firstResponse);
+    createTypeDraft.mockImplementation(
+      () => new Promise<ContentSchemaRegistryResult<unknown>>(() => undefined),
+    );
     const domain = createContentSchemaRegistryDomain(harness.dependencies);
     const input: ContentSchemaRegistryPortInput = {
       operationId: 'CMS-03A-01',
@@ -110,19 +104,14 @@ describe('migration worker owned coverage', () => {
       idempotencyKey: 'owned-coverage-key',
     };
 
-    const first = domain.execute(input);
-    await Promise.resolve();
-    await expect(
-      domain.execute({
-        ...input,
-        body: { ...validDraft, label: 'Different article' },
-      }),
-    ).resolves.toMatchObject({
-      ok: false,
-      status: 409,
-      code: 'IDEMPOTENCY_CONFLICT',
+    void domain.execute(input);
+    void domain.execute({
+      ...input,
+      body: { ...validDraft, label: 'Different article' },
     });
-    resolveFirst({ ok: true, value: resource });
-    await first;
+    await Promise.resolve();
+    // BE00: the (actor, operation, key) binding is the database's; both
+    // requests reach the RPC and the Worker never invents a conflict.
+    expect(createTypeDraft).toHaveBeenCalledTimes(2);
   });
 });

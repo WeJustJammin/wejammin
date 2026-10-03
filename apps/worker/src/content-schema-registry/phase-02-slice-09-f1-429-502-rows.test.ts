@@ -284,7 +284,7 @@ describe('403 FORBIDDEN for a readable review without an effective assignment (C
     });
     const body = await bodyOf(await send());
     expect(Object.keys(body).sort()).toEqual(ENVELOPE_KEYS);
-    expect(Object.keys(body.details)).toEqual([]);
+    expect(body.details).toEqual({ reasonCode: 'CAPABILITY_REQUIRED' });
   });
 
   it('[P2-S09-AC-431] the 403 never names the assignment, person or review the database detail mentioned', async () => {

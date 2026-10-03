@@ -19,6 +19,7 @@ import {
   CmsFieldKeySchema,
   CmsHashSchema,
   CmsInstantSchema,
+  CmsLabelSchema,
   CmsUuidSchema,
   CmsValidatorKeySchema,
   CmsWorkflowKeySchema,
@@ -35,7 +36,7 @@ import {
 export const ContentTypeDraftRequestSchema = z
   .strictObject({
     typeKey: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/u),
-    label: z.string().trim().min(2).max(120),
+    label: CmsLabelSchema,
     ownerCapability: CmsCapabilityKeySchema,
     sourceLocale: CmsCanonicalLocaleSchema,
     defaultLocale: CmsCanonicalLocaleSchema,

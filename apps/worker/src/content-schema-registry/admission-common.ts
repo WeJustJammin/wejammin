@@ -94,36 +94,37 @@ const CONSTRAINT_CODE = /^[a-z][a-z0-9_]{0,63}$/u;
 const GENERIC_MESSAGE = 'The value is invalid.';
 
 /**
- * One zod issue becomes one or more BE00 violations, each addressed by a JSON
- * pointer. Only server-owned text reaches the client:
- * - the fixed BE03a OD-4 locale messages travel verbatim as `{ pointer, message }`;
+ * One zod issue becomes one or more BE00 violations, each addressed by a
+ * `path` that holds a JSON Pointer (BE00 `FieldViolation`). Only server-owned
+ * text reaches the client:
+ * - the fixed BE03a OD-4 locale messages travel verbatim as `{ path, message }`;
  * - a `custom` issue (a `.refine` or `.superRefine` literal such as
- *   'not a real calendar date') travels verbatim as `{ pointer, message }`;
+ *   'not a real calendar date') travels verbatim as `{ path, message }`;
  * - a lowercase constraint code authored in the contract (`etag_invalid`) is
  *   the violation `code`, with the generic message;
  * - every other built-in zod issue reports its closed zod code with the
  *   generic message. Zod's own message text is never sent, because it can
  *   echo caller input.
- * An unrecognized key is reported once per key, at that key's pointer.
+ * An unrecognized key is reported once per key, at that key's path.
  */
 const violationsFor = (
   issue: ZodIssueLike,
 ): readonly Record<string, unknown>[] => {
   if (issue.code === 'unrecognized_keys' && Array.isArray(issue.keys))
     return issue.keys.map((key) => ({
-      pointer: jsonPointer([...issue.path, key]),
+      path: jsonPointer([...issue.path, key]),
       code: 'unrecognized_keys',
       message: GENERIC_MESSAGE,
     }));
-  const pointer = jsonPointer(issue.path);
+  const path = jsonPointer(issue.path);
   if (LOCALE_CONFIG_MESSAGE_SET.has(issue.message))
-    return [{ pointer, message: issue.message }];
+    return [{ path, message: issue.message }];
   if (CONSTRAINT_CODE.test(issue.message))
-    return [{ pointer, code: issue.message, message: GENERIC_MESSAGE }];
-  if (issue.code === 'custom') return [{ pointer, message: issue.message }];
+    return [{ path, code: issue.message, message: GENERIC_MESSAGE }];
+  if (issue.code === 'custom') return [{ path, message: issue.message }];
   return [
     {
-      pointer,
+      path,
       ...(typeof issue.code === 'string' && CONSTRAINT_CODE.test(issue.code)
         ? { code: issue.code }
         : {}),

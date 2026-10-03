@@ -29,4 +29,3 @@ export const touch = (version: VersionRecord): void => {
   version.rev += 1;
   version.updatedAt = iso(Date.now());
 };
-

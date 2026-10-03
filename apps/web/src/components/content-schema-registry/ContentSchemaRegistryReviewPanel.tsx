@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import ContentSchemaRegistryDiagnosticReference from './ContentSchemaRegistryDiagnosticReference';
 import ContentSchemaRegistryReviewFacts from './ContentSchemaRegistryReviewFacts';
 import { safeContentSchemaRegistryErrorMessage } from './content-schema-registry-types';
 import type {
@@ -56,9 +57,10 @@ const Body = ({
       return (
         <div role="alert" aria-live="assertive" aria-atomic="true">
           <p>{safeContentSchemaRegistryErrorMessage(state.error.code)}</p>
-          <p>
-            Support reference: <code>{supportReference}</code>
-          </p>
+          <ContentSchemaRegistryDiagnosticReference
+            requestId={state.error.requestId}
+            supportReference={supportReference}
+          />
           {state.retryable ? <Retry href={retryUrl} /> : null}
         </div>
       );
@@ -81,9 +83,10 @@ const Body = ({
               </>
             )}
           </p>
-          <p>
-            Support reference: <code>{supportReference}</code>
-          </p>
+          <ContentSchemaRegistryDiagnosticReference
+            requestId={state.requestId}
+            supportReference={supportReference}
+          />
           {state.data === null ? null : (
             <ContentSchemaRegistryReviewFacts
               review={state.data}

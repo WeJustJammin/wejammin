@@ -18,15 +18,19 @@ const digestHex = async (value: BufferSource): Promise<string> =>
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
 
-/** The decision that leaves the least room: refused first, then fewest remaining. */
+/**
+ * The decision that leaves the least room. The user decision is always
+ * allowed here (a user refused by their own bucket never reaches the party
+ * bucket), so only the party decision can be a refusal.
+ */
 const stricterDecision = (
-  first: RateLimitDecision,
-  second: RateLimitDecision,
+  allowedUser: RateLimitDecision,
+  party: RateLimitDecision,
 ): RateLimitDecision => {
-  if (first.allowed !== second.allowed) return first.allowed ? second : first;
-  if (first.remaining !== second.remaining)
-    return first.remaining < second.remaining ? first : second;
-  return first.limit <= second.limit ? first : second;
+  if (!party.allowed) return party;
+  if (allowedUser.remaining !== party.remaining)
+    return allowedUser.remaining < party.remaining ? allowedUser : party;
+  return allowedUser.limit <= party.limit ? allowedUser : party;
 };
 
 /**

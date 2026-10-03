@@ -1,7 +1,11 @@
 import {
+  CONFLICT_RECOVERY_ACTIONS,
   DEFAULT_DEPENDENCY_CLASS,
   boundedRateLimit,
   boundedRetryAfterSeconds,
+  conflictForCode,
+  defaultForbiddenReasonCode,
+  registeredConflict,
   registeredDependencyClass,
   registeredReasonCode,
   withinDetailsCeiling,
@@ -9,9 +13,10 @@ import {
 import type { ContentSchemaRegistryError } from './types';
 
 /**
- * BE03a error matrix: a 409 may carry `expectedVersion` and `currentVersion`
- * and nothing else. A 400 or 422 never carries them; `reason` is never on the
- * wire for any status.
+ * BE00 `CONFLICT` details: `conflict`, `recoveryAction` and, when the database
+ * discloses them, `expectedVersion` and `currentVersion` (BE03a extends BE00
+ * with the two versions). A 400 or 422 never carries them; `reason` is never
+ * on the wire for any status.
  */
 const VERSION_DETAIL = /^[1-9][0-9]{0,18}$/u;
 
@@ -56,11 +61,13 @@ const safeStepUpMethods = (value: unknown): readonly string[] | null => {
  */
 export const safeDetails = (
   result: ContentSchemaRegistryError,
+  operationId?: string,
 ): Readonly<Record<string, unknown>> =>
-  withinDetailsCeiling(registeredDetails(result));
+  withinDetailsCeiling(registeredDetails(result, operationId));
 
 const registeredDetails = (
   result: ContentSchemaRegistryError,
+  operationId: string | undefined,
 ): Readonly<Record<string, unknown>> => {
   if (result.status === 404 || result.status === 500) return {};
   if (result.status === 400 || result.status === 422) {
@@ -70,11 +77,11 @@ const registeredDetails = (
       ? violations.flatMap((value) => {
           if (typeof value !== 'object' || value === null) return [];
           const candidate = value as Record<string, unknown>;
-          const pointer =
-            typeof candidate.pointer === 'string' &&
-            candidate.pointer.length <= 256 &&
-            /^[\x20-\x7e]+$/u.test(candidate.pointer)
-              ? candidate.pointer
+          const path =
+            typeof candidate.path === 'string' &&
+            candidate.path.length <= 256 &&
+            /^[\x20-\x7e]+$/u.test(candidate.path)
+              ? candidate.path
               : null;
           const message =
             typeof candidate.message === 'string' &&
@@ -88,11 +95,11 @@ const registeredDetails = (
             /^[A-Za-z][A-Za-z0-9_]{0,63}$/u.test(candidate.code)
               ? candidate.code
               : null;
-          return pointer === null && message === null && code === null
+          return path === null && message === null && code === null
             ? []
             : [
                 {
-                  ...(pointer === null ? {} : { pointer }),
+                  ...(path === null ? {} : { path }),
                   ...(message === null ? {} : { message }),
                   ...(code === null ? {} : { code }),
                 },
@@ -116,10 +123,22 @@ const registeredDetails = (
       : {};
   }
   if (result.status === 403) {
-    const reasonCode = registeredReasonCode(result.details?.reasonCode);
-    return reasonCode === null ? {} : { reasonCode };
+    return {
+      reasonCode:
+        registeredReasonCode(result.details?.reasonCode) ??
+        defaultForbiddenReasonCode(operationId),
+    };
   }
-  if (result.status === 409) return safeVersionDetails(result.details ?? {});
+  if (result.status === 409) {
+    const conflict =
+      registeredConflict(result.details?.conflict) ??
+      conflictForCode(result.code);
+    return {
+      conflict,
+      recoveryAction: CONFLICT_RECOVERY_ACTIONS[conflict],
+      ...safeVersionDetails(result.details ?? {}),
+    };
+  }
   if (result.status === 429) {
     const details = result.details ?? {};
     // BE00 RATE_LIMITED: { retryAfterSeconds: number, limit: number,

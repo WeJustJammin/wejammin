@@ -1,9 +1,15 @@
 /**
  * Hydration boundary for the content schema registry island (FE03 island
- * invariant): no request, trace, span, correlation or causation identifier may
- * cross into browser-rendered props or state. `pageFor` is the single exit from
- * the server resolvers, and it removes every such key before the page is
- * handed to Astro for serialization.
+ * invariant): no trace, span, correlation or causation identifier, and no
+ * page-level request identifier, may cross into browser-rendered props or
+ * state. `pageFor` is the single exit from the server resolvers, and it
+ * removes every such key before the page is handed to Astro for serialization.
+ *
+ * The one exception is the BE00 `ApiError.requestId` of a failed read. FE03
+ * ("Typed ApiError with request ID", "Scoped degraded state with request ID")
+ * requires the user to see it so they can quote it to support, so it survives
+ * only on an `error` member and on a `degraded` state, where it is the
+ * response's own identifier and never a matching or correlation token.
  */
 
 /**
@@ -17,15 +23,32 @@ const DIAGNOSTIC_KEY =
 export const isDiagnosticIdentifierKey = (key: string): boolean =>
   DIAGNOSTIC_KEY.test(key.toLowerCase().replaceAll(/[^a-z0-9]/gu, ''));
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** An `ApiError` member of an error state or a degraded state may show its id. */
+const mayCarryRequestId = (
+  parentKey: string | null,
+  value: Record<string, unknown>,
+): boolean => parentKey === 'error' || value.status === 'degraded';
+
 /** Deep copy of JSON-shaped `value` without any diagnostic identifier key. */
-export const withoutDiagnosticIdentifiers = <T>(value: T): T => {
+export const withoutDiagnosticIdentifiers = <T>(
+  value: T,
+  parentKey: string | null = null,
+): T => {
   if (Array.isArray(value))
-    return value.map((entry) => withoutDiagnosticIdentifiers(entry)) as T;
-  if (typeof value !== 'object' || value === null) return value;
+    return value.map((entry) =>
+      withoutDiagnosticIdentifiers(entry, parentKey),
+    ) as T;
+  if (!isRecord(value)) return value;
   const output: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value))
-    if (!isDiagnosticIdentifierKey(key))
-      output[key] = withoutDiagnosticIdentifiers(entry);
+    if (
+      !isDiagnosticIdentifierKey(key) ||
+      (key === 'requestId' && mayCarryRequestId(parentKey, value))
+    )
+      output[key] = withoutDiagnosticIdentifiers(entry, key);
   return output as T;
 };
 

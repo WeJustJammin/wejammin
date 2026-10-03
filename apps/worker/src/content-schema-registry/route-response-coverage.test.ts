@@ -44,6 +44,7 @@ const dependencies = (
 const responseContext = () => {
   const headers = new Map<string, string>();
   const context = {
+    get: vi.fn(() => undefined),
     header: vi.fn((name: string, value: string) => headers.set(name, value)),
     json: vi.fn(
       (body: unknown, status: number) =>

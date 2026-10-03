@@ -182,11 +182,14 @@ export const errorResponse = (
   // finer internal reason codes never reach the wire.
   const dependencyFailure =
     result.status === 502 || result.status === 503 || result.status === 504;
+  // BE00 has one 409 code, CONFLICT; `details.conflict` names the kind.
   const code = dependencyFailure
     ? 'DEPENDENCY_UNAVAILABLE'
-    : /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
-      ? result.code
-      : 'INTERNAL_ERROR';
+    : result.status === 409
+      ? 'CONFLICT'
+      : /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
+        ? result.code
+        : 'INTERNAL_ERROR';
   const safeMessage =
     result.status >= 500
       ? code === 'INTERNAL_ERROR'
@@ -201,7 +204,7 @@ export const errorResponse = (
     code,
     message: safeMessage,
     requestId,
-    details: safeDetails(result),
+    details: safeDetails(result, context.get('operationId')),
   };
   context.header('cache-control', 'no-store');
   if (result.status === 502 || result.status === 503 || result.status === 504)

@@ -20,6 +20,7 @@ import {
   optionalString,
   rejectUnknownKeys,
   requireString,
+  validateRequestId,
 } from './content-schema-registry-canonical-validate-primitives';
 import { validateReviewState } from './content-schema-registry-canonical-review-validate';
 
@@ -88,6 +89,7 @@ const DEGRADED_KEYS = new Set([
   'status',
   'data',
   'code',
+  'requestId',
   'lastVerifiedAt',
   'retryable',
   'httpStatus',
@@ -126,11 +128,15 @@ const validateListState = (value: unknown): ContentSchemaRegistryListState => {
       throw new CanonicalStateError('list degraded data');
     if (value.code !== undefined && !DEGRADED_CODES.has(String(value.code)))
       throw new CanonicalStateError('list degraded code');
-    if (typeof value.lastVerifiedAt !== 'string')
+    if (
+      value.lastVerifiedAt !== null &&
+      typeof value.lastVerifiedAt !== 'string'
+    )
       throw new CanonicalStateError('lastVerifiedAt');
     if (value.retryable !== undefined && typeof value.retryable !== 'boolean')
       throw new CanonicalStateError('retryable');
     validateRouteMeta(value);
+    validateRequestId(value);
   } else if (status === 'disabled') {
     rejectUnknownKeys(value, DISABLED_KEYS);
     requireString(value, 'reason');
@@ -174,11 +180,15 @@ const validateDetailState = (
       throw new CanonicalStateError('detail degraded data');
     if (value.code !== undefined && !DEGRADED_CODES.has(String(value.code)))
       throw new CanonicalStateError('detail degraded code');
-    if (typeof value.lastVerifiedAt !== 'string')
+    if (
+      value.lastVerifiedAt !== null &&
+      typeof value.lastVerifiedAt !== 'string'
+    )
       throw new CanonicalStateError('lastVerifiedAt');
     if (value.retryable !== undefined && typeof value.retryable !== 'boolean')
       throw new CanonicalStateError('retryable');
     validateRouteMeta(value);
+    validateRequestId(value);
   } else if (status === 'disabled') {
     rejectUnknownKeys(value, DISABLED_KEYS);
     requireString(value, 'reason');

@@ -276,15 +276,15 @@ describe('content schema registry mutation facade', () => {
       details: {
         violations: [
           {
-            pointer: '/fallbackChains/de-DE',
+            path: '/fallbackChains/de-DE',
             message: 'fallbackChains key must be a supported locale',
           },
           {
-            pointer: '/fallbackChains/fr/1',
+            path: '/fallbackChains/fr/1',
             message: 'fallback chain must not include its own target locale',
           },
           {
-            pointer: '/fallbackChains/fr',
+            path: '/fallbackChains/fr',
             message: 'fallback chain must end at defaultLocale',
           },
         ],

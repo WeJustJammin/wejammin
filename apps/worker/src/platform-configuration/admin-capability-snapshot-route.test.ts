@@ -65,6 +65,15 @@ describe('CFG-05B-07 admin capability snapshot route', () => {
     });
   });
 
+  it('drops the whole snapshot when a context capability is outside the published admin name grammar', async () => {
+    const harness = makeResetHarness({
+      context: contextFor(['admin.inbox.read', 'admin.scoped:grant']),
+    });
+    const response = await send(harness);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ capabilities: [] });
+  });
+
   it('needs no named capability: an actor with none gets an empty list', async () => {
     const harness = makeResetHarness({ context: contextFor([]) });
     const response = await send(harness);

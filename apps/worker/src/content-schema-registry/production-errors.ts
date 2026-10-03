@@ -105,24 +105,28 @@ const detailRecord = (
 };
 
 /**
- * BE03a OD-4: a 400/422 carries at most 50 `{ pointer, message }` JSON-pointer
- * violations. An entry needs both members in bounded printable ASCII or it is
- * dropped; unknown members are never copied.
+ * BE00 `FieldViolation`: a 400/422 carries at most 50 `{ path, message }`
+ * violations, `path` being a JSON Pointer. The database DETAIL JSON still
+ * names the member `pointer` (the OD-4 migrations predate the BE00 name), so
+ * either spelling is read and only `path` is ever produced. An entry needs
+ * both members in bounded printable ASCII or it is dropped; unknown members
+ * are never copied.
  */
 const safeViolations = (
   value: unknown,
-): readonly Readonly<{ pointer: string; message: string }>[] => {
+): readonly Readonly<{ path: string; message: string }>[] => {
   if (!Array.isArray(value)) return [];
-  const kept: Array<Readonly<{ pointer: string; message: string }>> = [];
+  const kept: Array<Readonly<{ path: string; message: string }>> = [];
   for (const entry of value as readonly unknown[]) {
     if (kept.length === MAX_DETAIL_VIOLATIONS) break;
     if (!isRecord(entry)) continue;
-    const { pointer, message } = entry;
+    const path = entry.path ?? entry.pointer;
+    const { message } = entry;
     if (
-      printable(pointer, MAX_VIOLATION_POINTER_LENGTH) &&
+      printable(path, MAX_VIOLATION_POINTER_LENGTH) &&
       printable(message, MAX_VIOLATION_MESSAGE_LENGTH)
     )
-      kept.push({ pointer, message });
+      kept.push({ path, message });
   }
   return kept;
 };
@@ -131,7 +135,18 @@ const safeViolations = (
  * BE00 per-status details allowlist applied at the adapter. A key outside the
  * status's row is never copied, whatever the database or a port supplied.
  */
-const DETAIL_KEYS_BY_STATUS: Readonly<Record<number, readonly string[]>> = {
+type DetailKey =
+  | 'currentVersion'
+  | 'dependencyClass'
+  | 'expectedVersion'
+  | 'limit'
+  | 'reasonCode'
+  | 'recoveryAction'
+  | 'resetAt'
+  | 'retryable'
+  | 'retryAfterSeconds';
+
+const DETAIL_KEYS_BY_STATUS: Readonly<Record<number, readonly DetailKey[]>> = {
   401: ['recoveryAction'],
   403: ['reasonCode', 'recoveryAction'],
   409: ['expectedVersion', 'currentVersion'],
@@ -151,7 +166,7 @@ const RECOVERY_ACTION = /^[a-z][a-z0-9_]{0,31}$/u;
  * non-finite values) is dropped so it can never reach the wire.
  */
 const registeredDetailValue = (
-  key: string,
+  key: DetailKey,
   value: unknown,
 ): string | number | boolean | null => {
   switch (key) {
@@ -178,8 +193,6 @@ const registeredDetailValue = (
       return typeof value === 'string' && RECOVERY_ACTION.test(value)
         ? value
         : null;
-    default:
-      return null;
   }
 };
 
@@ -272,14 +285,16 @@ export const knownFailure = (
       code: 'NOT_FOUND',
       message: 'The requested CMS registry resource was not found.',
     },
+    // BE00: one 409 code (CONFLICT) on the wire; the internal code names the
+    // conflict kind and the response mapping derives `details.conflict`.
     IDEMPOTENCY_MISMATCH: {
       status: 409,
-      code: 'IDEMPOTENCY_CONFLICT',
+      code: 'IDEMPOTENCY_MISMATCH',
       message: 'The idempotency key was used for another request.',
     },
     IDEMPOTENCY_CONFLICT: {
       status: 409,
-      code: 'IDEMPOTENCY_CONFLICT',
+      code: 'IDEMPOTENCY_MISMATCH',
       message: 'The idempotency key was used for another request.',
     },
     VERSION_MISMATCH: {

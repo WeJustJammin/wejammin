@@ -104,15 +104,15 @@ const mutationLocaleIssues = async (
     if (!Array.isArray(violations)) return [];
     return violations
       .flatMap((violation): ContentSchemaRegistryLocaleIssue[] => {
-        const { pointer, message } = (violation ?? {}) as {
-          readonly pointer?: unknown;
+        const { path, message } = (violation ?? {}) as {
+          readonly path?: unknown;
           readonly message?: unknown;
         };
-        return typeof pointer === 'string' &&
-          pointer.length <= 256 &&
+        return typeof path === 'string' &&
+          path.length <= 256 &&
           typeof message === 'string' &&
           LOCALE_MESSAGES.has(message)
-          ? [{ pointer, message }]
+          ? [{ pointer: path, message }]
           : [];
       })
       .slice(0, 50);
@@ -136,10 +136,8 @@ const mutationErrorDetails = async (
     return violations
       .map((violation) => {
         if (typeof violation !== 'object' || violation === null) return null;
-        const pointer = (violation as { readonly pointer?: unknown }).pointer;
-        return typeof pointer === 'string' && pointer.length <= 256
-          ? pointer
-          : null;
+        const path = (violation as { readonly path?: unknown }).path;
+        return typeof path === 'string' && path.length <= 256 ? path : null;
       })
       .filter((pointer): pointer is string => pointer !== null)
       .slice(0, 50);

@@ -197,7 +197,15 @@ export const createEnrollmentService = (
         },
         signal,
       );
-      if (!settled.ok) return reconcile(finalizationFailed());
+      // The settle re-checks the persisted verification lock under the binding
+      // lock and refuses with nothing written (`MFA_VERIFICATION_LOCKED`). That
+      // is a throttle, not an ambiguous outcome: it surfaces as the standard
+      // 429 with Retry-After and must not push the factor into reconciliation,
+      // where the reconciler could settle it as verified during the lock.
+      if (!settled.ok)
+        return settled.status === 429
+          ? settled
+          : reconcile(finalizationFailed());
       const resource = buildFactorsResource(
         settled.value,
         validated.value.stepUpAt,

@@ -284,7 +284,7 @@ describe('[DEC-119] grant command', () => {
         apiError('VALIDATION_FAILED', {
           violations: [
             {
-              pointer: '/validThrough',
+              path: '/validThrough',
               code: 'grant_term_spans_at_most_ninety_utc_days',
             },
           ],

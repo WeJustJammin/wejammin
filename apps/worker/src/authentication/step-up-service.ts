@@ -47,7 +47,27 @@ export const createStepUpService = (
       { request, providerFactorId: begun.value.providerFactorId },
       signal,
     );
-    if (!created.ok) return created;
+    if (!created.ok) {
+      // The registry holds a verified factor the provider no longer has (an
+      // operator removed it in the dashboard, the sole-administrator runbook).
+      // The registry must not keep asserting a factor nobody can use: mark it
+      // reconciling, so the auth-state-reconciler settles it by provider
+      // status and first-factor enrollment opens, and tell the caller to
+      // enroll. A failed mark is surfaced rather than hidden behind that
+      // instruction, because the instruction is only true once it is stored.
+      if (created.status !== 404) return created;
+      const marked = await persistence.markFactorReconciling(
+        { ...caller, factorId: begun.value.factorId },
+        signal,
+      );
+      return marked.ok
+        ? transitionConflict(
+            'no_verified_factor',
+            'enroll_factor',
+            'Add an authenticator before verifying.',
+          )
+        : marked;
+    }
     const cap = now() + STEP_UP_FRESHNESS_SECONDS * 1000;
     const providerExpiry = Date.parse(created.value.expiresAt);
     const expiresAt = new Date(

@@ -214,7 +214,7 @@ describe('[P2-S09-AC-980] transform-pair errors map to inline copy', () => {
         envelope('VALIDATION_FAILED', {
           violations: [
             {
-              pointer: '/transformVersion',
+              path: '/transformVersion',
               code: 'invalid_value',
               message: 'transform key and version must be both present',
             },
@@ -250,9 +250,9 @@ describe('[P2-S09-AC-980] transform-pair errors map to inline copy', () => {
         422,
         envelope('VALIDATION_FAILED', {
           violations: [
-            { pointer: '/transformKey', code: 'invalid_value', message: 'x' },
+            { path: '/transformKey', code: 'invalid_value', message: 'x' },
             {
-              pointer: '/transformVersion',
+              path: '/transformVersion',
               code: 'invalid_value',
               message: 'x',
             },

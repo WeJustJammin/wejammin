@@ -36,6 +36,7 @@ export type Dec108ReviewState =
       readonly error: {
         readonly code: string;
         readonly message: string;
+        readonly requestId?: string;
       };
       readonly retryable: boolean;
       readonly httpStatus?: number;
@@ -43,7 +44,11 @@ export type Dec108ReviewState =
   | {
       readonly status: 'degraded';
       readonly data: SchemaReviewResource | null;
+      readonly code?: string;
+      readonly requestId?: string;
       readonly lastVerifiedAt: string | null;
+      readonly retryable?: boolean;
+      readonly httpStatus?: number;
     }
   | { readonly status: 'disabled'; readonly reason: string };
 

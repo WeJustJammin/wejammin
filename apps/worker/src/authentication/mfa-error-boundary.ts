@@ -134,23 +134,24 @@ export const withRouteDeadline = async <T>(
   run: (signal: AbortSignal) => Promise<AuthenticationResult<T>>,
 ): Promise<AuthenticationResult<T>> => {
   const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let expire!: (error: AuthenticationError) => void;
   const deadline = new Promise<AuthenticationError>((resolve) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      resolve(
-        authError(
-          504,
-          'DEPENDENCY_UNAVAILABLE',
-          'The request exceeded its deadline.',
-          { dependencyClass: 'identity_persistence', retryable: true },
-        ),
-      );
-    }, policyFor(operationId).timeoutMs);
+    expire = resolve;
   });
+  const timer = setTimeout(() => {
+    controller.abort();
+    expire(
+      authError(
+        504,
+        'DEPENDENCY_UNAVAILABLE',
+        'The request exceeded its deadline.',
+        { dependencyClass: 'identity_persistence', retryable: true },
+      ),
+    );
+  }, policyFor(operationId).timeoutMs);
   try {
     return await Promise.race([run(controller.signal), deadline]);
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
+    clearTimeout(timer);
   }
 };

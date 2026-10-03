@@ -75,7 +75,7 @@ describe('content schema registry port runner defensive coverage', () => {
     expect(signal?.aborted).toBe(true);
   });
 
-  it('maps thrown ports to unavailable and cleans up an absent timer', async () => {
+  it('maps an unexpected thrown port to a scrubbed 500, an abort to 504, and cleans up an absent timer', async () => {
     const thrown = vi.fn(async () => {
       throw new Error('persistence unavailable');
     });
@@ -83,10 +83,24 @@ describe('content schema registry port runner defensive coverage', () => {
       createContentSchemaRegistryPortRunner(
         dependencies({ createTypeDraft: thrown }),
       ).run(input()),
+    ).resolves.toEqual({
+      ok: false,
+      status: 500,
+      code: 'INTERNAL_ERROR',
+      message: 'An unexpected error occurred.',
+      details: {},
+    });
+    const aborted = vi.fn(async () => {
+      throw new DOMException('aborted', 'AbortError');
+    });
+    await expect(
+      createContentSchemaRegistryPortRunner(
+        dependencies({ createTypeDraft: aborted }),
+      ).run(input()),
     ).resolves.toMatchObject({
       ok: false,
-      status: 503,
-      code: 'DEPENDENCY_UNAVAILABLE',
+      status: 504,
+      code: 'DEPENDENCY_DEADLINE_EXCEEDED',
     });
 
     vi.stubGlobal('setTimeout', () => undefined);

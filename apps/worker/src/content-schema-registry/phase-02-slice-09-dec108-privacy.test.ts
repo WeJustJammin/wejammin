@@ -114,6 +114,8 @@ describe('DEC-108 responses, headers and telemetry carry no private identifiers'
       expect(response.status).toBe(409);
       const body = (await response.clone().json()) as { details: unknown };
       expect(body.details).toEqual({
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
         expectedVersion: '1',
         currentVersion: '2',
       });

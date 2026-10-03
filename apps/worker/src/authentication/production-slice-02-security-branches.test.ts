@@ -215,7 +215,12 @@ describe('Slice 02 production security defensive branches', () => {
         auth.resolveSession(
           new Request('https://api.example.test/api/v1/auth/session', {
             headers: {
-              cookie: `wj_access=${jwt()}; wj_session_ref=${reference}`,
+              cookie: `wj_access=${jwt({
+                aal: 'aal2',
+                amr: [
+                  { method: 'totp', timestamp: Math.floor(NOW / 1000) - 60 },
+                ],
+              })}; wj_session_ref=${reference}`,
             },
           }),
           env,

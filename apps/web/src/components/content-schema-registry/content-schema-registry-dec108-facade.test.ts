@@ -78,7 +78,7 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
       details: {
         violations: [
           {
-            pointer: '/fallbackChains',
+            path: '/fallbackChains',
             message:
               'supportedLocales and fallbackChains must be both null or both present',
           },

@@ -47,7 +47,13 @@ const json = (value: unknown, status = 200): Response =>
     headers: { 'content-type': 'application/json' },
   });
 
-const build = (userId = AUTH_USER_ID) => {
+const fixedRandomBytes = (length: number): Uint8Array =>
+  new Uint8Array(length).fill(7);
+
+const build = (
+  userId = AUTH_USER_ID,
+  randomBytes: (length: number) => Uint8Array = fixedRandomBytes,
+) => {
   const calls: Array<Readonly<{ url: string; body: unknown }>> = [];
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({
@@ -60,7 +66,7 @@ const build = (userId = AUTH_USER_ID) => {
     environment,
     fetchImpl: fetchImpl as unknown as typeof fetch,
     now: () => NOW,
-    randomBytes: (length: number) => new Uint8Array(length).fill(7),
+    randomBytes,
   });
   return { calls, rotation: createSessionRotation(config) };
 };
@@ -123,6 +129,25 @@ describe('step-up session rotation', () => {
       code: 'PROVIDER_INVALID_RESPONSE',
     });
     expect(rpcCalls(calls)).toEqual([]);
+  });
+
+  it('maps a failure while sealing the replacement cookies to 503', async () => {
+    const harness = build(AUTH_USER_ID, () => {
+      throw new Error('entropy unavailable');
+    });
+    const outcome = await harness.rotation.validate(
+      {
+        session: sessionFor({ personId: PERSON_ID }),
+        request: requestFor(),
+        payload: payloadFor(),
+      },
+      signal,
+    );
+    expect(outcome).toMatchObject({
+      ok: false,
+      status: 503,
+      code: 'DEPENDENCY_UNAVAILABLE',
+    });
   });
 
   it('rejects a payload that is not a verifiable provider session', async () => {

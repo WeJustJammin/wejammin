@@ -141,7 +141,8 @@ export const reviewBinding = (options: ReviewBindingOptions = {}) => {
           code: options.errorCode ?? 'FORBIDDEN',
           details: {},
           message: 'Refused.',
-          requestId: ACTOR_ID,
+          // The Worker echoes the x-request-id the web boundary sent upstream.
+          requestId: REQUEST_ID,
         },
         { status },
       );

@@ -1,11 +1,16 @@
+import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+
+import ContentSchemaRegistryWorkbenchIsland from '../components/content-schema-registry/ContentSchemaRegistryWorkbenchIsland';
+import { REQUEST_ID } from '../components/content-schema-registry/content-schema-review-dec108.test-support';
 
 import { resolveReview } from './content-schema-review-dec108.test-support';
 
 /**
  * FE03 `reviewState` error class (CMS-03A-13): the retry affordance is offered
  * only for 429 and 502/503/504. Every other typed failure is a terminal error
- * with no retry, and none of them hands the island a raw request ID.
+ * with no retry, and every failure hands the island the ApiError request ID the user quotes to support.
  */
 
 type Retryable = {
@@ -55,14 +60,49 @@ describe('[DEC-108] review read failure retry policy', () => {
     },
   );
 
-  it('[P2-S09-AC-953] carries no raw request ID in the island review state', async () => {
+  it('[P2-S09-AC-953] carries the ApiError request ID in the island review error state', async () => {
     const { result } = await resolveReview({
       status: 429,
       errorCode: 'RATE_LIMITED',
     });
     if (result.kind !== 'error') throw new Error('expected an error page');
-    expect(JSON.stringify(result.page.initialReview)).not.toMatch(
-      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/iu,
+    expect(result.page.initialReview).toMatchObject({
+      status: 'error',
+      error: { code: 'RATE_LIMITED', requestId: REQUEST_ID },
+    });
+  });
+
+  it.each([
+    [502, 'DEPENDENCY_INVALID_RESPONSE'],
+    [503, 'DEPENDENCY_UNAVAILABLE'],
+    [504, 'DEPENDENCY_DEADLINE_EXCEEDED'],
+  ] as const)(
+    '[P2-S09-AC-953] carries the request ID in the island degraded state for %i',
+    async (status, code) => {
+      const { result } = await resolveReview({ status, errorCode: code });
+      if (result.kind !== 'degraded')
+        throw new Error('expected a degraded page');
+      expect(result.page.initialReview).toMatchObject({
+        status: 'degraded',
+        requestId: REQUEST_ID,
+      });
+    },
+  );
+
+  it('[P2-S09-AC-953] renders that request ID in the hydrated island for a rate-limited review read', async () => {
+    const { result } = await resolveReview({
+      status: 429,
+      errorCode: 'RATE_LIMITED',
+    });
+    if (result.kind !== 'error') throw new Error('expected an error page');
+    const markup = renderToStaticMarkup(
+      React.createElement(ContentSchemaRegistryWorkbenchIsland, {
+        ...(result.page as unknown as React.ComponentProps<
+          typeof ContentSchemaRegistryWorkbenchIsland
+        >),
+        canonicalRefetchUrl: result.page.retryUrl,
+      }),
     );
+    expect(markup).toContain(REQUEST_ID);
   });
 });

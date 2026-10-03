@@ -158,7 +158,11 @@ describe('DEC-111 resolved session carries primaryAuthAt', () => {
         headers: {
           'x-request-id': REQUEST_ID,
           cookie: `wj_access=${jwt({
-            amr: [{ method: 'password', timestamp: second(-90) }],
+            aal: 'aal2',
+            amr: [
+              { method: 'password', timestamp: second(-90) },
+              { method: 'totp', timestamp: second(-60) },
+            ],
           })}; wj_session_ref=${sealed}`,
         },
       },

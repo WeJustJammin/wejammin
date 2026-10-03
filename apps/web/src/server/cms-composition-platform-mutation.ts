@@ -23,6 +23,7 @@ import {
   cmsEditorialSameOriginRequest,
   isCmsEditorialPlatformBinding,
 } from './cms-editorial-platform-shared';
+import { relayedResetAt } from './rate-limit-reset-at';
 
 export const CMS_TEMPLATE_DEFINE_PATH = '/api/v1/cms/templates/versions';
 
@@ -121,13 +122,15 @@ const safeDetails = (
   }
   if (status === 429) {
     const output: Record<string, unknown> = {};
-    for (const key of ['retryAfterSeconds', 'limit', 'resetAt'] as const)
+    for (const key of ['retryAfterSeconds', 'limit'] as const)
       if (
         typeof details[key] === 'number' &&
         Number.isSafeInteger(details[key]) &&
         details[key] >= 0
       )
         output[key] = details[key];
+    const resetAt = relayedResetAt(details.resetAt, 'epoch-number');
+    if (resetAt !== null) output.resetAt = resetAt;
     return output;
   }
   if (status === 502 || status === 503 || status === 504)

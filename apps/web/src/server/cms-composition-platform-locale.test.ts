@@ -276,4 +276,49 @@ describe('CMS-03C-04 first-party locale authoring proxy', () => {
     ])
       expect(await respond(unsafe)).toEqual({});
   });
+
+  it('relays a 429 resetAt only as a valid RFC 3339 UTC instant (BE00 RATE_LIMITED)', async () => {
+    const respond = async (details: Record<string, unknown>) => {
+      const fetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'RATE_LIMITED',
+              message: 'private provider text',
+              requestId: 'd1000000-0000-4000-8000-000000000006',
+              details,
+            }),
+            { status: 429, headers: { 'content-type': 'application/json' } },
+          ),
+      );
+      const response = await forwardCmsLocaleVariantMutation(
+        request(),
+        entryId,
+        'fr-FR',
+        { fetch },
+      );
+      expect(response.status).toBe(429);
+      return ((await response.json()) as { details: unknown }).details;
+    };
+    expect(
+      await respond({
+        retryAfterSeconds: 43,
+        limit: 60,
+        resetAt: '2026-09-02T10:41:00.000Z',
+        secret: 'do-not-disclose',
+      }),
+    ).toEqual({
+      retryAfterSeconds: 43,
+      limit: 60,
+      resetAt: '2026-09-02T10:41:00.000Z',
+    });
+    for (const unsafe of [
+      '2026-02-30T10:41:00.000Z',
+      '2026-09-02T10:41:00+02:00',
+      'private',
+    ])
+      expect(
+        await respond({ retryAfterSeconds: 43, limit: 60, resetAt: unsafe }),
+      ).toEqual({ retryAfterSeconds: 43, limit: 60 });
+  });
 });

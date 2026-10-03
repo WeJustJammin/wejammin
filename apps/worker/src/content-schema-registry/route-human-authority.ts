@@ -37,6 +37,15 @@ const stepUpRequired = (): ContentSchemaRegistryError => ({
 });
 
 /**
+ * The per-party bucket exists only on rows that declare `partyRateLimit`; the
+ * release-worker rows (CMS-03A-05 and CMS-03A-08) carry none.
+ */
+export const partyLimitFor = (
+  policy: ReturnType<typeof policyFor>,
+): Readonly<{ partyLimit?: number }> =>
+  'partyRateLimit' in policy ? { partyLimit: policy.partyRateLimit } : {};
+
+/**
  * The shared human authority pipeline: origin, session, capability, step-up
  * (policy `stepUp: required`), CSRF (policy `csrf: required`), then the
  * per-user and per-party rate gate. A refusal is the complete response and
@@ -84,9 +93,7 @@ export const createHumanAuthority =
             principalClass: 'human',
             rateClass: policy.rateClass,
             limit: policy.rateLimit,
-            ...('partyRateLimit' in policy
-              ? { partyLimit: policy.partyRateLimit }
-              : {}),
+            ...partyLimitFor(policy),
             windowSeconds: policy.rateWindowSeconds,
           },
           signal,

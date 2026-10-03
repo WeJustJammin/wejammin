@@ -14,7 +14,7 @@ import {
   makeDependencies,
 } from './routes.coverage.fixtures';
 
-type Violation = Readonly<{ pointer?: string; message?: string }>;
+type Violation = Readonly<{ path?: string; message?: string }>;
 
 const violationsOf = async (response: Response): Promise<Violation[]> => {
   const body = (await response.json()) as {
@@ -51,11 +51,11 @@ describe('CMS-03A-01 locale configuration admission (OD-4)', () => {
     expect(response.status).toBe(422);
     expect(await violationsOf(response)).toEqual([
       {
-        pointer: '/supportedLocales/2',
+        path: '/supportedLocales/2',
         message: 'supportedLocales must be unique',
       },
       {
-        pointer: '/fallbackChains/de-DE',
+        path: '/fallbackChains/de-DE',
         message: 'fallbackChains key must be a supported locale',
       },
     ]);
@@ -95,7 +95,7 @@ describe('CMS-03A-01 locale configuration admission (OD-4)', () => {
     );
     expect(await violationsOf(cycle.response)).toEqual([
       {
-        pointer: '/fallbackChains',
+        path: '/fallbackChains',
         message: 'fallback chains must not form a cycle',
       },
     ]);
@@ -107,7 +107,7 @@ describe('CMS-03A-01 locale configuration admission (OD-4)', () => {
     );
     expect(await violationsOf(end.response)).toEqual([
       {
-        pointer: '/fallbackChains/fr-FR',
+        path: '/fallbackChains/fr-FR',
         message: 'fallback chain must end at defaultLocale',
       },
     ]);
@@ -122,14 +122,15 @@ describe('CMS-03A-01 locale configuration admission (OD-4)', () => {
     );
     const violations = await violationsOf(response);
     expect(violations).toContainEqual({
-      pointer: '/fallbackChains/a~1b',
+      path: '/fallbackChains/a~1b',
       message: 'locale tag must be a canonical-case BCP 47 tag',
     });
-    expect(
-      violations.every(
-        (entry) => entry.message !== undefined && !('path' in entry),
-      ),
-    ).toBe(true);
+    // The key `é` has no printable-ASCII JSON Pointer: its violation keeps
+    // the exact message and carries no `path`, never a mangled one.
+    expect(violations).toContainEqual({
+      message: 'locale tag must be a canonical-case BCP 47 tag',
+    });
+    expect(violations.every((entry) => entry.message !== undefined)).toBe(true);
   });
 
   it('keeps non-locale validation failures free of client-controlled text', async () => {
@@ -208,7 +209,7 @@ describe('CMS-03A-09 successor locale configuration admission (OD-4)', () => {
     expect(response.status).toBe(422);
     expect(await violationsOf(response)).toEqual([
       {
-        pointer: '/fallbackChains',
+        path: '/fallbackChains',
         message:
           'supportedLocales and fallbackChains must be both null or both present',
       },
@@ -224,7 +225,7 @@ describe('CMS-03A-09 successor locale configuration admission (OD-4)', () => {
     });
     expect(await violationsOf(response)).toEqual([
       {
-        pointer: '/fallbackChains/fr-FR/0',
+        path: '/fallbackChains/fr-FR/0',
         message: 'fallback chain locale must be a supported locale',
       },
     ]);

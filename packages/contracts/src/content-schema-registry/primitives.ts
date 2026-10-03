@@ -11,6 +11,38 @@ export const CmsVersionSchema = z
       BigInt(value) <= 9_223_372_036_854_775_807n,
     'version_out_of_range',
   );
+/** BE03a: a label is 2 to 120 Unicode characters, counted after NFC. */
+export const CMS_LABEL_MIN_CHARACTERS = 2;
+export const CMS_LABEL_MAX_CHARACTERS = 120;
+
+/**
+ * Raw text bound before normalization. NFC never expands a string past four
+ * times its length (UTF-16 units, so eight units per character at worst), so
+ * this only rejects hostile payloads cheaply; the authoritative bound is the
+ * post-NFC Unicode character count below.
+ */
+const LABEL_RAW_MAX_UNITS = CMS_LABEL_MAX_CHARACTERS * 8;
+
+/**
+ * A human label: trimmed, normalized to NFC, and 2 to 120 Unicode characters
+ * counted after normalization (not UTF-16 code units, not code points before
+ * composition), matching the database `length(normalize(label, NFC))` check.
+ */
+export const CmsLabelSchema = z
+  .string()
+  .min(CMS_LABEL_MIN_CHARACTERS)
+  .max(LABEL_RAW_MAX_UNITS)
+  .describe('2 to 120 Unicode characters after NFC normalization')
+  .transform((value) => value.normalize('NFC').trim())
+  .pipe(
+    z.string().refine((value) => {
+      const characters = Array.from(value).length;
+      return (
+        characters >= CMS_LABEL_MIN_CHARACTERS &&
+        characters <= CMS_LABEL_MAX_CHARACTERS
+      );
+    }, 'label_length_invalid'),
+  );
 export const CmsHashSchema = z
   .string()
   .regex(/^[a-f0-9]{64}$/u, 'hash_invalid');

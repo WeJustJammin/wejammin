@@ -49,7 +49,7 @@ export const createContentSchemaRegistryApp = (
           status: 403,
           code: 'FORBIDDEN',
           message: 'The request origin is not allowed.',
-          details: {},
+          details: { reasonCode: 'POLICY_NOT_MET' },
         },
         context.get('requestId'),
       );

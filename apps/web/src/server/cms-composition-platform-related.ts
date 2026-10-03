@@ -20,6 +20,7 @@ import {
   cmsEditorialSameOriginRequest,
   isCmsEditorialPlatformBinding,
 } from './cms-editorial-platform-shared';
+import { relayedResetAt } from './rate-limit-reset-at';
 
 const RELATED_CONTENT_CODES = {
   400: 'INVALID_REQUEST',
@@ -90,13 +91,15 @@ const safeErrorDetails = (
   }
   if (status === 429) {
     const details: Record<string, unknown> = {};
-    for (const key of ['retryAfterSeconds', 'limit', 'resetAt'] as const)
+    for (const key of ['retryAfterSeconds', 'limit'] as const)
       if (
         typeof value[key] === 'number' &&
         Number.isSafeInteger(value[key]) &&
         value[key] >= 0
       )
         details[key] = value[key];
+    const resetAt = relayedResetAt(value.resetAt, 'epoch-number');
+    if (resetAt !== null) details.resetAt = resetAt;
     return details;
   }
   if (status === 502 || status === 503 || status === 504)

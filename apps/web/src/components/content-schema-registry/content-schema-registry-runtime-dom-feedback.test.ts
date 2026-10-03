@@ -129,7 +129,7 @@ describe('content schema registry command feedback', () => {
       vi.fn(
         async () =>
           new Response(
-            JSON.stringify({ details: { violations: [{ pointer: '/key' }] } }),
+            JSON.stringify({ details: { violations: [{ path: '/key' }] } }),
             { status: 422, headers: { 'content-type': 'application/json' } },
           ),
       ),
@@ -175,14 +175,14 @@ describe('content schema registry command feedback', () => {
               details: {
                 violations: [
                   {
-                    pointer: '/supportedLocales/1',
+                    path: '/supportedLocales/1',
                     message: 'supportedLocales must be unique',
                   },
                   {
-                    pointer: '/fallbackChains/fr-CA/0',
+                    path: '/fallbackChains/fr-CA/0',
                     message: 'fallback chain locale must be a supported locale',
                   },
-                  { pointer: '/typeKey', message: 'The value is invalid.' },
+                  { path: '/typeKey', message: 'The value is invalid.' },
                 ],
               },
             }),

@@ -40,7 +40,7 @@ export const json = (
   });
 
 export const rpcName = (input: string | URL | Request): string =>
-  new URL(String(input)).pathname.split('/').at(-1) ?? '';
+  new URL(String(input)).pathname.replace(/^.*\//u, '');
 
 export const session = {
   userId: USER_ID,

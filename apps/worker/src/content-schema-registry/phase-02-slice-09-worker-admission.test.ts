@@ -125,7 +125,7 @@ describe('S09 worker content-schema-registry admission', () => {
     },
   );
 
-  it('replays an identical idempotent human command without a second RPC call', async () => {
+  it('hands every idempotent human command to the RPC, which owns the replay and the mismatch refusal', async () => {
     const harness = makeHarness();
     const first = await harness.app.request(
       jsonRequest('/api/v1/cms/content-types', validDraft),
@@ -133,25 +133,18 @@ describe('S09 worker content-schema-registry admission', () => {
     const second = await harness.app.request(
       jsonRequest('/api/v1/cms/content-types', validDraft),
     );
-    expect(first.status).toBe(201);
-    expect(second.status).toBe(201);
-    expect(await second.json()).toEqual(await first.clone().json());
-    expect(harness.ports.createTypeDraft).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects an idempotency-key body mismatch as a conflict', async () => {
-    const harness = makeHarness();
-    await harness.app.request(
-      jsonRequest('/api/v1/cms/content-types', validDraft),
-    );
-    const response = await harness.app.request(
+    const changed = await harness.app.request(
       jsonRequest('/api/v1/cms/content-types', {
         ...validDraft,
         label: 'Changed',
       }),
     );
-    await expectApiError(response, 409, 'IDEMPOTENCY_CONFLICT');
-    expect(harness.ports.createTypeDraft).toHaveBeenCalledTimes(1);
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(changed.status).toBe(201);
+    // The Worker holds no replay binding: the database answers the retry and
+    // refuses the mismatch (see phase-02-slice-09-r8-db-errors.test.ts).
+    expect(harness.ports.createTypeDraft).toHaveBeenCalledTimes(3);
   });
 
   it('applies cookie CSRF to human mutations after session and capability admission', async () => {

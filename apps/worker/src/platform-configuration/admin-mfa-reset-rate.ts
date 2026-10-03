@@ -41,7 +41,7 @@ export const enforceMfaResetRate = async (
   session: AuthenticationSession,
   signal: AbortSignal,
 ): Promise<Response | null> => {
-  let strictest: AuthRateLimitDecision | null = null;
+  const decisions: AuthRateLimitDecision[] = [];
   for (const bucket of BUCKETS) {
     let decision: AuthenticationResult<AuthRateLimitDecision>;
     try {
@@ -63,8 +63,7 @@ export const enforceMfaResetRate = async (
       return responseForAuthError(context, unavailable());
     }
     if (!decision.ok) return responseForAuthError(context, decision);
-    if (strictest === null || decision.value.remaining < strictest.remaining)
-      strictest = decision.value;
+    decisions.push(decision.value);
     if (!decision.value.allowed) {
       applyRateHeaders(context, decision.value);
       return responseForAuthError(
@@ -78,6 +77,12 @@ export const enforceMfaResetRate = async (
       );
     }
   }
-  if (strictest !== null) applyRateHeaders(context, strictest);
+  // BUCKETS is non-empty, so there is always a decision; ties keep the first.
+  applyRateHeaders(
+    context,
+    decisions.reduce((strictest, next) =>
+      next.remaining < strictest.remaining ? next : strictest,
+    ),
+  );
   return null;
 };

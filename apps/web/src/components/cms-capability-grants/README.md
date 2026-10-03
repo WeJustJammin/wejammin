@@ -23,6 +23,14 @@ CMS-03A-16 (renew), CMS-03A-17 (revoke) and the CMS-03A-18 list, per FE03
   no-store JSON list read); `use-cms-capability-grants.ts` is the state hook.
 - `cms-capability-grant-labels.ts` lists the grantable registry in four groups.
 
+## Ownership
+
+These components own presentation and island-local interaction state for the
+owner-only CMS capability grant console. The worker/API and database contracts
+stay authoritative for ownership, eligibility, step-up proof, the 90-day term
+ceiling, persistence and the canonical grant list; the client only renders the
+server-computed `termWindow` and the command results it receives.
+
 ## Conventions
 
 - Nothing is optimistic: every verified command refetches the canonical list.
@@ -44,7 +52,7 @@ validation module, the form, `stateForResult` and the matching tests
 (`*.test.ts`, `CmsCapabilityGrantConsole.*.test.tsx`). Components stay under 200
 lines; split by form rather than growing the console.
 
-## Related
+## Related links
 
 `apps/web/src/server/cms-capability-grant-*.ts` (page resolver, ports, query),
 `apps/web/src/pages/app/cms-content-modeling/capability-grants.astro`,

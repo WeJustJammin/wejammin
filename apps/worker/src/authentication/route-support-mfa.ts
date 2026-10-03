@@ -78,9 +78,9 @@ export const parsePathId = (
   schema: Readonly<{
     safeParse: (value: unknown) => Readonly<{ success: boolean }>;
   }>,
-  value: string,
+  value: string | undefined,
 ): AuthenticationResult<string> =>
-  schema.safeParse(value).success
+  typeof value === 'string' && schema.safeParse(value).success
     ? { ok: true, value }
     : authError(400, 'INVALID_REQUEST', 'The path identifier is invalid.');
 

@@ -37,8 +37,10 @@ describe('[P2-S09-AC-035] [P2-S09-AC-600] [P2-S09-AC-623] registered detail valu
     ['lowercase token', 'capability_required'],
     ['unregistered token', 'SOMETHING_UNREGISTERED'],
     ['empty string', ''],
-  ])('drops a 403 reasonCode that is a %s', (_name, reasonCode) => {
-    expect(safeDetails(failure(403, { reasonCode }))).toEqual({});
+  ])('replaces a 403 reasonCode that is a %s with the registered default', (_name, reasonCode) => {
+    expect(safeDetails(failure(403, { reasonCode }))).toEqual({
+      reasonCode: 'CAPABILITY_REQUIRED',
+    });
   });
 
   it.each(['CAPABILITY_REQUIRED', 'OWNER_REQUIRED', 'MFA_REQUIRED'])(
@@ -100,7 +102,7 @@ describe('[P2-S09-AC-035] [P2-S09-AC-600] [P2-S09-AC-623] registered detail valu
 
   it('keeps the serialized 400/422 details at or under the BE00 ceiling', () => {
     const violations = Array.from({ length: 80 }, (_unused, index) => ({
-      pointer: `/${'p'.repeat(250)}${index}`.slice(0, 256),
+      path: `/${'p'.repeat(250)}${index}`.slice(0, 256),
       message: 'm'.repeat(500),
       code: 'REQUIRED',
     }));
@@ -143,6 +145,7 @@ describe('[P2-S09-AC-600] wire boundary: details and Retry-After share one bound
     const headers = new Map<string, string>();
     let sent: unknown;
     const context = {
+      get: () => undefined,
       header: (name: string, value: string) => headers.set(name, value),
       json: (body: unknown, status: number) => {
         sent = body;

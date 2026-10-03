@@ -266,7 +266,7 @@ describe('P2-S09 generated contract integration evidence', () => {
               requestId: REQUEST_ID,
               details: {
                 violations: [
-                  { pointer: '/label', message: 'Label is required' },
+                  { path: '/label', message: 'Label is required' },
                 ],
                 currentVersion: '7',
                 ownerId: 'must-not-cross-boundary',
@@ -300,7 +300,7 @@ describe('P2-S09 generated contract integration evidence', () => {
       requestId: REQUEST_ID,
       details: {
         currentVersion: '7',
-        violations: [{ pointer: '/label', message: 'Label is required' }],
+        violations: [{ path: '/label', message: 'Label is required' }],
       },
     });
   });

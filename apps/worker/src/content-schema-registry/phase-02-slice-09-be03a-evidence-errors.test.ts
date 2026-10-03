@@ -17,6 +17,7 @@ import {
   type EvidenceOp,
   type EvidenceOperationId,
 } from './phase-02-slice-09-be03a-evidence-support';
+import { makeDbBackedHarness } from './phase-02-slice-09-r8-db-harness';
 
 type Case = readonly [marker: string, operationId: EvidenceOperationId];
 
@@ -287,9 +288,12 @@ describe('BE03a 404 NOT_FOUND', () => {
   );
 });
 
-describe('BE03a 409 CONFLICT family', () => {
+describe('BE03a 409 CONFLICT family (mapping of a port refusal)', () => {
+  // Mapping only: the port is told to refuse. The conditions themselves, an
+  // idempotency mismatch, a stale version and a state conflict, are produced
+  // through the real RPC adapter in phase-02-slice-09-r8-db-errors.test.ts.
   it.each(E409)(
-    '%s %s maps a stale version or conflicting state to 409 with only the version details and an idempotency mismatch to 409',
+    '%s %s maps a port conflict to 409 CONFLICT with the BE00 conflict details and only the two version details',
     async (_marker, operationId) => {
       const op = opFor(operationId);
       const stale = harnessFor(op, {
@@ -305,37 +309,11 @@ describe('BE03a 409 CONFLICT family', () => {
         'CONFLICT',
       );
       expect(body.details).toEqual({
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
         expectedVersion: '1',
         currentVersion: '2',
       });
-
-      const mismatch = harnessFor(op);
-      const first = await mismatch.app.request(requestFor(op));
-      expect(first.status).toBe(op.status);
-      const changed =
-        op.operationId === 'CMS-03A-15'
-          ? { ...op.body, capability: 'cms.editor' }
-          : op.operationId === 'CMS-03A-12'
-            ? { expectedVersion: '1', decision: 'reject' }
-            : op.operationId === 'CMS-03A-14'
-              ? {
-                  action: 'revoke',
-                  expectedVersion: '1',
-                  assignmentId: 'a2000000-0000-4000-8000-0000000000a2',
-                }
-              : { ...op.body, expectedVersion: '2' };
-      const second = await mismatch.app.request(
-        requestFor(op, {
-          body: changed,
-          ...(op.ifMatch && 'expectedVersion' in changed
-            ? {
-                headers: { 'if-match': `"${String(changed.expectedVersion)}"` },
-              }
-            : {}),
-        }),
-      );
-      expect(second.status).toBe(409);
-      expect(mismatch.ports[op.portName]).toHaveBeenCalledTimes(1);
     },
   );
 });
@@ -378,7 +356,7 @@ describe('BE03a 422 VALIDATION_FAILED', () => {
         refusedBefore(op, harness.ports as never);
       }
       const violations = Array.from({ length: 60 }, (_, index) => ({
-        pointer: `/field/${index}`,
+        path: `/field/${index}`,
         code: 'INVALID_VALUE',
         message: 'The value is invalid.',
         sql: 'leak',
@@ -396,7 +374,7 @@ describe('BE03a 422 VALIDATION_FAILED', () => {
       expect(Object.keys(mapped[0] as object).sort()).toEqual([
         'code',
         'message',
-        'pointer',
+        'path',
       ]);
     },
   );
@@ -436,25 +414,35 @@ describe('BE03a 429 RATE_LIMITED (mapping of a refused limiter decision)', () =>
 
 describe('BE03a 500 INTERNAL_ERROR', () => {
   it.each(E500)(
-    '%s %s scrubs an unexpected failure to 500 INTERNAL_ERROR with no internals',
+    '%s %s answers an unexpected failure with 500 INTERNAL_ERROR, a fixed message and no details',
     async (_marker, operationId) => {
       const op = opFor(operationId);
-      const returned = harnessFor(op, {
-        port: error(500, 'INTERNAL_ERROR', 'select * from cms_secret', {
-          stack: 'trace',
-        }),
-      });
-      const body = await envelope(
-        await returned.app.request(requestFor(op)),
-        500,
-        'INTERNAL_ERROR',
+      const thrown = harnessFor(op);
+      thrown.ports[op.portName]?.mockRejectedValueOnce(
+        new TypeError('cms_secret is not a function'),
       );
+      const response = await thrown.app.request(requestFor(op));
+      const text = await response.clone().text();
+      const body = await envelope(response, 500, 'INTERNAL_ERROR');
       expect(body.details).toEqual({});
       expect(body.message).toBe('An unexpected error occurred.');
-      const thrown = harnessFor(op);
-      thrown.ports[op.portName]?.mockRejectedValueOnce(new Error('cms_secret'));
-      const text = await (await thrown.app.request(requestFor(op))).text();
       expect(text).not.toContain('cms_secret');
+      expect(thrown.ports[op.portName]).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(E500)(
+    '%s %s keeps an unexpected failure (500) distinct from a dependency outage (503) and a deadline (504)',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      const outage = makeDbBackedHarness(op, () => {
+        throw new TypeError('fetch failed');
+      });
+      expect((await outage.app.request(requestFor(op))).status).toBe(503);
+      const deadline = harnessFor(op);
+      const abort = new DOMException('aborted', 'AbortError');
+      deadline.ports[op.portName]?.mockRejectedValueOnce(abort);
+      expect((await deadline.app.request(requestFor(op))).status).toBe(504);
     },
   );
 });
@@ -481,9 +469,11 @@ describe('BE03a 503 DEPENDENCY_UNAVAILABLE', () => {
         retryAfterSeconds: 7,
       });
       expect(response.headers.get('retry-after')).toBe('7');
-      const thrown = harnessFor(op);
-      thrown.ports[op.portName]?.mockRejectedValueOnce(new Error('pg down'));
-      const scrubbed = await thrown.app.request(requestFor(op));
+      // The condition itself: the real adapter's transport fails.
+      const down = makeDbBackedHarness(op, () => {
+        throw new TypeError('pg down');
+      });
+      const scrubbed = await down.app.request(requestFor(op));
       expect(scrubbed.status).toBe(503);
       expect(await scrubbed.text()).not.toContain('pg down');
     },

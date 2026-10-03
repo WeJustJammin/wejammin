@@ -70,8 +70,8 @@ const LEAK = {
   sql: 'select 1',
   secret: 'x',
 };
-const VIOLATION = { pointer: '/validThrough', message: 'must be set' };
-const WIRE_VIOLATION = { pointer: '/validThrough', message: 'must be set' };
+const VIOLATION = { path: '/validThrough', message: 'must be set' };
+const WIRE_VIOLATION = { path: '/validThrough', message: 'must be set' };
 
 const rowWithLeak = { ...VIOLATION, sql: 'drop table', extra: 1 };
 
@@ -172,35 +172,85 @@ describe('BE03a 400 INVALID_REQUEST details allowlist', () => {
     }
   });
 
-  it('[P2-S09-AC-619] CMS-03A-18 a malformed query is refused at admission with 400 and a pointer to the failing parameter only', async () => {
+  it('[P2-S09-AC-619] CMS-03A-18 an unknown query key is refused at admission with 400 INVALID_REQUEST and no violation row', async () => {
     const op = opFor('CMS-03A-18');
     const harness = harnessFor(op);
     const response = await harness.app.request(
-      requestFor(op, { path: `${op.path}?limit=0` }),
+      requestFor(op, { path: `${op.path}?ownerId=private` }),
     );
     expect(response.status).toBe(400);
-    const details = (await bodyOf(response)).details;
-    expect(Object.keys(details)).toEqual(['violations']);
-    expect(details.violations).toEqual([
-      {
-        pointer: '/limit',
-        code: 'too_small',
-        message: 'The value is invalid.',
-      },
+    expect(((await bodyOf(response)) as { code: string }).code).toBe(
+      'INVALID_REQUEST',
+    );
+    expect(harness.ports[op.portName]).not.toHaveBeenCalled();
+  });
+
+  it('[P2-S09-AC-619] CMS-03A-18 a malformed cursor is refused at admission with 400 INVALID_REQUEST and a path to the cursor only', async () => {
+    const op = opFor('CMS-03A-18');
+    const harness = harnessFor(op);
+    const response = await harness.app.request(
+      requestFor(op, { path: `${op.path}?cursor=` }),
+    );
+    expect(response.status).toBe(400);
+    const body = await bodyOf(response);
+    expect((body as { code: string }).code).toBe('INVALID_REQUEST');
+    expect(body.details.violations).toEqual([
+      expect.objectContaining({ path: '/cursor' }),
     ]);
     expect(harness.ports[op.portName]).not.toHaveBeenCalled();
   });
+
+  it('[P2-S09-AC-619] CMS-03A-18 a mutation-only header is refused with 400 INVALID_REQUEST', async () => {
+    const op = opFor('CMS-03A-18');
+    const harness = harnessFor(op);
+    const response = await harness.app.request(
+      requestFor(op, { headers: { 'if-match': '"1"' } }),
+    );
+    expect(response.status).toBe(400);
+    expect(((await bodyOf(response)) as { code: string }).code).toBe(
+      'INVALID_REQUEST',
+    );
+    expect(harness.ports[op.portName]).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['limit', '?limit=0', '/limit', 'too_small'],
+    ['limit', '?limit=101', '/limit', 'too_big'],
+    ['sort', '?sort=createdAt', '/sort', 'invalid_value'],
+    ['direction', '?direction=up', '/direction', 'invalid_value'],
+    ['state filter', '?state=pending', '/state', 'invalid_value'],
+    ['capability filter', '?capability=cms.nope', '/capability', 'invalid_value'],
+    ['subject filter', '?subjectPersonId=x', '/subjectPersonId', 'invalid_format'],
+  ] as const)(
+    '[P2-S09-AC-622] CMS-03A-18 a %s validation failure (%s) is 422 VALIDATION_FAILED with one path violation and no port call',
+    async (_label, query, path, code) => {
+      const op = opFor('CMS-03A-18');
+      const harness = harnessFor(op);
+      const response = await harness.app.request(
+        requestFor(op, { path: `${op.path}${query}` }),
+      );
+      expect(response.status).toBe(422);
+      const body = await bodyOf(response);
+      expect((body as { code: string }).code).toBe('VALIDATION_FAILED');
+      expect(body.details).toEqual({
+        violations: [{ path, code, message: 'The value is invalid.' }],
+      });
+      expect(harness.ports[op.portName]).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('BE03a 409 CONFLICT details allowlist', () => {
   it.each(E409)(
-    '%s %s a port 409 carries only the version details, never reason, violations or policy details',
+    '%s %s a port 409 carries only the BE00 conflict details and the two versions, never reason, violations or policy details',
     async (_marker, operationId) => {
       const op = opFor(operationId);
       const harness = harnessFor(op, { port: portDetails(409) });
       const response = await harness.app.request(requestFor(op));
       expect(response.status).toBe(409);
       expect((await bodyOf(response)).details).toEqual({
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
         expectedVersion: '1',
         currentVersion: '2',
       });
@@ -212,18 +262,21 @@ describe('BE03a 409 CONFLICT details allowlist', () => {
   // and phase_02_slice_09_grant_*.sql. The database raises it with no DETAIL
   // (or a bare machine token such as MIGRATION_SOURCE_DRIFT).
   it.each(E409)(
-    '%s %s the database CONFLICT with no DETAIL reaches the wire as 409 with empty details',
+    '%s %s the database CONFLICT with no DETAIL reaches the wire as 409 with only the BE00 conflict details',
     async (_marker, operationId) => {
       const op = opFor(operationId);
       const { send } = composeProduction(op, { cms: () => raised('CONFLICT') });
       const response = await send();
       expect(response.status).toBe(409);
-      expect((await bodyOf(response)).details).toEqual({});
+      expect((await bodyOf(response)).details).toEqual({
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
+      });
     },
   );
 
   it.each(E409)(
-    '%s %s a hostile JSON DETAIL on the database CONFLICT keeps only the version details and drops reason',
+    '%s %s a hostile JSON DETAIL on the database CONFLICT keeps only the BE00 conflict details and the two versions and drops reason',
     async (_marker, operationId) => {
       const op = opFor(operationId);
       const { send } = composeProduction(op, {
@@ -237,6 +290,8 @@ describe('BE03a 409 CONFLICT details allowlist', () => {
       expect(response.status).toBe(409);
       const details = (await bodyOf(response)).details;
       expect(details).toEqual({
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
         expectedVersion: '1',
         currentVersion: '2',
       });
@@ -293,7 +348,7 @@ describe('BE03a 422 VALIDATION_FAILED details allowlist', () => {
       expect((await bodyOf(response)).details).toEqual({
         violations: [
           {
-            pointer: '/callerOwned',
+            path: '/callerOwned',
             code: 'unrecognized_keys',
             message: 'The value is invalid.',
           },

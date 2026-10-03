@@ -178,7 +178,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
           respond(
             status,
             body('VALIDATION_FAILED', {
-              violations: [{ pointer: `/${testCase.keptField}` }],
+              violations: [{ path: `/${testCase.keptField}` }],
             }),
           ),
         () => document.querySelector('[data-cms-validation-summary]') !== null,

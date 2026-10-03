@@ -228,7 +228,8 @@ export const pageFor = (input: {
       return token === undefined ? '' : token.slice('wj_csrf='.length);
     })(),
     // Server builders may carry the request id inside failure states; this is
-    // the only exit to hydration, so every diagnostic id is removed here.
+    // the only exit to hydration, so every diagnostic id is removed here except
+    // the ApiError request id of an error member or degraded state (FE03).
     initialList: withoutDiagnosticIdentifiers(input.list),
     initialDetail: withoutDiagnosticIdentifiers(input.detail),
     initialReview: withoutDiagnosticIdentifiers(input.review ?? null),

@@ -59,7 +59,14 @@ type QuerySchema<T> = Readonly<{
       }>;
 }>;
 
-/** Strict single-valued query: unknown or repeated keys are 400. */
+/**
+ * Strict single-valued query. BE03a error matrix for the protected lists:
+ * an unknown or repeated key, or a malformed cursor, is a malformed request
+ * (400 INVALID_REQUEST); a filter, sort or page value that fails its schema
+ * (limit range, sort, direction, state, capability, subject, resource kind) is
+ * a validation failure (422 VALIDATION_FAILED). Both carry only `path`
+ * violations.
+ */
 const parseStrictQuery = <T>(
   request: Request,
   schema: QuerySchema<T>,
@@ -76,9 +83,15 @@ const parseStrictQuery = <T>(
     value[key] = raw;
   }
   const parsed = schema.safeParse(value);
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : invalid('The query parameters are invalid.', issues(parsed.error));
+  if (parsed.success) return { ok: true, value: parsed.data };
+  const malformedCursor = parsed.error.issues.some(
+    (issue) => issue.path[0] === 'cursor',
+  );
+  return invalid(
+    'The query parameters are invalid.',
+    issues(parsed.error),
+    malformedCursor ? 400 : 422,
+  );
 };
 
 export const parseQuery = (
@@ -146,7 +159,7 @@ export const checkOrigin = (
         status: 403,
         code: 'FORBIDDEN',
         message: 'The request origin is not allowed.',
-        details: {},
+        details: { reasonCode: 'POLICY_NOT_MET' },
       };
 };
 
@@ -169,6 +182,6 @@ export const csrfErrorIfCookie = (
         status: 403,
         code: 'FORBIDDEN',
         message: 'A valid CSRF token is required.',
-        details: {},
+        details: { reasonCode: 'POLICY_NOT_MET' },
       };
 };
