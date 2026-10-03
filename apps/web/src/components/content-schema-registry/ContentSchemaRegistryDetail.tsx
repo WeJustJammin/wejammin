@@ -1,3 +1,4 @@
+import ContentSchemaRegistryActionRail from './ContentSchemaRegistryActionRail';
 import {
   ContentSchemaRegistryDetailArtifact,
   ContentSchemaRegistryDetailEvidence,
@@ -17,6 +18,7 @@ interface Props {
   readonly backUrl: string;
   readonly retryUrl: string;
   readonly supportReference: string;
+  readonly actingContextLabel?: string | undefined;
 }
 
 const SafeBlock = ({
@@ -58,6 +60,7 @@ export default function ContentSchemaRegistryDetail({
   backUrl,
   retryUrl,
   supportReference,
+  actingContextLabel,
 }: Props) {
   if (state === null) {
     return (
@@ -101,6 +104,11 @@ export default function ContentSchemaRegistryDetail({
           <h3 id="content-schema-registry-detail-heading">{resource.label}</h3>
         </div>
       </div>
+      <ContentSchemaRegistryActionRail
+        actingContextLabel={actingContextLabel}
+        version={state.version}
+        permittedNextActions={detail.activationPreparation.permittedNextActions}
+      />
       <ContentSchemaRegistryDetailFacts resource={resource} />
       <ContentSchemaRegistryLocaleSummaryView resource={resource} />
       <ContentSchemaRegistryDetailDefinitions detail={detail} />

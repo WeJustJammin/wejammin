@@ -37,16 +37,26 @@ describe('content schema registry command forms and interaction primitives', () 
       'defaultLocale',
       'workflowKey',
       'workflowVersion',
-      'defaultTemplateVersionId',
       'fields',
       'relations',
-      'templateBindings',
       'capabilityBindings',
       'csrf',
       'idempotency-key',
     ]) {
       expect(markup).toContain(`name="${name}"`);
     }
+    // DEC-123: a new type binds no template at creation; the form offers no
+    // template input and says where the binding is made instead.
+    for (const name of ['defaultTemplateVersionId', 'templateBindings']) {
+      expect(markup).not.toContain(`name="${name}"`);
+    }
+    expect(markup).not.toContain('content-schema-registry-template-bindings');
+    expect(markup).not.toContain(
+      'content-schema-registry-default-template-version-id',
+    );
+    expect(markup).toContain(
+      'A template is bound after creation, through a successor version.',
+    );
     expect(markup).not.toContain('ReleaseEnvelopeHeaders');
     expect(markup).toContain('Content type draft');
   });

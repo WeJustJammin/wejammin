@@ -676,6 +676,8 @@ export type Database = {
           event_id: string
           event_type: string
           lease_token: string
+          occurred_at: string
+          producer: string
           schema_version: number
         }[]
       }
@@ -7974,6 +7976,24 @@ export type Database = {
         }
         Relationships: []
       }
+      outbox_event_producers: {
+        Row: {
+          created_at: string
+          event_type_prefix: string
+          producer: string
+        }
+        Insert: {
+          created_at?: string
+          event_type_prefix: string
+          producer: string
+        }
+        Update: {
+          created_at?: string
+          event_type_prefix?: string
+          producer?: string
+        }
+        Relationships: []
+      }
       outbox_events: {
         Row: {
           aggregate_id: string
@@ -9166,6 +9186,8 @@ export type Database = {
           event_id: string
           event_type: string
           lease_token: string
+          occurred_at: string
+          producer: string
           schema_version: number
         }[]
       }
@@ -10493,6 +10515,7 @@ export type Database = {
         Returns: undefined
       }
       normalize_identity_handle: { Args: { p_handle: string }; Returns: string }
+      outbox_event_producer: { Args: { p_event_type: string }; Returns: string }
       protected_writes_allowed: { Args: never; Returns: boolean }
       read_authorized_job: {
         Args: {

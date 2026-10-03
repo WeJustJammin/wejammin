@@ -24,6 +24,20 @@ import {
 
 afterEach(closeMounted);
 
+/**
+ * DEC-123: a new content type is created without a template, so the CMS-03A-01
+ * form has no template control; the server submits these two request members as
+ * `null` and `[]` (a posted value is a 422).
+ */
+const SERVER_SUPPLIED_CREATE_MEMBERS = [
+  'defaultTemplateVersionId',
+  'templateBindings',
+];
+const withoutServerSupplied = (id: string, keys: readonly string[]) =>
+  id === 'CMS-03A-01'
+    ? keys.filter((key) => !SERVER_SUPPLIED_CREATE_MEMBERS.includes(key))
+    : [...keys];
+
 describe('form controls are exactly the generated request fields', () => {
   it.each(
     CASES.map(
@@ -31,7 +45,10 @@ describe('form controls are exactly the generated request fields', () => {
         [c.id + (c.variant === undefined ? '' : `#${c.variant}`), c] as const,
     ),
   )('[P2-S09-AC-259] [P2-S09-AC-264] %s', (_label, c) => {
-    const keys = inputKeys(c.schema)[c.variant ?? 0] as string[];
+    const keys = withoutServerSupplied(
+      c.id,
+      inputKeys(c.schema)[c.variant ?? 0] as string[],
+    );
     const controls = bodyControls(c.form());
     expect([...controls].sort()).toStrictEqual([...keys].sort());
   });
@@ -41,8 +58,13 @@ describe('form controls are exactly the generated request fields', () => {
     expect(controls).toContain('supportedLocales');
     expect(controls).toContain('fallbackChains');
     expect([...controls].sort()).toStrictEqual(
-      inputKeys(C.ContentTypeDraftRequestSchema)[0]!.slice().sort(),
+      withoutServerSupplied(
+        'CMS-03A-01',
+        inputKeys(C.ContentTypeDraftRequestSchema)[0]!,
+      ).sort(),
     );
+    expect(controls).not.toContain('defaultTemplateVersionId');
+    expect(controls).not.toContain('templateBindings');
   });
 
   it('[P2-S09-AC-259] no owner, actor, party, binding or release evidence control exists in any form', () => {

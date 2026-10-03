@@ -26468,55 +26468,95 @@
             "maxItems": 512,
             "type": "array",
             "items": {
-              "readOnly": true,
-              "type": "object",
-              "properties": {
-                "fieldId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "fieldDefinitionId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "targetKind": {
-                  "type": "string",
-                  "pattern": "^[a-z][a-z0-9._-]{0,95}$"
-                },
-                "targetId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "expectedTargetVersion": {
-                  "anyOf": [
-                    {
+              "anyOf": [
+                {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "fieldId": {
                       "type": "string",
-                      "pattern": "^[1-9][0-9]{0,18}$"
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    {
+                    "fieldDefinitionId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "targetKind": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9._-]{0,95}$"
+                    },
+                    "targetId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "expectedTargetVersion": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 511
+                    },
+                    "onUnavailable": {
+                      "type": "string",
+                      "enum": [
+                        "omit",
+                        "block",
+                        "placeholder"
+                      ]
+                    },
+                    "unavailable": {
                       "type": "null"
                     }
-                  ]
+                  },
+                  "required": [
+                    "fieldId",
+                    "fieldDefinitionId",
+                    "targetKind",
+                    "targetId",
+                    "expectedTargetVersion",
+                    "position",
+                    "onUnavailable",
+                    "unavailable"
+                  ],
+                  "additionalProperties": false
                 },
-                "position": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 511
-                },
-                "onUnavailable": {
-                  "type": "string",
-                  "enum": [
-                    "omit",
-                    "block",
-                    "placeholder"
-                  ]
-                },
-                "unavailable": {
-                  "anyOf": [
-                    {
+                {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "fieldId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "fieldDefinitionId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 511
+                    },
+                    "onUnavailable": {
+                      "type": "string",
+                      "const": "placeholder"
+                    },
+                    "unavailable": {
+                      "readOnly": true,
                       "type": "object",
                       "properties": {
                         "status": {
@@ -26533,24 +26573,18 @@
                         "reason"
                       ],
                       "additionalProperties": false
-                    },
-                    {
-                      "type": "null"
                     }
-                  ]
+                  },
+                  "required": [
+                    "fieldId",
+                    "fieldDefinitionId",
+                    "position",
+                    "onUnavailable",
+                    "unavailable"
+                  ],
+                  "additionalProperties": false
                 }
-              },
-              "required": [
-                "fieldId",
-                "fieldDefinitionId",
-                "targetKind",
-                "targetId",
-                "expectedTargetVersion",
-                "position",
-                "onUnavailable",
-                "unavailable"
-              ],
-              "additionalProperties": false
+              ]
             }
           }
         },
@@ -35073,16 +35107,7 @@
             "pattern": "^[1-9][0-9]{0,18}$"
           },
           "defaultTemplateVersionId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "null"
           },
           "fields": {
             "readOnly": true,
@@ -35348,7 +35373,7 @@
           },
           "templateBindings": {
             "readOnly": true,
-            "maxItems": 32,
+            "maxItems": 0,
             "type": "array",
             "items": {
               "readOnly": true,

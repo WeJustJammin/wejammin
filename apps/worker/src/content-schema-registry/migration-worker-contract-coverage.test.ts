@@ -118,6 +118,19 @@ describe('migration worker contracts and defensive helpers', () => {
         producer: 'x'.repeat(20_000),
       }).success,
     ).toBe(false);
+    // AC190: the producer of cms.schema.* events is the registered owner of the
+    // cms.schema. prefix (platform_private.outbox_event_producers), not any token.
+    expect(event.producer).toBe('cms.schema_registry');
+    for (const producer of [
+      'identity.authority',
+      'platform.infrastructure',
+      'cms.editorial',
+      'cms.schema_registry.x',
+    ])
+      expect(
+        SchemaMigrationQueueEnvelopeSchema.safeParse({ ...event, producer })
+          .success,
+      ).toBe(false);
     expect(
       SchemaMigrationQueueEnvelopeSchema.safeParse({ ...event, extra: true })
         .success,

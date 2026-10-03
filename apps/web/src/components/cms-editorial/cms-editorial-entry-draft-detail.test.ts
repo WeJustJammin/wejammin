@@ -34,6 +34,15 @@ const validRelation = {
   expectedTargetVersion: '4',
   position: 0,
   onUnavailable: 'omit',
+  unavailable: null,
+} as const;
+
+// AC081/AC203: the opaque fallback copies nothing of an unavailable target.
+const placeholderRelation = {
+  fieldId: uuid,
+  fieldDefinitionId: uuid2,
+  position: 0,
+  onUnavailable: 'placeholder',
   unavailable: { status: 'unavailable', reason: 'unavailable' },
 } as const;
 
@@ -214,17 +223,40 @@ describe('cms-editorial draft detail relations', () => {
     ).toBe(false);
   });
 
-  it('requires the exact unavailable marker when a target is missing', () => {
+  it('[P2-S09-AC-081] [P2-S09-AC-203] accepts the exact opaque placeholder with no target member', () => {
+    expect(
+      CmsEditorialEntryDraftRelationSchema.parse(placeholderRelation),
+    ).toEqual(placeholderRelation);
+    for (const member of [
+      { targetId: uuid },
+      { targetKind: 'block.hero' },
+      { expectedTargetVersion: '4' },
+      { title: 'Hidden' },
+    ])
+      expect(
+        CmsEditorialEntryDraftRelationSchema.safeParse({
+          ...placeholderRelation,
+          ...member,
+        }).success,
+      ).toBe(false);
+  });
+
+  it('[P2-S09-AC-081] requires the exact unavailable marker', () => {
+    for (const unavailable of [
+      { status: 'unavailable' },
+      { status: 'unavailable', reason: 'other' },
+      { status: 'unavailable', reason: 'unavailable', id: uuid },
+    ])
+      expect(
+        CmsEditorialEntryDraftRelationSchema.safeParse({
+          ...placeholderRelation,
+          unavailable,
+        }).success,
+      ).toBe(false);
     expect(
       CmsEditorialEntryDraftRelationSchema.safeParse({
         ...validRelation,
-        unavailable: { status: 'unavailable' },
-      }).success,
-    ).toBe(false);
-    expect(
-      CmsEditorialEntryDraftRelationSchema.safeParse({
-        ...validRelation,
-        unavailable: { status: 'unavailable', reason: 'other' },
+        unavailable: { status: 'unavailable', reason: 'unavailable' },
       }).success,
     ).toBe(false);
   });

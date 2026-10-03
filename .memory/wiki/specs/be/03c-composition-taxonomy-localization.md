@@ -226,15 +226,15 @@ must belong to the named content type under the same owner, and no "current" or
 cross-owner template/version/type as 404. A reference that is absent or concealed returns the typed failure `NOT_FOUND`, an
 incompatible reference `INCOMPATIBLE`, a withdrawn definition `WITHDRAWN`, and an
 `expectedTemplateVersionNo` mismatch `VERSION_MISMATCH`; the resolver is
-service-role only and every failure has zero side effects, so a success response
+DB-internal (no API role may execute it) and every failure has zero side effects, so a success response
 is the literal invariant `compatible: true` and `withdrawn: false` — the
 resolver never returns a soft `compatible: false` success body. It returns only
 the safe projection above (no owner IDs, binding manifests, slot internals, or
 renderer refs) and echoes the exact candidate `contentTypeVersionId` it proved.
 Its compatibility reflects 03c's immutable `compatible_type_ids` snapshot and
 the draft-binding compatibility guard; it never grants public delivery or
-activation authority. Only the service-role Worker may execute it (no browser
-or authenticated table access), and it is the reciprocal dependency the 03a
+activation authority. No API role may execute the `platform_api` name (P2-S09-AC-180: the Worker never calls it; the activation preflight calls the `platform_private` resolver as the function owner),
+with no browser or authenticated table access, and it is the reciprocal dependency the 03a
 activation preflight and the CMS-03C-01 create preflight both cite. No browser
 route exposes the resolver: the browser receives only the safe projection, as the
 optional `templateCompatibility` member of 03a's

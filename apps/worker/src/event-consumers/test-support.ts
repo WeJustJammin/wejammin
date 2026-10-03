@@ -18,6 +18,12 @@ export const IDS = {
 
 export const NOW = Date.parse('2026-10-02T14:00:00Z');
 
+const REGISTERED_PRODUCER: Readonly<Record<string, string>> = {
+  'cms.capability.grant.changed.v1': 'cms.schema_registry',
+  'identity.mfa-factor.changed.v1': 'identity.authority',
+  'identity.security-notification.requested.v1': 'identity.authority',
+};
+
 export const queueBody = (
   eventType: string,
   aggregateType: string,
@@ -26,6 +32,8 @@ export const queueBody = (
   eventId: IDS.event,
   eventType,
   schemaVersion: 1,
+  occurredAt: '2026-10-02T14:00:00.000Z',
+  producer: REGISTERED_PRODUCER[eventType] ?? 'identity.authority',
   aggregateType,
   aggregateId: IDS.aggregate,
   aggregateVersion: '4',

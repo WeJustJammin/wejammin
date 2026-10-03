@@ -194,39 +194,44 @@ describe('CMS-03A-01 request fields through the real route', () => {
       );
   });
 
-  it('[P2-S09-AC-045] accepts defaultTemplateVersionId as a UUID or null and relays the RPC refusal for an unreadable or incompatible reference', async () => {
-    await freshAccepted(
-      A01,
-      draftWith({ defaultTemplateVersionId: VERSION_ID }),
-    );
+  it('[P2-S09-AC-045] accepts only a null defaultTemplateVersionId at creation (DEC-123) and refuses any reference before the RPC', async () => {
     await freshAccepted(A01, draftWith({ defaultTemplateVersionId: null }));
-    for (const defaultTemplateVersionId of ['not-a-uuid', '', 5, undefined])
+    // A new type has no template yet: a compatible template names the type id,
+    // which exists only after this command, so the default is bound later
+    // through a successor version.
+    for (const defaultTemplateVersionId of [
+      VERSION_ID,
+      'not-a-uuid',
+      '',
+      5,
+      undefined,
+    ])
       await freshInvalid(
         A01,
         draftWith({ defaultTemplateVersionId }),
         '/defaultTemplateVersionId',
       );
+    const refused = makeHarness();
+    const response = await sendHuman(
+      refused,
+      A01,
+      draftWith({ defaultTemplateVersionId: VERSION_ID }),
+    );
+    expect(response.status).toBe(422);
+    expect((await bodyOf(response)).code).toBe('VALIDATION_FAILED');
+    expect(refused.ports.createTypeDraft).not.toHaveBeenCalled();
+    // A database refusal for any other clause is still relayed unchanged.
     const harness = makeHarness();
     harness.ports.createTypeDraft.mockResolvedValueOnce({
       ok: false,
       status: 422,
       code: 'VALIDATION_FAILED',
-      message: 'template incompatible',
+      message: 'type refused',
       details: {
-        violations: [
-          {
-            path: '/defaultTemplateVersionId',
-            message: 'template is not compatible',
-          },
-        ],
+        violations: [{ path: '/typeKey', message: 'type key refused' }],
       },
     });
-    const response = await sendHuman(
-      harness,
-      A01,
-      draftWith({ defaultTemplateVersionId: VERSION_ID }),
-    );
-    expect(response.status).toBe(422);
+    expect((await sendHuman(harness, A01, validDraft)).status).toBe(422);
   });
 
   it('[P2-S09-AC-046] bounds fields to 0-128 strict FieldDefinitionInput values and refuses the whole aggregate when any one is invalid', async () => {
@@ -347,36 +352,43 @@ describe('CMS-03A-01 request fields through the real route', () => {
     );
   });
 
-  it('[P2-S09-AC-049] bounds templateBindings to at most 32 immutable template-version UUID references', async () => {
+  it('[P2-S09-AC-049] accepts only an empty templateBindings array at creation (DEC-123) and refuses any binding before the RPC', async () => {
     const binding = (index: number) => ({
       templateVersionId: `a0000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
     });
     const accepted = await freshAccepted(
       A01,
-      draftWith({
-        templateBindings: Array.from({ length: 32 }, (_, i) => binding(i)),
-      }),
+      draftWith({ templateBindings: [] }),
     );
-    expect((accepted.templateBindings as unknown[]).length).toBe(32);
-    await freshInvalid(
+    expect(accepted.templateBindings).toEqual([]);
+    for (const count of [1, 32, 33])
+      await freshInvalid(
+        A01,
+        draftWith({
+          templateBindings: Array.from({ length: count }, (_, i) => binding(i)),
+        }),
+        '/templateBindings',
+      );
+    for (const templateBindings of [
+      [{ templateVersionId: 'latest' }],
+      [{ templateVersionId: VERSION_ID, label: 'x' }],
+      [VERSION_ID],
+      null,
+      {},
+    ])
+      await freshInvalid(
+        A01,
+        draftWith({ templateBindings }),
+        '/templateBindings',
+      );
+    const refused = makeHarness();
+    const response = await sendHuman(
+      refused,
       A01,
-      draftWith({
-        templateBindings: Array.from({ length: 33 }, (_, i) => binding(i)),
-      }),
-      '/templateBindings',
+      draftWith({ templateBindings: [{ templateVersionId: VERSION_ID }] }),
     );
-    await freshInvalid(
-      A01,
-      draftWith({ templateBindings: [{ templateVersionId: 'latest' }] }),
-      '/templateBindings/0/templateVersionId',
-    );
-    await freshInvalid(
-      A01,
-      draftWith({
-        templateBindings: [{ templateVersionId: VERSION_ID, label: 'x' }],
-      }),
-      '/templateBindings/0',
-    );
+    expect(response.status).toBe(422);
+    expect(refused.ports.createTypeDraft).not.toHaveBeenCalled();
   });
 
   it('[P2-S09-AC-050] bounds capabilityBindings to at most 32 protected key/version references', async () => {
@@ -451,12 +463,12 @@ describe('CMS-03A-01 request fields through the real route', () => {
 });
 
 describe('CMS-03A-01 aggregate command and response', () => {
-  it('[P2-S09-AC-003] carries type, fields, relations, template, capability and locale/workflow references in one RPC call with the idempotency key', async () => {
+  it('[P2-S09-AC-003] carries type, fields, relations, capability and locale/workflow references and no template in one RPC call with the idempotency key', async () => {
     const harness = makeHarness();
     const full = draftWith({
       fields: [FIELD_INPUT],
       relations: [RELATION],
-      templateBindings: [{ templateVersionId: VERSION_ID }],
+      templateBindings: [],
       capabilityBindings: [
         { capabilityKey: 'cms.content.article', capabilityVersion: '1' },
       ],
@@ -475,6 +487,9 @@ describe('CMS-03A-01 aggregate command and response', () => {
       body: Record<string, unknown>;
     };
     expect(input.idempotencyKey).toBe('cms-test-key-001');
+    // DEC-123: the aggregate commits no template; it is bound by a successor.
+    expect(input.body.defaultTemplateVersionId).toBeNull();
+    expect(input.body.templateBindings).toEqual([]);
     expect(Object.keys(input.body).sort()).toEqual([
       'capabilityBindings',
       'defaultLocale',

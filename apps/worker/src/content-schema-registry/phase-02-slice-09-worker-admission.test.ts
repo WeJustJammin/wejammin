@@ -250,7 +250,7 @@ describe('S09 worker content-schema-registry admission', () => {
     ['missing signature', { 'X-WeJammin-Release-Signature': '' }],
     ['internal alias', { keyId: 'release-key-1' }],
   ] as const)(
-    'rejects %s before JSON parsing and port invocation',
+    '[P2-S09-AC-026] rejects %s before JSON parsing and port invocation',
     async (_label, headers) => {
       const harness = makeHarness();
       const response = await harness.app.request(

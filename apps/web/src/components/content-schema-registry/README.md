@@ -152,6 +152,26 @@ authority from browser headers or query parameters.
   renders, each form control must equal a request field, and each generated
   error code must reach one UI class.
 
+## Responsive shell, sidebar and action rail (FE03, AC245/AC246)
+
+- `ContentSchemaRegistryShell.tsx` wraps the workbench body with the sidebar
+  and a `registry-main` size container; the CSS switches composition by that
+  container width and never changes semantics or authorization.
+- `ContentSchemaRegistrySidebar.tsx` is a persistent region from 1025 px and a
+  native button disclosure (`aria-expanded`, `aria-controls`, Escape returns
+  focus to the toggle) at 769 to 1024 px. It is hidden at 768 px and below,
+  where the route's compact navigation serves. The tab-scoped choice is kept
+  in `sessionStorage` under `wj:cms-registry-sidebar` and storage failures are
+  ignored. A review-only reader is never linked to a list or version.
+- `ContentSchemaRegistryActionRail.tsx` is owned by the version detail. It
+  cites the verified context label and the cited version and lists exactly the
+  server's `permittedNextActions`; it adds no authority of its own.
+- The grid spans by role (`-list-column`, `-detail`, `-version-side`,
+  `-command-stack`), never by position, and a column with nothing to show is
+  not rendered. Browser layout evidence lives in
+  `tests/e2e/phase-02-slice-09-registry-layout-real-route.spec.ts` and
+  `tests/e2e/phase-02-slice-09-web-vitals-real-route.spec.ts`.
+
 ## Extension rules
 
 Keep browser code free of server secrets and private evidence. Add new commands

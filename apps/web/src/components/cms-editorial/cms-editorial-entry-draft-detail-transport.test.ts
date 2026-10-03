@@ -202,6 +202,49 @@ describe('executeCmsEditorialEntryDraftDetailRead verification', () => {
     expect(result.resource).toBeNull();
   });
 
+  it('[P2-S09-AC-081] [P2-S09-AC-203] carries the opaque placeholder relation through as a success', async () => {
+    const placeholder = {
+      fieldId: FIELD_ID,
+      fieldDefinitionId: FIELD_DEFINITION_ID,
+      position: 0,
+      onUnavailable: 'placeholder',
+      unavailable: { status: 'unavailable', reason: 'unavailable' },
+    };
+    const result = await read(async () =>
+      jsonResponse(
+        200,
+        { ...draftDetail(), relations: [placeholder] },
+        { etag: draftDetailEtag() },
+      ),
+    );
+    expect(result.outcome).toBe('success');
+    expect(result.resource?.relations).toEqual([placeholder]);
+  });
+
+  it('[P2-S09-AC-203] rejects a placeholder relation that copies a target member', async () => {
+    const result = await read(async () =>
+      jsonResponse(
+        200,
+        {
+          ...draftDetail(),
+          relations: [
+            {
+              fieldId: FIELD_ID,
+              fieldDefinitionId: FIELD_DEFINITION_ID,
+              position: 0,
+              onUnavailable: 'placeholder',
+              unavailable: { status: 'unavailable', reason: 'unavailable' },
+              targetId: TARGET_ID,
+            },
+          ],
+        },
+        { etag: draftDetailEtag() },
+      ),
+    );
+    expect(result.outcome).toBe('unknown');
+    expect(result.resource).toBeNull();
+  });
+
   it('rejects a 200 whose body is not a strict EntryDraftDetailResource', async () => {
     const result = await read(async () =>
       jsonResponse(

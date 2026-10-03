@@ -57,24 +57,55 @@ export const EntryDraftFieldValueSchema = z
   })
   .readonly();
 
-/** BE03b `EntryDraftRelation`: target binding plus the unavailable policy. */
-export const EntryDraftRelationSchema = z
+/**
+ * The opaque fallback for an unavailable relation target under the
+ * `placeholder` policy: exactly `{status:'unavailable', reason:'unavailable'}`
+ * (BE03a OpaqueRelationPlaceholder, BE03b). It carries no target identifier,
+ * type, key, title, data or existence distinction.
+ */
+const OpaqueUnavailableSchema = z
+  .strictObject({
+    status: z.literal('unavailable'),
+    reason: z.literal('unavailable'),
+  })
+  .readonly();
+
+const relationPositionSchema = z.number().int().min(0).max(511);
+
+/** A relation whose target was readable on the recheck: the target binding. */
+const ResolvedEntryDraftRelationSchema = z
   .strictObject({
     fieldId: CmsUuidSchema,
     fieldDefinitionId: CmsUuidSchema,
     targetKind: CmsTargetTypeSchema,
     targetId: CmsUuidSchema,
     expectedTargetVersion: CmsVersionSchema.nullable(),
-    position: z.number().int().min(0).max(511),
+    position: relationPositionSchema,
     onUnavailable: z.enum(['omit', 'block', 'placeholder']),
-    unavailable: z
-      .strictObject({
-        status: z.literal('unavailable'),
-        reason: z.literal('unavailable'),
-      })
-      .nullable(),
+    unavailable: z.null(),
   })
   .readonly();
+
+/**
+ * A relation whose target was unavailable under the `placeholder` policy
+ * (P2-S09-AC-081, AC203). Only the field binding, the position and the policy
+ * remain; a target id, kind or version beside the fallback is refused.
+ */
+const PlaceholderEntryDraftRelationSchema = z
+  .strictObject({
+    fieldId: CmsUuidSchema,
+    fieldDefinitionId: CmsUuidSchema,
+    position: relationPositionSchema,
+    onUnavailable: z.literal('placeholder'),
+    unavailable: OpaqueUnavailableSchema,
+  })
+  .readonly();
+
+/** BE03b `EntryDraftRelation`: a resolved target binding or the opaque placeholder. */
+export const EntryDraftRelationSchema = z.union([
+  ResolvedEntryDraftRelationSchema,
+  PlaceholderEntryDraftRelationSchema,
+]);
 
 const draftDetailMetaSchema = z.strictObject(entryRevisionResourceMetaShape);
 

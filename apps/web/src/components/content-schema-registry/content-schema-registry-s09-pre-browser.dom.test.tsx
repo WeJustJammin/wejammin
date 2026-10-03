@@ -265,7 +265,7 @@ describe('[P2-S09-AC-226] [P2-S09-AC-227] block registration and lifecycle have 
     expect(OPERATION_LABELS['CMS-03A-08']).toContain('release worker only');
   });
 
-  it('keeps release material out of every browser-facing source and refetches only authorized safe block metadata after a hint', () => {
+  it('[P2-S09-AC-281] keeps release material out of every browser-facing source and refetches only authorized safe block metadata after a hint', () => {
     const dir = fromHere('./');
     const sources = readdirSync(dir).filter(
       (name) =>

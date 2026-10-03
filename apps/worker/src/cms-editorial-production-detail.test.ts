@@ -112,6 +112,42 @@ describe('CMS-03B-11 production draft-detail read port', () => {
     });
   });
 
+  it('[P2-S09-AC-203] admits the database placeholder relation and rejects a target member beside it', async () => {
+    const placeholderRelation = {
+      fieldId: ENTRY_ID,
+      fieldDefinitionId: REVISION_ID,
+      position: 0,
+      onUnavailable: 'placeholder',
+      unavailable: { status: 'unavailable', reason: 'unavailable' },
+    };
+    const accepted = createProductionCmsEditorialDependencies({
+      environment,
+      fetchImpl: vi.fn(async () =>
+        json({ ...resource, relations: [placeholderRelation] }),
+      ) as unknown as typeof fetch,
+      humanOrigins: ['https://cms.example.test'],
+    });
+    expect(
+      await accepted.ports.getEntryDraft(input(), new AbortController().signal),
+    ).toMatchObject({
+      ok: true,
+      value: { relations: [placeholderRelation] },
+    });
+    const leaky = createProductionCmsEditorialDependencies({
+      environment,
+      fetchImpl: vi.fn(async () =>
+        json({
+          ...resource,
+          relations: [{ ...placeholderRelation, targetId: ENTRY_ID }],
+        }),
+      ) as unknown as typeof fetch,
+      humanOrigins: ['https://cms.example.test'],
+    });
+    expect(
+      await leaky.ports.getEntryDraft(input(), new AbortController().signal),
+    ).toMatchObject({ ok: false, status: 502 });
+  });
+
   it('rejects malformed RPC success before a draft reaches the route', async () => {
     const fetchImpl = vi.fn(async () => json({ ...resource, secret: 'leak' }));
     const dependencies = createProductionCmsEditorialDependencies({

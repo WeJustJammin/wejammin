@@ -33,6 +33,14 @@ import {
   refineLocaleConfig,
 } from './locale-config.ts';
 
+/**
+ * DEC-123: a brand-new content type carries no template. A compatible template
+ * names the type id, which exists only after this command commits, so a default
+ * template or a template binding is bound later, through a successor version
+ * (CMS-03A-09). The members stay in the strict request so the wire shape is
+ * unchanged, but a present value is a 422: `defaultTemplateVersionId` must be
+ * null and `templateBindings` empty.
+ */
 export const ContentTypeDraftRequestSchema = z
   .strictObject({
     typeKey: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/u),
@@ -44,10 +52,10 @@ export const ContentTypeDraftRequestSchema = z
     fallbackChains: CmsFallbackChainsSchema,
     workflowKey: CmsWorkflowKeySchema,
     workflowVersion: CmsVersionSchema,
-    defaultTemplateVersionId: CmsUuidSchema.nullable(),
+    defaultTemplateVersionId: z.null(),
     fields: z.array(FieldDefinitionInputSchema).max(128).readonly(),
     relations: z.array(RelationBindingInputSchema).max(128).readonly(),
-    templateBindings: z.array(TemplateBindingInputSchema).max(32).readonly(),
+    templateBindings: z.array(TemplateBindingInputSchema).max(0).readonly(),
     capabilityBindings: z
       .array(CapabilityBindingInputSchema)
       .max(32)

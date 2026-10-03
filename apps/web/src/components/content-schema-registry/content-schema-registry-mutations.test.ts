@@ -259,6 +259,75 @@ describe('content schema registry mutation facade', () => {
     expect(body.fallbackChains).toEqual({ fr: ['en-US'] });
   });
 
+  it('[P2-S09-AC-003] [P2-S09-AC-045] [P2-S09-AC-049] submits the template-free create form as a null default and no bindings', async () => {
+    const form = {
+      typeKey: 'release_note',
+      label: 'Release note',
+      ownerCapability: 'cms.schema_designer',
+      sourceLocale: 'en-US',
+      defaultLocale: 'en-US',
+      supportedLocales: '["en-US"]',
+      fallbackChains: '{}',
+      workflowKey: 'cms.content.workflow',
+      workflowVersion: '1',
+      fields: '[]',
+      relations: '[]',
+      capabilityBindings: '[]',
+    };
+    const { response, forwarded } = await call(
+      { operationId: 'CMS-03A-01' },
+      form,
+      typeResource,
+      {},
+      'application/x-www-form-urlencoded',
+    );
+    expect(response.status).toBe(201);
+    const body = (await forwarded?.clone().json()) as Record<string, unknown>;
+    expect(body.defaultTemplateVersionId).toBeNull();
+    expect(body.templateBindings).toEqual([]);
+  });
+
+  it.each([
+    [
+      'a default template version',
+      { defaultTemplateVersionId: '4f5d7c0e-0b50-4c43-a4a3-0d6a4f3b7c11' },
+    ],
+    [
+      'a template binding',
+      {
+        templateBindings:
+          '[{"templateVersionId":"4f5d7c0e-0b50-4c43-a4a3-0d6a4f3b7c11"}]',
+      },
+    ],
+  ])(
+    '[P2-S09-AC-045] [P2-S09-AC-049] refuses a posted create form carrying %s before any dependency call',
+    async (_name, extra) => {
+      const { response, binding } = await call(
+        { operationId: 'CMS-03A-01' },
+        {
+          typeKey: 'release_note',
+          label: 'Release note',
+          ownerCapability: 'cms.schema_designer',
+          sourceLocale: 'en-US',
+          defaultLocale: 'en-US',
+          supportedLocales: '["en-US"]',
+          fallbackChains: '{}',
+          workflowKey: 'cms.content.workflow',
+          workflowVersion: '1',
+          fields: '[]',
+          relations: '[]',
+          capabilityBindings: '[]',
+          ...extra,
+        },
+        typeResource,
+        {},
+        'application/x-www-form-urlencoded',
+      );
+      expect(response.status).toBe(422);
+      expect(binding.fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it('[P2-S09-AC-1230] returns the exact locale messages and pointers for an invalid create', async () => {
     const { response, binding } = await call(
       { operationId: 'CMS-03A-01' },

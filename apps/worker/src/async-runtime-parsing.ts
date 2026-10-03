@@ -134,6 +134,8 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
   const aggregateVersion = value.aggregateVersion ?? value.aggregate_version;
   const correlationId = value.correlationId ?? value.correlation_id;
   const causationId = value.causationId ?? value.causation_id ?? null;
+  const occurredAt = value.occurredAt ?? value.occurred_at;
+  const producer = value.producer;
   const version = toVersion(aggregateVersion);
   if (
     !isUuid(outboxId) ||
@@ -159,11 +161,24 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
     eventType,
     schemaVersion,
   };
-  const envelope =
-    eventType === 'job.requested'
-      ? QueueEnvelopeSchema.parse(fields)
-      : ConsumerQueueEnvelopeSchema.parse(fields);
-  return { envelope, leaseToken, outboxId };
+  if (eventType === 'job.requested') {
+    return {
+      envelope: QueueEnvelopeSchema.parse(fields),
+      leaseToken,
+      outboxId,
+    };
+  }
+  // BE00 envelope members that the outbox row does not store: the instant is the
+  // row's own occurred_at and the producer is the registered owner of the
+  // event-type prefix, both resolved by the claim. The consumer schema pins the
+  // producer per event type, so a claim naming another producer is refused.
+  const consumerEnvelope = ConsumerQueueEnvelopeSchema.safeParse({
+    ...fields,
+    occurredAt,
+    producer,
+  });
+  if (!consumerEnvelope.success) return null;
+  return { envelope: consumerEnvelope.data, leaseToken, outboxId };
 };
 
 export const parseBoolean = (value: unknown, message: string): boolean => {

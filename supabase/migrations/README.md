@@ -334,6 +334,26 @@ RED-first pgTAP test in `../tests/phase_02_slice_09_p240_*.sql`):
 - `210000` reserved-concept keys are refused for blocks and template manifests.
 - `211000` `cms_create_entry` refuses a locale outside the active version's `supportedLocales`.
 
+### Slice 09 P240 database rulings (`20261002212000`-`20261002215000`)
+
+Forward-only migrations for the 2026-10-03 P240-db rulings (each has a RED-first pgTAP test):
+
+- `212000` AC180 security-first API trim: `platform_api.cms_resolve_template_compatibility` and
+  `platform_api.cms_validate_locale_config` stay (the specification names them, and definer RPCs
+  use the validator) but no API role can execute them; the exact executable cms_ set is guarded by
+  `../tests/phase_02_slice_09_r8_api_surface.sql` and, against the callers, by
+  `tests/contracts/phase-02-slice-09-api-surface-callers.test.ts`.
+- `213000` AC190 outbox producer: the code-owned, immutable `outbox_event_producers` event-type-prefix
+  map, `outbox_event_producer(event_type)`, and `claim_outbox_batch` returning `occurred_at` and the
+  registered `producer` so the dispatched envelope carries both
+  (`../tests/phase_02_slice_09_p240_outbox_producer.sql`, `phase_02_slice_09_g1_consumer_boundary.sql`).
+- `214000` AC081/AC203: `cms_get_entry_draft` returns the exact opaque placeholder relation for an
+  unavailable target under the `placeholder` policy (`omit` still disappears, `block` still refuses)
+  (`../tests/phase_02_slice_09_p240_relation_placeholder.sql`).
+- `215000` DEC-123: `cms_create_type_draft` refuses a default template or template binding outright
+  (422) and has no template-binding write; a successor version carries the source's template
+  forward (`../tests/phase_02_slice_09_p240_dec123_template_binding.sql`).
+
 ## Related links
 
 - `../tests/README.md`

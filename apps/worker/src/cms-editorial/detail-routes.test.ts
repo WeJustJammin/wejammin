@@ -152,6 +152,83 @@ describe('CMS-03B-11 protected draft-detail route', () => {
     expect(after.headers.get('cache-control')).toBe('no-store');
   });
 
+  it('[P2-S09-AC-081] [P2-S09-AC-203] serves the exact opaque placeholder for an unavailable target and nothing of the target', async () => {
+    const placeholder: EntryDraftDetailResource = {
+      ...draft,
+      relations: [
+        {
+          fieldId: '50000000-0000-4000-8000-000000000005',
+          fieldDefinitionId: '50000000-0000-4000-8000-000000000005',
+          position: 0,
+          onUnavailable: 'placeholder',
+          unavailable: { status: 'unavailable', reason: 'unavailable' },
+        },
+      ],
+    };
+    const { app } = harness({
+      ports: {
+        appendRevision: unavailable,
+        getEntryDraft: async () => ({ ok: true, value: placeholder }),
+      },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    expect(JSON.parse(text)).toEqual(placeholder);
+    expect(JSON.parse(text).relations[0]).toEqual({
+      fieldId: '50000000-0000-4000-8000-000000000005',
+      fieldDefinitionId: '50000000-0000-4000-8000-000000000005',
+      position: 0,
+      onUnavailable: 'placeholder',
+      unavailable: { status: 'unavailable', reason: 'unavailable' },
+    });
+    expect(text).not.toContain('targetId');
+    expect(text).not.toContain('targetKind');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it.each([
+    [
+      'a target id beside the placeholder marker',
+      {
+        targetKind: 'content',
+        targetId: '60000000-0000-4000-8000-000000000006',
+        expectedTargetVersion: '1',
+      },
+    ],
+    ['a target kind beside the placeholder marker', { targetKind: 'content' }],
+    ['a title copied into the placeholder', { title: 'Hidden target' }],
+  ])(
+    '[P2-S09-AC-203] refuses %s as invalid dependency data without echoing it',
+    async (_name, extra) => {
+      const leaky = {
+        ...draft,
+        relations: [
+          {
+            fieldId: '50000000-0000-4000-8000-000000000005',
+            fieldDefinitionId: '50000000-0000-4000-8000-000000000005',
+            position: 0,
+            onUnavailable: 'placeholder',
+            unavailable: { status: 'unavailable', reason: 'unavailable' },
+            ...extra,
+          },
+        ],
+      } as unknown as EntryDraftDetailResource;
+      const { app } = harness({
+        ports: {
+          appendRevision: unavailable,
+          getEntryDraft: async () => ({ ok: true, value: leaky }),
+        },
+      });
+      const response = await get(app);
+      expect(response.status).toBe(502);
+      const text = await response.text();
+      expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe('BAD_GATEWAY');
+      expect(text).not.toContain('60000000-0000-4000-8000-000000000006');
+      expect(text).not.toContain('Hidden target');
+    },
+  );
+
   it('does not reuse a draft-detail ETag across actor contexts', async () => {
     const first = await get(harness().app);
     const second = await get(

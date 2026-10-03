@@ -97,11 +97,11 @@ select pg_temp.s09d_rpc('t:template', 'platform_api.cms_define_template', 'owner
 select pg_temp.s09d_remember('t:templateVersion', (pg_temp.s09d_resp('t:template')->>'id')::uuid);
 select is(pg_temp.s09d_outcome('t:template'), 'OK', 'fixture: a real template version is defined through CMS-03C-01 [P2-S09-AC-045]');
 select is(pg_temp.p_run('tpl:own', pg_temp.p_base(pg_temp.p_key('tplown'), jsonb_build_object('defaultTemplateVersionId', pg_temp.s09d_id('t:templateVersion'))), 'VALIDATION_FAILED'), 'ok',
-  'a present reference to a real template version of the same owner is refused whole: its compatible_type_ids cannot contain a type that does not exist yet [P2-S09-AC-045]');
+  'a present reference to a real template version of the same owner is refused whole (DEC-123: a new type is created without a template; its compatible_type_ids cannot contain a type that does not exist yet) [P2-S09-AC-045]');
 select is((select count(*)::integer from platform_private.cms_template_versions tv
     where tv.id = pg_temp.s09d_id('t:templateVersion') and tv.owner_id = pg_temp.s09d_id('ownerOrg')
       and tv.compatible_type_ids = jsonb_build_array(pg_temp.s09d_id('t:type')::text)), 1,
-  'fixture: that template is compatible only with the already active type, so the refusal is the compatibility clause, not a missing template [P2-S09-AC-045]');
+  'fixture: that template is compatible only with the already active type, so the refusal is the DEC-123 no-template rule, not a missing template [P2-S09-AC-045]');
 select is(pg_temp.p_run('tpl:null', pg_temp.p_base('p240_tpl_null', '{"defaultTemplateVersionId":null}'), 'OK'), 'ok',
   'null is accepted: a type may have no default template [P2-S09-AC-045]');
 select is(pg_temp.p_run('tpl:' || c.n, pg_temp.p_base(pg_temp.p_key('tpl' || c.n), jsonb_build_object('defaultTemplateVersionId', c.v)), 'VALIDATION_FAILED'), 'ok',
@@ -254,7 +254,7 @@ select is(pg_temp.p_run('r:dup', pg_temp.p_base(pg_temp.p_key('rdup'), jsonb_bui
 -- ======================================================= AC049 templateBindings ====
 select is(pg_temp.p_run('tb:real', pg_temp.p_base(pg_temp.p_key('tbreal'), jsonb_build_object('templateBindings',
     jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.s09d_id('t:templateVersion'))))), 'VALIDATION_FAILED'), 'ok',
-  'a binding to a real template version of the same owner is refused whole: it is not compatible with the not-yet-created type, and nothing is committed [P2-S09-AC-049]');
+  'a binding to a real template version of the same owner is refused whole (DEC-123: a new type binds no template; it is bound through a successor), and nothing is committed [P2-S09-AC-049]');
 select is(pg_temp.p_run('tb:' || c.n, pg_temp.p_base(pg_temp.p_key('tb' || c.n), jsonb_build_object('templateBindings', c.v)), 'VALIDATION_FAILED'), 'ok',
   'templateBindings ' || c.n || ' is refused and nothing is committed [P2-S09-AC-049]')
 from (values

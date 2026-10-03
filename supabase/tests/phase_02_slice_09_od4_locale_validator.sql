@@ -32,8 +32,11 @@ language sql immutable as $body$
   select jsonb_build_object('path', p_path, 'message', p_message) $body$;
 
 -- ------------------------------------------------ the pure validator ----
-select ok(pg_temp.s09d_service_only('platform_api.cms_validate_locale_config(text, text, jsonb, jsonb)'),
-  'cms_validate_locale_config is a service-role-only wrapper [P2-S09-AC-1203]');
+select ok(to_regprocedure('platform_api.cms_validate_locale_config(text, text, jsonb, jsonb)') is not null
+    and not has_function_privilege('service_role', to_regprocedure('platform_api.cms_validate_locale_config(text, text, jsonb, jsonb)'), 'execute')
+    and not has_function_privilege('authenticated', to_regprocedure('platform_api.cms_validate_locale_config(text, text, jsonb, jsonb)'), 'execute')
+    and not has_function_privilege('anon', to_regprocedure('platform_api.cms_validate_locale_config(text, text, jsonb, jsonb)'), 'execute'),
+  'cms_validate_locale_config is a pure DB-internal validator no API role can execute (the draft and successor RPCs run it as definer) [P2-S09-AC-1203] [P2-S09-AC-180]');
 select is(pg_temp.od4_v('en-US', 'en-US', '["en-US"]', '{}'), '[]'::jsonb,
   '{} chains are valid exactly when supportedLocales is [defaultLocale]');
 select is(pg_temp.od4_v('en-US', 'en-US', '["en-US","fr-FR","pt-BR"]',

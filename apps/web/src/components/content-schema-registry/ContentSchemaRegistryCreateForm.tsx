@@ -82,13 +82,9 @@ export default function ContentSchemaRegistryCreateForm({
         label="Workflow version"
         maxLength={32}
       />
-      <TextField
-        id="content-schema-registry-default-template-version-id"
-        name="defaultTemplateVersionId"
-        label="Default template version ID (optional)"
-        required={false}
-        help="Leave blank to submit null."
-      />
+      <p id="content-schema-registry-template-note">
+        A template is bound after creation, through a successor version.
+      </p>
       <JsonField
         id="content-schema-registry-fields"
         name="fields"
@@ -102,13 +98,6 @@ export default function ContentSchemaRegistryCreateForm({
         label="Relation bindings (JSON array)"
         defaultValue="[]"
         help="Use only the generated RelationBindingInput fields."
-      />
-      <JsonField
-        id="content-schema-registry-template-bindings"
-        name="templateBindings"
-        label="Template bindings (JSON array)"
-        defaultValue="[]"
-        help="Use only templateVersionId values returned by the server."
       />
       <JsonField
         id="content-schema-registry-capability-bindings"

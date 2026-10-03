@@ -8,6 +8,7 @@ import ContentSchemaRegistryActivationPreparation from './ContentSchemaRegistryA
 import ContentSchemaRegistryCreateForm from './ContentSchemaRegistryCreateForm';
 import ContentSchemaRegistryReviewMode from './ContentSchemaRegistryReviewMode';
 import ContentSchemaRegistryReviewPanel from './ContentSchemaRegistryReviewPanel';
+import ContentSchemaRegistryShell from './ContentSchemaRegistryShell';
 import ContentSchemaRegistryVersionCommands from './ContentSchemaRegistryVersionCommands';
 import ContentSchemaRegistryWorkbenchBanners from './ContentSchemaRegistryWorkbenchBanners';
 import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
@@ -55,6 +56,10 @@ export default function ContentSchemaRegistryWorkbench({
     (initialDetail === null ||
       initialList.status !== 'empty' ||
       initialList.reason !== 'no-records');
+  // A column with nothing to show is never reserved: a lone detail takes the row.
+  const showListColumn =
+    (hasListState && initialList.status === 'success') ||
+    (access === 'full' && initialDetail === null);
   const activeFilterSummary = contentSchemaRegistryFilterSummary(query);
   const resultCount =
     initialList.status === 'success'
@@ -100,113 +105,124 @@ export default function ContentSchemaRegistryWorkbench({
           disclosure-safe block references.
         </p>
       </header>
-      <ContentSchemaRegistryWorkbenchBanners
-        loading={loading}
-        offline={offline}
-        message={message}
-      />
-      {variant === 'schemaReviewAssigned' ? null : (
-        <ContentSchemaRegistryCapabilityGate
-          variant={access}
-          reasonCode={variant}
+      <ContentSchemaRegistryShell
+        listUrl={listUrl}
+        reviewMode={reviewMode}
+        reviewOnly={variant === 'schemaReviewAssigned'}
+        detail={initialDetail}
+        actingContextLabel={actingContextLabel}
+      >
+        <ContentSchemaRegistryWorkbenchBanners
+          loading={loading}
+          offline={offline}
+          message={message}
         />
-      )}
-      {!reviewMode && (access === 'read-only' || access === 'full') ? (
-        <ContentSchemaRegistryFilterBar
-          query={query}
-          canonicalUrl={canonicalUrl}
-        />
-      ) : null}
-      {hasListState ? (
-        <ContentSchemaRegistryStatus
-          state={initialList}
-          regionLabel="Registry list"
-          supportReference={supportReference}
-          canonicalUrl={retryUrl}
-          resetUrl={canonicalUrl}
-          {...(resultCount === undefined ? {} : { resultCount })}
-          activeFilterSummary={activeFilterSummary}
-        />
-      ) : null}
-      {reviewMode ? (
-        <ContentSchemaRegistryReviewMode
-          reviewId={reviewId}
-          state={initialReview}
-          variant={variant}
-          access={access}
-          retryUrl={retryUrl}
-          supportReference={supportReference}
-          csrfToken={csrfToken}
-          idempotencyKey={idempotencyKey}
-          stepUpState={stepUpState ?? 'required'}
-          stepUpFreshUntil={stepUpFreshUntil}
-          actingContextLabel={actingContextLabel}
-        />
-      ) : (
-        <div className="content-schema-registry-grid">
-          <div>
-            {hasListState && initialList.status === 'success' ? (
-              <ContentSchemaRegistryList
-                page={initialList.data}
-                canonicalUrl={canonicalUrl}
-                listUrl={listUrl}
-                sort={{ sort: query.sort, direction: query.direction }}
-                query={query}
-              />
+        {variant === 'schemaReviewAssigned' ? null : (
+          <ContentSchemaRegistryCapabilityGate
+            variant={access}
+            reasonCode={variant}
+          />
+        )}
+        {!reviewMode && (access === 'read-only' || access === 'full') ? (
+          <ContentSchemaRegistryFilterBar
+            query={query}
+            canonicalUrl={canonicalUrl}
+          />
+        ) : null}
+        {hasListState ? (
+          <ContentSchemaRegistryStatus
+            state={initialList}
+            regionLabel="Registry list"
+            supportReference={supportReference}
+            canonicalUrl={retryUrl}
+            resetUrl={canonicalUrl}
+            {...(resultCount === undefined ? {} : { resultCount })}
+            activeFilterSummary={activeFilterSummary}
+          />
+        ) : null}
+        {reviewMode ? (
+          <ContentSchemaRegistryReviewMode
+            reviewId={reviewId}
+            state={initialReview}
+            variant={variant}
+            access={access}
+            retryUrl={retryUrl}
+            supportReference={supportReference}
+            csrfToken={csrfToken}
+            idempotencyKey={idempotencyKey}
+            stepUpState={stepUpState ?? 'required'}
+            stepUpFreshUntil={stepUpFreshUntil}
+            actingContextLabel={actingContextLabel}
+          />
+        ) : (
+          <div className="content-schema-registry-grid">
+            {showListColumn ? (
+              <div className="content-schema-registry-list-column">
+                {hasListState && initialList.status === 'success' ? (
+                  <ContentSchemaRegistryList
+                    page={initialList.data}
+                    canonicalUrl={canonicalUrl}
+                    listUrl={listUrl}
+                    sort={{ sort: query.sort, direction: query.direction }}
+                    query={query}
+                  />
+                ) : null}
+                {access === 'full' && initialDetail === null ? (
+                  <ContentSchemaRegistryCreateForm
+                    action={canonicalUrl}
+                    csrfToken={csrfToken}
+                    idempotencyKey={idempotencyKey('CMS-03A-01')}
+                  />
+                ) : null}
+              </div>
             ) : null}
-            {access === 'full' && initialDetail === null ? (
-              <ContentSchemaRegistryCreateForm
-                action={canonicalUrl}
+            <ContentSchemaRegistryDetail
+              state={initialDetail}
+              backUrl={listUrl}
+              retryUrl={retryUrl}
+              supportReference={supportReference}
+              actingContextLabel={actingContextLabel}
+            />
+            {prepared === null ? null : (
+              <div className="content-schema-registry-version-side">
+                <ContentSchemaRegistryActivationPreparation
+                  preparation={prepared.activationPreparation}
+                  review={initialReview}
+                  {...(degradedDetail === null
+                    ? {}
+                    : {
+                        degraded: {
+                          lastVerifiedAt: degradedDetail.lastVerifiedAt,
+                        },
+                      })}
+                  onCanonicalRefetch={() => {
+                    void onCanonicalRefetch('detail-read');
+                  }}
+                />
+                <ContentSchemaRegistryReviewPanel
+                  state={initialReview}
+                  retryUrl={retryUrl}
+                  supportReference={supportReference}
+                />
+              </div>
+            )}
+            {access === 'full' && detail !== null ? (
+              <ContentSchemaRegistryVersionCommands
+                detail={detail}
+                review={initialReview}
+                action={detailAction}
                 csrfToken={csrfToken}
-                idempotencyKey={idempotencyKey('CMS-03A-01')}
+                idempotencyKey={idempotencyKey}
+                expectedVersion={ready?.version ?? '1'}
+                actingContextLabel={actingContextLabel}
+                stepUpState={stepUpState}
+                stepUpFreshUntil={stepUpFreshUntil}
+                contextEpoch={contextEpoch}
               />
             ) : null}
           </div>
-          <ContentSchemaRegistryDetail
-            state={initialDetail}
-            backUrl={listUrl}
-            retryUrl={retryUrl}
-            supportReference={supportReference}
-          />
-          {prepared === null ? null : (
-            <div className="content-schema-registry-version-side">
-              <ContentSchemaRegistryActivationPreparation
-                preparation={prepared.activationPreparation}
-                review={initialReview}
-                {...(degradedDetail === null
-                  ? {}
-                  : {
-                      degraded: {
-                        lastVerifiedAt: degradedDetail.lastVerifiedAt,
-                      },
-                    })}
-                onCanonicalRefetch={() => {
-                  void onCanonicalRefetch('detail-read');
-                }}
-              />
-              <ContentSchemaRegistryReviewPanel
-                state={initialReview}
-                retryUrl={retryUrl}
-                supportReference={supportReference}
-              />
-            </div>
-          )}
-          {access === 'full' && detail !== null ? (
-            <ContentSchemaRegistryVersionCommands
-              detail={detail}
-              review={initialReview}
-              action={detailAction}
-              csrfToken={csrfToken}
-              idempotencyKey={idempotencyKey}
-              expectedVersion={ready?.version ?? '1'}
-              actingContextLabel={actingContextLabel}
-              stepUpState={stepUpState}
-              stepUpFreshUntil={stepUpFreshUntil}
-              contextEpoch={contextEpoch}
-            />
-          ) : null}
-        </div>
-      )}
+        )}
+      </ContentSchemaRegistryShell>
       <span
         className="visually-hidden"
         data-canonical-refetch={canonicalRefetchBinding}

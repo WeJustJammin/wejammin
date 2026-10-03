@@ -12,6 +12,7 @@ import {
 
 import ContentSchemaRegistryFilterBar from './ContentSchemaRegistryFilterBar';
 import ContentSchemaRegistryList from './ContentSchemaRegistryList';
+import ContentSchemaRegistryOfflineStatus from './ContentSchemaRegistryOfflineStatus';
 import ContentSchemaRegistrySyncConflict from './ContentSchemaRegistrySyncConflict';
 import { renderConflict } from './content-schema-registry-runtime-dom-renderers';
 import {
@@ -309,6 +310,33 @@ describe('[P2-S09-AC-241] OfflineStatus and SyncConflict use text plus an icon',
     expect(doc.body.textContent).toContain('Server version: 5');
     expect(doc.body.textContent).toContain('Local version: 4');
     expect(heading?.getAttribute('aria-labelledby')).toBeNull();
+  });
+
+  it('OfflineStatus leads its heading with a decorative icon, states both versions and the retained-intent count, and offers an explicit retry', () => {
+    const doc = new DOMParser().parseFromString(
+      `<body>${renderToStaticMarkup(
+        <ContentSchemaRegistryOfflineStatus
+          connectivity="offline"
+          intents={0}
+          serverVersion="5"
+          localVersion="4"
+        />,
+      )}</body>`,
+      'text/html',
+    );
+    const heading = doc.querySelector('h3');
+    expect(
+      heading?.querySelector('[aria-hidden="true"]')?.textContent?.trim()
+        .length,
+    ).toBeGreaterThan(0);
+    expect(heading?.textContent).toContain('Registry is offline');
+    expect(doc.body.textContent).toContain('Server version');
+    expect(doc.body.textContent).toContain('Local version');
+    expect(doc.body.textContent).toContain('Retained intents');
+    expect(doc.querySelector('section')?.getAttribute('role')).toBe('status');
+    expect(doc.querySelector('button')?.textContent).toBe(
+      'Retry canonical read',
+    );
   });
 
   it('the conflict the DOM runtime opens on a 409 carries the same icon and both versions', () => {

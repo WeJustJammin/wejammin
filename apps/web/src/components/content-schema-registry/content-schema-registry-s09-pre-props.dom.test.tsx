@@ -34,7 +34,7 @@ const VARIANTS: readonly ContentSchemaRegistryVariant[] = [
   'disabledPrerequisite',
 ];
 
-describe('Workbench props contract (AC220 as reworded)', () => {
+describe('[P2-S09-AC-220] Workbench props contract (AC220 as reworded)', () => {
   it('has children: never - an element child is never rendered', () => {
     const markup = renderToStaticMarkup(
       React.createElement(

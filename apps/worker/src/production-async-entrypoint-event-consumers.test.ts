@@ -31,6 +31,10 @@ const body = (
   eventId: '11111111-1111-4111-8111-111111111111',
   eventType,
   schemaVersion: 1,
+  occurredAt: '2026-10-02T14:00:00.000Z',
+  producer: eventType.startsWith('cms.')
+    ? 'cms.schema_registry'
+    : 'identity.authority',
   aggregateType,
   aggregateId: AGGREGATE,
   aggregateVersion: '4',

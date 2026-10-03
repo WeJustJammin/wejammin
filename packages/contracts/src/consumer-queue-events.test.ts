@@ -9,9 +9,17 @@ import {
   isConsumerEventType,
 } from './consumer-queue-events.ts';
 
+const PRODUCER: Record<string, string> = {
+  [CONSUMER_EVENT_TYPE.capabilityGrantChanged]: 'cms.schema_registry',
+  [CONSUMER_EVENT_TYPE.mfaFactorChanged]: 'identity.authority',
+  [CONSUMER_EVENT_TYPE.securityNotificationRequested]: 'identity.authority',
+};
+
 const envelope = (patch: Record<string, unknown>) => ({
   eventId: '11111111-1111-4111-8111-111111111111',
   schemaVersion: 1,
+  occurredAt: '2026-10-02T14:00:00.000Z',
+  producer: PRODUCER[String(patch.eventType)],
   aggregateId: '22222222-2222-4222-8222-222222222222',
   aggregateVersion: '3',
   correlationId: '33333333-3333-4333-8333-333333333333',
@@ -112,4 +120,68 @@ describe('consumer queue event envelopes', () => {
         false,
       );
   });
+
+  it.each([
+    [
+      CONSUMER_EVENT_TYPE.capabilityGrantChanged,
+      'cms_capability_grant',
+      'cms.schema_registry',
+      CmsCapabilityGrantChangedQueueEnvelopeSchema,
+    ],
+    [
+      CONSUMER_EVENT_TYPE.mfaFactorChanged,
+      'mfa_factor',
+      'identity.authority',
+      IdentityMfaFactorChangedQueueEnvelopeSchema,
+    ],
+    [
+      CONSUMER_EVENT_TYPE.securityNotificationRequested,
+      'security_event',
+      'identity.authority',
+      IdentitySecurityNotificationQueueEnvelopeSchema,
+    ],
+  ])(
+    '[P2-S09-AC-190] %s carries occurredAt and its registered producer and nothing outside the BE00 identifier members',
+    (eventType, aggregateType, producer, schema) => {
+      const valid = envelope({ eventType, aggregateType });
+      expect(Object.keys(schema.parse(valid)).sort()).toEqual(
+        [
+          'aggregateId',
+          'aggregateType',
+          'aggregateVersion',
+          'causationId',
+          'correlationId',
+          'eventId',
+          'eventType',
+          'occurredAt',
+          'producer',
+          'schemaVersion',
+        ].sort(),
+      );
+      expect(schema.parse(valid).producer).toBe(producer);
+      const withoutInstant = Object.fromEntries(
+        Object.entries(valid).filter(([name]) => name !== 'occurredAt'),
+      );
+      const withoutProducer = Object.fromEntries(
+        Object.entries(valid).filter(([name]) => name !== 'producer'),
+      );
+      for (const invalid of [
+        withoutInstant,
+        withoutProducer,
+        { ...valid, occurredAt: 'yesterday' },
+        { ...valid, occurredAt: '2026-10-02 14:00:00' },
+        { ...valid, producer: 'identity.other' },
+        {
+          ...valid,
+          producer:
+            'cms.schema_registry' === producer
+              ? 'identity.authority'
+              : 'cms.schema_registry',
+        },
+        { ...valid, producer: null },
+        { ...valid, payload: { grantId: valid.aggregateId } },
+      ])
+        expect(schema.safeParse(invalid).success).toBe(false);
+    },
+  );
 });

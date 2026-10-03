@@ -502,6 +502,15 @@ policy: omit has no target-dependent response detail, and block returns only a
 generic unavailable outcome. The registry's immutable `onUnavailable` value is
 the sole behavior selector; request metadata cannot select a target or fallback.
 
+In the authoring draft read (CMS-03B-11) an unavailable target under the
+`placeholder` policy is returned in place of the target as an `EntryDraftRelation`
+that carries only `fieldId`, `fieldDefinitionId`, `position`, `onUnavailable:
+'placeholder'` and the fixed `unavailable` object, so a deleted, private,
+embargoed, concealed, stale or absent target is indistinguishable and no target
+ID, kind, version, key, title or data accompanies the fallback; a resolved
+relation always carries `unavailable: null`, and a relation can never carry both
+a target and the fallback (P2-S09-AC-081, AC203).
+
 `schemaHash` identifies the normalized content-type definition; `schemaArtifact`
 identifies the immutable compiled artifact. Its `compilerVersion` MUST equal the
 `VersionSet.compilerVersion`, and its `contentTypeVersionId` MUST equal the
@@ -849,7 +858,12 @@ const EntryDraftFieldValue = z.strictObject({
   ]),
   valueHash: Hash.nullable(),
 });
-const EntryDraftRelation = z.strictObject({
+const OpaqueUnavailable = z.strictObject({
+  status: z.literal('unavailable'),
+  reason: z.literal('unavailable'),
+});
+// A target the recheck found readable: the target binding, with no placeholder.
+const ResolvedEntryDraftRelation = z.strictObject({
   fieldId: UUID,
   fieldDefinitionId: UUID,
   targetKind: z.string().regex(/^[a-z][a-z0-9._-]{0,95}$/),
@@ -857,13 +871,21 @@ const EntryDraftRelation = z.strictObject({
   expectedTargetVersion: Version.nullable(),
   position: z.number().int().min(0).max(511),
   onUnavailable: z.enum(['omit', 'block', 'placeholder']),
-  unavailable: z
-    .strictObject({
-      status: z.literal('unavailable'),
-      reason: z.literal('unavailable'),
-    })
-    .nullable(),
+  unavailable: z.null(),
 });
+// An unavailable target under the `placeholder` policy: nothing of the target
+// (no id, kind, version, key, title or data) remains beside the fixed object.
+const PlaceholderEntryDraftRelation = z.strictObject({
+  fieldId: UUID,
+  fieldDefinitionId: UUID,
+  position: z.number().int().min(0).max(511),
+  onUnavailable: z.literal('placeholder'),
+  unavailable: OpaqueUnavailable,
+});
+const EntryDraftRelation = z.union([
+  ResolvedEntryDraftRelation,
+  PlaceholderEntryDraftRelation,
+]);
 const EntryDraftDetailResource = z.strictObject({
   entry: ResourceMeta,
   revision: ResourceMeta,
@@ -1178,6 +1200,7 @@ None.
 | 2026-10-02 | DEC-108 consistency closure: the 03a schema/block-definition routes are CMS-03A-01 through CMS-03A-14; editorial workflow-policy evidence resolves from a code-owned versioned policy registry seeded by a forward-only migration, with membership left as an open owner decision.                                                                                                                                                                                            |
 | 2026-10-02 | DEC-109/DEC-110: applied the 03a workflow policy registry membership (four ordinary and four protected `cms.disclosure.*` members with ordered reviewer slots) to editorial reviews, added the specialist-slot evaluation rule, and defined the editorial `approvalEvidenceHash` as a decision-independent approval-basis digest that exists at entry bootstrap.                                                                                                              | /propagate-decision     | Route Registry invariants, Contracts, Frozen evidence                                             |
 | 2026-10-02 | Slice 09 implementation reconciliation: "active schema locale set" for CMS-03B-10 is the active content-type version's `supportedLocales` (03a OD-4), and CMS-03B-10/CMS-03B-01 take a `FOR SHARE` lock on the content-type version row that the 03a activation switch conflicts with (03a Activation transaction rules).                                                                                                                                                     |
+| 2026-10-03 | Slice 09 P240 (AC081/AC203): `EntryDraftRelation` is a union of a resolved relation (`unavailable: null`) and the opaque placeholder relation (field binding, position and policy only), so the draft read can produce the exact `{status:'unavailable', reason:'unavailable'}` fallback without copying the target. | /implement-slice | EntryDraftRelation contract, relation unavailable policy |
 
 ## Dependency References
 

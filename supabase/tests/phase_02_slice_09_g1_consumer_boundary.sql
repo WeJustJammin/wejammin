@@ -183,8 +183,16 @@ select is((select string_agg(distinct column_name, ',' order by column_name) fro
             where table_schema = 'platform_api' and table_name = 'claim_outbox_batch'), null,
   'precondition: claim_outbox_batch is a function, not a relation');
 select is((select array_agg(a order by a) from (select unnest(proargnames) a from pg_proc where oid = 'platform_private.claim_outbox_batch(uuid,integer,integer)'::regprocedure) x where a is not null and a not like 'p\_%'),
-  array['aggregate_id', 'aggregate_type', 'aggregate_version', 'causation_id', 'correlation_id', 'dispatch_attempt_count', 'event_id', 'event_type', 'lease_token', 'schema_version'],
-  'the returned column list is unchanged [P2-S09-AC-913]');
+  array['aggregate_id', 'aggregate_type', 'aggregate_version', 'causation_id', 'correlation_id', 'dispatch_attempt_count', 'event_id', 'event_type', 'lease_token', 'occurred_at', 'producer', 'schema_version'],
+  'the returned column list is the identifier columns plus occurred_at and the registered producer (AC190) [P2-S09-AC-913]');
+select is((select string_agg(distinct event_type || '=' || coalesce(producer, 'NULL'), ',' order by event_type || '=' || coalesce(producer, 'NULL'))
+             from g1_claim where event_type <> 'job.requested'),
+  'cms.capability.grant.changed.v1=cms.schema_registry,identity.mfa-factor.changed.v1=identity.authority,identity.security-notification.requested.v1=identity.authority',
+  'each claimed consumer event carries its registered producer [P2-S09-AC-190]');
+select is((select count(*)::integer from g1_claim where producer is null or occurred_at is null), 0,
+  'every claimed row carries a producer and the outbox occurred_at [P2-S09-AC-190]');
+select is((select count(*)::integer from g1_claim c join platform_private.outbox_events e on e.id = c.event_id where c.occurred_at is distinct from e.occurred_at), 0,
+  'the claimed occurred_at is the outbox row instant, not the claim time [P2-S09-AC-190]');
 
 select * from finish();
 rollback;

@@ -115,8 +115,11 @@ select pg_temp.s09d_resolve('t:withdrawn', pg_temp.s09d_id('w:templateVersion'),
 select ok(pg_temp.s09d_outcome('w:template') = 'OK' and pg_temp.s09d_outcome('t:withdrawn') = 'WITHDRAWN',
   'a withdrawn template definition is the typed failure WITHDRAWN [P2-S09-AC-705]');
 
-select ok(pg_temp.s09d_service_only('platform_api.cms_resolve_template_compatibility(jsonb)'),
-  'the resolver is service-role only: anon and authenticated cannot execute it [P2-S09-AC-708]');
+select ok(to_regprocedure('platform_api.cms_resolve_template_compatibility(jsonb)') is not null
+    and not has_function_privilege('service_role', to_regprocedure('platform_api.cms_resolve_template_compatibility(jsonb)'), 'execute')
+    and not has_function_privilege('authenticated', to_regprocedure('platform_api.cms_resolve_template_compatibility(jsonb)'), 'execute')
+    and not has_function_privilege('anon', to_regprocedure('platform_api.cms_resolve_template_compatibility(jsonb)'), 'execute'),
+  'the resolver is DB-internal: no API role can execute it, the activation preflight calls the platform_private resolver [P2-S09-AC-708] [P2-S09-AC-180]');
 
 select * from finish();
 rollback;

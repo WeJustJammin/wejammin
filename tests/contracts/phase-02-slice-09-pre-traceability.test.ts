@@ -303,3 +303,42 @@ describe('[P2-S09-AC-279] migrationPlanId is required and nullable in the source
     expect(be03a).toMatch(/migrationPlanId[^\n]*UUID or null/u);
   });
 });
+
+describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topics, so the transfer count is zero', () => {
+  const record = read(RECORD);
+  const ownedBy = (slice: number): Row[] => bySlice(slice, planRows);
+
+  it('records the fresh transfer review with a transfer count of 0 and names S10, S11, S12 and S15', () => {
+    expect(record).toMatch(
+      /S10, S11, S12, and S15 existing owner criteria cover those topics; \*\*transfer count: 0\*\*/u,
+    );
+    expect(record).toMatch(/no later slice file was edited/u);
+  });
+
+  it('finds an existing owner criterion in each named slice for the editorial, review, composition, taxonomy, locale and public-delivery topics', () => {
+    const topics: readonly [number, RegExp][] = [
+      [10, /autosave|revision|conflict/iu],
+      [11, /review|reviewer|publication|approval/iu],
+      [12, /template|composition|taxonom|locale/iu],
+      [15, /public|projection|preview|sitemap|delivery/iu],
+    ];
+    for (const [slice, topic] of topics)
+      expect(
+        ownedBy(slice).filter((row) => topic.test(row.text)).length,
+        `S${slice}`,
+      ).toBeGreaterThan(0);
+  });
+
+  it('keeps the S09 floor free of any criterion that was transferred in: every S09 baseline row is still mirrored by the tracker and no later slice owns an S09 id', () => {
+    const baseline = bySlice(9, planRows).filter((row) => row.id <= 283);
+    expect(baseline.length).toBe(283);
+    const tracker = bySlice(9, rows(TRACKER(9))).filter((row) => row.id <= 283);
+    expect(tracker.map((row) => row.text)).toEqual(
+      baseline.map((row) => row.text),
+    );
+    for (const slice of [10, 11, 12, 15])
+      expect(
+        ownedBy(slice).filter((row) => row.text.includes('P2-S09-AC-')),
+      ).toEqual([]);
+  });
+});

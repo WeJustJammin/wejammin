@@ -156,6 +156,14 @@ export const parseFormDataInput = async (
     payload.required = false;
   if (target.operationId === 'CMS-03A-03' && !Object.hasOwn(payload, 'ordered'))
     payload.ordered = false;
+  // DEC-123: the create form carries no template inputs, so the request names
+  // none. A posted value is kept as sent and is refused by the contract.
+  if (target.operationId === 'CMS-03A-01') {
+    if (!Object.hasOwn(payload, 'defaultTemplateVersionId'))
+      payload.defaultTemplateVersionId = null;
+    if (!Object.hasOwn(payload, 'templateBindings'))
+      payload.templateBindings = [];
+  }
   for (const field of FORM_NULLABLE_FIELDS) {
     if (values.has(field) && values.get(field)?.trim() === '')
       payload[field] = null;

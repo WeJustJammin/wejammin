@@ -329,7 +329,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-015, P2-S09-AC-122, P2-S09-AC-278] keeps browser resource states closed and aligned with the worker contracts', () => {
+  it('[P2-S09-AC-015] [P2-S09-AC-122] [P2-S09-AC-278] keeps browser resource states closed and aligned with the worker contracts', () => {
     const stateResources = [
       [
         'ContentTypeVersionResource',

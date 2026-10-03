@@ -38,6 +38,16 @@ const validRelation = {
   expectedTargetVersion: '4',
   position: 0,
   onUnavailable: 'omit',
+  unavailable: null,
+} as const;
+
+// AC081/AC203: an unavailable target under the placeholder policy is exactly
+// the opaque object and copies nothing of the target.
+const placeholderRelation = {
+  fieldId: uuid,
+  fieldDefinitionId: uuid2,
+  position: 0,
+  onUnavailable: 'placeholder',
   unavailable: { status: 'unavailable', reason: 'unavailable' },
 } as const;
 
@@ -217,19 +227,90 @@ describe('cms draft detail relations', () => {
     ).toBe(false);
   });
 
-  it('requires the exact unavailable marker when a target is missing', () => {
+  it('[P2-S09-AC-081] [P2-S09-AC-203] accepts the opaque placeholder with no target member and nothing else', () => {
+    expect(EntryDraftRelationSchema.parse(placeholderRelation)).toEqual(
+      placeholderRelation,
+    );
+    expect(
+      Object.keys(EntryDraftRelationSchema.parse(placeholderRelation)).sort(),
+    ).toEqual([
+      'fieldDefinitionId',
+      'fieldId',
+      'onUnavailable',
+      'position',
+      'unavailable',
+    ]);
+    for (const member of [
+      { targetId: uuid },
+      { targetKind: 'block.hero' },
+      { expectedTargetVersion: '4' },
+      { expectedTargetVersion: null },
+      { title: 'Hidden' },
+      { targetType: 'article' },
+      { key: 'hidden' },
+      { data: {} },
+    ])
+      expect(
+        EntryDraftRelationSchema.safeParse({
+          ...placeholderRelation,
+          ...member,
+        }).success,
+      ).toBe(false);
+  });
+
+  it('[P2-S09-AC-081] requires the exact unavailable marker and the placeholder policy beside it', () => {
+    for (const unavailable of [
+      { status: 'unavailable' },
+      { status: 'unavailable', reason: 'other' },
+      { status: 'gone', reason: 'unavailable' },
+      { status: 'unavailable', reason: 'unavailable', id: uuid },
+      {},
+      'unavailable',
+    ])
+      expect(
+        EntryDraftRelationSchema.safeParse({
+          ...placeholderRelation,
+          unavailable,
+        }).success,
+      ).toBe(false);
+    for (const onUnavailable of ['omit', 'block', 'ignore'])
+      expect(
+        EntryDraftRelationSchema.safeParse({
+          ...placeholderRelation,
+          onUnavailable,
+        }).success,
+      ).toBe(false);
+    expect(
+      EntryDraftRelationSchema.safeParse({
+        ...placeholderRelation,
+        position: 512,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('[P2-S09-AC-203] refuses a resolved relation that also carries the placeholder marker (a target id beside the fallback)', () => {
     expect(
       EntryDraftRelationSchema.safeParse({
         ...validRelation,
-        unavailable: { status: 'unavailable' },
+        unavailable: { status: 'unavailable', reason: 'unavailable' },
       }).success,
     ).toBe(false);
     expect(
       EntryDraftRelationSchema.safeParse({
         ...validRelation,
-        unavailable: { status: 'unavailable', reason: 'other' },
+        onUnavailable: 'placeholder',
+        unavailable: { status: 'unavailable', reason: 'unavailable' },
       }).success,
     ).toBe(false);
+  });
+
+  it('[P2-S09-AC-203] a draft detail may mix resolved and placeholder relations', () => {
+    expect(
+      EntryDraftDetailResourceSchema.safeParse({
+        ...validDetailResource,
+        relations: [validRelation, placeholderRelation],
+      }).success,
+    ).toBe(true);
   });
 });
 
