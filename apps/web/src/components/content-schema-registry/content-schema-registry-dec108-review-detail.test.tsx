@@ -349,6 +349,27 @@ describe('[DEC-108] CMS-03A-12 decision form', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('[P2-S09-AC-1040] words the group label and each decision precisely and ties every label to its radio', () => {
+    const form = decisionForm();
+    expect(form.querySelector('fieldset legend')?.textContent).toBe(
+      'Record your decision',
+    );
+    const labelOf = (value: string): string => {
+      const radio = form.querySelector<HTMLInputElement>(
+        `input[type="radio"][value="${value}"]`,
+      );
+      if (radio === null) throw new Error(`no ${value} radio`);
+      return (
+        form.querySelector(`label[for="${radio.id}"]`)?.textContent?.trim() ??
+        ''
+      );
+    };
+    expect(labelOf('approve')).toBe('Approve the frozen evidence');
+    expect(labelOf('reject')).toBe(
+      'Reject and return the candidate to a draft',
+    );
+  });
+
   it('[P2-S09-AC-982] [P2-S09-AC-1040] collects only the decision: no reviewer, capability or evidence field', () => {
     const names = [...new FormData(decisionForm()).keys()].filter(
       (name) =>

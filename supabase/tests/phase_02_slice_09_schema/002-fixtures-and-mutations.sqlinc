@@ -193,8 +193,8 @@ select throws_ok(
   $$select platform_api.cms_add_field_definition(
     (select request || jsonb_build_object('expectedVersion', '1', 'idempotencyKey', 's09-field-stale-0001') from s09_field_request)
   )$$,
-  'P0001', 'CONFLICT',
-  'CMS-03A-02 rejects a stale CAS version without inserting a second field'
+  'P0001', 'VERSION_MISMATCH',
+  'CMS-03A-02 rejects a stale CAS version (VERSION_MISMATCH) without inserting a second field'
 );
 select is(
   (select count(*)::integer from platform_private.cms_field_definition_versions

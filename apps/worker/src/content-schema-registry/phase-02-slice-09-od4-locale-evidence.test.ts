@@ -154,6 +154,22 @@ describe('OD-4 CMS-03A-01 source and default locale fields', () => {
       fallbackChains: { 'en-US': ['fr-FR'] },
     });
   });
+
+  it('[P2-S09-AC-1152] defaultLocale of 1 or 36 characters is refused as not canonical and a 2-character defaultLocale is accepted', async () => {
+    for (const tag of ['e', `en-${'x'.repeat(33)}`]) {
+      const refused = await send(draft({ defaultLocale: tag }));
+      expect(refused.response.status).toBe(422);
+      const violations = await violationsOf(refused.response);
+      expect(violations).toContainEqual(at('/defaultLocale', M.canonical));
+      for (const port of Object.values(refused.ports))
+        expect(port).not.toHaveBeenCalled();
+    }
+    await expectAccepted({
+      defaultLocale: 'fr',
+      supportedLocales: ['en-US', 'fr'],
+      fallbackChains: { 'en-US': ['fr'] },
+    });
+  });
 });
 
 describe('OD-4 CMS-03A-01 supportedLocales rules', () => {

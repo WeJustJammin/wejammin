@@ -39,6 +39,7 @@ const Entry = ({
     </button>
     <button
       type="button"
+      id={`${localeControlId(controller.formId, { control: 'chain', target })}-remove-${position}`}
       disabled={pending}
       onClick={() => controller.dropIntermediate(target, tag)}
     >

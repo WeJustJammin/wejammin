@@ -65,7 +65,10 @@ describe('DEC-108 request builder', () => {
   it('builds a harness whose session resolves for the spec', async () => {
     const spec = dec108SpecFor('CMS-03A-09');
     const harness = makeDec108Harness({ session: sessionResult(spec) });
-    expect((await harness.resolveSession()).ok).toBe(true);
+    const resolve = harness.resolveSession as unknown as () => Promise<{
+      ok: boolean;
+    }>;
+    expect((await resolve()).ok).toBe(true);
   });
 });
 

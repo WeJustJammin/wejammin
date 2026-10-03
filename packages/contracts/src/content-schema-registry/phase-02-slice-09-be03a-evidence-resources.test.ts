@@ -16,6 +16,7 @@ import {
   SchemaReviewResourceSchema,
 } from './resources.ts';
 import {
+  approvedReview,
   assignment,
   completedPassedDryRun,
   decisionResource,
@@ -179,6 +180,10 @@ describe('BE03a CMS-03A-11 SchemaReviewResource bounds', () => {
       expect(
         accepts(SchemaReviewResourceSchema, { ...openReview, state }),
       ).toBe(true);
+    // approved is the fourth member; it carries its own decision accounting.
+    expect(SchemaReviewResourceSchema.parse(approvedReview).state).toBe(
+      'approved',
+    );
     for (const state of ['pending', 'draft', 'OPEN', '', null])
       expect(
         accepts(SchemaReviewResourceSchema, { ...openReview, state }),

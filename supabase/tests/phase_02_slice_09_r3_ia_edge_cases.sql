@@ -117,7 +117,7 @@ select is(pg_temp.s09d_outcome('g:decide:rev1'), 'OK', 'the first reviewer decid
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('g:review')), 'open', 'one approval of two required leaves the review open [P2-S09-AC-1130]');
 select pg_temp.s09d_rpc('g:loser', 'platform_api.cms_decide_schema_review', 'rev2',
   jsonb_build_object('reviewId', pg_temp.s09d_id('g:review'), 'expectedVersion', :'g_v0', 'decision', 'approve', 'idempotencyKey', 'r3ia-g-loser-0001'), true);
-select is(pg_temp.s09d_outcome('g:loser'), 'CONFLICT', 'the second reviewer still carrying the stale review version gets the typed 409 CONFLICT [P2-S09-AC-1130]');
+select is(pg_temp.s09d_outcome('g:loser'), 'VERSION_MISMATCH', 'the second reviewer still carrying the stale review version gets the typed 409 VERSION_MISMATCH [P2-S09-AC-1130]');
 select is((select count(*) from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('g:review')), 1::bigint, 'the loser recorded nothing: one decision row [P2-S09-AC-1130]');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('g:review')), 'open', 'the loser did not approve the review: still open [P2-S09-AC-1130]');
 select pg_temp.s09d_decide('g', 'rev2', 'approve', '{}'::jsonb, 'g:retry');
@@ -263,7 +263,7 @@ select pg_temp.s09d_rpc('r:first', 'platform_api.cms_renew_capability_grant', 'o
 select pg_temp.s09d_rpc('r:second', 'platform_api.cms_revoke_capability_grant', 'owner',
   jsonb_build_object('grantId', :'r_id'::uuid, 'expectedVersion', :'r_ver', 'idempotencyKey', 'r3ia-race-second-0001'), true);
 select is(pg_temp.s09d_outcome('r:first'), 'OK', 'the first command at the aggregate version wins [P2-S09-AC-1137]');
-select is(pg_temp.s09d_outcome('r:second'), 'CONFLICT', 'the second command at the same version is refused with the typed 409 CONFLICT and must refetch [P2-S09-AC-1137]');
+select is(pg_temp.s09d_outcome('r:second'), 'VERSION_MISMATCH', 'the second command at the same version is refused with the typed 409 VERSION_MISMATCH and must refetch [P2-S09-AC-1137]');
 select is((select version::text from platform_private.cms_capability_grants where id = :'r_id'::uuid), '2', 'the aggregate advanced exactly once (version 2) [P2-S09-AC-1137]');
 select is((select state from platform_private.cms_capability_grants where id = :'r_id'::uuid), 'active', 'and the losing revocation had no effect [P2-S09-AC-1137]');
 select pg_temp.s09d_rpc('r:refetch', 'platform_api.cms_revoke_capability_grant', 'owner',

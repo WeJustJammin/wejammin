@@ -40,6 +40,7 @@ export const channelStub = (): ChannelStub => {
 export type FormHarness = Readonly<{
   mounted: Mounted;
   navigate: ReturnType<typeof vi.fn<(href: string) => void>>;
+  reload: ReturnType<typeof vi.fn<() => void>>;
   channel: ChannelStub;
 }>;
 
@@ -52,6 +53,7 @@ export const mountForm = (
   }> = {},
 ): FormHarness => {
   const navigate = vi.fn<(href: string) => void>();
+  const reload = vi.fn<() => void>();
   const channel = channelStub();
   const mounted = mount(
     <StepUpChallengeForm
@@ -61,10 +63,11 @@ export const mountForm = (
       initialPhase={options.initialPhase ?? 'creating-challenge'}
       api={apiDeps(fetchImpl)}
       navigate={navigate}
+      reload={reload}
       channel={channel}
     />,
   );
-  return { mounted, navigate, channel };
+  return { mounted, navigate, reload, channel };
 };
 
 export const codeInput = (container: HTMLElement): HTMLInputElement => {

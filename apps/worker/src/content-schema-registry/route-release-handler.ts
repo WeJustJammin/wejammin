@@ -15,6 +15,7 @@ import {
 import type { ContentSchemaRegistryDependencies } from './types';
 import type { FeatureContext } from './route-types';
 import { rateLimitedError } from './route-rate-refusal';
+import { reportRateRefusal } from './route-rate-telemetry';
 import { errorResponse, policyFor, setRateHeaders } from './route-response';
 import type { RouteExecutor } from './route-execution';
 
@@ -30,6 +31,7 @@ export const createReleaseMutation =
     execute: RouteExecutor,
   ): ReleaseMutation =>
   async (context, operationId, path = {}) => {
+    const startedAt = dependencies.now?.() ?? Date.now();
     const origin = checkOrigin(context.req.raw, dependencies.releaseOrigins);
     if (origin !== null)
       return errorResponse(context, origin, context.get('requestId'));
@@ -77,12 +79,21 @@ export const createReleaseMutation =
     );
     if (!rate.ok) return errorResponse(context, rate, context.get('requestId'));
     setRateHeaders(context, rate.value);
-    if (!rate.value.allowed)
+    if (!rate.value.allowed) {
+      await reportRateRefusal(
+        dependencies,
+        context,
+        operationId,
+        'release-worker',
+        rate.value,
+        startedAt,
+      );
       return errorResponse(
         context,
         rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
         context.get('requestId'),
       );
+    }
     return execute(context, operationId, 'release-worker', {
       operationId,
       requestId: context.get('requestId'),

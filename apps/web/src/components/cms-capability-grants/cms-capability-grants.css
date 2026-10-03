@@ -32,6 +32,10 @@
   vertical-align: top;
 }
 
+.cms-capability-grant-table [data-facts-toggle] {
+  display: none;
+}
+
 .cms-capability-grant-table td code {
   overflow-wrap: anywhere;
 }
@@ -89,11 +93,20 @@
     padding: 0.25rem 0;
   }
 
-  .cms-capability-grant-table td:nth-child(5) {
+  /* Expandable facts: person ID and last-updated stay behind the row toggle. */
+  .cms-capability-grant-table
+    tr:not([data-facts-open])
+    :is([data-person-cell], [data-updated-cell]) {
     display: none;
   }
 
-  .cms-capability-grant-table [data-actions-cell] button {
+  .cms-capability-grant-table [data-facts-toggle] {
+    display: block;
+    margin-block-start: 0.25rem;
+  }
+
+  .cms-capability-grant-table [data-actions-cell] button,
+  .cms-capability-grant-table [data-facts-toggle] {
     min-block-size: 2.75rem;
     min-inline-size: 2.75rem;
   }

@@ -20,6 +20,7 @@ import {
   renderActivationResult,
 } from './content-schema-registry-runtime-dom-activation-result';
 import type { ContentSchemaRegistryMutationResult } from './content-schema-registry-runtime';
+import { markRouteHeadingForFocus } from '../../lib/route-heading-focus';
 import { persistStepUpDraft } from './content-schema-registry-step-up-draft';
 import {
   reviewFlashFor,
@@ -137,7 +138,17 @@ export const completeContentSchemaRegistryMutation = (
       result.location === null
         ? null
         : sameOriginLocation(form, result.location);
-    if (location !== null) navigate(location);
+    if (location !== null) {
+      // FE03 Completion: the result route's heading takes focus on arrival.
+      // The review flash announces its own result, so only other commands mark.
+      if (flash === null)
+        try {
+          markRouteHeadingForFocus(windowObject.sessionStorage);
+        } catch {
+          // Blocked storage keeps the browser's default focus.
+        }
+      navigate(location);
+    }
     return;
   }
   if (result.outcome === 'rate-limited') {

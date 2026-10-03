@@ -136,7 +136,7 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
 
   it('[P2-S09-AC-1095] asks for a reload on a CSRF refusal', async () => {
     const { container, h } = await startWith(
-      apiError(403, 'FORBIDDEN', { reasonCode: 'csrf_invalid' }),
+      apiError(403, 'FORBIDDEN', { reasonCode: 'origin_csrf_required' }),
     );
     expect(alertText(container)).toContain(
       'Your session changed. Reload to continue.',

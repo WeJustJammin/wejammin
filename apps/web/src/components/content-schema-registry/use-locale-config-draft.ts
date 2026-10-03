@@ -121,8 +121,18 @@ export const useLocaleConfigDraft = (
     chooseDefault: (tag) => update(setDefaultLocale(draft, tag)),
     insertIntermediate: (target, tag) =>
       update(addIntermediate(draft, target, tag)),
-    dropIntermediate: (target, tag) =>
-      update(removeIntermediate(draft, target, tag)),
+    dropIntermediate: (target, tag) => {
+      const chainId = localeControlId(formId, { control: 'chain', target });
+      const entries = draft.intermediates[target] ?? [];
+      const index = entries.indexOf(tag);
+      update(removeIntermediate(draft, target, tag));
+      // FE03: focus moves to the next entry, or to the Add input when none remains.
+      setFocusId(
+        index >= 0 && index < entries.length - 1
+          ? `${chainId}-remove-${index}`
+          : `${chainId}-add`,
+      );
+    },
     shiftIntermediate: (target, tag, direction) => {
       const result = moveIntermediate(draft, target, tag, direction);
       setDraft(result.draft);

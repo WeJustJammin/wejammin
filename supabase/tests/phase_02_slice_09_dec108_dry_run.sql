@@ -115,7 +115,7 @@ create temp table s09d_refusal_baseline on commit drop as select pg_temp.s09d_fi
 select pg_temp.s09d_rpc('a:stale', 'platform_api.cms_start_schema_dry_run', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', '999', 'transformKey', null, 'transformVersion', null, 'idempotencyKey', 's09d-dry-stale-0001'));
-select is(pg_temp.s09d_outcome('a:stale'), 'CONFLICT', 'a stale draft CAS version is a 409 CONFLICT');
+select is(pg_temp.s09d_outcome('a:stale'), 'VERSION_MISMATCH', 'a stale draft CAS version is a 409 VERSION_MISMATCH');
 select pg_temp.s09d_rpc('a:hidden', 'platform_api.cms_start_schema_dry_run', 'other',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'transformKey', null, 'transformVersion', null,

@@ -1,3 +1,4 @@
+import { metricKey } from './route-metric-key';
 import type {
   ContentSchemaRegistryOperationId,
   ContentSchemaRegistryPortInput,
@@ -30,15 +31,6 @@ const GRANT_ACTIONS: Readonly<Partial<Record<string, string>>> = {
   'CMS-03A-16': 'renewed',
   'CMS-03A-17': 'revoked',
 };
-
-const metricKey = (
-  name: string,
-  labels: Readonly<Record<string, string>>,
-): string =>
-  `${name}{${Object.keys(labels)
-    .sort()
-    .map((key) => `${key}="${labels[key]}"`)
-    .join(',')}}`;
 
 const outcomeFor = (result: ContentSchemaRegistryResult<unknown>): string => {
   if (result.ok) return 'success';

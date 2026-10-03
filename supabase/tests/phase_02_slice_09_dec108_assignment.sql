@@ -87,7 +87,7 @@ select is(pg_temp.s09d_outcome('a:broad:' || k), 'INVALID_REQUEST',
 from unnest(array['actions', 'capabilityKey', 'scope', 'delegable']) k;
 select pg_temp.s09d_assign_raw('a:stale', 'a', 'owner', jsonb_build_object('action', 'create', 'expectedVersion', '999',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
-select is(pg_temp.s09d_outcome('a:stale'), 'CONFLICT', 'a stale review CAS version is a 409 CONFLICT');
+select is(pg_temp.s09d_outcome('a:stale'), 'VERSION_MISMATCH', 'a stale review CAS version is a 409 VERSION_MISMATCH');
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '11 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09d_assign_raw('a:mfa', 'a', 'owner', jsonb_build_object('action', 'create',

@@ -9687,6 +9687,14 @@ export type Database = {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: undefined
       }
+      cms_raise_forbidden: {
+        Args: { p_reason_code: string }
+        Returns: undefined
+      }
+      cms_raise_version_mismatch: {
+        Args: { p_current: number; p_expected: number }
+        Returns: undefined
+      }
       cms_read_schema_migration_source_rows: {
         Args: { p_request: Json }
         Returns: Json

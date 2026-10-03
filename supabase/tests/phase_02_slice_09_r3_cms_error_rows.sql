@@ -105,7 +105,7 @@ select is(pg_temp.s09d_outcome('s09:400'), 'INVALID_REQUEST', 'CMS-03A-09: an un
 select is(pg_temp.s09d_outcome('s09:401'), 'UNAUTHENTICATED', 'CMS-03A-09: a request without a verified actor raises UNAUTHENTICATED (401) [P2-S09-AC-305]');
 select is(pg_temp.s09d_outcome('s09:403'), 'FORBIDDEN', 'CMS-03A-09: a human without cms.schema_designer on a readable source raises FORBIDDEN (403) [P2-S09-AC-306]');
 select is(pg_temp.s09d_outcome('s09:404'), 'NOT_FOUND', 'CMS-03A-09: another organization sees the source as absent: NOT_FOUND (404) [P2-S09-AC-307]');
-select is(pg_temp.s09d_outcome('s09:409'), 'CONFLICT', 'CMS-03A-09: a stale source If-Match raises CONFLICT (409) [P2-S09-AC-308] [P2-S09-AC-301]');
+select is(pg_temp.s09d_outcome('s09:409'), 'VERSION_MISMATCH', 'CMS-03A-09: a stale source If-Match raises VERSION_MISMATCH (409) [P2-S09-AC-308] [P2-S09-AC-301]');
 select is(pg_temp.s09d_outcome('s09:422'), 'VALIDATION_FAILED', 'CMS-03A-09: a locale pair with only supportedLocales raises VALIDATION_FAILED (422) [P2-S09-AC-310]');
 
 -- ================================================ CMS-03A-10 dry run ==========
@@ -120,7 +120,7 @@ select is(pg_temp.s09d_outcome('s10:400'), 'INVALID_REQUEST', 'CMS-03A-10: an un
 select is(pg_temp.s09d_outcome('s10:401'), 'UNAUTHENTICATED', 'CMS-03A-10: a request without a verified actor raises UNAUTHENTICATED (401) [P2-S09-AC-351]');
 select is(pg_temp.s09d_outcome('s10:403'), 'FORBIDDEN', 'CMS-03A-10: a human without cms.schema_designer raises FORBIDDEN (403) [P2-S09-AC-352]');
 select is(pg_temp.s09d_outcome('s10:404'), 'NOT_FOUND', 'CMS-03A-10: another organization sees the candidate as absent: NOT_FOUND (404) [P2-S09-AC-353]');
-select is(pg_temp.s09d_outcome('s10:409'), 'CONFLICT', 'CMS-03A-10: a stale draft CAS version raises CONFLICT (409) [P2-S09-AC-354]');
+select is(pg_temp.s09d_outcome('s10:409'), 'VERSION_MISMATCH', 'CMS-03A-10: a stale draft CAS version raises VERSION_MISMATCH (409) [P2-S09-AC-354]');
 select is(pg_temp.s09d_outcome('s10:422'), 'VALIDATION_FAILED', 'CMS-03A-10: a transform pair on an additive candidate raises VALIDATION_FAILED (422) [P2-S09-AC-356]');
 
 -- ================================================ CMS-03A-11 submit ===========
@@ -134,7 +134,7 @@ select is(pg_temp.s09d_outcome('s11:400'), 'INVALID_REQUEST', 'CMS-03A-11: an un
 select is(pg_temp.s09d_outcome('s11:401'), 'UNAUTHENTICATED', 'CMS-03A-11: a request without a verified actor raises UNAUTHENTICATED (401) [P2-S09-AC-393]');
 select is(pg_temp.s09d_outcome('s11:403'), 'FORBIDDEN', 'CMS-03A-11: a human without cms.schema_designer raises FORBIDDEN (403) [P2-S09-AC-394]');
 select is(pg_temp.s09d_outcome('s11:404'), 'NOT_FOUND', 'CMS-03A-11: another organization sees the candidate as absent: NOT_FOUND (404) [P2-S09-AC-395]');
-select is(pg_temp.s09d_outcome('s11:409'), 'CONFLICT', 'CMS-03A-11: a stale draft CAS version raises CONFLICT (409) [P2-S09-AC-396]');
+select is(pg_temp.s09d_outcome('s11:409'), 'VERSION_MISMATCH', 'CMS-03A-11: a stale draft CAS version raises VERSION_MISMATCH (409) [P2-S09-AC-396]');
 
 -- ================================================ CMS-03A-12 decision =========
 select pg_temp.r3_dec('s12:400', 'rev1', jsonb_build_object('reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person')));
@@ -168,7 +168,7 @@ select is(pg_temp.s09d_outcome('s12:403b'), 'FORBIDDEN', 'CMS-03A-12: a schema d
 select is(pg_temp.s09d_outcome('s12:403c'), 'FORBIDDEN', 'CMS-03A-12: the owner, who can read the review but holds no effective assignment, raises FORBIDDEN (403) [P2-S09-AC-431]');
 select is((select count(*)::integer from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('y3:review')), 0,
   'CMS-03A-12: the forbidden callers recorded no decision [P2-S09-AC-431]');
-select is(pg_temp.s09d_outcome('s12:409'), 'CONFLICT', 'CMS-03A-12: a stale review CAS version raises CONFLICT (409) [P2-S09-AC-433]');
+select is(pg_temp.s09d_outcome('s12:409'), 'VERSION_MISMATCH', 'CMS-03A-12: a stale review CAS version raises VERSION_MISMATCH (409) [P2-S09-AC-433]');
 select is(pg_temp.s09d_outcome('s12:422'), 'VALIDATION_FAILED', 'CMS-03A-12: a decision other than approve or reject raises VALIDATION_FAILED (422) [P2-S09-AC-435]');
 
 -- ================================================ CMS-03A-13 read =============
@@ -195,7 +195,7 @@ select is(pg_temp.s09d_outcome('s14:401'), 'UNAUTHENTICATED', 'CMS-03A-14: a req
 select is(pg_temp.s09d_outcome('s14:stepup'), 'STEP_UP_REQUIRED', 'CMS-03A-14: stepUpVerified=false raises STEP_UP_REQUIRED (401) [P2-S09-AC-503]');
 select is(pg_temp.s09d_outcome('s14:403'), 'FORBIDDEN', 'CMS-03A-14: a schema designer who is not the receipt-derived owner raises FORBIDDEN (403) [P2-S09-AC-493]');
 select is(pg_temp.s09d_outcome('s14:404'), 'NOT_FOUND', 'CMS-03A-14: another organization sees the review as absent: NOT_FOUND (404) [P2-S09-AC-494]');
-select is(pg_temp.s09d_outcome('s14:409'), 'CONFLICT', 'CMS-03A-14: a stale review CAS version raises CONFLICT (409) [P2-S09-AC-495]');
+select is(pg_temp.s09d_outcome('s14:409'), 'VERSION_MISMATCH', 'CMS-03A-14: a stale review CAS version raises VERSION_MISMATCH (409) [P2-S09-AC-495]');
 select is(pg_temp.s09d_outcome('s14:422'), 'VALIDATION_FAILED', 'CMS-03A-14: an expiry that is not an RFC 3339 instant raises VALIDATION_FAILED (422) [P2-S09-AC-497]');
 
 -- ================================================ CMS-03A-15 grant ============
@@ -229,7 +229,7 @@ select is(pg_temp.s09d_outcome('s16:401'), 'UNAUTHENTICATED', 'CMS-03A-16: a req
 select is(pg_temp.s09d_outcome('s16:stepup'), 'STEP_UP_REQUIRED', 'CMS-03A-16: a step-up proof 11 minutes old raises STEP_UP_REQUIRED (401) [P2-S09-AC-574]');
 select is(pg_temp.s09d_outcome('s16:403'), 'FORBIDDEN', 'CMS-03A-16: a schema designer who is not the receipt-derived owner raises FORBIDDEN (403) [P2-S09-AC-564]');
 select is(pg_temp.s09d_outcome('s16:404'), 'NOT_FOUND', 'CMS-03A-16: an absent grant raises NOT_FOUND (404) [P2-S09-AC-565]');
-select is(pg_temp.s09d_outcome('s16:409'), 'CONFLICT', 'CMS-03A-16: a stale expected version raises CONFLICT (409) [P2-S09-AC-566]');
+select is(pg_temp.s09d_outcome('s16:409'), 'VERSION_MISMATCH', 'CMS-03A-16: a stale expected version raises VERSION_MISMATCH (409) [P2-S09-AC-566]');
 select is(pg_temp.s09d_outcome('s16:422'), 'VALIDATION_FAILED', 'CMS-03A-16: a validThrough in the past raises VALIDATION_FAILED (422) [P2-S09-AC-568]');
 
 -- ================================================ CMS-03A-17 revoke ===========
@@ -246,7 +246,7 @@ select is(pg_temp.s09d_outcome('s17:401'), 'UNAUTHENTICATED', 'CMS-03A-17: a req
 select is(pg_temp.s09d_outcome('s17:stepup'), 'STEP_UP_REQUIRED', 'CMS-03A-17: a step-up proof 11 minutes old raises STEP_UP_REQUIRED (401) [P2-S09-AC-602]');
 select is(pg_temp.s09d_outcome('s17:403'), 'FORBIDDEN', 'CMS-03A-17: a schema designer who is not the receipt-derived owner raises FORBIDDEN (403) [P2-S09-AC-592]');
 select is(pg_temp.s09d_outcome('s17:404'), 'NOT_FOUND', 'CMS-03A-17: an absent grant raises NOT_FOUND (404) [P2-S09-AC-593]');
-select is(pg_temp.s09d_outcome('s17:409'), 'CONFLICT', 'CMS-03A-17: a stale expected version raises CONFLICT (409) [P2-S09-AC-594]');
+select is(pg_temp.s09d_outcome('s17:409'), 'VERSION_MISMATCH', 'CMS-03A-17: a stale expected version raises VERSION_MISMATCH (409) [P2-S09-AC-594]');
 select is(pg_temp.s09d_outcome('s17:422'), 'VALIDATION_FAILED', 'CMS-03A-17: an empty reason raises VALIDATION_FAILED (422) [P2-S09-AC-596]');
 
 -- ================================================ CMS-03A-18 list =============

@@ -66,7 +66,7 @@ const HAPPY: readonly HappyCase[] = [
     state: 'queued',
   },
   {
-    marker: '[P2-S09-AC-362]',
+    marker: '[P2-S09-AC-362] [P2-S09-AC-375]',
     operationId: 'CMS-03A-11',
     title:
       'accepts SchemaReviewSubmissionRequest and returns 201 SchemaReviewResource in state open',

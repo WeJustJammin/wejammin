@@ -254,9 +254,15 @@ select is(platform_private.s09_forged_review_touch((select review_id from r3rls_
 select lives_ok(format($q$select platform_private.s09_forged_assignment(%L, %L, %L, %L)$q$,
     (select owner_org from r3rls_ctx), (select review_id from r3rls_ctx), (select rev1_person from r3rls_ctx), (select owner_person from r3rls_ctx)),
   'positive control: an in-scope assignment insert passes WITH CHECK [P2-S09-AC-181]');
+-- The BEFORE INSERT owner-consistency guard (20261002198000) would refuse this
+-- row first; it is disabled for the next statement so the policy's own WITH
+-- CHECK is what is proved here.  The guard itself is proved in
+-- phase_02_slice_09_r8_review_owner_consistency.sql.
+alter table platform_private.cms_schema_review_assignments disable trigger cms_schema_review_assignments_z_state_guard;
 select throws_ok(format($q$select platform_private.s09_forged_assignment(%L, %L, %L, %L)$q$,
     (select other_org from r3rls_ctx), (select review_id from r3rls_ctx), (select rev1_person from r3rls_ctx), (select owner_person from r3rls_ctx)),
   '42501', 'new row violates row-level security policy "cms_schema_review_assignments_session_scope" for table "cms_schema_review_assignments"', 'with the owner session, an assignment stamped with another organization''s owner_id is refused by WITH CHECK [P2-S09-AC-181]');
+alter table platform_private.cms_schema_review_assignments enable trigger cms_schema_review_assignments_z_state_guard;
 
 -- an assigned reviewer's review-only scope reaches only that review
 select pg_temp.r3rls_clear();
@@ -438,10 +444,13 @@ select is((select count(*)::integer from platform_private.cms_schema_review_deci
 -- WITH CHECK owner consistency: an effective reviewer cannot stamp another owner
 select pg_temp.r3rls_clear();
 select platform_private.cms_publish_session((select rev1_auth from r3rls_ctx), (select rev1_person from r3rls_ctx));
+-- The owner-consistency guard is isolated off for this one statement (see above).
+alter table platform_private.cms_schema_review_assignments disable trigger cms_schema_review_assignments_z_state_guard;
 select throws_ok(format($q$select platform_private.s09_forged_assignment(%L, %L, %L, %L)$q$,
     (select other_org from r3rls_ctx), (select review_id from r3rls_ctx), (select rev1_person from r3rls_ctx), (select rev1_person from r3rls_ctx)),
   '42501', 'new row violates row-level security policy "cms_schema_review_assignments_session_scope" for table "cms_schema_review_assignments"',
   'WITH CHECK: an effective reviewer of the owner''s review cannot write a row stamped with another organization''s owner_id [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+alter table platform_private.cms_schema_review_assignments enable trigger cms_schema_review_assignments_z_state_guard;
 -- positive control through the real producer: the effective reviewer's decision
 -- passes the policies' WITH CHECK (CMS-03A-12).
 select pg_temp.s09d_decide('x', 'rev1');

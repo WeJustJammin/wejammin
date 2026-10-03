@@ -190,6 +190,21 @@ select is(pg_temp.m_ver(13)::bigint, (select v13 from m_pre), 'and changed no MF
 -- The target also holds a step-up capability: the reset is not subject to last_factor_required.
 insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
 values (pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev1', 'person')::uuid, 'cms.schema_designer', current_date, current_date + 3, true);
+-- AC896 baseline: the target's linked email login method and a second linked
+-- provider (provisioning fixture rows of the login-methods domain, not S09
+-- producer rows), plus every session and proof-bearing column, are snapshotted
+-- so the reset can be shown to change none of them.
+insert into identity.login_identity_registry(auth_user_id, provider, provider_subject_digest, state, label, verified_at, linked_at)
+values (pg_temp.m_uid(13), 'email', decode(repeat('d1', 32), 'hex'), 'linked', 'Email', clock_timestamp(), clock_timestamp()),
+       (pg_temp.m_uid(13), 'google', decode(repeat('d2', 32), 'hex'), 'linked', 'Google', clock_timestamp(), clock_timestamp());
+create temp table m_login_before on commit drop as
+select (select md5(coalesce(string_agg(t::text, ',' order by id), '')) from identity.login_identity_registry t where auth_user_id = pg_temp.m_uid(13)) as methods,
+       platform_private.auth_login_methods_projection(pg_temp.m_uid(13)) as projection,
+       (select md5(coalesce(string_agg(t::text, ',' order by session_id), '')) from identity.auth_session_index t where auth_user_id = pg_temp.m_uid(13)) as sessions,
+       (select md5(to_jsonb(b)::text) from (select id, auth_user_id, person_id, state, created_at from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(13)) b) as binding,
+       (select md5(coalesce(string_agg(t::text, ',' order by id), '')) from platform_private.acting_context_binding t
+         where person_id = pg_temp.m_person(13)) as acting_bindings;
+select is((select projection->>'recoveryBaselinePresent' from m_login_before), 'true', 'fixture: the target has a recovery baseline (a linked, verified email method) before the reset [P2-S09-AC-896]');
 select pg_temp.m_reset('r:ok', 'designer2', 'rev1', 'reset-key-ac945-0100', 'lost every verified factor');
 select is(pg_temp.m_out('r:ok'), 'OK', 'the reset is reserved');
 select is(pg_temp.m_resp('r:ok')->>'state', 'reconciling', 'with live factors the reset is reconciling until the provider confirms');
@@ -233,6 +248,17 @@ select is((select count(*)::integer from platform_private.outbox_events where ev
 select ok(not exists (select 1 from platform_private.outbox_events where event_type like 'admin.mfa-factor.reset%' and payload::text ~* '(factor|provider|secret|reason|code)Id?'
     and payload::text !~ '^\{"resetId"'), 'no event carries a factor identifier [P2-S09-AC-947]');
 select ok((select state::text from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(13)) = 'active', 'the account state is unchanged [P2-S09-AC-896]');
+select is((select md5(coalesce(string_agg(t::text, ',' order by id), '')) from identity.login_identity_registry t where auth_user_id = pg_temp.m_uid(13)),
+  (select methods from m_login_before), 'the reset changed no login method row [P2-S09-AC-896]');
+select is(platform_private.auth_login_methods_projection(pg_temp.m_uid(13)) - 'version', (select projection - 'version' from m_login_before),
+  'the login-methods projection, recoveryBaselinePresent and removable included, is unchanged by the reset [P2-S09-AC-896]');
+select is((select md5(coalesce(string_agg(t::text, ',' order by session_id), '')) from identity.auth_session_index t where auth_user_id = pg_temp.m_uid(13)),
+  (select sessions from m_login_before), 'every session row of the target is byte-identical after the reset [P2-S09-AC-896]');
+select is((select md5(to_jsonb(b)::text) from (select id, auth_user_id, person_id, state, created_at from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(13)) b),
+  (select binding from m_login_before), 'the account binding changed nothing but mfa_version [P2-S09-AC-896]');
+select is((select md5(coalesce(string_agg(t::text, ',' order by id), '')) from platform_private.acting_context_binding t where person_id = pg_temp.m_person(13)),
+  (select acting_bindings from m_login_before),
+  'the target''s acting-context bindings, which carry the recorded MFA instants whose own freshness window governs every existing proof, are untouched, so existing proofs lapse at their own freshUntil [P2-S09-AC-896]');
 
 -- idempotency and the live-reset guard
 select pg_temp.m_reset('r:replay', 'designer2', 'rev1', 'reset-key-ac945-0100', 'lost every verified factor');
@@ -258,6 +284,9 @@ select pg_temp.m_settle_reset('s:badout', 'designer2', (select id from m_reset_i
   jsonb_build_array(jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'V1'), 'outcome', 'maybe')));
 select is(pg_temp.m_out('s:badout'), 'INVALID_REQUEST', 'an unknown outcome value is INVALID_REQUEST');
 create temp table m_v_res on commit drop as select pg_temp.m_ver(13)::bigint v;
+create temp table m_ev_before on commit drop as
+  select pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'Pend')) as pend,
+         pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'V1')) as removed;
 select pg_temp.m_settle_reset('s:partial', 'designer2', (select id from m_reset_id), jsonb_build_array(
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'V1'), 'outcome', 'removed'),
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'V2'), 'outcome', 'absent'),
@@ -269,6 +298,18 @@ select is(pg_temp.m_resp('s:partial')->>'removedFactorCount', '3', 'removed and 
 select is(pg_temp.m_fstate(pg_temp.m_fid_named(13, 'V1')) || pg_temp.m_fstate(pg_temp.m_fid_named(13, 'V2')) || pg_temp.m_fstate(pg_temp.m_fid_named(13, 'Gone')),
   'removedremovedremoved', 'confirmed factors are removed in the committed first transaction [P2-S09-AC-933]');
 select is(pg_temp.m_fstate(pg_temp.m_fid_named(13, 'Pend')), 'reconciling', 'a failed factor stays reconciling for the reconciler (no rollback, no blind resend) [P2-S09-AC-933]');
+select is(pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'Pend')),
+  (select pend + 1 from m_ev_before),
+  'the settlement emits exactly one identity.mfa-factor.changed.v1 for the factor it leaves reconciling, which wakes auth-state-reconciler [P2-S09-AC-933]');
+select is((select payload from platform_private.outbox_events
+            where event_type = 'identity.mfa-factor.changed.v1' and aggregate_id = pg_temp.m_fid_named(13, 'Pend')
+            order by occurred_at desc, id desc limit 1),
+  jsonb_build_object('mfaFactorId', pg_temp.m_fid_named(13, 'Pend'),
+    'authBindingId', (select id from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(13))),
+  'that event carries exactly the mfaFactorId and authBindingId payload and no provider factor id [P2-S09-AC-933]');
+select is(pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'V1')),
+  (select removed + 1 from m_ev_before),
+  'a factor the settlement confirms removed emits one change event (the removal) and the failed-factor event adds none to it [P2-S09-AC-933]');
 select ok(pg_temp.m_one(format($q$select (completed_at is null and state = 'reconciling')::text from platform_private.admin_mfa_factor_resets where id = %L$q$, (select id from m_reset_id))) = 'true',
   'the reset row stays reconciling with no completed_at [P2-S09-AC-933]');
 select is(pg_temp.m_ver(13)::bigint, (select v + 1 from m_v_res), 'the settlement transaction bumps mfa_version once');

@@ -50,7 +50,7 @@ select is(pg_temp.s09d_outcome('a:foreignbinding'), 'STEP_UP_REQUIRED',
 select pg_temp.s09d_rpc('a:stalecas', 'platform_api.cms_decide_schema_review', 'rev1',
   jsonb_build_object('reviewId', pg_temp.s09d_id('a:review'), 'expectedVersion', '999', 'decision', 'approve',
     'idempotencyKey', 's09d-decide-stale-0001'), true);
-select is(pg_temp.s09d_outcome('a:stalecas'), 'CONFLICT', 'a stale review CAS version is a 409 CONFLICT');
+select is(pg_temp.s09d_outcome('a:stalecas'), 'VERSION_MISMATCH', 'a stale review CAS version is a 409 VERSION_MISMATCH');
 select pg_temp.s09d_rpc('a:badvalue', 'platform_api.cms_decide_schema_review', 'rev1',
   jsonb_build_object('reviewId', pg_temp.s09d_id('a:review'), 'expectedVersion', pg_temp.s09d_review_version('a'),
     'decision', 'maybe', 'idempotencyKey', 's09d-decide-badvalue-0001'), true);
@@ -60,7 +60,7 @@ select pg_temp.s09d_rpc('a:extra', 'platform_api.cms_decide_schema_review', 'rev
     'decision', 'approve', 'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'),
     'idempotencyKey', 's09d-decide-extra-0001'), true);
 select is(pg_temp.s09d_outcome('a:extra'), 'INVALID_REQUEST', 'the reviewer is server-resolved: a caller-supplied reviewer is an unknown key');
-select ok(pg_temp.s09d_id('a:review') is not null and pg_temp.s09d_outcome('a:stalecas') = 'CONFLICT'
+select ok(pg_temp.s09d_id('a:review') is not null and pg_temp.s09d_outcome('a:stalecas') = 'VERSION_MISMATCH'
   and pg_temp.s09d_fingerprint(false) = (select fingerprint from s09d_baseline),
   'every refusal leaves reviews, decisions, versions, idempotency and outbox unchanged');
 

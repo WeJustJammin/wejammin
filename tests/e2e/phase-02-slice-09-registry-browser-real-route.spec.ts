@@ -110,6 +110,40 @@ test('[P2-S09-AC-219] [P2-S09-AC-247] [P2-S09-AC-249] the registry list reflows 
   expect(skipTarget.text).toBe('Skip to main content');
   await expect(page.locator(skipTarget.href ?? '#missing')).toHaveCount(1);
 
+  // AC219 named landmarks: one main, and every navigation or region is named.
+  await expect(page.getByRole('main')).toHaveCount(1);
+  await expect(
+    page.getByRole('navigation', { name: 'Skip navigation' }),
+  ).toHaveCount(1);
+  const unnamed = await page
+    .locator('nav, section, aside, form')
+    .evaluateAll((elements) =>
+      elements
+        .filter((element) => {
+          const labelledBy = element.getAttribute('aria-labelledby');
+          const named =
+            (element.getAttribute('aria-label') ?? '').trim() !== '' ||
+            (labelledBy !== null &&
+              labelledBy
+                .split(' ')
+                .some(
+                  (id) =>
+                    (document.getElementById(id)?.textContent ?? '').trim() !==
+                    '',
+                ));
+          // A bare section or form is not a landmark; only nav is always one.
+          return element.tagName === 'NAV' && !named;
+        })
+        .map((element) => element.outerHTML.slice(0, 80)),
+    );
+  expect(unnamed).toEqual([]);
+  // AC219 route h1 focus: an in-app route change (tab state) lands on the h1.
+  await page.goto(`${REGISTRY}?tab=list`, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+
   // Real Tab traversal through every control in main: visible focus ring on each
   // stop and no trap (focus leaves main at the end).
   await page.getByRole('heading', { level: 1 }).focus();
@@ -172,7 +206,7 @@ test('[P2-S09-AC-251] a degraded registry state under prefers-reduced-motion run
   expect(motion.scroll).toBe('auto');
 });
 
-test('[P2-S09-AC-222] creating a type with two languages continues at the created version address', async ({
+test('[P2-S09-AC-222] [P2-S09-AC-219] [P2-S09-AC-1232] creating a type with two languages continues at the created version address, focuses the heading and shows the read-only locale configuration', async ({
   browser,
 }) => {
   const owner = await actor(browser, 'owner', newTestId());
@@ -213,6 +247,20 @@ test('[P2-S09-AC-222] creating a type with two languages continues at the create
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
     'Two language type',
   );
+  // AC219: the document title carries the heading and the version state.
+  const headingText = (await page.locator('h1').textContent()) ?? '';
+  expect(headingText).toContain('(draft)');
+  expect(await page.title()).toBe(`${headingText} | WeJammin`);
+  // AC1232: the committed configuration is read-only text, led by the focused h1.
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  const languages = page.locator('#content-schema-registry-locales-heading');
+  await expect(languages).toHaveText('Languages');
+  await expect(
+    page.locator('#content-schema-registry-locales-heading + p'),
+  ).toHaveText('en-US, fr');
+  await expect(page.locator('[data-locale-chains] li')).toHaveText([
+    'fr: en-US',
+  ]);
 });
 
 test('[P2-S09-AC-225] activating an approved version focuses the result region and its link opens the refreshed version', async ({
@@ -309,4 +357,58 @@ test('[P2-S09-AC-1101] /step-up and /settings/security/mfa set the document titl
   expect(await page.locator('h1').count()).toBe(1);
   expect((await focusLog())[0]).toBe('h1#page-title');
   await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+});
+
+test('[P2-S09-AC-1065] a signed-in /step-up request is rendered on the server with no-store, the heading, the explanation and the verified factor', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await expireStepUp(page, testId, 'owner');
+  // The request context shares the signed-in cookies but never runs scripts, so
+  // everything asserted here was produced by the server render alone.
+  const response = await page
+    .context()
+    .request.get('/step-up?returnTo=%2Fapp%2Fcms-content-modeling', {
+      maxRedirects: 0,
+    });
+  expect(response.status()).toBe(200);
+  expect(response.headers()['cache-control']).toContain('no-store');
+  // React escapes the apostrophe in the heading as a numeric entity.
+  const html = (await response.text()).replaceAll('&#x27;', "'");
+  expect(html).toContain(STEP_UP_PAGE_HEADINGS['step-up'].heading);
+  expect(html).toContain(STEP_UP_PAGE_HEADINGS['step-up'].description);
+  expect(html).toContain('Owner phone');
+});
+
+test('[P2-S09-AC-1098] /auth/sign-in?intent=recovery renders the recovery entry and plain /auth/sign-in does not', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ baseURL: WEB_ORIGIN });
+  const page = await context.newPage();
+  const intents = () =>
+    page
+      .locator('button[name="intent"]')
+      .evaluateAll((buttons) =>
+        buttons.map((button) => (button as HTMLButtonElement).value),
+      );
+
+  await page.goto('/auth/sign-in?intent=recovery&returnTo=%2Fapp', {
+    waitUntil: 'networkidle',
+  });
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Recover your account' }),
+  ).toBeVisible();
+  expect(await intents()).toEqual(['recovery']);
+
+  await page.goto('/auth/sign-in?returnTo=%2Fapp', {
+    waitUntil: 'networkidle',
+  });
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Continue to your workspace' }),
+  ).toBeVisible();
+  expect(await intents()).toEqual(['sign_in', 'recovery']);
+  await context.close();
 });

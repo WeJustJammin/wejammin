@@ -53,10 +53,10 @@ select pg_temp.s09d_create_type('v', 'od4viol', 'editorial', 'owner', '[]', '{}'
 select is(pg_temp.s09d_outcome('v:create'), 'VALIDATION_FAILED', 'CMS-03A-01 refuses an invalid locale configuration [P2-S09-AC-1203]');
 select is(pg_temp.s09d_detail('v:create')::jsonb,
   jsonb_build_object('violations', jsonb_build_array(
-    jsonb_build_object('pointer', '/supportedLocales', 'message', 'supportedLocales must contain 1 to 32 locales'),
-    jsonb_build_object('pointer', '/supportedLocales', 'message', 'supportedLocales must include sourceLocale'),
-    jsonb_build_object('pointer', '/supportedLocales', 'message', 'supportedLocales must include defaultLocale'))),
-  'the 422 detail carries every violation as {pointer, message} with the exact strings [P2-S09-AC-1203]');
+    jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must contain 1 to 32 locales'),
+    jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must include sourceLocale'),
+    jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must include defaultLocale'))),
+  'the 422 detail carries every violation as {path, message} with the exact strings [P2-S09-AC-1203]');
 select is((select count(*)::integer from platform_private.cms_content_types where type_key = 'od4viol'), 0,
   'no row is inserted on a refused configuration');
 select pg_temp.s09d_create_type('w', 'od4shape', 'editorial', 'owner', '"en-US"', '{}');
@@ -150,7 +150,7 @@ select pg_temp.s09d_to_active('p');
 select pg_temp.s09d_successor('p1', 'p', 'owner', null, '["en-US","fr-FR"]', null);
 select is(pg_temp.s09d_outcome('p1:successor'), 'VALIDATION_FAILED', 'CMS-03A-09 refuses supportedLocales without fallbackChains [P2-S09-AC-1189]');
 select is(pg_temp.s09d_detail('p1:successor')::jsonb,
-  jsonb_build_object('violations', jsonb_build_array(jsonb_build_object('pointer', '/fallbackChains',
+  jsonb_build_object('violations', jsonb_build_array(jsonb_build_object('path', '/fallbackChains',
     'message', 'supportedLocales and fallbackChains must be both null or both present'))),
   'the pair violation names /fallbackChains with the exact message [P2-S09-AC-1203]');
 select pg_temp.s09d_successor('p2', 'p', 'owner', null, null, '{"fr-FR":["en-US"]}');
@@ -158,9 +158,9 @@ select is(pg_temp.s09d_outcome('p2:successor'), 'VALIDATION_FAILED', 'CMS-03A-09
 select pg_temp.s09d_successor('p3', 'p', 'owner', null, '["fr-FR"]', '{}');
 select is(pg_temp.s09d_detail('p3:successor')::jsonb,
   jsonb_build_object('violations', jsonb_build_array(
-    jsonb_build_object('pointer', '/supportedLocales', 'message', 'supportedLocales must include sourceLocale'),
-    jsonb_build_object('pointer', '/supportedLocales', 'message', 'supportedLocales must include defaultLocale'),
-    jsonb_build_object('pointer', '/fallbackChains', 'message', 'every supported locale other than defaultLocale needs a fallback chain'))),
+    jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must include sourceLocale'),
+    jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must include defaultLocale'),
+    jsonb_build_object('path', '/fallbackChains', 'message', 'every supported locale other than defaultLocale needs a fallback chain'))),
   'a replacement cannot remove the inherited source or default locale [P2-S09-AC-1190]');
 select is((select count(*)::integer from platform_private.cms_content_type_versions where content_type_id = pg_temp.s09d_id('p:type')), 1,
   'refused successors insert no row and leave the source untouched [P2-S09-AC-1190]');

@@ -188,7 +188,7 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     expect(markup).toContain('data-invalidation="canonical-refetch-only"');
     expect(markup).toContain('<form');
     expect(markup).toContain(
-      'aria-describedby="content-schema-registry-filter-help content-schema-registry-filter-summary"',
+      'aria-describedby="content-schema-registry-filter-help content-schema-registry-filter-summary content-schema-registry-sort-summary"',
     );
     expect(markup).toContain('<table>');
     expect(markup).toContain(

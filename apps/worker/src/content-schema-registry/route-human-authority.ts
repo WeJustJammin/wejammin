@@ -7,6 +7,7 @@ import {
 } from './admission';
 import { CMS_STEP_UP_ALLOWED_METHODS } from './production-errors';
 import { rateLimitedError } from './route-rate-refusal';
+import { reportRateRefusal } from './route-rate-telemetry';
 import { errorResponse, policyFor, setRateHeaders } from './route-response';
 import type { FeatureContext } from './route-types';
 import type {
@@ -58,6 +59,7 @@ export const createHumanAuthority =
     operationId: HumanMutationOperationId | HumanReadOperationId,
   ): Promise<HumanAuthority> => {
     const requestId = context.get('requestId');
+    const startedAt = dependencies.now?.() ?? Date.now();
     const refuse = (error: ContentSchemaRegistryError): HumanAuthority => ({
       ok: false,
       response: errorResponse(context, error, requestId),
@@ -102,9 +104,18 @@ export const createHumanAuthority =
     );
     if (!rate.ok) return refuse(rate);
     setRateHeaders(context, rate.value);
-    if (!rate.value.allowed)
+    if (!rate.value.allowed) {
+      await reportRateRefusal(
+        dependencies,
+        context,
+        operationId,
+        'human',
+        rate.value,
+        startedAt,
+      );
       return refuse(
         rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
       );
+    }
     return { ok: true, session };
   };

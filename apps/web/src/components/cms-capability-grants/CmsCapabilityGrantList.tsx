@@ -65,6 +65,20 @@ const SortHeader = ({
 export default function CmsCapabilityGrantList(
   props: CmsCapabilityGrantListProps,
 ): React.ReactElement {
+  // Mobile (<= 768 px) shows capability, state and valid-through per row and
+  // keeps the remaining facts behind a per-row disclosure (FE03 responsive
+  // contract). The cells stay in the document on every width; only CSS hides
+  // them, so there is one copy of each fact and the disclosure is inert on
+  // tablet and desktop where the button is not rendered visibly.
+  const [factsOpen, setFactsOpen] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleFacts = (id: string): void =>
+    setFactsOpen((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   return (
     <>
       <table className="cms-capability-grant-table">
@@ -93,11 +107,27 @@ export default function CmsCapabilityGrantList(
           {props.page.items.flatMap((grant) => {
             const view = STATE_VIEW[grant.state];
             const open = props.openGrantId === grant.id;
+            const expanded = factsOpen.has(grant.id);
             return [
-              <tr key={grant.id} data-grant-id={grant.id}>
+              <tr
+                key={grant.id}
+                data-grant-id={grant.id}
+                {...(expanded ? { 'data-facts-open': 'true' } : {})}
+              >
                 <td data-capability-cell>
                   <strong>{capabilityLabel(grant.capability)}</strong>{' '}
                   <code data-capability-key>{grant.capability}</code>
+                  <button
+                    type="button"
+                    data-facts-toggle="true"
+                    aria-expanded={expanded}
+                    aria-controls={`cms-grant-person-${grant.id} cms-grant-updated-${grant.id}`}
+                    onClick={() => toggleFacts(grant.id)}
+                  >
+                    {expanded ? 'Hide' : 'Show'} details for{' '}
+                    {capabilityLabel(grant.capability)} grant ending{' '}
+                    {grant.validThrough}
+                  </button>
                 </td>
                 <td id={`cms-grant-person-${grant.id}`} data-person-cell>
                   <code>{grant.subjectPersonId}</code>
@@ -112,7 +142,7 @@ export default function CmsCapabilityGrantList(
                     Ends <time dateTime={grant.endsAt}>{grant.endsAt}</time>
                   </small>
                 </td>
-                <td>
+                <td id={`cms-grant-updated-${grant.id}`} data-updated-cell>
                   <time dateTime={grant.updatedAt}>{grant.updatedAt}</time>
                 </td>
                 <td data-actions-cell>

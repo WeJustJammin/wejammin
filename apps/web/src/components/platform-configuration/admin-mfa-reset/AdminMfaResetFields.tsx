@@ -74,6 +74,7 @@ export function AdminMfaResetFields({
           id={REASON_ID}
           name="reason"
           rows={4}
+          required
           readOnly={readOnly}
           value={values.reason}
           aria-invalid={reasonError === undefined ? undefined : true}
@@ -89,7 +90,12 @@ export function AdminMfaResetFields({
             {reasonError}
           </p>
         )}
-        <p id={`${REASON_ID}-count`} className="infra-help">
+        <p
+          id={`${REASON_ID}-count`}
+          className="infra-help"
+          role="status"
+          aria-live="polite"
+        >
           {`${values.reason.length} / ${REASON_MAX_LENGTH}`}
         </p>
       </div>

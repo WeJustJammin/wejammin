@@ -58,11 +58,9 @@ select is((select jsonb_agg(v->>'message') from jsonb_array_elements(pg_temp.s09
   (select jsonb_agg(i->>'message') from jsonb_array_elements(platform_api.cms_validate_locale_config('en-US', 'en-US', '[]'::jsonb, '{}'::jsonb)) i),
   'the draft RPC refusal and the pure validator return the same messages in the same order [P2-S09-AC-1203]');
 select ok(position('cms_locale_config_violations' in pg_temp.s09d_def('platform_api.cms_validate_locale_config(text,text,jsonb,jsonb)')) > 0
-  and position('cms_locale_config_violations' in pg_temp.s09d_def('platform_private.cms_create_type_draft(jsonb)')) > 0
-  and position('cms_locale_config_violations' in pg_temp.s09d_def('platform_private.cms_create_schema_successor(jsonb)')) > 0
   and position('cms_locale_config_hash' in pg_temp.s09d_def('platform_private.cms_create_type_draft(jsonb)')) > 0
   and position('cms_locale_config_hash' in pg_temp.s09d_def('platform_private.cms_create_schema_successor(jsonb)')) > 0,
-  'the validator, the draft RPC and the successor RPC all run the single platform_private.cms_locale_config_violations rule function and compute localeConfigHash [P2-S09-AC-1203]');
+  'the pure validator wraps the single platform_private.cms_locale_config_violations rule function and the draft and successor RPCs compute localeConfigHash; that both RPCs actually run the validator is proved behaviourally in phase_02_slice_09_r8_locale_validator_path.sql [P2-S09-AC-1203]');
 
 -- ------------------------------------------------ AC1206: scheduled is unreachable for schema versions ----
 select pg_temp.s09d_create_type('s', 'evm_sched');

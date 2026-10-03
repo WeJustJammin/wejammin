@@ -233,76 +233,328 @@ test('[P2-S09-AC-910] [P2-S09-AC-1026] [P2-S09-AC-1024] a stale proof sends the 
   expect(posts).toHaveLength(1);
 });
 
-for (const [width, height, minimum, label] of [
-  [375, 700, 44, '[P2-S09-AC-1036]'],
-  [768, 1000, 24, '[P2-S09-AC-1037]'],
-  [1280, 900, 24, '[P2-S09-AC-1038]'],
-] as const)
-  test(`${label} the grant console lays out at ${String(width)} px with ${String(minimum)} px targets`, async ({
+const GRANTS_TABLE = 'CMS capability grants';
+
+/**
+ * Enrols the owner, creates one grant through the real form, then reloads the
+ * console at the requested viewport so every responsive clause below is read
+ * from the production-built page at that width.
+ */
+const seedConsoleAt = async (
+  browser: Parameters<typeof actor>[0],
+  width: number,
+  height: number,
+): Promise<Page> => {
+  const owner = await actor(browser, 'owner', newTestId());
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await openConsole(page);
+  await grantViaUi(page);
+  await expect(page.getByRole('table', { name: GRANTS_TABLE })).toContainText(
+    'Active',
+    { timeout: 15_000 },
+  );
+  await page.setViewportSize({ width, height });
+  await openConsole(page);
+  return page;
+};
+
+const rect = (page: Page, selector: string) =>
+  page
+    .locator(selector)
+    .first()
+    .evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return {
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.bottom,
+        width: box.width,
+      };
+    });
+
+const GRANT_ROW = 'tbody tr[data-grant-id]';
+
+test.describe('[P2-S09-AC-1036] mobile grant console at 375 px', () => {
+  const open = (browser: Parameters<typeof actor>[0]) =>
+    seedConsoleAt(browser, 375, 700);
+
+  test('[P2-S09-AC-1036] shows capability, state and valid-through on each row and keeps the other facts out of view', async ({
     browser,
   }) => {
-    const testId = newTestId();
-    const owner = await actor(browser, 'owner', testId);
-    const page = owner.page;
-    await enrollFactorViaUi(page, 'Owner phone');
-    await openConsole(page);
-    await grantViaUi(page);
-    await expect(
-      page.getByRole('table', { name: 'CMS capability grants' }),
-    ).toContainText('Active', {
-      timeout: 15_000,
-    });
-    await page.setViewportSize({ width, height });
-    await openConsole(page);
-    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
-    expect(await smallControls(page, 'main', minimum)).toEqual([]);
-
-    const box = (selector: string) =>
-      page
-        .locator(selector)
-        .first()
-        .evaluate((element) => {
-          const rect = element.getBoundingClientRect();
-          return {
-            left: rect.left,
-            right: rect.right,
-            top: rect.top,
-            bottom: rect.bottom,
-          };
-        });
-    const table = await box('table');
-    const form = await box('#cms-grant-form');
-    if (width === 375) {
-      // Stacked priority rows: capability, state and valid-through per row, and
-      // the form is one column below the list.
-      expect(table.right).toBeLessThanOrEqual(width + 1);
-      await expect(page.locator('tbody tr').first()).toContainText('Active');
-      await expect(page.locator('tbody tr').first()).toContainText(
-        'Valid through',
-      );
-      expect(form.top).toBeGreaterThanOrEqual(table.bottom - 1);
-    } else if (width === 768) {
-      // Tablet: the caption table keeps its row actions; the form sits below.
-      await expect(
-        page
-          .getByRole('table', { name: 'CMS capability grants' })
-          .locator('caption'),
-      ).toBeVisible();
-      expect(form.top).toBeGreaterThanOrEqual(table.bottom - 1);
-    } else {
-      // Desktop: compact semantic table with sortable headers beside the form.
-      expect(form.left).toBeGreaterThanOrEqual(table.right - 1);
-      await expect(
-        page
-          .getByRole('columnheader', { name: 'Valid through' })
-          .getByRole('button'),
-      ).toBeVisible();
-      await page
-        .getByRole('button', { name: /^Renew View schema registry grant/u })
-        .click();
-      const inline = await page
-        .getByRole('group', { name: 'Renew View schema registry grant' })
-        .evaluate((element) => element.closest('tr') !== null);
-      expect(inline).toBe(true);
-    }
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    await expect(row.locator('[data-capability-cell]')).toBeVisible();
+    await expect(row.locator('[data-state-cell]')).toBeVisible();
+    await expect(row.locator('[data-term-cell]')).toBeVisible();
+    await expect(row.locator('[data-state-cell]')).toContainText('Active');
+    await expect(row.locator('[data-term-cell]')).toContainText(
+      `Valid through ${isoDate(30)}`,
+    );
+    await expect(row.locator('[data-person-cell]')).toBeHidden();
+    await expect(row.locator('[data-updated-cell]')).toBeHidden();
   });
+
+  test('[P2-S09-AC-1036] orders the visible row cells capability, then state, then valid-through, one per line', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    const tops = await row
+      .locator('[data-capability-cell], [data-state-cell], [data-term-cell]')
+      .evaluateAll((cells) =>
+        cells.map((cell) => ({
+          key: Object.keys((cell as HTMLElement).dataset)[0],
+          top: cell.getBoundingClientRect().top,
+        })),
+      );
+    expect(tops.map((cell) => cell.key)).toEqual([
+      'capabilityCell',
+      'stateCell',
+      'termCell',
+    ]);
+    expect(tops[0]!.top).toBeLessThan(tops[1]!.top);
+    expect(tops[1]!.top).toBeLessThan(tops[2]!.top);
+  });
+
+  test('[P2-S09-AC-1036] expands the person and last-updated facts from a labelled row toggle and collapses them again', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    const toggle = row.getByRole('button', {
+      name: /^Show details for View schema registry grant ending /u,
+    });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    const hide = row.getByRole('button', {
+      name: /^Hide details for View schema registry grant ending /u,
+    });
+    await expect(hide).toHaveAttribute('aria-expanded', 'true');
+    await expect(row.locator('[data-person-cell]')).toBeVisible();
+    await expect(row.locator('[data-person-cell]')).toContainText(
+      lanePersonId('reader'),
+    );
+    await expect(row.locator('[data-updated-cell]')).toBeVisible();
+    await hide.click();
+    await expect(row.locator('[data-person-cell]')).toBeHidden();
+    await expect(row.locator('[data-updated-cell]')).toBeHidden();
+  });
+
+  test('[P2-S09-AC-1036] lays the grant form out as one column of full-width stacked controls below the list', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const table = await rect(page, 'table');
+    const form = await rect(page, '#cms-grant-form');
+    expect(form.top).toBeGreaterThanOrEqual(table.bottom - 1);
+    const controls = await page
+      .locator(
+        '#cms-grant-form input:not([type=hidden]), #cms-grant-form select, #cms-grant-form textarea',
+      )
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const box = element.getBoundingClientRect();
+          return { left: box.left, top: box.top, bottom: box.bottom };
+        }),
+      );
+    expect(controls.length).toBeGreaterThanOrEqual(4);
+    for (const control of controls)
+      expect(Math.abs(control.left - controls[0]!.left)).toBeLessThanOrEqual(1);
+    for (let index = 1; index < controls.length; index += 1)
+      expect(controls[index]!.top).toBeGreaterThanOrEqual(
+        controls[index - 1]!.bottom - 1,
+      );
+  });
+
+  test('[P2-S09-AC-1036] opens revoke confirmation as its own review block below the row, committed only after acknowledgement', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    await row.getByRole('button', { name: /^Revoke View schema/u }).click();
+    const review = page.locator('tr[data-row-form]');
+    await expect(
+      review.getByRole('heading', { name: 'Confirm revoke' }),
+    ).toBeVisible();
+    await expect(review.locator('[data-capability-cell]')).toHaveCount(0);
+    const rowBox = await rect(page, GRANT_ROW);
+    const reviewBox = await rect(page, 'tr[data-row-form]');
+    expect(reviewBox.top).toBeGreaterThanOrEqual(rowBox.bottom - 1);
+    expect(reviewBox.width).toBeGreaterThanOrEqual(375 - 40);
+    await expect(
+      review.getByRole('button', { name: /^Revoke grant/u }),
+    ).toBeDisabled();
+    await review
+      .getByRole('checkbox', {
+        name: 'I understand this revokes access immediately.',
+      })
+      .check();
+    await expect(
+      review.getByRole('button', { name: /^Revoke grant/u }),
+    ).toBeEnabled();
+  });
+
+  test('[P2-S09-AC-1036] gives every main-region control a 44 px hit area and never scrolls the page sideways', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    await page
+      .locator(GRANT_ROW)
+      .first()
+      .getByRole('button', { name: /^Show details for/u })
+      .click();
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+    expect(await smallControls(page, 'main', 44)).toEqual([]);
+  });
+});
+
+test.describe('[P2-S09-AC-1037] tablet grant console at 768 px', () => {
+  const open = (browser: Parameters<typeof actor>[0]) =>
+    seedConsoleAt(browser, 768, 1000);
+
+  test('[P2-S09-AC-1037] renders the grants as a captioned table with a visible header row', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const table = page.getByRole('table', { name: GRANTS_TABLE });
+    await expect(table.locator('caption')).toBeVisible();
+    for (const name of [
+      'Capability',
+      'Person ID',
+      'State',
+      'Valid through',
+      'Last updated',
+      'Actions',
+    ])
+      await expect(table.getByRole('columnheader', { name })).toBeVisible();
+  });
+
+  test('[P2-S09-AC-1037] shows person and last-updated cells without a facts toggle', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    await expect(row.locator('[data-person-cell]')).toBeVisible();
+    await expect(row.locator('[data-updated-cell]')).toBeVisible();
+    await expect(row.locator('[data-facts-toggle]')).toBeHidden();
+  });
+
+  test('[P2-S09-AC-1037] expands renew as a detail row directly under the grant row, spanning the table width', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    await row.getByRole('button', { name: /^Renew View schema/u }).click();
+    const detail = page.locator('tr[data-row-form]');
+    await expect(detail).toHaveCount(1);
+    await expect(
+      detail.getByRole('group', { name: 'Renew View schema registry grant' }),
+    ).toBeVisible();
+    const sibling = await row.evaluate((element) =>
+      element.nextElementSibling?.hasAttribute('data-row-form'),
+    );
+    expect(sibling).toBe(true);
+    const table = await rect(page, 'table');
+    const detailBox = await rect(page, 'tr[data-row-form]');
+    expect(Math.abs(detailBox.width - table.width)).toBeLessThanOrEqual(2);
+  });
+
+  test('[P2-S09-AC-1037] places the grant form below the table, not beside it', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const table = await rect(page, 'table');
+    const form = await rect(page, '#cms-grant-form');
+    expect(form.top).toBeGreaterThanOrEqual(table.bottom - 1);
+  });
+
+  test('[P2-S09-AC-1037] keeps the page free of sideways scroll with 24 px targets', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+    expect(await smallControls(page, 'main', 24)).toEqual([]);
+  });
+});
+
+test.describe('[P2-S09-AC-1038] desktop grant console at 1280 px', () => {
+  const open = (browser: Parameters<typeof actor>[0]) =>
+    seedConsoleAt(browser, 1280, 900);
+
+  test('[P2-S09-AC-1038] puts the compact table and the grant form side by side', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const table = await rect(page, 'table');
+    const form = await rect(page, '#cms-grant-form');
+    expect(form.left).toBeGreaterThanOrEqual(table.right - 1);
+    expect(Math.abs(form.top - table.top)).toBeLessThanOrEqual(120);
+  });
+
+  test('[P2-S09-AC-1038] makes valid-through and last-updated sortable headers and sorts ascending then descending', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const validThrough = page.getByRole('columnheader', {
+      name: 'Valid through',
+    });
+    const updated = page.getByRole('columnheader', { name: 'Last updated' });
+    await expect(validThrough.getByRole('button')).toBeVisible();
+    await expect(updated.getByRole('button')).toBeVisible();
+    await expect(updated).toHaveAttribute('aria-sort', 'descending');
+    await validThrough.getByRole('button').click();
+    await expect(validThrough).toHaveAttribute('aria-sort', 'ascending');
+    await validThrough.getByRole('button').click();
+    await expect(validThrough).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  test('[P2-S09-AC-1038] opens renew inline on the row, in the table', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    await row.getByRole('button', { name: /^Renew View schema/u }).click();
+    const detail = page.locator('tr[data-row-form]');
+    await expect(
+      detail.getByRole('group', { name: 'Renew View schema registry grant' }),
+    ).toBeVisible();
+    expect(
+      await row.evaluate((element) =>
+        element.nextElementSibling?.hasAttribute('data-row-form'),
+      ),
+    ).toBe(true);
+    expect(
+      await detail.evaluate((element) => element.closest('table') !== null),
+    ).toBe(true);
+  });
+
+  test('[P2-S09-AC-1038] opens revoke inline on the row, in the table', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    const row = page.locator(GRANT_ROW).first();
+    await row.getByRole('button', { name: /^Revoke View schema/u }).click();
+    const detail = page.locator('tr[data-row-form]');
+    await expect(
+      detail.getByRole('heading', { name: 'Confirm revoke' }),
+    ).toBeVisible();
+    expect(
+      await row.evaluate((element) =>
+        element.nextElementSibling?.hasAttribute('data-row-form'),
+      ),
+    ).toBe(true);
+    expect(
+      await detail.evaluate((element) => element.closest('table') !== null),
+    ).toBe(true);
+  });
+
+  test('[P2-S09-AC-1038] keeps the page free of sideways scroll with 24 px targets', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+    expect(await smallControls(page, 'main', 24)).toEqual([]);
+  });
+});

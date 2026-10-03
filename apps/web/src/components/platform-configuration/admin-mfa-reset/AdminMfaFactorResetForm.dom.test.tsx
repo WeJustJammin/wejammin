@@ -83,6 +83,35 @@ describe('AdminMfaFactorResetForm fields', () => {
     expect(c.textContent).toContain('3 / 512');
   });
 
+  it('[P2-S09-AC-1111] marks the reason as a required native textarea', () => {
+    const reason = reasonInput(mountWith(stubFetch()));
+    expect(reason.tagName).toBe('TEXTAREA');
+    expect(reason.required).toBe(true);
+  });
+
+  it('[P2-S09-AC-1111] announces the character count in a polite live region', () => {
+    const c = mountWith(stubFetch());
+    const countId = reasonInput(c)
+      .getAttribute('aria-describedby')
+      ?.split(' ')
+      .pop();
+    const count = c.querySelector(`#${countId}`);
+    expect(count?.getAttribute('role')).toBe('status');
+    expect(count?.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('[P2-S09-AC-1142] offers the audited runbook, with no recovery code field or bypass control', () => {
+    const c = mountWith(stubFetch());
+    expect(c.textContent).toContain(ADMIN_RESET_COPY.runbook);
+    expect(c.textContent).not.toMatch(/recovery codes?|backup codes?/iu);
+    expect(c.textContent).not.toMatch(/bypass|skip (?:verification|mfa)/iu);
+    expect(
+      [...c.querySelectorAll('input, textarea')].map((field) =>
+        field.getAttribute('name'),
+      ),
+    ).toEqual(['targetPersonId', 'reason']);
+  });
+
   it('[P2-S09-AC-1110] validates the person ID on blur', () => {
     const c = mountWith(stubFetch());
     fill(c, 'nope', 'reason');

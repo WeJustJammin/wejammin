@@ -22,6 +22,7 @@ import {
   validRelation,
   validActivation,
   validBlock,
+  validLifecycle,
   ok,
   error,
 } from './phase-02-slice-09-test-values';
@@ -159,6 +160,91 @@ describe('S09 worker content-schema-registry admission', () => {
     expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
   });
 
+  describe('[P2-S09-AC-025] BE00 canonical order for a human mutation', () => {
+    const csrf: Record<string, string> = {
+      cookie: 'wj_session_ref=session; wj_csrf=server-token',
+      'x-csrf-token': 'wrong-token',
+    };
+    const send = (harness: ReturnType<typeof makeHarness>, headers = csrf) =>
+      harness.app.request(
+        jsonRequest('/api/v1/cms/content-types', validDraft, headers),
+      );
+
+    it('refuses a disallowed origin (CORS allowlist) before the session is resolved', async () => {
+      const harness = makeHarness();
+      const response = await send(harness, {
+        ...csrf,
+        origin: 'https://evil.example.test',
+      });
+      await expectApiError(response, 403, 'FORBIDDEN');
+      expect(harness.resolveSession).not.toHaveBeenCalled();
+      expect(harness.rateLimit).not.toHaveBeenCalled();
+    });
+
+    it('answers a missing session with 401 before the CSRF check or the limiter', async () => {
+      const harness = makeHarness({
+        session: error(401, 'UNAUTHENTICATED', 'Sign in required.'),
+      });
+      await expectApiError(await send(harness), 401, 'UNAUTHENTICATED');
+      expect(harness.rateLimit).not.toHaveBeenCalled();
+      expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
+    });
+
+    it('answers a missing capability before the CSRF check, with the capability reason', async () => {
+      const harness = makeHarness({
+        session: ok({ ...session, capabilities: [] }),
+      });
+      const body = await expectApiError(await send(harness), 403, 'FORBIDDEN');
+      expect((body.details as { reasonCode: string }).reasonCode).toBe(
+        'CAPABILITY_REQUIRED',
+      );
+      expect(harness.rateLimit).not.toHaveBeenCalled();
+    });
+
+    it('answers a failed CSRF check after session and capability and before the limiter', async () => {
+      const harness = makeHarness();
+      const body = await expectApiError(await send(harness), 403, 'FORBIDDEN');
+      expect((body.details as { reasonCode: string }).reasonCode).toBe(
+        'POLICY_NOT_MET',
+      );
+      expect(harness.resolveSession).toHaveBeenCalledTimes(1);
+      expect(harness.rateLimit).not.toHaveBeenCalled();
+      expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
+    });
+
+    it('runs the limiter after admission and before the port', async () => {
+      const harness = makeHarness();
+      const response = await harness.app.request(
+        jsonRequest('/api/v1/cms/content-types', validDraft),
+      );
+      expect(response.status).toBe(201);
+      const order = (mock: { mock: { invocationCallOrder: number[] } }) =>
+        mock.mock.invocationCallOrder[0] ?? Number.NaN;
+      expect(order(harness.resolveSession)).toBeLessThan(
+        order(harness.rateLimit),
+      );
+      expect(order(harness.rateLimit)).toBeLessThan(
+        order(harness.ports.createTypeDraft),
+      );
+      const limited = makeHarness({
+        rate: ok({
+          allowed: false,
+          limit: 30,
+          remaining: 0,
+          resetAt: 1_788_345_660,
+        }),
+      });
+      await expectApiError(
+        await limited.app.request(
+          jsonRequest('/api/v1/cms/content-types', validDraft),
+        ),
+        429,
+        'RATE_LIMITED',
+      );
+      expect(limited.ports.createTypeDraft).not.toHaveBeenCalled();
+    });
+  });
+
   it.each([
     ['unknown release header', { 'x-release-principal': 'forged' }],
     ['missing signature', { 'X-WeJammin-Release-Signature': '' }],
@@ -177,6 +263,39 @@ describe('S09 worker content-schema-registry admission', () => {
       await expectApiError(response, 400, 'INVALID_REQUEST');
       expect(harness.verifyRelease).not.toHaveBeenCalled();
       expect(harness.ports.registerBlock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['keyId', 'release-key-1'],
+    ['issuedAt', '2026-09-02T12:00:00.000Z'],
+    ['nonce', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'],
+    ['signature', 'A'.repeat(86) + '=='],
+  ] as const)(
+    '[P2-S09-AC-026] a JSON body copy of the release %s is refused with 422 and neither the verifier result nor the port accepts it',
+    async (field, value) => {
+      for (const operation of ['register', 'advance'] as const) {
+        const harness = makeHarness();
+        const response =
+          operation === 'register'
+            ? await harness.app.request(
+                releaseRequest('/api/v1/cms/blocks/versions', {
+                  ...validBlock,
+                  [field]: value,
+                }),
+              )
+            : await harness.app.request(
+                releaseRequest(
+                  mutationPath.lifecycle,
+                  { ...validLifecycle, [field]: value },
+                  { 'if-match': '"1"' },
+                ),
+              );
+        const body = await expectApiError(response, 422, 'VALIDATION_FAILED');
+        expect(JSON.stringify(body)).not.toContain(value);
+        expect(harness.ports.registerBlock).not.toHaveBeenCalled();
+        expect(harness.ports.advanceBlockLifecycle).not.toHaveBeenCalled();
+      }
     },
   );
 

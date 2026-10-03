@@ -122,7 +122,7 @@ describe('content schema registry command feedback', () => {
     cleanup();
   });
 
-  it('links 422 pointers to invalid fields and focuses the summary', async () => {
+  it('[P2-S09-AC-248] links 422 pointers to invalid fields and focuses the summary', async () => {
     formMarkup();
     vi.stubGlobal(
       'fetch',
@@ -151,7 +151,7 @@ describe('content schema registry command feedback', () => {
     cleanup();
   });
 
-  it('[P2-S09-AC-1230] shows the exact OD-4 locale messages in the summary and links each to its control', async () => {
+  it('[P2-S09-AC-248] [P2-S09-AC-1230] shows the exact OD-4 locale messages in the summary and links each to its control', async () => {
     window.history.replaceState({}, '', '/app/cms-content-modeling');
     document.body.innerHTML = `
       <main>

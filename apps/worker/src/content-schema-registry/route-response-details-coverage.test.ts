@@ -87,12 +87,12 @@ describe('content schema registry safe error details', () => {
     expect(
       safeDetails(failure(403, 'AUTH', 'safe', { reasonCode: 7 })),
     ).toEqual({ reasonCode: 'CAPABILITY_REQUIRED' });
-    expect(
-      safeDetails(failure(403, 'AUTH', 'safe', {}), 'CMS-03A-16'),
-    ).toEqual({ reasonCode: 'OWNER_REQUIRED' });
-    expect(
-      safeDetails(failure(403, 'AUTH', 'safe', {}), 'CMS-03A-05'),
-    ).toEqual({ reasonCode: 'POLICY_NOT_MET' });
+    expect(safeDetails(failure(403, 'AUTH', 'safe', {}), 'CMS-03A-16')).toEqual(
+      { reasonCode: 'OWNER_REQUIRED' },
+    );
+    expect(safeDetails(failure(403, 'AUTH', 'safe', {}), 'CMS-03A-05')).toEqual(
+      { reasonCode: 'POLICY_NOT_MET' },
+    );
     expect(
       safeDetails(
         failure(409, 'CONFLICT', 'safe', {

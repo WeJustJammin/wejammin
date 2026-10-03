@@ -93,7 +93,7 @@ select is(pg_temp.s09d_outcome('b:live'), 'CONFLICT',
 select pg_temp.s09d_rpc('b:stale', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', '999', 'idempotencyKey', 's09d-successor-stale-0001'));
-select is(pg_temp.s09d_outcome('b:stale'), 'CONFLICT', 'a stale source If-Match (expectedVersion) is a 409 CONFLICT');
+select is(pg_temp.s09d_outcome('b:stale'), 'VERSION_MISMATCH', 'a stale source If-Match (expectedVersion) is a 409 VERSION_MISMATCH');
 select pg_temp.s09d_rpc('b:mismatch', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', '999', 'idempotencyKey', 's09d-successor-replay-0001'));

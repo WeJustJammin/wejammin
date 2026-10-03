@@ -6,7 +6,8 @@
  * "Transaction and external seams").  Each scenario holds the FIRST command
  * uncommitted (pg_sleep inside its transaction), proves the SECOND command is
  * blocked on a PostgreSQL lock behind it, then proves that after the first one
- * commits the second one is refused with the typed 409 CONFLICT and that
+ * commits the second one is refused with the typed 409 (CONFLICT for a state or
+ * key conflict, VERSION_MISMATCH for a stale If-Match) and that
  * exactly one effect exists:
  *
  *   [P2-S09-AC-301] CMS-03A-09  two successor commands for one source: one draft
@@ -186,7 +187,10 @@ const call = (fn, req) =>
   `select platform_api.${fn}(${sql(JSON.stringify(req))}::jsonb);`;
 
 // One race: S1 commits after a hold, S2 starts during the hold and must block.
-const race = async (name, fn, first, second) => {
+// `refusal` is the typed 409 the loser must get: a stale If-Match (the winner
+// bumped the version the loser still carries) is VERSION_MISMATCH, a state or
+// key conflict at an unchanged version is CONFLICT.
+const race = async (name, fn, first, second, refusal = 'CONFLICT') => {
   console.log(`# ${name}: the first command is in flight (${HOLD_SECONDS}s hold)`);
   const hold = runAsync(
     `s09conc-${name}-1`,
@@ -212,8 +216,8 @@ const race = async (name, fn, first, second) => {
   const r2 = await blocked.done;
   assert(r1.code === 0, `${name}: the first command committed`);
   assert(
-    r2.code !== 0 && /CONFLICT/.test(r2.stderr),
-    `${name}: the blocked second command was refused with the typed 409 CONFLICT after the first committed (${r2.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
+    r2.code !== 0 && new RegExp(`ERROR:\\s+${refusal}\\b`).test(r2.stderr),
+    `${name}: the blocked second command was refused with the typed 409 ${refusal} after the first committed (${r2.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
   );
   return { r1, r2 };
 };
@@ -245,6 +249,7 @@ await race(
   'cms_decide_schema_review',
   { actor: 'rev1', request: ids.dec1 },
   { actor: 'rev2', request: ids.dec2 },
+  'VERSION_MISMATCH',
 );
 assert(
   runValue(
@@ -273,6 +278,7 @@ await race(
   'cms_renew_capability_grant',
   { actor: 'owner', request: ids.renew1 },
   { actor: 'owner', request: ids.renew2 },
+  'VERSION_MISMATCH',
 );
 assert(
   runValue(
@@ -287,6 +293,7 @@ await race(
   'cms_revoke_capability_grant',
   { actor: 'owner', request: ids.revoke1 },
   { actor: 'owner', request: ids.revoke2 },
+  'VERSION_MISMATCH',
 );
 assert(
   runValue(

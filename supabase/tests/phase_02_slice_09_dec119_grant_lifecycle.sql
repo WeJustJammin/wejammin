@@ -52,7 +52,7 @@ select pg_temp.s09d_rpc('n:badid', 'platform_api.cms_renew_capability_grant', 'o
   'idempotencyKey', pg_temp.s09g_key('badid')), true);
 select is(pg_temp.s09d_outcome('n:badid'), 'INVALID_REQUEST', 'a malformed grant id is 400');
 select pg_temp.s09g_renew('n:stale', 'owner', pg_temp.s09d_id('gA'), '9', pg_temp.s09g_day(8));
-select is(pg_temp.s09d_outcome('n:stale'), 'CONFLICT', 'a stale expected version is 409');
+select is(pg_temp.s09d_outcome('n:stale'), 'VERSION_MISMATCH', 'a stale expected version is 409 VERSION_MISMATCH');
 select pg_temp.s09g_renew('n:ver0', 'owner', pg_temp.s09d_id('gA'), '0', pg_temp.s09g_day(8));
 select pg_temp.s09g_renew('n:verx', 'owner', pg_temp.s09d_id('gA'), 'abc', pg_temp.s09g_day(8));
 select is(pg_temp.s09d_outcome('n:ver0') || pg_temp.s09d_outcome('n:verx'), 'INVALID_REQUESTINVALID_REQUEST',
@@ -112,7 +112,7 @@ select is((select count(*)::integer from platform_private.cms_capability_grant_e
 select pg_temp.s09g_renew('rp:changed', 'owner', pg_temp.s09d_id('gE'), '1', pg_temp.s09g_day(21), '{}', 's09g-renew-fixed-key');
 select is(pg_temp.s09d_outcome('rp:changed'), 'CONFLICT', 'the same key with a changed body is 409');
 select pg_temp.s09g_renew('cas:2', 'owner', pg_temp.s09d_id('gE'), '1', pg_temp.s09g_day(22));
-select is(pg_temp.s09d_outcome('cas:2'), 'CONFLICT', 'a second command carrying the same expected version loses the CAS (409) [P2-S09-AC-558]');
+select is(pg_temp.s09d_outcome('cas:2'), 'VERSION_MISMATCH', 'a second command carrying the same expected version loses the CAS (409 VERSION_MISMATCH) [P2-S09-AC-558]');
 select ok(pg_temp.s09d_def('platform_private.cms_renew_capability_grant(jsonb)') ilike '%for update%'
   and pg_temp.s09d_def('platform_private.cms_revoke_capability_grant(jsonb)') ilike '%for update%'
   and pg_temp.s09d_def('platform_private.cms_grant_capability(jsonb)') ilike '%for update%',

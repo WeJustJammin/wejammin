@@ -86,6 +86,39 @@ select ok(
    where id = (select (response->>'id')::uuid from s09_block_created)),
   'CMS-03A-08 lifecycle transitions do not mutate the immutable block definition'
 );
+-- BE00: a well-formed stale If-Match is 409 VERSION_MISMATCH carrying the
+-- decimal expectedVersion and currentVersion (r8 ND-1); a lifecycle or digest
+-- mismatch at the current version stays a bare CONFLICT.
+create or replace function pg_temp.s09_error_detail(p_sql text) returns text language plpgsql as $body$
+declare detail_text text;
+begin
+  execute p_sql;
+  return 'ACCEPTED';
+exception when others then
+  get stacked diagnostics detail_text = pg_exception_detail;
+  return sqlstate || '|' || sqlerrm || '|' || coalesce(detail_text, '');
+end;
+$body$;
+select is(
+  pg_temp.s09_error_detail($$select platform_api.cms_advance_block_lifecycle(
+    (select pg_temp.s09_sign_release(
+      request || jsonb_build_object(
+        'expectedVersion', '999', 'releaseNonce', 'a9090000-0000-4000-8000-000000000518',
+        'releaseIssuedAt', clock_timestamp()::text, 'idempotencyKey', 's09-block-lifecycle-stale-0001'),
+      'CMS-03A-08') from s09_lifecycle_second_request))$$),
+  'P0001|VERSION_MISMATCH|' || jsonb_build_object('expectedVersion', '999', 'currentVersion', '1')::text,
+  'CMS-03A-08 answers a stale block If-Match with VERSION_MISMATCH carrying both versions [P2-S09-AC-315]'
+);
+select is(
+  pg_temp.s09_error_detail($$select platform_api.cms_advance_block_lifecycle(
+    (select pg_temp.s09_sign_release(
+      request || jsonb_build_object(
+        'fromLifecycle', 'supported', 'releaseNonce', 'a9090000-0000-4000-8000-000000000519',
+        'releaseIssuedAt', clock_timestamp()::text, 'idempotencyKey', 's09-block-lifecycle-state-0001'),
+      'CMS-03A-08') from s09_lifecycle_second_request))$$),
+  'P0001|CONFLICT|',
+  'control: CMS-03A-08 at the current version but from the wrong lifecycle stays a bare CONFLICT with no version detail [P2-S09-AC-315]'
+);
 select set_config('app.cms_rpc', 'true', true);
 select throws_ok(
   $$update platform_private.cms_block_definition_versions

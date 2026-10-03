@@ -118,7 +118,7 @@ select is(pg_temp.s09d_outcome('a:again'), 'CONFLICT', 'a second live review for
 select pg_temp.s09d_rpc('a:stale', 'platform_api.cms_submit_schema_review', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', '999', 'dryRunId', pg_temp.s09d_id('a:dryRun'), 'idempotencyKey', 's09d-submit-stale-0001'), true);
-select is(pg_temp.s09d_outcome('a:stale'), 'CONFLICT', 'a stale draft CAS version is a 409 CONFLICT');
+select is(pg_temp.s09d_outcome('a:stale'), 'VERSION_MISMATCH', 'a stale draft CAS version is a 409 VERSION_MISMATCH');
 select pg_temp.s09d_rpc('a:hidden', 'platform_api.cms_submit_schema_review', 'other',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'dryRunId', pg_temp.s09d_id('a:dryRun'),

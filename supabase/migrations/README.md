@@ -291,6 +291,31 @@ any remote), so no deployed row can violate it. Future constraint tightening on 
 table that has been deployed uses `ADD CONSTRAINT ... NOT VALID`, a preflight query
 that finds and remediates violating rows, then `VALIDATE CONSTRAINT`.
 
+Slice 09 R8 adds five forward-only migrations, each with its RED-first pgTAP suite.
+`20261002198000` makes review assignments owner-consistent: an assignment INSERT whose
+`owner_id` differs from its review's is refused `CONFLICT` (DETAIL
+`assignment_owner_mismatch`), a decision may only cite an assignment of the review's
+owner (DETAIL `decision_assignment_owner_mismatch`), and the decision lookup,
+`cms_review_scope` and `cms_review_qualifying_approvers` require
+`assignment.owner_id = review.owner_id`, so a legacy mismatched row (assignments are
+immutable and cannot be rewritten) is inert
+(`../tests/phase_02_slice_09_r8_review_owner_consistency.sql`). `20261002199000`
+makes `auth_mfa_factor_reconcile` re-check the persisted MFA verification lockout under
+the binding lock for the `verified` and `pending` outcomes (`MFA_VERIFICATION_LOCKED:<s>`,
+nothing written; `removed` still settles)
+(`../tests/phase_02_slice_09_r8_mfa_reconcile_lockout.sql`, and the committed-session race
+in `../tests/phase_02_slice_09_dec111/012-settle-race.mjs`). `20261002200000` makes
+`admin_mfa_factor_reset_settle` emit `identity.mfa-factor.changed.v1` for each factor a
+`failed` provider outcome leaves reconciling, so the reconciler is woken again
+(`../tests/phase_02_slice_09_dec111_admin_mfa_reset.sql`, AC-933). `20261002201000` makes the
+CMS-03A-01 and CMS-03A-09 RPCs call `platform_api.cms_validate_locale_config` itself
+(AC-1203; `../tests/phase_02_slice_09_r8_locale_validator_path.sql`). `20261002202000`
+implements the BE00 error details the Worker needs: a stale If-Match is `VERSION_MISMATCH`
+with DETAIL `{expectedVersion, currentVersion}` (state conflicts stay a bare `CONFLICT`),
+every Slice 09 `FORBIDDEN` carries DETAIL `{reasonCode}` (`OWNER_REQUIRED` or
+`CAPABILITY_REQUIRED`), and OD-4 locale violations are `{path, message}` rather than
+`{pointer, message}` (`../tests/phase_02_slice_09_r8_error_details.sql`).
+
 ## Related links
 
 - `../tests/README.md`

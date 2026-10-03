@@ -83,7 +83,7 @@ insert into s09t_inventory values
   ('cms_schema_migration_target_rows', 'cms_schema_migration_target_rows_immutable_guard', 'cms_immutable_guard', 27),
   ('cms_schema_migration_target_rows', 'cms_schema_migration_target_rows_write_guard', 'cms_write_guard', 7),
   ('cms_schema_review_assignments', 'cms_schema_review_assignments_write_guard', 'cms_write_guard', 31),
-  ('cms_schema_review_assignments', 'cms_schema_review_assignments_z_state_guard', 'cms_schema_review_assignment_guard', 27),
+  ('cms_schema_review_assignments', 'cms_schema_review_assignments_z_state_guard', 'cms_schema_review_assignment_guard', 31),
   ('cms_schema_review_decisions', 'cms_schema_review_decisions_write_guard', 'cms_write_guard', 31),
   ('cms_schema_review_decisions', 'cms_schema_review_decisions_z_append_guard', 'cms_schema_review_decision_guard', 31),
   ('cms_schema_reviews', 'cms_schema_reviews_write_guard', 'cms_write_guard', 31),

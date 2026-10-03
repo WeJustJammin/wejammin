@@ -1,5 +1,6 @@
 import type {
   ContentSchemaRegistryListPage,
+  ContentSchemaRegistryQuery,
   ContentSchemaRegistryRecord,
 } from './content-schema-registry-types';
 
@@ -7,7 +8,32 @@ interface Props {
   readonly page: ContentSchemaRegistryListPage;
   readonly canonicalUrl: string;
   readonly listUrl: string;
+  /** The applied server sort; the matching visible column carries `aria-sort`. */
+  readonly sort?: Pick<ContentSchemaRegistryQuery, 'sort' | 'direction'>;
 }
+
+/** The visible column each server sort key orders (created is not a column). */
+const SORT_COLUMNS = {
+  key: 'Key',
+  version: 'Version',
+  updatedAt: 'Updated',
+} as const;
+
+const sortAttribute = (
+  props: Props,
+  column: (typeof SORT_COLUMNS)[keyof typeof SORT_COLUMNS],
+): { readonly 'aria-sort'?: 'ascending' | 'descending' } => {
+  const sorted =
+    props.sort === undefined
+      ? undefined
+      : (SORT_COLUMNS as Readonly<Record<string, string>>)[props.sort.sort];
+  return props.sort !== undefined && sorted === column
+    ? {
+        'aria-sort':
+          props.sort.direction === 'asc' ? 'ascending' : 'descending',
+      }
+    : {};
+};
 
 const recordKey = (record: ContentSchemaRegistryRecord): string => {
   switch (record.resourceKind) {
@@ -66,11 +92,8 @@ const TypeFacts = ({
 const detailFocusKey = (record: ContentSchemaRegistryRecord): string =>
   `content-schema-registry-view-${record.id}`;
 
-export default function ContentSchemaRegistryList({
-  page,
-  canonicalUrl,
-  listUrl,
-}: Props) {
+export default function ContentSchemaRegistryList(props: Props) {
+  const { page, canonicalUrl, listUrl } = props;
   const nextUrl =
     page.nextCursor === null
       ? null
@@ -95,10 +118,16 @@ export default function ContentSchemaRegistryList({
           <thead>
             <tr>
               <th scope="col">Resource kind</th>
-              <th scope="col">Key</th>
-              <th scope="col">Version</th>
+              <th scope="col" {...sortAttribute(props, 'Key')}>
+                Key
+              </th>
+              <th scope="col" {...sortAttribute(props, 'Version')}>
+                Version
+              </th>
               <th scope="col">Lifecycle or state</th>
-              <th scope="col">Updated</th>
+              <th scope="col" {...sortAttribute(props, 'Updated')}>
+                Updated
+              </th>
               <th scope="col">
                 <span className="visually-hidden">Inspect</span>
               </th>

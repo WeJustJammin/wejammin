@@ -7,6 +7,7 @@ import type {
 } from './types';
 import { CONTENT_SCHEMA_REGISTRY_RUNBOOK } from './types';
 import { lifecycleMetrics } from './route-lifecycle-metrics';
+import { registryMetrics } from './route-registry-metrics';
 import type { FeatureContext } from './route-types';
 import { readOperationIds } from './route-types';
 import {
@@ -131,6 +132,7 @@ export const createExecutor =
         slo_command_p95_ms: policy.slo.commandP95Ms,
         slo_protected_rpc_p95_ms: policy.slo.protectedRpcP95Ms,
         slo_acceptance_p99_ms: policy.slo.acceptanceP99Ms,
+        ...registryMetrics(operationId, result, durationMs),
         ...lifecycleMetrics(
           operationId,
           input,

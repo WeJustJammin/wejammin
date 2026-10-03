@@ -12,6 +12,12 @@
  * persisted lock after acquiring it and are refused with
  * MFA_VERIFICATION_LOCKED, committing nothing.
  *
+ * Reconciler lockout (AC-778, AC-865, AC-904): a third user's reconciling
+ * factor is reconciled `verified` while a separate session holds the account
+ * binding lock charging the tenth failure; the reconciler queues on the lock,
+ * re-checks the persisted lock after acquiring it, is refused with
+ * MFA_VERIFICATION_LOCKED and commits nothing, so the factor stays reconciling.
+ *
  * Reconciler version CAS (AC-913): two reconcilers that observed the same
  * factor version settle it at once (exactly one
  * applies, the other answers { stale: true } and writes nothing); a delayed
@@ -128,12 +134,18 @@ const ids = JSON.parse(
    select pg_temp.m_enroll(2, 'Phone');
    select pg_temp.m('r:m', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(2),
      'p_factor_id', pg_temp.m_fid(2)));
+   select pg_temp.m_user(3);
+   select pg_temp.m_pending(3, 'Phone');
+   select pg_temp.m('r3:m', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(3),
+     'p_factor_id', pg_temp.m_fid(3)));
    select jsonb_build_object('user', pg_temp.m_uid(1), 'session', pg_temp.m_sid(1),
      'challenge', pg_temp.m_resp('c:f')->>'challengeId',
      'pending', (select id from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(1) and state = 'pending'),
      'version', pg_temp.m_ver(1),
      'user2', pg_temp.m_uid(2), 'factor2', pg_temp.m_fid(2),
-     'factor2Version', pg_temp.m_fv(pg_temp.m_fid(2)))::text;`,
+     'factor2Version', pg_temp.m_fv(pg_temp.m_fid(2)),
+     'user3', pg_temp.m_uid(3), 'factor3', pg_temp.m_fid(3),
+     'factor3Version', pg_temp.m_fv(pg_temp.m_fid(3)))::text;`,
       'commit;',
     ].join('\n'),
   ),
@@ -209,6 +221,71 @@ assert(
       `select mfa_version from identity.auth_user_bindings where auth_user_id = ${uuidSql(ids.user)};`,
     ) === before.mfa,
   'neither refused settle changed the factor, the challenge or the account MFA version',
+);
+
+// ------------------------------------------- reconciler lockout in flight ----
+const reconcileOf = (user, factor, outcome, version) =>
+  `select platform_api.auth_mfa_factor_reconcile(${uuidSql(user)}, ${uuidSql(factor)}, ${sql(outcome)}, ${version}, ${trace()});`;
+const factor3Before = {
+  state: columns('identity.mfa_factor_registry', 'state', ids.factor3),
+  version: columns('identity.mfa_factor_registry', 'version', ids.factor3),
+  mfa: runValue(
+    `select mfa_version from identity.auth_user_bindings where auth_user_id = ${uuidSql(ids.user3)};`,
+  ),
+};
+assert(
+  factor3Before.state === 'reconciling',
+  'the third user\'s factor is reconciling before the lock is set',
+);
+const failures3 = Array.from(
+  { length: 10 },
+  () =>
+    `select platform_api.auth_mfa_verification_failure_record(${uuidSql(ids.user3)}, 'incorrect', ${trace()});`,
+).join(' ');
+const locker3 = runAsync(
+  'dec111race-locker3',
+  `begin; ${failures3} select pg_sleep(3); commit;`,
+);
+await new Promise((resolve) => setTimeout(resolve, 1200));
+const reconcileVerified = runAsync(
+  'dec111race-rc-lock-v',
+  reconcileOf(ids.user3, ids.factor3, 'verified', ids.factor3Version),
+);
+const reconcilePending = runAsync(
+  'dec111race-rc-lock-p',
+  reconcileOf(ids.user3, ids.factor3, 'pending', ids.factor3Version),
+);
+const [lock3Result, verifiedResult, pendingResult] = await Promise.all([
+  locker3,
+  reconcileVerified,
+  reconcilePending,
+]);
+assert(lock3Result.code === 0, 'the third user\'s lock-setting transaction committed');
+assert(
+  runValue(
+    `select (locked_until > clock_timestamp())::text from identity.mfa_verification_lockouts where auth_user_id = ${uuidSql(ids.user3)};`,
+  ) === 'true',
+  'the third user\'s 15-minute lock is persisted',
+);
+assert(
+  verifiedResult.code !== 0 &&
+    /MFA_VERIFICATION_LOCKED:\d+/.test(verifiedResult.stderr),
+  `[P2-S09-AC-778] [P2-S09-AC-904] a verified reconcile queued behind the lock-setting transaction was refused (${verifiedResult.stderr.trim().split('\n')[0]})`,
+);
+assert(
+  pendingResult.code !== 0 &&
+    /MFA_VERIFICATION_LOCKED:\d+/.test(pendingResult.stderr),
+  `[P2-S09-AC-778] [P2-S09-AC-904] a pending reconcile queued behind the lock-setting transaction was refused (${pendingResult.stderr.trim().split('\n')[0]})`,
+);
+assert(
+  columns('identity.mfa_factor_registry', 'state', ids.factor3) ===
+    factor3Before.state &&
+    columns('identity.mfa_factor_registry', 'version', ids.factor3) ===
+      factor3Before.version &&
+    runValue(
+      `select mfa_version from identity.auth_user_bindings where auth_user_id = ${uuidSql(ids.user3)};`,
+    ) === factor3Before.mfa,
+  'neither refused reconcile changed the factor state, the factor version or the account MFA version',
 );
 
 // ------------------------------------------------- reconciler version CAS ----

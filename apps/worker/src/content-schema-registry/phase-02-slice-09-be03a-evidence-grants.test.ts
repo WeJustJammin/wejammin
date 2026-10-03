@@ -69,12 +69,24 @@ const BAD_DATES = [
 const GOOD_DATES = ['2026-10-08', '2028-02-29', '2026-12-30'];
 const VERSION_BAD = ['0', '01', '-1', 'a', '', 1, null];
 const VERSION_OK = ['1', '12'];
+const ASTRAL = '\u{1F600}';
+const NFD_E = 'e\u0301';
 const reasonCases = {
-  rejected: [{ reason: '' }, { reason: 'x'.repeat(257) }, { reason: 4 }],
+  rejected: [
+    { reason: '' },
+    { reason: 'x'.repeat(257) },
+    { reason: 4 },
+    // Characters, not UTF-16 units: 257 astral characters are 514 units.
+    { reason: ASTRAL.repeat(257) },
+    // Counted after NFC: 257 decomposed letters are 257 characters.
+    { reason: NFD_E.repeat(257) },
+  ],
   accepted: [
     { reason: undefined },
     { reason: 'x' },
     { reason: 'x'.repeat(256) },
+    // 256 astral characters are 512 UTF-16 units and 1024 octets.
+    { reason: ASTRAL.repeat(256) },
   ],
 };
 
@@ -397,6 +409,26 @@ describe('BE03a CMS-03A-18 list query', () => {
           expect.any(AbortSignal),
         );
       }
+    },
+  );
+});
+
+describe('BE03a grant reason reaches the port in NFC form', () => {
+  it.each([
+    ['[P2-S09-AC-514]', 'CMS-03A-15'],
+    ['[P2-S09-AC-551]', 'CMS-03A-16'],
+    ['[P2-S09-AC-579]', 'CMS-03A-17'],
+  ] as const)(
+    '%s %s counts 256 decomposed letters as 256 characters and forwards the NFC form',
+    async (_marker, operationId) => {
+      const { op, harness, response } = await send(operationId, {
+        reason: NFD_E.repeat(256),
+      });
+      expect(response.status).toBe(op.status);
+      const forwarded = harness.ports[op.portName]?.mock.calls[0]?.[0] as {
+        body: { reason: string };
+      };
+      expect(forwarded.body.reason).toBe('\u00e9'.repeat(256));
     },
   );
 });

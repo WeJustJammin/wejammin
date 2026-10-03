@@ -128,7 +128,22 @@ describe('BE03a rate limits through the production limiter stack', () => {
       const { sendAs } = stack(op);
       for (let user = 1; user <= op.partyLimit; user += 1)
         expect((await sendAs(op, user)).status).toBe(op.status);
-      expect((await sendAs(op, op.partyLimit + 1)).status).toBe(429);
+      const refused = await sendAs(op, op.partyLimit + 1);
+      expect(refused.status).toBe(429);
+      // The party bucket refuses a user whose own bucket is nearly empty. The
+      // clock sits 17 s into the window, so 43 s remain; a hard-coded value
+      // could not equal 43.
+      expect(refused.headers.get('retry-after')).toBe('43');
+      expect(refused.headers.get('ratelimit-limit')).toBe(
+        String(op.partyLimit),
+      );
+      expect(refused.headers.get('ratelimit-remaining')).toBe('0');
+      expect(refused.headers.get('ratelimit-reset')).toBe('1788345660');
+      expect((await bodyOf(refused)).details).toEqual({
+        retryAfterSeconds: 43,
+        limit: op.partyLimit,
+        resetAt: new Date(1_788_345_660_000).toISOString(),
+      });
     },
   );
 
