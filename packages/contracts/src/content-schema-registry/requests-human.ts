@@ -134,24 +134,53 @@ export const SchemaActivationRequestSchema = z
  * replaces it (both present). `sourceLocale` and `defaultLocale` are always
  * inherited from the immutable source version, so the Worker validates only
  * what it can see; the database validator owns the inherited-locale rules.
+ *
+ * DEC-123: the same both-null / both-present pair governs the template
+ * members. Both null clones the source default template and template bindings;
+ * both present replaces them, which is the only way a type gains its first
+ * template (CMS-03A-01 creates a type without one). The compatibility of each
+ * referenced template with the type is decided by the database resolver.
  */
+export const TEMPLATE_BINDING_MESSAGES = {
+  pair: 'defaultTemplateVersionId and templateBindings must be both null or both present',
+  unique: 'templateBindings must be unique',
+  incompatible: 'template version is not compatible with this content type',
+} as const;
+
+/**
+ * The database accepts only the canonical lowercase form of an identifier, so
+ * the successor's template members refuse any other case before the Worker
+ * reaches the database.
+ */
+const SuccessorTemplateVersionIdSchema = CmsUuidSchema.refine(
+  (value) => value === value.toLowerCase(),
+  { message: 'template version id must be lowercase' },
+);
+const SuccessorTemplateBindingSchema = z
+  .strictObject({ templateVersionId: SuccessorTemplateVersionIdSchema })
+  .readonly();
+
 export const SchemaSuccessorRequestSchema = z
   .strictObject({
     expectedVersion: CmsVersionSchema,
     supportedLocales: CmsSupportedLocalesSchema.nullable(),
     fallbackChains: CmsFallbackChainsSchema.nullable(),
+    defaultTemplateVersionId: SuccessorTemplateVersionIdSchema.nullable(),
+    templateBindings: z
+      .array(SuccessorTemplateBindingSchema)
+      .max(32)
+      .readonly()
+      .nullable(),
   })
   .superRefine((value, context) => {
     const { supportedLocales, fallbackChains } = value;
-    if ((supportedLocales === null) !== (fallbackChains === null)) {
+    if ((supportedLocales === null) !== (fallbackChains === null))
       context.addIssue({
         code: 'custom',
         path: ['fallbackChains'],
         message: LOCALE_CONFIG_MESSAGES.pair,
       });
-      return;
-    }
-    if (supportedLocales !== null && fallbackChains !== null)
+    else if (supportedLocales !== null && fallbackChains !== null)
       refineLocaleConfig(
         {
           sourceLocale: null,
@@ -161,6 +190,26 @@ export const SchemaSuccessorRequestSchema = z
         },
         context,
       );
+    const { defaultTemplateVersionId, templateBindings } = value;
+    if ((defaultTemplateVersionId === null) !== (templateBindings === null))
+      context.addIssue({
+        code: 'custom',
+        path: ['templateBindings'],
+        message: TEMPLATE_BINDING_MESSAGES.pair,
+      });
+    else if (templateBindings !== null) {
+      const seen = new Set<string>();
+      templateBindings.forEach((binding, index) => {
+        const identity = binding.templateVersionId;
+        if (seen.has(identity))
+          context.addIssue({
+            code: 'custom',
+            path: ['templateBindings', index, 'templateVersionId'],
+            message: TEMPLATE_BINDING_MESSAGES.unique,
+          });
+        seen.add(identity);
+      });
+    }
   })
   .readonly();
 

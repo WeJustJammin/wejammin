@@ -46,7 +46,8 @@ $body$;
 -- CMS-03A-09: successor draft of an immutable source version.
 create or replace function pg_temp.s09d_successor(
   p_tag text, p_source_tag text, p_actor text default 'owner', p_idem text default null,
-  p_supported jsonb default null, p_chains jsonb default null
+  p_supported jsonb default null, p_chains jsonb default null,
+  p_default_template uuid default null, p_bindings jsonb default null
 ) returns jsonb language plpgsql as $body$
 declare resource jsonb;
 begin
@@ -56,6 +57,7 @@ begin
       'versionId', pg_temp.s09d_id(p_source_tag || ':version'),
       'expectedVersion', pg_temp.s09d_version(p_source_tag),
       'supportedLocales', p_supported, 'fallbackChains', p_chains,
+      'defaultTemplateVersionId', p_default_template, 'templateBindings', p_bindings,
       'idempotencyKey', coalesce(p_idem, pg_temp.s09d_idem(p_tag, 'successor'))));
   perform pg_temp.s09d_remember(p_tag || ':type', pg_temp.s09d_id(p_source_tag || ':type'));
   if resource is not null then

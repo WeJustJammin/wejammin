@@ -215,11 +215,15 @@ describe('CMS-03A-09 successor locale configuration', () => {
         expectedVersion: '3',
         supportedLocales: null,
         fallbackChains: null,
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toEqual({
       expectedVersion: '3',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
   });
 
@@ -228,6 +232,8 @@ describe('CMS-03A-09 successor locale configuration', () => {
       SchemaSuccessorRequestSchema.safeParse({
         expectedVersion: '3',
         ...localeConfig,
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }).success,
     ).toBe(true);
   });
@@ -245,6 +251,8 @@ describe('CMS-03A-09 successor locale configuration', () => {
         expectedVersion: '3',
         supportedLocales: ['en-US'],
         fallbackChains: null,
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toEqual(expected);
     expect(
@@ -252,6 +260,8 @@ describe('CMS-03A-09 successor locale configuration', () => {
         expectedVersion: '3',
         supportedLocales: null,
         fallbackChains: {},
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toEqual(expected);
   });
@@ -268,6 +278,8 @@ describe('CMS-03A-09 successor locale configuration', () => {
         expectedVersion: '3',
         supportedLocales: ['en-US', 'fr-FR'],
         fallbackChains: { 'fr-FR': ['de-DE'] },
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toEqual([
       {
@@ -280,6 +292,8 @@ describe('CMS-03A-09 successor locale configuration', () => {
         expectedVersion: '3',
         supportedLocales: ['en-US', 'en-US'],
         fallbackChains: {},
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toContainEqual({
       path: ['supportedLocales', 1],
@@ -293,6 +307,8 @@ describe('CMS-03A-09 successor locale configuration', () => {
         expectedVersion: '3',
         supportedLocales: null,
         fallbackChains: null,
+        defaultTemplateVersionId: null,
+        templateBindings: null,
         sourceLocale: 'en-US',
       }).success,
     ).toBe(false);
@@ -438,9 +454,11 @@ describe('locale configuration OpenAPI projection', () => {
   it('marks the successor pair nullable and the resource fields required', () => {
     const successor = schemas.SchemaSuccessorRequest?.properties;
     expect(Object.keys(successor ?? {}).sort()).toEqual([
+      'defaultTemplateVersionId',
       'expectedVersion',
       'fallbackChains',
       'supportedLocales',
+      'templateBindings',
     ]);
     const resource = schemas.ContentTypeVersionResource as unknown as {
       required: string[];

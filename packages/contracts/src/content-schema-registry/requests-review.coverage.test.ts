@@ -27,6 +27,8 @@ describe('DEC-108 producer request contracts', () => {
     const clone = {
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     };
     expect(
       ok(SchemaSuccessorRequestSchema, { expectedVersion: '3', ...clone }),

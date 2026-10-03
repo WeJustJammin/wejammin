@@ -87,6 +87,10 @@ export default function ContentSchemaRegistryVersionCommands(
             supportedLocales: detail.resource.supportedLocales,
             fallbackChains: detail.resource.fallbackChains,
           }}
+          sourceTemplateConfig={{
+            defaultTemplateVersionId: detail.resource.defaultTemplateVersionId,
+            bindings: detail.templateBindings,
+          }}
         />
       ) : null}
       {hasNextAction(preparation, 'start_dry_run') ? (

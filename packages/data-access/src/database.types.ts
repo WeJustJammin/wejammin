@@ -9995,6 +9995,17 @@ export type Database = {
       }
       cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
       cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_successor_template_gate: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_candidate_version_id: string
+          p_content_type_id: string
+          p_pointer: Json
+          p_template_version_id: string
+        }
+        Returns: undefined
+      }
       cms_sweep_expired_review_authority: {
         Args: { p_batch: number }
         Returns: Json

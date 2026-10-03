@@ -127,6 +127,7 @@ const renderSuccessor = (): Mounted => {
       ifMatch: '"4"',
       expectedVersion: '4',
       sourceLocaleConfig: SOURCE,
+      sourceTemplateConfig: { defaultTemplateVersionId: null, bindings: [] },
     }),
   );
   const change = mounted.container.querySelector<HTMLInputElement>(

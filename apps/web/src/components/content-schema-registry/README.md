@@ -111,6 +111,20 @@ authority from browser headers or query parameters.
 - Server 422 locale messages are fixed BE03a strings; the DOM runtime shows
   only those (never other server text) and links each to its control by id.
 
+## Successor template choice (BE03a DEC-123, FE03)
+
+- `content-schema-registry-template-binding.ts` — pure rules: the default
+  template and the one-per-line template list become the request members, each
+  problem is named on its field and line, and `templateFieldId` is the id both
+  the island and the refusal summary use. No React, no DOM.
+- `use-template-choice.ts` — the state hook (keep or choose, reveal-on-blur
+  validation, submit guard that focuses the first invalid field).
+- `ContentSchemaRegistryTemplateFields.tsx` — the controls inside
+  `ContentSchemaRegistrySuccessorForm.tsx`. Keeping posts both members as null;
+  choosing posts the default id and the list serialized into the hidden
+  `templateBindings` member. The list textarea has no `name`. Server 422
+  template messages are fixed BE03a strings, linked to the owning field.
+
 ## Step-up recovery, draft restore and review announcements (FE03, FE00)
 
 - `content-schema-registry-step-up-classify.ts` — reads a 401 with the typed

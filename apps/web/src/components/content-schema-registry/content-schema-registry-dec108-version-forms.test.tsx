@@ -135,13 +135,18 @@ describe('[DEC-108] CMS-03A-09 successor form', () => {
           'versionId',
           // OD-4 replacement choice radio: transport only, never a payload key.
           'localeChoice',
+          // DEC-123 template choice radio: transport only, never a payload key.
+          'templateChoice',
         ].includes(name),
     );
-    // The default choice keeps the source locale configuration (both null).
+    // The default choices keep the source locale and template configurations
+    // (both members of each pair null).
     expect(names.sort()).toStrictEqual([
+      'defaultTemplateVersionId',
       'expectedVersion',
       'fallbackChains',
       'supportedLocales',
+      'templateBindings',
     ]);
   });
 

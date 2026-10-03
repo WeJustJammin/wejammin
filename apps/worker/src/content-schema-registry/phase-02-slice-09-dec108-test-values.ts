@@ -174,6 +174,8 @@ export const successorBody = {
   expectedVersion: '1',
   supportedLocales: null,
   fallbackChains: null,
+  defaultTemplateVersionId: null,
+  templateBindings: null,
 };
 export const dryRunBody = {
   expectedVersion: '1',

@@ -1,4 +1,7 @@
-import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
+import {
+  LOCALE_CONFIG_MESSAGES,
+  TEMPLATE_BINDING_MESSAGES,
+} from '@wejammin/contracts';
 
 import {
   authoritativeResource,
@@ -87,11 +90,15 @@ export interface ContentSchemaRegistryLocaleIssue {
   readonly message: string;
 }
 
-const LOCALE_MESSAGES: ReadonlySet<string> = new Set(
-  Object.values(LOCALE_CONFIG_MESSAGES),
-);
+const LOCALE_MESSAGES: ReadonlySet<string> = new Set([
+  ...Object.values(LOCALE_CONFIG_MESSAGES),
+  ...Object.values(TEMPLATE_BINDING_MESSAGES),
+]);
 
-/** Only the fixed BE03a OD-4 strings may be rendered; all else stays opaque. */
+/**
+ * Only the fixed BE03a OD-4 locale strings and DEC-123 template-binding
+ * strings may be rendered; all else stays opaque.
+ */
 const mutationLocaleIssues = async (
   response: Response,
 ): Promise<readonly ContentSchemaRegistryLocaleIssue[]> => {

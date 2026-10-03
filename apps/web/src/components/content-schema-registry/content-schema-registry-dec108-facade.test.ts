@@ -26,7 +26,12 @@ import {
 
 const versionPath = `/api/v1/cms/content-types/${TYPE_ID}/versions/${VERSION_ID}`;
 const reviewPath = `/api/v1/cms/schema-reviews/${REVIEW_ID}`;
-const clone = { supportedLocales: null, fallbackChains: null } as const;
+const clone = {
+  supportedLocales: null,
+  fallbackChains: null,
+  defaultTemplateVersionId: null,
+  templateBindings: null,
+} as const;
 const transportKeys = ['csrf', 'idempotency-key', 'if-match', 'operationId'];
 
 describe('[DEC-108] CMS-03A-09 successor facade', () => {
@@ -51,6 +56,8 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
       expectedVersion: '4',
       supportedLocales: ['fr', 'en-US'],
       fallbackChains: { fr: ['en-US'] },
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     };
     const { response, forwardedBody } = await callFacade({
       target: versionTarget('CMS-03A-09'),
@@ -68,6 +75,8 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
         expectedVersion: '4',
         supportedLocales: ['en-US'],
         fallbackChains: null,
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       },
       upstream: { status: 201, body: draftDetail().resource },
     });
@@ -94,6 +103,8 @@ describe('[DEC-108] CMS-03A-09 successor facade', () => {
         expectedVersion: '4',
         supportedLocales: ['en-US', 'fr'],
         fallbackChains: { fr: ['secret-locale'] },
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       },
       upstream: { status: 201, body: draftDetail().resource },
     });

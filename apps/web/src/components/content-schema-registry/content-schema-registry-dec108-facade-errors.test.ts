@@ -25,6 +25,8 @@ const bodies = {
     expectedVersion: '4',
     supportedLocales: null,
     fallbackChains: null,
+    defaultTemplateVersionId: null,
+    templateBindings: null,
   },
   'CMS-03A-10': {
     expectedVersion: '4',

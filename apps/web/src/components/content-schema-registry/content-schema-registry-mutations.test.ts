@@ -361,7 +361,7 @@ describe('content schema registry mutation facade', () => {
     });
   });
 
-  it('parses the successor form pair and ignores the replacement choice radio', async () => {
+  it('parses the successor form pairs and ignores the replacement choice radios', async () => {
     const target = {
       operationId: 'CMS-03A-09',
       contentTypeId: TYPE_ID,
@@ -374,6 +374,9 @@ describe('content schema registry mutation facade', () => {
         localeChoice: 'keep',
         supportedLocales: 'null',
         fallbackChains: 'null',
+        templateChoice: 'keep',
+        defaultTemplateVersionId: '',
+        templateBindings: 'null',
       },
       typeResource,
       { 'if-match': '"4"' },
@@ -384,6 +387,8 @@ describe('content schema registry mutation facade', () => {
       expectedVersion: '4',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     const change = await call(
       target,
@@ -392,6 +397,10 @@ describe('content schema registry mutation facade', () => {
         localeChoice: 'change',
         supportedLocales: '["en-US","fr"]',
         fallbackChains: '{"fr":["en-US"]}',
+        templateChoice: 'change',
+        defaultTemplateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da',
+        templateBindings:
+          '[{"templateVersionId":"018f0c45-73fe-4dc2-9c09-68f7ecf132da"}]',
       },
       typeResource,
       { 'if-match': '"4"' },
@@ -401,6 +410,45 @@ describe('content schema registry mutation facade', () => {
       expectedVersion: '4',
       supportedLocales: ['en-US', 'fr'],
       fallbackChains: { fr: ['en-US'] },
+      defaultTemplateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da',
+      templateBindings: [
+        { templateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da' },
+      ],
+    });
+  });
+
+  it('[P2-S09-AC-049] refuses half of the template pair locally with the pair message and no upstream call', async () => {
+    const target = {
+      operationId: 'CMS-03A-09',
+      contentTypeId: TYPE_ID,
+      versionId: VERSION_ID,
+    } as const;
+    const { response, binding } = await call(
+      target,
+      {
+        expectedVersion: '4',
+        supportedLocales: 'null',
+        fallbackChains: 'null',
+        defaultTemplateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da',
+        templateBindings: 'null',
+      },
+      typeResource,
+      { 'if-match': '"4"' },
+      'application/x-www-form-urlencoded',
+    );
+    expect(response.status).toBe(422);
+    expect(binding.fetch).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        violations: [
+          {
+            path: '/templateBindings',
+            message:
+              'defaultTemplateVersionId and templateBindings must be both null or both present',
+          },
+        ],
+      },
     });
   });
 

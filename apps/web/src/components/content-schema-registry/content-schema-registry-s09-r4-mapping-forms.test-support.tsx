@@ -48,7 +48,7 @@ export const TRANSPORT = new Set([
   'versionId',
   'reviewId',
 ]);
-export const UI_ONLY = new Set(['localeChoice', 'confirmed']);
+export const UI_ONLY = new Set(['localeChoice', 'templateChoice', 'confirmed']);
 
 export const inputKeys = (schema: z.ZodType): string[][] => {
   const json = z.toJSONSchema(schema, {

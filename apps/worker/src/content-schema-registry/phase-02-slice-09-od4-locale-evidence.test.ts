@@ -533,7 +533,15 @@ describe('OD-4 CMS-03A-09 successor locale pair and ordering', () => {
   const spec = specFor('CMS-03A-09');
   const sendSuccessor = async (body: Body) => {
     const harness = makeDec108Harness({ session: sessionResult(spec) });
-    const response = await harness.app.request(requestFor(spec, { body }));
+    const response = await harness.app.request(
+      requestFor(spec, {
+        body: {
+          defaultTemplateVersionId: null,
+          templateBindings: null,
+          ...body,
+        },
+      }),
+    );
     return { response, port: harness.ports.createSchemaSuccessor };
   };
 

@@ -353,6 +353,12 @@ Forward-only migrations for the 2026-10-03 P240-db rulings (each has a RED-first
 - `215000` DEC-123: `cms_create_type_draft` refuses a default template or template binding outright
   (422) and has no template-binding write; a successor version carries the source's template
   forward (`../tests/phase_02_slice_09_p240_dec123_template_binding.sql`).
+- `216000` DEC-123 completion: `cms_create_schema_successor` accepts `defaultTemplateVersionId` and
+  `templateBindings` (both null clones the source, both present replaces); each template is resolved
+  through `cms_resolve_template_compatibility` against the exact candidate (new private gate
+  `cms_successor_template_gate`: NOT_FOUND 404, INCOMPATIBLE 422 with a pointer, WITHDRAWN 409), and
+  the bindings are written before the candidate compiles so the definition hash, review evidence and
+  activation carry them (`../tests/phase_02_slice_09_p241_dec123_successor_binding.sql`).
 
 ## Related links
 

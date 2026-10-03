@@ -7,6 +7,7 @@ import {
   localeControlId,
   pathFromPointer,
 } from './content-schema-registry-locale-config';
+import { templateFieldId } from './content-schema-registry-template-binding';
 import {
   announce,
   clearDynamicFeedback,
@@ -27,6 +28,18 @@ const fieldNameFromPointer = (pointer: string): string | null => {
     : name;
 };
 
+/** DOM id of the control that owns an issue pointer (template, else locale). */
+const issueControlId = (
+  formId: string,
+  path: readonly (string | number)[],
+): string => {
+  if (path[0] === 'defaultTemplateVersionId')
+    return templateFieldId(formId, 'defaultTemplateVersionId');
+  if (path[0] === 'templateBindings')
+    return templateFieldId(formId, 'templateBindings');
+  return localeControlId(formId, issueControlTarget(path));
+};
+
 const appendLocaleIssues = (
   form: HTMLFormElement,
   list: HTMLElement,
@@ -35,7 +48,7 @@ const appendLocaleIssues = (
 ): void => {
   for (const issue of issues) {
     const path = pathFromPointer(issue.pointer);
-    const id = localeControlId(form.id, issueControlTarget(path));
+    const id = issueControlId(form.id, path);
     const element = form.ownerDocument.getElementById(id);
     const item = form.ownerDocument.createElement('li');
     const text = `${path.join(' / ')}: ${issue.message}`;

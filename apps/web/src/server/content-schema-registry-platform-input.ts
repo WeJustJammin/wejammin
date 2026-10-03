@@ -37,6 +37,7 @@ const FORM_TRANSPORT_FIELDS = new Set([
   'confirmation',
   'confirmed',
   'localeChoice',
+  'templateChoice',
   'contentTypeId',
   'versionId',
   'reviewId',

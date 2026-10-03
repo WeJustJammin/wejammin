@@ -84,6 +84,8 @@ describe('[DEC-108] rendered form -> facade -> upstream', () => {
       expectedVersion: '4',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     expect(forwarded?.headers.get('idempotency-key')).toBe(
       fields['idempotency-key'],

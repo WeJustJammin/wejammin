@@ -45,6 +45,7 @@ const render = (): Mounted => {
       ifMatch: '"3"',
       expectedVersion: '3',
       sourceLocaleConfig: SOURCE,
+      sourceTemplateConfig: { defaultTemplateVersionId: null, bindings: [] },
     }),
   );
   return mounted;

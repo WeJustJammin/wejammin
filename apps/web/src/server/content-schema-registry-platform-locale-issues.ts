@@ -1,14 +1,19 @@
-import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
+import {
+  LOCALE_CONFIG_MESSAGES,
+  TEMPLATE_BINDING_MESSAGES,
+} from '@wejammin/contracts';
 
 /**
- * BE03a OD-4 locale-configuration refusals are server-owned constant strings,
+ * BE03a OD-4 locale-configuration refusals and the DEC-123 template-binding
+ * refusals are server-owned constant strings,
  * so a local 422 may carry them (never echoed input) with an RFC 6901 JSON
  * Pointer in the BE00 `FieldViolation.path` member.
  * Every other issue exposes no text, matching the platform `violations` shape.
  */
-const LOCALE_MESSAGES: ReadonlySet<string> = new Set(
-  Object.values(LOCALE_CONFIG_MESSAGES),
-);
+const LOCALE_MESSAGES: ReadonlySet<string> = new Set([
+  ...Object.values(LOCALE_CONFIG_MESSAGES),
+  ...Object.values(TEMPLATE_BINDING_MESSAGES),
+]);
 
 const pointerFor = (path: readonly PropertyKey[]): string =>
   `/${path

@@ -38,17 +38,13 @@ describe('R2 validation messages and pointers on the wire', () => {
   it('[P2-S09-AC-518] CMS-03A-15 reports exactly the message "not a real calendar date" at /validThrough for 2026-02-30', async () => {
     expect(
       await violationsFor('CMS-03A-15', grant({ validThrough: '2026-02-30' })),
-    ).toEqual([
-      { path: '/validThrough', message: 'not a real calendar date' },
-    ]);
+    ).toEqual([{ path: '/validThrough', message: 'not a real calendar date' }]);
   });
 
   it('[P2-S09-AC-518] CMS-03A-15 reports the same message for a non-calendar day in a 31-day month position (2026-04-31)', async () => {
     expect(
       await violationsFor('CMS-03A-15', grant({ validThrough: '2026-04-31' })),
-    ).toEqual([
-      { path: '/validThrough', message: 'not a real calendar date' },
-    ]);
+    ).toEqual([{ path: '/validThrough', message: 'not a real calendar date' }]);
   });
 
   it('[P2-S09-AC-518] CMS-03A-16 reports the message at /validThrough for a renewal with a non-calendar date', async () => {
@@ -58,9 +54,7 @@ describe('R2 validation messages and pointers on the wire', () => {
         ...(op.body as Record<string, unknown>),
         validThrough: '2026-02-30',
       }),
-    ).toEqual([
-      { path: '/validThrough', message: 'not a real calendar date' },
-    ]);
+    ).toEqual([{ path: '/validThrough', message: 'not a real calendar date' }]);
   });
 
   it('[P2-S09-AC-518] a text that is not a YYYY-MM-DD date reports the lowercase constraint code utc_date_invalid', async () => {
@@ -94,6 +88,8 @@ describe('R2 validation messages and pointers on the wire', () => {
         expectedVersion: '1',
         supportedLocales: ['en-US', 'en-US'],
         fallbackChains: { 'en-US': ['en-US'] },
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toContainEqual({
       path: '/supportedLocales/1',
@@ -107,6 +103,8 @@ describe('R2 validation messages and pointers on the wire', () => {
         expectedVersion: '1',
         supportedLocales: ['en-US'],
         fallbackChains: null,
+        defaultTemplateVersionId: null,
+        templateBindings: null,
       }),
     ).toEqual([
       {

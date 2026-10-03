@@ -188,7 +188,12 @@ const SPECS: Readonly<Record<string, Spec>> = {
     success: detail.resource,
     ifMatch: true,
     fill: () => undefined,
-    expected: { supportedLocales: null, fallbackChains: null },
+    expected: {
+      supportedLocales: null,
+      fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
+    },
   },
   'CMS-03A-10': {
     status: 202,

@@ -189,9 +189,18 @@ describe('CMS-03A-01 locale configuration admission (OD-4)', () => {
 
 describe('CMS-03A-09 successor locale configuration admission (OD-4)', () => {
   const spec = specFor('CMS-03A-09');
-  const send = async (body: unknown) => {
+  // DEC-123: the template pair is always named; both null clones the source.
+  const send = async (body: Record<string, unknown>) => {
     const harness = makeDec108Harness({ session: sessionResult(spec) });
-    const response = await harness.app.request(requestFor(spec, { body }));
+    const response = await harness.app.request(
+      requestFor(spec, {
+        body: {
+          defaultTemplateVersionId: null,
+          templateBindings: null,
+          ...body,
+        },
+      }),
+    );
     return { response, port: harness.ports.createSchemaSuccessor };
   };
 
@@ -243,6 +252,8 @@ describe('CMS-03A-09 successor locale configuration admission (OD-4)', () => {
       expectedVersion: '1',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     const replace = await send({
       expectedVersion: '1',
@@ -256,6 +267,8 @@ describe('CMS-03A-09 successor locale configuration admission (OD-4)', () => {
       expectedVersion: '1',
       supportedLocales: ['fr-FR', 'en-US'],
       fallbackChains: { 'fr-FR': ['en-US'] },
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
   });
 

@@ -66,11 +66,13 @@ const OWNERSHIP_KEYS = [
 ];
 
 describe('BE03a CMS-03A-09 request object', () => {
-  it('[P2-S09-AC-285] SchemaSuccessorRequest is a strict object that carries only expectedVersion plus the OD-4 locale pair and rejects unknown keys', () => {
+  it('[P2-S09-AC-285] SchemaSuccessorRequest is a strict object that carries only expectedVersion plus the OD-4 locale pair and the DEC-123 template pair and rejects unknown keys', () => {
     const base = {
       expectedVersion: '1',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     };
     expect(SchemaSuccessorRequestSchema.safeParse(base).success).toBe(true);
     for (const key of [
@@ -90,16 +92,20 @@ describe('BE03a CMS-03A-09 request object', () => {
     ).toBe(false);
   });
 
-  it('[P2-S09-AC-285] SchemaSuccessorRequest parses to exactly the three declared keys and nothing else', () => {
+  it('[P2-S09-AC-285] SchemaSuccessorRequest parses to exactly the five declared keys and nothing else', () => {
     const parsed = SchemaSuccessorRequestSchema.parse({
       expectedVersion: '1',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     expect(Object.keys(parsed).sort()).toEqual([
+      'defaultTemplateVersionId',
       'expectedVersion',
       'fallbackChains',
       'supportedLocales',
+      'templateBindings',
     ]);
   });
 
@@ -108,6 +114,8 @@ describe('BE03a CMS-03A-09 request object', () => {
       expectedVersion: '1',
       supportedLocales: null,
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     expect(parsed.success).toBe(true);
   });
@@ -117,6 +125,8 @@ describe('BE03a CMS-03A-09 request object', () => {
       expectedVersion: '1',
       supportedLocales: ['en-US', 'fr-FR'],
       fallbackChains: { 'fr-FR': ['en-US'] },
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     };
     const parsed = SchemaSuccessorRequestSchema.safeParse(request);
     expect(parsed.success && parsed.data).toEqual(request);
@@ -127,6 +137,8 @@ describe('BE03a CMS-03A-09 request object', () => {
       expectedVersion: '1',
       supportedLocales: ['en-US'],
       fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     expect(parsed.success).toBe(false);
     expect(
@@ -145,6 +157,8 @@ describe('BE03a CMS-03A-09 request object', () => {
       expectedVersion: '1',
       supportedLocales: null,
       fallbackChains: {},
+      defaultTemplateVersionId: null,
+      templateBindings: null,
     });
     expect(parsed.success).toBe(false);
     expect(
@@ -165,6 +179,8 @@ describe('BE03a CMS-03A-09 request object', () => {
           expectedVersion: '1',
           supportedLocales: null,
           fallbackChains: null,
+          defaultTemplateVersionId: null,
+          templateBindings: null,
           [key]: 'en-US',
         }).success,
         key,
