@@ -21,6 +21,12 @@ type FieldCase = Readonly<{
   title: string;
   /** Body patches (undefined deletes the key) the route must refuse with 422. */
   rejected: readonly Record<string, unknown>[];
+  /**
+   * Body patches adding an unknown key the BE03a matrix names as a structural
+   * 400 INVALID_REQUEST (CMS-03A-10: a caller-supplied count, hash,
+   * classification or report, AC356).
+   */
+  structural?: readonly Record<string, unknown>[];
   /** Body patches the route must forward to the port unchanged. */
   accepted: readonly Record<string, unknown>[];
 }>;
@@ -47,10 +53,12 @@ const CASES: readonly FieldCase[] = [
     operationId: 'CMS-03A-10',
     title:
       'SchemaDryRunRequest is a strict object containing only expectedVersion, transformKey and transformVersion and rejects unknown keys',
-    rejected: [
+    structural: [
       { callerCounts: 1 },
       { classification: 'additive' },
       { sourceHash: 'a'.repeat(64) },
+    ],
+    rejected: [
       { expectedVersion: undefined },
       { transformKey: undefined },
       { transformVersion: undefined },
@@ -262,7 +270,17 @@ const REVOKE_BASE = {
 describe('BE03a request-body field rules through the route', () => {
   it.each(CASES)(
     '$marker $operationId $title',
-    async ({ operationId, rejected, accepted }) => {
+    async ({ operationId, rejected, accepted, structural = [] }) => {
+      for (const patch of structural) {
+        const { harness, response } = await send(operationId, patch);
+        expect(
+          response.status,
+          `${operationId} must refuse ${JSON.stringify(patch)} as a structural 400`,
+        ).toBe(400);
+        const body = (await response.json()) as Record<string, unknown>;
+        expect(body.code).toBe('INVALID_REQUEST');
+        expect(calledPorts(harness.ports)).toBe(0);
+      }
       for (const patch of rejected) {
         const { op, harness, response } = await send(operationId, patch);
         expect(

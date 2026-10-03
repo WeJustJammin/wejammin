@@ -482,7 +482,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /\*\*Local QA-GREEN \(historical, 2026-09-26\)\*\*:\s*279\/279\s+verified at that checkpoint;\s*283\s+authored IDs remain/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Current active verification\*\*:\s*1184\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+      /\*\*Current active verification\*\*:\s*1235\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
     );
 
     const ac266Row = sliceTracker

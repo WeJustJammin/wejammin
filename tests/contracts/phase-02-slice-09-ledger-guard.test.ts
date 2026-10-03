@@ -208,6 +208,64 @@ describe('Slice 09 depth-floor ledger guard', () => {
     );
   });
 
+  it('[P2-S09-AC-1146] accounts row by row for every criterion whose claim an amendment or later ruling changed, naming the authority and any pending ratification', () => {
+    const rows = tableRows(section('Rewording after the evidence rulings'));
+    const byCriterion = new Map(
+      rows.map((cells) => [cells[0], cells] as const),
+    );
+    const accounted = [
+      'AC300',
+      'AC678',
+      'AC774',
+      'AC1166',
+      'AC1031',
+      'AC285',
+      'AC942',
+      'AC1049',
+      'AC431',
+      'AC003, AC045, AC049',
+      'AC220',
+      'AC037',
+      'AC180',
+      'AC708',
+      'AC185',
+      'AC233',
+      'AC246',
+      'AC261',
+      'AC005',
+      'AC007',
+      'AC356',
+      'AC658',
+      'AC906',
+      'AC282',
+      'AC1147',
+    ];
+    for (const id of accounted) {
+      const cells = byCriterion.get(id);
+      expect(cells, `rewording row for ${id}`).toBeDefined();
+      expect(cells?.[1]?.length ?? 0, `${id} ruling text`).toBeGreaterThan(20);
+      expect(cells?.[2], `${id} disposition names its authority`).toMatch(
+        /Authority:|Reworded|Reopened/u,
+      );
+    }
+    const pending = rows.filter((cells) =>
+      /orchestrator ruling/iu.test(cells[2] ?? ''),
+    );
+    expect(pending.length).toBeGreaterThan(0);
+    for (const cells of pending)
+      expect(cells[2], `${cells[0]} marks owner ratification`).toMatch(
+        /pending owner ratification/u,
+      );
+    // the falsified claims the re-audit named are no longer in the plan in their old words
+    const plan = read('.memory/wiki/specs/phases/phase-2.md');
+    expect(plan).not.toMatch(
+      /AC-233\*\* — Unsaved protected registry data is never persisted as draft/u,
+    );
+    expect(plan).not.toMatch(
+      /AC-005\*\* — [^\n]*no_fallback fields do not borrow it\./u,
+    );
+  });
+
   it('[P2-S09-AC-273] keeps the ledger free of unresolved ambiguity markers', () => {
     expect(ledger).not.toMatch(/\bunresolved gaps\b/iu);
     expect(ledger).not.toMatch(/\bTBD\b|\bTODO\b|\bopen question\b/u);

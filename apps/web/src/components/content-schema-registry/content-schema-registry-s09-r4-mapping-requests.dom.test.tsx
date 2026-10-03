@@ -33,10 +33,19 @@ const SERVER_SUPPLIED_CREATE_MEMBERS = [
   'defaultTemplateVersionId',
   'templateBindings',
 ];
+/**
+ * AC390: CMS-03A-09 carries an optional nullable `workflowKey`/`workflowVersion`
+ * pair as an API-only producer path (FE03 Form-by-source completeness lists it
+ * as an API-only member): the successor form has no control for it and submits
+ * neither member, so the server keeps the source workflow member.
+ */
+const API_ONLY_SUCCESSOR_MEMBERS = ['workflowKey', 'workflowVersion'];
 const withoutServerSupplied = (id: string, keys: readonly string[]) =>
   id === 'CMS-03A-01'
     ? keys.filter((key) => !SERVER_SUPPLIED_CREATE_MEMBERS.includes(key))
-    : [...keys];
+    : id === 'CMS-03A-09'
+      ? keys.filter((key) => !API_ONLY_SUCCESSOR_MEMBERS.includes(key))
+      : [...keys];
 
 describe('form controls are exactly the generated request fields', () => {
   it.each(

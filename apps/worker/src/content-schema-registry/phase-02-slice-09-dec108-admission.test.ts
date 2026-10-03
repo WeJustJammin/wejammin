@@ -43,13 +43,16 @@ describe('DEC-108 route admission: media and body (BE03a Route Registry, strict 
   );
 
   it.each(MUTATIONS)(
-    '$operationId rejects an unknown body key with 422 VALIDATION_FAILED (strict request)',
+    '$operationId rejects an unknown body key with 422 VALIDATION_FAILED, or a structural 400 INVALID_REQUEST on CMS-03A-10 (strict request)',
     async (spec) => {
       const harness = makeDec108Harness({ session: sessionResult(spec) });
       const response = await harness.app.request(
         requestFor(spec, { body: { ...spec.body, callerCounts: 1 } }),
       );
-      await expectStatus(response, 422, 'VALIDATION_FAILED');
+      // CMS-03A-10: an unknown key (a caller-supplied count) is a structural 400
+      if (spec.operationId === 'CMS-03A-10')
+        await expectStatus(response, 400, 'INVALID_REQUEST');
+      else await expectStatus(response, 422, 'VALIDATION_FAILED');
       expect(calledPorts(harness.ports)).toBe(0);
     },
   );

@@ -347,7 +347,18 @@ describe('BE03a 422 VALIDATION_FAILED', () => {
         const harness = harnessFor(op);
         const body = await envelope(
           await harness.app.request(
-            requestFor(op, { body: { ...op.body, callerOwned: 1 } }),
+            requestFor(op, {
+              body:
+                operationId === 'CMS-03A-10'
+                  ? // an unknown key is a structural 400 on CMS-03A-10 (AC356);
+                    // a half transform pair is its 422 schema failure
+                    {
+                      ...op.body,
+                      transformKey: 'identity.revalidate',
+                      transformVersion: null,
+                    }
+                  : { ...op.body, callerOwned: 1 },
+            }),
           ),
           422,
           'VALIDATION_FAILED',

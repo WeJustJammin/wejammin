@@ -36,6 +36,8 @@ type ParsedFailure = Readonly<{
     issues: readonly Readonly<{
       path: readonly PropertyKey[];
       message: string;
+      code?: string;
+      keys?: readonly string[];
     }>[];
   }>;
 }>;

@@ -36047,6 +36047,28 @@
                 "type": "null"
               }
             ]
+          },
+          "workflowKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflowVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

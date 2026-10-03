@@ -304,7 +304,7 @@ describe('[P2-S09-AC-279] migrationPlanId is required and nullable in the source
   });
 });
 
-describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topics, so the transfer count is zero', () => {
+describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topics, so the original transfer count is zero and the DEC-122 moves are received by seven explicit criteria', () => {
   const record = read(RECORD);
   const ownedBy = (slice: number): Row[] => bySlice(slice, planRows);
 
@@ -313,6 +313,113 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
       /S10, S11, S12, and S15 existing owner criteria cover those topics; \*\*transfer count: 0\*\*/u,
     );
     expect(record).toMatch(/no later slice file was edited/u);
+  });
+
+  it('records the DEC-122 transfer with its transferred counts: seven receiving criteria (Slice 11: 3, Slice 12: 3, Slice 16: 1) beside the unchanged original transfer count of 0', () => {
+    expect(record).toMatch(/\*\*transfer count: 0\*\*/u);
+    expect(record).toMatch(
+      /DEC-122 transfer \(2026-10-03\): \*\*transferred count: 7\*\* \(Slice 11: 3, Slice 12: 3, Slice 16: 1\)/u,
+    );
+    for (const owner of [
+      'AC-046, AC-047, AC-048',
+      'AC-051, AC-052, AC-053',
+      'AC-029',
+    ])
+      expect(record, owner).toContain(owner);
+  });
+
+  it('carries each DEC-122 receiving criterion as an open row with a source in the owner slice plan and tracker, with no Slice 09 id in its text', () => {
+    const receiving: readonly [number, number, readonly [number, RegExp][]][] =
+      [
+        [
+          11,
+          48,
+          [
+            [
+              46,
+              /CMS-03B-06 step-up recovery[\s\S]*\/step-up\?returnTo=[\s\S]*original Idempotency-Key/u,
+            ],
+            [
+              47,
+              /CMS-03B-07 step-up recovery[\s\S]*\/step-up\?returnTo=[\s\S]*original Idempotency-Key/u,
+            ],
+            [
+              48,
+              /CMS-03B-09 step-up recovery[\s\S]*\/step-up\?returnTo=[\s\S]*original Idempotency-Key/u,
+            ],
+          ],
+        ],
+        [
+          12,
+          53,
+          [
+            [
+              51,
+              /`no_fallback`[\s\S]*never resolved through `fallbackChains` to `defaultLocale`[\s\S]*cms_no_fallback_block_total/u,
+            ],
+            [
+              52,
+              /last approved translation[\s\S]*cms_locale_stale_total[\s\S]*no_fallback/u,
+            ],
+            [
+              53,
+              /compatibleTypeIds[\s\S]*CMS-03A-09[\s\S]*withdrawn template with 409/u,
+            ],
+          ],
+        ],
+        [
+          16,
+          29,
+          [
+            [
+              29,
+              /legal hold[\s\S]*incident fenc[\s\S]*CMS content-type definitions/iu,
+            ],
+          ],
+        ],
+      ];
+    for (const [slice, total, ids] of receiving) {
+      const plan = bySlice(slice, planRows);
+      const tracker = bySlice(slice, rows(TRACKER(slice)));
+      expect(plan.length, `S${slice} plan rows`).toBe(total);
+      expect(
+        plan.map((row) => row.id),
+        `S${slice} plan ids`,
+      ).toEqual(range(total));
+      expect(
+        tracker.map((row) => row.id),
+        `S${slice} tracker ids`,
+      ).toEqual(range(total));
+      for (const [id, topic] of ids) {
+        const row = plan.find((candidate) => candidate.id === id);
+        expect(row, `S${slice} AC${id} in the plan`).toBeDefined();
+        expect(row?.checked, `S${slice} AC${id} open`).toBe(false);
+        expect(row?.text, `S${slice} AC${id} text`).toMatch(topic);
+        expect(
+          row?.text,
+          `S${slice} AC${id} cites no Slice 09 id`,
+        ).not.toContain('P2-S09-AC-');
+        expect(row?.source, `S${slice} AC${id} source`).toMatch(
+          /^\[[^\]]+\]\(/u,
+        );
+        const mirrored = tracker.find((candidate) => candidate.id === id);
+        expect(mirrored?.checked, `S${slice} AC${id} tracker open`).toBe(false);
+        expect(mirrored?.text, `S${slice} AC${id} mirrored`).toBe(row?.text);
+      }
+      expect(read(TRACKER(slice)), `S${slice} tracker header`).toMatch(
+        new RegExp(`\\*\\*Acceptance criteria\\*\\*: ${total}\\b`, 'u'),
+      );
+    }
+  });
+
+  it('[P2-S09-AC-1147] states the transferred count in the Slice 09 rows AC282 and AC1147 of the plan and the tracker', () => {
+    for (const list of [planRows, rows(TRACKER(9))])
+      for (const id of [282, 1147]) {
+        const row = bySlice(9, list).find((candidate) => candidate.id === id);
+        expect(row?.text, `AC${id}`).toMatch(
+          /seven explicit receiving criteria/u,
+        );
+      }
   });
 
   it('finds an existing owner criterion in each named slice for the editorial, review, composition, taxonomy, locale and public-delivery topics', () => {

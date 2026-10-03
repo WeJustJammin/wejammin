@@ -118,4 +118,31 @@ describe('Slice 09 evidence cascade guards', () => {
       expect(read(path), `${path} publishes ${claim}`).toContain(claim);
     }
   });
+
+  it('[P2-S09-AC-1149] states one Slice 10 prerequisite note across plan, tracker, phase tracker, progress index and spec pipeline, naming the open-criteria block that really exists', () => {
+    const prerequisite =
+      'Slice 10 stays blocked until every criterion listed in the open-criteria block of the Slice 09 tracker is verified.';
+    for (const path of PUBLISHERS)
+      expect(
+        read(path).split(prerequisite).length - 1,
+        `${path} states the Slice 10 prerequisite exactly once`,
+      ).toBe(1);
+    const lineOf = (path: string): string | undefined =>
+      read(path)
+        .split(/\r?\n/u)
+        .find((line) =>
+          line.startsWith('**Slice 10 implementation prerequisites**'),
+        )
+        ?.trimEnd();
+    expect(lineOf(PLAN), 'plan prerequisite line').toBeDefined();
+    expect(lineOf(PLAN)).toBe(lineOf(TRACKER));
+    expect(read(TRACKER)).toMatch(
+      /<!-- s09-open:start -->[\s\S]*<!-- s09-open:end -->/u,
+    );
+    for (const { criterion } of S09_AMENDMENT_OPEN)
+      if (!DEFERRED_GATES.includes(numberOf(criterion)))
+        expect(read(TRACKER), `open block lists ${criterion}`).toContain(
+          `- AC${String(numberOf(criterion)).padStart(3, '0')} (`,
+        );
+  });
 });

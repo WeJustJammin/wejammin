@@ -346,7 +346,41 @@ describe('BE03a 422 VALIDATION_FAILED details allowlist', () => {
     },
   );
 
-  it.each(E422.filter(([, id]) => opFor(id).method === 'POST'))(
+  // AC356 (BE03a error matrix, R13 ruling): a caller-supplied count, hash,
+  // classification or report on CMS-03A-10 is an unknown key and a structural
+  // 400 INVALID_REQUEST, not a 422 schema failure; every other body operation
+  // keeps the 422 unrecognized_keys violation.
+  it.each(
+    E422.filter(([, id]) => opFor(id).method === 'POST' && id === 'CMS-03A-10'),
+  )(
+    '%s %s a caller-supplied count, hash, classification or report key is refused at admission with 400 INVALID_REQUEST and a violation pointing at that key',
+    async (_marker, operationId) => {
+      const op = opFor(operationId);
+      for (const key of ['sourceCount', 'reportHash', 'classification']) {
+        const harness = harnessFor(op);
+        const response = await harness.app.request(
+          requestFor(op, { body: { ...op.body, [key]: 1 } }),
+        );
+        expect(response.status, key).toBe(400);
+        const body = await bodyOf(response);
+        expect(body.code, key).toBe('INVALID_REQUEST');
+        expect(body.details, key).toEqual({
+          violations: [
+            {
+              path: `/${key}`,
+              code: 'unrecognized_keys',
+              message: 'The value is invalid.',
+            },
+          ],
+        });
+        expect(harness.ports[op.portName], key).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it.each(
+    E422.filter(([, id]) => opFor(id).method === 'POST' && id !== 'CMS-03A-10'),
+  )(
     '%s %s an unknown request key is refused at admission with 422 and a violation pointing at that key',
     async (_marker, operationId) => {
       const op = opFor(operationId);

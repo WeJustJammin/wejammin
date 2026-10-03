@@ -46,11 +46,11 @@ const acPolicyWindows = (source: string, id: string): string[] =>
   );
 
 describe('Phase 2 Slice 09 completion policy', () => {
-  it('[P2-S09-AC-267] preserves 1239 authored IDs with separate 1235-item Slice 09 and 2967-item Phase 2 implementation denominators', () => {
+  it('[P2-S09-AC-267] preserves 1239 authored IDs with separate 1235-item Slice 09 and 2974-item Phase 2 implementation denominators', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(acceptanceIds(source), label).toEqual(expectedAuthoredIds);
       expect(source, label).toMatch(
-        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*2,?967\b/iu,
+        /\*{0,2}Phase[ -]2 implementation-completion denominator\*{0,2}\s*:\s*2,?974\b/iu,
       );
       expect(source, label).toMatch(
         /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*1235\b/iu,

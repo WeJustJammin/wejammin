@@ -51,6 +51,10 @@ export const createHumanHandlers = (
     const body = await parseJsonBody<ParsedHumanBody>(
       context.req.raw,
       bodySchema,
+      undefined,
+      // CMS-03A-10: a caller-supplied count, hash, classification or report is
+      // an unknown key and a structural 400 (BE03a error matrix, AC356).
+      { unknownKeyIsStructural: operationId === 'CMS-03A-10' },
     );
     if (!body.ok) return errorResponse(context, body, requestId);
     const headers = parseMutationHeaders(context.req.raw, operationId);

@@ -58,9 +58,20 @@ export const readBytes = async (
   }
 };
 
+export type BodyOptions = Readonly<{
+  /**
+   * An operation whose BE03a matrix names an unknown request key as a
+   * structural 400 INVALID_REQUEST (CMS-03A-10: a caller-supplied count, hash,
+   * classification or report) sets this; every other operation answers an
+   * unknown key as a 422 schema failure.
+   */
+  unknownKeyIsStructural?: boolean;
+}>;
+
 const decodeJson = <T>(
   bytes: Uint8Array,
   schema: UnknownSchema,
+  options: BodyOptions,
 ): ContentSchemaRegistryResult<T> => {
   let value: unknown;
   try {
@@ -70,21 +81,36 @@ const decodeJson = <T>(
   }
   const parsed = schema.safeParse(value);
   if (isParsedSuccess<T>(parsed)) return { ok: true, value: parsed.data };
-  return isParsedFailure(parsed)
-    ? invalid('The request body failed validation.', issues(parsed.error), 422)
-    : invalid('The request body failed validation.', {}, 422);
+  if (!isParsedFailure(parsed))
+    return invalid('The request body failed validation.', {}, 422);
+  if (options.unknownKeyIsStructural === true) {
+    const unknownKeys = parsed.error.issues.filter(
+      (issue) => issue.code === 'unrecognized_keys',
+    );
+    if (unknownKeys.length > 0)
+      return invalid(
+        'The request body has an unknown member.',
+        issues({ issues: unknownKeys }),
+      );
+  }
+  return invalid(
+    'The request body failed validation.',
+    issues(parsed.error),
+    422,
+  );
 };
 
 export const parseJsonBody = async <T>(
   request: Request,
   schema: UnknownSchema,
   signal?: AbortSignal,
+  options: BodyOptions = {},
 ): Promise<ContentSchemaRegistryResult<T>> => {
   const media = request.headers.get('content-type')?.split(';')[0]?.trim();
   if (media !== 'application/json')
     return invalid('Use application/json.', {}, 415);
   const bytes = await readBytes(request, signal);
-  return bytes.ok ? decodeJson(bytes.value, schema) : bytes;
+  return bytes.ok ? decodeJson(bytes.value, schema, options) : bytes;
 };
 
 export const parseRequestPathId = (
