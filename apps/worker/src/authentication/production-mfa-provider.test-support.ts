@@ -28,7 +28,10 @@ export type Fetch = ReturnType<typeof vi.fn>;
 
 export const build = (
   fetchImpl: Fetch,
-  extra: Partial<Parameters<typeof createSupabaseMfaProvider>[1]> = {},
+  extra: {
+    [Key in keyof Parameters<typeof createSupabaseMfaProvider>[1]]?:
+      Parameters<typeof createSupabaseMfaProvider>[1][Key] | undefined;
+  } = {},
   clock: { now: number } = { now: NOW },
 ) => {
   const config = normalizeAuthProductionOptions({
@@ -44,7 +47,9 @@ export const build = (
       issuer: 'WeJammin (staging)',
       sleep,
       timeoutMs: 5_000,
-      ...extra,
+      // An explicit undefined removes the default so the production fallback
+      // (real timer, five-second deadline) is exercised.
+      ...(extra as Partial<Parameters<typeof createSupabaseMfaProvider>[1]>),
     }),
   };
 };

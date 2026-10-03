@@ -99,7 +99,10 @@ export const expectInvalid = async (
   const parsed = await bodyOf(response);
   expect(parsed.code).toBe('VALIDATION_FAILED');
   expect(parsed.requestId).toBe(REQUEST_ID);
-  const paths = (parsed.details.violations ?? []).map((v) => v.path ?? '');
+  // A 422 always carries violations with a path; a missing one is a TypeError
+  // here, which fails the test instead of passing on an empty list.
+  const violations = parsed.details.violations as readonly { path: string }[];
+  const paths = violations.map((v) => v.path);
   expect(paths.length).toBeGreaterThan(0);
   if (pathPrefix !== undefined)
     expect(

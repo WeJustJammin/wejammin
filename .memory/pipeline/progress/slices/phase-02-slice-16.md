@@ -8,6 +8,8 @@
 **Acceptance criteria**: 28  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)
 
+**Receiving scope (2026-10-03, orchestrator ruling pending owner ratification)**: Slice 09 AC185 states only that no purge path exists for CMS definitions, plans or reports (nine registry tables refuse DELETE and no function deletes a definition, a version, a plan or a report). Legal-hold and incident-fence enforcement over CMS records, so that a hold or fence blocks any future purge of them, is received by this slice's lifecycle foundation (P2-S16-AC-002 hold and purge conflicts and P2-S16-AC-003 lifecycle actions); no Slice 09 criterion verifies it and it is not counted in Slice 09 evidence.  
+
 ## Tasks
 
 - [ ] Contract: lock Zod, data, registry, event, and route contracts

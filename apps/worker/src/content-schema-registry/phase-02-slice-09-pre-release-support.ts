@@ -37,10 +37,8 @@ export const PATH: Record<Operation, string> = {
   'CMS-03A-08': `/api/v1/cms/blocks/versions/${BLOCK_ID}/lifecycle`,
 };
 
-const toBase64 = (bytes: ArrayBuffer | Uint8Array): string =>
-  Buffer.from(
-    bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
-  ).toString('base64');
+const toBase64 = (bytes: ArrayBuffer): string =>
+  Buffer.from(new Uint8Array(bytes)).toString('base64');
 
 export type Signing = Readonly<{
   registry: string;
@@ -159,11 +157,13 @@ export const makeSignedHarness = async (
   const signing = options.signing ?? (await makeSigning());
   const registerBlock = vi.fn(async () => ok(block));
   const advanceBlockLifecycle = vi.fn(async () => ok(lifecycleEvent));
-  const unused = vi.fn(async () => ok(resource));
+  // No release operation reaches these ports or the session resolver; a
+  // resolved value (not a function body) keeps them inert and truthful.
+  const unused = vi.fn().mockResolvedValue(ok(resource));
   const rateLimit = vi.fn(async () =>
     ok({ allowed: true, limit: 20, remaining: 19, resetAt: 1_788_345_600 }),
   );
-  const resolveSession = vi.fn(async () => ok(session));
+  const resolveSession = vi.fn().mockResolvedValue(ok(session));
   const telemetry = vi.fn();
   const dependencies: ContentSchemaRegistryDependencies = {
     ports: {

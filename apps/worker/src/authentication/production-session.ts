@@ -17,7 +17,7 @@ import {
   readCookie,
   sessionCookies,
 } from './production-cookie';
-import { verifyTokenResponse } from './production-token';
+import { accessTokenExpired, verifyTokenResponse } from './production-token';
 import type {
   AuthenticationDependencies,
   AuthenticationResult,
@@ -178,6 +178,15 @@ export const createSessionDependencies = (
           ? null
           : await openFlowCookie(sealedReference, config);
       if (accessToken === null || sessionReference?.provider !== 'session') {
+        return authError(
+          401,
+          'UNAUTHENTICATED',
+          'The authentication session is invalid.',
+        );
+      }
+      // An access token past its own expiry is an expired session (401), not a
+      // malformed provider response, and needs no provider round trip.
+      if (accessTokenExpired(accessToken, config.now())) {
         return authError(
           401,
           'UNAUTHENTICATED',

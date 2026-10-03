@@ -34,6 +34,16 @@ const decodeJwtPayload = (
   }
 };
 
+/**
+ * True when the access token's own `exp` claim has passed. An unreadable token
+ * or a missing claim is not reported as expired here: the provider check and
+ * `verifyTokenResponse` still decide those.
+ */
+export const accessTokenExpired = (token: string, now: number): boolean => {
+  const expires = decodeJwtPayload(token)?.exp;
+  return typeof expires === 'number' && expires * 1000 <= now;
+};
+
 const MFA_AMR_METHODS: readonly string[] = ['mfa', 'totp', 'webauthn', 'phone'];
 
 /**

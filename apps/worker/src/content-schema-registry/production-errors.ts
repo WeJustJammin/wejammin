@@ -394,7 +394,11 @@ export const mapAuthResult = <T>(
     status,
     result.code,
     result.message,
-    safeDetails(result, status),
+    // BE00: an UNAUTHENTICATED 401 always carries the one allowlisted
+    // recovery action, whichever layer (authentication or CMS) refused.
+    status === 401 && result.code === 'UNAUTHENTICATED'
+      ? { recoveryAction: 'reauthenticate' }
+      : safeDetails(result, status),
     result.retryAfterSeconds,
   ) as ContentSchemaRegistryError;
 };

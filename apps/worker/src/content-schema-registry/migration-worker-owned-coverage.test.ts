@@ -15,7 +15,6 @@ import {
 } from './phase-02-slice-09-adversarial-test-support';
 import {
   REQUEST_ID,
-  resource,
   session,
   validDraft,
 } from './phase-02-slice-09-test-values';

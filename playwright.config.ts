@@ -65,6 +65,8 @@ export default defineConfig({
     'phase-02-slice-09-locale-fields-real-route.spec.ts',
     'phase-02-slice-09-step-up-return-real-route.spec.ts',
     'phase-02-slice-09-registry-browser-real-route.spec.ts',
+    'phase-02-slice-09-registry-layout-real-route.spec.ts',
+    'phase-02-slice-09-web-vitals-real-route.spec.ts',
   ],
   use: {
     baseURL: webOrigin,

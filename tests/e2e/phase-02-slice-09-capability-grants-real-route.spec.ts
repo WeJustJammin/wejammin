@@ -410,9 +410,10 @@ test.describe('[P2-S09-AC-1036] mobile grant console at 375 px', () => {
   });
 });
 
-test.describe('[P2-S09-AC-1037] tablet grant console at 768 px', () => {
+// FE03 breakpoints: mobile is <= 768 px and tablet starts at 769 px.
+test.describe('[P2-S09-AC-1037] tablet grant console at 769 px', () => {
   const open = (browser: Parameters<typeof actor>[0]) =>
-    seedConsoleAt(browser, 768, 1000);
+    seedConsoleAt(browser, 769, 1000);
 
   test('[P2-S09-AC-1037] renders the grants as a captioned table with a visible header row', async ({
     browser,

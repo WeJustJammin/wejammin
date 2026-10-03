@@ -33,6 +33,7 @@ describe('MFA services: registry read failures and invalid projections', () => {
         session: sessionFor(),
         request: requestFor(),
         friendlyName: 'Phone authenticator',
+        ifMatch: '"3"',
       },
       env,
       signal,

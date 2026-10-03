@@ -550,7 +550,9 @@
 }
 
 /* Tablet disclosure: the collapsed sidebar keeps only its toggle. */
-@media (min-width: 48.0625rem) and (max-width: 64.0624rem) {
+/* Range syntax keeps 1025 px out of this band: Chrome rounds a max-width of
+   64.0624rem up to 1025 px, which hid the nav of a collapsed sidebar at desktop. */
+@media (width > 48rem) and (width < 64.0625rem) {
   .content-schema-registry-sidebar[data-collapsed='true'] {
     inline-size: auto;
   }

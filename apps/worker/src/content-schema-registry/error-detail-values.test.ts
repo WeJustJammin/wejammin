@@ -37,11 +37,14 @@ describe('[P2-S09-AC-035] [P2-S09-AC-600] [P2-S09-AC-623] registered detail valu
     ['lowercase token', 'capability_required'],
     ['unregistered token', 'SOMETHING_UNREGISTERED'],
     ['empty string', ''],
-  ])('replaces a 403 reasonCode that is a %s with the registered default', (_name, reasonCode) => {
-    expect(safeDetails(failure(403, { reasonCode }))).toEqual({
-      reasonCode: 'CAPABILITY_REQUIRED',
-    });
-  });
+  ])(
+    'replaces a 403 reasonCode that is a %s with the registered default',
+    (_name, reasonCode) => {
+      expect(safeDetails(failure(403, { reasonCode }))).toEqual({
+        reasonCode: 'CAPABILITY_REQUIRED',
+      });
+    },
+  );
 
   it.each(['CAPABILITY_REQUIRED', 'OWNER_REQUIRED', 'MFA_REQUIRED'])(
     'keeps the registered 403 reasonCode %s',

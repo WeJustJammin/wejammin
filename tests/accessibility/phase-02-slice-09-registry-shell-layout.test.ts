@@ -41,9 +41,8 @@ describe('[P2-S09-AC-245] [P2-S09-AC-246] the route stylesheet declares the shel
   });
 
   it('collapses the sidebar body only inside the tablet band and hides the toggle at desktop', () => {
-    const band = block(
-      '@media (min-width: 48.0625rem) and (max-width: 64.0624rem)',
-    );
+    // Range syntax: a rem max-width of 64.0624 rounds up to 1025 px in Chrome.
+    const band = block('@media (width > 48rem) and (width < 64.0625rem)');
     expect(band).toMatch(/data-collapsed=["']true["']/u);
     expect(band).toMatch(
       /\.content-schema-registry-sidebar-nav\s*\{[^}]*display:\s*none/u,

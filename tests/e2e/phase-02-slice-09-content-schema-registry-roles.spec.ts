@@ -221,9 +221,13 @@ test('[P2-S09-AC-265] exercises protected FE03 role projections through the regi
     expect(
       await page.locator('.content-schema-registry-create-form').count(),
     ).toBe(0);
+    // The sidebar disclosure toggle is display:none from 1025 px (AC246), so
+    // the first control a keyboard user can reach is the first visible one.
     const firstControl = page
       .getByRole('main')
-      .locator('a,button,input,select,textarea')
+      .locator(
+        'a:visible,button:visible,input:visible,select:visible,textarea:visible',
+      )
       .first();
     await firstControl.focus();
     await expect(firstControl).toBeFocused();

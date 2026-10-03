@@ -280,6 +280,13 @@ export const executeContentSchemaRegistryMutation = async (input: {
         true,
         true,
       );
+    // FE03 offline/reconnect: the replay is a complete request, so a definitive
+    // refusal (identity 401, authority 403, input 400/422, version 409, rate
+    // 429) is the answer and must reach the page. Only a still-ambiguous
+    // 503/504 (or no answer at all) keeps the first, ambiguous result.
+    const replayed = reconciliation.response;
+    if (replayed !== null && !retryableMutationStatus(replayed.status))
+      return resultFor(replayed, initialAttempts + 1, true);
     return resultFor(initialResponse, initialAttempts + 1, true);
   };
 

@@ -19,7 +19,6 @@ import {
 import { forwardCmsCapabilityGrantListRead } from '../../apps/web/src/server/cms-capability-grant-platform-api';
 import {
   opFor,
-  requestFor,
   type EvidenceOp,
   type EvidenceOperationId,
 } from '../../apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-support';
@@ -50,7 +49,8 @@ const MUTATION_ROWS: readonly Row[] = [
 ];
 
 const targetFor = (op: EvidenceOp): ContentSchemaRegistryMutationTarget => ({
-  operationId: op.operationId as ContentSchemaRegistryMutationTarget['operationId'],
+  operationId:
+    op.operationId as ContentSchemaRegistryMutationTarget['operationId'],
   ...op.pathParams,
 });
 

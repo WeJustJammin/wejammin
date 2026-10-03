@@ -265,9 +265,7 @@ describe('P2-S09 generated contract integration evidence', () => {
               message: 'Check the highlighted schema fields.',
               requestId: REQUEST_ID,
               details: {
-                violations: [
-                  { path: '/label', message: 'Label is required' },
-                ],
+                violations: [{ path: '/label', message: 'Label is required' }],
                 currentVersion: '7',
                 ownerId: 'must-not-cross-boundary',
               },

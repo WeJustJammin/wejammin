@@ -113,7 +113,9 @@ export const makeDbBackedHarness = (
   op: EvidenceOp,
   behaviour: DbBehaviour,
   overrides: Readonly<{
-    session?: ContentSchemaRegistrySession | ((call: number) => ContentSchemaRegistrySession);
+    session?:
+      | ContentSchemaRegistrySession
+      | ((call: number) => ContentSchemaRegistrySession);
   }> = {},
 ): DbBackedHarness => {
   const calls: RpcCall[] = [];
@@ -122,10 +124,12 @@ export const makeDbBackedHarness = (
     const parsed = JSON.parse(String(init?.body)) as {
       p_request: Record<string, unknown>;
     };
-    const context = parsed.p_request.context as { authUserId?: string };
+    const context = parsed.p_request.context as { authUserId: string };
     const call: RpcCall = {
-      rpc: CMS_SCHEMA_REGISTRY_RPC[op.portName as keyof typeof CMS_SCHEMA_REGISTRY_RPC],
-      actor: context.authUserId ?? null,
+      rpc: CMS_SCHEMA_REGISTRY_RPC[
+        op.portName as keyof typeof CMS_SCHEMA_REGISTRY_RPC
+      ],
+      actor: context.authUserId,
       idempotencyKey: headers.get('x-idempotency-key'),
       request: parsed.p_request,
     };

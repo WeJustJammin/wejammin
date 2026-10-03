@@ -23,9 +23,8 @@ import {
 const violation = (pointer: string, message: string) => ({ pointer, message });
 /** The same violation as the Worker reports it (BE00 FieldViolation). */
 const wireViolation = (path: string, message: string) => ({ path, message });
-const toWire = (
-  violations: readonly { pointer: string; message: string }[],
-) => violations.map((entry) => wireViolation(entry.pointer, entry.message));
+const toWire = (violations: readonly { pointer: string; message: string }[]) =>
+  violations.map((entry) => wireViolation(entry.pointer, entry.message));
 const postgrest = (message: string, details: unknown) => ({
   code: 'P0001',
   message,
@@ -61,20 +60,28 @@ describe('registry RPC error DETAIL mapping', () => {
     const violations = [violation('/defaultLocale', 'must be canonical case')];
     expect(
       mapRpcFailure(422, postgrest('VALIDATION_FAILED', { violations })),
-    ).toMatchObject({ status: 422, details: { violations: toWire(violations) } });
+    ).toMatchObject({
+      status: 422,
+      details: { violations: toWire(violations) },
+    });
     expect(
       mapRpcFailure(422, {
         code: 'P0001',
         message: 'something else',
         details: JSON.stringify({ violations }),
       }),
-    ).toMatchObject({ status: 422, details: { violations: toWire(violations) } });
+    ).toMatchObject({
+      status: 422,
+      details: { violations: toWire(violations) },
+    });
     // A DETAIL that already uses the BE00 member name is read the same way.
     expect(
       mapRpcFailure(
         422,
         postgrest('VALIDATION_FAILED', {
-          violations: [wireViolation('/defaultLocale', 'must be canonical case')],
+          violations: [
+            wireViolation('/defaultLocale', 'must be canonical case'),
+          ],
         }),
       ),
     ).toMatchObject({

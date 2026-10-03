@@ -219,8 +219,18 @@ describe('BE03a 400 INVALID_REQUEST details allowlist', () => {
     ['sort', '?sort=createdAt', '/sort', 'invalid_value'],
     ['direction', '?direction=up', '/direction', 'invalid_value'],
     ['state filter', '?state=pending', '/state', 'invalid_value'],
-    ['capability filter', '?capability=cms.nope', '/capability', 'invalid_value'],
-    ['subject filter', '?subjectPersonId=x', '/subjectPersonId', 'invalid_format'],
+    [
+      'capability filter',
+      '?capability=cms.nope',
+      '/capability',
+      'invalid_value',
+    ],
+    [
+      'subject filter',
+      '?subjectPersonId=x',
+      '/subjectPersonId',
+      'invalid_format',
+    ],
   ] as const)(
     '[P2-S09-AC-622] CMS-03A-18 a %s validation failure (%s) is 422 VALIDATION_FAILED with one path violation and no port call',
     async (_label, query, path, code) => {

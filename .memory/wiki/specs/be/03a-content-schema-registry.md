@@ -144,7 +144,7 @@ ApiError is exactly { code, message, requestId, details }. details is capped by 
 
 - Authentication is verified Supabase Auth session/JWT followed by server-resolved acting context; caller-supplied actor, party, capability, or owner fields are ignored.
 - Mutations require Idempotency-Key of 8–128 printable ASCII bytes and exact strong If-Match for a mutable parent; same bound request replays the original response, a mismatched body/actor/path/version returns 409 CONFLICT.
-- Hono middleware order is request-id → raw-size/media guard → JSON parse → Zod validation → session/JWT → acting-context/capability → CSRF → configured CORS allowlist → rate limiter → handler/RPC → response/error normalization.
+- The BE00 Hono middleware order governs (BE00 §Hono Middleware Order). For this shard it is request-id → raw-size/media guard → JSON parse → Zod validation → configured CORS origin allowlist (BE00 security/transport step, before any session or credential work) → session/JWT → acting-context/capability → step-up freshness (operations whose route row requires it) → session-bound CSRF (human cookie mutations only; the token is bound to the session, so the check follows session and capability resolution) → rate limiter → handler/RPC → response/error normalization.
 - CORS is explicit per-operation: production allows configured first-party origins only, credentials only for those origins, never wildcard credentials. CMS-03A-05 accepts the configured release-worker origin and signed release principal, not browser origins.
 - PostgreSQL RPC rechecks authority, state, version, idempotency, uniqueness, and allowlist under RLS. Domain mutation, idempotency record, audit row, and outbox row commit or roll back together.
 - Queue messages carry IDs, versions, correlation/causation IDs, and no content payload. Consumers use at-least-once delivery, leases, CAS, maximum three retries at 15s/60s/300s, and DLQ for terminal or unknown-version failures.
@@ -1963,6 +1963,17 @@ unchanged clones of different versions coexist under distinct version-addressed
 artifact references without claiming identical versioned artifacts. Tests cover
 both the second and third version.
 
+Compiled artifact set (AC007): a compiled `SchemaArtifact` is exactly the
+versioned contract reference `zodContractRef` (`cms/content-type/{typeKey}/v{versionNo}`,
+the single Zod and OpenAPI source: Zod 4 strict objects generate the TypeScript
+and OpenAPI types), the `editor_manifest`, the `renderer_manifest`, the
+`compiler_version` and the deterministic `artifact_hash`. There is no separately
+persisted OpenAPI document and no persisted database artifact: the database
+shape is the forward SQL migration of this shard, and the browser resource
+carries only the reference, compiler version and hash, never a manifest body.
+Unknown definition members are rejected at CMS-03A-01 and CMS-03A-02 before the
+compiler runs, so an artifact is only ever the compiler's output.
+
 The three DEC-108 private review records are CMS-owned, never CFG
 setting-value candidates, and are the only authority for schema-review evidence.
 
@@ -2498,6 +2509,7 @@ None.
 | 2026-10-02 | Audit remediation (R3): the concurrency test bullet for idempotency no longer lists a changed actor as a 409. BE00 scopes an idempotency binding to `(actor_id, operation, key_hash)`, so a different actor is a distinct binding; only the same actor reusing a key with a changed body, path parameter or expected version is 409 CONFLICT (AC300 ruling). Recent binding-bound MFA (CMS-03A-04/12/14/15/16/17) is the Worker-verified step-up instant `context.stepUpAt` (fresh when `-30 s <= now - stepUpAt <= 600 s`, `stepUpVerified = true`), never the acting-context binding heartbeat; the binding heartbeat remains a separate liveness check. The CapabilityGrant reason bound is 1 to 256 Unicode characters counted after NFC, in the database as in the contract. |
 | 2026-10-03 | DEC-123 and Slice 09 P240 database rulings: CMS-03A-01 creates a new type without a template (`defaultTemplateVersionId` is `null`, `templateBindings` is empty; a present value is a 422 before any template row is read) and a template is bound through a successor version, which carries the source's default template and bindings forward (binding authoring is received by the Slice 12 template binding flows); the opaque relation placeholder `{status:'unavailable', reason:'unavailable'}` is produced by the draft read for an unavailable target under the `placeholder` policy (see BE03b); the SQL API enumerates exactly the Worker-called cms_ RPC set and two spec-named functions are executable by no API role; the envelope `producer` is resolved from a registered event-type-prefix map in the outbox claim. | /implement-slice | Route field validation matrix, CMS-03A-01 request, Database and Middleware, Event schemas |
 | 2026-10-03 | DEC-123 completion (owner): `SchemaSuccessorRequest` gains `defaultTemplateVersionId` and `templateBindings` with the OD-4 pair semantics (both null clones the source default template and bindings, both present replaces them) because a type created without a template (CMS-03A-01) can gain one only through a successor; supersedes the earlier statement that binding authoring is received by the Slice 12 template flows. Each template is resolved through the CMS-03C-01 resolver against the exact candidate and the typed failures map to `NOT_FOUND` 404, `INCOMPATIBLE` 422 with a JSON pointer, `WITHDRAWN` 409; the bindings are written before the candidate is compiled so the definition hash, review evidence (`definition_hash`) and activation carry them. | /implement-slice | Route field validation matrix, CMS-03A-09 request, Error matrix, Zod contracts |
+| 2026-10-03 | R12 audit holdovers (orchestrator ruling): the Hono middleware order bullet now cites the BE00 canonical order and places the CORS origin allowlist before session verification, with step-up freshness and the session-bound CSRF check after capability resolution and before the rate limiter, matching the implementation and the existing origin-before-session test (AC025); added the explicit compiled artifact set (versioned contract reference, editor manifest, renderer manifest, compiler version, deterministic hash; no separately persisted OpenAPI or database artifact) so AC007 is worded to what BE03a defines.  | R12 orchestrator ruling | Shared Contract Inheritance, Database Schema, Middleware |
 
 ## Dependency References
 

@@ -33,8 +33,7 @@ describe('S09 adversarial worker recovery', () => {
     const harness = makeHarness();
     const dependencies = harness.dependencies;
     let resolveFirst:
-      | ((value: ContentSchemaRegistryResult<unknown>) => void)
-      | undefined;
+      ((value: ContentSchemaRegistryResult<unknown>) => void) | undefined;
     const firstResponse = new Promise<ContentSchemaRegistryResult<unknown>>(
       (resolve) => {
         resolveFirst = resolve;

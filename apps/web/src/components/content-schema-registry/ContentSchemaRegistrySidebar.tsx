@@ -6,7 +6,7 @@ export const CONTENT_SCHEMA_REGISTRY_SIDEBAR_STORAGE_KEY =
 
 const NAV_ID = 'content-schema-registry-sidebar-nav';
 /** FE03 Responsive Behavior tablet band: 769 to 1024 CSS px. */
-const TABLET_QUERY = '(min-width: 48.0625rem) and (max-width: 64.0624rem)';
+const TABLET_QUERY = '(width > 48rem) and (width < 64.0625rem)';
 
 export interface ContentSchemaRegistrySidebarProps {
   readonly listUrl: string;

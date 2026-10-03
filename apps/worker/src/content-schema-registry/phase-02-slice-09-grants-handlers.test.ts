@@ -224,7 +224,8 @@ describe('grant handler idempotency (BE00: the database owns the binding)', () =
       const second = await harness.app.request(grantRequestFor(spec));
       expect(first.status).toBe(spec.status);
       expect(second.status).toBe(spec.status);
-      const calls = harness.ports[spec.portName]?.mock.calls as unknown as ReadonlyArray<
+      const calls = harness.ports[spec.portName]?.mock
+        .calls as unknown as ReadonlyArray<
         readonly [{ idempotencyKey?: string; session?: { userId: string } }]
       >;
       expect(calls).toHaveLength(2);

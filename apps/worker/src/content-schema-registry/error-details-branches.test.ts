@@ -54,9 +54,7 @@ describe('withinDetailsCeiling', () => {
   it('keeps the remaining keys when every violation had to go', () => {
     const rest = withinDetailsCeiling({
       reasonCode: 'POLICY_NOT_MET',
-      violations: [
-        { path: '/field', message: 'x'.repeat(MAX_DETAILS_BYTES) },
-      ],
+      violations: [{ path: '/field', message: 'x'.repeat(MAX_DETAILS_BYTES) }],
     });
     expect(rest).toEqual({ reasonCode: 'POLICY_NOT_MET' });
   });

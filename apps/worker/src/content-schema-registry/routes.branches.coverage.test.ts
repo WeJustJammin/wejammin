@@ -30,8 +30,9 @@ const refused = ok({
 
 const withoutClock = (overrides: Parameters<typeof makeDependencies>[0]) => {
   const { dependencies } = makeDependencies(overrides);
-  const { now: _now, ...rest } = dependencies;
-  return rest;
+  return Object.fromEntries(
+    Object.entries(dependencies).filter(([key]) => key !== 'now'),
+  ) as Omit<typeof dependencies, 'now'>;
 };
 
 afterEach(() => {

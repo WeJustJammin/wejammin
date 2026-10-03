@@ -285,7 +285,8 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
       'P2-S09-AC-269',
     ]) {
       const row = rowFor(slice09Tracker, id) ?? '';
-      expect(row, id).toMatch(/^- \[x\] \*\*/u);
+      // Scope text is permanent; the box follows the evidence index (a surviving claim may still be open).
+      expect(row, id).toMatch(boxFor(id));
       expect(row, id).toMatch(/original|A01-A08/u);
     }
     for (const id of ['P2-S09-AC-089', 'P2-S09-AC-091', 'P2-S09-AC-099']) {

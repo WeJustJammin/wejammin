@@ -260,7 +260,8 @@ describe('DEC-108 handler idempotency (BE03a Idempotency / concurrency column)',
       expect(second.status).toBe(spec.status);
       // BE00: (actor, operation, key) is the database's unique serialization
       // point, so a retry is always handed to the RPC (the database replays).
-      const calls = harness.ports[spec.portName]?.mock.calls as unknown as ReadonlyArray<
+      const calls = harness.ports[spec.portName]?.mock
+        .calls as unknown as ReadonlyArray<
         readonly [{ idempotencyKey?: string; session?: { userId: string } }]
       >;
       expect(calls).toHaveLength(2);
