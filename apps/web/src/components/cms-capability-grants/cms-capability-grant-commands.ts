@@ -117,7 +117,10 @@ export const stateForResult = (
         ? failure(result, COMMAND_COPY.personMissing)
         : failure(result, COMMAND_COPY.grantMissing, { refetch: true });
     case 'conflict':
-      return kind === 'grant'
+      // CMS-03A-15 directs the owner to renew only for an existing active
+      // aggregate (details.recoveryAction 'renew', AC527); any other conflict
+      // never claims the person already holds the capability.
+      return kind === 'grant' && result.recoveryAction === 'renew'
         ? failure(result, COMMAND_COPY.alreadyHeld, {
             action: 'filter-capability',
           })

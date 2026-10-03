@@ -60,11 +60,28 @@ export const scriptFetch = (...responders: Responder[]) => {
   return { calls, fetchMock };
 };
 
+/**
+ * The timer captured at import time, before any test installs fake timers, so a
+ * real macrotask turn is available even under `vi.useFakeTimers()`.
+ */
+const realSetTimeout = globalThis.setTimeout;
+const RESPONSE_BODY_SETTLE_MS = 15;
+
+/**
+ * Lets a scripted `fetch` answer, its body stream and React's commit settle. A
+ * Response body is finished by real time, not by microtasks, so six microtask
+ * turns alone left the pending state visible under load (1 run in 4).
+ */
 export const settle = async (): Promise<void> => {
   for (let index = 0; index < 6; index += 1)
     await act(async () => {
       await Promise.resolve();
     });
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      realSetTimeout(resolve, RESPONSE_BODY_SETTLE_MS);
+    });
+  });
 };
 
 const setter = (element: object) =>

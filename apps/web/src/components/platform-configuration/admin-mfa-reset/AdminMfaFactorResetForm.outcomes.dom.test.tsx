@@ -97,7 +97,7 @@ describe('AdminMfaFactorResetForm step-up recovery', () => {
       apiError(401, 'STEP_UP_REQUIRED', { allowedMethods: ['totp'] }),
     );
     expect(h.navigate).toHaveBeenCalledWith(
-      `/step-up?returnTo=${encodeURIComponent('/app/platform-configuration-admin/mfa-reset')}`,
+      `/step-up?returnTo=${encodeURIComponent('/app/platform-configuration-admin?tab=mfa-reset')}`,
     );
     expect(h.storage.dump()).not.toContain(PERSON);
     expect(h.storage.dump()).not.toContain(REASON);
@@ -127,7 +127,7 @@ describe('AdminMfaFactorResetForm session recovery', () => {
       'a[href^="/auth/sign-in?returnTo="]',
     );
     expect(link?.getAttribute('href')).toBe(
-      `/auth/sign-in?returnTo=${encodeURIComponent('/app/platform-configuration-admin/mfa-reset')}`,
+      `/auth/sign-in?returnTo=${encodeURIComponent('/app/platform-configuration-admin?tab=mfa-reset')}`,
     );
     expect(h.navigate).not.toHaveBeenCalledWith(
       expect.stringContaining('/step-up'),

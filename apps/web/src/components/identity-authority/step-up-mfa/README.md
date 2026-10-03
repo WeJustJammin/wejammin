@@ -31,6 +31,16 @@ in `../../platform-configuration/admin-mfa-reset/` is the reference consumer.
   `src/pages/api/v1/account/mfa/**` and `src/pages/api/v1/auth/step-up/**`.
 - A one-time code, the otpauth URI and the manual key live only in island
   memory; `step-up-draft.ts` refuses to persist fields that could hold them.
+- Everything a step-up detour persists (protected-form drafts, the capability
+  grant pending-command envelope, the admin reset marker) is stamped by
+  `step-up-binding.ts` with the session scope and the write time. It restores
+  only for the same scope inside the DEC-111 600 s window and is otherwise
+  cleared. The scope is the `wj_step_up_scope` cookie `src/server/step-up-scope.ts`
+  derives at the edge from the signed-in subject; it follows the subject, not
+  the session id, because step-up rotates the session. All of it is cleared on
+  an acting-context change and when the tab reaches `/auth/sign-in`. A new
+  persisted step-up record must use `stampFor`/`isStampLive` and add its key to
+  `clearAllStepUpState`.
 - The QR code is rendered client-side from the one-time payload; no service
   receives the secret.
 - Tests sit next to their source; `*.test-support.*` files are shared fixtures.

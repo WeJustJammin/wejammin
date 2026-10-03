@@ -56,7 +56,37 @@
   - DEC-127: the rollback RPC may fail a dry_running plan.
   - DEC-128: AC906 uses the pull model, proven by a no-cache guard and a real multi-tab test.
   - The ratified texts are **not yet applied** to the plan, tracker or ledger. The 19 held criteria are unchecked, each with a "held: …" note.
-- **R14 remediation** (lane reports in `context/reports/`):
+- **Later owner decisions (2026-10-03):**
+  - DEC-129: delete the CMS-03A-05 "unknown release target is 404" clause.
+  - DEC-130: AC1122 is reworded to cover each branch.
+  - Orchestrator rulings:
+    - AC527: the 409 carries `recoveryAction: 'renew'`.
+    - AC1108: the admin MFA reset surface follows the spec's `tab=mfa-reset`.
+- **R14 and R14b completed** (WIP `e1e53a74`):
+  - Database: `db:test` 198 files / 8191 tests, `db:api-test` 53 tests, races 6/6 (with the `test-results/db-races.jsonl` gate).
+  - Worker and contracts: 7017 tests.
+  - Web and contracts: 3907 tests.
+  - Bundle: 89,922 B gzip against the 92,160 B budget.
+  - Chrome: s09-real passes in a single invocation, 107/0/0; functional is 105/0/0.
+  - The new real-stack tests exposed two more production defects, both fixed:
+    - CMS-03A-02 could never succeed: the Worker sent a flat body.
+    - Every committed CMS-03A-05 returned 502.
+- **Integrator v5 was running at the last refresh:**
+  - Green the ~15 failing root vitest tests.
+  - Apply the DEC-124..130 texts and the AC527, DEC-129 and AC1108 changes.
+  - Fix the citations.
+  - Produce real outputs and generated receipts.
+  - Its report is `context/reports/integrator-v5.md`.
+  - A Codex adversarial review of the R14 commits is saved to `context/reports/codex-review-r14.md`. Verify each finding before fixing it.
+- **Codex review of R14 (`context/reports/codex-review-r14.md`):** Claude verified all 5 findings against the code and the catalog. Details are in the `context/orchestration.md` entry "Codex review R14".
+  - Findings 4 and 5 were being fixed by lane R14c-app (report `context/reports/r14c-app.md`):
+    - (4) AUTH-API-03 decodes the body before the origin and CSRF checks.
+    - (5) Step-up drafts are not bound to the account or session.
+  - Still to fix after integrator v5, since all three need the DB or the receipts tooling:
+    - (1) `platform_api.admin_mfa_factor_reset` and `identity.rpc_admin_reset_mfa_factors` are still owned by postgres (BYPASSRLS) and write forced tables. The guard scanned too narrowly; sweep every SECURITY DEFINER function that touches a forced table.
+    - (2) The real-PostgREST test derives its own target set from function bodies. Use an explicit manifest with exact equality, plus a mutation test.
+    - (3) Receipts promote file-level pgTAP verdicts to every marker. Require assertion-level verbose TAP, reject SKIP/TODO, and drop the file-level fallback.
+- **R14 remediation history** (lane reports in `context/reports/`):
   - Done:
     - SEC-1 (DB1).
     - Worker class sweeps (WK): BE00 middleware order on every cookie route family, 503/expired-session/step-up/415 variants, and AC1031/AC1142.

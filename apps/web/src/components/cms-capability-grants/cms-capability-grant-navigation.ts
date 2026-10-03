@@ -1,3 +1,10 @@
+import {
+  STEP_UP_GRANT_ENVELOPE_KEY,
+  currentStepUpContext,
+  isStampLive,
+  stampFor,
+  type StepUpStateContext,
+} from '../identity-authority/step-up-mfa/step-up-binding';
 import { stepUpTargetForReturnTo } from '../step-up-required';
 
 /** Browser navigation seam so the console is testable without real navigation. */
@@ -18,7 +25,7 @@ export const recordConsoleUrl = (
   }
 };
 
-const STEP_UP_RETURN_KEY = 'wj:cms-grants:step-up-return';
+const STEP_UP_RETURN_KEY = STEP_UP_GRANT_ENVELOPE_KEY;
 
 /**
  * The pending command a step-up detour interrupted (FE03 DEC-111 recovery).
@@ -47,10 +54,20 @@ const isPendingGrantCommand = (
   );
 };
 
-/** Persist the pending command in tab-scoped storage before leaving for /step-up. */
-export const markStepUpDetour = (pending: PendingGrantCommand): void => {
+/**
+ * Persist the pending command in tab-scoped storage before leaving for
+ * /step-up. The envelope is stamped with the session scope and time so another
+ * user in this tab, or the same tab after the 600 s window, never restores it.
+ */
+export const markStepUpDetour = (
+  pending: PendingGrantCommand,
+  context: StepUpStateContext = currentStepUpContext(),
+): void => {
   try {
-    window.sessionStorage.setItem(STEP_UP_RETURN_KEY, JSON.stringify(pending));
+    window.sessionStorage.setItem(
+      STEP_UP_RETURN_KEY,
+      JSON.stringify({ ...pending, ...stampFor(context) }),
+    );
   } catch {
     // Without storage the owner sees an empty form and a fresh key on return.
   }
@@ -61,8 +78,14 @@ export interface ConsumedStepUpDetour {
   readonly pending: PendingGrantCommand | null;
 }
 
-/** Read and clear the detour once after returning from step-up. */
-export const consumeStepUpDetour = (): ConsumedStepUpDetour => {
+/**
+ * Read and clear the detour once after returning from step-up. An envelope
+ * written under another session scope, past the 600 s window or with no stamp
+ * is cleared and reported as no detour.
+ */
+export const consumeStepUpDetour = (
+  context: StepUpStateContext = currentStepUpContext(),
+): ConsumedStepUpDetour => {
   try {
     const raw = window.sessionStorage.getItem(STEP_UP_RETURN_KEY);
     if (raw === null) return { found: false, pending: null };
@@ -73,9 +96,16 @@ export const consumeStepUpDetour = (): ConsumedStepUpDetour => {
     } catch {
       // An unreadable envelope still means a detour happened.
     }
+    if (!isStampLive(parsed, context)) return { found: false, pending: null };
     return {
       found: true,
-      pending: isPendingGrantCommand(parsed) ? parsed : null,
+      pending: isPendingGrantCommand(parsed)
+        ? {
+            kind: parsed.kind,
+            grantId: parsed.grantId,
+            idempotencyKey: parsed.idempotencyKey,
+          }
+        : null,
     };
   } catch {
     return { found: false, pending: null };

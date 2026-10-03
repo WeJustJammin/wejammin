@@ -287,7 +287,10 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
       const row = rowFor(slice09Tracker, id) ?? '';
       // Scope text is permanent; the box follows the evidence index (a surviving claim may still be open).
       expect(row, id).toMatch(boxFor(id));
-      expect(row, id).toMatch(/original|A01-A08/u);
+      // AC034 carries the owner-ratified DEC-124 scope sentence, which names its operations.
+      expect(row, id).toMatch(
+        id === 'P2-S09-AC-034' ? /Scope: CMS-03A-01 \(/u : /original|A01-A08/u,
+      );
     }
     for (const id of ['P2-S09-AC-089', 'P2-S09-AC-091', 'P2-S09-AC-099']) {
       expect(rowFor(slice09Tracker, id), id).toMatch(boxFor(id));

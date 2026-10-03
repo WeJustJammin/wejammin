@@ -89,11 +89,16 @@ describe('SEC-2 migrations run on hosted Supabase', () => {
     .filter((name) => /^202610031[2-9]\d{4}_/.test(name))
     .sort();
 
+  // The SEC-2 sequence is the 2026100312xxxx block; later migrations (R14 DB3 fixes)
+  // are scanned for hosted-unsafe statements below but are not definer-role migrations.
+  const definerSequence = sec2.filter((name) => name.startsWith('2026100312'));
+
   it('lists the definer-role migrations in order', () => {
-    expect(sec2[0]).toBe('20261003120000_cms_definer_roles.sql');
-    expect(sec2[sec2.length - 1]).toMatch(
+    expect(definerSequence[0]).toBe('20261003120000_cms_definer_roles.sql');
+    expect(definerSequence[definerSequence.length - 1]).toMatch(
       /_cms_definer_function_ownership\.sql$/,
     );
+    expect(sec2.slice(0, definerSequence.length)).toEqual(definerSequence);
   });
 
   it('uses no superuser-only statement and never grants a bypass attribute', () => {

@@ -23,6 +23,15 @@ which `pnpm db:verify` and `infra/verify-database.sh` (CI) run as a blocking ste
 `supabase status -o env`, falling back to the running PostgREST container's JWKS) and
 mints HS256 tokens; no secret lives in source.
 
+## Ownership
+
+The database owner maintains these suites: they prove what PostgREST actually
+delivers to the database (identity, role, claims transport and the Worker's
+production adapters against the live schema). pgTAP under `supabase/tests` owns
+SQL behaviour given a claim; the Worker unit suites own Worker behaviour given a
+stubbed RPC. A criterion whose proof depends on the delivered identity cites a
+suite from this directory.
+
 ## Running
 
 1. `pnpm db:start` (once; it starts `postgrest` and `kong`) and `pnpm db:reset`.
@@ -33,8 +42,16 @@ mints HS256 tokens; no secret lives in source.
 
 A missing stack fails loudly; nothing is skipped.
 
-## Adding a suite
+## Extension
 
 Name it `*.apispec.ts`, call only through `support/stack.ts` (never set a GUC), build
 fixtures with production functions (`createPerson`, `ensureCmsOwner`), and document any
 reset requirement in the file header.
+
+## Conventions and related material
+
+- One concern per suite; file header states reset requirements and what it proves.
+- Related: `supabase/tests/README.md` (pgTAP suites and the claim helper),
+  `supabase/README.md` (local stack), `infra/verify-database.sh` (the CI gate that
+  runs `pnpm db:verify`), and `tests/contracts/README.md` (guards that read these
+  suites' receipts).

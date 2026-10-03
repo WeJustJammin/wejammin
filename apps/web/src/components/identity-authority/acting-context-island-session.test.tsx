@@ -183,6 +183,12 @@ describe('acting context island session', () => {
         clientBindingId,
       );
       window.sessionStorage.setItem('unrelated-tab-state', 'keep-me');
+      // r14: a context the server no longer honours also drops the pending
+      // step-up envelope, so the self context never inherits its key.
+      window.sessionStorage.setItem(
+        'wj:cms-grants:step-up-return',
+        JSON.stringify({ kind: 'grant', grantId: null, idempotencyKey: 'k1' }),
+      );
       window.localStorage.setItem(
         CLIENT_BINDING_ID_STORAGE_KEY,
         'other-tab-binding',
@@ -230,6 +236,9 @@ describe('acting context island session', () => {
       expect(window.sessionStorage.getItem('unrelated-tab-state')).toBe(
         'keep-me',
       );
+      expect(
+        window.sessionStorage.getItem('wj:cms-grants:step-up-return'),
+      ).toBeNull();
       expect(window.localStorage.getItem(CLIENT_BINDING_ID_STORAGE_KEY)).toBe(
         'other-tab-binding',
       );

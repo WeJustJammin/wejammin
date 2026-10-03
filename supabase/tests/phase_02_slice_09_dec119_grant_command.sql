@@ -177,6 +177,10 @@ select is((select count(*)::integer from platform_private.cms_capability_grants
   'the refused duplicate created no second aggregate [P2-S09-AC-530]');
 select pg_temp.s09g_grant('g:dup:init', 'owner', 'owner', 'cms.schema_designer', pg_temp.s09g_day(5));
 select is(pg_temp.s09d_outcome('g:dup:init'), 'CONFLICT', 'the backfilled owner-initialization aggregate is active: grant is 409, renewal is the path [P2-S09-AC-527]');
+select is(pg_temp.s09d_detail('g:dup'), 'ACTIVE_GRANT_EXISTS',
+  'the existing-active-aggregate 409 carries DETAIL ACTIVE_GRANT_EXISTS, the signal the Worker maps to recoveryAction renew [P2-S09-AC-527]');
+select is(pg_temp.s09d_detail('g:dup:init'), 'ACTIVE_GRANT_EXISTS',
+  'the backfilled owner-initialization aggregate raises the same signal [P2-S09-AC-527]');
 
 -- Exact replay, changed body under the same key, and reason normalization.
 select pg_temp.s09d_replay_pair('g:r', 'platform_api.cms_grant_capability', 'owner', jsonb_build_object(
@@ -191,6 +195,8 @@ select is((select reason from platform_private.cms_capability_grants where id = 
   normalize(U&'caf\0065\0301', NFC), 'the reason is stored normalized NFC');
 select pg_temp.s09g_grant('g:changed', 'owner', 'rev1', 'cms.editor', pg_temp.s09g_day(11), '{}', 's09g-replay-fixed-key');
 select is(pg_temp.s09d_outcome('g:changed'), 'IDEMPOTENCY_MISMATCH', 'the same key with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-530] [P2-S09-AC-537]');
+select isnt(pg_temp.s09d_detail('g:changed'), 'ACTIVE_GRANT_EXISTS',
+  'an idempotency mismatch never carries the renew signal: renew is directed only for an existing active aggregate [P2-S09-AC-527]');
 
 -- Atomicity: a failing outbox write rolls back aggregate, projection, event, audit and idempotency.
 create function public.s09g_fail_outbox() returns trigger language plpgsql as $body$

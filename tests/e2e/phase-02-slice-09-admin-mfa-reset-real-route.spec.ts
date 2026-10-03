@@ -11,8 +11,8 @@ import {
 import { actor } from './support/s09-lane-scenarios';
 
 /**
- * Slice 09 admin MFA factor reset (/app/platform-configuration-admin/mfa-reset)
- * on the production-built Astro route in Google Chrome. The reset is produced
+ * Slice 09 admin MFA factor reset (the tab=mfa-reset tab of
+ * /app/platform-configuration-admin) on the production-built Astro route in Google Chrome. The reset is produced
  * through the real form and the real CFG-05B-06 Worker route; the persistence
  * port is the loopback stateful lane, so this is not database or hosted
  * evidence.
@@ -22,7 +22,7 @@ test.use({ trace: 'retain-on-failure', screenshot: 'only-on-failure' });
 
 test.afterEach(closeLaneContexts);
 
-const RESET = '/app/platform-configuration-admin/mfa-reset';
+const RESET = '/app/platform-configuration-admin?tab=mfa-reset';
 
 const openReset = async (page: Page): Promise<void> => {
   await page.goto(RESET, { waitUntil: 'networkidle' });
@@ -275,10 +275,11 @@ test('[P2-S09-AC-1108] the admin sees the reset entry in the workbench sections 
   await expect(entry).toBeVisible();
   await expect(entry).toHaveAttribute(
     'href',
-    '/app/platform-configuration-admin/mfa-reset',
+    '/app/platform-configuration-admin?tab=mfa-reset',
   );
   await entry.click();
-  await page.waitForURL(/\/mfa-reset$/u);
+  await page.waitForURL(/\?tab=mfa-reset$/u);
+  await expect(entry).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('textbox', { name: 'Person ID' })).toBeVisible();
 });
 
@@ -297,7 +298,7 @@ test('[P2-S09-AC-1108] an actor without the capability sees no entry and a direc
       name: 'Reset two-step verification',
     }),
   ).toHaveCount(0);
-  await expect(page.locator('a[href$="/mfa-reset"]')).toHaveCount(0);
+  await expect(page.locator('a[href$="tab=mfa-reset"]')).toHaveCount(0);
   const direct = await page.request.get(RESET, { maxRedirects: 0 });
   expect(direct.status()).toBe(404);
   expect(await direct.text()).toBe('Not found');

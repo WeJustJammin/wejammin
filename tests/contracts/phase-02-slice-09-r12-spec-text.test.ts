@@ -20,9 +20,6 @@ const middlewareLine = (): string =>
     /^- The BE00 Hono middleware order/u.test(line),
   ) ?? '';
 
-const positions = (line: string, steps: readonly string[]): readonly number[] =>
-  steps.map((step) => line.indexOf(step));
-
 describe('[P2-S09-AC-025] BE03a middleware order defers to the BE00 canonical order exactly', () => {
   it('names BE00 §Hono Middleware Order as the governing order', () => {
     expect(middlewareLine()).toMatch(/BE00 §Hono Middleware Order/u);

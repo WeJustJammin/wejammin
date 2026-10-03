@@ -16,6 +16,12 @@ export interface ContentSchemaRegistryErrorMetadata {
 }
 
 const MAX_RETRY_AFTER_SECONDS = 3_600;
+const CONFLICT_KINDS: ReadonlySet<string> = new Set([
+  'VERSION_MISMATCH',
+  'IDEMPOTENCY_MISMATCH',
+  'INVALID_TRANSITION',
+]);
+const RECOVERY_ACTION = /^[a-z][a-z0-9_]{0,31}$/u;
 
 const boundedText = (value: unknown, maximum: number): string | null =>
   typeof value === 'string' &&
@@ -108,11 +114,27 @@ const safeDetails = (
     return reasonCode === null ? {} : { reasonCode };
   }
   if (status === 409) {
-    return safeTextFields(details, [
-      'expectedVersion',
-      'currentVersion',
-      'reason',
-    ]);
+    // BE00 CONFLICT: the registered kind and the recovery action token (the grant
+    // console follows `renew`), then the versions and reason text.
+    const conflict =
+      typeof details.conflict === 'string' &&
+      CONFLICT_KINDS.has(details.conflict)
+        ? details.conflict
+        : null;
+    const recoveryAction =
+      typeof details.recoveryAction === 'string' &&
+      RECOVERY_ACTION.test(details.recoveryAction)
+        ? details.recoveryAction
+        : null;
+    return {
+      ...(conflict === null ? {} : { conflict }),
+      ...(recoveryAction === null ? {} : { recoveryAction }),
+      ...safeTextFields(details, [
+        'expectedVersion',
+        'currentVersion',
+        'reason',
+      ]),
+    };
   }
   if (status === 429) {
     const limit = boundedNumber(details.limit);

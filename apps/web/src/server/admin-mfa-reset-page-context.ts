@@ -6,8 +6,9 @@ import {
 import { readMfaFactorsForPage, type MfaFactorsRead } from './step-up-mfa-read';
 
 export const ADMIN_MFA_RESET_CAPABILITY = 'admin.identity.mfa_reset';
+/** FE05: the reset is the `tab=mfa-reset` tab of the admin workbench, not a route. */
 export const ADMIN_MFA_RESET_ROUTE =
-  '/app/platform-configuration-admin/mfa-reset';
+  '/app/platform-configuration-admin?tab=mfa-reset';
 
 /**
  * FE05: the reset is a section of the admin workbench shown only to an actor
@@ -111,4 +112,21 @@ export const resolveAdminMfaResetPage = async (
     stepUp,
     requestId: input.requestId,
   };
+};
+
+/**
+ * The workbench entry for `tab=mfa-reset`: resolves the projection only when the
+ * tab was requested (any other tab reads nothing and returns null).
+ */
+export const resolveAdminMfaResetTab = async (
+  input: Readonly<{
+    requested: boolean;
+    request: Request;
+    binding: unknown;
+    requestId: string;
+    localApiOrigin?: string;
+  }>,
+): Promise<AdminMfaResetPageResolution | null> => {
+  const { requested, ...page } = input;
+  return requested ? resolveAdminMfaResetPage(page) : null;
 };

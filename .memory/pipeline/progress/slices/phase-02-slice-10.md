@@ -4,7 +4,7 @@
 **Complexity**: M  
 **Surface scope**: web  
 **Depends on**: Slice 09  
-**Implementation gate**: the amended Slice 09 criteria (the 17 reopened activation-chain criteria, AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264, AC273 and the 956 DEC-108/109/110/111/119/120 criteria AC284-AC1239) gate Slice 10 completion (the separately reopened AC250 was Chrome-verified and closed 2026-10-01; Slice 09 is 1216/1235 active); DEC-105 still keeps AC265 and AC266 as separate mandatory pre-release gates, not implementation prerequisites.  
+**Implementation gate**: the amended Slice 09 criteria (the 17 reopened activation-chain criteria, AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264, AC273 and the 956 DEC-108/109/110/111/119/120 criteria AC284-AC1239) gate Slice 10 completion (the separately reopened AC250 was Chrome-verified and closed 2026-10-01; Slice 09 is 1234/1235 active); DEC-105 still keeps AC265 and AC266 as separate mandatory pre-release gates, not implementation prerequisites.  
 **Spec depth floor**: 75  
 **Acceptance criteria**: 75  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)

@@ -153,3 +153,43 @@ describe('BE00 FieldViolation { path, code, message } at the registry web bounda
     expect((details?.violations as readonly unknown[]).length).toBe(50);
   });
 });
+
+describe('BE00 409 CONFLICT details at the registry web boundary', () => {
+  it('[P2-S09-AC-527] keeps the registered conflict kind and the recovery action token the Worker emits, so the console can follow the direction', async () => {
+    expect(
+      await detailsOf(409, 'CONFLICT', {
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'renew',
+      }),
+    ).toEqual({ conflict: 'INVALID_TRANSITION', recoveryAction: 'renew' });
+    expect(
+      await detailsOf(409, 'CONFLICT', {
+        conflict: 'VERSION_MISMATCH',
+        recoveryAction: 'reload',
+        expectedVersion: '1',
+        currentVersion: '2',
+      }),
+    ).toEqual({
+      conflict: 'VERSION_MISMATCH',
+      recoveryAction: 'reload',
+      expectedVersion: '1',
+      currentVersion: '2',
+    });
+  });
+
+  it('[P2-S09-AC-527] drops a conflict kind outside the three BE00 values and a recovery action that is not a lowercase token', async () => {
+    expect(
+      await detailsOf(409, 'CONFLICT', {
+        conflict: 'SOMETHING_ELSE',
+        recoveryAction: 'Renew The Grant!',
+        sql: 'select 1',
+      }),
+    ).toEqual({});
+    expect(
+      await detailsOf(409, 'CONFLICT', {
+        conflict: 'IDEMPOTENCY_MISMATCH',
+        recoveryAction: 'x'.repeat(40),
+      }),
+    ).toEqual({ conflict: 'IDEMPOTENCY_MISMATCH' });
+  });
+});

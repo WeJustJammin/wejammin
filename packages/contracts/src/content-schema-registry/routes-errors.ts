@@ -64,6 +64,25 @@ export const releaseErrors = {
   WEBHOOK_REJECTED: 401,
 } as const;
 
+/**
+ * CMS-03A-05 creates the (blockKey, blockVersion) pair it registers and names no
+ * existing resource, so it declares no 404 (DEC-129). CMS-03A-08 names an existing
+ * block version and keeps `releaseErrors`.
+ */
+export const blockRegistrationErrors = {
+  INVALID_REQUEST: 400,
+  WEBHOOK_REJECTED: 401,
+  FORBIDDEN: 403,
+  CONFLICT: 409,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;
+
 export const tier2Slo = {
   tier: 2,
   commandP95Ms: 1_200,

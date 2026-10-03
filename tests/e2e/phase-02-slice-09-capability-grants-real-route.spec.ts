@@ -183,6 +183,51 @@ test('[P2-S09-AC-1042] [P2-S09-AC-1043] [P2-S09-AC-1044] the owner grants, renew
   for (const url of urls) expect(url).not.toContain(lanePersonId('reader'));
 });
 
+test('[P2-S09-AC-527] [P2-S09-AC-1004] granting a capability the person already holds is a 409 whose recovery action renew points at the existing grant', async ({
+  browser,
+}) => {
+  const owner = await actor(browser, 'owner', newTestId());
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await openConsole(page);
+  await grantViaUi(page);
+  const table = page.getByRole('table', { name: 'CMS capability grants' });
+  await expect(table).toContainText('cms.schema_registry.read', {
+    timeout: 15_000,
+  });
+
+  // The real Worker route answers the duplicate with the BE03a recovery direction.
+  const duplicate = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/cms/capability-grants') &&
+      response.request().method() === 'POST' &&
+      response.status() === 409,
+  );
+  await grantViaUi(page);
+  const body = (await (await duplicate).json()) as {
+    code: string;
+    details: Record<string, unknown>;
+  };
+  expect(body.code).toBe('CONFLICT');
+  expect(body.details).toMatchObject({
+    conflict: 'INVALID_TRANSITION',
+    recoveryAction: 'renew',
+  });
+  await expect(
+    page.getByText(
+      'This person already holds this capability. Renew the existing grant instead.',
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Show existing grants for this capability' })
+    .click();
+  await expect(
+    page.getByRole('button', {
+      name: `Renew View schema registry grant ending ${isoDate(30)}`,
+    }),
+  ).toBeVisible();
+});
+
 test('[P2-S09-AC-910] [P2-S09-AC-1026] [P2-S09-AC-1024] a stale proof sends the grant to /step-up?returnTo with the query and returns an empty form', async ({
   browser,
 }) => {
@@ -280,6 +325,9 @@ test('[P2-S09-AC-1031] the interrupted grant keeps its ORIGINAL Idempotency-Key 
     kind: 'grant',
     grantId: null,
     idempotencyKey: original,
+    // r14: bound to the signed-in scope cookie and stamped with the write time.
+    binding: expect.stringMatching(/^[A-Za-z0-9_-]{32}$/u),
+    createdAt: expect.any(Number),
   });
   expect(pending).not.toContain(lanePersonId('reader'));
 

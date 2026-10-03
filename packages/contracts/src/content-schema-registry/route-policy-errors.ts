@@ -65,3 +65,6 @@ export type ReleaseErrors = ErrorMap<
   | 'GATEWAY_TIMEOUT'
   | 'INTERNAL_ERROR'
 >;
+
+/** CMS-03A-05 creates its resource, so it declares no `NOT_FOUND` (DEC-129). */
+export type BlockRegistrationErrors = Omit<ReleaseErrors, 'NOT_FOUND'>;

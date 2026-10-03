@@ -65,6 +65,23 @@ const callbackCandidate = (request: Request): unknown => {
   return Object.fromEntries(entries);
 };
 
+/** True when the request carries the session reference cookie. */
+const carriesSessionCookie = (request: Request): boolean =>
+  request.headers
+    .get('cookie')
+    ?.split(';')
+    .some((item) => item.trim().startsWith('wj_session_ref=')) === true;
+
+/**
+ * Credentials only the link and prove_merge modes send. A request holding
+ * them cannot be the public sign-in start, so BE00 step 2 CSRF applies before
+ * its body is read.
+ */
+const carriesLinkCredentials = (request: Request): boolean =>
+  request.headers.has('x-csrf-token') ||
+  request.headers.has('idempotency-key') ||
+  request.headers.has('if-match');
+
 export const registerProviderAccessRoutes = (
   app: WorkerApp,
   dependencies: AuthenticationDependencies,
@@ -126,21 +143,37 @@ export const registerProviderAccessRoutes = (
   app.post('/api/v1/auth/oauth/start', async (context) => {
     configureRoute(context, 'AUTH-API-03');
     // AUTH-API-03 is a public sign-in start or a cookie-authenticated link or
-    // re-auth start, and the body names which. The body ceiling and content
-    // type (BE00 step 2) are checked first; the intent member is then the one
-    // thing read before the mode-specific steps.
+    // re-auth start, and the body names which. BE00 step 2 (same-origin, size
+    // ceiling, content type, session-bound CSRF) precedes step 6 (body
+    // validation), so a request that carries session credentials is gated
+    // before its body is read. Public sign-in keeps its documented order.
+    const credentialed = carriesSessionCookie(context.req.raw);
+    if (credentialed) {
+      const origin = verifySameOrigin(context.req.raw);
+      if (origin !== null) return responseForAuthError(context, origin);
+    }
     const preflight = jsonBodyPreflight(context.req.raw);
     if (preflight !== null) return responseForAuthError(context, preflight);
+    let csrfVerified = false;
+    if (credentialed && carriesLinkCredentials(context.req.raw)) {
+      const csrfError = await verifyCsrfToken(context.req.raw);
+      if (csrfError !== null) return responseForAuthError(context, csrfError);
+      csrfVerified = true;
+    }
     const bodyText = await readJsonBodyText(context.req.raw);
     if (!bodyText.ok) return responseForAuthError(context, bodyText);
     const parsed = decodeJsonBodyText(bodyText.value, OAuthStartRequestSchema);
     if (!parsed.ok) return responseForAuthError(context, parsed);
     let session = null;
     if (parsed.value.intent !== 'sign_in') {
+      // Without a session cookie or link credentials the mode was unknown
+      // until the body was read; the same gate runs now.
       const origin = verifySameOrigin(context.req.raw);
       if (origin !== null) return responseForAuthError(context, origin);
-      const csrfError = await verifyCsrfToken(context.req.raw);
-      if (csrfError !== null) return responseForAuthError(context, csrfError);
+      if (!csrfVerified) {
+        const csrfError = await verifyCsrfToken(context.req.raw);
+        if (csrfError !== null) return responseForAuthError(context, csrfError);
+      }
       const resolved = await requireSession(context, dependencies);
       if (!resolved.ok) return responseForAuthError(context, resolved);
       session = resolved.value;

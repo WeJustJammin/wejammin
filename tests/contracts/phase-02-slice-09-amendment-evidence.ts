@@ -95,6 +95,16 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'r11 pgTAP p241_ac004_draft_only_edits (22 assertions): CMS-03A-02/03 commit only on an unactivated draft and an approved or active version answers CONFLICT with nothing changed; the Worker half is the p240-app draft-only test.',
   },
   {
+    criterion: 'P2-S09-AC-005',
+    layer: 'db',
+    command: 'pnpm db:test',
+    testFiles: ['supabase/tests/phase_02_slice_09_p240_locale.sql'],
+    testMarkers: ['[P2-S09-AC-005]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC005): the canonical authoring locale and the governed delivery fallback root are proven by p240_locale (every clause of the text); the declaration and storage of no_fallback is AC1166 and its resolution semantics belong to Slice 12 AC051 and AC052 (DEC-121).',
+  },
+  {
     criterion: 'P2-S09-AC-006',
     layer: 'db',
     command:
@@ -106,6 +116,21 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testMarkers: ['[P2-S09-AC-006]'],
     status: 'verified',
     limitation: '',
+  },
+  {
+    criterion: 'P2-S09-AC-007',
+    layer: 'contracts',
+    command:
+      'pnpm exec vitest run packages/contracts/src/content-schema-registry/phase-02-slice-09-ac007-artifact-strict.test.ts tests/contracts/phase-02-slice-09-r12-spec-text.test.ts; pnpm db:test',
+    testFiles: [
+      'packages/contracts/src/content-schema-registry/phase-02-slice-09-ac007-artifact-strict.test.ts',
+      'supabase/tests/phase_02_slice_09_p241_ac007_artifact_compile.sql',
+      'tests/contracts/phase-02-slice-09-r12-spec-text.test.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-007]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC007): the compiler emits exactly the versioned contract reference plus editor and renderer manifests under one deterministic hash (p241_ac007_artifact_compile: no persisted OpenAPI or database artifact) and the strict resource refuses every other member (ac007-artifact-strict, r12-spec-text guard).',
   },
   {
     criterion: 'P2-S09-AC-008',
@@ -332,6 +357,22 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-025',
+    layer: 'repo',
+    command:
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-worker-admission.test.ts tests/contracts/phase-02-slice-09-pre-structure.test.ts tests/contracts/phase-02-slice-09-r12-spec-text.test.ts',
+    testFiles: [
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-worker-admission.test.ts',
+      'tests/contracts/phase-02-slice-09-pre-structure.test.ts',
+      'tests/contracts/phase-02-slice-09-r12-spec-text.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-be00-middleware-order.test.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-025]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC025): BE00 Hono Middleware Order governs and BE03a restates no order (r12-spec-text guard); the Worker runs that order for the original operations (be00-middleware-order, 12 tests; worker-admission); cms-console CORS and session-bound CSRF apply to human mutations and release-worker requests carry no browser CSRF authority.',
+  },
+  {
     criterion: 'P2-S09-AC-026',
     layer: 'worker',
     command:
@@ -412,6 +453,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-pre-parity.test.ts',
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-parity.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-error-rows-production.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-032]'],
     status: 'verified',
@@ -428,6 +470,28 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testMarkers: ['[P2-S09-AC-033]'],
     status: 'verified',
     limitation: '',
+  },
+  {
+    criterion: 'P2-S09-AC-034',
+    layer: 'db',
+    command:
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-pre-parity.test.ts apps/worker/src/content-schema-registry/phase-02-slice-09-r12-authority-production.test.ts; pnpm db:test',
+    testFiles: [
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-parity.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r12-authority-production.test.ts',
+      'supabase/tests/phase_02_slice_09_p240_a01_aggregate.sql',
+      'supabase/tests/phase_02_slice_09_p240_authority.sql',
+      'supabase/tests/phase_02_slice_09_p240_block_lifecycle.sql',
+      'supabase/tests/phase_02_slice_09_p240_block_register.sql',
+      'packages/contracts/src/content-schema-registry/phase-02-slice-09-dec129-release-errors.test.ts',
+      'supabase/tests/phase_02_slice_09_p240_block_release.sql',
+      'supabase/tests/phase_02_slice_09_schema/003-authorization-and-projections.sqlinc',
+      'supabase/tests/phase_02_slice_09_schema/003c-block-release-boundaries.sqlinc',
+    ],
+    testMarkers: ['[P2-S09-AC-034]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC034): CMS-03A-01 concealment (404 foreign or absent scope, 403 for a member without schema_designer) and CMS-03A-02, -03, -07 and the CMS-03A-08 unknown-id 404 are database-proven; since R14 the CMS-03A-05 and CMS-03A-08 human 403 are also database rows (p240_block_register, p240_block_lifecycle, p240_block_release) and DEC-129 deleted the CMS-03A-05 unknown-target 404, so CMS-03A-05 declares no 404 (dec129-release-errors). The ratified text still names that 404 and the human 403 as Worker mappings.',
   },
   {
     criterion: 'P2-S09-AC-035',
@@ -453,6 +517,21 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testMarkers: ['[P2-S09-AC-036]'],
     status: 'verified',
     limitation: '',
+  },
+  {
+    criterion: 'P2-S09-AC-037',
+    layer: 'db',
+    command:
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-pre-admission.test.ts; pnpm db:test',
+    testFiles: [
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-admission.test.ts',
+      'supabase/tests/phase_02_slice_09_p240_authority.sql',
+      'supabase/tests/phase_02_slice_09_schema/001-contract.sqlinc',
+    ],
+    testMarkers: ['[P2-S09-AC-037]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC037): the RLS helper is schema-qualified, pinned-search_path and STABLE (IMMUTABLE would be wrong because it reads the session context) and every write is RPC-only (p240_authority, schema 001-contract, pre-admission).',
   },
   {
     criterion: 'P2-S09-AC-038',
@@ -661,6 +740,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-a01-create.test.ts',
       'supabase/tests/phase_02_slice_09_p240_a01_aggregate.sql',
+      'tests/contracts/phase-02-slice-09-race-runner-gate.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-052]'],
     status: 'verified',
@@ -817,6 +897,9 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-a02-field.test.ts',
       'supabase/tests/phase_02_slice_09_p240_a02_field.sql',
+      'apps/worker/src/content-schema-registry/production-field-rpc-shape.test.ts',
+      'packages/contracts/src/content-schema-registry/field-default-null.test.ts',
+      'supabase/tests/phase_02_slice_09_p240_a01_grammar.sql',
     ],
     testMarkers: ['[P2-S09-AC-064]'],
     status: 'verified',
@@ -1157,6 +1240,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run packages/contracts/src/content-schema-registry/phase-02-slice-09-be03a-contract-evidence.test.ts',
     testFiles: [
       'packages/contracts/src/content-schema-registry/phase-02-slice-09-be03a-contract-evidence.test.ts',
+      'supabase/tests/phase_02_slice_09_activation_frozen_risk.sql',
+      'supabase/tests/phase_02_slice_09_dec108_activation.sql',
     ],
     testMarkers: ['[P2-S09-AC-090]'],
     status: 'verified',
@@ -1252,6 +1337,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'supabase/tests/phase_02_slice_09_entry_version_lock.sql',
       'supabase/tests/phase_02_slice_09_scan_integrated_path2.sql',
       'supabase/tests/phase_02_slice_09_schema/002b-activation-fixture.sqlinc',
+      'tests/contracts/phase-02-slice-09-race-runner-gate.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-097]'],
     status: 'verified',
@@ -1607,6 +1693,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-release-envelope.test.ts',
       'supabase/tests/phase_02_slice_09_p240_block_release.sql',
       'tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
+      'supabase/tests/phase_02_slice_09_p240_block_register.sql',
     ],
     testMarkers: ['[P2-S09-AC-122]'],
     status: 'verified',
@@ -2094,6 +2181,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-a08-lifecycle.test.ts',
       'supabase/tests/phase_02_slice_09_p240_block_lifecycle.sql',
+      'tests/contracts/phase-02-slice-09-race-runner-gate.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-157]'],
     status: 'verified',
@@ -2362,6 +2450,24 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'Constraint and index counts are checked against the live catalog, so a future legitimate addition needs the count and its note updated together',
   },
   {
+    criterion: 'P2-S09-AC-180',
+    layer: 'db',
+    command:
+      'pnpm exec vitest run tests/contracts/phase-02-slice-09-api-surface-callers.test.ts tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts tests/contracts/phase-02-slice-09-pre-api-surface.test.ts; pnpm db:test',
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_dec108_resolver.sql',
+      'supabase/tests/phase_02_slice_09_od4_locale_validator.sql',
+      'supabase/tests/phase_02_slice_09_r8_api_surface.sql',
+      'tests/contracts/phase-02-slice-09-api-surface-callers.test.ts',
+      'tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
+      'tests/contracts/phase-02-slice-09-pre-api-surface.test.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-180]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC180): the exact-set guard on the live catalog and against the callers enumerates the SQL API (r8_api_surface, api-surface-callers); cms_resolve_template_compatibility and cms_validate_locale_config are executable by no API role and anon and authenticated hold no direct INSERT, UPDATE or DELETE grant.',
+  },
+  {
     criterion: 'P2-S09-AC-181',
     layer: 'db',
     command:
@@ -2373,6 +2479,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'supabase/tests/phase_02_slice_09_r8_review_owner_consistency.sql',
       'supabase/tests/phase_02_slice_09_schema/001-contract.sqlinc',
       'tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
+      'supabase/tests/phase_02_slice_09_sec2_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-181]'],
     status: 'verified',
@@ -2406,6 +2513,16 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     status: 'verified',
     limitation:
       'Re-audit lift (p240-db): p240_reads_detail: neither projection function contains a write, idempotency, audit, outbox or row lock; successful and failed list calls change no definition, migration, idempotency, audit, outbox, lease or job row',
+  },
+  {
+    criterion: 'P2-S09-AC-185',
+    layer: 'db',
+    command: 'pnpm db:test',
+    testFiles: ['supabase/tests/phase_02_slice_09_p240_tables.sql'],
+    testMarkers: ['[P2-S09-AC-185]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-125 (ledger row AC185): no purge path exists for CMS definitions, plans or reports (the nine tables refuse DELETE and no function deletes them, p240_tables); legal-hold and incident-fence enforcement over CMS records is received by Slice 16 AC029.',
   },
   {
     criterion: 'P2-S09-AC-186',
@@ -2719,6 +2836,11 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-pre-observability.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-registry-metrics.test.ts',
       'supabase/tests/phase_02_slice_09_r8_operational_gauges.sql',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-migration-metrics.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-nonce-replay-metric.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-read-metrics.test.ts',
+      'supabase/tests/phase_02_slice_09_p240_block_lifecycle.sql',
+      'supabase/tests/phase_02_slice_09_p240_block_release.sql',
     ],
     testMarkers: ['[P2-S09-AC-208]'],
     status: 'verified',
@@ -2791,6 +2913,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'supabase/tests/phase_02_slice_09_evidence_trigger_catalog.sql',
       'supabase/tests/phase_02_slice_09_schema/011-constraint-probes.sqlinc',
       'supabase/tests/phase_02_slice_09_schema/012-trigger-catalog.sqlinc',
+      'supabase/tests/phase_02_slice_09_fk_probe_base_row.sql',
     ],
     testMarkers: ['[P2-S09-AC-215]'],
     status: 'verified',
@@ -2833,6 +2956,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'tests/contracts/phase-02-slice-09-adversarial-boundaries.test.ts',
       'tests/performance/phase-02-slice-09-recovery-durable.test.ts',
       'tests/performance/phase-02-slice-09-recovery.test.ts',
+      'supabase/tests/phase_02_slice_09_r14_json_bounded.sql',
     ],
     testMarkers: ['[P2-S09-AC-217]'],
     status: 'verified',
@@ -3039,12 +3163,28 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-233',
+    layer: 'web',
+    command:
+      'pnpm exec vitest run apps/web/src/components/content-schema-registry/content-schema-registry-s09-r12-reconnect-revalidation.dom.test.tsx apps/web/src/components/content-schema-registry/content-schema-registry-s09-r8-no-offline-intent.dom.test.tsx',
+    testFiles: [
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r12-reconnect-revalidation.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r8-no-offline-intent.dom.test.tsx',
+      'tests/e2e/phase-02-slice-09-registry-browser-real-route.spec.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-233]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC233): nothing protected is stored after a lost connection and the only persistence is the DEC-111 tab-scoped step-up draft (no-offline-intent); reconnect revalidation of identity, authority, input and version is proven in jsdom (r12 reconnect-revalidation) and through the real Worker in Chrome: an invalid draft survives an offline/online cycle byte for byte, reconnect issues one refetch and no POST, the explicit resubmission is refused 422 by the server, and a key typed offline is refused 409 after another device took it (registry-browser-real-route).',
+  },
+  {
     criterion: 'P2-S09-AC-234',
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/components/content-schema-registry/content-schema-registry-s09-pre-state.dom.test.tsx',
     testFiles: [
       'apps/web/src/components/content-schema-registry/content-schema-registry-s09-pre-state.dom.test.tsx',
+      'tests/e2e/phase-02-slice-09-registry-browser-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-234]'],
     status: 'verified',
@@ -3081,6 +3221,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/web/src/components/content-schema-registry/content-schema-registry-s09-pre-primitives.dom.test.tsx',
     testFiles: [
       'apps/web/src/components/content-schema-registry/content-schema-registry-s09-pre-primitives.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-gate-reason.dom.test.tsx',
     ],
     testMarkers: ['[P2-S09-AC-237]'],
     status: 'verified',
@@ -3198,6 +3339,24 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'Collapsible sidebar (769 to 1024 px disclosure, persistent from 1025 px, absent at 768 px), 8 columns, 20 px gutter, 24 px margins and two columns only for independent fields are implemented by r10-web (ContentSchemaRegistrySidebar and shell CSS), proven by jsdom and CSS-contract tests and by the production-built Chrome layout spec tests/e2e/phase-02-slice-09-registry-layout-real-route.spec.ts, which passed in the 2026-10-03 validation run after the sidebar breakpoint boundary at 1025 px was fixed.',
   },
   {
+    criterion: 'P2-S09-AC-246',
+    layer: 'repo',
+    command:
+      'pnpm exec vitest run apps/web/src/components/content-schema-registry/content-schema-registry-s09-pre-browser.dom.test.tsx apps/web/src/components/content-schema-registry/content-schema-registry-s09-r10-shell.dom.test.tsx tests/accessibility/phase-02-slice-09-content-schema-registry.test.ts tests/accessibility/phase-02-slice-09-registry-shell-layout.test.ts; pnpm test:e2e:s09-real',
+    testFiles: [
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-pre-browser.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r10-shell.dom.test.tsx',
+      'tests/accessibility/phase-02-slice-09-content-schema-registry.test.ts',
+      'tests/accessibility/phase-02-slice-09-registry-shell-layout.test.ts',
+      'tests/e2e/phase-02-slice-09-content-schema-registry.spec.ts',
+      'tests/e2e/phase-02-slice-09-registry-layout-real-route.spec.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-246]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC246): the twelve-column, 24 px gutter, 1440 px, list/detail split and action rail layout is proven in jsdom and CSS contracts and by the production-built Chrome layout spec; a list page holds at most 100 rows (BE03a page cap, page schema), so no client virtualization is required.',
+  },
+  {
     criterion: 'P2-S09-AC-247',
     layer: 'browser+web',
     command:
@@ -3221,6 +3380,11 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/web/src/components/content-schema-registry/content-schema-registry-runtime-dom-feedback.r8.test.ts',
       'apps/web/src/components/content-schema-registry/content-schema-registry-runtime-dom-feedback.test.ts',
       'tests/accessibility/phase-02-slice-09-content-schema-registry.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14-real-form-feedback.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-blur-feedback.dom.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-local-422-pointers.test.ts',
+      'packages/contracts/src/content-schema-registry/field-rules.test.ts',
+      'tests/e2e/phase-02-slice-09-registry-browser-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-248]'],
     status: 'verified',
@@ -3659,6 +3823,17 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-282',
+    layer: 'repo',
+    command:
+      'pnpm exec vitest run tests/contracts/phase-02-slice-09-pre-traceability.test.ts',
+    testFiles: ['tests/contracts/phase-02-slice-09-pre-traceability.test.ts'],
+    testMarkers: ['[P2-S09-AC-282]'],
+    status: 'verified',
+    limitation:
+      "Owner-ratified DEC-124 (ledger row AC282): the exact 11-topic mapping to the owning slices' existing criteria is asserted by the pre-traceability guard; the transfer count of later-only topics is zero and the seven receiving criteria are Slice 11 AC046-AC048, Slice 12 AC051, AC052 and AC053, and Slice 16 AC029 (attribution table in the transfer record).",
+  },
+  {
     criterion: 'P2-S09-AC-283',
     layer: 'repo',
     command:
@@ -4008,6 +4183,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-validation-messages.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-locale-successor.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-310]'],
     status: 'verified',
@@ -4560,6 +4736,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec108_dry_run.sql',
     ],
     testMarkers: ['[P2-S09-AC-354]'],
     status: 'verified',
@@ -4577,6 +4754,22 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testMarkers: ['[P2-S09-AC-355]'],
     status: 'verified',
     limitation: '',
+  },
+  {
+    criterion: 'P2-S09-AC-356',
+    layer: 'db+worker',
+    command:
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-errors.test.ts apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts; pnpm db:test',
+    testFiles: [
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-errors.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
+      'supabase/tests/phase_02_slice_09_evidence_misc.sql',
+      'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+    ],
+    testMarkers: ['[P2-S09-AC-356]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC356): caller-supplied counts, hashes and classifications are unknown keys refused as 400 INVALID_REQUEST in the database (evidence_misc) and on the wire, while a registry or transform failure, an inconsistent transform pair and an underivable classification stay 422 (evidence_misc, r3_cms_error_rows, be03a-evidence-errors, r2-wire-details).',
   },
   {
     criterion: 'P2-S09-AC-357',
@@ -4980,6 +5173,22 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-390',
+    layer: 'db',
+    command:
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-r12-successor-workflow.test.ts packages/contracts/src/content-schema-registry/phase-02-slice-09-r12-successor-workflow.test.ts; pnpm db:test',
+    testFiles: [
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r12-successor-workflow.test.ts',
+      'packages/contracts/src/content-schema-registry/phase-02-slice-09-r12-successor-workflow.test.ts',
+      'supabase/tests/phase_02_slice_09_dec108_submit.sql',
+      'supabase/tests/phase_02_slice_09_r12_successor_workflow.sql',
+    ],
+    testMarkers: ['[P2-S09-AC-390]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-126 (ledger row AC390): CMS-03A-09 accepts the optional workflowKey and workflowVersion pair (both null or absent keep the source member, both present replace it with a seeded registry member, 422 otherwise, hashed into the definition); the strictest-of review keeps the protected count and specialist slot under the real producers (dec108_submit, r12_successor_workflow); contract, Worker admission and BE03a agree. The successor form exposes no control for the pair (API-only).',
+  },
+  {
     criterion: 'P2-S09-AC-391',
     layer: 'worker',
     command:
@@ -5060,6 +5269,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec108_submit.sql',
     ],
     testMarkers: ['[P2-S09-AC-396]'],
     status: 'verified',
@@ -5484,6 +5694,25 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'r12 expired-session test wires the real production authentication and CMS dependencies: an access token past exp, a provider 401, a missing cookie and a resolved expiry in the past each answer 401 UNAUTHENTICATED with no CMS RPC and no rate bucket, and an unexpired control reaches step-up; two production defects were fixed (an expired token was 502 PROVIDER_INVALID_RESPONSE, and an auth 401 reached the wire without the BE00 recoveryAction reauthenticate detail).',
   },
   {
+    criterion: 'P2-S09-AC-431',
+    layer: 'db+worker',
+    command:
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-errors.test.ts apps/worker/src/content-schema-registry/phase-02-slice-09-f1-429-502-rows.test.ts apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts; pnpm db:test',
+    testFiles: [
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-errors.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-f1-429-502-rows.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
+      'supabase/tests/phase_02_slice_09_evidence_cms11_14.sql',
+      'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_r8_error_details.sql',
+      'supabase/tests/phase_02_slice_09_r8_review_owner_consistency.sql',
+    ],
+    testMarkers: ['[P2-S09-AC-431]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC431): a review readable through submitter or schema-designer scope whose caller holds no effective assignment is 403 FORBIDDEN with its registered reasonCode, a cross-owner review is a concealed 404, and the database FORBIDDEN reaches the wire with exactly the four envelope fields (r3_cms_error_rows, r8_error_details, evidence_cms11_14, r8_review_owner_consistency, f1-429-502-rows, r8-db-errors).',
+  },
+  {
     criterion: 'P2-S09-AC-432',
     layer: 'db+worker',
     command:
@@ -5508,6 +5737,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec108_decision.sql',
     ],
     testMarkers: ['[P2-S09-AC-433]'],
     status: 'verified',
@@ -6294,6 +6524,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec108_assignment.sql',
     ],
     testMarkers: ['[P2-S09-AC-495]'],
     status: 'verified',
@@ -6690,6 +6921,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'supabase/tests/phase_02_slice_09_dec119_grant_command.sql',
       'apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.grant.dom.test.tsx',
+      'apps/web/src/components/cms-capability-grants/cms-capability-grant-commands.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-renew-direction.test.ts',
+      'apps/web/src/server/content-schema-registry-platform-error-details.test.ts',
+      'tests/e2e/phase-02-slice-09-capability-grants-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-527]'],
     status: 'verified',
@@ -6818,6 +7053,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec119_grant_command.sql',
     ],
     testMarkers: ['[P2-S09-AC-537]'],
     status: 'verified',
@@ -7192,6 +7428,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r2-wire-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-r8-db-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec119_grant_lifecycle.sql',
     ],
     testMarkers: ['[P2-S09-AC-566]'],
     status: 'verified',
@@ -7305,6 +7542,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
       'tests/security/phase-02-slice-09-aal2-cms-step-up-gates.test.ts',
+      'supabase/tests/phase_02_slice_09_r3_recent_mfa.sql',
     ],
     testMarkers: ['[P2-S09-AC-574]'],
     status: 'verified',
@@ -7545,6 +7783,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-be03a-evidence-errors.test.ts',
       'supabase/tests/phase_02_slice_09_r3_cms_error_rows.sql',
+      'supabase/tests/phase_02_slice_09_dec119_grant_lifecycle.sql',
     ],
     testMarkers: ['[P2-S09-AC-593]'],
     status: 'verified',
@@ -8148,6 +8387,22 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-641',
+    layer: 'db+contracts',
+    command:
+      'pnpm exec vitest run packages/contracts/src/content-schema-registry/phase-02-slice-09-r2-contract-evidence.test.ts packages/contracts/src/content-schema-registry/resources-workflow.coverage.test.ts; pnpm db:test',
+    testFiles: [
+      'packages/contracts/src/content-schema-registry/phase-02-slice-09-r2-contract-evidence.test.ts',
+      'packages/contracts/src/content-schema-registry/resources-workflow.coverage.test.ts',
+      'supabase/tests/phase_02_slice_09_r12_scan_failure.sql',
+      'supabase/tests/phase_02_slice_09_r3_activation_gates.sql',
+    ],
+    testMarkers: ['[P2-S09-AC-641]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-127 (ledger row AC641): cms_rollback_schema_migration fails a dry_running plan (retryable is 409, a code outside the pattern is 400, otherwise the latest attempt is marked failed with the code and the plan blocked, recovered by a new CMS-03A-10); dryRunRef.failureCode projects that stored code of the latest attempt and a later queued attempt projects null (r12_scan_failure, r3_activation_gates, r2-contract-evidence).',
+  },
+  {
     criterion: 'P2-S09-AC-642',
     layer: 'contracts',
     command:
@@ -8209,6 +8464,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     command: 'pnpm db:test',
     testFiles: [
       'supabase/tests/phase_02_slice_09_evidence_constraints_reviews.sql',
+      'supabase/tests/phase_02_slice_09_sec2_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-647]'],
     status: 'verified',
@@ -8326,6 +8582,19 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-658',
+    layer: 'db',
+    command: 'pnpm db:test',
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_evidence_constraints_grants.sql',
+      'supabase/tests/phase_02_slice_09_r3_grants_misc.sql',
+    ],
+    testMarkers: ['[P2-S09-AC-658]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC658): cms_capability_grants rows are written only by the grant, renew and revoke operations and by the owner-initialization backfill (aggregate only); the actor-grant projection is written only by cms_capability_grant_project, initialize_cms_owner and rpc_create_organization, asserted over every non-system schema (r3_grants_misc, evidence_constraints_grants).',
+  },
+  {
     criterion: 'P2-S09-AC-659',
     layer: 'db',
     command: 'pnpm db:test',
@@ -8341,6 +8610,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     command: 'pnpm db:test',
     testFiles: [
       'supabase/tests/phase_02_slice_09_evidence_constraints_grants.sql',
+      'supabase/tests/phase_02_slice_09_sec2_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-660]'],
     status: 'verified',
@@ -8506,6 +8776,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     command: 'pnpm db:test',
     testFiles: [
       'supabase/tests/phase_02_slice_09_evidence_constraints_reports.sql',
+      'supabase/tests/phase_02_slice_09_scan_protocol.sql',
+      'supabase/tests/phase_02_slice_09_sec2_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-675]'],
     status: 'verified',
@@ -8638,6 +8910,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
     testFiles: [
       'tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
+      'supabase/tests/phase_02_slice_09_evidence_constraints_grants.sql',
+      'supabase/tests/phase_02_slice_09_sec2_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-686]'],
     status: 'verified',
@@ -8746,6 +9020,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/content-schema-registry/operational-alert-metrics.test.ts',
       'packages/observability/src/content-schema-registry-alert-review-denials.test.ts',
       'tests/contracts/phase-02-slice-09-operational-release-evidence.test.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-refusal-telemetry.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-694]'],
     status: 'verified',
@@ -8888,6 +9163,16 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-708',
+    layer: 'db',
+    command: 'pnpm db:test',
+    testFiles: ['supabase/tests/phase_02_slice_09_dec108_resolver.sql'],
+    testMarkers: ['[P2-S09-AC-708]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC708): the template-compatibility resolver is DB-internal, executable by no API role; the Worker never calls it and activation preflight uses the platform_private resolver (dec108_resolver).',
+  },
+  {
     criterion: 'P2-S09-AC-709',
     layer: 'db',
     command: 'pnpm db:test',
@@ -8943,7 +9228,11 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-714',
     layer: 'db',
     command: 'pnpm db:test',
-    testFiles: ['supabase/tests/phase_02_slice_09_evidence_paths.sql'],
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_evidence_paths.sql',
+      'supabase/tests/phase_02_slice_09_scan_integrated_path1.sql',
+      'supabase/tests/phase_02_slice_09_scan_integrated_path2.sql',
+    ],
     testMarkers: ['[P2-S09-AC-714]'],
     status: 'verified',
     limitation:
@@ -9218,6 +9507,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'supabase/tests/phase_02_slice_09_dec111_mfa_enrollment.sql',
       'supabase/tests/phase_02_slice_09_dec111_mfa_schema.sql',
+      'supabase/tests/phase_02_slice_09_dec111_mfa_removal.sql',
     ],
     testMarkers: ['[P2-S09-AC-736]'],
     status: 'verified',
@@ -10340,6 +10630,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/worker/src/authentication/phase-02-slice-09-dec111-wire-errors.test.ts',
       'apps/worker/src/authentication/phase-02-slice-09-r8-aal-proof.test.ts',
+      'apps/worker/src/authentication/phase-02-slice-09-r14-step-up-variants.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-823]'],
     status: 'verified',
@@ -11238,7 +11529,9 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-893',
     layer: 'db+b',
     command: 'pnpm db:test',
-    testFiles: ['supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql'],
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
+    ],
     testMarkers: ['[P2-S09-AC-893]'],
     status: 'verified',
     limitation:
@@ -11264,8 +11557,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'db+b',
     command: 'pnpm db:test',
     testFiles: [
-      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
       'apps/worker/src/event-consumers/security-notifier.test.ts',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
     ],
     testMarkers: ['[P2-S09-AC-895]'],
     status: 'verified',
@@ -11275,7 +11568,9 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-896',
     layer: 'db+b',
     command: 'pnpm db:test',
-    testFiles: ['supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql'],
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
+    ],
     testMarkers: ['[P2-S09-AC-896]'],
     status: 'verified',
     limitation:
@@ -11390,6 +11685,24 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     limitation: '',
   },
   {
+    criterion: 'P2-S09-AC-906',
+    layer: 'db+web+b',
+    command:
+      'pnpm exec vitest run apps/web/src/components/identity-authority/step-up-mfa/MfaEnrollmentWizard.multitab.dom.test.tsx apps/worker/src/authentication/phase-02-slice-09-r8-factor-refetch.test.ts; pnpm db:test',
+    testFiles: [
+      'apps/web/src/components/identity-authority/step-up-mfa/MfaEnrollmentWizard.multitab.dom.test.tsx',
+      'apps/worker/src/authentication/phase-02-slice-09-r8-factor-refetch.test.ts',
+      'supabase/tests/phase_02_slice_09_dec111_mfa_enrollment.sql',
+      'supabase/tests/phase_02_slice_09_r3_auth_error_rows.sql',
+      'apps/web/src/components/identity-authority/step-up-mfa/MfaEnrollmentWizard.multitab-real-channel.dom.test.tsx',
+      'tests/contracts/phase-02-slice-09-mfa-projection-pull-model.test.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-906]'],
+    status: 'verified',
+    limitation:
+      "Owner-ratified DEC-128 (ledger row AC906): the pull model is proven: a guard asserts no MFA factor projection cache exists in any web or Worker source that reads it (mfa-projection-pull-model), every AUTH-API-16 read re-reads the database with a new ETag and is never cached (r8-factor-refetch), the browser refetches on the multi-tab broadcast, proven with the runtime's real BroadcastChannel and no stub (multitab-real-channel; the stubbed multitab test remains for signal shape), and the event payload is exactly { mfaFactorId, authBindingId } from every producer (r3_auth_error_rows).",
+  },
+  {
     criterion: 'P2-S09-AC-907',
     layer: 'db+b',
     command: 'pnpm db:test',
@@ -11456,7 +11769,17 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-911',
     layer: 'browser+c',
     command: 'pnpm test:e2e:s09-real',
-    testFiles: ['tests/e2e/phase-02-slice-09-schema-review-real-route.spec.ts'],
+    testFiles: [
+      'tests/e2e/phase-02-slice-09-schema-review-real-route.spec.ts',
+      'apps/web/src/components/cms-capability-grants/cms-capability-grant-navigation.binding.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-step-up.dom.test.tsx',
+      'apps/web/src/components/identity-authority/acting-context-switcher.test.tsx',
+      'apps/web/src/components/identity-authority/step-up-mfa/clear-step-up-state-on-sign-in.test.ts',
+      'apps/web/src/components/identity-authority/step-up-mfa/step-up-draft.test.ts',
+      'apps/web/src/components/platform-configuration/admin-mfa-reset/admin-mfa-reset-binding.test.ts',
+      'apps/web/src/components/profile-ownership/profile-ownership-step-up-draft.dom.test.tsx',
+      'tests/e2e/phase-02-slice-09-step-up-return-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-911]'],
     status: 'verified',
     limitation:
@@ -11571,7 +11894,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
     testFiles: [
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
-      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_settlement.sql',
     ],
     testMarkers: ['[P2-S09-AC-918]'],
     status: 'verified',
@@ -11705,6 +12028,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
     ],
     testMarkers: ['[P2-S09-AC-929]'],
     status: 'verified',
@@ -11714,7 +12038,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-930',
     layer: 'db+b',
     command: 'pnpm db:test',
-    testFiles: ['supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql'],
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
+    ],
     testMarkers: ['[P2-S09-AC-930]'],
     status: 'verified',
     limitation: '',
@@ -11724,8 +12051,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'db+b',
     command: 'pnpm db:test',
     testFiles: [
-      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
       'supabase/tests/phase_02_slice_09_evidence_mfa.sql',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
     ],
     testMarkers: ['[P2-S09-AC-931]'],
     status: 'verified',
@@ -11758,8 +12085,12 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-r2-evidence.test.ts',
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
       'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_settlement.sql',
     ],
     testMarkers: ['[P2-S09-AC-933]'],
+    supplementary: [
+      'supabase/tests/phase_02_slice_09_dec111/010-admin-reset-race.mjs',
+    ],
     status: 'verified',
     limitation:
       'Re-audit lift (r8-db): dec111_admin_mfa_reset: the settlement emits one identity.mfa-factor.changed.v1 {mfaFactorId, authBindingId} for each factor it leaves reconciling, waking auth-state-reconciler',
@@ -11801,6 +12132,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
       'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'apps/worker/src/platform-configuration/phase-02-slice-09-r14-expired-session.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-936]'],
     status: 'verified',
@@ -11857,7 +12189,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts; pnpm db:test',
     testFiles: [
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
-      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
     ],
     testMarkers: ['[P2-S09-AC-940]'],
     status: 'verified',
@@ -11871,7 +12203,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts; pnpm db:test',
     testFiles: [
       'apps/worker/src/platform-configuration/phase-02-slice-09-cfg05b06-wire.test.ts',
-      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
     ],
     testMarkers: ['[P2-S09-AC-941]'],
     status: 'verified',
@@ -11950,7 +12282,9 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-947',
     layer: 'db+b',
     command: 'pnpm db:test',
-    testFiles: ['supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql'],
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset_reservation.sql',
+    ],
     testMarkers: ['[P2-S09-AC-947]'],
     status: 'verified',
     limitation: '',
@@ -12159,6 +12493,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'packages/contracts/src/content-schema-registry/resources-dry-run-evidence.test.ts',
       'supabase/tests/phase_02_slice_09_dec108_activation_preparation.sql',
       'tests/e2e/phase-02-slice-09-schema-version-real-route.spec.ts',
+      'supabase/tests/phase_02_slice_09_scan_multifield.sql',
     ],
     testMarkers: ['[P2-S09-AC-963]'],
     status: 'verified',
@@ -12584,6 +12919,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.step-up.dom.test.tsx',
     testFiles: [
       'apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.step-up.dom.test.tsx',
+      'apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.grant.dom.test.tsx',
     ],
     testMarkers: ['[P2-S09-AC-994]'],
     status: 'verified',
@@ -12720,6 +13056,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.grant.dom.test.tsx',
       'apps/web/src/components/cms-capability-grants/cms-capability-grant-commands.test.ts',
+      'tests/e2e/phase-02-slice-09-capability-grants-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-1004]'],
     status: 'verified',
@@ -13093,6 +13430,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/worker/src/platform-configuration/phase-02-slice-09-r12-cfg05b06-step-up-key.test.ts',
       'apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.step-up-envelope.dom.test.tsx',
       'tests/e2e/phase-02-slice-09-capability-grants-real-route.spec.ts',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-same-key-retry.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-1031]'],
     status: 'verified',
@@ -13106,6 +13444,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'pnpm exec vitest run apps/web/src/components/content-schema-registry/content-schema-registry-s09-step-up.dom.test.tsx',
     testFiles: [
       'apps/web/src/components/content-schema-registry/content-schema-registry-s09-step-up.dom.test.tsx',
+      'tests/e2e/phase-02-slice-09-step-up-return-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-1032]'],
     status: 'verified',
@@ -13342,7 +13681,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1050]'],
     status: 'verified',
     limitation: '',
@@ -13352,7 +13694,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1051]'],
     status: 'verified',
     limitation: '',
@@ -13362,7 +13707,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1052]'],
     status: 'verified',
     limitation: '',
@@ -13372,7 +13720,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1053]'],
     status: 'verified',
     limitation: '',
@@ -13382,7 +13733,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1054]'],
     status: 'verified',
     limitation: '',
@@ -13392,7 +13746,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1055]'],
     status: 'verified',
     limitation: '',
@@ -13402,7 +13759,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     layer: 'web',
     command:
       'pnpm exec vitest run apps/web/src/server/cms-capability-grant-personas.test.tsx',
-    testFiles: ['apps/web/src/server/cms-capability-grant-personas.test.tsx'],
+    testFiles: [
+      'apps/web/src/server/cms-capability-grant-personas.test.tsx',
+      'tests/e2e/phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
+    ],
     testMarkers: ['[P2-S09-AC-1056]'],
     status: 'verified',
     limitation: '',
@@ -13574,6 +13934,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/web/src/components/content-schema-registry/content-schema-registry-s09-step-up.dom.test.tsx',
       'tests/e2e/phase-02-slice-09-schema-review-real-route.spec.ts',
+      'apps/web/src/components/identity-authority/step-up-mfa/step-up-draft.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-1069]'],
     status: 'verified',
@@ -14060,6 +14421,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/web/src/server/admin-mfa-reset-page-context.test.ts',
       'apps/web/src/server/admin-mfa-reset-page-production.test.ts',
       'apps/web/src/server/admin-mfa-reset-route.test.ts',
+      'tests/e2e/phase-02-slice-09-admin-mfa-reset-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-1108]'],
     status: 'verified',
@@ -14255,6 +14617,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/web/src/components/platform-configuration/admin-mfa-reset/AdminMfaFactorResetForm.outcomes.dom.test.tsx',
       'apps/web/src/components/platform-configuration/admin-mfa-reset/admin-mfa-reset-copy.test.ts',
       'apps/web/src/components/platform-configuration/admin-mfa-reset/admin-mfa-reset-failure.test.ts',
+      'apps/web/src/components/identity-authority/step-up-mfa/mfa-failure.test.ts',
+      'tests/e2e/phase-02-slice-09-admin-mfa-reset-real-route.spec.ts',
     ],
     testMarkers: ['[P2-S09-AC-1122]'],
     status: 'verified',
@@ -14329,6 +14693,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'tests/contracts/infrastructure-step-up-view-state.test.ts',
       'tests/e2e/phase-02-slice-09-schema-review-real-route.spec.ts',
       'apps/web/src/components/profile-ownership/profile-ownership-step-up.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-gate-reason.dom.test.tsx',
+      'apps/web/src/components/profile-ownership/profile-ownership-step-up-draft.dom.test.tsx',
     ],
     testMarkers: ['[P2-S09-AC-1127]'],
     status: 'verified',
@@ -14414,6 +14780,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.ia-edges.dom.test.tsx',
       'supabase/tests/phase_02_slice_09_r3_ia_edge_cases.sql',
+      'supabase/tests/phase_02_slice_09_r8_grant_owner_without_grants.sql',
     ],
     testMarkers: ['[P2-S09-AC-1133]'],
     status: 'verified',
@@ -14543,6 +14910,8 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/web/src/components/identity-authority/step-up-mfa/no-recovery-codes.test.ts',
       'apps/web/src/components/platform-configuration/admin-mfa-reset/AdminMfaFactorResetForm.dom.test.tsx',
       'apps/worker/src/authentication/phase-02-slice-09-r8-recovery.test.ts',
+      'apps/web/src/components/identity-authority/step-up-mfa/StepUpChallengeForm.recovery.dom.test.tsx',
+      'apps/worker/src/platform-configuration/phase-02-slice-09-r14-lost-every-factor.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-1142]'],
     status: 'verified',
@@ -14603,6 +14972,20 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     status: 'verified',
     limitation:
       'The ledger rewording table accounts row by row for every criterion whose claim an amendment or later ruling changed (reworded with its authority, or reopened), including the two the re-audit named (AC233 and AC005), and the ledger guard asserts the table against the plan.',
+  },
+  {
+    criterion: 'P2-S09-AC-1147',
+    layer: 'contracts',
+    command:
+      'pnpm exec vitest run tests/contracts/phase-02-slice-09-phase-completion-policy.test.ts tests/contracts/phase-02-slice-09-pre-traceability.test.ts',
+    testFiles: [
+      'tests/contracts/phase-02-slice-09-phase-completion-policy.test.ts',
+      'tests/contracts/phase-02-slice-09-pre-traceability.test.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-1147]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-124 (ledger row AC1147): the transferred count is recorded (original later-only topics 0; Slice 11: 3, Slice 12: 3, Slice 16: 1) and every receiving criterion is an open row in its owner slice; the gating of Slices 10 and 12 on the amended criteria is asserted by the completion-policy guard.',
   },
   {
     criterion: 'P2-S09-AC-1148',
@@ -15047,6 +15430,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'apps/web/src/server/content-schema-registry-platform-error-details.test.ts',
       'apps/worker/src/content-schema-registry/phase-02-slice-09-od4-locale-evidence.test.ts',
       'supabase/tests/phase_02_slice_09_r8_error_details.sql',
+      'apps/worker/src/content-schema-registry/phase-02-slice-09-r14-locale-successor.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-1182]'],
     status: 'verified',
@@ -15767,100 +16151,9 @@ export const S09_AMENDMENT_OPEN: readonly S09AmendmentOpenEntry[] = [
       'Deferred pre-release or post-launch gate (DEC-101, DEC-104, DEC-105); stays authored and unchecked outside the active denominator.',
   },
   {
-    criterion: 'P2-S09-AC-005',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC005)',
-  },
-  {
-    criterion: 'P2-S09-AC-007',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC007)',
-  },
-  {
-    criterion: 'P2-S09-AC-025',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC025)',
-  },
-  {
-    criterion: 'P2-S09-AC-034',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC034)',
-  },
-  {
-    criterion: 'P2-S09-AC-037',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC037)',
-  },
-  {
-    criterion: 'P2-S09-AC-180',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC180)',
-  },
-  {
-    criterion: 'P2-S09-AC-185',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC185)',
-  },
-  {
-    criterion: 'P2-S09-AC-233',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC233)',
-  },
-  {
-    criterion: 'P2-S09-AC-246',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC246)',
-  },
-  {
     criterion: 'P2-S09-AC-261',
     status: 'held-pending-ratification',
     reason: 'held: reworded text pending owner ratification (ledger row AC261)',
-  },
-  {
-    criterion: 'P2-S09-AC-282',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC282)',
-  },
-  {
-    criterion: 'P2-S09-AC-356',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC356)',
-  },
-  {
-    criterion: 'P2-S09-AC-390',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC390)',
-  },
-  {
-    criterion: 'P2-S09-AC-431',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC431)',
-  },
-  {
-    criterion: 'P2-S09-AC-641',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC641)',
-  },
-  {
-    criterion: 'P2-S09-AC-658',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC658)',
-  },
-  {
-    criterion: 'P2-S09-AC-708',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC708)',
-  },
-  {
-    criterion: 'P2-S09-AC-906',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC906)',
-  },
-  {
-    criterion: 'P2-S09-AC-1147',
-    status: 'held-pending-ratification',
-    reason:
-      'held: reworded text pending owner ratification (ledger row AC1147)',
   },
 ];
 

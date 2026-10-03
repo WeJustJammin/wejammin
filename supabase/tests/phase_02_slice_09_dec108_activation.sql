@@ -117,6 +117,20 @@ select ok((select response ?& array['id','version','contentHash','createdAt','up
         = pg_temp.s09d_read('cms_content_type_versions', 'activation_approval_evidence_hash', pg_temp.s09d_id('a:version'))
     from s09d_activated),
   'activation returns the active resource whose evidence digest is the persisted immutable activation evidence [P2-S09-AC-629] [P2-S09-AC-092]');
+select ok((select array(select k from jsonb_object_keys(response->'activationEvidence') k order by k)
+              = array['approvalEvidenceHash', 'key', 'policyHash', 'requiredCapabilities', 'requiredDecisionCount', 'riskClass', 'version']
+    and jsonb_typeof(response->'activationEvidence'->'requiredCapabilities') = 'array'
+    and (response->'activationEvidence'->>'requiredDecisionCount')::int between 1 and 8
+    from s09d_activated),
+  'the CMS-03A-04 frozen WorkflowPolicyEvidence is exactly key, version, policyHash, riskClass, requiredDecisionCount (1 to 8), requiredCapabilities and approvalEvidenceHash [P2-S09-AC-090]');
+select ok(exists (select 1 from s09d_activated a, platform_private.cms_workflow_policies policy
+    where policy.policy_key = a.response->'activationEvidence'->>'key'
+      and policy.policy_version = (a.response->'activationEvidence'->>'version')::int
+      and policy.policy_hash::text = a.response->'activationEvidence'->>'policyHash'
+      and policy.risk_class::text = a.response->'activationEvidence'->>'riskClass'
+      and policy.required_decision_count = (a.response->'activationEvidence'->>'requiredDecisionCount')::int
+      and to_jsonb(policy.required_capabilities) = a.response->'activationEvidence'->'requiredCapabilities'),
+  'every member of the frozen evidence equals the bound registry row (key, version, policyHash, riskClass, count, capabilities), not a value the caller supplied [P2-S09-AC-090]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'active',
   'the candidate switched to active');
 select ok(pg_temp.s09d_outcome('a:activate') = 'OK'

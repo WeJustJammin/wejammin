@@ -19,6 +19,7 @@ const result = (patch: Partial<GrantCommandResult>): GrantCommandResult => ({
   resource: null,
   violations: [],
   requestId: null,
+  recoveryAction: null,
   ...patch,
 });
 
@@ -119,8 +120,12 @@ describe('[DEC-119] command failure copy', () => {
     },
   );
 
-  it('[P2-S09-AC-1004] 409 on grant points at the existing grant; on renew/revoke it asks for review', () => {
-    const grant = failure('grant', { outcome: 'conflict', status: 409 });
+  it('[P2-S09-AC-1004] [P2-S09-AC-527] 409 on grant with the renew direction points at the existing grant; on renew/revoke it asks for review', () => {
+    const grant = failure('grant', {
+      outcome: 'conflict',
+      status: 409,
+      recoveryAction: 'renew',
+    });
     expect(grant.message).toBe(
       'This person already holds this capability. Renew the existing grant instead.',
     );
@@ -131,6 +136,26 @@ describe('[DEC-119] command failure copy', () => {
         'This grant changed. Review the current term and try again.',
       );
       expect(state.refetch).toBe(true);
+    }
+  });
+
+  it('[P2-S09-AC-527] a grant 409 the API did not direct to renew never claims the person already holds the capability', () => {
+    for (const recoveryAction of [
+      null,
+      'refresh',
+      'use_new_idempotency_key',
+      'reload',
+    ]) {
+      const grant = failure('grant', {
+        outcome: 'conflict',
+        status: 409,
+        recoveryAction,
+      });
+      expect(grant.message).toBe(
+        'This grant changed. Review the current term and try again.',
+      );
+      expect(grant.action).toBe('none');
+      expect(grant.refetch).toBe(true);
     }
   });
 

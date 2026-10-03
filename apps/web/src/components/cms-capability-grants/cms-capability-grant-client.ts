@@ -35,6 +35,11 @@ export interface GrantCommandResult {
   readonly violations: readonly GrantViolation[];
   /** The platform request id of the last response, for recovery copy. */
   readonly requestId: string | null;
+  /**
+   * The BE00 `details.recoveryAction` token of a 409, when the Worker sent one
+   * (`renew` directs the owner to the existing grant). Never read for other outcomes.
+   */
+  readonly recoveryAction: string | null;
 }
 
 const SAFE_CODE = /^[A-Za-z0-9_.:-]{1,128}$/u;
@@ -71,6 +76,17 @@ const violationsOf = (body: unknown): readonly GrantViolation[] => {
         : [];
     })
     .slice(0, 50);
+};
+
+const RECOVERY_ACTION = /^[a-z][a-z0-9_]{0,31}$/u;
+
+const recoveryActionOf = (body: unknown): string | null => {
+  const details = (body as { readonly details?: unknown } | null)?.details;
+  const action = (details as { readonly recoveryAction?: unknown } | null)
+    ?.recoveryAction;
+  return typeof action === 'string' && RECOVERY_ACTION.test(action)
+    ? action
+    : null;
 };
 
 const requestIdOf = (body: unknown): string | null => {
@@ -120,6 +136,8 @@ export const runGrantCommand = async (input: {
     resource: success ? resourceOf(body) : null,
     violations: result.outcome === 'validation' ? violationsOf(body) : [],
     requestId: success ? null : requestIdOf(body),
+    recoveryAction:
+      result.outcome === 'conflict' ? recoveryActionOf(body) : null,
   };
 };
 

@@ -1,5 +1,4 @@
 import {
-  CONFLICT_RECOVERY_ACTIONS,
   DEFAULT_DEPENDENCY_CLASS,
   boundedRateLimit,
   boundedRetryAfterSeconds,
@@ -7,6 +6,7 @@ import {
   defaultForbiddenReasonCode,
   registeredConflict,
   registeredDependencyClass,
+  recoveryActionFor,
   registeredReasonCode,
   withinDetailsCeiling,
 } from './error-detail-values';
@@ -139,7 +139,7 @@ const registeredDetails = (
       conflictForCode(result.code);
     return {
       conflict,
-      recoveryAction: CONFLICT_RECOVERY_ACTIONS[conflict],
+      recoveryAction: recoveryActionFor(result.code, conflict),
       ...safeVersionDetails(result.details ?? {}),
     };
   }

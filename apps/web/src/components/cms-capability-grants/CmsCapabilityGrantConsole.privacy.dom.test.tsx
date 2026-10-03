@@ -184,6 +184,9 @@ describe('[P2-S09-AC-1014] person identifiers stay inside the owner-only island'
       kind: 'grant',
       grantId: null,
       idempotencyKey: expect.stringMatching(/^cms-grant-15-/u),
+      // r14: stamped with the (absent in jsdom) session scope and the time.
+      binding: null,
+      createdAt: expect.any(Number),
     });
   });
 

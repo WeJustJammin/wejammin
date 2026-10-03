@@ -10,6 +10,7 @@ import {
   getClientBindingId,
 } from '../../lib/client-binding';
 import { ActingContextRequestError } from './acting-context-errors';
+import { clearAllStepUpState } from './step-up-mfa/step-up-binding';
 import {
   ActiveSessionReadError,
   contextChangeError,
@@ -164,6 +165,11 @@ export const readCurrentTabContext = async (): Promise<ResolvedTabContext> => {
       !(await clearClientBindingId())
     )
       throw cause;
+    // The server no longer honours this tab's context: whatever step-up draft
+    // or command envelope it left behind belongs to a context that is gone.
+    clearAllStepUpState(
+      typeof window === 'undefined' ? null : window.sessionStorage,
+    );
     session = await readActiveSession();
     const retriedClientBindingId = await getClientBindingId();
     if (

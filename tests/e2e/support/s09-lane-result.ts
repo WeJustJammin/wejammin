@@ -2,6 +2,7 @@ import type {
   ContentSchemaRegistryError,
   ContentSchemaRegistryResult,
 } from '../../../apps/worker/src/content-schema-registry/types';
+import { ACTIVE_GRANT_CONFLICT_CODE } from '../../../apps/worker/src/content-schema-registry/error-detail-values';
 
 export const ok = <T>(value: T): ContentSchemaRegistryResult<T> => ({
   ok: true,
@@ -42,6 +43,19 @@ export const conflict = (reasonCode: string): ContentSchemaRegistryError =>
     {
       reasonCode,
     },
+  );
+
+/**
+ * CMS-03A-15 against an existing active aggregate: the internal code the production
+ * adapter derives from the database's DETAIL ACTIVE_GRANT_EXISTS, so the real route
+ * answers 409 CONFLICT with recoveryAction `renew`, exactly as against the database.
+ */
+export const activeGrantConflict = (): ContentSchemaRegistryError =>
+  fail(
+    409,
+    ACTIVE_GRANT_CONFLICT_CODE,
+    'The CMS registry operation conflicts with current state.',
+    { reasonCode: 'active_grant_exists' },
   );
 
 export const invalid = (reasonCode: string): ContentSchemaRegistryError =>

@@ -322,7 +322,7 @@ if (existsSync(SPEC_PIPELINE_PATH)) {
 // which remain open. The separately reopened AC250 (a disclosure clause, not
 // private-binding proof) was Chrome-verified on 2026-10-01 and closed. The
 // 2026-10-02 DEC-108 depth-floor cascade added 956 open criteria and reopened
-// AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, so the current claim is the checked-row count over 1235 (19 held criteria are unchecked pending owner ratification). Keep it distinct from
+// AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, so the current claim is the checked-row count over 1235 (1 held criterion, AC261, is unchecked pending owner ratification). Keep it distinct from
 // historical 262/279, 261/279 and 279/279 evidence, and never label the 17-item
 // activation set as 18 criteria.
 const policySection = (text, heading, nextHeading = /^##\s/imu) => {

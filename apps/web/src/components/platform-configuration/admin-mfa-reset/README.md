@@ -5,7 +5,9 @@
 The FE05 `AdminMfaFactorResetForm` for BE05b `CFG-05B-06`
 (`POST /api/v1/admin/identity/mfa-factor-resets`): validation, API client,
 failure mapping, state hook, and the form, confirmation and notice components.
-Served by `src/pages/app/platform-configuration-admin/mfa-reset.astro`.
+Served as the `tab=mfa-reset` tab of the admin workbench
+(`src/pages/app/platform-configuration-admin/index.astro`, rendered by
+`PlatformConfigurationAdminRoute.astro`); there is no route of its own.
 
 ## Ownership
 
@@ -30,7 +32,7 @@ New outcomes are added in `admin-mfa-reset-failure.ts` with exact copy in
 - An unknown outcome (network failure, 504) is never shown as a reset; Retry
   replays the same `Idempotency-Key`, and any edit mints a new key.
 - Responses are never echoed: no person ID, reset ID or factor detail is shown.
-- The route answers every actor without `admin.identity.mfa_reset` with a bare 404.
+- The tab answers every actor without `admin.identity.mfa_reset` with a bare 404.
 - Failure mapping reuses `../../identity-authority/step-up-mfa/` (`mfa-api.ts`,
   `mfa-failure.ts`, `use-lockout.ts`, `step-up-return.ts`).
 

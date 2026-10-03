@@ -67,4 +67,4 @@ The review above concerns the later-only topics the original contract reconcilia
 | Step-up recovery for CMS-03B-06, CMS-03B-07 and CMS-03B-09 (DEC-111) | AC1031 | Slice 11 P2-S11-AC-046, AC-047, AC-048 | 3 | DEC-122 (owner-ratified) |
 | `no_fallback` resolution semantics and stale-translation behavior (DEC-121) | AC1166 | Slice 12 P2-S12-AC-051, AC-052 | 2 | DEC-122 (owner-ratified) |
 | Template binding flows beyond the first-successor mechanics | AC003, AC045, AC049 | Slice 12 P2-S12-AC-053 | 1 | DEC-123 (owner) |
-| Legal-hold and incident-fence enforcement over CMS records | AC185 | Slice 16 P2-S16-AC-029 | 1 | AC185 orchestrator ruling, pending owner ratification |
+| Legal-hold and incident-fence enforcement over CMS records | AC185 | Slice 16 P2-S16-AC-029 | 1 | DEC-125 (owner-ratified) |

@@ -39,6 +39,7 @@ import {
   contentSchemaRegistryRoutePolicies,
 } from '../../packages/contracts/src/content-schema-registry';
 import {
+  blockRegistrationErrors,
   humanDetailErrors,
   humanListErrors,
   humanMutationErrors,
@@ -185,7 +186,8 @@ export const expectedErrors = {
   'CMS-03A-02': humanMutationErrors,
   'CMS-03A-03': humanMutationErrors,
   'CMS-03A-04': humanStepUpMutationErrors,
-  'CMS-03A-05': releaseErrors,
+  // DEC-129: CMS-03A-05 creates its resource and declares no 404.
+  'CMS-03A-05': blockRegistrationErrors,
   'CMS-03A-06': humanListErrors,
   'CMS-03A-07': humanDetailErrors,
   'CMS-03A-08': releaseErrors,

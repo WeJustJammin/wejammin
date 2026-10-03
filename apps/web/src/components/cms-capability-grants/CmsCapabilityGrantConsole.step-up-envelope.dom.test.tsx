@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const navigateTo = vi.hoisted(() => vi.fn());
@@ -83,12 +84,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * The 401 answer reaches the island through a Response body stream, which is
+ * finished by real time, so wait (bounded, real timers) for the step-up link
+ * instead of assuming a fixed number of microtask turns.
+ */
+const stepUpLink = async (root: HTMLElement): Promise<HTMLAnchorElement> => {
+  for (let waited = 0; waited < 2_000; waited += 5) {
+    const found = root.querySelector<HTMLAnchorElement>(
+      'a[data-action="verify-identity"]',
+    );
+    if (found !== null) return found;
+    await act(async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  return query<HTMLAnchorElement>(root, 'a[data-action="verify-identity"]');
+};
+
 /** Click "Verify identity" the way the browser does, then leave the page. */
-const leaveForStepUp = (root: HTMLElement): void => {
-  const link = query<HTMLAnchorElement>(
-    root,
-    'a[data-action="verify-identity"]',
-  );
+const leaveForStepUp = async (root: HTMLElement): Promise<void> => {
+  const link = await stepUpLink(root);
   expect(link.getAttribute('href')).toBe(STEP_UP_HREF);
   link.addEventListener('click', (event) => event.preventDefault());
   click(link);
@@ -129,7 +145,7 @@ describe('[P2-S09-AC-1031] grant console step-up pending command survives the re
     await submit(fillGrantForm(first));
     const original = calls[0]?.body?.get('idempotency-key');
     expect(typeof original).toBe('string');
-    leaveForStepUp(first);
+    await leaveForStepUp(first);
 
     const back = mount(SECOND_REQUEST_ID);
     expect(textOf(back)).toContain('Your entries were not saved.');
@@ -155,7 +171,7 @@ describe('[P2-S09-AC-1031] grant console step-up pending command survives the re
     await submit(openRenew(first));
     const original = calls[2]?.body?.get('idempotency-key');
     expect(original).not.toBe(earlier);
-    leaveForStepUp(first);
+    await leaveForStepUp(first);
 
     const back = mount(SECOND_REQUEST_ID);
     await submit(openRenew(back));
@@ -186,7 +202,7 @@ describe('[P2-S09-AC-1031] grant console step-up pending command survives the re
     await submit(openRevoke(first));
     const original = calls[2]?.body?.get('idempotency-key');
     expect(original).not.toBe(earlier);
-    leaveForStepUp(first);
+    await leaveForStepUp(first);
 
     const back = mount(SECOND_REQUEST_ID);
     await submit(openRevoke(back));
@@ -206,7 +222,7 @@ describe('[P2-S09-AC-1031] grant console step-up pending command survives the re
     const first = mount();
     await submit(openRenew(first));
     const original = calls[0]?.body?.get('idempotency-key');
-    leaveForStepUp(first);
+    await leaveForStepUp(first);
 
     const back = mount(SECOND_REQUEST_ID);
     await submit(fillGrantForm(back));

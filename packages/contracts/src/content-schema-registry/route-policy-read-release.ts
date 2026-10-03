@@ -1,5 +1,6 @@
 import type { RouteContract } from './route-policy-base.ts';
 import type {
+  BlockRegistrationErrors,
   HumanDetailErrors,
   HumanListErrors,
   ReleaseErrors,
@@ -25,7 +26,7 @@ export type ReadReleaseRouteContractByOperation = {
     rateClass: 'release-registry-write';
     rateLimit: 20;
     rateScope: 'release';
-    errors: ReleaseErrors;
+    errors: BlockRegistrationErrors;
   };
   'CMS-03A-06': RouteContract & {
     method: 'GET';

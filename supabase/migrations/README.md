@@ -430,6 +430,12 @@ Forward-only migrations for the R12 database holdovers (each has a RED-first pgT
 - `130600` the CMS-03A-05 answer carries `contentHash`, `createdAt` and `updatedAt` (BE03a ResourceMeta), without which
   the Worker refused every committed registration as 502.
 
+### Slice 09 integrator migration (`20261003140000`)
+
+- `140000` CMS-03A-15 against an existing active grant aggregate raises `CONFLICT` with DETAIL `ACTIVE_GRANT_EXISTS`
+  (AC527), so the Worker answers 409 with `details.recoveryAction: 'renew'`; idempotency and version conflicts stay
+  detail-free. The function body is regenerated from the live definition with that one statement changed.
+
 ## Related links
 
 - `../tests/README.md`

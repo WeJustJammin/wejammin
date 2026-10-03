@@ -104,7 +104,7 @@ export function AdminMfaFactorResetForm(
         <AdminMfaResetNotice
           notice={state.notice}
           remainingSeconds={lockout.remainingSeconds}
-          signInHref={`/auth/sign-in?returnTo=${encodeURIComponent(here.pathname)}`}
+          signInHref={`/auth/sign-in?returnTo=${encodeURIComponent(`${here.pathname}${here.search}`)}`}
           noticeRef={noticeRef}
           onRetry={actions.retry}
           onStartOver={actions.startOver}

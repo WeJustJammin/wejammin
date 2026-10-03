@@ -85,7 +85,12 @@ const auditHref = sectionHref('audit');
     >
     {
       showsAdminMfaResetEntry(capabilitySnapshot) ? (
-        <a href={ADMIN_MFA_RESET_ROUTE}>Reset two-step verification</a>
+        <a
+          href={ADMIN_MFA_RESET_ROUTE}
+          aria-current={tab === 'mfa-reset' ? 'page' : undefined}
+        >
+          Reset two-step verification
+        </a>
       ) : null
     }
   </nav>

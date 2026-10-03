@@ -278,6 +278,9 @@ describe('[DEC-119] grant command', () => {
       kind: 'grant',
       grantId: null,
       idempotencyKey: expect.stringMatching(/^cms-grant-15-/u),
+      // r14: stamped with the (absent in jsdom) session scope and the time.
+      binding: null,
+      createdAt: expect.any(Number),
     });
     expect(window.sessionStorage.length).toBe(1);
     expect(JSON.stringify(Object.entries(window.sessionStorage))).not.toContain(
@@ -292,6 +295,8 @@ describe('[DEC-119] grant command', () => {
         kind: 'grant',
         grantId: null,
         idempotencyKey: 'cms-grant-15-original',
+        binding: null,
+        createdAt: Date.now(),
       }),
     );
     const root = mount();
@@ -312,7 +317,14 @@ describe('[DEC-119] grant command', () => {
 
   it('[P2-S09-AC-997] [P2-S09-AC-1004] [P2-S09-AC-527] renders the exact 409 copy with a link that filters the list to the capability', async () => {
     const { calls } = scriptFetch(
-      () => jsonResponse(409, apiError('CONFLICT')),
+      () =>
+        jsonResponse(
+          409,
+          apiError('CONFLICT', {
+            conflict: 'INVALID_TRANSITION',
+            recoveryAction: 'renew',
+          }),
+        ),
       () => grantListResponse(),
     );
     const root = mount();
@@ -323,6 +335,29 @@ describe('[DEC-119] grant command', () => {
     click(query(root, 'button[data-action="filter-capability"]'));
     await settle();
     expect(calls.at(-1)?.url).toContain('capability=cms.author');
+  });
+
+  it('[P2-S09-AC-527] a grant 409 whose recovery action is not renew shows the changed copy and no filter link', async () => {
+    scriptFetch(
+      () =>
+        jsonResponse(
+          409,
+          apiError('CONFLICT', {
+            conflict: 'INVALID_TRANSITION',
+            recoveryAction: 'refresh',
+          }),
+        ),
+      () => grantListResponse(),
+    );
+    const root = mount();
+    await submit(fillGrantForm(root));
+    expect(textOf(root)).toContain(
+      'This grant changed. Review the current term and try again.',
+    );
+    expect(textOf(root)).not.toContain('already holds this capability');
+    expect(
+      root.querySelector('button[data-action="filter-capability"]'),
+    ).toBeNull();
   });
 
   it('[P2-S09-AC-997] [P2-S09-AC-1003] renders the exact non-disclosing 404 copy and retains the input', async () => {

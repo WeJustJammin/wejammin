@@ -69,7 +69,7 @@ select is((select event.payload->'activationEvidence'->>'riskClass' from platfor
   'ordinary', 'cms.schema.activated.v1 carries the frozen ordinary class');
 select is(pg_temp.s09d_resp('b:wk.activate')->'activationEvidence'->>'policyHash',
   (select policy_hash::text from platform_private.cms_workflow_policies where policy_key = 'editorial' and policy_version = 1),
-  'the evidence still names the exact frozen v1 policy hash (precondition for the class being frozen too)');
+  'the evidence still names the exact frozen v1 policy hash after a newer registry version exists: the evidence is frozen, not re-derived (precondition for the class being frozen too) [P2-S09-AC-090]');
 select pg_temp.s09d_worker_activate('b', 'a', 'frozen-risk-replay-002');
 select is(pg_temp.s09d_resp('b:wk.activate')->>'status', 'already_active', 'a second request over the active candidate is an already-active replay');
 select is(pg_temp.s09d_resp('b:wk.activate')->'activationEvidence'->>'riskClass', 'ordinary',

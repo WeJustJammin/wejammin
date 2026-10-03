@@ -140,7 +140,7 @@ describe('[P2-S09-AC-1031] CFG-05B-06 step-up recovery', () => {
       press(reset.mounted.container, 'Reset factors');
       await flush();
       expect(reset.navigate).toHaveBeenCalledWith(
-        `/step-up?returnTo=${encodeURIComponent('/app/platform-configuration-admin/mfa-reset')}`,
+        `/step-up?returnTo=${encodeURIComponent('/app/platform-configuration-admin?tab=mfa-reset')}`,
       );
       expect(fetchImpl.calls[0]?.headers.get('idempotency-key')).toBe(
         'reset-key-0001',

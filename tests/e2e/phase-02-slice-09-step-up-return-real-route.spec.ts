@@ -1,6 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { newTestId, closeLaneContexts } from './support/s09-lane-browser';
+import { lanePersonId } from './support/s09-lane-ids';
+
+import {
+  authenticateLane,
+  newTestId,
+  closeLaneContexts,
+} from './support/s09-lane-browser';
 import {
   completeStepUpViaUi,
   enrollFactorViaUi,
@@ -81,6 +87,75 @@ test('[P2-S09-AC-910] an interrupted form returns to its path and query when saf
       (target) => `${target.pathname}${target.search}` === returnTo,
     );
   }
+});
+
+test('[P2-S09-AC-911][P2-S09-AC-1032] after logout a different signed-in user in the same tab restores nothing of the interrupted decision', async ({
+  browser,
+}) => {
+  const stage = await openReview(browser);
+  await assignReviewer(stage);
+  await expect(
+    stage.owner.page.getByText(/Reviewer assignment is active/u),
+  ).toBeVisible({ timeout: 45_000 });
+  // The helper's Reason locator is ambiguous once a first assignment shows its
+  // revoke form, so the second reviewer is assigned inside the assign group.
+  const assign = stage.owner.page.getByRole('group', {
+    name: 'Assign a reviewer',
+  });
+  await assign
+    .getByRole('textbox', { name: 'Reviewer person ID' })
+    .fill(lanePersonId('reviewer2'));
+  await assign
+    .getByRole('textbox', { name: /Expires at/u })
+    .fill(new Date(Date.now() + 24 * 3_600_000).toISOString());
+  await assign
+    .getByRole('textbox', { name: /Reason/u })
+    .fill('Second reviewer for the same review');
+  await stage.owner.page
+    .locator('button[form="content-schema-registry-review-assignment-form"]')
+    .click();
+  await expect(
+    stage.owner.page.getByRole('region', { name: 'Reviewer assignments' }),
+  ).toContainText('Reviewer reviewer2', { timeout: 45_000 });
+  const first = await actor(browser, 'reviewer', stage.testId);
+  const page = first.page;
+  await enrollFactorViaUi(page);
+  await interruptDecision(page, stage.reviewPath, stage.testId);
+
+  // The interrupted decision is held in this tab, bound to the first reviewer.
+  const drafts = () =>
+    page.evaluate(() =>
+      Object.keys(window.sessionStorage).filter((key) =>
+        key.startsWith('wj-step-up-draft:'),
+      ),
+    );
+  expect(await drafts()).toHaveLength(1);
+  const firstScope = (await first.context.cookies()).find(
+    (cookie) => cookie.name === 'wj_step_up_scope',
+  )?.value;
+  expect(firstScope).toMatch(/^[A-Za-z0-9_-]{32}$/u);
+
+  // Logout leaves the tab (and its sessionStorage) in place and drops every
+  // session cookie; a second reviewer then signs in on the same tab.
+  await first.context.clearCookies();
+  await authenticateLane(first.context, 'reviewer2', stage.testId);
+  await page.goto(stage.reviewPath, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await page.waitForTimeout(500);
+
+  const secondScope = (await first.context.cookies()).find(
+    (cookie) => cookie.name === 'wj_step_up_scope',
+  )?.value;
+  expect(secondScope).toMatch(/^[A-Za-z0-9_-]{32}$/u);
+  expect(secondScope).not.toBe(firstScope);
+  // Nothing of the first reviewer's decision restores, and the draft is gone.
+  await expect(
+    page.getByRole('radio', { name: 'Approve the frozen evidence' }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByText('Verification complete. Review and confirm to continue.'),
+  ).toHaveCount(0);
+  expect(await drafts()).toHaveLength(0);
 });
 
 /** returnTo values /step-up must refuse: the fallback is /app on the same origin. */

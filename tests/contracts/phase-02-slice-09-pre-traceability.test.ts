@@ -321,8 +321,8 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
       /Transfer \(2026-10-03\): \*\*transferred count: 7\*\* \(Slice 11: 3, Slice 12: 3, Slice 16: 1\)/u,
     );
     // Only the owner-ratified DEC-122 covers the AC1031 and AC1166 moves, DEC-123
-    // covers the template-binding flows, and the AC185 move is still an
-    // orchestrator ruling pending owner ratification.
+    // covers the template-binding flows, and DEC-125 (owner-ratified) covers
+    // the AC185 move.
     const attributed: readonly [string, string, string][] = [
       [
         'AC1031',
@@ -331,11 +331,7 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
       ],
       ['AC1166', 'Slice 12 P2-S12-AC-051, AC-052', 'DEC-122 (owner-ratified)'],
       ['AC003, AC045, AC049', 'Slice 12 P2-S12-AC-053', 'DEC-123 (owner)'],
-      [
-        'AC185',
-        'Slice 16 P2-S16-AC-029',
-        'AC185 orchestrator ruling, pending owner ratification',
-      ],
+      ['AC185', 'Slice 16 P2-S16-AC-029', 'DEC-125 (owner-ratified)'],
     ];
     const tableRows = record
       .split(/\r?\n/u)

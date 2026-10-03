@@ -1,5 +1,9 @@
 import type { ContentSchemaRegistryRoutePolicy } from './route-policy.ts';
-import { releaseErrors, tier2Slo } from './routes-errors.ts';
+import {
+  blockRegistrationErrors,
+  releaseErrors,
+  tier2Slo,
+} from './routes-errors.ts';
 
 const releaseDefaults = {
   method: 'POST',
@@ -31,6 +35,7 @@ export const releaseRoutePolicies = [
     openApiSuccessSchema: 'BlockDefinitionRegistryRecordSchema',
     successStatus: 201,
     ifMatch: 'none',
+    errors: blockRegistrationErrors,
   },
   {
     ...releaseDefaults,

@@ -98,10 +98,16 @@ beforeEach(() => {
   });
 });
 
+const setScope = (value: string): void => {
+  document.cookie = `wj_step_up_scope=${value}; Path=/`;
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   locks.releaseAll();
   document.body.replaceChildren();
+  document.cookie = 'wj_step_up_scope=; Path=/; Max-Age=0';
 });
 
 describe('typed step-up details', () => {
@@ -362,6 +368,53 @@ describe('scoped draft across the step-up detour', () => {
     });
     expect(again.querySelector('input[name="decision"]:checked')).toBeNull();
     expect(again.textContent).not.toContain('Verification complete');
+    cleanup();
+  });
+
+  it('[P2-S09-AC-911][P2-S09-AC-1032] after logout a different signed-in user in the same tab restores nothing and the old key is gone', async () => {
+    setScope('scope-of-alice-0123456789abcd');
+    const first = mountDecisionForm();
+    choose(first, 'reject');
+    const key = first.querySelector<HTMLInputElement>(
+      '[name="idempotency-key"]',
+    )?.value;
+    await detour(first);
+    expect(stored()).toContain(key ?? 'missing-key');
+    // Alice logs out; Bob signs in on the same tab and opens the same review.
+    setScope('scope-of-bob-000000000123456789');
+    const bob = mountDecisionForm();
+    const cleanup = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate: vi.fn(),
+    });
+    expect(bob.querySelector('input[name="decision"]:checked')).toBeNull();
+    // Nothing was pinned: the key is the page's own derived key, not a
+    // restored one, and the stored draft is gone.
+    expect(
+      bob.querySelector<HTMLInputElement>('[name="idempotency-key"]')?.dataset
+        .pinnedKey,
+    ).toBeUndefined();
+    expect(bob.textContent).not.toContain('Verification complete');
+    expect(stored()).not.toContain('wj-step-up-draft');
+    cleanup();
+  });
+
+  it('[P2-S09-AC-911][P2-S09-AC-1032] a draft older than the 600 s step-up window restores nothing and is cleared', async () => {
+    const first = mountDecisionForm();
+    choose(first, 'reject');
+    const key = first.querySelector<HTMLInputElement>(
+      '[name="idempotency-key"]',
+    )?.value;
+    await detour(first);
+    const later = Date.now() + 600_001;
+    vi.spyOn(Date, 'now').mockReturnValue(later);
+    const form = mountDecisionForm();
+    const cleanup = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate: vi.fn(),
+    });
+    expect(form.querySelector('input[name="decision"]:checked')).toBeNull();
+    expect(form.textContent).not.toContain('Verification complete');
+    expect(stored()).not.toContain('wj-step-up-draft');
+    expect(key).toBeDefined();
     cleanup();
   });
 

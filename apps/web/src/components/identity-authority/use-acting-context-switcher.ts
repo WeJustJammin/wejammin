@@ -3,9 +3,20 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ACTING_CONTEXT_CHANGED_EVENT } from '../../lib/client-binding';
 import { ActingContextRequestError } from './acting-context-errors';
 import type { ActingContextSwitcherProps } from './acting-context-model';
+import { clearAllStepUpState } from './step-up-mfa/step-up-binding';
 
+/**
+ * A different acting context must never inherit the previous one's pending
+ * step-up drafts or command envelopes (and their original Idempotency-Keys),
+ * so they are cleared before any dependent surface can restore them.
+ */
 const invalidateDependentSurfaces = (): void => {
   if (typeof window === 'undefined') return;
+  try {
+    clearAllStepUpState(window.sessionStorage);
+  } catch {
+    // Blocked storage holds no step-up state to clear.
+  }
   window.dispatchEvent(new Event(ACTING_CONTEXT_CHANGED_EVENT));
 };
 

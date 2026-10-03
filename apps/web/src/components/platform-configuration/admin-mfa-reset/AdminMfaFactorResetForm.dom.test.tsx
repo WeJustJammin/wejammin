@@ -48,7 +48,7 @@ describe('AdminMfaFactorResetForm access variants', () => {
     expect(c.querySelector('form')).toBeNull();
     const link = c.querySelector('a');
     expect(link?.getAttribute('href')).toBe(
-      `/step-up?returnTo=${encodeURIComponent('/app/platform-configuration-admin/mfa-reset')}`,
+      `/step-up?returnTo=${encodeURIComponent('/app/platform-configuration-admin?tab=mfa-reset')}`,
     );
   });
 });

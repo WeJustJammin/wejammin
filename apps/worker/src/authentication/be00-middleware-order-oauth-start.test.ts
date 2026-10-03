@@ -12,12 +12,14 @@ import { createApp, failure, success } from './phase-02-slice-02.test-support';
 
 /*
  * AUTH-API-03 is a public sign-in start or, for `link` and `prove_merge`, a
- * cookie-authenticated start; the body names which. BE01a: "cross-field
- * authorization is checked after shape validation", so the declared size and
- * content type are checked first, then the strict body shape, and only then
- * the mode-specific origin, session-bound CSRF, verified session, step-up,
- * quota and the exact Idempotency-Key and If-Match. Each cookie mode is probed
- * with one request that fails every step from N onward.
+ * cookie-authenticated start; the body names which. BE00 "Hono Middleware
+ * Order" step 2 (same-origin CORS, size ceiling, content type, session-bound
+ * CSRF) precedes step 6 (strict body validation), so a request that carries
+ * the cookie-session credentials is refused at the transport boundary before
+ * its body is read. Then come verified session, step-up, quota and the exact
+ * Idempotency-Key and If-Match. Each cookie mode is probed with one request
+ * that fails every step from N onward. The public sign-in order is covered in
+ * be00-oauth-start-body-order.test.ts.
  */
 
 type State = Readonly<{
@@ -35,6 +37,13 @@ const withHeaders = (state: State, headers: Record<string, string>): State => ({
 
 const stepsFor = (invalidBody: unknown): readonly OrderStep<State>[] => [
   {
+    name: 'CORS origin allowlist',
+    status: 403,
+    code: 'FORBIDDEN',
+    break: (state) =>
+      withHeaders(state, { origin: 'https://evil.example.test' }),
+  },
+  {
     name: 'body size ceiling',
     status: 413,
     code: 'PAYLOAD_TOO_LARGE',
@@ -50,23 +59,16 @@ const stepsFor = (invalidBody: unknown): readonly OrderStep<State>[] => [
       expect(body.details).toEqual({ allowedMediaTypes: ['application/json'] }),
   },
   {
-    name: 'strict body shape',
-    status: 422,
-    code: 'VALIDATION_FAILED',
-    break: (state) => ({ ...state, body: invalidBody }),
-  },
-  {
-    name: 'CORS origin allowlist',
-    status: 403,
-    code: 'FORBIDDEN',
-    break: (state) =>
-      withHeaders(state, { origin: 'https://evil.example.test' }),
-  },
-  {
     name: 'session-bound CSRF',
     status: 403,
     code: 'FORBIDDEN',
     break: (state) => withHeaders(state, { 'x-csrf-token': 'wrong-token' }),
+  },
+  {
+    name: 'strict body shape',
+    status: 422,
+    code: 'VALIDATION_FAILED',
+    break: (state) => ({ ...state, body: invalidBody }),
   },
   {
     name: 'authentication',

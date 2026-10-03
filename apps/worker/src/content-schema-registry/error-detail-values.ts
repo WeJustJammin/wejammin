@@ -63,6 +63,26 @@ export const conflictForCode = (code: string): ConflictKind =>
       ? 'IDEMPOTENCY_MISMATCH'
       : 'INVALID_TRANSITION';
 
+/**
+ * Internal code of the CMS-03A-15 conflict with an existing active aggregate (the
+ * database's DETAIL ACTIVE_GRANT_EXISTS). It is a state conflict whose recovery
+ * is to renew the existing grant (AC527); it never reaches the wire as a code.
+ */
+export const ACTIVE_GRANT_CONFLICT_CODE = 'ACTIVE_GRANT_CONFLICT';
+
+/**
+ * The closed recovery lookup of a 409: the conflict kind decides, except that the
+ * one registered database signal for an existing active grant aggregate answers
+ * `renew`. Nothing a producer writes into `details` selects an action.
+ */
+export const recoveryActionFor = (
+  code: string,
+  conflict: ConflictKind,
+): string =>
+  code === ACTIVE_GRANT_CONFLICT_CODE
+    ? 'renew'
+    : CONFLICT_RECOVERY_ACTIONS[conflict];
+
 const OWNER_ONLY_OPERATIONS: ReadonlySet<string> = new Set([
   'CMS-03A-15',
   'CMS-03A-16',

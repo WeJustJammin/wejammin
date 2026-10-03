@@ -3,6 +3,7 @@ import type { ContentSchemaRegistryPorts } from '../../../apps/worker/src/conten
 import { fixtureHash } from './s09-lane-hash';
 import { lanePersonRole } from './s09-lane-ids';
 import {
+  activeGrantConflict,
   conflict,
   forbidden,
   invalid,
@@ -70,7 +71,7 @@ const grantCapability: ContentSchemaRegistryPorts['grantCapability'] = async (
         entry.capability === body.capability,
     )
   )
-    return conflict('active_grant_exists');
+    return activeGrantConflict();
   const now = iso(Date.now());
   const grant: GrantRecord = {
     id: nextId(world, ID_KIND.grant),

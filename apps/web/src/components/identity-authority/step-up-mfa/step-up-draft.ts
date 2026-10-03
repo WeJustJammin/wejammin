@@ -1,3 +1,11 @@
+import {
+  STEP_UP_DRAFT_KEY_PREFIX,
+  currentStepUpContext,
+  isStampLive,
+  stampFor,
+  type StepUpStateContext,
+} from './step-up-binding';
+
 export type DraftStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
 
 export type StepUpDraft = Readonly<{
@@ -6,26 +14,38 @@ export type StepUpDraft = Readonly<{
   expectedVersion: string | null;
 }>;
 
-const KEY_PREFIX = 'wj-step-up-draft:';
+const KEY_PREFIX = STEP_UP_DRAFT_KEY_PREFIX;
 const FORBIDDEN_FIELD =
   /^(?:code|otp|totp|password|token)$|secret|otpauth|manualentry/iu;
 
 const storageKey = (scope: string): string => `${KEY_PREFIX}${scope}`;
 
 /**
- * True when a draft saved under a scope that starts with `scopePrefix` is
- * waiting in this tab's storage. It reads nothing and consumes nothing, so a
- * surface can decide cheaply whether it must load its restore code.
+ * True when a live draft saved under a scope that starts with `scopePrefix`
+ * is waiting in this tab's storage. A draft that could never restore (another
+ * session scope, or past the 600 s window) is purged instead of reported, so a
+ * surface decides cheaply whether it must load its restore code and a stale
+ * draft never survives.
  */
 export const hasStepUpDraftWithPrefix = (
-  storage: Pick<Storage, 'key' | 'length'> | null,
+  storage: Pick<Storage, 'getItem' | 'key' | 'length' | 'removeItem'> | null,
   scopePrefix: string,
+  context: StepUpStateContext = currentStepUpContext(),
 ): boolean => {
   if (storage === null) return false;
   try {
-    for (let index = 0; index < storage.length; index += 1)
-      if (storage.key(index)?.startsWith(storageKey(scopePrefix)) === true)
-        return true;
+    const prefix = storageKey(scopePrefix);
+    const keys: string[] = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key?.startsWith(prefix) === true) keys.push(key);
+    }
+    let live = false;
+    for (const key of keys) {
+      if (readLive(storage, key, context) === null) storage.removeItem(key);
+      else live = true;
+    }
+    return live;
   } catch {
     // Blocked storage holds no draft this tab could restore.
   }
@@ -41,6 +61,7 @@ export const saveStepUpDraft = (
   storage: DraftStorage | null,
   scope: string,
   draft: StepUpDraft,
+  context: StepUpStateContext = currentStepUpContext(),
 ): boolean => {
   if (storage === null) return false;
   const values = Object.fromEntries(
@@ -49,7 +70,10 @@ export const saveStepUpDraft = (
     ),
   );
   try {
-    storage.setItem(storageKey(scope), JSON.stringify({ ...draft, values }));
+    storage.setItem(
+      storageKey(scope),
+      JSON.stringify({ ...draft, values, ...stampFor(context) }),
+    );
     return true;
   } catch {
     return false;
@@ -72,6 +96,24 @@ const isDraft = (value: unknown): value is StepUpDraft => {
   );
 };
 
+/** Parses one stored draft; null unless it is well formed, same-scope and fresh. */
+const readLive = (
+  storage: Pick<Storage, 'getItem'>,
+  key: string,
+  context: StepUpStateContext,
+): StepUpDraft | null => {
+  const raw = storage.getItem(key);
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isDraft(parsed) || !isStampLive(parsed, context)) return null;
+    const { values, idempotencyKey, expectedVersion } = parsed;
+    return { values, idempotencyKey, expectedVersion };
+  } catch {
+    return null;
+  }
+};
+
 export const clearStepUpDraft = (
   storage: DraftStorage | null,
   scope: string,
@@ -85,19 +127,21 @@ export const clearStepUpDraft = (
 
 /**
  * Reads and consumes the draft. Consuming it means a restored form shows the
- * values and waits for the person to confirm; nothing is replayed.
+ * values and waits for the person to confirm; nothing is replayed. A draft
+ * written under another session scope, or older than the 600 s step-up window,
+ * is cleared and never returned.
  */
 export const loadStepUpDraft = (
   storage: DraftStorage | null,
   scope: string,
+  context: StepUpStateContext = currentStepUpContext(),
 ): StepUpDraft | null => {
   if (storage === null) return null;
   try {
-    const raw = storage.getItem(storageKey(scope));
-    if (raw === null) return null;
-    storage.removeItem(storageKey(scope));
-    const parsed: unknown = JSON.parse(raw);
-    return isDraft(parsed) ? parsed : null;
+    const key = storageKey(scope);
+    const draft = readLive(storage, key, context);
+    storage.removeItem(key);
+    return draft;
   } catch {
     return null;
   }

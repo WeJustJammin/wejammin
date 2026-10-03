@@ -1,6 +1,7 @@
 import { MFA_METHOD_REGISTRY } from '../authentication/step-up';
 import type { AuthenticationResult } from '../authentication/types';
 import {
+  ACTIVE_GRANT_CONFLICT_CODE,
   boundedRateLimit,
   boundedRetryAfterSeconds,
   registeredDependencyClass,
@@ -315,6 +316,13 @@ export const knownFailure = (
       code: RELEASE_NONCE_REPLAY_CODE,
       message: 'The CMS registry operation conflicts with current state.',
     },
+    // Internal only: CMS-03A-15 against an existing active aggregate. The wire answer is
+    // the ordinary 409 CONFLICT whose recovery action is `renew` (AC527).
+    [ACTIVE_GRANT_CONFLICT_CODE]: {
+      status: 409,
+      code: ACTIVE_GRANT_CONFLICT_CODE,
+      message: 'The CMS registry operation conflicts with current state.',
+    },
     VALIDATION_FAILED: {
       status: 422,
       code: 'VALIDATION_FAILED',
@@ -362,20 +370,28 @@ export const codeFromRpcError = (value: unknown): string => {
 export const RELEASE_NONCE_REPLAY_CODE = 'RELEASE_NONCE_REPLAY_CONFLICT';
 const RELEASE_NONCE_REPLAYED_DETAIL = 'RELEASE_NONCE_REPLAYED';
 
-const replayAwareCode = (payload: unknown): string => {
+const ACTIVE_GRANT_EXISTS_DETAIL = 'ACTIVE_GRANT_EXISTS';
+
+/**
+ * The two registered database signals that refine a bare CONFLICT: a replayed release
+ * nonce and an existing active capability grant aggregate. Any other detail, and any
+ * other message, keeps the ordinary code.
+ */
+const signalAwareCode = (payload: unknown): string => {
   const code = codeFromRpcError(payload);
-  return code === 'CONFLICT' &&
-    isRecord(payload) &&
-    payload.details === RELEASE_NONCE_REPLAYED_DETAIL
-    ? RELEASE_NONCE_REPLAY_CODE
-    : code;
+  if (code !== 'CONFLICT' || !isRecord(payload)) return code;
+  if (payload.details === RELEASE_NONCE_REPLAYED_DETAIL)
+    return RELEASE_NONCE_REPLAY_CODE;
+  if (payload.details === ACTIVE_GRANT_EXISTS_DETAIL)
+    return ACTIVE_GRANT_CONFLICT_CODE;
+  return code;
 };
 
 export const mapRpcFailure = (
   status: number,
   payload: unknown,
 ): ContentSchemaRegistryError => {
-  const code = replayAwareCode(payload);
+  const code = signalAwareCode(payload);
   const mapped = code === '' ? null : knownFailure(code);
   if (mapped !== null)
     return errorResult(

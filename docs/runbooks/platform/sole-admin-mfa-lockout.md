@@ -3,7 +3,7 @@
 Use only when the one administrator has lost every verified authenticator and
 no second operator holding `admin.identity.mfa_reset` can reset it. With a
 second capable operator, use the in-product reset instead: the admin form at
-`/app/platform-configuration-admin/mfa-reset` (BE05b `CFG-05B-06`). No HTTP
+`/app/platform-configuration-admin?tab=mfa-reset` (BE05b `CFG-05B-06`). No HTTP
 route, grant or support bypass substitutes for this procedure, and the
 operator can never reset their own account through the product.
 

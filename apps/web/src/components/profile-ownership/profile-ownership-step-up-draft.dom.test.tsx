@@ -47,7 +47,12 @@ let seen: Seen;
 let upstream: () => Response;
 let storageAtNavigation: string[];
 
+const clearScope = (): void => {
+  document.cookie = 'wj_step_up_scope=; Path=/; Max-Age=0';
+};
+
 beforeEach(() => {
+  clearScope();
   window.sessionStorage.clear();
   seen = [];
   storageAtNavigation = [];
@@ -88,6 +93,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   window.sessionStorage.clear();
+  clearScope();
 });
 
 const mount = (
@@ -170,6 +176,9 @@ describe('[P2-S09-AC-1127] profile ownership step-up draft (FE00 DEC-111)', () =
       values: { reasonCode: 'verified_owner' },
       idempotencyKey: keyOf(0),
       expectedVersion: '"4"',
+      // r14: stamped with the (absent in jsdom) session scope and the time.
+      binding: null,
+      createdAt: expect.any(Number),
     });
   });
 
@@ -247,6 +256,54 @@ describe('[P2-S09-AC-1127] profile ownership step-up draft (FE00 DEC-111)', () =
     expect(stepUpKeys()).toHaveLength(1);
     const raw = window.sessionStorage.getItem(stepUpKeys()[0] as string);
     expect(raw).not.toMatch(/csrf|token|partyId|personId|proofCode/iu);
+  });
+
+  const setScope = (value: string): void => {
+    document.cookie = `wj_step_up_scope=${value}; Path=/`;
+  };
+
+  it('[P2-S09-AC-911][P2-S09-AC-1127] a different signed-in user in the same tab restores nothing and the draft is cleared', async () => {
+    setScope('scope-of-alice-0123456789abcd');
+    const first = mount();
+    type(first.reason, 'verified_owner');
+    await submit(first.container);
+    expect(stepUpKeys()).toHaveLength(1);
+    cleanup.pop()?.();
+    seen.length = 0;
+    // Alice logs out; Bob signs in on the same tab and opens the same form.
+    setScope('scope-of-bob-000000000123456789');
+    const bob = mount();
+    expect(bob.reason.value).toBe('');
+    expect(bob.statuses).not.toContain(RESTORED);
+    expect(stepUpKeys()).toHaveLength(0);
+    upstream = () => refusal('FORBIDDEN', 403);
+    await submit(bob.container);
+    expect(keyOf(0)).not.toBeNull();
+    expect(keyOf(0)).toMatch(/^s05-prf-api-08-/u);
+  });
+
+  it('[P2-S09-AC-911][P2-S09-AC-1127] the same user restores across the step-up session rotation', async () => {
+    setScope('scope-of-alice-0123456789abcd');
+    const first = mount();
+    type(first.reason, 'verified_owner');
+    await submit(first.container);
+    cleanup.pop()?.();
+    const returned = mount();
+    expect(returned.reason.value).toBe('verified_owner');
+    expect(returned.statuses.at(-1)).toBe(RESTORED);
+  });
+
+  it('[P2-S09-AC-911][P2-S09-AC-1127] a draft older than the 600 s step-up window restores nothing', async () => {
+    const first = mount();
+    type(first.reason, 'verified_owner');
+    await submit(first.container);
+    cleanup.pop()?.();
+    const later = Date.now() + 600_001;
+    vi.spyOn(Date, 'now').mockReturnValue(later);
+    const late = mount();
+    expect(late.reason.value).toBe('');
+    expect(late.statuses).not.toContain(RESTORED);
+    expect(stepUpKeys()).toHaveLength(0);
   });
 
   it('[P2-S09-AC-1127] a form that is not allowed a draft still navigates and stores nothing', async () => {

@@ -1,3 +1,10 @@
+import {
+  STEP_UP_ADMIN_RESET_MARKER_KEY,
+  currentStepUpContext,
+  isStampLive,
+  stampFor,
+  type StepUpStateContext,
+} from '../../identity-authority/step-up-mfa/step-up-binding';
 import type { DraftStorage } from '../../identity-authority/step-up-mfa/step-up-draft';
 import type { MfaApiDeps } from '../../identity-authority/step-up-mfa/mfa-api';
 import type { ResetFailureView } from './admin-mfa-reset-failure';
@@ -45,7 +52,7 @@ export const EMPTY_VALUES: ResetValues = { targetPersonId: '', reason: '' };
  * The only thing kept across the step-up round trip is this flag. The person
  * ID and reason are never written anywhere.
  */
-export const INTERRUPTED_KEY = 'wj-admin-mfa-reset-interrupted';
+export const INTERRUPTED_KEY = STEP_UP_ADMIN_RESET_MARKER_KEY;
 
 export const defaultStorage = (): DraftStorage | null => {
   try {
@@ -55,19 +62,31 @@ export const defaultStorage = (): DraftStorage | null => {
   }
 };
 
-const consumeInterruption = (storage: DraftStorage | null): boolean => {
+/**
+ * The flag is stamped with the session scope and time like every step-up
+ * detour record: another user in this tab, or the same tab after the 600 s
+ * window, never sees the announcement and the flag is cleared.
+ */
+const consumeInterruption = (
+  storage: DraftStorage | null,
+  context: StepUpStateContext,
+): boolean => {
   try {
-    if (storage?.getItem(INTERRUPTED_KEY) !== '1') return false;
+    const raw = storage?.getItem(INTERRUPTED_KEY) ?? null;
+    if (storage === null || raw === null) return false;
     storage.removeItem(INTERRUPTED_KEY);
-    return true;
+    return isStampLive(JSON.parse(raw) as unknown, context);
   } catch {
     return false;
   }
 };
 
-export const markInterrupted = (storage: DraftStorage | null): void => {
+export const markInterrupted = (
+  storage: DraftStorage | null,
+  context: StepUpStateContext = currentStepUpContext(),
+): void => {
   try {
-    storage?.setItem(INTERRUPTED_KEY, '1');
+    storage?.setItem(INTERRUPTED_KEY, JSON.stringify(stampFor(context)));
   } catch {
     // Storage may be blocked; the note is then simply not shown on return.
   }
@@ -75,6 +94,7 @@ export const markInterrupted = (storage: DraftStorage | null): void => {
 
 export const initialResetState = (
   storage: DraftStorage | null,
+  context: StepUpStateContext = currentStepUpContext(),
 ): ResetState => ({
   values: EMPTY_VALUES,
   fieldErrors: {},
@@ -82,7 +102,9 @@ export const initialResetState = (
   phase: 'editing',
   notice: null,
   result: null,
-  announcement: consumeInterruption(storage) ? ADMIN_RESET_COPY.notSaved : '',
+  announcement: consumeInterruption(storage, context)
+    ? ADMIN_RESET_COPY.notSaved
+    : '',
   focus: null,
 });
 

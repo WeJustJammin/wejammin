@@ -13,6 +13,7 @@ import {
   platformConfigurationInitial,
   platformConfigurationVariant,
 } from '../../../server/platform-configuration-app-state';
+import { resolveAdminMfaResetTab } from '../../../server/admin-mfa-reset-page-context';
 import { resolveAdminWorkspace } from '../../../server/admin-workspace-context';
 import { resolvePlatformConfigurationPage } from '../../../server/platform-configuration-context';
 
@@ -116,6 +117,7 @@ const knownAdminTabs = [
   'inbox',
   'capabilities',
   'audit',
+  'mfa-reset',
 ] as const;
 if (
   requestedAdminTab !== null &&
@@ -125,6 +127,21 @@ if (
   // controller then replaces the browser URL and removes any invalid sort.
   initialQuery.tab = 'settings';
 }
+// FE05 `tab=mfa-reset`: server projection only; anyone else gets a bare 404.
+const mfaReset = await resolveAdminMfaResetTab({
+  requested: requestedAdminTab === 'mfa-reset',
+  request: Astro.request,
+  binding: env.PLATFORM_API,
+  requestId,
+  ...(localApiOrigin === undefined ? {} : { localApiOrigin }),
+});
+if (mfaReset?.kind === 'unauthenticated')
+  return Astro.redirect(mfaReset.location, 303);
+if (mfaReset?.kind === 'not_found')
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 const adminTab =
   requestedAdminTab === 'inbox' ||
   requestedAdminTab === 'capabilities' ||
@@ -178,4 +195,5 @@ if (adminWorkspace?.kind === 'unauthenticated') {
   {...adminWorkspace?.access === undefined
     ? {}
     : { adminAccess: adminWorkspace.access }}
+  {...mfaReset === null ? {} : { mfaReset }}
 />

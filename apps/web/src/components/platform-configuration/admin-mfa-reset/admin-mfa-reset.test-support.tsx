@@ -18,8 +18,8 @@ export const PERSON = '0195b6f0-0000-7000-8000-0000000000aa';
 export const RESET_ID = '0195b6f0-0000-7000-8000-0000000000bb';
 export const REASON = 'Lost phone and recovery access';
 export const LOCATION = {
-  pathname: '/app/platform-configuration-admin/mfa-reset',
-  search: '',
+  pathname: '/app/platform-configuration-admin',
+  search: '?tab=mfa-reset',
 } as const;
 export const FRESH = {
   fresh: true,
