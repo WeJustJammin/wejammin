@@ -148,6 +148,8 @@ export type World = {
   mfaResets: { id: string; target: string; removed: number }[];
   /** Loopback-only switch: registry reads answer 503 DEPENDENCY_UNAVAILABLE. */
   degradedReads: boolean;
+  /** Loopback-only: capabilities removed from a role while a page is offline. */
+  removedCapabilities: Partial<Record<LaneRole, string[]>>;
 };
 
 const worlds = new Map<string, World>();
@@ -169,6 +171,7 @@ export const worldFor = (testId: string): World => {
     idem: new Map(),
     mfaResets: [],
     degradedReads: false,
+    removedCapabilities: {},
   };
   worlds.set(testId, created);
   return created;

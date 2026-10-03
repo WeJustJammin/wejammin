@@ -110,7 +110,9 @@ describe('identity acting-context route selector bridge', () => {
     await expect(response.json()).resolves.toMatchObject({
       code: 'INVALID_REQUEST',
     });
-    expect(auth.resolveSession).not.toHaveBeenCalled();
+    // BE00: the session is verified (step 4) before strict validation (step 6)
+    // and the idempotency headers (step 8).
+    expect(auth.resolveSession).toHaveBeenCalledTimes(1);
     expect(identity.bindActingContext).not.toHaveBeenCalled();
   });
 

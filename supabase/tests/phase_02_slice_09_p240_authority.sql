@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -70,7 +71,7 @@ select pg_temp.s09d_create_type('g', 'p240_auth_g');
 select pg_temp.s09d_to_approved('g');
 select is(pg_temp.p_call('a04:forbid', 'platform_api.cms_activate_schema', 'rev1', jsonb_build_object('contentTypeId', pg_temp.s09d_id('g:type'), 'versionId', pg_temp.s09d_id('g:version'), 'expectedVersion', pg_temp.s09d_version('g'),
     'dryRunId', pg_temp.s09d_id('g:dryRun'), 'approvalIds', pg_temp.s09d_approval_ids('g'), 'migrationPlanId', pg_temp.s09d_id('g:plan'), 'idempotencyKey', 'p240-auth-act-forbid-0001')), 'FORBIDDEN',
-  'a human without cms.schema_designer is 403 on CMS-03A-04 and the candidate is untouched [P2-S09-AC-034]');
+  'a human without cms.schema_designer is 403 on CMS-03A-04 and the candidate is untouched [P2-S09-AC-034] [P2-S09-AC-629]');
 select is(pg_temp.p_call('a04:hidden', 'platform_api.cms_activate_schema', 'other', jsonb_build_object('contentTypeId', pg_temp.s09d_id('g:type'), 'versionId', pg_temp.s09d_id('g:version'), 'expectedVersion', pg_temp.s09d_version('g'),
     'dryRunId', pg_temp.s09d_id('g:dryRun'), 'approvalIds', pg_temp.s09d_approval_ids('g'), 'migrationPlanId', pg_temp.s09d_id('g:plan'), 'idempotencyKey', 'p240-auth-act-hidden-0001')), 'NOT_FOUND',
   'another organization''s designer gets a 404 for the real candidate [P2-S09-AC-034]');

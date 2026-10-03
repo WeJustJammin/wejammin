@@ -146,7 +146,7 @@ describe('[DEC-119] renew and revoke', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('revokes only after the acknowledgement and refetches the list', async () => {
+  it('[P2-S09-AC-1047] revokes only after the acknowledgement and refetches the list', async () => {
     const { calls } = scriptFetch(
       () =>
         jsonResponse(

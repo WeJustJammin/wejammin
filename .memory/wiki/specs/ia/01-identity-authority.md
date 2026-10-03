@@ -347,12 +347,11 @@ All events use Shard 00's `PlatformEvent`; payloads contain identifiers only.
 - [[specs/ia/39-analytics-ingestion-reporting|Shard 39 — Analytics ingestion, matching and reporting]]
 - All declared dependent IA shards through canonical party and authority contracts.
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### References
-
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/2026-08-02-architecture-design|WeJammin — Architecture Design]]
 - [[specs/ENGINEERING-STANDARDS|WeJammin — Engineering Standards]]

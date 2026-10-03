@@ -69,10 +69,11 @@ export const registerMfaFactorRoutes = (
     configureRoute(context, 'AUTH-API-16');
     const fail = (error: Parameters<typeof responseForMfaError>[2]) =>
       responseForMfaError(context, 'AUTH-API-16', error);
-    const queryError = rejectUnexpectedQuery(context.req.raw);
-    if (queryError !== null) return fail(queryError);
+    // BE00 steps 4 and 5: verified session; strict path and query follow (step 6).
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return fail(resolved);
+    const queryError = rejectUnexpectedQuery(context.req.raw);
+    if (queryError !== null) return fail(queryError);
     const rateError = await enforceRate(
       context,
       dependencies,

@@ -13,11 +13,10 @@ import {
   authError,
   parseIdempotencyKey,
   parseIfMatch,
-  parseJsonBody,
+  admitJsonMutationTransport,
   quotedVersion,
   rejectUnexpectedQuery,
   responseForAuthError,
-  verifySameOriginCsrf,
 } from './boundary';
 import {
   enforceRate,
@@ -38,10 +37,11 @@ export const registerLoginMethodRoutes = (
 ): void => {
   app.get('/api/v1/account/login-methods', async (context) => {
     configureRoute(context, 'AUTH-API-09');
-    const queryError = rejectUnexpectedQuery(context.req.raw);
-    if (queryError !== null) return responseForAuthError(context, queryError);
+    // BE00 steps 4 and 5: verified session; strict path and query follow (step 6).
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
+    const queryError = rejectUnexpectedQuery(context.req.raw);
+    if (queryError !== null) return responseForAuthError(context, queryError);
     const rateError = await enforceRate(
       context,
       dependencies,
@@ -76,6 +76,13 @@ export const registerLoginMethodRoutes = (
     '/api/v1/account/login-methods/:provider/link-intents',
     async (context) => {
       configureRoute(context, 'AUTH-API-10');
+      // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+      const transport = await admitJsonMutationTransport(context.req.raw);
+      if (!transport.ok) return responseForAuthError(context, transport);
+      // BE00 steps 4 and 5: verified session and acting context.
+      const resolved = await requireSession(context, dependencies);
+      if (!resolved.ok) return responseForAuthError(context, resolved);
+      // BE00 step 6: strict path and body.
       const path = AuthProviderPathSchema.safeParse({
         provider: context.req.param('provider'),
       });
@@ -85,19 +92,9 @@ export const registerLoginMethodRoutes = (
           authError(422, 'VALIDATION_FAILED', 'Check the highlighted fields.'),
         );
       }
-      const parsed = await parseJsonBody(
-        context.req.raw,
-        LinkIntentRequestSchema,
-      );
+      const parsed = transport.value.decode(LinkIntentRequestSchema);
       if (!parsed.ok) return responseForAuthError(context, parsed);
-      const key = parseIdempotencyKey(context.req.raw);
-      if (!key.ok) return responseForAuthError(context, key);
-      const version = parseIfMatch(context.req.raw);
-      if (!version.ok) return responseForAuthError(context, version);
-      const csrfError = await verifySameOriginCsrf(context.req.raw);
-      if (csrfError !== null) return responseForAuthError(context, csrfError);
-      const resolved = await requireSession(context, dependencies);
-      if (!resolved.ok) return responseForAuthError(context, resolved);
+      // BE00 step 7: step-up freshness, then quota.
       if (!isStepUpFresh(resolved.value, Date.now())) {
         return responseForAuthError(context, stepUpRequiredError());
       }
@@ -108,6 +105,11 @@ export const registerLoginMethodRoutes = (
         resolved.value,
       );
       if (rateError !== null) return rateError;
+      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+      const key = parseIdempotencyKey(context.req.raw);
+      if (!key.ok) return responseForAuthError(context, key);
+      const version = parseIfMatch(context.req.raw);
+      if (!version.ok) return responseForAuthError(context, version);
       if (dependencies.startLoginMethodLink === undefined)
         return missingSliceDependency(context);
       const result = await dependencies.startLoginMethodLink(
@@ -144,6 +146,10 @@ export const registerLoginMethodRoutes = (
 
   app.delete('/api/v1/account/login-methods/:identityId', async (context) => {
     configureRoute(context, 'AUTH-API-11');
+    const transport = await admitJsonMutationTransport(context.req.raw);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    const resolved = await requireSession(context, dependencies);
+    if (!resolved.ok) return responseForAuthError(context, resolved);
     const path = AuthIdentityPathSchema.safeParse({
       identityId: context.req.param('identityId'),
     });
@@ -157,16 +163,8 @@ export const registerLoginMethodRoutes = (
         ),
       );
     }
-    const parsed = await parseJsonBody(context.req.raw, UnlinkRequestSchema);
+    const parsed = transport.value.decode(UnlinkRequestSchema);
     if (!parsed.ok) return responseForAuthError(context, parsed);
-    const key = parseIdempotencyKey(context.req.raw);
-    if (!key.ok) return responseForAuthError(context, key);
-    const version = parseIfMatch(context.req.raw);
-    if (!version.ok) return responseForAuthError(context, version);
-    const csrfError = await verifySameOriginCsrf(context.req.raw);
-    if (csrfError !== null) return responseForAuthError(context, csrfError);
-    const resolved = await requireSession(context, dependencies);
-    if (!resolved.ok) return responseForAuthError(context, resolved);
     if (!isStepUpFresh(resolved.value, Date.now())) {
       return responseForAuthError(context, stepUpRequiredError());
     }
@@ -177,6 +175,10 @@ export const registerLoginMethodRoutes = (
       resolved.value,
     );
     if (rateError !== null) return rateError;
+    const key = parseIdempotencyKey(context.req.raw);
+    if (!key.ok) return responseForAuthError(context, key);
+    const version = parseIfMatch(context.req.raw);
+    if (!version.ok) return responseForAuthError(context, version);
     if (dependencies.unlinkLoginMethod === undefined)
       return missingSliceDependency(context);
     const result = await dependencies.unlinkLoginMethod(

@@ -224,6 +224,9 @@ describe('upload completion Worker boundary', () => {
       requestFor(requestBody, { 'content-type': 'text/plain' }),
     );
     expect(wrongType.status).toBe(415);
+    expect(((await wrongType.json()) as { details: unknown }).details).toEqual({
+      allowedMediaTypes: ['application/json'],
+    });
     const oversized = await app.request(
       requestFor(requestBody, { 'content-length': String(256 * 1024 + 1) }),
     );

@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 107
-- **Unique decision titles**: 107
+- **Total decisions**: 129
+- **Unique decision titles**: 129
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -1576,6 +1576,319 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: Amend BE03b canonical records and all table counts, conflict data flow, authorization and tests; check IA03/FE03 references and Phase 2 Slice 10 plan for impact; add a forward migration and pgTAP tests. Preserve all eleven existing table definitions and operation IDs. Keep CMS-06 criteria unchecked until route, RPC, UI and evidence pass.
 - **Reversibility**: Medium. Replacing the durable record with a different persistence design requires another owner decision and propagation.
 
+## DEC-108: Complete CMS schema activation with private review and real prerequisite producers (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T02:06:54Z
+- **Agents**: codex
+- **Sources**: Owner approval of Slice 09 activation producer amendment
+- **Index**: [[index]]
+
+- **Problem**: CMS-04 requires independently approved immutable schema activation, but BE03a's eight-operation registry has no successor/dry-run/review producers, installed activation misuses CFG setting-value review ownership, and real source/template producers follow Slice 09.
+- **Decision**: Approve the exact amendment recorded in .memory/pipeline/progress/verification/2026-10-02-slice-09-activation-amendment-approval.md, approved source SHA-256 e481bb9046703bbbd5ace3ef60b30d75bf21fb766f77477481e8a4cfcdaf33ca. Add CMS-owned private review, append-only decisions and bounded assignments; protected CMS-03A-09 through -14; approval-only cms.schema_review and owner-only cms.schema_review.assign; stable server-derived private binding evidence; actual successor/dry-run/scan/transform producers. Move only minimum protected source-row and immutable compatible-template prerequisites into Slice 09. Existing owner remains sole admin.
+- **Downstream**: Cascade IA03/deep dive, BE03a/03b/03c prerequisite references, FE03, capability/route/OpenAPI contracts, Phase 2 plan and progress. Add open criteria and recompute depth floor before implementation acceptance. Existing private-binding transport and independently verified AC250 are retained.
+- **Boundaries**: Approval creates no real account, assignment, grant, provider enrollment, paid service, deployment or acceptance receipt. All 17 activation criteria and new criteria remain open. AC209/AC211 remain post-deployment/post-launch and AC265/AC266 mandatory pre-release, authored and unchecked. Remaining Slice 10/12 scope stays gated. Public template activation is a separate Slice 12 gap, not AC169's prerequisite.
+- **Reversibility**: Medium. Changing private ownership, reviewer authority or dependency scope requires owner decision and downstream cascade.
+
+## DEC-109: Editorial workflow policies come from a code-owned versioned registry (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T03:58:16.473Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 DEC-108 cascade)
+- **Index**: [[index]]
+
+- **Problem**: CMS-03B-10 entry create refuses because `platform_private.cms_editorial_workflow_policy_evidence` returns NULL; DEC-108 needs real entries for the second activation path and no editorial policy source existed (BE03b DEC-108 attribution; propagation-scan-2026-09-28-cms-editorial-policy-source).
+- **Options considered**: (A) code-owned versioned registry seeded by forward migration, shared shape with the DEC-108 schema-review registry; (B) owner-enrolled append-only persisted registry with a new protected enrollment operation/UI; (C) Slice 07 protected typed settings.
+- **Decision**: A, chosen by the owner 2026-10-02. One versioned policy module in code (key, version, policyHash, riskClass, requiredDecisionCount 1..8, requiredCapabilities); a forward-only migration seeds immutable rows; each content-type version binds one policy key/version at activation; the evidence seam resolves the bound immutable row and returns NULL on absence, ambiguity or malformed data. Caller-supplied policy is never authority. Supersedes the scan proposal of owner enrollment with no default rows.
+- **Downstream**: BE03b/IA03 policy-source text, entry authority migration, Slice 09 prerequisite path, Slice 10 editorial review, Slice 11 publication preflight.
+- **Reversibility**: Medium (a later persisted registry can replace the seam).
+
+## DEC-110: Protected workflow policies are four disclosure classes with their own specialist reviewer capabilities (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T03:58:16.474Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 DEC-108 cascade)
+- **Index**: [[index]]
+
+- **Problem**: the registry allowlist held only ordinary keys (editorial, editorial.default, cms.content.workflow, cms.standard), so the protected path (P2-S09-AC-091) was unreachable; IA03 Risk review and BE03b protected-review rules require policy/legal/security/financial disclosure classes with two distinct humans and a named specialist capability.
+- **Options considered**: (A) four protected class keys each with its own specialist capability; (B) four keys sharing one specialist capability; (C) one generic protected key.
+- **Decision**: A, chosen by the owner 2026-10-02. Existing four keys stay ordinary (one independent reviewer). Add protected keys cms.disclosure.policy, cms.disclosure.legal, cms.disclosure.security, cms.disclosure.financial at version 1, each requiring at least two distinct human decisions including one holder of the class specialist capability cms.reviewer.policy, cms.reviewer.legal, cms.reviewer.security or cms.reviewer.financial respectively. DEC-108 schema reviews follow the same key risk class: ordinary needs one cms.schema_review reviewer, protected needs two.
+- **Downstream**: code-owned policy registry members, capability registry, BE03a/BE03b/IA03 registry text, Slice 09 AC091 protected path, Slice 10/11 editorial review tests.
+- **Reversibility**: Medium.
+
+## DEC-111: Step-up MFA is delivered by server-mediated Worker operations and a protected step-up page (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T03:59:51.269Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 DEC-108 cascade)
+- **Index**: [[index]]
+
+- **Problem**: DEC-108 decisions/assignments/activation (and later S11 publish, S14 revoke, S15 holds, S16 lifecycle) require recent MFA and answer 401 STEP_UP_REQUIRED, but no surface lets a signed-in user complete an MFA challenge. BE01a keeps Supabase Auth as MFA authority; the Worker only reads amr MFA timestamps (apps/worker/src/authentication/production-token.ts); the 2026-09-25 free-identity record left the surface open.
+- **Options considered**: (A) server-mediated step-up challenge/verify operations that call Supabase MFA server-side and rotate the first-party session to an aal2 token, with a protected step-up page and safe returnTo; (B) browser supabase-js MFA then token exchange; (C) full re-sign-in with a new step_up intent.
+- **Decision**: A, chosen by the owner 2026-10-02. The browser never handles Supabase tokens; one reusable surface serves every later slice. Includes TOTP factor enrollment if no enrollment surface exists.
+- **Downstream**: BE01a/FE01 new operations and page, BE00 STEP_UP_REQUIRED recovery routing, Slice 09 prerequisite scope (first consumer), Slices 11/14/15/16.
+- **Reversibility**: Medium.
+
+## DEC-112: CMS rich text uses an owned versioned rich_text.v1 AST (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:00:41.858Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: architecture/IA03 require rich_text as an approved structured AST, never executable HTML, but no grammar, validator or renderer was chosen; migration 20260927540000 refuses every non-null rich_text value (propagation-scan-2026-09-30-cms-rich-text-ast).
+- **Options considered**: (A) own minimal versioned grammar; (B) allowlisted TipTap/ProseMirror JSON; (C) Portable Text subset.
+- **Decision**: A, chosen by the owner 2026-10-02. rich_text.v1 blocks: paragraph, heading levels 2-4, bulleted list, numbered list, list item, quote; marks: bold, italic, code; links limited to https, mailto and internal first-party routes; no inline embeds (media stays in governed blocks). Shared TypeScript and PostgreSQL validators, RFC 8785/JCS canonical hash, typed React renderer, constrained native editor. Bounds (depth/children/bytes) follow the BE03b JSON caps.
+- **Downstream**: architecture/IA03/BE03a validator registry/BE03b/FE03 cascade; replaces the 20260927540000 refusal after RED to GREEN; Slice 10 AC031 and AC050-052.
+- **Reversibility**: Medium (versioned grammar allows v2).
+
+## DEC-113: Template and pattern activation is reviewer-gated through generalized CMS review machinery (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:01:00.277Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: BE03c records template activation as an unresolved contract gap (BE03c:226-230; propagation-scan-2026-09-28-cms-template-activation); IA03 requires create and activate for templates and patterns; no authority was chosen.
+- **Options considered**: (A) reviewer-gated, generalizing the DEC-108 review/decision/assignment machinery to template and pattern subjects; (B) designer-only activation with recent MFA; (C) split by risk.
+- **Decision**: A, chosen by the owner 2026-10-02. A designer submits; independent assigned reviewer(s) decide with recent MFA (DEC-111 step-up); an atomic CAS switch emits cms.template.activated.v1 (pattern equivalent). Required decision count = strictest DEC-110 workflow policy among the bound content types (ordinary 1, protected 2 with class specialist). Same-key serialization, exact replay, no event on refusal, 403/404 concealment.
+- **Downstream**: IA03/BE03c/FE03 cascade, new protected operations, Slice 12 criteria, Slices 11 and 15 safe publication.
+- **Reversibility**: Medium.
+
+## DEC-114: Build the scope-locked CMS-15/16 and CFG-05C-01 flows in Phase 2 instead of moving their criteria (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:01:35.112Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: the Phase 2 scope lock (phases/phase-2.md Scope lock) defers CMS-15 localization, CMS-16 related content and config import/export/restore, while the approved plan carries Phase 2 criteria for them (Slice 12 AC033-038; Slice 16 AC011-013, AC017, AC019-021).
+- **Options considered**: (A) un-defer and build the flows those criteria require; (B) count-preserving move of the criteria out of Phase 2; (C) contract-level fail-closed satisfaction.
+- **Decision**: A, chosen by the owner 2026-10-02, consistent with the more-work-now default. Implement exactly the flows the criteria require per BE03c/BE05c, close their spec gaps first (related-content eligible-target authority, locale source-stale fan-out bound and event key), and amend the scope-lock line.
+- **Downstream**: phases/phase-2.md scope lock, IA03/IA05, BE03c/BE05c/FE03/FE05 cascades, Slices 12 and 16 size.
+- **Reversibility**: Low once shipped.
+
+## DEC-115: Navigation, route/slug and discovery-metadata candidates are approved through generalized CMS review (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:01:55.869Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: BE04a Menu/MenuVersion/RouteRecord/RedirectRecord/DiscoveryMetadataVersion use draft-review-approved-active and DLV-NAV-API-02 requires an approved previewed candidate, but no submit/review/approve operation exists.
+- **Options considered**: (A) generalized DEC-108/DEC-113 CMS review machinery with nav/route/metadata subjects; (B) publish-is-approval; (C) Slice 08 admin task-inbox approval.
+- **Decision**: A, chosen by the owner 2026-10-02. Editor submits, an assigned independent reviewer approves with recent MFA (records approved_by_person_id/approved_at), and a publisher activates via DLV-NAV-API-02. Count from the code-owned policy registry (DEC-109/110; ordinary 1).
+- **Downstream**: BE04a/FE04/IA04 cascade, new submit/decide operations, Slice 13 criteria.
+- **Reversibility**: Medium.
+
+## DEC-116: Media scanning and renditions are $0 self-operated; Phase 2 hosted per-file cap is 50 MiB (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:02:56.243Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: Slice 14 needs a malware scanner and image-rendition transforms (ENGINEERING-STANDARDS upload safety; BE04b ingest/verification), no providers were chosen, and BE04b allows 5 GiB uploads while hosted Supabase Free caps files at 50 MiB. Only Workers Paid is an authorized paid service.
+- **Options considered**: (A) self-operated ClamAV scanner container pulling identifier-only jobs over an authenticated channel, WASM image renditions in Workers, 50 MiB Phase 2 cap as a plan-limit profile; (B) Supabase Pro plus a paid scanning API; (C) quarantine-only hosted pipeline.
+- **Decision**: A, chosen by the owner 2026-10-02. Uploads above 50 MiB refuse with a typed error under a recorded plan-limit profile; the 5 GiB rule remains the contract ceiling for a later plan upgrade. Local tests use a scanner sandbox with the same contract.
+- **Downstream**: architecture provider table, BE04b/FE04 limits and scanner contract, Slice 14 criteria, operations runbook for the scanner host.
+- **Reversibility**: High (provider seam).
+
+## DEC-117: Slice 13 AC171 screen-reader smoke is automated, and AC266 real-device scope extends to S13 delivery surfaces (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:03:34.994Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: P2-S13-AC-171 requires a VoiceOver/NVDA smoke; Slices 03/05/07 closed identical wording with automated Chrome accessibility-tree smoke, while DEC-101 keeps real VoiceOver/Safari and NVDA/Firefox as the mandatory pre-release AC266 gate outside the Phase 2 denominator.
+- **Options considered**: (A) automated smoke plus extending AC266 real-device scope to S13 public delivery surfaces; (B) automated only; (C) split the clause into a deferred real-device gate.
+- **Decision**: A, chosen by the owner 2026-10-02. AC171 closes on automated Chrome accessibility-tree screen-reader smoke (roles, names, landmarks, focus order) with evidence stated as automated; AC266 stays authored, unchecked and outside the denominator, and its pre-release real-device scope and runbook now include S13 public delivery surfaces. Never represent automated smoke as real-device evidence.
+- **Downstream**: S13 AC171 evidence wording, AC266 plan/tracker/runbook scope.
+- **Reversibility**: High.
+
+## DEC-118: Slice 17 observability and backup gates use the scoped staging/configuration reading (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:04:03.280Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: P2-S17-AC-008/009 require verify-infrastructure across observability/backup/rollback and recovery runbooks, an earlier verify-infrastructure run marked logging/alerting BLOCKED for lack of AC209/AC211 evidence, those criteria are outside the Phase 2 denominator, and ENGINEERING-STANDARDS says Supabase Free has no PITR and local restore drills are diagnostic only.
+- **Options considered**: (A) scoped reading on staging + configuration + diagnostic local restore drill; (B) wait for AC209 production alerting evidence; (C) buy Supabase Pro PITR first.
+- **Decision**: A, chosen by the owner 2026-10-02. Slice 17 passes on staging and configuration evidence (structured logs, alert rules configured and test-fired in staging, rollback exercised) plus a local restore drill recorded as diagnostic with no RPO/RTO claim. AC209/AC211 stay on their own timelines; protected production writes stay disabled per ENGINEERING-STANDARDS Availability and Recovery.
+- **Downstream**: Slice 17 verify-infrastructure scope, runbook evidence wording.
+- **Reversibility**: High.
+
+## DEC-119: A protected owner CMS grant operation grants, renews and revokes bounded CMS capabilities (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T04:05:36.213Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: the one-shot owner bootstrap (20260910023405) grants only cms.schema_registry.read and cms.schema_designer (plus two admin reads), each expiring within seven days with no renewal, and no command grants cms.author, cms.editor, cms.template_designer, publisher or the DEC-110 specialist reviewer capabilities; CMS checks organization_actor_grant and never consults Slice 08 admin_capability_grants. Hosted CMS would stop working a week after bootstrap.
+- **Options considered**: (A) protected owner CMS grant operation plus console form; (B) route CMS authority through Slice 08 admin grants; (C) operator SQL runbook.
+- **Decision**: A, chosen by the owner 2026-10-02. The receipt-derived owner, with DEC-111 step-up MFA, grants, renews and revokes bounded-duration CMS capabilities on organization_actor_grant to existing humans in the organization, including renewing their own designer/assign authority; fully audited with idempotency, CAS and outbox; confers no admin or delegation authority; creates no identity. The owner remains sole admin.
+- **Downstream**: IA03/BE03a (or owning CMS shard)/FE03 cascade, capability registry, Slice 09/10 prerequisite scope, hosted CMS operation.
+- **Reversibility**: Medium.
+
+## DEC-120: Standing CMS capability grants last up to 90 days; schema-review assignments stay at most 7 days (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T13:01:11.147Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: the DEC-119 owner grant operation was specified with a 7 UTC day maximum borrowed from the DEC-108 assignment bound; no source sets a standing-role limit, so every author/editor/reviewer/designer grant would need weekly renewal and schedules beyond a grant end would fail closed.
+- **Options considered**: 90 days; keep 7 days; 365 days; per-capability terms.
+- **Decision**: 90 days, chosen by the owner 2026-10-02. Standing CMS grants (author, editor, reviewer and specialists, designer, publisher, curators, navigation/media) may run up to 90 UTC days and are renewable with step-up; revocation stays immediate. DEC-108 schema-review assignments remain at most 7 days.
+- **Downstream**: BE03a CMS-03A-15/16 validThrough bound, grant contracts and DB CHECK, FE03 grant console validation, S11 schedule authority recheck.
+- **Reversibility**: High.
+
+## DEC-121: Stale fallback-permitted locale fields keep serving the last approved translation (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T14:05:32.572Z
+- **Agents**: claude
+- **Sources**: implement-slice (Phase 2 decision queue)
+- **Index**: [[index]]
+
+- **Problem**: CMS-15 localization (DEC-114) marks fallback-permitted translated fields stale when the source changes; IA03 only blocks no_fallback fields and says unchanged fields keep approval, but never says what public readers see for a stale field.
+- **Options considered**: (A) block the locale until every stale field is revalidated; (B) keep serving the last approved translation, marked stale for editors; (C) resolve stale fields through the fallback chain to the default locale.
+- **Decision**: B, chosen by the owner 2026-10-02. Public delivery keeps the last approved translation; editorial reads and the cms_locale_stale_total metric expose stale state until revalidation; no_fallback fields still block publication when missing.
+- **Downstream**: BE03c/FE03/IA03 localization contract, Slice 12 AC033-035, Slice 15 delivery resolution.
+- **Reversibility**: High.
+
+## DEC-122: Orchestrator criterion rulings for Slice 09 evidence gaps (AC300, AC678, AC774, AC1031, AC1166) (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T22:05:55.966Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 evidence)
+- **Index**: [[index]]
+
+- **Problem**: evidence lanes found five Slice 09 criteria whose text disagreed with locked infrastructure or slice ownership.
+- **Options considered**: implement the literal text; reword to the locked source; move scope to the owning slice.
+- **Decision** (orchestrator, owner may override): AC300 follows BE00 actor-scoped idempotency bindings (changed actor is a distinct binding; changed path with the same key is 409); AC678 records the provisional fingerprint object in cms_schema_migration_plans.dry_run_report with the sealed report as authority; AC774 refusals roll back and auth_mfa_registry_sweep persists expiry; AC1031 Slice 09 covers only its own step-up routes and the CMS-03B-06/07/09 step-up recovery is carried by Slice 11 criteria; AC1166 Slice 09 covers no_fallback declaration/storage and resolution semantics are Slice 12/15 delivery scope. Moved scope must appear in the receiving tracker.
+- **Downstream**: Slice 09/11/12 trackers and plan rows, evidence index.
+- **Reversibility**: High.
+
+## DEC-122 (ratified): Owner ratifies nine Slice 09 criterion rewordings (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T03:11:22.121Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 evidence)
+- **Index**: [[index]]
+
+- **Problem**: nine Slice 09 criteria contradicted locked BE00/BE03a/BE05b sections or slice ownership; they had been reworded as orchestrator rulings and an independent audit noted they needed owner ratification.
+- **Options considered**: ratify all; review each individually; implement the literal original text with spec amendments.
+- **Decision**: ratified by the owner 2026-10-02: AC300 (idempotency actor-scoped per BE00), AC678 (plan provisional dry-run fingerprint; sealed report authority), AC774 (expired-enrollment refusal rolls back; sweep persists expiry), AC1031 (Slice 09 covers its own step-up routes; CMS-03B-06/07/09 step-up recovery moves to Slice 11), AC1166 (no_fallback resolution moves to Slice 12/15), AC285 (successor request includes the OD-4 locale pair), AC431 (403 when readable, 404 when concealed), AC942 (schema violations 400 per BE05b, self-target 422), AC1049 (revoke sends the review expectedVersion). Moved scope (AC1031, AC1166) must appear as explicit receiving criteria in the Slice 11/12 plans.
+- **Downstream**: Slice 09/11/12 plan and tracker rows, ledger rewording table.
+- **Reversibility**: High.
+
+## DEC-123: New content types bind a default template through their first successor, not at creation (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T06:14:38.884Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 evidence)
+- **Index**: [[index]]
+
+- **Problem**: Slice 09 AC003/045/049 required CMS-03A-01 to atomically bind a default template at type creation, but the template-compatibility guard and the BE03c exact contentTypeId resolver require the template to list the type id, which is generated inside the create call.
+- **Options considered**: (A) bind on the first successor version; (B) compatibility by content-type key; (C) a type-id reservation operation.
+- **Decision**: A, chosen by the owner 2026-10-03. A new type initial version is created without a template binding; once the type exists, a template declares compatibility with its id and the binding is added through a successor version reviewed and activated as usual. AC003/045/049 positive clauses are reworded accordingly; the exact-id compatibility model and resolver stay unchanged.
+- **Downstream**: BE03a CMS-03A-01 template-binding text, FE03 create form, Slice 09 AC003/045/049, Slice 12 template binding flows.
+- **Reversibility**: High.
+
+## DEC-124: Owner ratifies 16 Slice 09 criterion rewordings (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T17:11:54.903Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Index**: [[index]]
+
+- **Problem**: Audit #3 found 16 Slice 09 criteria checked on orchestrator rewordings never ratified by the owner, some with defects (AC658 contradicted its own test, AC025 contradicted BE00, AC685 said "exactly eighteen" while 51 RPCs are executable, AC181 said "immutable" while the helper is STABLE).
+- **Options considered**: ratify all proposed corrected texts; review each individually; reject and keep originals (several false against the amended scope).
+- **Decision**: Owner ratified the proposed texts verbatim for AC005, AC007, AC025, AC034, AC037, AC180, AC181, AC233, AC246, AC282, AC356, AC431 (refinement), AC658, AC685, AC708, AC1147. Each proposed text claims only what code and tests prove. Criteria re-check only on evidence.
+- **Downstream**: Slice 09 plan and tracker criterion text; verification ledger rewording rows; S09 closure.
+- **Reversibility**: High
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+## DEC-125: AC185 legal-hold and incident-fence enforcement over CMS records belongs to Slice 16 (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T17:11:54.903Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Index**: [[index]]
+
+- **Problem**: AC185 said legal hold and incident fencing block purge of CMS definitions, plans and reports, but no CMS purge path exists.
+- **Options considered**: Slice 16 lifecycle foundation (receiving S16-AC029); build hold checks in Slice 09 over a nonexistent purge path; add a CMS purge path now.
+- **Decision**: Slice 16 lifecycle foundation owns the enforcement (S16-AC029); Slice 09 states no purge path exists for CMS definitions, plans or reports.
+- **Downstream**: AC185 text; Slice 16 AC029; P-04 author-where-owned.
+- **Reversibility**: High
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+## DEC-126: CMS-03A-09 keeps the optional workflowKey/workflowVersion pair (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T17:11:54.904Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Index**: [[index]]
+
+- **Problem**: AC390's protected-to-ordinary successor case had no API producer; an optional pair was added to the CMS-03A-09 request contract without owner approval.
+- **Options considered**: keep the optional pair; remove it (AC390 unprovable); a separate change-workflow-policy operation.
+- **Decision**: Keep the pair: both absent or null keep the source member, both present replace it with a seeded registry member, anything else returns 422; review still uses the strictest-of policy.
+- **Downstream**: BE03a CMS-03A-09 contract, OpenAPI, Worker, DB, AC390 text.
+- **Reversibility**: Medium
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+## DEC-127: Rollback RPC may fail a dry_running schema migration plan (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T17:11:54.904Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Index**: [[index]]
+
+- **Problem**: No dry-run could end failed, so activationPreparation dryRunRef.failureCode (AC641) could never be produced from a real attempt.
+- **Options considered**: cms_rollback_schema_migration fails a dry_running plan; a separate fail-dry-run RPC; no failed dry-runs.
+- **Decision**: Keep the rollback RPC behaviour: on a dry_running plan it marks the latest attempt failed with the code and blocks the plan; recovery is a new CMS-03A-10 dry-run.
+- **Downstream**: BE03a migration worker protocol, AC641 text, operator runbooks.
+- **Reversibility**: Medium
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+## DEC-128: AC906 projections refetch AUTH-API-16 under the pull model (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T17:11:54.904Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Index**: [[index]]
+
+- **Problem**: AC906's "projections refetch AUTH-API-16" assumed an event consumer, but no MFA factor projection cache exists in Phase 2.
+- **Options considered**: pull model, proven by a no-cache guard and a real multi-tab refetch test; build an event consumer with nothing to invalidate; defer.
+- **Decision**: Pull model: AUTH-API-16 returns canonical state and a new ETag on every read; a guard proves no MFA projection cache exists; the multi-tab refetch is tested without a stubbed BroadcastChannel. A future cache owner must add an event consumer.
+- **Downstream**: AC906 text; web MFA tests; any future projection cache.
+- **Reversibility**: High
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -3041,3 +3354,294 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Decision**: Add the private conflict table. The record must bind entry and base/theirs/yours revision identities, changed paths and safe hashes, open/resolved/superseded state, version and timestamps, one open conflict per entry, current actor/assignment and RLS authority, and atomic resolution with the resulting revision/audit/outbox. No browser table grants or caller authority assertions.
 - **Downstream**: Amend BE03b canonical records and all table counts, conflict data flow, authorization and tests; check IA03/FE03 references and Phase 2 Slice 10 plan for impact; add a forward migration and pgTAP tests. Preserve all eleven existing table definitions and operation IDs. Keep CMS-06 criteria unchecked until route, RPC, UI and evidence pass.
 - **Reversibility**: Medium. Replacing the durable record with a different persistence design requires another owner decision and propagation.
+
+### DEC-108: Complete CMS schema activation with private review and real prerequisite producers (2026-10-02)
+
+- **Timestamp**: 2026-10-02T02:06:54Z
+- **Agent**: codex
+- **Source**: Owner approval of Slice 09 activation producer amendment
+- **Tags**: decision, phase-2, slice-09, cms, activation, security, propagation, owner-directive
+
+- **Problem**: CMS-04 requires independently approved immutable schema activation, but BE03a's eight-operation registry has no successor/dry-run/review producers, installed activation misuses CFG setting-value review ownership, and real source/template producers follow Slice 09.
+- **Decision**: Approve the exact amendment recorded in .memory/pipeline/progress/verification/2026-10-02-slice-09-activation-amendment-approval.md, approved source SHA-256 e481bb9046703bbbd5ace3ef60b30d75bf21fb766f77477481e8a4cfcdaf33ca. Add CMS-owned private review, append-only decisions and bounded assignments; protected CMS-03A-09 through -14; approval-only cms.schema_review and owner-only cms.schema_review.assign; stable server-derived private binding evidence; actual successor/dry-run/scan/transform producers. Move only minimum protected source-row and immutable compatible-template prerequisites into Slice 09. Existing owner remains sole admin.
+- **Downstream**: Cascade IA03/deep dive, BE03a/03b/03c prerequisite references, FE03, capability/route/OpenAPI contracts, Phase 2 plan and progress. Add open criteria and recompute depth floor before implementation acceptance. Existing private-binding transport and independently verified AC250 are retained.
+- **Boundaries**: Approval creates no real account, assignment, grant, provider enrollment, paid service, deployment or acceptance receipt. All 17 activation criteria and new criteria remain open. AC209/AC211 remain post-deployment/post-launch and AC265/AC266 mandatory pre-release, authored and unchecked. Remaining Slice 10/12 scope stays gated. Public template activation is a separate Slice 12 gap, not AC169's prerequisite.
+- **Reversibility**: Medium. Changing private ownership, reviewer authority or dependency scope requires owner decision and downstream cascade.
+
+### DEC-109: Editorial workflow policies come from a code-owned versioned registry (2026-10-02)
+
+- **Timestamp**: 2026-10-02T03:58:16.473Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 DEC-108 cascade)
+- **Tags**: decision, cms, slice-09, slice-10
+
+- **Problem**: CMS-03B-10 entry create refuses because `platform_private.cms_editorial_workflow_policy_evidence` returns NULL; DEC-108 needs real entries for the second activation path and no editorial policy source existed (BE03b DEC-108 attribution; propagation-scan-2026-09-28-cms-editorial-policy-source).
+- **Options considered**: (A) code-owned versioned registry seeded by forward migration, shared shape with the DEC-108 schema-review registry; (B) owner-enrolled append-only persisted registry with a new protected enrollment operation/UI; (C) Slice 07 protected typed settings.
+- **Decision**: A, chosen by the owner 2026-10-02. One versioned policy module in code (key, version, policyHash, riskClass, requiredDecisionCount 1..8, requiredCapabilities); a forward-only migration seeds immutable rows; each content-type version binds one policy key/version at activation; the evidence seam resolves the bound immutable row and returns NULL on absence, ambiguity or malformed data. Caller-supplied policy is never authority. Supersedes the scan proposal of owner enrollment with no default rows.
+- **Downstream**: BE03b/IA03 policy-source text, entry authority migration, Slice 09 prerequisite path, Slice 10 editorial review, Slice 11 publication preflight.
+- **Reversibility**: Medium (a later persisted registry can replace the seam).
+
+### DEC-110: Protected workflow policies are four disclosure classes with their own specialist reviewer capabilities (2026-10-02)
+
+- **Timestamp**: 2026-10-02T03:58:16.474Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 DEC-108 cascade)
+- **Tags**: decision, cms, slice-09
+
+- **Problem**: the registry allowlist held only ordinary keys (editorial, editorial.default, cms.content.workflow, cms.standard), so the protected path (P2-S09-AC-091) was unreachable; IA03 Risk review and BE03b protected-review rules require policy/legal/security/financial disclosure classes with two distinct humans and a named specialist capability.
+- **Options considered**: (A) four protected class keys each with its own specialist capability; (B) four keys sharing one specialist capability; (C) one generic protected key.
+- **Decision**: A, chosen by the owner 2026-10-02. Existing four keys stay ordinary (one independent reviewer). Add protected keys cms.disclosure.policy, cms.disclosure.legal, cms.disclosure.security, cms.disclosure.financial at version 1, each requiring at least two distinct human decisions including one holder of the class specialist capability cms.reviewer.policy, cms.reviewer.legal, cms.reviewer.security or cms.reviewer.financial respectively. DEC-108 schema reviews follow the same key risk class: ordinary needs one cms.schema_review reviewer, protected needs two.
+- **Downstream**: code-owned policy registry members, capability registry, BE03a/BE03b/IA03 registry text, Slice 09 AC091 protected path, Slice 10/11 editorial review tests.
+- **Reversibility**: Medium.
+
+### DEC-111: Step-up MFA is delivered by server-mediated Worker operations and a protected step-up page (2026-10-02)
+
+- **Timestamp**: 2026-10-02T03:59:51.269Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 DEC-108 cascade)
+- **Tags**: decision, auth, mfa, slice-09
+
+- **Problem**: DEC-108 decisions/assignments/activation (and later S11 publish, S14 revoke, S15 holds, S16 lifecycle) require recent MFA and answer 401 STEP_UP_REQUIRED, but no surface lets a signed-in user complete an MFA challenge. BE01a keeps Supabase Auth as MFA authority; the Worker only reads amr MFA timestamps (apps/worker/src/authentication/production-token.ts); the 2026-09-25 free-identity record left the surface open.
+- **Options considered**: (A) server-mediated step-up challenge/verify operations that call Supabase MFA server-side and rotate the first-party session to an aal2 token, with a protected step-up page and safe returnTo; (B) browser supabase-js MFA then token exchange; (C) full re-sign-in with a new step_up intent.
+- **Decision**: A, chosen by the owner 2026-10-02. The browser never handles Supabase tokens; one reusable surface serves every later slice. Includes TOTP factor enrollment if no enrollment surface exists.
+- **Downstream**: BE01a/FE01 new operations and page, BE00 STEP_UP_REQUIRED recovery routing, Slice 09 prerequisite scope (first consumer), Slices 11/14/15/16.
+- **Reversibility**: Medium.
+
+### DEC-112: CMS rich text uses an owned versioned rich_text.v1 AST (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:00:41.858Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, cms, slice-10
+
+- **Problem**: architecture/IA03 require rich_text as an approved structured AST, never executable HTML, but no grammar, validator or renderer was chosen; migration 20260927540000 refuses every non-null rich_text value (propagation-scan-2026-09-30-cms-rich-text-ast).
+- **Options considered**: (A) own minimal versioned grammar; (B) allowlisted TipTap/ProseMirror JSON; (C) Portable Text subset.
+- **Decision**: A, chosen by the owner 2026-10-02. rich_text.v1 blocks: paragraph, heading levels 2-4, bulleted list, numbered list, list item, quote; marks: bold, italic, code; links limited to https, mailto and internal first-party routes; no inline embeds (media stays in governed blocks). Shared TypeScript and PostgreSQL validators, RFC 8785/JCS canonical hash, typed React renderer, constrained native editor. Bounds (depth/children/bytes) follow the BE03b JSON caps.
+- **Downstream**: architecture/IA03/BE03a validator registry/BE03b/FE03 cascade; replaces the 20260927540000 refusal after RED to GREEN; Slice 10 AC031 and AC050-052.
+- **Reversibility**: Medium (versioned grammar allows v2).
+
+### DEC-113: Template and pattern activation is reviewer-gated through generalized CMS review machinery (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:01:00.277Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, cms, slice-12
+
+- **Problem**: BE03c records template activation as an unresolved contract gap (BE03c:226-230; propagation-scan-2026-09-28-cms-template-activation); IA03 requires create and activate for templates and patterns; no authority was chosen.
+- **Options considered**: (A) reviewer-gated, generalizing the DEC-108 review/decision/assignment machinery to template and pattern subjects; (B) designer-only activation with recent MFA; (C) split by risk.
+- **Decision**: A, chosen by the owner 2026-10-02. A designer submits; independent assigned reviewer(s) decide with recent MFA (DEC-111 step-up); an atomic CAS switch emits cms.template.activated.v1 (pattern equivalent). Required decision count = strictest DEC-110 workflow policy among the bound content types (ordinary 1, protected 2 with class specialist). Same-key serialization, exact replay, no event on refusal, 403/404 concealment.
+- **Downstream**: IA03/BE03c/FE03 cascade, new protected operations, Slice 12 criteria, Slices 11 and 15 safe publication.
+- **Reversibility**: Medium.
+
+### DEC-114: Build the scope-locked CMS-15/16 and CFG-05C-01 flows in Phase 2 instead of moving their criteria (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:01:35.112Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, scope, slice-12, slice-16
+
+- **Problem**: the Phase 2 scope lock (phases/phase-2.md Scope lock) defers CMS-15 localization, CMS-16 related content and config import/export/restore, while the approved plan carries Phase 2 criteria for them (Slice 12 AC033-038; Slice 16 AC011-013, AC017, AC019-021).
+- **Options considered**: (A) un-defer and build the flows those criteria require; (B) count-preserving move of the criteria out of Phase 2; (C) contract-level fail-closed satisfaction.
+- **Decision**: A, chosen by the owner 2026-10-02, consistent with the more-work-now default. Implement exactly the flows the criteria require per BE03c/BE05c, close their spec gaps first (related-content eligible-target authority, locale source-stale fan-out bound and event key), and amend the scope-lock line.
+- **Downstream**: phases/phase-2.md scope lock, IA03/IA05, BE03c/BE05c/FE03/FE05 cascades, Slices 12 and 16 size.
+- **Reversibility**: Low once shipped.
+
+### DEC-115: Navigation, route/slug and discovery-metadata candidates are approved through generalized CMS review (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:01:55.869Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, delivery, slice-13
+
+- **Problem**: BE04a Menu/MenuVersion/RouteRecord/RedirectRecord/DiscoveryMetadataVersion use draft-review-approved-active and DLV-NAV-API-02 requires an approved previewed candidate, but no submit/review/approve operation exists.
+- **Options considered**: (A) generalized DEC-108/DEC-113 CMS review machinery with nav/route/metadata subjects; (B) publish-is-approval; (C) Slice 08 admin task-inbox approval.
+- **Decision**: A, chosen by the owner 2026-10-02. Editor submits, an assigned independent reviewer approves with recent MFA (records approved_by_person_id/approved_at), and a publisher activates via DLV-NAV-API-02. Count from the code-owned policy registry (DEC-109/110; ordinary 1).
+- **Downstream**: BE04a/FE04/IA04 cascade, new submit/decide operations, Slice 13 criteria.
+- **Reversibility**: Medium.
+
+### DEC-116: Media scanning and renditions are $0 self-operated; Phase 2 hosted per-file cap is 50 MiB (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:02:56.243Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, media, slice-14
+
+- **Problem**: Slice 14 needs a malware scanner and image-rendition transforms (ENGINEERING-STANDARDS upload safety; BE04b ingest/verification), no providers were chosen, and BE04b allows 5 GiB uploads while hosted Supabase Free caps files at 50 MiB. Only Workers Paid is an authorized paid service.
+- **Options considered**: (A) self-operated ClamAV scanner container pulling identifier-only jobs over an authenticated channel, WASM image renditions in Workers, 50 MiB Phase 2 cap as a plan-limit profile; (B) Supabase Pro plus a paid scanning API; (C) quarantine-only hosted pipeline.
+- **Decision**: A, chosen by the owner 2026-10-02. Uploads above 50 MiB refuse with a typed error under a recorded plan-limit profile; the 5 GiB rule remains the contract ceiling for a later plan upgrade. Local tests use a scanner sandbox with the same contract.
+- **Downstream**: architecture provider table, BE04b/FE04 limits and scanner contract, Slice 14 criteria, operations runbook for the scanner host.
+- **Reversibility**: High (provider seam).
+
+### DEC-117: Slice 13 AC171 screen-reader smoke is automated, and AC266 real-device scope extends to S13 delivery surfaces (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:03:34.994Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, accessibility, slice-13
+
+- **Problem**: P2-S13-AC-171 requires a VoiceOver/NVDA smoke; Slices 03/05/07 closed identical wording with automated Chrome accessibility-tree smoke, while DEC-101 keeps real VoiceOver/Safari and NVDA/Firefox as the mandatory pre-release AC266 gate outside the Phase 2 denominator.
+- **Options considered**: (A) automated smoke plus extending AC266 real-device scope to S13 public delivery surfaces; (B) automated only; (C) split the clause into a deferred real-device gate.
+- **Decision**: A, chosen by the owner 2026-10-02. AC171 closes on automated Chrome accessibility-tree screen-reader smoke (roles, names, landmarks, focus order) with evidence stated as automated; AC266 stays authored, unchecked and outside the denominator, and its pre-release real-device scope and runbook now include S13 public delivery surfaces. Never represent automated smoke as real-device evidence.
+- **Downstream**: S13 AC171 evidence wording, AC266 plan/tracker/runbook scope.
+- **Reversibility**: High.
+
+### DEC-118: Slice 17 observability and backup gates use the scoped staging/configuration reading (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:04:03.280Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, phase-close, slice-17
+
+- **Problem**: P2-S17-AC-008/009 require verify-infrastructure across observability/backup/rollback and recovery runbooks, an earlier verify-infrastructure run marked logging/alerting BLOCKED for lack of AC209/AC211 evidence, those criteria are outside the Phase 2 denominator, and ENGINEERING-STANDARDS says Supabase Free has no PITR and local restore drills are diagnostic only.
+- **Options considered**: (A) scoped reading on staging + configuration + diagnostic local restore drill; (B) wait for AC209 production alerting evidence; (C) buy Supabase Pro PITR first.
+- **Decision**: A, chosen by the owner 2026-10-02. Slice 17 passes on staging and configuration evidence (structured logs, alert rules configured and test-fired in staging, rollback exercised) plus a local restore drill recorded as diagnostic with no RPO/RTO claim. AC209/AC211 stay on their own timelines; protected production writes stay disabled per ENGINEERING-STANDARDS Availability and Recovery.
+- **Downstream**: Slice 17 verify-infrastructure scope, runbook evidence wording.
+- **Reversibility**: High.
+
+### DEC-119: A protected owner CMS grant operation grants, renews and revokes bounded CMS capabilities (2026-10-02)
+
+- **Timestamp**: 2026-10-02T04:05:36.213Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, cms, authority, slice-09
+
+- **Problem**: the one-shot owner bootstrap (20260910023405) grants only cms.schema_registry.read and cms.schema_designer (plus two admin reads), each expiring within seven days with no renewal, and no command grants cms.author, cms.editor, cms.template_designer, publisher or the DEC-110 specialist reviewer capabilities; CMS checks organization_actor_grant and never consults Slice 08 admin_capability_grants. Hosted CMS would stop working a week after bootstrap.
+- **Options considered**: (A) protected owner CMS grant operation plus console form; (B) route CMS authority through Slice 08 admin grants; (C) operator SQL runbook.
+- **Decision**: A, chosen by the owner 2026-10-02. The receipt-derived owner, with DEC-111 step-up MFA, grants, renews and revokes bounded-duration CMS capabilities on organization_actor_grant to existing humans in the organization, including renewing their own designer/assign authority; fully audited with idempotency, CAS and outbox; confers no admin or delegation authority; creates no identity. The owner remains sole admin.
+- **Downstream**: IA03/BE03a (or owning CMS shard)/FE03 cascade, capability registry, Slice 09/10 prerequisite scope, hosted CMS operation.
+- **Reversibility**: Medium.
+
+### DEC-120: Standing CMS capability grants last up to 90 days; schema-review assignments stay at most 7 days (2026-10-02)
+
+- **Timestamp**: 2026-10-02T13:01:11.147Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, cms, authority, slice-09
+
+- **Problem**: the DEC-119 owner grant operation was specified with a 7 UTC day maximum borrowed from the DEC-108 assignment bound; no source sets a standing-role limit, so every author/editor/reviewer/designer grant would need weekly renewal and schedules beyond a grant end would fail closed.
+- **Options considered**: 90 days; keep 7 days; 365 days; per-capability terms.
+- **Decision**: 90 days, chosen by the owner 2026-10-02. Standing CMS grants (author, editor, reviewer and specialists, designer, publisher, curators, navigation/media) may run up to 90 UTC days and are renewable with step-up; revocation stays immediate. DEC-108 schema-review assignments remain at most 7 days.
+- **Downstream**: BE03a CMS-03A-15/16 validThrough bound, grant contracts and DB CHECK, FE03 grant console validation, S11 schedule authority recheck.
+- **Reversibility**: High.
+
+### DEC-121: Stale fallback-permitted locale fields keep serving the last approved translation (2026-10-02)
+
+- **Timestamp**: 2026-10-02T14:05:32.572Z
+- **Agent**: claude
+- **Source**: implement-slice (Phase 2 decision queue)
+- **Tags**: decision, cms, localization, slice-12
+
+- **Problem**: CMS-15 localization (DEC-114) marks fallback-permitted translated fields stale when the source changes; IA03 only blocks no_fallback fields and says unchanged fields keep approval, but never says what public readers see for a stale field.
+- **Options considered**: (A) block the locale until every stale field is revalidated; (B) keep serving the last approved translation, marked stale for editors; (C) resolve stale fields through the fallback chain to the default locale.
+- **Decision**: B, chosen by the owner 2026-10-02. Public delivery keeps the last approved translation; editorial reads and the cms_locale_stale_total metric expose stale state until revalidation; no_fallback fields still block publication when missing.
+- **Downstream**: BE03c/FE03/IA03 localization contract, Slice 12 AC033-035, Slice 15 delivery resolution.
+- **Reversibility**: High.
+
+### DEC-122: Orchestrator criterion rulings for Slice 09 evidence gaps (AC300, AC678, AC774, AC1031, AC1166) (2026-10-02)
+
+- **Timestamp**: 2026-10-02T22:05:55.966Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 evidence)
+- **Tags**: decision, slice-09, evidence
+
+- **Problem**: evidence lanes found five Slice 09 criteria whose text disagreed with locked infrastructure or slice ownership.
+- **Options considered**: implement the literal text; reword to the locked source; move scope to the owning slice.
+- **Decision** (orchestrator, owner may override): AC300 follows BE00 actor-scoped idempotency bindings (changed actor is a distinct binding; changed path with the same key is 409); AC678 records the provisional fingerprint object in cms_schema_migration_plans.dry_run_report with the sealed report as authority; AC774 refusals roll back and auth_mfa_registry_sweep persists expiry; AC1031 Slice 09 covers only its own step-up routes and the CMS-03B-06/07/09 step-up recovery is carried by Slice 11 criteria; AC1166 Slice 09 covers no_fallback declaration/storage and resolution semantics are Slice 12/15 delivery scope. Moved scope must appear in the receiving tracker.
+- **Downstream**: Slice 09/11/12 trackers and plan rows, evidence index.
+- **Reversibility**: High.
+
+### DEC-122 (ratified): Owner ratifies nine Slice 09 criterion rewordings (2026-10-02)
+
+- **Timestamp**: 2026-10-03T03:11:22.121Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 evidence)
+- **Tags**: decision, slice-09, ratified
+
+- **Problem**: nine Slice 09 criteria contradicted locked BE00/BE03a/BE05b sections or slice ownership; they had been reworded as orchestrator rulings and an independent audit noted they needed owner ratification.
+- **Options considered**: ratify all; review each individually; implement the literal original text with spec amendments.
+- **Decision**: ratified by the owner 2026-10-02: AC300 (idempotency actor-scoped per BE00), AC678 (plan provisional dry-run fingerprint; sealed report authority), AC774 (expired-enrollment refusal rolls back; sweep persists expiry), AC1031 (Slice 09 covers its own step-up routes; CMS-03B-06/07/09 step-up recovery moves to Slice 11), AC1166 (no_fallback resolution moves to Slice 12/15), AC285 (successor request includes the OD-4 locale pair), AC431 (403 when readable, 404 when concealed), AC942 (schema violations 400 per BE05b, self-target 422), AC1049 (revoke sends the review expectedVersion). Moved scope (AC1031, AC1166) must appear as explicit receiving criteria in the Slice 11/12 plans.
+- **Downstream**: Slice 09/11/12 plan and tracker rows, ledger rewording table.
+- **Reversibility**: High.
+
+### DEC-123: New content types bind a default template through their first successor, not at creation (2026-10-03)
+
+- **Timestamp**: 2026-10-03T06:14:38.884Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 evidence)
+- **Tags**: decision, cms, slice-09, slice-12
+
+- **Problem**: Slice 09 AC003/045/049 required CMS-03A-01 to atomically bind a default template at type creation, but the template-compatibility guard and the BE03c exact contentTypeId resolver require the template to list the type id, which is generated inside the create call.
+- **Options considered**: (A) bind on the first successor version; (B) compatibility by content-type key; (C) a type-id reservation operation.
+- **Decision**: A, chosen by the owner 2026-10-03. A new type initial version is created without a template binding; once the type exists, a template declares compatibility with its id and the binding is added through a successor version reviewed and activated as usual. AC003/045/049 positive clauses are reworded accordingly; the exact-id compatibility model and resolver stay unchanged.
+- **Downstream**: BE03a CMS-03A-01 template-binding text, FE03 create form, Slice 09 AC003/045/049, Slice 12 template binding flows.
+- **Reversibility**: High.
+
+### DEC-124: Owner ratifies 16 Slice 09 criterion rewordings (2026-10-03)
+
+- **Timestamp**: 2026-10-03T17:11:54.903Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Tags**: decision, owner
+
+- **Problem**: Audit #3 found 16 Slice 09 criteria checked on orchestrator rewordings never ratified by the owner, some with defects (AC658 contradicted its own test, AC025 contradicted BE00, AC685 said "exactly eighteen" while 51 RPCs are executable, AC181 said "immutable" while the helper is STABLE).
+- **Options considered**: ratify all proposed corrected texts; review each individually; reject and keep originals (several false against the amended scope).
+- **Decision**: Owner ratified the proposed texts verbatim for AC005, AC007, AC025, AC034, AC037, AC180, AC181, AC233, AC246, AC282, AC356, AC431 (refinement), AC658, AC685, AC708, AC1147. Each proposed text claims only what code and tests prove. Criteria re-check only on evidence.
+- **Downstream**: Slice 09 plan and tracker criterion text; verification ledger rewording rows; S09 closure.
+- **Reversibility**: High
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+### DEC-125: AC185 legal-hold and incident-fence enforcement over CMS records belongs to Slice 16 (2026-10-03)
+
+- **Timestamp**: 2026-10-03T17:11:54.903Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Tags**: decision, owner
+
+- **Problem**: AC185 said legal hold and incident fencing block purge of CMS definitions, plans and reports, but no CMS purge path exists.
+- **Options considered**: Slice 16 lifecycle foundation (receiving S16-AC029); build hold checks in Slice 09 over a nonexistent purge path; add a CMS purge path now.
+- **Decision**: Slice 16 lifecycle foundation owns the enforcement (S16-AC029); Slice 09 states no purge path exists for CMS definitions, plans or reports.
+- **Downstream**: AC185 text; Slice 16 AC029; P-04 author-where-owned.
+- **Reversibility**: High
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+### DEC-126: CMS-03A-09 keeps the optional workflowKey/workflowVersion pair (2026-10-03)
+
+- **Timestamp**: 2026-10-03T17:11:54.904Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Tags**: decision, owner
+
+- **Problem**: AC390's protected-to-ordinary successor case had no API producer; an optional pair was added to the CMS-03A-09 request contract without owner approval.
+- **Options considered**: keep the optional pair; remove it (AC390 unprovable); a separate change-workflow-policy operation.
+- **Decision**: Keep the pair: both absent or null keep the source member, both present replace it with a seeded registry member, anything else returns 422; review still uses the strictest-of policy.
+- **Downstream**: BE03a CMS-03A-09 contract, OpenAPI, Worker, DB, AC390 text.
+- **Reversibility**: Medium
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+### DEC-127: Rollback RPC may fail a dry_running schema migration plan (2026-10-03)
+
+- **Timestamp**: 2026-10-03T17:11:54.904Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Tags**: decision, owner
+
+- **Problem**: No dry-run could end failed, so activationPreparation dryRunRef.failureCode (AC641) could never be produced from a real attempt.
+- **Options considered**: cms_rollback_schema_migration fails a dry_running plan; a separate fail-dry-run RPC; no failed dry-runs.
+- **Decision**: Keep the rollback RPC behaviour: on a dry_running plan it marks the latest attempt failed with the code and blocks the plan; recovery is a new CMS-03A-10 dry-run.
+- **Downstream**: BE03a migration worker protocol, AC641 text, operator runbooks.
+- **Reversibility**: Medium
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+### DEC-128: AC906 projections refetch AUTH-API-16 under the pull model (2026-10-03)
+
+- **Timestamp**: 2026-10-03T17:11:54.904Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14 owner ratification
+- **Tags**: decision, owner
+
+- **Problem**: AC906's "projections refetch AUTH-API-16" assumed an event consumer, but no MFA factor projection cache exists in Phase 2.
+- **Options considered**: pull model, proven by a no-cache guard and a real multi-tab refetch test; build an event consumer with nothing to invalidate; defer.
+- **Decision**: Pull model: AUTH-API-16 returns canonical state and a new ETag on every read; a guard proves no MFA projection cache exists; the multi-tab refetch is tested without a stubbed BroadcastChannel. A future cache owner must add an event consumer.
+- **Downstream**: AC906 text; web MFA tests; any future projection cache.
+- **Reversibility**: High
+- **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)

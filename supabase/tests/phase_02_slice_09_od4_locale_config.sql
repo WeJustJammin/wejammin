@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -91,10 +92,13 @@ select is(platform_private.cms_definition_artifact_hash(
       'defaultTemplateVersionId', null, 'fields', '[]'::jsonb, 'relations', '[]'::jsonb,
       'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb), 1),
   'request order of supportedLocales does not change the definition_hash [P2-S09-AC-1158]');
+-- the definition rebuild is a definer function that reads the graph under the RPC context
+select set_config('app.cms_rpc', 'true', true);
 select is((select v.definition_hash = platform_private.cms_definition_artifact_hash(
       platform_private.cms_candidate_definition_request(v.id), v.version_no)
     from platform_private.cms_content_type_versions v where v.id = pg_temp.s09d_id('a:version')), true,
   'the stored definition_hash equals the recompilation of the persisted candidate (locale columns included) [P2-S09-AC-1185]');
+select set_config('app.cms_rpc', '', true);
 
 -- ------------------------------------------------- immutability trigger ----
 select set_config('app.cms_rpc', 'true', true);
@@ -135,12 +139,15 @@ select ok((select r->>'localeConfigHash' = '74f1ad73d3f4bd74643824e7669afe78e444
     and r->'fallbackChains' = '{"fr-FR":["en-US"],"pt-BR":["fr-FR","en-US"]}'::jsonb
     from (select pg_temp.s09d_resp('a2:successor') r) s),
   'a successor with both fields null clones the source configuration (hash equal to the source) [P2-S09-AC-1188]');
+-- the definition rebuild is a definer function that reads the graph under the RPC context
+select set_config('app.cms_rpc', 'true', true);
 select ok((select v.locale_config_hash = s.locale_config_hash
     and v.definition_hash = platform_private.cms_definition_artifact_hash(
       platform_private.cms_candidate_definition_request(v.id), v.version_no)
     from platform_private.cms_content_type_versions v, platform_private.cms_content_type_versions s
     where v.id = pg_temp.s09d_id('a2:version') and s.id = pg_temp.s09d_id('a:version')),
   'the clone keeps the source hash and compiles a consistent definition_hash [P2-S09-AC-1188]');
+select set_config('app.cms_rpc', '', true);
 select pg_temp.s09d_dry_run('a2');
 select is((select classification from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('a2:plan')), 'additive',
   'a successor whose configuration equals its source is no locale change (additive) [P2-S09-AC-1195]');
@@ -175,12 +182,15 @@ select ok((select r->'supportedLocales' = '["en-US","es-ES","fr-FR"]'::jsonb
 select ok((select s.supported_locales = '["en-US","fr-FR"]'::jsonb and s.state = 'active'
     from platform_private.cms_content_type_versions s where s.id = pg_temp.s09d_id('p:version')),
   'the source version is immutable and unchanged by the replacement [P2-S09-AC-1239]');
+-- the definition rebuild is a definer function that reads the graph under the RPC context
+select set_config('app.cms_rpc', 'true', true);
 select ok((select v.definition_hash <> platform_private.cms_definition_artifact_hash(
       platform_private.cms_candidate_definition_request(v.id)
         || jsonb_build_object('supportedLocales', s.supported_locales, 'fallbackChains', s.fallback_chains), v.version_no)
     from platform_private.cms_content_type_versions v, platform_private.cms_content_type_versions s
     where v.id = pg_temp.s09d_id('p4:version') and s.id = pg_temp.s09d_id('p:version')),
   'a changed localeConfigHash produces a new definition_hash on the successor [P2-S09-AC-1185]');
+select set_config('app.cms_rpc', '', true);
 
 -- ------------------------------------------- server-derived classification ----
 select pg_temp.s09d_dry_run('p4');
@@ -233,7 +243,7 @@ select ok(pg_temp.s09d_timewarp('cms_schema_reviews', format(
   pg_temp.s09d_id('h:review'))), 'fixture: the frozen hash is tampered inside this rolled-back test');
 select pg_temp.s09d_activate('h', 'owner', '{}'::jsonb, 'h:activate-mismatch');
 select is(pg_temp.s09d_outcome('h:activate-mismatch'), 'CONFLICT',
-  'CMS-03A-04 refuses with CONFLICT when the candidate hash differs from the review''s frozen hash [P2-S09-AC-1191]');
+  'CMS-03A-04 refuses with CONFLICT when the candidate hash differs from the review''s frozen hash [P2-S09-AC-1191] [P2-S09-AC-632]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('h:version')), 'approved',
   'the refused activation mutated nothing [P2-S09-AC-1191]');
 select ok(pg_temp.s09d_timewarp('cms_schema_reviews', format(

@@ -265,10 +265,7 @@ describe('locale configuration is fixed at insert and changed only by a successo
     const withLocale = [
       ...doc.querySelectorAll<HTMLFormElement>('form[data-operation-id]'),
     ].filter(
-      (form) =>
-        form.querySelector(
-          '[data-locale-fields], [name="supportedLocales"]',
-        ) !== null,
+      (form) => form.querySelector('[name="supportedLocales"]') !== null,
     );
     expect(withLocale.map((form) => form.dataset.operationId)).toEqual([
       'CMS-03A-09',

@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -43,6 +44,7 @@ select pg_temp.s09g_member('rev1');
 select pg_temp.s09g_grant('l:real', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(5));
 select is(pg_temp.s09d_outcome('l:real'), 'OK', 'fixture: the owner grants rev1 (an owner-organization member) cms.author through CMS-03A-15');
 select set_config('app.cms_rpc', 'true', true);
+-- FIXTURE FORGERY: an aggregate of another organization or a hand-built edge row: CMS-03A-15 issues grants for the owner organization only.
 insert into platform_private.cms_capability_grants(owner_id, state, version, subject_person_ref, capability_code,
     valid_from, valid_through, grantor_person_ref, last_action)
 select pg_temp.s09d_id('otherOrg'), 'active', 1, pg_temp.s09d_actor_id('rev1', 'person')::uuid, 'cms.editor',

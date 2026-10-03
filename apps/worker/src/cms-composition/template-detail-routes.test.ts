@@ -111,7 +111,7 @@ describe('CMS-11 protected current-template detail HTTP route', () => {
     );
   });
 
-  it('rejects invalid selectors before any identity lookup', async () => {
+  it('rejects invalid selectors after authentication and before authorization or the read', async () => {
     const { app, resolveSession } = harness();
     expect((await app.request('/api/v1/cms/templates/Bad_Key')).status).toBe(
       400,
@@ -121,51 +121,69 @@ describe('CMS-11 protected current-template detail HTTP route', () => {
       (await app.request(path, { headers: { origin: 'https://other.test' } }))
         .status,
     ).toBe(403);
-    expect(resolveSession).not.toHaveBeenCalled();
+    // Two selector failures (BE00 step 6) resolve the session; the foreign
+    // origin (step 2) never does.
+    expect(resolveSession).toHaveBeenCalledTimes(2);
   });
 
   it.each([
     {
       name: 'idempotency key',
+      sessionCalls: 1,
       headers: { 'idempotency-key': 'create-only' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
     {
       name: 'write precondition',
+      sessionCalls: 1,
       headers: { 'if-match': '"2"' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
     {
       name: 'request media',
+      sessionCalls: 0,
       headers: { 'content-type': 'application/json' },
       status: 415,
       code: 'UNSUPPORTED_MEDIA_TYPE',
     },
     {
       name: 'nonempty body claim',
+      sessionCalls: 1,
       headers: { 'content-length': '1' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
     {
       name: 'transfer encoding',
+      sessionCalls: 1,
       headers: { 'transfer-encoding': 'chunked' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
   ])(
-    'rejects $name on a detail read before session or RPC',
-    async ({ headers, status, code }) => {
+    'rejects $name on a detail read before authorization or the RPC',
+    async ({ headers, status, code, sessionCalls }) => {
       const { app, readLatest, resolveSession } = harness();
       const response = await app.request(path, { headers });
       expect(response.status).toBe(status);
       expect(await response.json()).toMatchObject({ code });
-      expect(resolveSession).not.toHaveBeenCalled();
+      expect(resolveSession).toHaveBeenCalledTimes(sessionCalls);
       expect(readLatest).not.toHaveBeenCalled();
     },
   );
+
+  it('answers request media on a read with 415 and an empty allowlist (BE00)', async () => {
+    const { app } = harness();
+    const response = await app.request(path, {
+      headers: { 'content-type': 'application/json' },
+    });
+    expect(response.status).toBe(415);
+    expect(((await response.json()) as { details: unknown }).details).toEqual({
+      allowedMediaTypes: [],
+    });
+  });
 
   it('requires the live designer capability before reading', async () => {
     const { app, readLatest } = harness({

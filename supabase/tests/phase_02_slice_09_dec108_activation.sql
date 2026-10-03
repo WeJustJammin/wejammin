@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -71,11 +72,13 @@ select pg_temp.s09d_activate('a', 'owner', '{}'::jsonb, 'a:dup',
 select is(pg_temp.s09d_outcome('a:dup'), 'VALIDATION_FAILED', 'duplicate decision ids are 422 VALIDATION_FAILED [P2-S09-AC-630]');
 
 -- Activator authority (the activator's own binding/MFA is the only MFA rechecked).
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '11 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09d_activate('a', 'owner', '{}'::jsonb, 'a:stale');
 select is(pg_temp.s09d_outcome('a:stale'), 'STEP_UP_REQUIRED',
   'a stale activator binding is 401 STEP_UP_REQUIRED even when the envelope claims fresh step-up [P2-S09-AC-631] [P2-S09-AC-089]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09d_activate('a', 'owner', jsonb_build_object('actingContextId', null), 'a:nobinding');
@@ -137,10 +140,15 @@ select ok(pg_temp.s09d_replay_pair('r:activate', 'platform_api.cms_activate_sche
 -- Authority drift after approval refuses activation (AC189 successor).
 select pg_temp.s09d_create_type('d', 'dec108actdrift');
 select pg_temp.s09d_to_approved('d');
+-- Negative control: no command changes a type's owner capability, so the drift is
+-- written by hand, under the RPC flag a hostile writer would set itself (a producer
+-- no longer leaves it behind).
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_types set owner_capability = 'cms.schema_registry.read'
  where id = pg_temp.s09d_id('d:type');
 update platform_private.cms_content_types set owner_capability = 'cms.schema_designer'
  where id = pg_temp.s09d_id('d:type');
+select set_config('app.cms_rpc', '', true);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('d:review')), 'invalidated',
   'an owner-capability authority change invalidates the approved review [P2-S09-AC-632] [P2-S09-AC-102]');
 select pg_temp.s09d_activate('d', 'owner');

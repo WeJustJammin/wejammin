@@ -35,7 +35,7 @@ describe('DEC-111 step-up proof window', () => {
     expect(isFreshProof(at(offset), NOW)).toBe(expected);
   });
 
-  it('treats an absent or malformed proof as stale', () => {
+  it('[P2-S09-AC-602] treats an absent or malformed proof as stale', () => {
     expect(isFreshProof(null, NOW)).toBe(false);
     expect(isFreshProof('not-a-time', NOW)).toBe(false);
   });

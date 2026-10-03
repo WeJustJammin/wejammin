@@ -50,6 +50,7 @@ export const mountForm = (
     factors?: readonly StepUpFactorChoice[];
     initialPhase?: StepUpPhase;
     returnTo?: string;
+    initialFreshUntil?: string | null;
   }> = {},
 ): FormHarness => {
   const navigate = vi.fn<(href: string) => void>();
@@ -61,6 +62,7 @@ export const mountForm = (
       returnTo={options.returnTo ?? RETURN_TO}
       factors={options.factors ?? ONE}
       initialPhase={options.initialPhase ?? 'creating-challenge'}
+      initialFreshUntil={options.initialFreshUntil ?? null}
       api={apiDeps(fetchImpl)}
       navigate={navigate}
       reload={reload}

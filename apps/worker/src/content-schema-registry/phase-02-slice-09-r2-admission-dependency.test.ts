@@ -53,7 +53,7 @@ describe('If-Match grammar is isolated from the body binding rule', () => {
         const body = await bodyOf(response);
         expect(body.code).toBe('INVALID_REQUEST');
         expect(body.message, `If-Match "${text}"`).toBe(HEADER_MESSAGE);
-        expect(rpcCalls).toEqual([]);
+        expect(cmsCalls(rpcCalls)).toEqual([]);
       }
     },
   );
@@ -71,7 +71,7 @@ describe('If-Match grammar is isolated from the body binding rule', () => {
         const body = await bodyOf(response);
         expect(body.code).toBe('INVALID_REQUEST');
         expect(body.message).toBe(HEADER_MESSAGE);
-        expect(rpcCalls).toEqual([]);
+        expect(cmsCalls(rpcCalls)).toEqual([]);
       }
     },
   );

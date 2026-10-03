@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -81,9 +82,9 @@ select throws_ok(format('update platform_private.cms_block_definition_versions s
 select throws_ok(format('update platform_private.cms_block_definition_versions set block_version = 9 where block_key = ''p240block'''), 'P0001', 'IMMUTABLE_RECORD', 'and so is its version [P2-S09-AC-001]');
 select throws_ok(format('update platform_private.cms_template_versions set template_key = %L where template_key = ''p240-template''', 'p240-renamed'), 'P0001', null, 'a template key is immutable [P2-S09-AC-001]');
 select throws_ok(format('delete from platform_private.cms_template_versions where template_key = ''p240-template'''), 'P0001', null, 'a template version cannot be deleted [P2-S09-AC-001]');
-select throws_ok(format('delete from platform_private.cms_content_types where id = %L', pg_temp.s09d_id('d:type')), 'P0001', 'IMMUTABLE_RECORD', 'a content type cannot be deleted [P2-S09-AC-001]');
-select throws_ok(format('delete from platform_private.cms_field_definition_versions where content_type_version_id = %L', pg_temp.s09d_id('d:version')), 'P0001', 'IMMUTABLE_RECORD', 'a field definition cannot be deleted [P2-S09-AC-001]');
-select throws_ok(format('delete from platform_private.cms_block_definition_versions where block_key = ''p240block'''), 'P0001', 'IMMUTABLE_RECORD', 'a block cannot be deleted [P2-S09-AC-001]');
+select throws_ok(format('delete from platform_private.cms_content_types where id = %L', pg_temp.s09d_id('d:type')), 'P0001', 'IMMUTABLE_RECORD', 'a content type cannot be deleted [P2-S09-AC-001] [P2-S09-AC-167]');
+select throws_ok(format('delete from platform_private.cms_field_definition_versions where content_type_version_id = %L', pg_temp.s09d_id('d:version')), 'P0001', 'IMMUTABLE_RECORD', 'a field definition cannot be deleted [P2-S09-AC-001] [P2-S09-AC-167]');
+select throws_ok(format('delete from platform_private.cms_block_definition_versions where block_key = ''p240block'''), 'P0001', 'IMMUTABLE_RECORD', 'a block cannot be deleted [P2-S09-AC-001] [P2-S09-AC-167]');
 select throws_ok(format('delete from platform_private.cms_relation_definitions'), 'P0001', null, 'a relation definition cannot be deleted [P2-S09-AC-001]') where exists (select 1 from platform_private.cms_relation_definitions);
 select set_config('app.cms_rpc', '', true);
 select is(pg_temp.s09d_id('d:type') is not null and (select count(*) from platform_private.cms_content_type_versions where content_type_id = pg_temp.s09d_id('d:type')) = 1, true, 'identity survives: the type and its single version still exist [P2-S09-AC-001]');

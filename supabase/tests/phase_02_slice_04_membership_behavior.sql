@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -20,7 +21,7 @@ select lives_ok($$select platform_api.auth_bootstrap(
   decode(repeat('44', 32), 'hex'), 'a6222222-2222-4222-8222-222222222223',
   'a6222222-2222-4222-8222-222222222224')$$,
   'membership fixture member receives a self context');
-select set_config('request.jwt.claim.sub', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.auth_user_id', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.actor_auth_user_id', 'a6111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.auth_user_id', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.actor_auth_user_id', 'a6111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a6111111-1111-4111-8111-111111111111'), true); select set_config('app.correlation_id', 'a6111111-1111-4111-8111-111111111113', true); select set_config('app.idempotency_key_hash', 'slice04-member-org-create', true); select set_config('app.request_hash', 'slice04-member-org-request', true);
 
 create temp table p2_s04_membership_org as
@@ -67,7 +68,7 @@ select throws_ok($$select platform_api.rpc_invite_membership(
 )$$, 'P0001', 'VERSION_MISMATCH',
   'P2-S04-MEM01 rejects a stale organization version after invitation commit');
 
-select set_config('request.jwt.claim.sub', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.auth_user_id', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.actor_auth_user_id', 'a6222222-2222-4222-8222-222222222222', true);
+select pg_temp.set_jwt_claim('sub', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.auth_user_id', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.actor_auth_user_id', 'a6222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a6222222-2222-4222-8222-222222222222'), true);
 select set_config('app.idempotency_key_hash', 'slice04-member-terms-wrong', true);
 select set_config('app.request_hash', 'slice04-member-terms-wrong-request', true);
@@ -100,7 +101,7 @@ select is(
 
 -- MEM-02 requires trusted, organization-scoped historical evidence and never
 -- turns an asserted tenure into organization authority.
-select set_config('request.jwt.claim.sub', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.auth_user_id', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.actor_auth_user_id', 'a6111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.auth_user_id', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.actor_auth_user_id', 'a6111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a6111111-1111-4111-8111-111111111111'), true);
 insert into identity_private.membership_evidence(
   id, organization_id, person_id, evidence_kind, trusted
@@ -154,7 +155,7 @@ select 'a6777777-7777-4777-8777-777777777777',
        (select organization_id from p2_s04_membership_org), 'organization',
        (select tenure_id from p2_s04_invite), 'slice04-member-org', 'active',
        clock_timestamp(), clock_timestamp(), clock_timestamp() + interval '12 hours', 1, 1;
-select set_config('request.jwt.claim.sub', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.auth_user_id', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.actor_auth_user_id', 'a6222222-2222-4222-8222-222222222222', true);
+select pg_temp.set_jwt_claim('sub', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.auth_user_id', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.actor_auth_user_id', 'a6222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a6222222-2222-4222-8222-222222222222'), true); select set_config('app.acting_party_id', '', true); select set_config('app.idempotency_key_hash', 'slice04-member-end-missing-confirmation', true); select set_config('app.request_hash', 'slice04-member-end-missing-confirmation-request', true);
 select throws_ok($$select platform_api.rpc_accept_or_end_membership(
   (select tenure_id from p2_s04_invite), 'end', 2, null,
@@ -187,13 +188,13 @@ select ok((select payload = jsonb_build_object(
     and aggregate_id = (select tenure_id from p2_s04_invite)
   order by occurred_at desc limit 1),
   'context revoke emits only the identifier-only revocation projection');
-select set_config('request.jwt.claim.sub', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.auth_user_id', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.actor_auth_user_id', 'a6111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.auth_user_id', 'a6111111-1111-4111-8111-111111111111', true); select set_config('app.actor_auth_user_id', 'a6111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a6111111-1111-4111-8111-111111111111'), true);
 select ok((select (platform_api.identity_memberships_read(
   (select organization_id from p2_s04_membership_org), null, 5) ?&
   array['items', 'nextCursor', 'hasMore'])),
   'membership read returns the bounded cursor-page envelope to an authorized owner');
-select set_config('request.jwt.claim.sub', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.auth_user_id', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.actor_auth_user_id', 'a6222222-2222-4222-8222-222222222222', true);
+select pg_temp.set_jwt_claim('sub', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.auth_user_id', 'a6222222-2222-4222-8222-222222222222', true); select set_config('app.actor_auth_user_id', 'a6222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a6222222-2222-4222-8222-222222222222'), true);
 select throws_ok($$select platform_api.identity_memberships_read(
   (select organization_id from p2_s04_membership_org), null, 5

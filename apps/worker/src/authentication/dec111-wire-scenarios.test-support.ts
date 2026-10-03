@@ -105,7 +105,7 @@ export const rateScenario = (
   };
 };
 
-const providerDown = () => new Response('{}', { status: 500 });
+export const providerDown = () => new Response('{}', { status: 500 });
 const providerGarbage = () => new Response('not json', { status: 200 });
 const aborted: Handler = () => {
   throw new DOMException('deadline', 'AbortError');
@@ -119,7 +119,7 @@ const suspended: Handler = () =>
   });
 
 /** The persistence call each operation makes first, for dependency faults. */
-const FIRST_RPC: Readonly<Record<OperationNumber, string>> = {
+export const FIRST_RPC: Readonly<Record<OperationNumber, string>> = {
   16: 'auth_mfa_factors_read',
   17: 'auth_mfa_factors_read',
   18: 'auth_mfa_enrollment_verify_prepare',
@@ -129,7 +129,7 @@ const FIRST_RPC: Readonly<Record<OperationNumber, string>> = {
 };
 
 /** The provider call that decides each operation, for 502 / 503 / 504. */
-const PROVIDER_CALL: Readonly<Record<OperationNumber, string | null>> = {
+export const PROVIDER_CALL: Readonly<Record<OperationNumber, string | null>> = {
   16: null,
   17: P_ENROLL,
   18: P_CHALLENGE,

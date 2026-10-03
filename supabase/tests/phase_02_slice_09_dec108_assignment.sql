@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -58,11 +59,13 @@ select pg_temp.s09d_assign_raw('a:banned', 'a', 'owner', jsonb_build_object('act
   'reviewerPersonId', pg_temp.s09d_actor_id('rev3', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
 select is(pg_temp.s09d_outcome('a:banned'), 'CONFLICT', 'a banned human is ineligible: 409 CONFLICT [P2-S09-AC-469]');
 update auth.users set banned_until = null where id = pg_temp.s09d_actor_id('rev3', 'auth')::uuid;
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set state = 'revoked'
  where id = pg_temp.s09d_actor_id('rev3', 'binding')::uuid;
 select pg_temp.s09d_assign_raw('a:nobinding', 'a', 'owner', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev3', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
 select is(pg_temp.s09d_outcome('a:nobinding'), 'CONFLICT', 'a human with no current binding is ineligible: 409 CONFLICT [P2-S09-AC-469]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set state = 'active'
  where id = pg_temp.s09d_actor_id('rev3', 'binding')::uuid;
 select pg_temp.s09d_assign_raw('a:eight', 'a', 'owner', jsonb_build_object('action', 'create',
@@ -88,11 +91,13 @@ from unnest(array['actions', 'capabilityKey', 'scope', 'delegable']) k;
 select pg_temp.s09d_assign_raw('a:stale', 'a', 'owner', jsonb_build_object('action', 'create', 'expectedVersion', '999',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
 select is(pg_temp.s09d_outcome('a:stale'), 'VERSION_MISMATCH', 'a stale review CAS version is a 409 VERSION_MISMATCH');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '11 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09d_assign_raw('a:mfa', 'a', 'owner', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
 select is(pg_temp.s09d_outcome('a:mfa'), 'STEP_UP_REQUIRED', 'a stale owner binding is 401 STEP_UP_REQUIRED [P2-S09-AC-484]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select ok(pg_temp.s09d_id('a:review') is not null and pg_temp.s09d_scalar(
@@ -154,6 +159,7 @@ select is(pg_temp.s09d_outcome('a:revoke:mfa'), 'STEP_UP_REQUIRED', 'a revoke wi
 -- Owner authority is current, not merely historical (G18).
 select pg_temp.s09d_create_type('k', 'dec108asglapse');
 select pg_temp.s09d_to_review('k');
+-- TIME-WARP: shifts a grant window to reach a time-dependent branch.
 update identity_private.organization_actor_grant set valid_from = current_date - 2, valid_through = current_date - 1
  where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s09d_actor_id('owner', 'person')::uuid;
 select pg_temp.s09d_assign_raw('k:lapsed', 'k', 'owner', jsonb_build_object('action', 'create',

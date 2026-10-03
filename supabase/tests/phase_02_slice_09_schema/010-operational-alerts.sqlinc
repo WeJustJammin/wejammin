@@ -138,6 +138,8 @@ select throws_ok(
   '22023', 'invalid operational alert delivery verification',
   'P2-S09-AC-209 rejects a release that is not a lowercase SHA-40'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_operational_alert_deliveries(
   id, alert_code, release, state, claim_token_hash, claimed_at,
   delivered_at, receipt_hash, provider_message_hash
@@ -150,6 +152,7 @@ insert into platform_private.cms_operational_alert_deliveries(
   extensions.digest(convert_to('019c0000-0000-7000-8000-000000000010', 'utf8'), 'sha256'),
   extensions.digest(convert_to('cloudflare-provider-message-0010', 'utf8'), 'sha256')
 );
+select set_config('app.cms_rpc', '', true);
 create temp table s09_delivery_verification on commit drop as
 select platform_api.cms_verify_operational_alert_delivery(jsonb_build_object(
   'alertCode', 'dlq_nonempty',
@@ -226,6 +229,8 @@ select ok(
    )) response) verification),
   'P2-S09-AC-209 rejects a release mismatch with a redacted negative result'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_operational_alert_deliveries(
   id, alert_code, release, state, claim_token_hash, claimed_at,
   delivered_at, receipt_hash, provider_message_hash
@@ -238,6 +243,7 @@ insert into platform_private.cms_operational_alert_deliveries(
   extensions.digest(convert_to('019c0000-0000-7000-8000-000000000010', 'utf8'), 'sha256'),
   extensions.digest(convert_to('cloudflare-provider-message-0010', 'utf8'), 'sha256')
 );
+select set_config('app.cms_rpc', '', true);
 select ok(
   (select (response->>'verified')::boolean = false
       and response - array['schemaVersion', 'verified']::text[] = '{}'::jsonb
@@ -304,8 +310,11 @@ select throws_ok(
   '22023', 'invalid operational alert exercise eligibility',
   'P2-S09-AC-209 eligibility rejects a stale checkedAt'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 delete from platform_private.cms_operational_alert_deliveries
  where alert_code = 'dlq_nonempty';
+select set_config('app.cms_rpc', '', true);
 create temp table s09_exercise_eligibility_input on commit drop as
 select clock_timestamp() as checked_at;
 select ok(
@@ -323,6 +332,8 @@ select ok(
    ) eligibility),
   'P2-S09-AC-209 eligibility reports the empty cooldown with the redacted allowlist'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_operational_alert_deliveries(
   id, alert_code, release, state, claim_token_hash, claimed_at
 ) select
@@ -331,6 +342,7 @@ insert into platform_private.cms_operational_alert_deliveries(
   extensions.digest(convert_to('019c0000-0000-7000-8000-000000000941', 'utf8'), 'sha256'),
   checked_at - interval '1 minute'
 from s09_exercise_eligibility_input;
+select set_config('app.cms_rpc', '', true);
 select ok(
   (select response - array['schemaVersion', 'eligible', 'checkedAt', 'blockedUntil']::text[] = '{}'::jsonb
       and response ?& array['schemaVersion', 'eligible', 'checkedAt', 'blockedUntil']::text[]
@@ -345,8 +357,13 @@ select ok(
    ) eligibility),
   'P2-S09-AC-209 eligibility blocks while a recent claim is active'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 delete from platform_private.cms_operational_alert_deliveries
  where id = 'a9090000-0000-4000-8000-000000000940';
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_operational_alert_deliveries(
   id, alert_code, release, state, claim_token_hash, claimed_at,
   delivered_at, receipt_hash
@@ -358,6 +375,7 @@ insert into platform_private.cms_operational_alert_deliveries(
   checked_at - interval '1 minute',
   extensions.digest(convert_to('019c0000-0000-7000-8000-000000000944', 'utf8'), 'sha256')
 from s09_exercise_eligibility_input;
+select set_config('app.cms_rpc', '', true);
 select ok(
   (select response - array['schemaVersion', 'eligible', 'checkedAt', 'blockedUntil']::text[] = '{}'::jsonb
       and response ?& array['schemaVersion', 'eligible', 'checkedAt', 'blockedUntil']::text[]
@@ -372,10 +390,13 @@ select ok(
    ) eligibility),
   'P2-S09-AC-209 eligibility blocks while a recent delivery is active'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_operational_alert_deliveries
    set claimed_at = (select checked_at from s09_exercise_eligibility_input) - interval '20 minutes',
        delivered_at = (select checked_at from s09_exercise_eligibility_input) - interval '20 minutes'
  where id = 'a9090000-0000-4000-8000-000000000942';
+select set_config('app.cms_rpc', '', true);
 select ok(
   (select response - array['schemaVersion', 'eligible', 'checkedAt']::text[] = '{}'::jsonb
       and response ?& array['schemaVersion', 'eligible', 'checkedAt']::text[]

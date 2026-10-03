@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -106,10 +107,25 @@ select ok(pg_temp.s09d_rls('cms_schema_reviews') and pg_temp.s09d_no_direct_gran
 select is((select count(*)::integer from pg_policies where schemaname = 'platform_private' and tablename = 'cms_schema_reviews'
     and qual = 'platform_private.cms_rpc_context_valid()' and with_check = 'platform_private.cms_rpc_context_valid()'), 1,
   'the only policy gates every read and write on the schema-qualified RPC context helper [P2-S09-AC-647]');
-select ok(platform_private.cms_review_scope((select review_open from s09e_ids), pg_temp.s09d_actor_id('owner', 'auth')::uuid, pg_temp.s09d_id('ownerOrg')) = 'designer'
-  and platform_private.cms_review_scope((select review_open from s09e_ids), pg_temp.s09d_actor_id('rev1', 'auth')::uuid, pg_temp.s09d_actor_id('rev1', 'person')::uuid) = 'assigned'
-  and platform_private.cms_review_scope((select review_open from s09e_ids), pg_temp.s09d_actor_id('rev2', 'auth')::uuid, pg_temp.s09d_actor_id('rev2', 'person')::uuid) is null
-  and platform_private.cms_review_scope((select review_open from s09e_ids), pg_temp.s09d_actor_id('other', 'auth')::uuid, pg_temp.s09d_id('otherOrg')) is null,
+-- The scope function reads the review through the forced policies as its owner (a
+-- non-bypass role), so, like the producers, the caller publishes the RPC context and
+-- the verified session of the actor before calling it directly.
+create or replace function pg_temp.s09e_review_scope(p_review uuid, p_actor text, p_party uuid) returns text
+language plpgsql as $body$
+declare scope text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  perform platform_private.cms_publish_session(pg_temp.s09d_actor_id(p_actor, 'auth')::uuid, p_party);
+  scope := platform_private.cms_review_scope(p_review, pg_temp.s09d_actor_id(p_actor, 'auth')::uuid, p_party);
+  perform set_config('app.cms_rpc', '', true);
+  perform platform_private.cms_publish_session(null, null);
+  return scope;
+end;
+$body$;
+select ok(pg_temp.s09e_review_scope((select review_open from s09e_ids), 'owner', pg_temp.s09d_id('ownerOrg')) = 'designer'
+  and pg_temp.s09e_review_scope((select review_open from s09e_ids), 'rev1', pg_temp.s09d_actor_id('rev1', 'person')::uuid) = 'assigned'
+  and pg_temp.s09e_review_scope((select review_open from s09e_ids), 'rev2', pg_temp.s09d_actor_id('rev2', 'person')::uuid) is null
+  and pg_temp.s09e_review_scope((select review_open from s09e_ids), 'other', pg_temp.s09d_id('otherOrg')) is null,
   'the read predicate is the candidate designer scope or an assigned review-only scope and nothing else [P2-S09-AC-647]');
 
 -- ================================== cms_schema_review_decisions (648-651) ====

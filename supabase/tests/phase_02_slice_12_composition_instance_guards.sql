@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 create extension if not exists pgtap with schema extensions;
 commit;
 

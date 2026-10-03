@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -14,9 +15,17 @@ select no_plan();
 
 \ir phase_02_slice_09_dec111/00-support.sqlinc
 
+-- The sweep is a service-role Worker command: a request of its own under the verified
+-- service-role JWT with no account subject published (the system scope the MFA
+-- registry policies admit), not a continuation of the last account's request.
 create or replace function pg_temp.m_sweep(p_label text, p_batch integer default 500) returns jsonb
-language sql as $body$
-  select pg_temp.m(p_label, 'auth_mfa_registry_sweep', jsonb_build_object('p_batch', p_batch, '_notrace', true)) $body$;
+language plpgsql as $body$
+begin
+  perform set_config('app.mfa_session_subject', '', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
+  return pg_temp.m(p_label, 'auth_mfa_registry_sweep', jsonb_build_object('p_batch', p_batch, '_notrace', true));
+end;
+$body$;
 
 -- ---- rate-limit operation ids ------------------------------------------------
 select is(pg_temp.m_one(format($q$select platform_api.auth_rate_limit(%L, repeat('ab', 32), 5, 60)->>'allowed'$q$, 'AUTH-API-' || n)), 'true',

@@ -811,14 +811,12 @@ None. New product or architecture choices must re-open their originating locked 
 - [x] Global design-system components and state language are consumed without reinvention.
 - [x] Seven mandatory passes, two-implementer review, devil's-advocate review, and convergence pass completed.
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Derives from
-
 - [[specs/ia/04-cms-delivery-media|Shard 04 — CMS navigation, media and delivery]]
 
 ### References
-
 - [[specs/ia/04-cms-delivery-media|Shard 04 — CMS navigation, media and delivery]]

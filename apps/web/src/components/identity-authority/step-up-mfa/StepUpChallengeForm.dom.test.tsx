@@ -81,7 +81,7 @@ describe('StepUpChallengeForm creating the challenge', () => {
     await flush();
     const container = harness.mounted.container;
     expect(fetchImpl.calls).toHaveLength(0);
-    const group = container.querySelector('[role="radiogroup"], fieldset');
+    const group = container.querySelector('fieldset[role="radiogroup"]');
     expect(group).not.toBeNull();
     const radios = container.querySelectorAll<HTMLInputElement>(
       'input[type="radio"]',

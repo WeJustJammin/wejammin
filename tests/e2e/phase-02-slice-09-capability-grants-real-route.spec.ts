@@ -89,7 +89,8 @@ test('[P2-S09-AC-1022] shows the CMS access navigation only to the owner and gua
   ).toHaveCount(0);
   // A non-owner who types the address learns nothing: no console, no grants.
   const refused = await designer.page.goto(CONSOLE);
-  expect([403, 404]).toContain(refused?.status());
+  expect(refused?.status()).toBe(403);
+  expect(await refused?.text()).toBe('Forbidden');
   await expect(
     designer.page.getByRole('heading', { level: 1, name: 'CMS access' }),
   ).toHaveCount(0);
@@ -233,6 +234,81 @@ test('[P2-S09-AC-910] [P2-S09-AC-1026] [P2-S09-AC-1024] a stale proof sends the 
   expect(posts).toHaveLength(1);
 });
 
+test('[P2-S09-AC-1031] the interrupted grant keeps its ORIGINAL Idempotency-Key across the real /step-up redirect and return', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  const secret = await enrollFactorViaUi(page, 'Owner phone');
+
+  const keys: (string | null)[] = [];
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/cms/capability-grants'
+    )
+      // The island posts the key as a form field; the facade turns it into the
+      // Idempotency-Key header the Worker reads.
+      keys.push(
+        /name="idempotency-key"\r\n\r\n([^\r]+)\r\n/u.exec(
+          request.postData() ?? '',
+        )?.[1] ?? null,
+      );
+  });
+  await openConsole(page);
+  await expireStepUp(page, testId, 'owner');
+  await grantViaUi(page, { reason: 'Original key survives' });
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText(
+    'Verify your identity to change CMS access.',
+    { timeout: 15_000 },
+  );
+  await expect.poll(() => keys.length).toBe(1);
+  const original = keys[0];
+  expect(typeof original).toBe('string');
+
+  // The page really leaves: /step-up is a different document, so the island
+  // unmounts and only tab-scoped storage can carry the pending command back.
+  await alert.getByRole('link', { name: 'Verify identity' }).click();
+  await page.waitForURL(/\/step-up\?returnTo=/u, { timeout: 15_000 });
+  const pending = await page.evaluate(() =>
+    window.sessionStorage.getItem('wj:cms-grants:step-up-return'),
+  );
+  expect(pending).not.toBeNull();
+  expect(JSON.parse(pending ?? 'null')).toEqual({
+    kind: 'grant',
+    grantId: null,
+    idempotencyKey: original,
+  });
+  expect(pending).not.toContain(lanePersonId('reader'));
+
+  await completeStepUpViaUi(page, secret, new RegExp(`${CONSOLE}$`, 'u'));
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'CMS access' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-workbench="cms-capability-grants"]'),
+  ).toBeVisible();
+  await page.waitForTimeout(600);
+  await expect(
+    grantForm(page).getByRole('textbox', { name: 'Person ID' }),
+  ).toHaveValue('');
+
+  await grantViaUi(page, { reason: 'Original key survives' });
+  await expect(
+    page.getByRole('table', { name: 'CMS capability grants' }),
+  ).toContainText('cms.schema_registry.read', { timeout: 15_000 });
+  await expect.poll(() => keys.length).toBe(2);
+  expect(keys[1]).toBe(original);
+  // The pending command is consumed once the retry has gone out.
+  expect(
+    await page.evaluate(() =>
+      window.sessionStorage.getItem('wj:cms-grants:step-up-return'),
+    ),
+  ).toBeNull();
+});
+
 const GRANTS_TABLE = 'CMS capability grants';
 
 /**
@@ -276,7 +352,7 @@ const rect = (page: Page, selector: string) =>
 
 const GRANT_ROW = 'tbody tr[data-grant-id]';
 
-test.describe('[P2-S09-AC-1036] mobile grant console at 375 px', () => {
+test.describe('mobile grant console at 375 px', () => {
   const open = (browser: Parameters<typeof actor>[0]) =>
     seedConsoleAt(browser, 375, 700);
 
@@ -368,6 +444,34 @@ test.describe('[P2-S09-AC-1036] mobile grant console at 375 px', () => {
       );
   });
 
+  test('[P2-S09-AC-1036] lays the renew form out as one column of stacked controls inside the viewport', async ({
+    browser,
+  }) => {
+    const page = await open(browser);
+    await page.getByRole('button', { name: /^Renew / }).click();
+    const form = page.locator('form[data-operation-id="CMS-03A-16"]');
+    await expect(form).toBeVisible();
+    const controls = await form
+      .locator('input:not([type=hidden]), select, textarea')
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const box = element.getBoundingClientRect();
+          return {
+            left: box.left,
+            right: box.right,
+            top: box.top,
+            bottom: box.bottom,
+          };
+        }),
+      );
+    expect(controls.length).toBe(2);
+    for (const control of controls) {
+      expect(Math.abs(control.left - controls[0]!.left)).toBeLessThanOrEqual(1);
+      expect(control.right).toBeLessThanOrEqual(375);
+    }
+    expect(controls[1]!.top).toBeGreaterThanOrEqual(controls[0]!.bottom - 1);
+  });
+
   test('[P2-S09-AC-1036] opens revoke confirmation as its own review block below the row, committed only after acknowledgement', async ({
     browser,
   }) => {
@@ -411,7 +515,7 @@ test.describe('[P2-S09-AC-1036] mobile grant console at 375 px', () => {
 });
 
 // FE03 breakpoints: mobile is <= 768 px and tablet starts at 769 px.
-test.describe('[P2-S09-AC-1037] tablet grant console at 769 px', () => {
+test.describe('tablet grant console at 769 px', () => {
   const open = (browser: Parameters<typeof actor>[0]) =>
     seedConsoleAt(browser, 769, 1000);
 
@@ -480,7 +584,7 @@ test.describe('[P2-S09-AC-1037] tablet grant console at 769 px', () => {
   });
 });
 
-test.describe('[P2-S09-AC-1038] desktop grant console at 1280 px', () => {
+test.describe('desktop grant console at 1280 px', () => {
   const open = (browser: Parameters<typeof actor>[0]) =>
     seedConsoleAt(browser, 1280, 900);
 

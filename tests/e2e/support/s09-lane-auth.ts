@@ -184,7 +184,10 @@ export const registrySessionFor = (
   return {
     userId: claim.userId,
     actingPartyId: LANE_ACTING_PARTY_ID,
-    capabilities: LANE_CAPABILITIES[claim.role],
+    capabilities: LANE_CAPABILITIES[claim.role].filter(
+      (capability) =>
+        !(world.removedCapabilities[claim.role] ?? []).includes(capability),
+    ),
     mfaFresh: freshUntil !== null,
     ...(freshUntil === null ? {} : { stepUpFreshUntil: freshUntil }),
   };

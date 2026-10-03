@@ -156,7 +156,7 @@ describe('[P2-S09-AC-1014] person identifiers stay inside the owner-only island'
     expect(window.localStorage.length).toBe(0);
   });
 
-  it('[P2-S09-AC-1014] a step-up detour records only the one-bit flag, never the person ID', async () => {
+  it('[P2-S09-AC-1014] a step-up detour records only the pending-command envelope (kind, grant, original key), never the person ID', async () => {
     scriptFetch(() =>
       jsonResponse(
         401,
@@ -171,9 +171,20 @@ describe('[P2-S09-AC-1014] person identifiers stay inside the owner-only island'
     click(query(root, 'a[data-action="verify-identity"]'));
     expect(leaks()).toStrictEqual([]);
     const writes = sinks.filter((sink) => sink.name === 'Storage.setItem');
-    expect(writes).toStrictEqual([
-      { name: 'Storage.setItem', payload: 'wj:cms-grants:step-up-return 1' },
-    ]);
+    expect(writes).toHaveLength(1);
+    const [write] = writes;
+    expect(write?.payload.startsWith('wj:cms-grants:step-up-return ')).toBe(
+      true,
+    );
+    expect(
+      JSON.parse(
+        (write?.payload ?? '').slice('wj:cms-grants:step-up-return '.length),
+      ),
+    ).toEqual({
+      kind: 'grant',
+      grantId: null,
+      idempotencyKey: expect.stringMatching(/^cms-grant-15-/u),
+    });
   });
 
   it('[P2-S09-AC-1014] the island-local person filter is sent to the read but reaches no sink or address', async () => {

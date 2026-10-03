@@ -6,6 +6,14 @@ import {
   type CmsLocaleDependencies,
   type CmsLocaleError,
 } from './locale-routes';
+import {
+  httpAdapter,
+  httpFresh,
+  httpRequest,
+  registerOrderTests,
+  standardMutationSteps,
+  type HttpState,
+} from '../be00-order.test-support';
 
 const entryId = 'd1000000-0000-4000-8000-000000000001';
 const sourceRevisionId = 'd1000000-0000-4000-8000-000000000002';
@@ -127,14 +135,16 @@ describe('CMS-03C-04 locale authoring route', () => {
     );
   });
 
-  it('rejects path/body mismatch before identity or persistence', async () => {
-    const resolveSession = vi.fn(deps().resolveSession);
-    const response = await createCmsLocaleApp(deps({ resolveSession })).request(
-      request({ body: { ...body, locale: 'de-DE' } }),
-    );
+  it('rejects path/body mismatch after authentication and before authorization or persistence', async () => {
+    const authorLocale = vi.fn(deps().authorLocale);
+    const rateLimit = vi.fn(deps().rateLimit);
+    const response = await createCmsLocaleApp(
+      deps({ authorLocale, rateLimit }),
+    ).request(request({ body: { ...body, locale: 'de-DE' } }));
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: 'INVALID_REQUEST' });
-    expect(resolveSession).not.toHaveBeenCalled();
+    expect(rateLimit).not.toHaveBeenCalled();
+    expect(authorLocale).not.toHaveBeenCalled();
   });
 
   it('rejects stale/missing If-Match and non-JSON payloads', async () => {
@@ -210,9 +220,10 @@ describe('CMS-03C-04 locale authoring route', () => {
     }
   });
 
-  it('rejects malformed path, query, headers, body and cookie CSRF before session', async () => {
+  it('rejects malformed path, query, headers, body and cookie CSRF before persistence', async () => {
     const resolveSession = vi.fn(deps().resolveSession);
-    const app = createCmsLocaleApp(deps({ resolveSession }));
+    const authorLocale = vi.fn(deps().authorLocale);
+    const app = createCmsLocaleApp(deps({ resolveSession, authorLocale }));
     const invalidRequests = [
       request({
         path: '/api/v1/cms/entries/not-a-uuid/locales/fr-FR/variants',
@@ -244,7 +255,9 @@ describe('CMS-03C-04 locale authoring route', () => {
       missing.headers.delete(headerName);
       expect((await app.request(missing)).status).toBe(400);
     }
-    expect(resolveSession).not.toHaveBeenCalled();
+    // Only the cookie-CSRF request (BE00 step 2) never reaches the session.
+    expect(resolveSession).toHaveBeenCalledTimes(9);
+    expect(authorLocale).not.toHaveBeenCalled();
   });
 
   it('fails closed on invalid session envelopes and resolver outages', async () => {
@@ -726,5 +739,88 @@ describe('CMS-03C-04 locale authoring route', () => {
     expect(JSON.stringify(await response.json())).not.toContain(
       'private session value',
     );
+  });
+});
+
+describe('BE00 middleware order on the CMS locale authoring route', () => {
+  const overridesFor = (state: HttpState): Partial<CmsLocaleDependencies> => ({
+    ...(state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: false as const,
+            status: 401 as const,
+            code: 'UNAUTHENTICATED',
+            message: 'No session.',
+          }),
+        }
+      : {}),
+    ...(state.capabilityDropped && !state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: true as const,
+            value: {
+              userId: 'd1000000-0000-4000-8000-000000000006',
+              actingPartyId: 'd1000000-0000-4000-8000-000000000007',
+              capabilities: [],
+              mfaFresh: true,
+            },
+          }),
+        }
+      : {}),
+    ...(state.rateExhausted
+      ? {
+          rateLimit: async (input: { limit: number }) => ({
+            ok: true as const,
+            value: {
+              allowed: false,
+              limit: input.limit,
+              remaining: 0,
+              resetAt: 2_000,
+            },
+          }),
+        }
+      : {}),
+  });
+  registerOrderTests<HttpState>({
+    family: 'cms-locale',
+    fresh: () =>
+      httpFresh(path, body, {
+        origin,
+        'content-type': 'application/json',
+        'idempotency-key': 'locale-command-0001',
+        'if-match': '"1"',
+      }),
+    steps: standardMutationSteps(
+      httpAdapter({
+        codes: {
+          forbidden: 'LOCALE_FORBIDDEN',
+          badRequest: 'INVALID_REQUEST',
+          unauthenticated: 'UNAUTHENTICATED',
+          validation: 'LOCALE_VALIDATION_FAILED',
+          rateLimited: 'RATE_LIMITED',
+        },
+        oversize: { status: 400, code: 'INVALID_REQUEST' },
+        badPath: `/api/v1/cms/entries/not-a-uuid/locales/fr-FR/variants`,
+        badBody: {},
+      }),
+    ),
+    send: (state) =>
+      Promise.resolve(
+        createCmsLocaleApp(deps(overridesFor(state))).request(
+          httpRequest(state, 'https://api.example.test'),
+        ),
+      ),
+    accepted: (response) => expect(response.status).toBe(201),
+  });
+});
+
+describe('BE00 step 2 body ceiling on the CMS locale route', () => {
+  it('refuses a streamed body over the ceiling that declared no length', async () => {
+    const authorLocale = vi.fn(deps().authorLocale);
+    const response = await createCmsLocaleApp(deps({ authorLocale })).request(
+      request({ body: { ...body, pad: 'x'.repeat(300_000) } }),
+    );
+    expect(response.status).toBe(400);
+    expect(authorLocale).not.toHaveBeenCalled();
   });
 });

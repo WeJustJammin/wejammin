@@ -14,11 +14,15 @@ import {
 import { isMfaCircuitOpenError } from '../authentication/mfa-provider-breaker';
 import { isFreshProof, stepUpRequiredError } from '../authentication/step-up';
 import type { AuthenticationResult } from '../authentication/types';
-import { admit, parseBody, withDeadline } from './admin-route-admission';
+import {
+  admitSession,
+  decodeAdminBody,
+  requireAdminCapability,
+  withDeadline,
+} from './admin-route-admission';
 import { enforceMfaResetRate } from './admin-mfa-reset-rate';
 import {
-  checkConfigurationSameOrigin,
-  csrfIfCookie,
+  admitConfigurationTransport,
   parseConfigurationCommandHeaders,
 } from './route-support';
 import type { AdminMfaFactorResetPort } from './types';
@@ -171,15 +175,35 @@ const execute = async (
   signal: AbortSignal,
   trace: Trace,
 ): Promise<Response> => {
-  const origin = checkConfigurationSameOrigin(context);
-  if (!origin.ok) return responseForAuthError(context, origin);
-  const body = await parseBody(
-    context.req.raw,
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitConfigurationTransport(context, signal);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then the acting context.
+  const admitted = await admitSession(context, dependencies, signal);
+  if ('response' in admitted) return admitted.response;
+  const { session, requestContext } = admitted;
+  trace.authUserId = session.authUserId;
+  // BE00 step 6: strict body.
+  const body = decodeAdminBody(
+    transport.value,
     Cfg05b06MfaFactorResetRequestSchema,
-    signal,
   );
   if (!body.ok) return responseForAuthError(context, body);
   trace.targetPersonId = body.value.targetPersonId;
+  // BE00 step 7: capability, step-up freshness, then quota.
+  const denied = requireAdminCapability(context, OPERATION_ID, requestContext);
+  if (denied !== null) return denied;
+  if (!isFreshProof(session.stepUpAt, Date.now()))
+    return responseForAuthError(context, stepUpRequiredError());
+  const rate = await enforceMfaResetRate(
+    context,
+    // `admit` already refused the request when auth is not composed.
+    dependencies.auth!,
+    session,
+    signal,
+  );
+  if (rate !== null) return rate;
+  // BE00 step 8: exact Idempotency-Key.
   const headers = parseConfigurationCommandHeaders(context.req.raw);
   if (!headers.ok) return responseForAuthError(context, headers);
   if (
@@ -190,22 +214,6 @@ const execute = async (
       context,
       authError(400, 'INVALID_REQUEST', 'A valid Idempotency-Key is required.'),
     );
-  const admitted = await admit(context, dependencies, OPERATION_ID, signal);
-  if ('response' in admitted) return admitted.response;
-  const { session, requestContext } = admitted;
-  trace.authUserId = session.authUserId;
-  if (!isFreshProof(session.stepUpAt, Date.now()))
-    return responseForAuthError(context, stepUpRequiredError());
-  const csrf = await csrfIfCookie(context);
-  if (!csrf.ok) return responseForAuthError(context, csrf);
-  const rate = await enforceMfaResetRate(
-    context,
-    // `admit` already refused the request when auth is not composed.
-    dependencies.auth!,
-    session,
-    signal,
-  );
-  if (rate !== null) return rate;
   if (body.value.targetPersonId === session.personId)
     return responseForAuthError(
       context,

@@ -15,6 +15,7 @@ import {
   failure,
   invalidDependency,
   templateReadHeadersError,
+  templateReadMediaError,
   validEnvelope,
   validRateDecision,
   type CmsTemplateDependencies,
@@ -56,9 +57,9 @@ export const registerCmsTemplateContextRoutes = <E extends Env>(
     const execute = async (signal: AbortSignal): Promise<Response> => {
       const originError = checkOrigin(request, dependencies.humanOrigins);
       if (originError !== null) return respondError(originError);
-      if (new URL(request.url).search !== '') return respondError(failure(400));
-      const headersError = templateReadHeadersError(request);
-      if (headersError !== null) return respondError(headersError);
+      // BE00 step 2: a read accepts no request media.
+      const mediaError = templateReadMediaError(request);
+      if (mediaError !== null) return respondError(mediaError);
       let session: CmsTemplateResult<CmsEditorialSession>;
       try {
         session = await dependencies.resolveSession(request, signal);
@@ -69,6 +70,11 @@ export const registerCmsTemplateContextRoutes = <E extends Env>(
       if (!session.ok) return respondError(session);
       const malformed = validHumanSession(session.value);
       if (malformed !== null) return respondError(malformed);
+      // BE00 step 6: strict query, headers and body absence.
+      if (new URL(request.url).search !== '') return respondError(failure(400));
+      const headersError = templateReadHeadersError(request);
+      if (headersError !== null) return respondError(headersError);
+      // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.template_designer')

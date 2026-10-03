@@ -36,7 +36,18 @@ export const handlers = (
 ): Readonly<Record<string, Handler>> => ({
   admin_context_capabilities: () => json(capabilities),
   admin_mfa_factor_reset: () => json(reservation()),
-  admin_mfa_factor_reset_settle: () => json(resetResponse()),
+  // The database leaves the reset reconciling when any provider outcome
+  // failed (dec111_admin_mfa_reset.sql, 'any failed factor leaves ...').
+  admin_mfa_factor_reset_settle: (call) =>
+    json(
+      resetResponse({
+        state: (
+          call.body?.p_request as { outcomes: { outcome: string }[] }
+        ).outcomes.some((entry) => entry.outcome === 'failed')
+          ? 'reconciling'
+          : 'completed',
+      }),
+    ),
   [REMOVE_A]: () => json({}),
   [REMOVE_B]: () => json({}),
   ...overrides,

@@ -1,4 +1,7 @@
-import type { ContentSchemaRegistryResult } from './types';
+import type {
+  ContentSchemaRegistryError,
+  ContentSchemaRegistryResult,
+} from './types';
 import {
   invalid,
   isParsedFailure,
@@ -6,6 +9,7 @@ import {
   issues,
   MAX_BODY_BYTES,
   type UnknownSchema,
+  unsupportedMediaType,
   UUID_PATTERN,
 } from './admission-common';
 
@@ -66,6 +70,18 @@ export type BodyOptions = Readonly<{
    * unknown key as a 422 schema failure.
    */
   unknownKeyIsStructural?: boolean;
+  /**
+   * An operation whose complete refusal list needs database state the Worker
+   * cannot see (CMS-03A-09 inherits the source and default locale from the
+   * immutable source version) names here which Zod failures the database
+   * validator re-evaluates in full. When it answers true the request is
+   * forwarded unchanged, so the database's ordered issue list is the response
+   * and no partial Worker list can stand in for it.
+   */
+  deferredToDatabase?: (
+    value: unknown,
+    issues: readonly Readonly<{ code?: string; message: string }>[],
+  ) => boolean;
 }>;
 
 const decodeJson = <T>(
@@ -83,6 +99,8 @@ const decodeJson = <T>(
   if (isParsedSuccess<T>(parsed)) return { ok: true, value: parsed.data };
   if (!isParsedFailure(parsed))
     return invalid('The request body failed validation.', {}, 422);
+  if (options.deferredToDatabase?.(value, parsed.error.issues) === true)
+    return { ok: true, value: value as T };
   if (options.unknownKeyIsStructural === true) {
     const unknownKeys = parsed.error.issues.filter(
       (issue) => issue.code === 'unrecognized_keys',
@@ -100,16 +118,44 @@ const decodeJson = <T>(
   );
 };
 
+/**
+ * BE00 step 2 (security/transport), the part decided from headers alone: the
+ * declared body size ceiling, then the content type. `UNSUPPORTED_MEDIA_TYPE`
+ * carries the route allowlist (BE00 error table).
+ */
+export const jsonBodyPreflight = (
+  request: Request,
+): ContentSchemaRegistryError | null => {
+  const declaredLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES)
+    return invalid('The request body is too large.', {}, 413);
+  const media = request.headers.get('content-type')?.split(';')[0]?.trim();
+  return media === 'application/json' ? null : unsupportedMediaType();
+};
+
+/**
+ * The raw bytes, bounded by the same ceiling while streaming. JSON syntax and
+ * strict Zod validation are BE00 step 6 and run later through `decodeJsonBody`.
+ */
+export const readJsonBodyBytes = async (
+  request: Request,
+  signal?: AbortSignal,
+): Promise<ContentSchemaRegistryResult<Uint8Array>> =>
+  jsonBodyPreflight(request) ?? (await readBytes(request, signal));
+
+export const decodeJsonBody = <T>(
+  bytes: Uint8Array,
+  schema: UnknownSchema,
+  options: BodyOptions = {},
+): ContentSchemaRegistryResult<T> => decodeJson<T>(bytes, schema, options);
+
 export const parseJsonBody = async <T>(
   request: Request,
   schema: UnknownSchema,
   signal?: AbortSignal,
   options: BodyOptions = {},
 ): Promise<ContentSchemaRegistryResult<T>> => {
-  const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-  if (media !== 'application/json')
-    return invalid('Use application/json.', {}, 415);
-  const bytes = await readBytes(request, signal);
+  const bytes = await readJsonBodyBytes(request, signal);
   return bytes.ok ? decodeJson(bytes.value, schema, options) : bytes;
 };
 

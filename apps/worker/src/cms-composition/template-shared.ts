@@ -133,13 +133,23 @@ export const failure = (
   ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
 });
 
-/** Template reads carry no write precondition, idempotency key, or request media. */
+/**
+ * BE00 step 2: a template read accepts no request media, so the 415 carries an
+ * empty allowlist.
+ */
+export const templateReadMediaError = (
+  request: Request,
+): CmsTemplateError | null =>
+  request.headers.has('content-type')
+    ? failure(415, { allowedMediaTypes: [] })
+    : null;
+
+/** BE00 step 6: template reads carry no write precondition, idempotency key or body. */
 export const templateReadHeadersError = (
   request: Request,
 ): CmsTemplateError | null => {
   if (request.headers.has('idempotency-key') || request.headers.has('if-match'))
     return failure(400);
-  if (request.headers.has('content-type')) return failure(415);
   const contentLength = request.headers.get('content-length');
   if (
     request.body !== null ||

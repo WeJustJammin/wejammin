@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 select plan(13);
@@ -25,7 +26,7 @@ where auth_user_id in (
   'b3111111-1111-4111-8111-111111111111'
 );
 
-select set_config('request.jwt.claim.sub', 'a3111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.auth_user_id', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_auth_user_id', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111'), true);

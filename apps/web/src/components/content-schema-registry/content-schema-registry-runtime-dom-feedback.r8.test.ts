@@ -78,7 +78,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('[P2-S09-AC-248] 422 validation feedback', () => {
+describe('422 validation feedback', () => {
   it('[P2-S09-AC-248] lists the invalid fields in server violation order with the first link targeting the first invalid field', async () => {
     formMarkup();
     respond422(['/kind', '/key']);
@@ -146,7 +146,7 @@ describe('[P2-S09-AC-248] 422 validation feedback', () => {
   });
 });
 
-describe('[P2-S09-AC-248] polite status', () => {
+describe('polite status', () => {
   it('[P2-S09-AC-248] announces progress in a polite atomic status and errors in an assertive alert', () => {
     formMarkup();
     const form = document.querySelector('form') as HTMLFormElement;

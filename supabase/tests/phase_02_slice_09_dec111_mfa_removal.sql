@@ -100,7 +100,7 @@ select pg_temp.m_rfinish('rf:twice', 1, (select id from m_f where name = 'One'),
 select is(pg_temp.m_out('rf:twice'), 'OK', 'finish is idempotent after completion');
 select is(pg_temp.m_events(1, 'mfa.factor.removed'), 2, 'and adds no further evidence');
 select pg_temp.m_rbegin('rb:replay', 1, (select id from m_f where name = 'One'), 'user_request', '1');
-select is(pg_temp.m_out('rb:replay'), 'OK', 'the same key and hash after completion replays');
+select is(pg_temp.m_out('rb:replay'), 'OK', 'the same key and hash after completion replays [P2-S09-AC-797]');
 select is(pg_temp.m_resp('rb:replay')#>>'{replay,factors,0,friendlyName}', 'Two', 'the replay carries the current snapshot');
 select is(pg_temp.m_resp('rb:replay')->>'providerFactorId', (select pid::text from m_f where name = 'One'), 'and the provider id');
 select pg_temp.m_rbegin('rb:gone', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a7', 'a8');

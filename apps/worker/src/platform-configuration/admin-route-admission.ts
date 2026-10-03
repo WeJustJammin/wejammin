@@ -7,7 +7,11 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { authError, responseForAuthError } from '../authentication/boundary';
+import {
+  authError,
+  responseForAuthError,
+  type JsonMutationTransport,
+} from '../authentication/boundary';
 import type {
   AuthenticationResult,
   AuthenticationSession,
@@ -23,15 +27,16 @@ import type { AdminOperationId } from './types';
 export type AdminRouteOperationId =
   AdminOperationId | 'CFG-05B-06' | 'CFG-05B-07';
 
-/** `null`: any admitted session may read its own projection (CFG-05B-07). */
-const requiredCapability: Readonly<
-  Record<AdminRouteOperationId, string | null>
-> = {
+/**
+ * The route capability of every admin route that names one. CFG-05B-07 names
+ * none: any admitted session may read its own projection.
+ */
+type CapabilityOperationId = Exclude<AdminRouteOperationId, 'CFG-05B-07'>;
+const requiredCapability: Readonly<Record<CapabilityOperationId, string>> = {
   'CFG-05B-01': 'admin.inbox.read',
   'CFG-05B-04': 'admin.capability.grant',
   'CFG-05B-05': 'admin.audit.read',
   'CFG-05B-06': 'admin.identity.mfa_reset',
-  'CFG-05B-07': null,
 };
 
 const deadlines: Readonly<Record<AdminRouteOperationId, number>> = {
@@ -149,24 +154,39 @@ export const constraintViolations = (
   } as ApiError['details'];
 };
 
+/** Admin body failures: size and media keep their status, the rest are 400. */
+export const adminBodyError = (
+  parsed: Extract<AuthenticationResult<never>, { ok: false }>,
+): Extract<AuthenticationResult<never>, { ok: false }> =>
+  parsed.status === 504
+    ? parsed
+    : authError(
+        parsed.status === 413 || parsed.status === 415 ? parsed.status : 400,
+        parsed.status === 413
+          ? 'PAYLOAD_TOO_LARGE'
+          : parsed.status === 415
+            ? 'UNSUPPORTED_MEDIA_TYPE'
+            : 'INVALID_REQUEST',
+        parsed.message,
+        constraintViolations(parsed.details),
+      );
+
 export const parseBody = async <T>(
   request: Request,
   schema: SchemaLike<T>,
   signal?: AbortSignal,
 ): Promise<AuthenticationResult<T>> => {
   const parsed = await parseConfigurationBody(request, schema, signal);
-  if (parsed.ok) return parsed;
-  if (parsed.status === 504) return parsed;
-  return authError(
-    parsed.status === 413 || parsed.status === 415 ? parsed.status : 400,
-    parsed.status === 413
-      ? 'PAYLOAD_TOO_LARGE'
-      : parsed.status === 415
-        ? 'UNSUPPORTED_MEDIA_TYPE'
-        : 'INVALID_REQUEST',
-    parsed.message,
-    constraintViolations(parsed.details),
-  );
+  return parsed.ok ? parsed : adminBodyError(parsed);
+};
+
+/** BE00 step 6 for an admin mutation, on the transport read at step 2. */
+export const decodeAdminBody = <T>(
+  transport: JsonMutationTransport,
+  schema: SchemaLike<T>,
+): AuthenticationResult<T> => {
+  const parsed = transport.decode(schema);
+  return parsed.ok ? parsed : adminBodyError(parsed);
 };
 
 const fallbackContext = (context: WorkerContext): RequestContext =>
@@ -222,10 +242,10 @@ const resolveContext = async (
   return { ok: true, value: parsed.data };
 };
 
-export const admit = async (
+/** BE00 steps 4 and 5: the verified session, then the acting context. */
+export const admitSession = async (
   context: WorkerContext,
   dependencies: WorkerDependencies,
-  operationId: AdminRouteOperationId,
   signal: AbortSignal,
 ): Promise<
   | Readonly<{ session: AuthenticationSession; requestContext: RequestContext }>
@@ -246,16 +266,18 @@ export const admit = async (
   );
   if (!requestContext.ok)
     return { response: responseForAuthError(context, requestContext) };
-  const required = requiredCapability[operationId];
-  if (
-    required !== null &&
-    !requestContext.value.capabilities.includes(required)
-  )
-    return {
-      response: responseForAuthError(
-        context,
-        authError(403, 'FORBIDDEN', 'The named admin capability is required.'),
-      ),
-    };
   return { session: session.value, requestContext: requestContext.value };
 };
+
+/** BE00 step 7: the named route capability, from the server-built context. */
+export const requireAdminCapability = (
+  context: WorkerContext,
+  operationId: CapabilityOperationId,
+  requestContext: RequestContext,
+): Response | null =>
+  requestContext.capabilities.includes(requiredCapability[operationId])
+    ? null
+    : responseForAuthError(
+        context,
+        authError(403, 'FORBIDDEN', 'The named admin capability is required.'),
+      );

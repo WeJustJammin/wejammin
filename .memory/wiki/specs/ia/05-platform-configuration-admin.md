@@ -345,12 +345,14 @@ All events use Shard 00 identifier-only envelopes.
 
 - [[specs/ia/06-trust-safety|Shard 06 — Trust and safety]]
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
-### References
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
+### References
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/ia/01-identity-authority|Shard 01 — Identity authority and party governance]]
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]

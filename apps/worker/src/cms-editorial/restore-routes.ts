@@ -8,7 +8,12 @@ import {
 } from '@wejammin/contracts';
 import { Hono, type Env } from 'hono';
 
-import { parseJsonBody, parseRequestPathId } from './admission-body';
+import {
+  decodeJsonBody,
+  jsonBodyPreflight,
+  parseRequestPathId,
+  readBytes,
+} from './admission-body';
 import { invalid, rejectCommandQuery } from './admission-common';
 import {
   dependencyDeadline,
@@ -109,31 +114,32 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
     const fail = (error: CmsEditorialError, headers?: Headers) =>
       finish(errorResponse(request, dependencies, requestId, error, headers));
 
+    // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
     if (originError !== null) return fail(originError);
+    const preflight = jsonBodyPreflight(request);
+    if (preflight !== null) return fail(preflight);
+    const csrfError = csrfErrorIfCookie(request);
+    if (csrfError !== null) return fail(csrfError);
+    const bytes = await withinDeadline((signal) => readBytes(request, signal));
+    if (!bytes.ok) return fail(bytes);
+    // BE00 steps 4 and 5: verified session, then acting context.
+    const identity = await withinDeadline((signal) =>
+      dependencies.resolveSession(request, signal),
+    );
+    if (!identity.ok) return fail(identity);
+    const invalidSession = validHumanSession(identity.value);
+    if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 6: strict query, paths and body.
     const queryError = rejectCommandQuery(request);
     if (queryError !== null) return fail(queryError);
     const entryId = parseRequestPathId(context.req.param('entryId'));
     if (!entryId.ok) return fail(entryId);
     const revisionId = parseRequestPathId(context.req.param('revisionId'));
     if (!revisionId.ok) return fail(revisionId);
-    const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-    if (media !== 'application/json')
-      return fail(invalid('Use application/json.', {}, 415));
-    const headers = parseEditorialHeaders(
-      request,
-      RevisionRestoreHeadersSchema,
-    );
-    if (!headers.ok) return fail(headers);
-    const csrfError = csrfErrorIfCookie(request);
-    if (csrfError !== null) return fail(csrfError);
-    const body = await withinDeadline((signal) =>
-      parseJsonBody<ReturnType<typeof RevisionRestoreRequestSchema.parse>>(
-        request,
-        RevisionRestoreRequestSchema,
-        signal,
-      ),
-    );
+    const body = decodeJsonBody<
+      ReturnType<typeof RevisionRestoreRequestSchema.parse>
+    >(bytes.value, RevisionRestoreRequestSchema);
     if (!body.ok) return fail(body);
     if (
       body.value.entryId !== entryId.value ||
@@ -157,17 +163,7 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
           422,
         ),
       );
-    if (body.value.expectedVersion !== headers.value.ifMatch)
-      return fail(
-        invalid('The expected version does not match If-Match.', {}, 422),
-      );
-
-    const identity = await withinDeadline((signal) =>
-      dependencies.resolveSession(request, signal),
-    );
-    if (!identity.ok) return fail(identity);
-    const invalidSession = validHumanSession(identity.value);
-    if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 7: capability, then quota.
     const capabilityError = requireEditorialCapability(
       identity.value,
       policy.capabilities,
@@ -189,6 +185,16 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
       }
       return fail(rate, rateHeaders);
     }
+    // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+    const headers = parseEditorialHeaders(
+      request,
+      RevisionRestoreHeadersSchema,
+    );
+    if (!headers.ok) return fail(headers);
+    if (body.value.expectedVersion !== headers.value.ifMatch)
+      return fail(
+        invalid('The expected version does not match If-Match.', {}, 422),
+      );
 
     const restoreRevision = dependencies.ports.restoreRevision;
     if (typeof restoreRevision !== 'function')

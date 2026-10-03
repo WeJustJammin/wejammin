@@ -61,3 +61,10 @@ rate/deadline, and 409 refresh behavior. Then add Zod/OpenAPI, private
 read-only RPC, Worker route, first-party proxy, native form, and RED→GREEN
 tests for legitimate, hidden, revoked, stale, and cross-tenant reads. No
 contract or criterion is changed by this scan.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

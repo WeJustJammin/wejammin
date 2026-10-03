@@ -177,6 +177,8 @@ describe('content schema registry safe error details', () => {
       dependencyClass: 'cms_registry',
       retryable: true,
     });
-    expect(safeDetails(failure(415))).toEqual({});
+    expect(safeDetails(failure(415))).toEqual({
+      allowedMediaTypes: ['application/json'],
+    });
   });
 });

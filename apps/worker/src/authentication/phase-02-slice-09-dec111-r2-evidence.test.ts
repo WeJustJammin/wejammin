@@ -128,7 +128,7 @@ describe('AUTH-API-19 If-Match and validation (AC-796, AC-817)', () => {
         })
       : rpcRefusal('VERSION_MISMATCH', 409);
 
-  it('[P2-S09-AC-796] forwards the If-Match decimal as the expected version and a version other than the current MFA version is 409 VERSION_MISMATCH with no provider effect (database raises it: supabase/tests/phase_02_slice_09_dec111_mfa_removal.sql:49)', async () => {
+  it('[P2-S09-AC-796] [P2-S09-AC-814] forwards the If-Match decimal as the expected version and a version other than the current MFA version is 409 VERSION_MISMATCH with no provider effect (database raises it: supabase/tests/phase_02_slice_09_dec111_mfa_removal.sql:49)', async () => {
     const jar = await mintJar();
     const stale = createWorld({
       handlers: { auth_mfa_removal_begin: removalBegin },

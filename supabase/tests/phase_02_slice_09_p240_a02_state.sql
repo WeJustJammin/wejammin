@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -157,13 +158,13 @@ select is(pg_temp.p_expect('lc:dep', 'a', pg_temp.p_efield('lc_active', 'short_t
   'deprecating an existing field is a lifecycle change that needs a migration plan: refused without one and the field stays active [P2-S09-AC-067]');
 select is(pg_temp.p_a02('lc:dep:ok', 'b', pg_temp.p_efield('title', 'long_text', jsonb_build_object('stableFieldId', pg_temp.p_field_id('b', 'title'), 'lifecycle', 'deprecated',
     'editorConfig', jsonb_build_object('label', 'Title', 'order', 0))), jsonb_build_object('migrationPlanId', pg_temp.s09d_id('b:plan'))), 'OK', 'with the ready plan the field is deprecated, never deleted [P2-S09-AC-067]');
-select is((select state from platform_private.cms_field_definition_versions where stable_field_id = pg_temp.p_field_id('b', 'title') and content_type_version_id = pg_temp.s09d_id('b:version')), 'deprecated', 'the deprecated field row still exists [P2-S09-AC-067]');
+select is((select state from platform_private.cms_field_definition_versions where stable_field_id = pg_temp.p_field_id('b', 'title') and content_type_version_id = pg_temp.s09d_id('b:version')), 'deprecated', 'the deprecated field row still exists [P2-S09-AC-067] [P2-S09-AC-171]');
 select set_config('app.cms_rpc', '', true);
 select throws_ok(format('delete from platform_private.cms_field_definition_versions where stable_field_id = %L', pg_temp.p_field_id('a', 'lc_active')), 'P0001', 'IMMUTABLE_RECORD',
-  'a direct DELETE of a field row outside a named RPC is rejected [P2-S09-AC-067]');
+  'a direct DELETE of a field row outside a named RPC is rejected [P2-S09-AC-067] [P2-S09-AC-171]');
 select set_config('app.cms_rpc', 'true', true);
 select throws_ok(format('delete from platform_private.cms_field_definition_versions where stable_field_id = %L', pg_temp.p_field_id('sp', 'title')), 'P0001', 'IMMUTABLE_RECORD',
-  'even inside an RPC context the field of an active version cannot be deleted [P2-S09-AC-067]');
+  'even inside an RPC context the field of an active version cannot be deleted [P2-S09-AC-067] [P2-S09-AC-171]');
 select throws_ok(format('delete from platform_private.cms_field_definition_versions where stable_field_id = %L', pg_temp.p_field_id('a', 'lc_active')), 'P0001', 'IMMUTABLE_RECORD',
   'nor can the field of a draft: no definition is removed except by deprecation or retirement [P2-S09-AC-067]');
 select set_config('app.cms_rpc', '', true);
@@ -176,7 +177,7 @@ select is(pg_temp.p_expect('f:hidden', 'a', pg_temp.p_efield('fx3', 'short_text'
 select is(pg_temp.p_expect('f:immutable', 'a', pg_temp.p_efield('retitle', 'short_text', jsonb_build_object('stableFieldId', pg_temp.p_field_id('a', 'title'))), 'CONFLICT'), 'ok', 'an immutable-key change is 409 CONFLICT and the draft is unchanged [P2-S09-AC-194]');
 select is(pg_temp.p_expect('f:stale', 'a', pg_temp.p_efield('fx4', 'short_text'), 'VERSION_MISMATCH', '{"expectedVersion":"1"}'), 'ok', 'a stale version is 409 VERSION_MISMATCH and the draft is unchanged [P2-S09-AC-194]');
 select is(pg_temp.p_expect('f:migration', 'a', pg_temp.p_efield('fx5', 'short_text'), 'VALIDATION_FAILED', jsonb_build_object('migrationPlanId', extensions.gen_random_uuid())), 'ok', 'a migration-plan failure is refused and the draft is unchanged [P2-S09-AC-194]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('f:anon', 'platform_api.cms_add_field_definition', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
   'field', pg_temp.p_efield('fx6', 'short_text'), 'migrationPlanId', null, 'expectedVersion', '1', 'idempotencyKey', 'p240-anon-a02-0001'));
 select is(pg_temp.s09d_outcome('f:anon'), 'UNAUTHENTICATED', 'a call with no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-194]');

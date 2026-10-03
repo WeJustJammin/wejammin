@@ -13,11 +13,15 @@ import {
   authError,
   parseIdempotencyKey,
   parseIfMatch,
+  decodeJsonBodyText,
+  jsonBodyPreflight,
   parseJsonBody,
+  readJsonBodyText,
   rejectUnexpectedQuery,
   responseForAuthError,
   safeIdentifierDigest,
-  verifySameOriginCsrf,
+  verifyCsrfToken,
+  verifySameOrigin,
 } from './boundary';
 import {
   enforceRate,
@@ -121,23 +125,22 @@ export const registerProviderAccessRoutes = (
 
   app.post('/api/v1/auth/oauth/start', async (context) => {
     configureRoute(context, 'AUTH-API-03');
-    const parsed = await parseJsonBody(
-      context.req.raw,
-      OAuthStartRequestSchema,
-    );
+    // AUTH-API-03 is a public sign-in start or a cookie-authenticated link or
+    // re-auth start, and the body names which. The body ceiling and content
+    // type (BE00 step 2) are checked first; the intent member is then the one
+    // thing read before the mode-specific steps.
+    const preflight = jsonBodyPreflight(context.req.raw);
+    if (preflight !== null) return responseForAuthError(context, preflight);
+    const bodyText = await readJsonBodyText(context.req.raw);
+    if (!bodyText.ok) return responseForAuthError(context, bodyText);
+    const parsed = decodeJsonBodyText(bodyText.value, OAuthStartRequestSchema);
     if (!parsed.ok) return responseForAuthError(context, parsed);
     let session = null;
-    let idempotencyKey: string | null = null;
-    let ifMatch: string | null = null;
     if (parsed.value.intent !== 'sign_in') {
-      const csrfError = await verifySameOriginCsrf(context.req.raw);
+      const origin = verifySameOrigin(context.req.raw);
+      if (origin !== null) return responseForAuthError(context, origin);
+      const csrfError = await verifyCsrfToken(context.req.raw);
       if (csrfError !== null) return responseForAuthError(context, csrfError);
-      const key = parseIdempotencyKey(context.req.raw);
-      if (!key.ok) return responseForAuthError(context, key);
-      const version = parseIfMatch(context.req.raw);
-      if (!version.ok) return responseForAuthError(context, version);
-      idempotencyKey = key.value;
-      ifMatch = version.value;
       const resolved = await requireSession(context, dependencies);
       if (!resolved.ok) return responseForAuthError(context, resolved);
       session = resolved.value;
@@ -152,6 +155,17 @@ export const registerProviderAccessRoutes = (
       session,
     );
     if (rateError !== null) return rateError;
+    let idempotencyKey: string | null = null;
+    let ifMatch: string | null = null;
+    if (parsed.value.intent !== 'sign_in') {
+      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+      const key = parseIdempotencyKey(context.req.raw);
+      if (!key.ok) return responseForAuthError(context, key);
+      const version = parseIfMatch(context.req.raw);
+      if (!version.ok) return responseForAuthError(context, version);
+      idempotencyKey = key.value;
+      ifMatch = version.value;
+    }
     if (parsed.value.intent === 'link') {
       if (dependencies.startLoginMethodLink === undefined)
         return missingDependencies(context);

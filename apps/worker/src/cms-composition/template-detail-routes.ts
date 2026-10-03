@@ -9,7 +9,10 @@ import { Hono, type Env } from 'hono';
 import { checkOrigin } from '../cms-editorial/admission-headers';
 import { validHumanSession } from '../cms-editorial/admission-identity';
 import type { CmsEditorialSession } from '../cms-editorial/types';
-import { templateReadHeadersError } from './template-shared';
+import {
+  templateReadHeadersError,
+  templateReadMediaError,
+} from './template-shared';
 import {
   commonHeaders,
   DEADLINE_MS,
@@ -62,13 +65,9 @@ export const registerCmsTemplateDetailRoutes = <E extends Env>(
     const execute = async (signal: AbortSignal): Promise<Response> => {
       const originError = checkOrigin(request, dependencies.humanOrigins);
       if (originError !== null) return respondError(originError);
-      if (new URL(request.url).search !== '') return respondError(failure(400));
-      const parsedKey = CmsTemplateKeySchema.safeParse(
-        context.req.param('templateKey'),
-      );
-      if (!parsedKey.success) return respondError(failure(400));
-      const headersError = templateReadHeadersError(request);
-      if (headersError !== null) return respondError(headersError);
+      // BE00 step 2: a read accepts no request media.
+      const mediaError = templateReadMediaError(request);
+      if (mediaError !== null) return respondError(mediaError);
 
       let session: CmsTemplateResult<CmsEditorialSession>;
       try {
@@ -80,6 +79,15 @@ export const registerCmsTemplateDetailRoutes = <E extends Env>(
       if (!session.ok) return respondError(session);
       const malformed = validHumanSession(session.value);
       if (malformed !== null) return respondError(malformed);
+      // BE00 step 6: strict query, path, headers and body absence.
+      if (new URL(request.url).search !== '') return respondError(failure(400));
+      const parsedKey = CmsTemplateKeySchema.safeParse(
+        context.req.param('templateKey'),
+      );
+      if (!parsedKey.success) return respondError(failure(400));
+      const headersError = templateReadHeadersError(request);
+      if (headersError !== null) return respondError(headersError);
+      // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.template_designer')

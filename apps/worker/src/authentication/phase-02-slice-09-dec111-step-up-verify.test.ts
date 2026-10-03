@@ -81,7 +81,12 @@ describe('AUTH-API-21 step-up verify (production composition)', () => {
       body: { code: '123456', challengeId: CHALLENGE_ID },
       jar,
     });
-    expect([400, 422]).toContain(strict.status);
+    // A strict-object violation (an unknown or missing member) is the one
+    // 422 VALIDATION_FAILED outcome, never a 400.
+    expect(strict.status).toBe(422);
+    expect(((await strict.clone().json()) as { code: string }).code).toBe(
+      'VALIDATION_FAILED',
+    );
     for (const code of ['12345', '1234567', 'abc123', ' 12345', '12-345']) {
       const world = createWorld();
       const response = await send(world.app, {

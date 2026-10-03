@@ -17,6 +17,7 @@ import {
   forwardContentSchemaRegistryMutation,
 } from '../../../server/content-schema-registry-platform-api';
 import { safeContentSchemaRegistryReturnPath } from '../../../server/content-schema-registry-contracts';
+import { cmsAccessNavigationVisible } from '../../../server/cms-capability-grant-page-response';
 import { probeCmsCapabilityGrantOwner } from '../../../server/cms-capability-grant-platform-api';
 import {
   jsonContinuation,
@@ -101,9 +102,10 @@ const page = result.page;
 applyContentSchemaRegistryRecoveryHeaders(Astro.response.headers, page);
 // Navigation only: the grant console entry is shown solely to the owner, whose
 // proof is a successful one-row CMS-03A-18 read. A failed probe hides the link.
-const ownerNav =
+const ownerProbeSucceeded =
   page.variant === 'ownerFull' &&
   (await probeCmsCapabilityGrantOwner(Astro.request, env.PLATFORM_API));
+const ownerNav = cmsAccessNavigationVisible(page.variant, ownerProbeSucceeded);
 ---
 
 <html lang="en">

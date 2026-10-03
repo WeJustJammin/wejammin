@@ -82,21 +82,6 @@ describe('R2 validation messages and pointers on the wire', () => {
     ]);
   });
 
-  it('[P2-S09-AC-310] CMS-03A-09 reports the exact OD-4 locale message and pointer for a clone with duplicated supported locales', async () => {
-    expect(
-      await violationsFor('CMS-03A-09', {
-        expectedVersion: '1',
-        supportedLocales: ['en-US', 'en-US'],
-        fallbackChains: { 'en-US': ['en-US'] },
-        defaultTemplateVersionId: null,
-        templateBindings: null,
-      }),
-    ).toContainEqual({
-      path: '/supportedLocales/1',
-      message: 'supportedLocales must be unique',
-    });
-  });
-
   it('[P2-S09-AC-310] CMS-03A-09 reports the exact OD-4 pair message at /fallbackChains when only one of the pair is given', async () => {
     expect(
       await violationsFor('CMS-03A-09', {

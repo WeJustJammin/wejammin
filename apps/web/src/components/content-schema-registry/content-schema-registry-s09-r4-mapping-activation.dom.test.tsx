@@ -112,11 +112,7 @@ const activate = async (
   });
   form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await vi.waitFor(() =>
-    expect(
-      form.querySelector(
-        '[data-cms-activation-result], [data-cms-command-status]',
-      ),
-    ).not.toBeNull(),
+    expect(form.querySelector('[data-cms-command-status]')).not.toBeNull(),
   );
   cleanup();
   return { form, navigate, calls };
@@ -130,11 +126,7 @@ const answerFor = (body: unknown, status = 202): Response =>
 
 const resultHtml = async (body: unknown, status = 202): Promise<string> => {
   const { form } = await activate(answerFor(body, status));
-  return (
-    form.querySelector('[data-cms-activation-result]')?.outerHTML ??
-    form.querySelector('[data-cms-command-status]')?.outerHTML ??
-    ''
-  );
+  return form.querySelector('[data-cms-activation-result]')?.outerHTML ?? '';
 };
 
 const NOT_VARIED: Readonly<Record<string, string>> = {

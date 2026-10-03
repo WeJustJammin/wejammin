@@ -1,0 +1,30 @@
+-- Shared pgTAP helper: set the caller's verified JWT claims exactly the way
+-- PostgREST publishes them, as ONE JSON setting (request.jwt.claims).
+--
+-- Include it once, before the first `begin;`, from the top of a test file:
+--   \ir support/jwt-claims.sqlinc
+-- Fixtures that file includes inherit the helper (it lives in the session's
+-- pg_temp schema), so they call pg_temp.set_jwt_claim without including it.
+--
+-- pg_temp.set_jwt_claim(name, value, is_local) merges one claim into the
+-- current JSON, so a test can set `role` and `sub` independently, as the
+-- previous per-claim settings allowed. An empty or NULL value removes the
+-- claim. `is_local` follows set_config (default true: transaction-local).
+create or replace function pg_temp.set_jwt_claim(
+  p_name text,
+  p_value text,
+  p_local boolean default true
+) returns text
+language plpgsql
+as $body$
+declare
+  claims jsonb := coalesce(nullif(pg_catalog.current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+begin
+  if p_value is null or p_value = '' then
+    claims := claims - p_name;
+  else
+    claims := claims || pg_catalog.jsonb_build_object(p_name, p_value);
+  end if;
+  return pg_catalog.set_config('request.jwt.claims', claims::text, p_local);
+end;
+$body$;

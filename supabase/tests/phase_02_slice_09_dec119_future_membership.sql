@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -22,6 +23,7 @@ select no_plan();
 -- A real confirmed membership of the owner organization that starts N days from today.
 create or replace function pg_temp.s09t_member_starting(p_actor text, p_days integer) returns void language plpgsql as $body$
 begin
+  -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
   insert into identity_private.membership_tenure(organization_id, person_id, state, provenance, governance_mode,
     starts_on, accepted_at, actor_id, version)
   select pg_temp.s09d_id('ownerOrg'), subject.person_id, 'confirmed', 'invitation', 'ungoverned',
@@ -34,6 +36,7 @@ create or replace function pg_temp.s09t_warp_start(p_actor text, p_days integer)
 begin
   begin
     alter table identity_private.membership_tenure disable trigger user;
+    -- TIME-WARP: shifts a membership window to reach a time-dependent branch.
     update identity_private.membership_tenure
        set starts_on = current_date + p_days
      where organization_id = pg_temp.s09d_id('ownerOrg')

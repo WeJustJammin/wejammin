@@ -14,11 +14,10 @@ import {
   authError,
   parseIdempotencyKey,
   parseIfMatch,
-  parseJsonBody,
+  admitJsonMutationTransport,
   quotedVersion,
   rejectUnexpectedQuery,
   responseForAuthError,
-  verifySameOriginCsrf,
 } from './boundary';
 import {
   enforceRate,
@@ -57,19 +56,16 @@ export const registerAccountMergeRoutes = (
 ): void => {
   app.post('/api/v1/account-merges', async (context) => {
     configureRoute(context, 'AUTH-API-12');
-    const parsed = await parseJsonBody(
-      context.req.raw,
-      MergeCreateRequestSchema,
-    );
-    if (!parsed.ok) return responseForAuthError(context, parsed);
-    const key = parseIdempotencyKey(context.req.raw);
-    if (!key.ok) return responseForAuthError(context, key);
-    const version = parseIfMatch(context.req.raw);
-    if (!version.ok) return responseForAuthError(context, version);
-    const csrfError = await verifySameOriginCsrf(context.req.raw);
-    if (csrfError !== null) return responseForAuthError(context, csrfError);
+    // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+    const transport = await admitJsonMutationTransport(context.req.raw);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    // BE00 steps 4 and 5: verified session and acting context.
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
+    // BE00 step 6: strict body.
+    const parsed = transport.value.decode(MergeCreateRequestSchema);
+    if (!parsed.ok) return responseForAuthError(context, parsed);
+    // BE00 step 7: step-up freshness, then quota.
     const stepUpError = requireRecentVerification(context, resolved.value);
     if (stepUpError !== null) return stepUpError;
     const rateError = await enforceRate(
@@ -79,6 +75,11 @@ export const registerAccountMergeRoutes = (
       resolved.value,
     );
     if (rateError !== null) return rateError;
+    // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+    const key = parseIdempotencyKey(context.req.raw);
+    if (!key.ok) return responseForAuthError(context, key);
+    const version = parseIfMatch(context.req.raw);
+    if (!version.ok) return responseForAuthError(context, version);
     if (dependencies.createAccountMerge === undefined)
       return missingSliceDependency(context);
     const result = await dependencies.createAccountMerge(
@@ -101,6 +102,9 @@ export const registerAccountMergeRoutes = (
 
   app.get('/api/v1/account-merges/:mergeId', async (context) => {
     configureRoute(context, 'AUTH-API-13');
+    // BE00 steps 4 and 5: verified session; strict path and query follow (step 6).
+    const resolved = await requireSession(context, dependencies);
+    if (!resolved.ok) return responseForAuthError(context, resolved);
     const path = AuthMergePathSchema.safeParse({
       mergeId: context.req.param('mergeId'),
     });
@@ -112,8 +116,6 @@ export const registerAccountMergeRoutes = (
     }
     const queryError = rejectUnexpectedQuery(context.req.raw);
     if (queryError !== null) return responseForAuthError(context, queryError);
-    const resolved = await requireSession(context, dependencies);
-    if (!resolved.ok) return responseForAuthError(context, resolved);
     const rateError = await enforceRate(
       context,
       dependencies,
@@ -143,6 +145,10 @@ export const registerAccountMergeRoutes = (
     '/api/v1/account-merges/:mergeId/prove-duplicate',
     async (context) => {
       configureRoute(context, 'AUTH-API-14');
+      const transport = await admitJsonMutationTransport(context.req.raw);
+      if (!transport.ok) return responseForAuthError(context, transport);
+      const resolved = await requireSession(context, dependencies);
+      if (!resolved.ok) return responseForAuthError(context, resolved);
       const path = AuthMergePathSchema.safeParse({
         mergeId: context.req.param('mergeId'),
       });
@@ -152,19 +158,8 @@ export const registerAccountMergeRoutes = (
           authError(400, 'INVALID_REQUEST', 'The merge identifier is invalid.'),
         );
       }
-      const parsed = await parseJsonBody(
-        context.req.raw,
-        MergeProofRequestSchema,
-      );
+      const parsed = transport.value.decode(MergeProofRequestSchema);
       if (!parsed.ok) return responseForAuthError(context, parsed);
-      const key = parseIdempotencyKey(context.req.raw);
-      if (!key.ok) return responseForAuthError(context, key);
-      const version = parseIfMatch(context.req.raw);
-      if (!version.ok) return responseForAuthError(context, version);
-      const csrfError = await verifySameOriginCsrf(context.req.raw);
-      if (csrfError !== null) return responseForAuthError(context, csrfError);
-      const resolved = await requireSession(context, dependencies);
-      if (!resolved.ok) return responseForAuthError(context, resolved);
       const stepUpError = requireRecentVerification(context, resolved.value);
       if (stepUpError !== null) return stepUpError;
       const rateError = await enforceRate(
@@ -174,6 +169,10 @@ export const registerAccountMergeRoutes = (
         resolved.value,
       );
       if (rateError !== null) return rateError;
+      const key = parseIdempotencyKey(context.req.raw);
+      if (!key.ok) return responseForAuthError(context, key);
+      const version = parseIfMatch(context.req.raw);
+      if (!version.ok) return responseForAuthError(context, version);
       if (dependencies.startAccountMergeProof === undefined)
         return missingSliceDependency(context);
       const result = await dependencies.startAccountMergeProof(
@@ -202,6 +201,10 @@ export const registerAccountMergeRoutes = (
 
   app.post('/api/v1/account-merges/:mergeId/confirm', async (context) => {
     configureRoute(context, 'AUTH-API-15');
+    const transport = await admitJsonMutationTransport(context.req.raw);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    const resolved = await requireSession(context, dependencies);
+    if (!resolved.ok) return responseForAuthError(context, resolved);
     const path = AuthMergePathSchema.safeParse({
       mergeId: context.req.param('mergeId'),
     });
@@ -211,19 +214,8 @@ export const registerAccountMergeRoutes = (
         authError(400, 'INVALID_REQUEST', 'The merge identifier is invalid.'),
       );
     }
-    const parsed = await parseJsonBody(
-      context.req.raw,
-      MergeConfirmRequestSchema,
-    );
+    const parsed = transport.value.decode(MergeConfirmRequestSchema);
     if (!parsed.ok) return responseForAuthError(context, parsed);
-    const key = parseIdempotencyKey(context.req.raw);
-    if (!key.ok) return responseForAuthError(context, key);
-    const version = parseIfMatch(context.req.raw);
-    if (!version.ok) return responseForAuthError(context, version);
-    const csrfError = await verifySameOriginCsrf(context.req.raw);
-    if (csrfError !== null) return responseForAuthError(context, csrfError);
-    const resolved = await requireSession(context, dependencies);
-    if (!resolved.ok) return responseForAuthError(context, resolved);
     const stepUpError = requireRecentVerification(context, resolved.value);
     if (stepUpError !== null) return stepUpError;
     const rateError = await enforceRate(
@@ -233,6 +225,10 @@ export const registerAccountMergeRoutes = (
       resolved.value,
     );
     if (rateError !== null) return rateError;
+    const key = parseIdempotencyKey(context.req.raw);
+    if (!key.ok) return responseForAuthError(context, key);
+    const version = parseIfMatch(context.req.raw);
+    if (!version.ok) return responseForAuthError(context, version);
     if (dependencies.confirmAccountMerge === undefined)
       return missingSliceDependency(context);
     const result = await dependencies.confirmAccountMerge(

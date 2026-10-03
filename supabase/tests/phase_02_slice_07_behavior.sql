@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -21,8 +22,8 @@ select platform_api.auth_bootstrap(
   decode(repeat('33', 32), 'hex'), 'a7010000-0000-4000-8000-000000000031',
   'a7010000-0000-4000-8000-000000000032');
 
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a7010000-0000-4000-8000-000000000002', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a7010000-0000-4000-8000-000000000002', true);
 select set_config('app.auth_user_id', 'a7010000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_auth_user_id', 'a7010000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings
@@ -90,8 +91,8 @@ select organization_id, reviewer_person_id, capability, current_date,
 insert into platform_private.cfg_release_principals(principal_id, key_id)
 values ('a7010000-0000-4000-8000-000000000001', 'release.ci');
 
-select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+select pg_temp.set_jwt_claim('sub', '', true);
 select set_config('test.slice07_step_up_at', clock_timestamp()::text, true);
 
 create temp table p2_s07_definition as

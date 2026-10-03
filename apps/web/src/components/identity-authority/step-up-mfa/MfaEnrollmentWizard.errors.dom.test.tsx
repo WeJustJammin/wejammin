@@ -128,10 +128,16 @@ describe('MfaEnrollmentWizard enrollment start errors', () => {
     expect(container.textContent).toContain(
       'Two-step verification is not available for this account.',
     );
-    const gated = container.querySelector(
-      '[aria-disabled="true"], button[disabled]',
+    // FE00 CapabilityGate, disabled variant: exactly one gate, naming the
+    // reason, and no other element stands in for it.
+    const gates = container.querySelectorAll('section.infra-capability-gate');
+    expect(gates).toHaveLength(1);
+    expect(gates[0]?.querySelector('h2')?.textContent).toBe(
+      'Action unavailable',
     );
-    expect(gated).not.toBeNull();
+    expect(gates[0]?.querySelector('p')?.textContent).toBe(
+      'Two-step verification is not available for this account.',
+    );
   });
 
   it('[P2-S09-AC-1095] asks for a reload on a CSRF refusal', async () => {

@@ -269,6 +269,54 @@ describe('scoped draft across the step-up detour', () => {
     expect(stored()).not.toContain(REVIEWER_PERSON_ID);
   });
 
+  it('[P2-S09-AC-1031] CMS-03A-14 assignment: a 401 STEP_UP_REQUIRED routes to /step-up with the page as returnTo, persists the original key, and the returned form reuses it with the reviewer ID left empty', async () => {
+    const form = mountAssignmentForm();
+    form.querySelector<HTMLInputElement>('[name="reviewerPersonId"]')!.value =
+      REVIEWER_PERSON_ID;
+    form.querySelector<HTMLInputElement>('[name="expiresAt"]')!.value =
+      '2026-10-05T12:00:00.000Z';
+    const key = form.querySelector<HTMLInputElement>(
+      '[name="idempotency-key"]',
+    )?.value;
+    expect(key).toBeTruthy();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        respond(
+          401,
+          stepUpBody({ recoveryAction: 'step_up', allowedMethods: ['totp'] }),
+        ),
+      ),
+    );
+    const navigate = vi.fn();
+    const first = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate,
+    });
+    submit(form);
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+    first();
+    expect(String(navigate.mock.calls[0]?.[0])).toMatch(
+      /^\/step-up\?returnTo=%2Fapp%2Fcms-content-modeling%2F/u,
+    );
+    expect(stored()).toContain(key ?? 'missing-key');
+    expect(stored()).not.toContain(REVIEWER_PERSON_ID);
+
+    const back = mountAssignmentForm();
+    const fetchStub = vi.fn();
+    vi.stubGlobal('fetch', fetchStub);
+    const second = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate: vi.fn(),
+    });
+    expect(
+      back.querySelector<HTMLInputElement>('[name="idempotency-key"]')?.value,
+    ).toBe(key);
+    expect(
+      back.querySelector<HTMLInputElement>('[name="reviewerPersonId"]')?.value,
+    ).toBe('');
+    expect(fetchStub).not.toHaveBeenCalled();
+    second();
+  });
+
   it('[P2-S09-AC-1139] [P2-S09-AC-1032] restores the draft after step-up, reuses the original key, announces it and waits for explicit confirmation', async () => {
     const first = mountDecisionForm();
     choose(first, 'reject');

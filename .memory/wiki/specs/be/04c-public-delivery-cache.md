@@ -484,3 +484,10 @@ None.
 - 04b governed-media/rendition split: asset/rendition eligibility events are consumed; this file does not own media ingest, rights claims, or rendition routes.
 - [04b](04b-governed-media-renditions.md) also owns the single `DeliveryPurgeRecord` table that this file consumes; [BE05a](05a-settings-flags-runtime.md) supplies the S07 service-credential pattern for the command principals.
 - Shard 03: publication/version and preview-token authority. Shard 05: route/cache policy. Shards 06, 10, and 20: downward protected hold/revocation callers and case ownership.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

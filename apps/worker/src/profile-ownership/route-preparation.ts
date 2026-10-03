@@ -1,13 +1,16 @@
 import type { WorkerContext, WorkerDependencies } from '../index';
 import { responseForAuthError } from '../authentication/boundary';
-import type { AuthenticationSession } from '../authentication/types';
+import type {
+  AuthenticationResult,
+  AuthenticationSession,
+} from '../authentication/types';
 import {
+  admitProfileTransport,
   enforceProfileRate,
-  parseProfileBody,
   parseProfileCommandHeaders,
   parseProfileQuery,
-  requireProfileCsrf,
   requireProfileSession,
+  requireProfileStepUp,
   type SchemaLike,
 } from './route-support';
 import type { ProfilePortInput } from './types';
@@ -23,6 +26,15 @@ export type PreparedCommand = Readonly<{
 type Preparation =
   Readonly<{ value: PreparedCommand }> | Readonly<{ response: Response }>;
 
+export type PathResult = AuthenticationResult<Readonly<Record<string, string>>>;
+
+/**
+ * Admission in BE00 "Hono Middleware Order": origin, body ceiling, content
+ * type and session-bound CSRF (step 2; a public command has no session and so
+ * neither origin nor CSRF); verified session and acting context (steps 4 and
+ * 5); strict query, path and body (step 6); step-up freshness and quota
+ * (step 7); then the exact Idempotency-Key and If-Match (step 8).
+ */
 export const prepare = async <T>(
   context: WorkerContext,
   operationId: ActiveOperation,
@@ -30,28 +42,32 @@ export const prepare = async <T>(
   auth: WorkerDependencies['auth'],
   authMode: 'public' | 'session' | 'session_step_up',
   ifMatchRequired: boolean,
+  path?: PathResult,
 ): Promise<Preparation> => {
-  const queryError = parseProfileQuery(context.req.raw);
-  if (queryError !== null)
-    return { response: responseForAuthError(context, queryError) };
-  const body = await parseProfileBody(context.req.raw, schema);
-  if (!body.ok) return { response: responseForAuthError(context, body) };
-  const headers = parseProfileCommandHeaders(context.req.raw, ifMatchRequired);
-  if (!headers.ok) {
-    return { response: responseForAuthError(context, headers) };
-  }
+  const transport = await admitProfileTransport(
+    context.req.raw,
+    authMode !== 'public',
+  );
+  if (!transport.ok)
+    return { response: responseForAuthError(context, transport) };
   let session: AuthenticationSession | null = null;
   if (authMode !== 'public') {
-    const resolved = await requireProfileSession(
-      context,
-      auth,
-      authMode === 'session_step_up',
-    );
+    const resolved = await requireProfileSession(context, auth);
     if (!resolved.ok)
       return { response: responseForAuthError(context, resolved) };
     session = resolved.value;
-    const csrfError = await requireProfileCsrf(context);
-    if (csrfError !== null) return { response: csrfError };
+  }
+  const queryError = parseProfileQuery(context.req.raw);
+  if (queryError !== null)
+    return { response: responseForAuthError(context, queryError) };
+  if (path !== undefined && !path.ok)
+    return { response: responseForAuthError(context, path) };
+  const body = transport.value.decode(schema);
+  if (!body.ok) return { response: responseForAuthError(context, body) };
+  if (session !== null && authMode === 'session_step_up') {
+    const stepUp = requireProfileStepUp(session);
+    if (stepUp !== null)
+      return { response: responseForAuthError(context, stepUp) };
   }
   const rateError = await enforceProfileRate(
     context,
@@ -60,6 +76,10 @@ export const prepare = async <T>(
     session,
   );
   if (rateError !== null) return { response: rateError };
+  const headers = parseProfileCommandHeaders(context.req.raw, ifMatchRequired);
+  if (!headers.ok) {
+    return { response: responseForAuthError(context, headers) };
+  }
   return {
     value: {
       body: body.value as Readonly<Record<string, unknown>>,

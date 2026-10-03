@@ -121,8 +121,7 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-const workerContext =
-  "select set_config('request.jwt.claim.role','service_role',true); select set_config('app.cms_rpc','true',true);";
+const workerContext = `select set_config('request.jwt.claims','{"role":"service_role"}',true); select set_config('app.cms_rpc','true',true);`;
 const call = (name, request) =>
   runJson(`${workerContext} select platform_api.${name}(${json(request)});`);
 const callAsync = (name, request) =>

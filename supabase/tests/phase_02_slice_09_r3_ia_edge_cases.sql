@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -58,6 +59,7 @@ select is(pg_temp.r3_review_digest('b'), :'b_frozen', 'and the review stays froz
 select pg_temp.s09d_create_type('c', 'r3ia_c');
 select pg_temp.s09d_to_review('c');
 select pg_temp.s09d_assign('c', 'rev1');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set state = 'revoked' where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid;
 select pg_temp.s09d_decide('c', 'rev1', 'approve', '{}'::jsonb, 'c:nobinding');
 select is(pg_temp.s09d_outcome('c:nobinding'), 'STEP_UP_REQUIRED', 'authority needs a current binding: a revoked binding makes the decision STEP_UP_REQUIRED [P2-S09-AC-1128]');
@@ -140,8 +142,11 @@ $body$;
 select pg_temp.s09d_create_type('h', 'r3ia_h');
 select pg_temp.s09d_add_relation('h');
 select pg_temp.s09d_to_approved('h');
+-- negative-control drift (no command edits a bound relation's bounds): written under the RPC flag a hostile writer sets itself
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_relation_definitions set max_count = 4
  where field_definition_id in (select id from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('h:version'));
+select set_config('app.cms_rpc', '', true);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('h:review')), 'invalidated', 'dependency drift invalidates the approved review [P2-S09-AC-1131]');
 select pg_temp.s09d_activate('h', 'owner', '{}'::jsonb, 'h:late');
 select is(pg_temp.s09d_outcome('h:late'), 'CONFLICT', 'activation after dependency drift is refused with the typed 409 CONFLICT [P2-S09-AC-1131]');
@@ -169,8 +174,11 @@ select is(pg_temp.s09d_outcome('i:late'), 'CONFLICT', 'activation after compiler
 
 select pg_temp.s09d_create_type('j', 'r3ia_j');
 select pg_temp.s09d_to_approved('j');
+-- negative-control drift (no command changes a type's owner capability): written under the RPC flag a hostile writer sets itself
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_types set owner_capability = 'cms.schema_registry.read' where id = pg_temp.s09d_id('j:type');
 update platform_private.cms_content_types set owner_capability = 'cms.schema_designer' where id = pg_temp.s09d_id('j:type');
+select set_config('app.cms_rpc', '', true);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('j:review')), 'invalidated', 'candidate authority (owner capability) drift invalidates the approved review [P2-S09-AC-1131]');
 select pg_temp.s09d_activate('j', 'owner', '{}'::jsonb, 'j:late');
 select is(pg_temp.s09d_outcome('j:late'), 'CONFLICT', 'activation after authority drift is refused with the typed 409 CONFLICT [P2-S09-AC-1131]');
@@ -199,7 +207,7 @@ select pg_temp.s09d_to_approved('l', array['rev2', 'rev3']);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('l:review')), 'approved', 'fixture: the legal-specialist protected review is approved');
 select ok(pg_temp.s09g_warp('rev2', 'cms.reviewer.legal', -3, -1), 'fixture: the approver''s specialist grant lapsed yesterday (time-shift of the real aggregate and its projection)');
 select pg_temp.s09d_activate('l', 'owner', '{}'::jsonb, 'l:late');
-select is(pg_temp.s09d_outcome('l:late'), 'APPROVAL_INVALID', 'an expired specialist capability stops the approver qualifying: activation is refused with APPROVAL_INVALID [P2-S09-AC-1135]');
+select is(pg_temp.s09d_outcome('l:late'), 'APPROVAL_INVALID', 'an expired specialist capability stops the approver qualifying: activation is refused with APPROVAL_INVALID [P2-S09-AC-1135] [P2-S09-AC-632]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('l:version')), 'approved', 'and nothing switched: the candidate stays approved [P2-S09-AC-1135]');
 select pg_temp.s09d_rpc('l:renew', 'platform_api.cms_renew_capability_grant', 'owner',
   jsonb_build_object('grantId', (select id from platform_private.cms_capability_grants where subject_person_ref = pg_temp.s09d_actor_id('rev2', 'person')::uuid and capability_code = 'cms.reviewer.legal'),

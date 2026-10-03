@@ -26,9 +26,12 @@ select ok(
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('mb:version')) = 'review',
   'AC189 fixture: both move candidates hold real open reviews'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_relation_definitions
 set field_definition_id = pg_temp.s09d_id('mb:fieldId')
 where field_definition_id = pg_temp.s09d_id('ma:fieldId');
+select set_config('app.cms_rpc', '', true);
 select ok(
   pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('ma:review')) = 'invalidated'
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mb:review')) = 'invalidated',
@@ -46,6 +49,8 @@ select pg_temp.s09d_to_review('md');
 select pg_temp.s09d_guc_restore();
 select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cfg_rpc', 'true', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_content_type_template_bindings(
   id, owner_id, state, version, content_type_version_id,
   template_version_id, position
@@ -56,14 +61,18 @@ insert into platform_private.cms_content_type_template_bindings(
   'active', 1, pg_temp.s09d_id('mc:version'),
   'a9090000-0000-4000-8000-000000000179', 0
 );
+select set_config('app.cms_rpc', '', true);
 select ok(
   pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mc:review')) = 'invalidated'
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('md:review')) = 'open',
   'AC189 a new child binding invalidates only its own candidate''s open review'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_type_template_bindings
 set content_type_version_id = pg_temp.s09d_id('md:version')
 where id = 'a9090000-0000-4000-8000-000000000179';
+select set_config('app.cms_rpc', '', true);
 select ok(
   pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mc:review')) = 'invalidated'
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('md:review')) = 'invalidated',
@@ -102,6 +111,10 @@ select ok(
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('mf:review')) = 'open',
   'AC189 fixture: one open review in each organization'
 );
+-- the move is a service-role identity command (system scope): no human session is published
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true);
+-- TIME-WARP: shifts a membership window to reach a time-dependent branch.
 update identity_private.membership_tenure
 set organization_id = (select organization_id from s09_fixture_org_two)
 where id = 'a9090000-0000-4000-8000-000000000201';

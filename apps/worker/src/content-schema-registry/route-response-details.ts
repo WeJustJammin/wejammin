@@ -10,6 +10,7 @@ import {
   registeredReasonCode,
   withinDetailsCeiling,
 } from './error-detail-values';
+import { ALLOWED_MEDIA_TYPES } from './admission-common';
 import type { ContentSchemaRegistryError } from './types';
 
 /**
@@ -70,6 +71,9 @@ const registeredDetails = (
   operationId: string | undefined,
 ): Readonly<Record<string, unknown>> => {
   if (result.status === 404 || result.status === 500) return {};
+  // BE00: a 415 carries only the route allowlist, never port-authored text.
+  if (result.status === 415)
+    return { allowedMediaTypes: [...ALLOWED_MEDIA_TYPES] };
   if (result.status === 400 || result.status === 422) {
     const details = result.details ?? {};
     const violations = details.violations;

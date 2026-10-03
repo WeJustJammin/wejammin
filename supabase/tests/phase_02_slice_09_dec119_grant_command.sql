@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -39,6 +40,7 @@ select pg_temp.s09g_grant('g:other', 'other', 'rev1', 'cms.author', pg_temp.s09g
 select is(pg_temp.s09d_outcome('g:other'), 'FORBIDDEN', 'another organization''s designer cannot grant (403) [P2-S09-AC-523]');
 select pg_temp.s09g_grant('g:nobinding', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(3), '{}', null, false);
 select is(pg_temp.s09d_outcome('g:nobinding'), 'STEP_UP_REQUIRED', 'a request without the private acting-context binding is 401 STEP_UP_REQUIRED [P2-S09-AC-523]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '20 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_grant('g:stale', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(3));

@@ -18,7 +18,7 @@ import type {
   HumanReadOperationId,
 } from './types';
 
-export type HumanAuthority = Readonly<
+export type HumanAuthentication = Readonly<
   | { ok: true; session: ContentSchemaRegistrySession }
   | { ok: false; response: Response }
 >;
@@ -47,43 +47,59 @@ export const partyLimitFor = (
   'partyRateLimit' in policy ? { partyLimit: policy.partyRateLimit } : {};
 
 /**
- * The shared human authority pipeline: origin, session, capability, step-up
- * (policy `stepUp: required`), CSRF (policy `csrf: required`), then the
- * per-user and per-party rate gate. A refusal is the complete response and
- * the operation port is never reached.
+ * The shared human route gates, one function per BE00 "Hono Middleware Order"
+ * step, so a handler composes them in exactly the contract order:
+ * - step 2 `origin` (CORS allowlist) and `csrf` (same-origin session-bound CSRF
+ *   on cookie mutations whose policy requires it);
+ * - steps 4 and 5 `authenticate` (verified session, then acting context);
+ * - step 7 `authorize` (route capability, step-up freshness, then the per-user
+ *   and per-party quota).
+ * A refusal is the complete response and the operation port is never reached.
  */
-export const createHumanAuthority =
-  (dependencies: ContentSchemaRegistryDependencies) =>
-  async (
+export const createHumanAuthority = (
+  dependencies: ContentSchemaRegistryDependencies,
+) => {
+  const refuse = (
     context: FeatureContext,
-    operationId: HumanMutationOperationId | HumanReadOperationId,
-  ): Promise<HumanAuthority> => {
-    const requestId = context.get('requestId');
-    const startedAt = dependencies.now?.() ?? Date.now();
-    const refuse = (error: ContentSchemaRegistryError): HumanAuthority => ({
-      ok: false,
-      response: errorResponse(context, error, requestId),
-    });
-    const deadlineMs = dependencies.deadlineMs ?? 15_000;
-    const policy = policyFor(operationId);
-    const origin = checkOrigin(context.req.raw, dependencies.humanOrigins);
-    if (origin !== null) return refuse(origin);
+    error: ContentSchemaRegistryError,
+  ): Response => errorResponse(context, error, context.get('requestId'));
+
+  const origin = (context: FeatureContext): Response | null => {
+    const refusal = checkOrigin(context.req.raw, dependencies.humanOrigins);
+    return refusal === null ? null : refuse(context, refusal);
+  };
+
+  const csrf = (context: FeatureContext): Response | null => {
+    const refusal = csrfErrorIfCookie(context.req.raw);
+    return refusal === null ? null : refuse(context, refusal);
+  };
+
+  const authenticate = async (
+    context: FeatureContext,
+  ): Promise<HumanAuthentication> => {
     const resolved = await dependencyDeadline(
       (signal) => dependencies.resolveSession(context.req.raw, signal),
-      deadlineMs,
+      dependencies.deadlineMs ?? 15_000,
     );
-    if (!resolved.ok) return refuse(resolved);
-    const session = resolved.value;
-    const invalidSession = validHumanSession(session);
-    if (invalidSession !== null) return refuse(invalidSession);
+    if (!resolved.ok) return { ok: false, response: refuse(context, resolved) };
+    const invalidSession = validHumanSession(resolved.value);
+    if (invalidSession !== null)
+      return { ok: false, response: refuse(context, invalidSession) };
+    return { ok: true, session: resolved.value };
+  };
+
+  const authorize = async (
+    context: FeatureContext,
+    operationId: HumanMutationOperationId | HumanReadOperationId,
+    session: ContentSchemaRegistrySession,
+  ): Promise<Response | null> => {
+    const startedAt = dependencies.now?.() ?? Date.now();
+    const deadlineMs = dependencies.deadlineMs ?? 15_000;
+    const policy = policyFor(operationId);
     const capability = requireCapability(session, operationId);
-    if (capability !== null) return refuse(capability);
+    if (capability !== null) return refuse(context, capability);
     if (policy.stepUp === 'required' && !session.mfaFresh)
-      return refuse(stepUpRequired());
-    if (policy.csrf === 'required') {
-      const csrf = csrfErrorIfCookie(context.req.raw);
-      if (csrf !== null) return refuse(csrf);
-    }
+      return refuse(context, stepUpRequired());
     const rate = await dependencyDeadline(
       (signal) =>
         dependencies.rateLimit(
@@ -102,7 +118,7 @@ export const createHumanAuthority =
         ),
       deadlineMs,
     );
-    if (!rate.ok) return refuse(rate);
+    if (!rate.ok) return refuse(context, rate);
     setRateHeaders(context, rate.value);
     if (!rate.value.allowed) {
       await reportRateRefusal(
@@ -114,8 +130,12 @@ export const createHumanAuthority =
         startedAt,
       );
       return refuse(
+        context,
         rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
       );
     }
-    return { ok: true, session };
+    return null;
   };
+
+  return { origin, csrf, authenticate, authorize };
+};

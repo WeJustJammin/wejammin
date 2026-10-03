@@ -121,9 +121,7 @@ describe('Back restores the list state', () => {
     expect(lastRead.searchParams.get('sort')).toBe('updatedAt');
     expect(lastRead.searchParams.get('direction')).toBe('desc');
     expect(
-      root.querySelector(
-        'th[aria-sort="ascending"], th[aria-sort="descending"]',
-      )?.textContent,
+      root.querySelector('th[aria-sort="descending"]')?.textContent,
     ).toMatch(/updated/iu);
   });
 });

@@ -36,3 +36,10 @@ protected latest-version read, explicit rebase retaining unsent values, and a
 not hosted acceptance or template activation. After confirmation, apply the
 two spec edits, run contract and consistency checks, and compile the spec
 graph; do not repeat the already-proven local 409 flow as a missing prerequisite.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

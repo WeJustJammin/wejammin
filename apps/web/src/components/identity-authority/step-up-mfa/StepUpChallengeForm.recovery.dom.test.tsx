@@ -95,7 +95,7 @@ describe('[P2-S09-AC-1098] FE01 lost-access link', () => {
       expect(signInEntryFrom(other)).toBe('sign_in');
   });
 
-  it('[P2-S09-AC-1098] also offers it when no verified authenticator exists', async () => {
+  it('[P2-S09-AC-1098] [P2-S09-AC-1142] also offers it when no verified authenticator exists', async () => {
     harness = mountForm(stubFetch(), { initialPhase: 'no-factor' });
     await flush();
     expect(lostAccessLink(harness.mounted.container)).not.toBeNull();

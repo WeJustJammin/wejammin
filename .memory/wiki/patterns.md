@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 20
-- **Unique pattern titles**: 17
+- **Total patterns**: 22
+- **Unique pattern titles**: 19
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -267,6 +267,34 @@
 - **Context**: Deterministic OpenAPI/database artifacts and repositories containing protected or historical Markdown.
 - **Pattern**: Avoid broad formatter globs that rewrite unrelated protected documents or generator-owned JSON. Give each generated artifact a deterministic `--check` command that compares source-derived bytes without writing, exclude that artifact from generic formatters, and format only the new documentation scope. If a broad formatter is run accidentally, reverse only its explicit unrelated file set before continuing.
 - **Source**: Phase 1, Slice 01 validation gate.
+
+## PAT-018: Consumer fixtures cannot prove that required authority producers exist
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-01T20:56:13Z
+- **Agents**: codex
+- **Sources**: phase-02-slice-09-activation-re-audit
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.6 (applied 1 time)
+- **Context**: Slice acceptance and dependency advancement for protected CMS operations.
+- **Pattern**: Do not close a criterion merely because a consumer/RPC passes against hand-built binding, review, or approval rows. Trace every required authority/evidence input to its real application producer and exercise the composed path. A recorded green checkpoint is not sufficient if fixtures silently supply missing upstream behavior. Reopen contradicted criteria and preserve dependent code without promoting acceptance. Local production-built UI fixtures may prove scoped presentation behavior, but never hosted MFA, review provenance, or successful protected activation.
+- **Source**: Owner challenged why Slices 10/12 began before Slice 9 was complete; the 2026-09-30 re-audit superseded the recorded 279/279 checkpoint with 261/279.
+
+## PAT: Marker-presence evidence over-claims acceptance (2026-10-02)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-02T22:05:55.967Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 09 evidence audit)
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: closing hundreds of criteria by tagging test titles with criterion markers and merging lane evidence files.
+- **Pattern**: an independent refutation audit of 164 of 953 newly checked Slice 09 criteria found about 38% with an unproven clause and about 5% contradicted (failing marked tests, stubbed error conditions, per-file pass counts copied onto every criterion, merge dropping other layers files, rewording criteria to fit tests). Require: proofs that produce the condition through the real path, one assertion per clause, per-criterion observed text, a guard that checks results not just marker presence, and a separate-population audit before any criterion is marked done.
+- **Source**: Slice 09 acceptance audit reports/s09-acceptance-audit.md.
 
 ## Full Log
 
@@ -554,3 +582,29 @@
 - **Context**: Deterministic OpenAPI/database artifacts and repositories containing protected or historical Markdown.
 - **Pattern**: Avoid broad formatter globs that rewrite unrelated protected documents or generator-owned JSON. Give each generated artifact a deterministic `--check` command that compares source-derived bytes without writing, exclude that artifact from generic formatters, and format only the new documentation scope. If a broad formatter is run accidentally, reverse only its explicit unrelated file set before continuing.
 - **Source**: Phase 1, Slice 01 validation gate.
+
+### PAT-018: Consumer fixtures cannot prove that required authority producers exist
+
+- **Timestamp**: 2026-10-01T20:56:13Z
+- **Agent**: codex
+- **Source**: phase-02-slice-09-activation-re-audit
+- **Tags**: pattern, anti-pattern, acceptance, security, pipeline
+
+- **Type**: anti-pattern
+- **Confidence**: 0.6 (applied 1 time)
+- **Context**: Slice acceptance and dependency advancement for protected CMS operations.
+- **Pattern**: Do not close a criterion merely because a consumer/RPC passes against hand-built binding, review, or approval rows. Trace every required authority/evidence input to its real application producer and exercise the composed path. A recorded green checkpoint is not sufficient if fixtures silently supply missing upstream behavior. Reopen contradicted criteria and preserve dependent code without promoting acceptance. Local production-built UI fixtures may prove scoped presentation behavior, but never hosted MFA, review provenance, or successful protected activation.
+- **Source**: Owner challenged why Slices 10/12 began before Slice 9 was complete; the 2026-09-30 re-audit superseded the recorded 279/279 checkpoint with 261/279.
+
+### PAT: Marker-presence evidence over-claims acceptance (2026-10-02)
+
+- **Timestamp**: 2026-10-02T22:05:55.967Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 09 evidence audit)
+- **Tags**: pattern, evidence, anti-pattern
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: closing hundreds of criteria by tagging test titles with criterion markers and merging lane evidence files.
+- **Pattern**: an independent refutation audit of 164 of 953 newly checked Slice 09 criteria found about 38% with an unproven clause and about 5% contradicted (failing marked tests, stubbed error conditions, per-file pass counts copied onto every criterion, merge dropping other layers files, rewording criteria to fit tests). Require: proofs that produce the condition through the real path, one assertion per clause, per-criterion observed text, a guard that checks results not just marker presence, and a separate-population audit before any criterion is marked done.
+- **Source**: Slice 09 acceptance audit reports/s09-acceptance-audit.md.

@@ -11,10 +11,18 @@ import type { ApiError } from '@wejammin/contracts';
 import type { WorkerContext } from '../index';
 import {
   authError,
+  decodeJsonBodyText,
+  jsonBodyPreflight,
   parseIdempotencyKey,
   parseJsonBody,
+  readJsonBodyText,
+  type JsonMutationTransport,
 } from '../authentication/boundary';
 import type { AuthenticationResult } from '../authentication/types';
+import {
+  checkConfigurationSameOrigin,
+  csrfIfCookie,
+} from './admin-route-support';
 import type { PlatformConfigurationOperationId } from './types';
 import type { ConfigurationPortName } from './runtime-helpers';
 
@@ -62,6 +70,30 @@ export const parseConfigurationBody = async <T>(
   const parsed = await parseJsonBody(request, schema, signal);
   if (!parsed.ok) return parsed;
   return parsed;
+};
+
+/**
+ * BE00 step 2 for a configuration JSON mutation: the same-origin check, the
+ * body ceiling, the content type and, for a cookie session, the session-bound
+ * CSRF token, then the raw body. JSON syntax and strict Zod validation are
+ * BE00 step 6 and run later through `decode`, after the caller is verified.
+ */
+export const admitConfigurationTransport = async (
+  context: WorkerContext,
+  signal?: AbortSignal,
+): Promise<AuthenticationResult<JsonMutationTransport>> => {
+  const origin = checkConfigurationSameOrigin(context);
+  if (!origin.ok) return origin;
+  const preflight = jsonBodyPreflight(context.req.raw);
+  if (preflight !== null) return preflight;
+  const csrf = await csrfIfCookie(context);
+  if (!csrf.ok) return csrf;
+  const text = await readJsonBodyText(context.req.raw, signal);
+  if (!text.ok) return text;
+  return {
+    ok: true,
+    value: { decode: (schema) => decodeJsonBodyText(text.value, schema) },
+  };
 };
 
 export const parseConfigurationPath = <T>(

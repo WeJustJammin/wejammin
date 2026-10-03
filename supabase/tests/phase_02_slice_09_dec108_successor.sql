@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -90,7 +91,7 @@ select pg_temp.s09d_rpc('b:live', 'platform_api.cms_create_schema_successor', 'o
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'idempotencyKey', 's09d-successor-live-0001'));
 select is(pg_temp.s09d_outcome('b:live'), 'CONFLICT',
-  'a second successor while a live successor draft already exists for that source is a 409 CONFLICT (G12) [P2-S09-AC-301]');
+  'a second successor while a live successor draft already exists for that source is a 409 CONFLICT (G12) [P2-S09-AC-301] [P2-S09-AC-308]');
 select pg_temp.s09d_rpc('b:stale', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', '999', 'idempotencyKey', 's09d-successor-stale-0001'));
@@ -121,7 +122,7 @@ select is(pg_temp.s09d_outcome('b:hidden'), 'NOT_FOUND', 'another organization''
 select pg_temp.s09d_rpc('b:absent', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', extensions.gen_random_uuid(),
     'expectedVersion', '1', 'idempotencyKey', 's09d-successor-absent-0001'));
-select is(pg_temp.s09d_outcome('b:absent'), 'NOT_FOUND', 'an absent source version is a 404 NOT_FOUND');
+select is(pg_temp.s09d_outcome('b:absent'), 'NOT_FOUND', 'an absent source version is a 404 NOT_FOUND [P2-S09-AC-307]');
 select pg_temp.s09d_rpc('b:denied', 'platform_api.cms_create_schema_successor', 'rev1',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'idempotencyKey', 's09d-successor-denied-0001'),
@@ -136,7 +137,7 @@ select pg_temp.s09d_rpc('b:nokey', 'platform_api.cms_create_schema_successor', '
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a')));
 select is(pg_temp.s09d_outcome('b:nokey'), 'INVALID_REQUEST', 'a missing Idempotency-Key is a 400 INVALID_REQUEST');
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
 select set_config('app.auth_user_id', '', true);
 select set_config('app.actor_auth_user_id', '', true);
 select pg_temp.s09d_call('b:anon', 'platform_api.cms_create_schema_successor',

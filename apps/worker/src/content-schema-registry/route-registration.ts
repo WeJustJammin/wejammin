@@ -9,6 +9,7 @@ import {
 } from './admission';
 import { errorResponse } from './route-response';
 import type { RouteHandlers } from './route-handlers';
+import type { ReadInput } from './route-human-handlers';
 import type { ContentSchemaRegistryResult } from './types';
 
 type PathIds = ContentSchemaRegistryResult<Readonly<Record<string, string>>>;
@@ -59,14 +60,11 @@ export const registerContentSchemaRegistryEndpoints = (
   ): void => {
     app.post(path, async (context) => {
       context.set('operationId', operationId);
-      const ids = parsePath === undefined ? null : parsePath(context);
-      if (ids !== null && !ids.ok)
-        return errorResponse(context, ids, context.get('requestId'));
       return handlers.humanMutation(
         context,
         operationId,
         humanBodySchemas[operationId],
-        ids === null ? {} : ids.value,
+        parsePath,
       );
     });
   };
@@ -88,42 +86,49 @@ export const registerContentSchemaRegistryEndpoints = (
     context.set('operationId', operations.register);
     return handlers.releaseMutation(context, operations.register);
   });
+  /** BE00 step 6 for a detail read: strict query, then strict path ids. */
+  const detailInput =
+    (parsePath: (context: FeatureContext) => PathIds) =>
+    (context: FeatureContext): ReadInput => {
+      const queryError = rejectDetailQuery(context.req.raw);
+      if (queryError !== null) return queryError;
+      const ids = parsePath(context);
+      return ids.ok ? { ok: true, value: { path: ids.value } } : ids;
+    };
+
   app.get('/api/v1/cms/content-types', async (context) => {
     context.set('operationId', operations.list);
-    const query = parseQuery(context.req.raw);
-    if (!query.ok)
-      return errorResponse(context, query, context.get('requestId'));
-    return handlers.protectedRead(context, operations.list, {}, query.value);
+    return handlers.protectedRead(context, operations.list, (current) => {
+      const query = parseQuery(current.req.raw);
+      return query.ok
+        ? { ok: true, value: { path: {}, query: query.value } }
+        : query;
+    });
   });
   app.get(VERSIONS, async (context) => {
     context.set('operationId', operations.detail);
-    const queryError = rejectDetailQuery(context.req.raw);
-    if (queryError !== null)
-      return errorResponse(context, queryError, context.get('requestId'));
-    const ids = versionIds(context);
-    if (!ids.ok) return errorResponse(context, ids, context.get('requestId'));
-    return handlers.protectedRead(context, operations.detail, ids.value);
+    return handlers.protectedRead(
+      context,
+      operations.detail,
+      detailInput(versionIds),
+    );
   });
   app.get(REVIEWS, async (context) => {
     context.set('operationId', operations.readReview);
-    const queryError = rejectDetailQuery(context.req.raw);
-    if (queryError !== null)
-      return errorResponse(context, queryError, context.get('requestId'));
-    const ids = reviewIds(context);
-    if (!ids.ok) return errorResponse(context, ids, context.get('requestId'));
-    return handlers.protectedRead(context, operations.readReview, ids.value);
+    return handlers.protectedRead(
+      context,
+      operations.readReview,
+      detailInput(reviewIds),
+    );
   });
   app.get(GRANTS, async (context) => {
     context.set('operationId', operations.listGrants);
-    const query = parseGrantListQuery(context.req.raw);
-    if (!query.ok)
-      return errorResponse(context, query, context.get('requestId'));
-    return handlers.protectedRead(
-      context,
-      operations.listGrants,
-      {},
-      query.value,
-    );
+    return handlers.protectedRead(context, operations.listGrants, (current) => {
+      const query = parseGrantListQuery(current.req.raw);
+      return query.ok
+        ? { ok: true, value: { path: {}, query: query.value } }
+        : query;
+    });
   });
   app.post(
     '/api/v1/cms/blocks/versions/:blockDefinitionVersionId/lifecycle',

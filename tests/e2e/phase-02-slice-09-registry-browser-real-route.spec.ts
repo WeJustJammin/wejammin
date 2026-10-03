@@ -1,11 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { STEP_UP_PAGE_HEADINGS } from '../../apps/web/src/components/identity-authority/step-up-mfa/step-up-page-headings';
-import { newTestId, closeLaneContexts } from './support/s09-lane-browser';
+import {
+  newTestId,
+  closeLaneContexts,
+  newLaneContext,
+} from './support/s09-lane-browser';
+import { laneSessionId } from './support/s09-lane-ids';
 import {
   REGISTRY,
   WEB_ORIGIN,
   WORKER_ORIGIN,
+  createTypeViaUi,
   decideViaUi,
   enrollFactorViaUi,
   expireStepUp,
@@ -170,9 +176,7 @@ test('[P2-S09-AC-251] a degraded registry state under prefers-reduced-motion run
   await page.goto(REGISTRY, { waitUntil: 'networkidle' });
   await expect(page.locator('.content-schema-registry')).toBeVisible();
   // A text cue (not colour or motion alone) states the degraded condition.
-  const cue = page.locator(
-    '.content-schema-registry [role="status"], .content-schema-registry [role="alert"]',
-  );
+  const cue = page.locator('.content-schema-registry [role="status"]');
   await expect(
     cue.filter({ hasText: /temporarily unavailable/iu }).first(),
   ).toBeVisible();
@@ -411,4 +415,163 @@ test('[P2-S09-AC-1098] /auth/sign-in?intent=recovery renders the recovery entry 
   ).toBeVisible();
   expect(await intents()).toEqual(['sign_in', 'recovery']);
   await context.close();
+});
+
+/**
+ * AC233 on a REAL offline/online cycle (Chrome `context.setOffline`), not an
+ * in-memory retry: while offline the world changes on the server, and when the
+ * `online` event fires the island refetches the canonical read and the real
+ * Worker revalidates identity (401), authority (403) and version (fresh state).
+ * Nothing the person typed is stored or replayed by the browser.
+ */
+const OFFLINE_CUE = '[data-cms-offline-status]';
+
+const goOffline = async (page: Page): Promise<void> => {
+  await page.context().setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await expect(page.locator(OFFLINE_CUE)).toBeVisible();
+};
+
+test('[P2-S09-AC-233] reconnect revalidates identity: a session revoked while offline sends the page to sign-in', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await goOffline(page);
+  const revoked = await page.request.post(`${WORKER_ORIGIN}/_s09/revoke`, {
+    data: { sessionId: laneSessionId('owner', testId, 0) },
+  });
+  expect(revoked.status()).toBe(200);
+  await page.context().setOffline(false);
+  await page.waitForURL(/\/auth\/sign-in/u, { timeout: 20_000 });
+  await expect(
+    page.locator('[data-workbench="content-schema-registry"]'),
+  ).toHaveCount(0);
+});
+
+test('[P2-S09-AC-233] reconnect revalidates authority: a capability removed while offline disables the workbench and removes the create form', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await goOffline(page);
+  for (const capability of [
+    'cms.schema_registry.read',
+    'cms.schema_designer',
+  ]) {
+    const removed = await page.request.post(
+      `${WORKER_ORIGIN}/_s09/lane/remove-capability`,
+      { data: { testId, role: 'owner', capability } },
+    );
+    expect(removed.status()).toBe(200);
+  }
+  await page.context().setOffline(false);
+  await expect(
+    page.getByRole('heading', { name: 'Schema changes unavailable' }),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(
+    page.getByRole('button', { name: 'Save content type draft' }),
+  ).toHaveCount(0);
+});
+
+test('[P2-S09-AC-233] reconnect revalidates version: a record created elsewhere while offline appears after reconnect', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await createTypeViaUi(page);
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  const rows = page.locator('.content-schema-registry tbody tr');
+  const before = await rows.count();
+  expect(before).toBeGreaterThan(0);
+  await goOffline(page);
+  // The first proof rotated the owner's session to generation 1; a second
+  // browser signs in at that generation (the same person on another device).
+  const otherContext = await newLaneContext(browser, 'owner', testId, {
+    generation: 1,
+  });
+  const other = { page: await otherContext.newPage() };
+  await createTypeViaUi(other.page, {
+    typeKey: 'second_note',
+    label: 'Second note',
+  });
+  await page.context().setOffline(false);
+  await expect
+    .poll(() => rows.count(), { timeout: 20_000 })
+    .toBeGreaterThan(before);
+});
+
+test('[P2-S09-AC-233] nothing typed is persisted or replayed across an offline submit and reconnect', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST') posts.push(request.url());
+  });
+  await page
+    .getByRole('textbox', { name: 'Type key' })
+    .fill('offline_secret_key');
+  await goOffline(page);
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  await page.waitForTimeout(1_000);
+  const stored = await page.evaluate(async () => ({
+    local: window.localStorage.length,
+    session: Object.keys(window.sessionStorage).filter((key) =>
+      window.sessionStorage.getItem(key)?.includes('offline_secret_key'),
+    ).length,
+    databases: (await indexedDB.databases()).length,
+    caches: (await caches.keys()).length,
+  }));
+  expect(stored).toEqual({ local: 0, session: 0, databases: 0, caches: 0 });
+  const whileOffline = posts.length;
+  await page.context().setOffline(false);
+  await page.waitForTimeout(2_000);
+  // The reconnect refetch is a GET; no queued write is ever replayed.
+  expect(posts.length).toBe(whileOffline);
+});
+
+test('[P2-S09-AC-234] the rendered registry list and version responses are no-store and noindex, with no sitemap, analytics request or browser storage', async ({
+  browser,
+}) => {
+  const owner = await actor(browser, 'owner', newTestId());
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  const created = await createTypeViaUi(page);
+  const origins = new Set<string>();
+  page.on('request', (request) => origins.add(new URL(request.url()).origin));
+  for (const path of [REGISTRY, created.path]) {
+    const response = await page.goto(path, { waitUntil: 'networkidle' });
+    await waitForWorkbench(page);
+    expect(response?.status()).toBe(200);
+    expect(response?.headers()['cache-control'] ?? '').toContain('no-store');
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      'content',
+      /noindex/u,
+    );
+    await expect(page.locator('link[rel="sitemap"]')).toHaveCount(0);
+    const storage = await page.evaluate(async () => ({
+      local: Object.keys(window.localStorage).filter(
+        (key) => key !== 'wj_client_binding_id_v1',
+      ).length,
+      databases: (await indexedDB.databases()).length,
+      caches: (await caches.keys()).length,
+    }));
+    expect(storage).toEqual({ local: 0, databases: 0, caches: 0 });
+  }
+  expect([...origins]).toEqual([WEB_ORIGIN]);
 });

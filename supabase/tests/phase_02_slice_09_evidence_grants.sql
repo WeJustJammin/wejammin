@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -19,6 +20,7 @@ select no_plan();
 
 -- AC507: a member whose confirmed membership has ended is not an eligible subject.
 select pg_temp.s09g_member('rev2');
+-- TIME-WARP: shifts a membership window to reach a time-dependent branch.
 update identity_private.membership_tenure set starts_on = current_date - 10, ends_on = current_date - 1
  where person_id = pg_temp.s09d_actor_id('rev2', 'person')::uuid and organization_id = pg_temp.s09d_id('ownerOrg');
 select pg_temp.s09g_fingerprint() as ended_before \gset
@@ -35,6 +37,7 @@ create temp table s09e_grant on commit drop as
 select pg_temp.s09g_grant_id(pg_temp.s09d_resp('l:grant')) as id;
 
 -- AC556: renewal needs recent step-up MFA.
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '11 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_fingerprint() as stale_before \gset
@@ -42,6 +45,7 @@ select pg_temp.s09g_renew('l:stale', 'owner', (select id from s09e_grant), '1', 
 select is(pg_temp.s09d_outcome('l:stale'), 'STEP_UP_REQUIRED',
   'CMS-03A-16 with a binding whose MFA is older than ten minutes is 401 STEP_UP_REQUIRED [P2-S09-AC-556]');
 select is(pg_temp.s09g_fingerprint(), :'stale_before', 'the stale-MFA renewal reserved nothing and changed nothing [P2-S09-AC-556]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_renew('l:renew', 'owner', (select id from s09e_grant), '1', pg_temp.s09g_day(20));
@@ -100,6 +104,7 @@ select ok((select count(*) = 1 from platform_private.outbox_events o
 
 -- AC616: the owner list omits another organization's rows without a 404.
 select set_config('app.cms_rpc', 'true', true);
+-- FIXTURE FORGERY: an aggregate of another organization or a hand-built edge row: CMS-03A-15 issues grants for the owner organization only.
 insert into platform_private.cms_capability_grants(owner_id, state, version, subject_person_ref, capability_code,
     valid_from, valid_through, grantor_person_ref, last_action)
 select pg_temp.s09d_id('otherOrg'), 'active', 1, person_id, 'cms.author', current_date, current_date + 5, person_id, 'granted'
@@ -136,6 +141,7 @@ select ok(pg_temp.s09d_def('identity_private.rpc_create_organization(text,text[]
 
 -- AC659 / AC917: the backfill reads and writes only CMS aggregates of the owner's organization.
 select set_config('app.cms_rpc', '', true);
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
 select pg_temp.s09d_id('ownerOrg'), person_id, c.code, current_date, current_date + c.days, true
 from s09d_actor, (values ('cms.media_curator', 20), ('cms.taxonomy_curator', 100), ('inbox.read', 5)) c(code, days)

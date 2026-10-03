@@ -83,7 +83,12 @@ describe('Phase 2 Slice 06 Worker validation and authorization RED acceptance', 
     '[P2-S06-AC-004,010,028,034,040,046,052,058,064] rejects malformed route %s',
     async (path) => {
       const harness = createProfilePortfolioApp();
-      const response = await harness.app.fetch(readRequest(path), bindings);
+      // The path is validated after the session step, so the caller is
+      // authenticated for the protected route.
+      const response = await harness.app.fetch(
+        readRequest(path, undefined, true),
+        bindings,
+      );
 
       await expectApiError(response, 422, 'VALIDATION_FAILED');
     },
@@ -101,6 +106,7 @@ describe('Phase 2 Slice 06 Worker validation and authorization RED acceptance', 
       ),
       415,
       'UNSUPPORTED_MEDIA_TYPE',
+      { allowedMediaTypes: ['application/json'] },
     );
 
     const oversized = jsonRequest(

@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -64,7 +65,7 @@ select is(pg_temp.s09d_outcome('a:ifmatch'), 'INVALID_REQUEST', 'a mutation-only
 select pg_temp.s09d_call('a:extra', 'platform_api.cms_get_schema_review', jsonb_build_object(
   'reviewId', pg_temp.s09d_id('a:review'), 'expand', 'decisions', 'context', pg_temp.s09d_context('owner')));
 select is(pg_temp.s09d_outcome('a:extra'), 'INVALID_REQUEST', 'an unknown query/key is a 400 INVALID_REQUEST');
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
 select set_config('app.auth_user_id', '', true);
 select set_config('app.actor_auth_user_id', '', true);
 select pg_temp.s09d_call('a:anon', 'platform_api.cms_get_schema_review', jsonb_build_object('reviewId', pg_temp.s09d_id('a:review')));

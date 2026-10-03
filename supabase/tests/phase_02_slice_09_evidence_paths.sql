@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -74,6 +75,7 @@ select pg_temp.s09d_assign('f', 'rev1');
 select is(pg_temp.s09x_direct(), 0::bigint,
   'positive: every producer row of this file so far was written by a named RPC, so the guard counts no direct statement');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
 insert into platform_private.cms_schema_reviews
 select * from jsonb_populate_record(null::platform_private.cms_schema_reviews,
   (select to_jsonb(r) || jsonb_build_object('id', extensions.gen_random_uuid(), 'state', 'rejected')
@@ -81,11 +83,12 @@ select * from jsonb_populate_record(null::platform_private.cms_schema_reviews,
 select is(pg_temp.s09x_direct('cms_schema_reviews'), 1::bigint, 'negative control: a hand-written review insert is recorded as a direct write [P2-S09-AC-713]');
 insert into platform_private.cms_schema_review_decisions(
     owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
-    capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
+    capability_key, capability_version, decision, reviewed_hash, mfa_verified_at, created_at, updated_at)
   select review.owner_id, review.id, assignment.id, assignment.version, assignment.reviewer_person_ref, repeat('a', 64),
-    'cms.schema_review', 1, 'approve', review.definition_hash, clock_timestamp()
+    'cms.schema_review', 1, 'approve', review.definition_hash, clock_timestamp(), stamp.at, stamp.at
   from platform_private.cms_schema_reviews review
   join platform_private.cms_schema_review_assignments assignment on assignment.review_id = review.id
+  cross join (select clock_timestamp() as at) stamp
   where review.id = pg_temp.s09d_id('f:review');
 select is(pg_temp.s09x_direct('cms_schema_review_decisions'), 1::bigint, 'negative control: a hand-written decision insert is recorded as a direct write [P2-S09-AC-713]');
 select pg_temp.s09d_create_type('q', 'evp_forge_report');
@@ -96,6 +99,7 @@ insert into platform_private.cms_schema_migration_plans
 select * from jsonb_populate_record(null::platform_private.cms_schema_migration_plans,
   (select to_jsonb(p) || jsonb_build_object('id', (select id from s09e_forged_plan), 'superseded_at', now()::text)
      from platform_private.cms_schema_migration_plans p where p.id = pg_temp.s09d_id('q:plan')));
+-- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
 insert into platform_private.cms_schema_dry_run_reports
 select * from jsonb_populate_record(null::platform_private.cms_schema_dry_run_reports,
   (select to_jsonb(r) || jsonb_build_object('id', extensions.gen_random_uuid(), 'attempt_no', 99, 'job_id', extensions.gen_random_uuid(),
@@ -119,8 +123,13 @@ select cmp_ok(pg_temp.s09x_direct(), '>=', 5::bigint, 'the integrated-path guard
 select pg_temp.s09d_create_type('h', 'evp_guard_bypass');
 select pg_temp.s09d_to_review('h');
 select pg_temp.s09x_direct('cms_schema_reviews') as bypass_base, pg_temp.s09x_via_rpc('cms_schema_reviews') as bypass_rpc_base \gset
+-- NEGATIVE CONTROLS: the five substitutes below are hand-written writes.  A hostile
+-- writer would set the RPC flag itself, and so does each substitute (the flag is
+-- no longer left behind by a producer, which is what these controls used to lean on).
+select set_config('app.cms_rpc', 'true', true);
 do $guard$
 begin
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
 end;
 $guard$;
@@ -128,6 +137,7 @@ select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 1)::bigint,
   'a DO-block write of a review is recorded as a direct write [P2-S09-AC-713]');
 create or replace function pg_temp.s09x_cheat_helper() returns void language plpgsql as $body$
 begin
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
 end;
 $body$;
@@ -136,6 +146,7 @@ select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 2)::bigint,
   'a write through a pg_temp helper (top-level text "select ...") is recorded as a direct write [P2-S09-AC-713]');
 create or replace function pg_temp.cms_submit_schema_review() returns void language plpgsql as $body$
 begin
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
 end;
 $body$;
@@ -145,6 +156,7 @@ select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 3)::bigint,
 create function platform_private.cms_s09x_late_helper(p_id uuid) returns void
 language plpgsql security definer set search_path = '' as $body$
 begin
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   update platform_private.cms_schema_reviews set updated_at = updated_at where id = p_id;
 end;
 $body$;
@@ -154,6 +166,8 @@ select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 4)::bigint,
 do $guard$
 begin
   perform pg_temp.s09d_get_review('h:read', 'h');
+  perform set_config('app.cms_rpc', 'true', true);
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
 end;
 $guard$;
@@ -206,6 +220,7 @@ select is(pg_temp.s09e_unprovisioned(), 0::bigint,
 select ok(pg_temp.s09x_via_rpc('cms_schema_review_assignments') > 0 and pg_temp.s09x_direct('cms_schema_review_assignments') = 0,
   'every reviewer assignment of the paths was created through CMS-03A-14 [P2-S09-AC-714]');
 select set_config('app.cms_rpc', '', true);
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
 select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.reviewer', current_date, current_date + 5, true from s09d_actor where key = 'rev3';
 select is(pg_temp.s09e_unprovisioned(), 1::bigint,

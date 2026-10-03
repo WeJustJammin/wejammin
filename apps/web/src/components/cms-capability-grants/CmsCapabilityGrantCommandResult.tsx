@@ -4,10 +4,7 @@ import type {
   GrantCommandKind,
   GrantCommandState,
 } from './cms-capability-grant-commands';
-import {
-  markStepUpDetour,
-  stepUpHref,
-} from './cms-capability-grant-navigation';
+import { stepUpHref } from './cms-capability-grant-navigation';
 import type { GrantFieldErrors } from './cms-capability-grant-validation';
 
 export interface CmsCapabilityGrantCommandResultProps {
@@ -19,6 +16,8 @@ export interface CmsCapabilityGrantCommandResultProps {
   readonly fieldTargets: Readonly<Record<keyof GrantFieldErrors, string>>;
   readonly onShowExisting: () => void;
   readonly onRetry: () => void;
+  /** Persists the interrupted command before the link opens /step-up. */
+  readonly onVerifyIdentity: () => void;
 }
 
 const Countdown = ({
@@ -99,7 +98,7 @@ export default function CmsCapabilityGrantCommandResult(
         <a
           data-action="verify-identity"
           href={stepUpHref(props.returnTo)}
-          onClick={markStepUpDetour}
+          onClick={props.onVerifyIdentity}
         >
           Verify identity
         </a>

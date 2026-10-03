@@ -104,9 +104,14 @@ describe('BE03a path identifiers are UUIDs refused before any existence check', 
         const response = await harness.app.request(
           requestFor(op, { path: op.path.replace(value, bad) }),
         );
-        // An empty segment can fall to router 404; every non-empty one is 400.
-        if (bad === '') expect([400, 404]).toContain(response.status);
-        else await expectInvalidRequest(response);
+        // An empty segment names no registered route, so it is the router's
+        // 404 NOT_FOUND; every non-empty malformed segment is 400.
+        if (bad === '') {
+          expect(response.status).toBe(404);
+          expect(((await response.json()) as { code: string }).code).toBe(
+            'NOT_FOUND',
+          );
+        } else await expectInvalidRequest(response);
         expect(calledPorts(harness.ports)).toBe(0);
       }
       const accepted = harnessFor(op);

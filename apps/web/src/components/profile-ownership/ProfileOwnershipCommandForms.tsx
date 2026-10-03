@@ -6,6 +6,7 @@ import {
   readCommandResult,
   type ProfileOwnershipOperation,
 } from './profile-ownership-command-transport';
+import { navigateToStepUp } from '../step-up-required';
 
 export type { ProfileOwnershipOperation } from './profile-ownership-command-transport';
 
@@ -63,6 +64,7 @@ export const CommandForm = ({
       });
       const outcome = await readCommandResult(response, operation);
       onStatus(outcome.message);
+      if (outcome.stepUp === true) navigateToStepUp();
       if (outcome.payload !== undefined)
         onSuccess?.(operation, outcome.payload);
     } catch {

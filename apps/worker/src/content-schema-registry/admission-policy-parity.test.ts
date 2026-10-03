@@ -76,18 +76,24 @@ describe('admission capability table versus the route policy', () => {
 describe('mutation header admission versus the route policy', () => {
   it.each(
     contentSchemaRegistryRoutePolicies.filter((p) => p.method === 'POST'),
-  )('$operationId requires If-Match exactly when its policy does', (policy) => {
-    const headers = (ifMatch: string | null): Request =>
-      new Request('https://api.example.test/x', {
-        method: 'POST',
-        headers: {
-          'idempotency-key': 'cms-parity-key-001',
-          ...(ifMatch === null ? {} : { 'if-match': ifMatch }),
-        },
-      });
-    const withTag = parseMutationHeaders(headers('"1"'), policy.operationId);
-    const withoutTag = parseMutationHeaders(headers(null), policy.operationId);
-    expect(withTag.ok).toBe(policy.ifMatch === 'required');
-    expect(withoutTag.ok).toBe(policy.ifMatch !== 'required');
-  });
+  )(
+    '[P2-S09-AC-023] $operationId requires If-Match exactly when its policy does',
+    (policy) => {
+      const headers = (ifMatch: string | null): Request =>
+        new Request('https://api.example.test/x', {
+          method: 'POST',
+          headers: {
+            'idempotency-key': 'cms-parity-key-001',
+            ...(ifMatch === null ? {} : { 'if-match': ifMatch }),
+          },
+        });
+      const withTag = parseMutationHeaders(headers('"1"'), policy.operationId);
+      const withoutTag = parseMutationHeaders(
+        headers(null),
+        policy.operationId,
+      );
+      expect(withTag.ok).toBe(policy.ifMatch === 'required');
+      expect(withoutTag.ok).toBe(policy.ifMatch !== 'required');
+    },
+  );
 });

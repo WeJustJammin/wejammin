@@ -65,6 +65,7 @@ drop trigger reject_bootstrap_receipt on platform_private.cms_owner_initializati
 
 -- A database operator has no browser context. Existing browser bindings must
 -- neither block initialization nor be renewed by it.
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
  set selected_at=clock_timestamp()-interval '3 days',
  expires_at=clock_timestamp()-interval '1 day',last_seen_at=clock_timestamp()-interval '2 days'
@@ -130,6 +131,7 @@ select throws_ok($$select platform_private.initialize_cms_owner(
  'bootstrap-owner@example.test',clock_timestamp()+interval '1 day',
  'a9100000-0000-4000-8000-000000000099',false)$$,
  'P0001','BOOTSTRAP_ALREADY_INITIALIZED','Replay cannot recreate or extend authority');
+-- NEGATIVE CONTROL: removes the receipt to prove the command refuses without it.
 delete from platform_private.cms_owner_initialization;
 select throws_ok($$select platform_private.initialize_cms_owner(
  'a9100000-0000-4000-8000-000000000001',(select person_id from bootstrap_subject),

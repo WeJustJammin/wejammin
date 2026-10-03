@@ -55,6 +55,13 @@ export const isParsedFailure = (value: unknown): value is ParsedFailure =>
   value.success === false &&
   'error' in value;
 
+/**
+ * BE00 `UNSUPPORTED_MEDIA_TYPE` details are exactly `{ allowedMediaTypes }`,
+ * the route allowlist and nothing else. Every CMS registry route that reads a
+ * body accepts one media type.
+ */
+export const ALLOWED_MEDIA_TYPES: readonly string[] = ['application/json'];
+
 export const invalid = (
   message: string,
   details: Readonly<Record<string, unknown>> = {},
@@ -140,5 +147,12 @@ export const issues = (error: {
 }): Record<string, unknown> => ({
   violations: error.issues.flatMap(violationsFor).slice(0, 50),
 });
+
+export const unsupportedMediaType = (): ContentSchemaRegistryError =>
+  invalid(
+    'Use application/json.',
+    { allowedMediaTypes: [...ALLOWED_MEDIA_TYPES] },
+    415,
+  );
 
 export type Result<T> = ContentSchemaRegistryResult<T>;

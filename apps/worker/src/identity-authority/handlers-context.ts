@@ -6,14 +6,17 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { authError, responseForAuthError } from '../authentication/boundary';
+import {
+  admitJsonMutationTransport,
+  authError,
+  responseForAuthError,
+} from '../authentication/boundary';
 import { parseClientBindingIdHeader } from '../authentication/client-binding-header';
 import {
   configureIdentityRoute,
   parseIdentityCommandHeaders,
-  parseIdentityJsonBody,
+  decodeIdentityBody,
   rejectUnexpectedIdentityQuery,
-  requireIdentityCsrf,
 } from './route-support';
 import {
   execute,
@@ -30,10 +33,12 @@ export const readActingContexts = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-12');
-  const query = rejectUnexpectedIdentityQuery(context.req.raw, true);
-  if (!query.ok) return responseForAuthError(context, query);
+  // BE00 steps 4 and 5: verified session, then acting context.
   const resolved = await resolve(context, dependencies);
   if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 6: strict path and query.
+  const query = rejectUnexpectedIdentityQuery(context.req.raw, true);
+  if (!query.ok) return responseForAuthError(context, query);
   const limited = await rate(context, dependencies, 'BE01b-12', resolved.value);
   if (limited !== null) return limited;
   const input = {
@@ -67,12 +72,20 @@ export const bindActingContext = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-13');
-  const bindingId = parseClientBindingIdHeader(context.req.raw);
-  if (!bindingId.ok) return responseForAuthError(context, bindingId);
-  const body = await parseIdentityJsonBody(
-    context.req.raw,
-    BindContextRequestSchema,
-  );
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolve(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // The session step already refused a malformed binding header, so the value
+  // read here is a valid optional selector.
+  const bindingId = parseClientBindingIdHeader(context.req.raw) as Extract<
+    ReturnType<typeof parseClientBindingIdHeader>,
+    { ok: true }
+  >;
+  // BE00 step 6: strict body.
+  const body = decodeIdentityBody(transport.value, BindContextRequestSchema);
   if (!body.ok) return responseForAuthError(context, body);
   if (
     bindingId.value !== null &&
@@ -96,14 +109,12 @@ export const bindActingContext = async (
       ),
     );
   }
-  const headers = parseIdentityCommandHeaders(context.req.raw, false);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolve(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await rate(context, dependencies, 'BE01b-13', resolved.value);
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseIdentityCommandHeaders(context.req.raw, false);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     ...body.value,
     request: context.req.raw,

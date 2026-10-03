@@ -1,252 +1,29 @@
-import { describe, expect, it, vi } from 'vitest';
-import {
-  REVISION_RESTORE_SEAMS,
-  type EntryCreateResource,
-  type EntryRevisionResource,
-} from '@wejammin/contracts';
+import { describe, expect, it } from 'vitest';
 
-import { createCmsEditorialApp, type CmsEditorialDependencies } from './index';
+import {
+  appendedRevisionId,
+  conflictBody,
+  conflictPath,
+  createBody,
+  createPath,
+  entryId,
+  harness,
+  post,
+  requestId,
+  restoreBody,
+  restorePath,
+  revisionBody,
+  revisionPath,
+  writeHeaders,
+} from './route-fixtures.test-support';
 
 /*
  * BE03b registers `querySchema` only on the two safe reads; every command row
  * carries a request schema and a headers schema instead. The four CMS
  * editorial writes therefore admit no URL query member, so a query string is
- * unparsed caller input that must be refused as 400 INVALID_REQUEST before any
- * session, rate, or persistence side effect (`route-policy-contract.ts`).
+ * unparsed caller input that must be refused as 400 INVALID_REQUEST (BE00
+ * step 6) before any authorization, rate, or persistence side effect (`route-policy-contract.ts`).
  */
-
-const origin = 'https://cms-console.example.test';
-const requestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const userId = '10000000-0000-4000-8000-000000000001';
-const partyId = '20000000-0000-4000-8000-000000000002';
-const entryId = '30000000-0000-4000-8000-000000000003';
-const conflictId = '31000000-0000-4000-8000-000000000003';
-const baseRevisionId = '40000000-0000-4000-8000-000000000004';
-const theirsRevisionId = '41000000-0000-4000-8000-000000000004';
-const resolvedRevisionId = '42000000-0000-4000-8000-000000000004';
-const appendedRevisionId = '43000000-0000-4000-8000-000000000004';
-const schemaVersionId = '50000000-0000-4000-8000-000000000005';
-const fieldId = '60000000-0000-4000-8000-000000000006';
-const contentHash = 'a'.repeat(64);
-const idempotencyKey = 'idempotency-key-0001';
-const instant = '2026-09-26T12:00:00.000Z';
-
-const resource = (
-  id: string,
-  revisionNumber: string,
-): EntryRevisionResource => ({
-  id,
-  version: '2',
-  createdAt: instant,
-  updatedAt: instant,
-  state: 'draft',
-  entryId,
-  revisionNumber,
-  schemaVersionId,
-  templateVersionId: null,
-  taxonomyVersionIds: [],
-  locale: 'en-US',
-  contentHash,
-  parentRevisionIds: [],
-  validationState: 'valid',
-  conflictId: null,
-});
-
-const revisionPath = `/api/v1/cms/entries/${entryId}/revisions`;
-const conflictPath = `/api/v1/cms/entries/${entryId}/conflicts/${conflictId}/resolve`;
-const createPath = '/api/v1/cms/entries';
-const restorePath = `/api/v1/cms/entries/${entryId}/revisions/${baseRevisionId}/restore`;
-
-const revisionBody = {
-  entryId,
-  baseRevision: '1',
-  changedPaths: [`/fields/${fieldId}/value`],
-  values: { [fieldId]: 'Hello' },
-  locale: 'en-US',
-  expectedVersion: '1',
-};
-
-const conflictBody = {
-  entryId,
-  conflictId,
-  baseRevision: '1',
-  choices: [{ path: `/fields/${fieldId}`, choice: 'theirs' }],
-  expectedVersion: '2',
-};
-
-const restoreBody = {
-  entryId,
-  revisionId: baseRevisionId,
-  migrationChainId: schemaVersionId,
-  expectedVersion: '2',
-};
-
-const evidence = {
-  key: 'editorial.standard',
-  version: '1',
-  policyHash: contentHash,
-  riskClass: 'ordinary',
-  requiredDecisionCount: 1,
-  requiredCapabilities: [],
-  approvalEvidenceHash: contentHash,
-} as const;
-
-const createBody = {
-  contentTypeId: entryId,
-  contentTypeVersionId: schemaVersionId,
-  locale: 'en-US',
-  changedPaths: [`/fields/${fieldId}`],
-  values: { [fieldId]: 'Hello' },
-  schemaArtifact: {
-    id: appendedRevisionId,
-    contentTypeVersionId: schemaVersionId,
-    artifactHash: contentHash,
-    compilerVersion: '1.0.0',
-    zodContractRef: '03a.content-type-version.v1',
-  },
-  validatorRefs: [],
-  workflowPolicy: evidence,
-  activationEvidence: evidence,
-};
-
-const createResource: EntryCreateResource = {
-  entry: { id: entryId, version: '1', createdAt: instant, updatedAt: instant },
-  revision: {
-    id: appendedRevisionId,
-    version: '1',
-    createdAt: instant,
-    updatedAt: instant,
-  },
-  revisionNumber: '1',
-  lifecycle: 'active',
-  state: 'draft',
-  locale: 'en-US',
-  contentHash,
-  validationState: 'valid',
-};
-
-const restoreVerification = {
-  request: {
-    entryId,
-    revisionId: baseRevisionId,
-    migrationChainId: schemaVersionId,
-    expectedVersion: '2',
-  },
-  registry: {
-    revisionId: baseRevisionId,
-    migrationChainId: schemaVersionId,
-    sourceSchemaVersionId: schemaVersionId,
-    activeSchemaVersionId: schemaVersionId,
-    chainSchemaVersionIds: [schemaVersionId],
-    entryVersion: '2',
-  },
-  seams: [...REVISION_RESTORE_SEAMS],
-} as const;
-
-const harness = () => {
-  const session = {
-    userId,
-    actingPartyId: partyId,
-    capabilities: ['cms.author'],
-    mfaFresh: true,
-  };
-  const resolveSession = vi.fn(async () => ({
-    ok: true as const,
-    value: session,
-  }));
-  const rateLimit = vi.fn(async () => ({
-    ok: true as const,
-    value: { allowed: true, limit: 120, remaining: 119, resetAt: 60_000 },
-  }));
-  const appendRevision = vi.fn(async () => ({
-    ok: true as const,
-    value: resource(appendedRevisionId, '2'),
-  }));
-  const resolveConflict = vi.fn(async () => ({
-    ok: true as const,
-    value: {
-      ...resource(resolvedRevisionId, '3'),
-      parentRevisionIds: [baseRevisionId, theirsRevisionId],
-      conflictId,
-    },
-  }));
-  const createEntry = vi.fn(async () => ({
-    ok: true as const,
-    value: createResource,
-  }));
-  const restoreRevision = vi.fn(async () => ({
-    ok: true as const,
-    value: {
-      resource: {
-        ...resource(resolvedRevisionId, '3'),
-        parentRevisionIds: [baseRevisionId],
-      },
-      restoreVerification,
-    },
-  }));
-  const listRevisions = vi.fn(async () => ({
-    ok: false as const,
-    status: 503 as const,
-    code: 'DEPENDENCY_UNAVAILABLE',
-    message: 'Unavailable.',
-  }));
-  const getEntryDraft = vi.fn(async () => ({
-    ok: false as const,
-    status: 503 as const,
-    code: 'DEPENDENCY_UNAVAILABLE',
-    message: 'Unavailable.',
-  }));
-  const telemetry = vi.fn();
-  const dependencies = {
-    ports: {
-      appendRevision,
-      resolveConflict,
-      createEntry,
-      restoreRevision,
-      listRevisions,
-      getEntryDraft,
-    },
-    resolveSession,
-    rateLimit,
-    humanOrigins: [origin],
-    now: () => 0,
-    telemetry,
-  } as unknown as CmsEditorialDependencies;
-  return {
-    app: createCmsEditorialApp(dependencies),
-    appendRevision,
-    resolveConflict,
-    createEntry,
-    restoreRevision,
-    resolveSession,
-    rateLimit,
-  };
-};
-
-const post = (
-  app: ReturnType<typeof createCmsEditorialApp>,
-  path: string,
-  body: unknown,
-  headers: Record<string, string>,
-): Promise<Response> =>
-  Promise.resolve(
-    app.request(path, {
-      method: 'POST',
-      headers: {
-        origin,
-        'content-type': 'application/json',
-        'idempotency-key': idempotencyKey,
-        'x-request-id': requestId,
-        ...headers,
-      },
-      body: JSON.stringify(body),
-    }),
-  );
-
-const writeHeaders = (extra: Record<string, string> = {}) => ({
-  'if-match': '"1"',
-  ...extra,
-});
 
 const expectRefusedBeforeAdmission = async (
   response: Response,
@@ -265,7 +42,8 @@ const expectRefusedBeforeAdmission = async (
   expect(app.resolveConflict).not.toHaveBeenCalled();
   expect(app.createEntry).not.toHaveBeenCalled();
   expect(app.restoreRevision).not.toHaveBeenCalled();
-  expect(app.resolveSession).not.toHaveBeenCalled();
+  // BE00 step 6 (strict query) follows authentication (step 4) and precedes
+  // authorization and the quota (step 7).
   expect(app.rateLimit).not.toHaveBeenCalled();
 };
 

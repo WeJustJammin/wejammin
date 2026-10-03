@@ -78,7 +78,16 @@ describe('AUTH-API-16 factor list (production composition)', () => {
       jar,
     });
     expect(withQuery.status).toBe(400);
-    expect(world.calls).toHaveLength(0);
+    // BE00: the session is verified (step 4) before the strict query (step 6),
+    // but no operation or rate-limit RPC is reached.
+    expect(
+      world.calls.filter(
+        (call) =>
+          call.rpc !== null &&
+          (call.rpc.startsWith('auth_mfa') ||
+            call.rpc.startsWith('auth_rate_limit')),
+      ),
+    ).toStrictEqual([]);
     const ignored = await send(world.app, {
       ...BASE[16],
       jar,

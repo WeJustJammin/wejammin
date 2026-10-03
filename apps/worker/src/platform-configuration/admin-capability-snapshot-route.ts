@@ -5,7 +5,7 @@ import {
 
 import type { WorkerApp, WorkerContext, WorkerDependencies } from '../index';
 import { authError, responseForAuthError } from '../authentication/boundary';
-import { admit, withDeadline } from './admin-route-admission';
+import { admitSession, withDeadline } from './admin-route-admission';
 import {
   checkConfigurationSameOrigin,
   enforceConfigurationRate,
@@ -42,8 +42,13 @@ export const createAdminCapabilitySnapshotRoute =
   async (context: WorkerContext): Promise<Response> => {
     context.set('operation', OPERATION_ID);
     return withDeadline(context, OPERATION_ID, async (signal) => {
+      // BE00 step 2: origin (a read has no body, CSRF or media).
       const origin = checkConfigurationSameOrigin(context);
       if (!origin.ok) return responseForAuthError(context, origin);
+      // BE00 steps 4 and 5: verified session, then the acting context.
+      const admitted = await admitSession(context, dependencies, signal);
+      if ('response' in admitted) return admitted.response;
+      // BE00 step 6: the route accepts no query.
       if (new URL(context.req.url).search !== '')
         return responseForAuthError(
           context,
@@ -53,8 +58,6 @@ export const createAdminCapabilitySnapshotRoute =
             'The query parameters are invalid.',
           ),
         );
-      const admitted = await admit(context, dependencies, OPERATION_ID, signal);
-      if ('response' in admitted) return admitted.response;
       const rate = await enforceConfigurationRate(
         context,
         OPERATION_ID,

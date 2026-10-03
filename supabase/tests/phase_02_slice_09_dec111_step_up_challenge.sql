@@ -80,7 +80,7 @@ select is(pg_temp.m_out('cb:none'), 'NO_VERIFIED_FACTOR', 'an account with no fa
 select pg_temp.m_cbegin('cb:pendonly', 4);
 select is(pg_temp.m_out('cb:pendonly'), 'NO_VERIFIED_FACTOR', 'an account with only a pending factor is NO_VERIFIED_FACTOR [P2-S09-AC-844]');
 select pg_temp.m_cbegin('cb:many', 2);
-select is(pg_temp.m_out('cb:many'), 'FACTOR_ID_REQUIRED', 'two verified factors without a factorId is FACTOR_ID_REQUIRED [P2-S09-AC-847]');
+select is(pg_temp.m_out('cb:many'), 'FACTOR_ID_REQUIRED', 'two verified factors without a factorId is FACTOR_ID_REQUIRED [P2-S09-AC-847] [P2-S09-AC-828]');
 select pg_temp.m_cbegin('cb:foreign', 1, pg_temp.m_fid(2));
 select is(pg_temp.m_out('cb:foreign'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND [P2-S09-AC-843]');
 select pg_temp.m_cbegin('cb:pending', 4, pg_temp.m_fid(4));
@@ -133,9 +133,9 @@ select is(pg_temp.m_one(format($$select count(*)::text from identity.step_up_cha
 
 -- ---- prepare -----------------------------------------------------------------
 select pg_temp.m_cprep('cp:othersession', 1, (select id from m_c2), 2);
-select is(pg_temp.m_out('cp:othersession'), 'NOT_FOUND', 'another session of the same user cannot use the challenge (404) [P2-S09-AC-869]');
+select is(pg_temp.m_out('cp:othersession'), 'NOT_FOUND', 'another session of the same user cannot use the challenge (404) [P2-S09-AC-869] [P2-S09-AC-856]');
 select pg_temp.m_cprep('cp:otheruser', 2, (select id from m_c2));
-select is(pg_temp.m_out('cp:otheruser'), 'NOT_FOUND', 'another user cannot use the challenge (404) [P2-S09-AC-869]');
+select is(pg_temp.m_out('cp:otheruser'), 'NOT_FOUND', 'another user cannot use the challenge (404) [P2-S09-AC-869] [P2-S09-AC-856]');
 select pg_temp.m_cprep('cp:ok', 1, (select id from m_c2));
 select is(pg_temp.m_resp('cp:ok')->>'providerChallengeId',
   pg_temp.m_one(format('select provider_challenge_id::text from identity.step_up_challenges where id = %L', (select id from m_c2))),
@@ -161,7 +161,7 @@ select is((select count(*)::integer from identity.security_events where action =
 select pg_temp.m_cprep('fl:still', 1, (select id from m_c2));
 select is(pg_temp.m_out('fl:still'), 'OK', 'the challenge remains usable after wrong codes');
 select pg_temp.m_cfail('fl:amb', 1, (select id from m_c3), 'ambiguous', 2);
-select is(pg_temp.m_cstate((select id from m_c3)), 'failed', 'an ambiguous provider outcome fails the challenge [P2-S09-AC-905]');
+select is(pg_temp.m_cstate((select id from m_c3)), 'failed', 'an ambiguous provider outcome fails the challenge [P2-S09-AC-905] [P2-S09-AC-863]');
 select is(pg_temp.m_one(format('select (failed_at is not null)::text from identity.step_up_challenges where id = %L', (select id from m_c3))), 'true', 'failed_at is recorded');
 select pg_temp.m_cprep('fl:after', 1, (select id from m_c3), 2);
 select is(pg_temp.m_out('fl:after'), 'CHALLENGE_CONSUMED', 'a failed challenge is CHALLENGE_CONSUMED (start a new one) [P2-S09-AC-905] [P2-S09-AC-870]');

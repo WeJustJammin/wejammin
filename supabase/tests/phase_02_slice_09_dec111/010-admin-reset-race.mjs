@@ -129,6 +129,7 @@ console.log(
 );
 const setupScript = [
   '\\set ON_ERROR_STOP on',
+  fragment('support/jwt-claims.sqlinc'),
   'begin;',
   fragment('phase_02_slice_09_dec111/00-support.sqlinc'),
   fragment('phase_02_slice_09_dec108/00-helpers.sqlinc'),
@@ -140,6 +141,7 @@ const setupScript = [
    select pg_temp.m_session(n) from generate_series(11, 16) n;
    create or replace function pg_temp.m_member(p_actor text) returns void language plpgsql as $body$
    begin
+     -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
      insert into identity_private.membership_tenure(organization_id, person_id, state, provenance, governance_mode,
        starts_on, accepted_at, actor_id, version)
      select pg_temp.s09d_id('ownerOrg'), member.person_id, 'confirmed', 'invitation', 'ungoverned', current_date - 1,
@@ -149,6 +151,7 @@ const setupScript = [
    $body$;
    select pg_temp.m_member('rev1');
    select pg_temp.m_member('rev2');
+   -- FIXTURE FORGERY: no command in this repository grants an admin capability (CFG-11 record).
    insert into platform_private.admin_capability_grants(id, subject_person_id, capability_key, resource_type, resource_id,
      scope, actions, starts_at, ends_at, grantor_person_id, reason, purpose_grant, state, version_no)
    select extensions.gen_random_uuid(), pg_temp.s09d_actor_id('designer2', 'person')::uuid, 'admin.identity.mfa_reset',
@@ -169,8 +172,7 @@ const setupScript = [
 ].join('\n');
 const ids = JSON.parse(runScript(setupScript));
 
-const gucs = `select set_config('request.jwt.claim.role','service_role',false),
-  set_config('request.jwt.claim.sub',${sql(ids.guc.auth)},false),
+const gucs = `select set_config('request.jwt.claims',${sql(JSON.stringify({ role: 'service_role', sub: ids.guc.auth }))},false),
   set_config('app.auth_user_id',${sql(ids.guc.auth)},false),
   set_config('app.actor_auth_user_id',${sql(ids.guc.auth)},false),
   set_config('app.actor_person_id',${sql(ids.guc.person)},false),

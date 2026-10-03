@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -38,8 +39,8 @@ select
   (select person_id from identity.auth_user_bindings
     where auth_user_id = 'a80c0000-0000-4000-8000-000000000002') as actor_two_person_id;
 
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a80c0000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a80c0000-0000-4000-8000-000000000001', true);
 select set_config('app.auth_user_id', 'a80c0000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_auth_user_id', 'a80c0000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id',
@@ -50,7 +51,7 @@ select set_config('app.correlation_id', 'a80c0000-0000-4000-000000000091', true)
 create temp table p2_s08_context_parties on commit drop as
 select ((platform_api.rpc_create_organization('self_member', '{}'::text[]))->>'organizationId')::uuid
   as actor_one_party_id;
-select set_config('request.jwt.claim.sub', 'a80c0000-0000-4000-8000-000000000002', true);
+select pg_temp.set_jwt_claim('sub', 'a80c0000-0000-4000-8000-000000000002', true);
 select set_config('app.auth_user_id', 'a80c0000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_auth_user_id', 'a80c0000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_person_id',
@@ -134,8 +135,8 @@ insert into identity_private.organization_actor_grant(
   current_date, current_date + 1, true
 );
 
-select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+select pg_temp.set_jwt_claim('sub', '', true);
 create temp table p2_s08_context_response on commit drop as
 select pg_temp.s08_context_capabilities(jsonb_build_object(
   'context', jsonb_build_object(

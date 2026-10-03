@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -25,6 +26,7 @@ select pg_temp.m_session(n) from generate_series(11, 16) n;
 
 create or replace function pg_temp.m_member(p_actor text) returns void language plpgsql as $body$
 begin
+  -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
   insert into identity_private.membership_tenure(organization_id, person_id, state, provenance, governance_mode,
     starts_on, accepted_at, actor_id, version)
   select pg_temp.s09d_id('ownerOrg'), member.person_id, 'confirmed', 'invitation', 'ungoverned', current_date,
@@ -40,6 +42,7 @@ create or replace function pg_temp.m_grant(p_actor text, p_org uuid, p_actions t
   p_state text default 'active', p_ends interval default interval '1 day') returns uuid language plpgsql as $body$
 declare gid uuid := extensions.gen_random_uuid();
 begin
+  -- FIXTURE FORGERY: no command in this repository grants an admin capability (CFG-11 record).
   insert into platform_private.admin_capability_grants(id, subject_person_id, capability_key, resource_type, resource_id,
     scope, actions, starts_at, ends_at, grantor_person_id, reason, purpose_grant, state, version_no)
   values (gid, pg_temp.s09d_actor_id(p_actor, 'person')::uuid, 'admin.identity.mfa_reset', 'organization', p_org,
@@ -130,7 +133,8 @@ select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('plat
 select pg_temp.m_reset('r:key', 'designer2', 'rev1', 'reset-key-ac945-0001', 'x', '{}', jsonb_build_object('unknown', true));
 select is(pg_temp.m_out('r:key'), 'INVALID_REQUEST', 'an unknown request key is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
 -- CFG-05B-06 without any verified actor session is 401 UNAUTHENTICATED (no session GUC, no envelope).
-select set_config(k, '', true) from unnest(array['app.auth_user_id', 'app.actor_auth_user_id', 'app.actor_person_id', 'app.acting_party_id', 'app.acting_context_id', 'request.jwt.claim.sub']) k;
+select set_config(k, '', true) from unnest(array['app.auth_user_id', 'app.actor_auth_user_id', 'app.actor_person_id', 'app.acting_party_id', 'app.acting_context_id']) k;
+select pg_temp.set_jwt_claim('sub', '');
 select pg_temp.s09d_call('r:unauth', 'platform_api.admin_mfa_factor_reset',
   jsonb_build_object('targetPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'reason', 'lost every factor',
     'idempotencyKey', 'reset-key-ac936-0001', 'context', '{}'::jsonb));
@@ -177,6 +181,7 @@ update auth.users set banned_until = clock_timestamp() + interval '1 year' where
 select pg_temp.m_reset('r:banned', 'designer2', 'rev1', 'reset-key-ac945-0015');
 select is(pg_temp.m_out('r:banned'), 'TARGET_NOT_FOUND', 'a banned target is the same 404 [P2-S09-AC-927]');
 update auth.users set banned_until = null where id = pg_temp.m_uid(13);
+-- TIME-WARP: shifts a membership window to reach a time-dependent branch.
 update identity_private.membership_tenure set starts_on = current_date - 10, ends_on = current_date - 1
  where person_id = pg_temp.s09d_actor_id('rev1', 'person')::uuid and organization_id = pg_temp.s09d_id('ownerOrg');
 select pg_temp.m_reset('r:ended', 'designer2', 'rev1', 'reset-key-ac945-0016');
@@ -188,6 +193,7 @@ select is(pg_temp.m_ver(13)::bigint, (select v13 from m_pre), 'and changed no MF
 
 -- ---- reservation ------------------------------------------------------------------
 -- The target also holds a step-up capability: the reset is not subject to last_factor_required.
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
 values (pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev1', 'person')::uuid, 'cms.schema_designer', current_date, current_date + 3, true);
 -- AC896 baseline: the target's linked email login method and a second linked
@@ -317,7 +323,7 @@ select ok(not (pg_temp.m_resp('s:partial')::text ~ ('(' || pg_temp.m_pid_named(1
   'the settle response carries no provider factor id and no Auth UUID');
 select pg_temp.m_settle_reset('s:final', 'designer2', (select id from m_reset_id), jsonb_build_array(
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Pend'), 'outcome', 'removed')));
-select is(pg_temp.m_resp('s:final')->>'state', 'completed', 'the last confirmation completes the reset');
+select is(pg_temp.m_resp('s:final')->>'state', 'completed', 'the last confirmation completes the reset [P2-S09-AC-918]');
 select is(pg_temp.m_resp('s:final')->>'removedFactorCount', '4', 'with all four factors removed');
 select ok(pg_temp.m_one(format($q$select (completed_at is not null)::text from platform_private.admin_mfa_factor_resets where id = %L$q$, (select id from m_reset_id))) = 'true', 'completed_at is recorded');
 create temp table m_v_fin on commit drop as select pg_temp.m_ver(13)::bigint v;

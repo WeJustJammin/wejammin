@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -140,12 +141,15 @@ select pg_temp.s09d_assign('u', 'rev1');
 select pg_temp.s09d_decide('u', 'rev1');
 select pg_temp.s09w_backfill('u');
 select is(pg_temp.s09d_outcome('u:w.complete'), 'OK', 'the worker backfills, verifies and completes the multi-field plan');
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok((select count(*) = 3 and bool_and(target_document = (
       select platform_private.cms_migration_revision_document(revision.id)
         from platform_private.cms_entry_revisions revision where revision.id = target.source_row_id))
     from platform_private.cms_schema_migration_target_rows target where target.plan_id = pg_temp.s09d_id('u:plan')
       and target.source_table = 'cms_entry_revisions'),
   'the database wrote three target rows equal to the validated source documents');
+select set_config('app.cms_rpc', '', true);
 select pg_temp.s09d_activate('u');
 select is(pg_temp.s09d_outcome('u:activate'), 'OK', 'CMS-03A-04 switches the multi-field plan');
 

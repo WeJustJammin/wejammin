@@ -473,12 +473,11 @@ and actual source/template prerequisite scope added. No release gate was waived.
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/2026-08-02-architecture-design|WeJammin — Architecture Design]]
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### References
-
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]
 - [[specs/ia/01-identity-authority|Shard 01 — Identity authority and party governance]]
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]

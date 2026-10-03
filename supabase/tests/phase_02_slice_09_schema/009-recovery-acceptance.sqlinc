@@ -38,7 +38,9 @@ select pg_temp.s09d_remember('big:version', (pg_temp.s09d_resp('big:create')->>'
 select pg_temp.s09d_dry_run('big');
 select pg_temp.s09d_seal('big');
 select pg_temp.s09d_guc_restore();
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+-- a Worker request of its own: nothing a previous (human) command published is still set
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true), set_config('app.mfa_session_subject', '', true);
 select pg_temp.s09d_id('big:version') as big_version, pg_temp.s09d_id('big:plan') as big_plan,
        pg_temp.s09d_id('big:dryRun') as big_dry_run \gset
 create temp table s09_ac217_plan on commit drop as
@@ -77,6 +79,8 @@ select ok(
       where version_row.id = :'big_version'),
   'AC217 the producer persists a complete 128-field target definition and matching bounded artifact [P2-S09-AC-217]'
 );
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   (select platform_private.cms_persisted_dry_run_report_valid(
      report.id, report.owner_id, report.content_type_id, report.source_version_id,
@@ -85,6 +89,7 @@ select ok(
    from platform_private.cms_schema_dry_run_reports report where report.id = :'big_dry_run'),
   'AC217 the worker seal persists an independent immutable dry-run report for the 128-field target'
 );
+select set_config('app.cms_rpc', '', true);
 
 -- The sealed plan is ready; the first worker leases the backfill for 1 ms.
 create temp table s09_ac217_claim_one on commit drop as

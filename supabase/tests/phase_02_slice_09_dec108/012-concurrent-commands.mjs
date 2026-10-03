@@ -129,6 +129,7 @@ const request = (actor, body, withBinding = false) =>
   `${body} || jsonb_build_object('context', pg_temp.s09d_context('${actor}', ${withBinding}))`;
 const setupScript = [
   '\\set ON_ERROR_STOP on',
+  fragment('support/jwt-claims.sqlinc'),
   'begin;',
   fragment('phase_02_slice_09_dec108/00-helpers.sqlinc'),
   fragment('phase_02_slice_09_dec108/01-actors.sqlinc'),
@@ -186,10 +187,10 @@ const setupScript = [
 const ids = JSON.parse(runScript(setupScript));
 
 const gucs = (actor) => {
-  if (actor === null) return `select set_config('request.jwt.claim.role','service_role',false);`;
+  if (actor === null)
+    return `select set_config('request.jwt.claims','{"role":"service_role"}',false);`;
   const a = ids.actors[actor];
-  return `select set_config('request.jwt.claim.role','service_role',false),
-  set_config('request.jwt.claim.sub',${sql(a.auth)},false),
+  return `select set_config('request.jwt.claims',${sql(JSON.stringify({ role: 'service_role', sub: a.auth }))},false),
   set_config('app.auth_user_id',${sql(a.auth)},false),
   set_config('app.actor_auth_user_id',${sql(a.auth)},false),
   set_config('app.actor_person_id',${sql(a.person)},false),
@@ -204,7 +205,9 @@ const call = (fn, req) =>
 // bumped the version the loser still carries) is VERSION_MISMATCH, a state or
 // key conflict at an unchanged version is CONFLICT.
 const race = async (name, fn, first, second, refusal = 'CONFLICT') => {
-  console.log(`# ${name}: the first command is in flight (${HOLD_SECONDS}s hold)`);
+  console.log(
+    `# ${name}: the first command is in flight (${HOLD_SECONDS}s hold)`,
+  );
   const hold = runAsync(
     `s09conc-${name}-1`,
     `begin; ${gucs(first.actor)} ${call(fn, first.request)} select pg_sleep(${HOLD_SECONDS}); commit;`,
@@ -217,9 +220,8 @@ const race = async (name, fn, first, second, refusal = 'CONFLICT') => {
     `s09conc-${name}-2`,
     `${gucs(second.actor)} ${call(fn, second.request)}`,
   );
-  await waitFor(
-    `${name}: the second command to block on a lock`,
-    () => waitEvent(`s09conc-${name}-2`).startsWith('Lock:'),
+  await waitFor(`${name}: the second command to block on a lock`, () =>
+    waitEvent(`s09conc-${name}-2`).startsWith('Lock:'),
   );
   assert(
     waitEvent(`s09conc-${name}-1`) === 'Timeout:PgSleep',
@@ -342,4 +344,6 @@ assert(
   ) === '2/revoked:1',
   '[P2-S09-AC-586] [P2-S09-AC-1137] two concurrent revocations at one expected version: the loser got a typed 409, the aggregate is revoked at version 2 with one revoked event',
 );
-console.log('# all race assertions passed; run `pnpm db:reset` before the pgTAP suite');
+console.log(
+  '# all race assertions passed; run `pnpm db:reset` before the pgTAP suite',
+);

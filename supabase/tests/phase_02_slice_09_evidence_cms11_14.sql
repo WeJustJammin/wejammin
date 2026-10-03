@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -180,7 +181,11 @@ select pg_temp.s09d_create_type('dz', 'ev12driftdryother');
 select pg_temp.s09d_dry_run('dz');
 set constraints all immediate;
 alter table platform_private.cms_content_type_versions disable trigger cms_content_type_versions_guard;
+-- negative-control forgery (no command rebinds a candidate's dry-run attempt): the write is
+-- made under the RPC flag a hostile writer would set itself
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_type_versions set dry_run_id = pg_temp.s09d_id('dz:dryRun') where id = pg_temp.s09d_id('dd:version');
+select set_config('app.cms_rpc', '', true);
 alter table platform_private.cms_content_type_versions enable trigger cms_content_type_versions_guard;
 set constraints all deferred;
 select is(pg_temp.s09e_drift_state('dd'), 'invalidated/draft',

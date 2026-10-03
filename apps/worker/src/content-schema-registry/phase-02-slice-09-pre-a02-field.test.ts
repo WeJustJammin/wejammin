@@ -98,7 +98,7 @@ describe('CMS-03A-02 field schema change through the real route', () => {
       ),
     );
     expect(badVersion.status).toBe(400);
-    expect(harness.resolveSession).not.toHaveBeenCalled();
+    expect(harness.rateLimit).not.toHaveBeenCalled();
     expect(harness.ports.addFieldDefinition).not.toHaveBeenCalled();
     const mismatch = makeHarness();
     mismatch.ports.addFieldDefinition.mockResolvedValueOnce({

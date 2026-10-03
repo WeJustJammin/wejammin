@@ -27,6 +27,7 @@ import { laneJobs } from './s09-lane-jobs';
 import { armAmbiguousVerify, laneMfaMethods } from './s09-lane-mfa';
 import { laneRegistryPorts } from './s09-lane-registry';
 import { iso, worldFor } from './s09-lane-world';
+import type { LaneRole } from './s09-lane-ids';
 
 /**
  * Composition of the stateful lane over the legacy static Worker fixture.
@@ -194,6 +195,31 @@ export const handleLaneControl = async (
       return Response.json({ degraded: on });
     } catch {
       return Response.json({ degraded: false }, { status: 400 });
+    }
+  }
+  if (
+    url.pathname === '/_s09/lane/remove-capability' &&
+    request.method === 'POST'
+  ) {
+    try {
+      const { testId, role, capability } = (await request.json()) as {
+        testId?: unknown;
+        role?: unknown;
+        capability?: unknown;
+      };
+      if (
+        typeof testId !== 'string' ||
+        !/^[0-9a-f]{8}$/u.test(testId) ||
+        typeof role !== 'string' ||
+        typeof capability !== 'string'
+      )
+        return Response.json({ removed: false }, { status: 400 });
+      const world = worldFor(testId);
+      const removed = (world.removedCapabilities[role as LaneRole] ??= []);
+      removed.push(capability);
+      return Response.json({ removed: true });
+    } catch {
+      return Response.json({ removed: false }, { status: 400 });
     }
   }
   if (url.pathname !== '/_s09/lane/expire-step-up' || request.method !== 'POST')

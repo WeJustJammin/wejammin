@@ -10,6 +10,7 @@ import {
   authError,
   parseJsonBody,
   responseForAuthError,
+  type JsonMutationTransport,
 } from '../authentication/boundary';
 import type {
   AuthenticationError,
@@ -56,11 +57,16 @@ const invalidQuery = (): AuthenticationError =>
     ],
   });
 
-export const parseRelationshipJsonBody = async <T>(
-  request: Request,
+/** BE00 step 6: strict relationship body on the transport read at step 2. */
+export const decodeRelationshipBody = <T>(
+  transport: JsonMutationTransport,
   schema: Parameters<typeof parseJsonBody<T>>[1],
-): Promise<AuthenticationResult<T>> => {
-  const parsed = await parseJsonBody(request, schema);
+): AuthenticationResult<T> =>
+  mapRelationshipBodyError(transport.decode(schema));
+
+const mapRelationshipBodyError = <T>(
+  parsed: AuthenticationResult<T>,
+): AuthenticationResult<T> => {
   if (parsed.ok) return parsed;
   if (parsed.code === 'VALIDATION_FAILED' || parsed.code === 'INVALID_REQUEST')
     return relationshipError(
@@ -71,6 +77,12 @@ export const parseRelationshipJsonBody = async <T>(
     );
   return parsed;
 };
+
+export const parseRelationshipJsonBody = async <T>(
+  request: Request,
+  schema: Parameters<typeof parseJsonBody<T>>[1],
+): Promise<AuthenticationResult<T>> =>
+  mapRelationshipBodyError(await parseJsonBody(request, schema));
 
 export const parseRelationshipCommandHeaders = (
   request: Request,

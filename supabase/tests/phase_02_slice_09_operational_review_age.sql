@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -14,9 +15,17 @@ select no_plan();
 \ir phase_02_slice_09_dec108/01-actors.sqlinc
 \ir phase_02_slice_09_dec108/02-chain.sqlinc
 
-create or replace function pg_temp.s09o_snapshot(p_at timestamptz default null) returns jsonb language sql as $body$
-  select platform_api.cms_get_operational_state_snapshot(
-    jsonb_build_object('observedAt', coalesce(p_at, clock_timestamp()))) $body$;
+-- The gauge snapshot is a service-role Worker request: a request of its own, with no
+-- human session published (the system scope the review policy admits).
+create or replace function pg_temp.s09o_snapshot(p_at timestamptz default null) returns jsonb language plpgsql as $body$
+begin
+  perform set_config('app.cms_session_actor', '', true);
+  perform set_config('app.cms_session_party', '', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
+  return platform_api.cms_get_operational_state_snapshot(
+    jsonb_build_object('observedAt', coalesce(p_at, clock_timestamp())));
+end;
+$body$;
 
 select ok(not (pg_temp.s09o_snapshot() ? 'reviewOpenAgeMs'),
   'with no review the snapshot carries no reviewOpenAgeMs [P2-S09-AC-693]');

@@ -122,13 +122,13 @@ const waitEvent = (appName) =>
     `select coalesce(wait_event_type || ':' || wait_event, 'none') from pg_stat_activity where application_name = ${sql(appName)} and state = 'active' and pid <> pg_backend_pid() limit 1;`,
   );
 
-const fragment = (relative) =>
-  readFileSync(join(testsDir, relative), 'utf8');
+const fragment = (relative) => readFileSync(join(testsDir, relative), 'utf8');
 
 // ----------------------------------------------------------------- setup ----
 console.log('# building two approved candidates through the named commands');
 const setupScript = [
   '\\set ON_ERROR_STOP on',
+  fragment('support/jwt-claims.sqlinc'),
   'begin;',
   fragment('phase_02_slice_09_dec108/00-helpers.sqlinc'),
   fragment('phase_02_slice_09_dec108/01-actors.sqlinc'),
@@ -177,8 +177,7 @@ const setupScript = [
 ].join('\n');
 const ids = JSON.parse(runScript(setupScript));
 
-const gucs = `select set_config('request.jwt.claim.role','service_role',false),
-  set_config('request.jwt.claim.sub',${sql(ids.guc.auth)},false),
+const gucs = `select set_config('request.jwt.claims',${sql(JSON.stringify({ role: 'service_role', sub: ids.guc.auth }))},false),
   set_config('app.auth_user_id',${sql(ids.guc.auth)},false),
   set_config('app.actor_auth_user_id',${sql(ids.guc.auth)},false),
   set_config('app.actor_person_id',${sql(ids.guc.person)},false),
@@ -207,7 +206,9 @@ assert(
 );
 
 // -------------------------------------------------- S1: entry first ----
-console.log(`# S1: an entry is in flight when the switch starts (${SLEEP_SECONDS}s hold)`);
+console.log(
+  `# S1: an entry is in flight when the switch starts (${SLEEP_SECONDS}s hold)`,
+);
 const entryHold = runAsync(
   's09race-entry1',
   `begin; ${gucs} ${call('cms_create_entry', ids.entryA)} select pg_sleep(${SLEEP_SECONDS}); commit;`,
@@ -220,9 +221,8 @@ const switchBlocked = runAsync(
   's09race-switch1',
   `${gucs} ${call('cms_activate_schema', ids.activateB)}`,
 );
-await waitFor(
-  'the switch to block on the source-version row',
-  () => waitEvent('s09race-switch1').startsWith('Lock:'),
+await waitFor('the switch to block on the source-version row', () =>
+  waitEvent('s09race-switch1').startsWith('Lock:'),
 );
 assert(
   waitEvent('s09race-entry1') === 'Timeout:PgSleep',
@@ -251,7 +251,9 @@ assert(
 );
 
 // ------------------------------------------------ S2: switch first ----
-console.log(`# S2: the switch is in flight when an entry starts (${SLEEP_SECONDS}s hold)`);
+console.log(
+  `# S2: the switch is in flight when an entry starts (${SLEEP_SECONDS}s hold)`,
+);
 const switchHold = runAsync(
   's09race-switch2',
   `begin; ${gucs} ${call('cms_activate_schema', ids.activateD)} select pg_sleep(${SLEEP_SECONDS}); commit;`,
@@ -264,9 +266,8 @@ const entryBlocked = runAsync(
   's09race-entry2',
   `${gucs} ${call('cms_create_entry', ids.entryC)}`,
 );
-await waitFor(
-  'the entry to block on the source-version row',
-  () => waitEvent('s09race-entry2').startsWith('Lock:'),
+await waitFor('the entry to block on the source-version row', () =>
+  waitEvent('s09race-entry2').startsWith('Lock:'),
 );
 assert(
   waitEvent('s09race-switch2') === 'Timeout:PgSleep',
@@ -289,4 +290,6 @@ assert(
   revisionCount(ids.c) === 0,
   'S2: no entry revision exists on the switched-away version',
 );
-console.log('# all race assertions passed; run `pnpm db:reset` before the pgTAP suite');
+console.log(
+  '# all race assertions passed; run `pnpm db:reset` before the pgTAP suite',
+);

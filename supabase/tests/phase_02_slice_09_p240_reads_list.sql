@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -67,7 +68,7 @@ select is(pg_temp.s09d_outcome('fx:a') || pg_temp.s09d_outcome('fx:b') || pg_tem
 
 -- ===================================== AC124 strict query before authorization ====
 select is(pg_temp.p_read('q:unknown', 'owner', '{"bogus":"x"}'), 'INVALID_REQUEST', 'an unknown query key is 400 INVALID_REQUEST and nothing is touched [P2-S09-AC-124]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('q:unknown:anon', 'platform_api.cms_list_content_types', '{"bogus":"x"}');
 select is(pg_temp.s09d_outcome('q:unknown:anon'), 'INVALID_REQUEST', 'the unknown key is refused before authorization: an unauthenticated caller gets the structural error, not 401 [P2-S09-AC-124]');
 select pg_temp.s09d_call('q:valid:anon', 'platform_api.cms_list_content_types', '{}');
@@ -218,7 +219,7 @@ select is((select count(*)::integer from jsonb_array_elements(pg_temp.p_items('c
 
 -- ================================================== AC198 A06 failure mapping ====
 select is(pg_temp.p_read('e:cursor', 'owner', '{"cursor":"bm90LWEtY3Vyc29y"}'), 'INVALID_REQUEST', 'a malformed cursor is 400 INVALID_REQUEST and mutates nothing [P2-S09-AC-198]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('e:anon', 'platform_api.cms_list_content_types', '{}');
 select is(pg_temp.s09d_outcome('e:anon'), 'UNAUTHENTICATED', 'no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-198]');
 select is(pg_temp.p_read('e:forbid', 'rev2', '{}'), 'FORBIDDEN', 'a missing capability is 403 FORBIDDEN [P2-S09-AC-198]');

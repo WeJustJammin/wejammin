@@ -7,12 +7,16 @@ import type { WorkerContext } from '../index';
 import {
   applyRateHeaders,
   authError,
+  decodeJsonBodyText,
+  jsonBodyPreflight,
   parseIdempotencyKey,
   parseIfMatch,
-  parseJsonBody,
+  readJsonBodyText,
   rejectUnexpectedQuery,
   responseForAuthError,
-  verifySameOriginCsrf,
+  verifyCsrfToken,
+  verifySameOrigin,
+  type JsonMutationTransport,
 } from '../authentication/boundary';
 import { isStepUpFresh } from '../authentication/route-support';
 import { stepUpRequiredError } from '../authentication/step-up';
@@ -56,24 +60,53 @@ export type SchemaLike<T> = Readonly<{
       }>;
 }>;
 
-const withProfileBoundaryDetails = <T>(
-  result: AuthenticationResult<T>,
-): AuthenticationResult<T> => {
-  if (result.ok) return result;
-  if (result.code === 'UNSUPPORTED_MEDIA_TYPE') {
-    return { ...result, details: { allowedMediaTypes: ['application/json'] } };
-  }
-  if (result.code === 'PAYLOAD_TOO_LARGE') {
-    return { ...result, details: { maxBytes: MAX_PROFILE_BODY_BYTES } };
-  }
-  return result;
+const withProfileBoundaryDetails = (
+  error: AuthenticationError,
+): AuthenticationError => {
+  if (error.code === 'UNSUPPORTED_MEDIA_TYPE')
+    return { ...error, details: { allowedMediaTypes: ['application/json'] } };
+  if (error.code === 'PAYLOAD_TOO_LARGE')
+    return { ...error, details: { maxBytes: MAX_PROFILE_BODY_BYTES } };
+  return error;
 };
 
-export const parseProfileBody = async <T>(
+/**
+ * BE00 step 2 for a profile command: for a session command the same-origin
+ * check comes first and the session-bound CSRF token after the content type; a
+ * public command (no session) has neither. The raw body is read here, and JSON
+ * syntax plus strict Zod validation run later (step 6) through `decode`.
+ */
+export const admitProfileTransport = async (
   request: Request,
-  schema: SchemaLike<T>,
-): Promise<AuthenticationResult<T>> =>
-  withProfileBoundaryDetails(await parseJsonBody(request, schema));
+  authenticated: boolean,
+): Promise<AuthenticationResult<JsonMutationTransport>> => {
+  if (authenticated) {
+    const origin = verifySameOrigin(request);
+    if (origin !== null) return origin;
+  }
+  const preflight = jsonBodyPreflight(request);
+  if (preflight !== null) return withProfileBoundaryDetails(preflight);
+  // Only a cookie session is CSRF-exposed; a request carrying no session
+  // cookie proceeds to authentication and is refused there (401).
+  if (
+    authenticated &&
+    /(?:^|;\s*)wj_session_ref=/u.test(request.headers.get('cookie') ?? '')
+  ) {
+    const csrf = await verifyCsrfToken(request);
+    if (csrf !== null) return csrf;
+  }
+  const text = await readJsonBodyText(request);
+  if (!text.ok) return withProfileBoundaryDetails(text);
+  return {
+    ok: true,
+    value: { decode: (schema) => decodeJsonBodyText(text.value, schema) },
+  };
+};
+
+export const requireProfileStepUp = (
+  session: AuthenticationSession,
+): AuthenticationError | null =>
+  isStepUpFresh(session, Date.now()) ? null : stepUpRequiredError();
 
 export const parseProfileQuery = (
   request: Request,
@@ -134,7 +167,6 @@ const hasSessionCredential = (request: Request): boolean => {
 export const requireProfileSession = async (
   context: WorkerContext,
   auth: AuthenticationDependencies | undefined,
-  stepUp: boolean,
 ): Promise<AuthenticationResult<AuthenticationSession>> => {
   if (!hasSessionCredential(context.req.raw)) {
     return authError(401, 'UNAUTHENTICATED', 'Sign in is required.', {
@@ -174,20 +206,7 @@ export const requireProfileSession = async (
       recoveryAction: 'select_context',
     });
   }
-  if (stepUp && !isStepUpFresh(resolved.value, Date.now())) {
-    // BE00/DEC-111: allowedMethods is the configured step-up method registry.
-    // Claim proof kinds (challenge_code, attester_route) are evidence, not
-    // step-up factors, so they are never advertised here.
-    return stepUpRequiredError();
-  }
   return resolved;
-};
-
-export const requireProfileCsrf = async (
-  context: WorkerContext,
-): Promise<Response | null> => {
-  const error = await verifySameOriginCsrf(context.req.raw);
-  return error === null ? null : responseForAuthError(context, error);
 };
 
 export const enforceProfileRate = async (

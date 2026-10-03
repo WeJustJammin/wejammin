@@ -21,7 +21,10 @@ create temp table if not exists s09x_writes(
 ) on commit drop;
 create temp table if not exists s09x_producers(fn text primary key) on commit drop;
 
-create or replace function pg_temp.s09x_record() returns trigger language plpgsql as $body$
+-- SECURITY DEFINER: the producers run as the NOLOGIN definer role (SEC-2), which
+-- holds no privilege on this session's temp tables; the recorder itself must
+-- still be able to log the write it observes.
+create or replace function pg_temp.s09x_record() returns trigger language plpgsql security definer as $body$
 declare
   ctx text;
   frames text[];

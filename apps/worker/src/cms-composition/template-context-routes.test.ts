@@ -114,60 +114,81 @@ describe('CMS-11 protected template context read', () => {
   it.each([
     {
       name: 'bad origin',
+      sessionCalls: 0,
       path: '/api/v1/cms/templates/context',
       headers: { origin: 'https://other.test' },
       status: 403,
     },
     {
       name: 'query selector',
+      sessionCalls: 1,
       path: '/api/v1/cms/templates/context?ownerId=private',
       headers: {},
       status: 400,
     },
-  ])('rejects $name before the session', async ({ path, headers, status }) => {
-    const resolveSession = vi.fn(async () => ({
-      ok: true as const,
-      value: session,
-    }));
-    const { app } = harness({ resolveSession });
-    expect((await app.request(path, { headers })).status).toBe(status);
-    expect(resolveSession).not.toHaveBeenCalled();
+  ])(
+    'rejects $name before authorization or the RPC',
+    async ({ path, headers, status, sessionCalls }) => {
+      const resolveSession = vi.fn(async () => ({
+        ok: true as const,
+        value: session,
+      }));
+      const { app } = harness({ resolveSession });
+      expect((await app.request(path, { headers })).status).toBe(status);
+      expect(resolveSession).toHaveBeenCalledTimes(sessionCalls);
+    },
+  );
+
+  it('answers request media on a read with 415 and an empty allowlist (BE00)', async () => {
+    const { app } = harness();
+    const response = await app.request('/api/v1/cms/templates/context', {
+      headers: { 'content-type': 'application/json' },
+    });
+    expect(response.status).toBe(415);
+    expect(((await response.json()) as { details: unknown }).details).toEqual({
+      allowedMediaTypes: [],
+    });
   });
 
   it.each([
     {
       name: 'idempotency key',
+      sessionCalls: 1,
       headers: { 'idempotency-key': 'create-only' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
     {
       name: 'write precondition',
+      sessionCalls: 1,
       headers: { 'if-match': '"2"' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
     {
       name: 'request media',
+      sessionCalls: 0,
       headers: { 'content-type': 'application/json' },
       status: 415,
       code: 'UNSUPPORTED_MEDIA_TYPE',
     },
     {
       name: 'nonempty body claim',
+      sessionCalls: 1,
       headers: { 'content-length': '1' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
     {
       name: 'transfer encoding',
+      sessionCalls: 1,
       headers: { 'transfer-encoding': 'chunked' },
       status: 400,
       code: 'INVALID_REQUEST',
     },
   ])(
-    'rejects $name on a read before session or RPC',
-    async ({ headers, status, code }) => {
+    'rejects $name on a read before authorization or the RPC',
+    async ({ headers, status, code, sessionCalls }) => {
       const resolveSession = vi.fn(async () => ({
         ok: true as const,
         value: session,
@@ -178,7 +199,7 @@ describe('CMS-11 protected template context read', () => {
       });
       expect(response.status).toBe(status);
       expect(await response.json()).toMatchObject({ code });
-      expect(resolveSession).not.toHaveBeenCalled();
+      expect(resolveSession).toHaveBeenCalledTimes(sessionCalls);
       expect(readContext).not.toHaveBeenCalled();
     },
   );

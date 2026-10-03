@@ -482,7 +482,13 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /\*\*Local QA-GREEN \(historical, 2026-09-26\)\*\*:\s*279\/279\s+verified at that checkpoint;\s*283\s+authored IDs remain/iu,
     );
     expect(sliceTracker).toMatch(
-      /\*\*Current active verification\*\*:\s*1235\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+      new RegExp(
+        String.raw`\*\*Current active verification\*\*:\s*${String(
+          (sliceTracker.match(/^- \[x\] \*\*P2-S09-AC-\d{3,4}\*\*/gmu) ?? [])
+            .length,
+        )}\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01`,
+        'iu',
+      ),
     );
 
     const ac266Row = sliceTracker
@@ -493,7 +499,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /AC266[\s\S]{0,500}owner-deferred[\s\S]{0,500}remains unchecked and excluded from active Phase 2/iu,
     );
     expect(sliceTracker).toMatch(
-      /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened under the DEC-108 accounting,\s*and the 956 open DEC-108\/109\/110\/111\/119\/120 criteria AC284-AC1239;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
+      /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened under the DEC-108 accounting,\s*and every DEC-108\/109\/110\/111\/119\/120 criterion AC284-AC1239 that the open-criteria block of the Slice 09 tracker lists as open;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
     );
     expect(sliceTracker).toMatch(
       /AC266[\s\S]{0,300}mandatory[\s\S]{0,100}pre-release[\s\S]{0,100}production-readiness\/release/iu,

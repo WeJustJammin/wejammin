@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -239,11 +240,14 @@ select pg_temp.s09d_successor('sq', 'sp');
 select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_type_versions set workflow_key = 'editorial', workflow_version = 1 where id = pg_temp.s09d_id('sq:version');
 select pg_temp.s09d_to_active('sq', array['rev1', 'rev2']);
+-- the evidence projection is a definer function: called outside a command it holds the RPC context itself
+select set_config('app.cms_rpc', 'true', true);
 select ok(pg_temp.s09d_outcome('sq:activate') = 'OK'
   and (select e->>'key' = 'editorial' and e->>'riskClass' = 'protected' and (e->>'requiredDecisionCount')::int = 2
         and e->'requiredCapabilities' = '["cms.reviewer", "cms.reviewer.policy"]'::jsonb
       from (select platform_private.cms_editorial_workflow_policy_evidence(pg_temp.s09d_id('sq:version')) e) s),
   'the editorial policy an entry carries for a successor under an ordinary key is the strictest of the source and bound members (protected, two decisions, the specialist slot) [P2-S09-AC-670]');
+select set_config('app.cms_rpc', '', true);
 
 -- ===================== cms_content_type_capability_bindings CHECKs (AC215 part) ====
 select pg_temp.s09d_rpc('cb:create', 'platform_api.cms_create_type_draft', 'owner',

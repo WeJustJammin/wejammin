@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -165,7 +166,7 @@ select is(pg_temp.p_expect('f:allow', 'a', pg_temp.p_fresh('a', 'f_allow'), 'VAL
 select is(pg_temp.p_expect('f:bounds', 'a', pg_temp.p_fresh('a', 'f_bounds'), 'VALIDATION_FAILED', '{"min":3,"max":1}'), 'ok', 'a bounds failure is 422 VALIDATION_FAILED [P2-S09-AC-195]');
 select is(pg_temp.p_expect('f:dup', 'a', (select ok from p_f), 'CONFLICT'), 'ok', 'a duplicate relation is 409 CONFLICT [P2-S09-AC-195]');
 select is(pg_temp.p_expect('f:stale', 'a', pg_temp.p_fresh('a', 'f_stale'), 'VERSION_MISMATCH', '{"expectedVersion":"1"}'), 'ok', 'a stale version is 409 VERSION_MISMATCH [P2-S09-AC-195]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('f:anon', 'platform_api.cms_bind_relation', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'), 'fieldId', (select ok from p_f),
   'targetKind', 'domain', 'targetType', 'profile', 'projectionKey', 'profile.summary', 'cardinality', 'many', 'min', 0, 'max', 3, 'ordered', false, 'onUnavailable', 'omit', 'expectedVersion', '1', 'idempotencyKey', 'p240-anon-a03-0001'));
 select is(pg_temp.s09d_outcome('f:anon'), 'UNAUTHENTICATED', 'a call with no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-195]');

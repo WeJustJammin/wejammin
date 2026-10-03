@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -31,8 +32,16 @@ $body$;
 create or replace function pg_temp.s09k_keys(p_value jsonb) returns text language sql immutable as $body$
   select string_agg(k, ',' order by k) from jsonb_object_keys(p_value) k
 $body$;
-create or replace function pg_temp.s09k_request(p_tag text) returns jsonb language sql stable as $body$
-  select platform_private.cms_candidate_definition_request(pg_temp.s09d_id(p_tag || ':version'))
+-- The definition rebuild is a definer function that reads the persisted graph through the
+-- forced policies, so the test holds the RPC context for the call, as a command does.
+create or replace function pg_temp.s09k_request(p_tag text) returns jsonb language plpgsql as $body$
+declare result jsonb;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  result := platform_private.cms_candidate_definition_request(pg_temp.s09d_id(p_tag || ':version'));
+  perform set_config('app.cms_rpc', '', true);
+  return result;
+end;
 $body$;
 create or replace function pg_temp.s09k_hash(p_request jsonb, p_version_no integer) returns text language sql stable as $body$
   select platform_private.cms_definition_artifact_hash(p_request, p_version_no)

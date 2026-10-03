@@ -4,6 +4,9 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { S09_AMENDMENT_OPEN } from './phase-02-slice-09-amendment-evidence';
+import { rowsOf } from './phase-02-slice-09-amendment-evidence.test-support';
+
 const ROOT = resolve(import.meta.dirname, '../..');
 const LEDGER_PATH =
   '.memory/pipeline/progress/verification/2026-10-02-slice-09-dec108-depth-floor.md';
@@ -239,6 +242,10 @@ describe('Slice 09 depth-floor ledger guard', () => {
       'AC906',
       'AC282',
       'AC1147',
+      'AC025',
+      'AC034',
+      'AC390',
+      'AC641',
     ];
     for (const id of accounted) {
       const cells = byCriterion.get(id);
@@ -264,6 +271,36 @@ describe('Slice 09 depth-floor ledger guard', () => {
     expect(plan).not.toMatch(
       /AC-005\*\* — [^\n]*no_fallback fields do not borrow it\./u,
     );
+  });
+
+  it('[P2-S09-AC-1146] holds exactly the criteria whose ledger row is pending owner ratification: unchecked in plan and tracker with the inline note, listed open in the index', () => {
+    const rows = tableRows(section('Rewording after the evidence rulings'));
+    const pending = new Set(
+      rows
+        .filter((cells) => /pending owner ratification/u.test(cells[2] ?? ''))
+        .flatMap((cells) =>
+          [...(cells[0] ?? '').matchAll(/AC(\d{3,4})/gu)].map(([, id]) =>
+            Number(id),
+          ),
+        ),
+    );
+    const held = S09_AMENDMENT_OPEN.filter(
+      ({ status }) => status === 'held-pending-ratification',
+    ).map(({ criterion }) => Number(/(\d{3,4})$/u.exec(criterion)?.[1]));
+    expect(held.length).toBeGreaterThan(0);
+    expect([...pending].sort((a, b) => a - b)).toEqual(
+      [...held].sort((a, b) => a - b),
+    );
+    for (const path of [TRACKER_PATH, '.memory/wiki/specs/phases/phase-2.md']) {
+      const sheet = rowsOf(path);
+      for (const id of held) {
+        const label = `AC${String(id).padStart(3, '0')}`;
+        expect(sheet.checked.has(id), `${path} ${label} is held`).toBe(false);
+        expect(sheet.text.get(id), `${path} ${label} inline note`).toContain(
+          `held: reworded text pending owner ratification (ledger row AC${String(id).padStart(3, '0')})`,
+        );
+      }
+    }
   });
 
   it('[P2-S09-AC-273] keeps the ledger free of unresolved ambiguity markers', () => {

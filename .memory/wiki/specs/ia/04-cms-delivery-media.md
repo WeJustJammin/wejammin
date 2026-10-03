@@ -343,12 +343,11 @@ All events use Shard 00 identifier-only envelopes. Candidate review, decision an
 
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### References
-
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/ia/01-identity-authority|Shard 01 — Identity authority and party governance]]
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]

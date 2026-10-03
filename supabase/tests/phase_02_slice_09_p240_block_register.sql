@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -188,10 +189,10 @@ select is((select release_digest::text from platform_private.cms_block_definitio
 create or replace function pg_temp.p_human_register(p_label text, p_request jsonb) returns text language plpgsql as $body$
 declare before_rows text := pg_temp.p_block_rows(); outcome text;
 begin
-  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  perform pg_temp.set_jwt_claim('role', 'authenticated', true);
   perform pg_temp.s09d_call(p_label, 'platform_api.cms_register_block', p_request);
   outcome := pg_temp.s09d_outcome(p_label);
-  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   return case when outcome = 'UNAUTHENTICATED' and before_rows = pg_temp.p_block_rows() then 'ok' else 'bad:' || outcome end;
 end;
 $body$;

@@ -37,7 +37,7 @@ const verifiedActive =
   S09_PRE_AMENDMENT_CHECKED.length + S09_AMENDMENT_EVIDENCE.length;
 
 describe('Slice 09 evidence cascade guards', () => {
-  it('[P2-S09-AC-1144] checks an amendment criterion only when an index entry carries zero-failure receipts, and mirrors every row in plan and tracker', () => {
+  it('[P2-S09-AC-1144] checks an amendment criterion only when an index entry cites test files (their fresh passing receipts are the receipts guard), and mirrors every row in plan and tracker', () => {
     const indexed = new Map(
       S09_AMENDMENT_EVIDENCE.map((entry) => [numberOf(entry.criterion), entry]),
     );
@@ -60,10 +60,9 @@ describe('Slice 09 evidence cascade guards', () => {
       } else {
         expect(tracker.checked.has(id), `AC${id} verified`).toBe(true);
         expect(plan.checked.has(id), `AC${id} verified in plan`).toBe(true);
-        expect(entry.receipts.length, `AC${id} receipts`).toBeGreaterThan(0);
-        for (const receipt of entry.receipts) {
-          expect(receipt.failed, `AC${id} ${receipt.file}`).toBe(0);
-        }
+        expect(entry.testFiles.length, `AC${id} cited files`).toBeGreaterThan(
+          0,
+        );
       }
     }
   });

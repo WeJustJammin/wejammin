@@ -15,6 +15,7 @@ create or replace function pg_temp.s09g_key(p_label text) returns text language 
 -- never a capability): the subject-eligibility precondition of CMS-03A-15.
 create or replace function pg_temp.s09g_member(p_actor text) returns void language plpgsql as $body$
 begin
+  -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
   insert into identity_private.membership_tenure(
     organization_id, person_id, state, provenance, governance_mode,
     starts_on, accepted_at, actor_id, version)
@@ -117,6 +118,7 @@ begin
   begin
     alter table platform_private.cms_capability_grants disable trigger user;
     alter table identity_private.organization_actor_grant disable trigger user;
+    -- TIME-WARP: shifts a real aggregate in time.
     update platform_private.cms_capability_grants
        set valid_from = pg_temp.s09g_today() + p_from, valid_through = pg_temp.s09g_today() + p_through
      where subject_person_ref = person and capability_code = p_capability;

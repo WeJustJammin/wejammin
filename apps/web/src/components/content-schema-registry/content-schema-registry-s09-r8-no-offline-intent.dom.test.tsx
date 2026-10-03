@@ -172,4 +172,50 @@ describe('[P2-S09-AC-233] unsaved registry data is not stored as a draft or offl
     expect(entriesOf(localStore)).toEqual([]);
     expect(indexedDbOpen).not.toHaveBeenCalled();
   });
+
+  it('[P2-S09-AC-233] the step-up draft is cleared on return, restores the entries and the original key, and nothing is auto-replayed', async () => {
+    const form = mountDecisionForm();
+    const refused = vi.fn(() =>
+      json(
+        401,
+        errorBody('STEP_UP_REQUIRED', {
+          recoveryAction: 'step_up',
+          allowedMethods: ['totp'],
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', refused);
+    const navigate = vi.fn();
+    const first = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate,
+    });
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalled());
+    first();
+    const originalKey = (
+      form.elements.namedItem('idempotency-key') as HTMLInputElement
+    ).value;
+    expect(entriesOf(sessionStore)).toHaveLength(1);
+
+    // Return from /step-up: the page is rendered again from the server and the
+    // enhancement restores the interrupted form for explicit re-confirmation.
+    const returned = vi.fn(() => json(200, '{}'));
+    vi.stubGlobal('fetch', returned);
+    const back = mountDecisionForm();
+    back
+      .querySelector<HTMLInputElement>('input[name="decision"][value="reject"]')
+      ?.removeAttribute('checked');
+    const second = installContentSchemaRegistryCommandEnhancement(document, {
+      navigate: vi.fn(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    second();
+    expect(entriesOf(sessionStore)).toEqual([]);
+    expect(
+      (back.elements.namedItem('idempotency-key') as HTMLInputElement).value,
+    ).toBe(originalKey);
+    expect(returned).not.toHaveBeenCalled();
+  });
 });

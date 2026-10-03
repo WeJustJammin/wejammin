@@ -39,3 +39,10 @@ integrity gap only.
    happy path.
 
 No spec, API, status, or acceptance criterion is changed by this scan.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Constrained by
+- [[decisions.md#d-01|D-01]]

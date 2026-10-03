@@ -76,11 +76,17 @@ exception when others then
   return null;
 end;
 $body$;
+-- Runs a read the way a command does: the private projections it may call are definer
+-- functions that read the forced tables through the RPC-context policy, so the RPC
+-- context is held for the statement only and restored to its previous value after it.
+-- (A failed statement rolls its sub-transaction back, which restores the setting too.)
 create or replace function pg_temp.s09d_scalar(p_sql text) returns text
 language plpgsql as $body$
-declare result text;
+declare result text; previous_rpc text := coalesce(current_setting('app.cms_rpc', true), '');
 begin
+  perform set_config('app.cms_rpc', 'true', true);
   execute p_sql into result;
+  perform set_config('app.cms_rpc', previous_rpc, true);
   return result;
 exception when others then
   insert into s09d_sql_errors values (left(p_sql, 200), sqlerrm);
@@ -102,14 +108,22 @@ create or replace function pg_temp.s09d_context(
   from s09d_actor a where a.key = p_actor
 $body$;
 
--- Selects the actor/session the private actor resolver reads.
+-- Selects the actor/session the private actor resolver reads.  Selecting a session
+-- stands for a NEW request: in production every PostgREST call is its own
+-- transaction, so nothing a previous request published (the verified session the
+-- RLS policies re-resolve, the MFA subject, the RPC flag) is still set.  The
+-- suite shares one transaction, so the new request starts by clearing them.
 create or replace function pg_temp.s09d_session(p_actor text, p_role text default 'service_role')
 returns void language plpgsql as $body$
 declare a s09d_actor%rowtype;
 begin
   select * into a from s09d_actor where key = p_actor;
-  perform set_config('request.jwt.claim.role', p_role, true);
-  perform set_config('request.jwt.claim.sub', a.auth_user_id::text, true);
+  perform set_config('app.cms_session_actor', '', true);
+  perform set_config('app.cms_session_party', '', true);
+  perform set_config('app.mfa_session_subject', '', true);
+  perform set_config('app.cms_rpc', '', true);
+  perform pg_temp.set_jwt_claim('role', p_role, true);
+  perform pg_temp.set_jwt_claim('sub', a.auth_user_id::text, true);
   perform set_config('app.auth_user_id', a.auth_user_id::text, true);
   perform set_config('app.actor_auth_user_id', a.auth_user_id::text, true);
   perform set_config('app.actor_person_id', a.person_id::text, true);
@@ -205,7 +219,7 @@ create or replace function pg_temp.s09d_guc_save() returns void language plpgsql
 declare n text;
 begin
   delete from s09d_guc_saved;
-  foreach n in array array['request.jwt.claim.role','request.jwt.claim.sub','app.auth_user_id',
+  foreach n in array array['request.jwt.claims','app.auth_user_id',
     'app.actor_auth_user_id','app.actor_person_id','app.acting_party_id','app.acting_context_id',
     'app.cms_rpc','app.cfg_rpc'] loop
     insert into s09d_guc_saved values (n, coalesce(current_setting(n, true), ''));
@@ -233,6 +247,7 @@ begin
   on conflict (key) do update set auth_user_id = excluded.auth_user_id, person_id = excluded.person_id,
     party_id = excluded.party_id, binding_id = excluded.binding_id;
   if p_binding is null then
+    -- LEGACY FIXTURE FORGERY: the GUC-era schema fixtures bind a context directly (a fixed id referenced by the legacy assertions); the DEC-108 fixture uses identity_context_bind, the real producer.
     insert into platform_private.acting_context_binding(
       person_id, acting_party_id, context_kind, client_binding_id, state, selected_at,
       last_seen_at, expires_at, projection_version, version)
@@ -257,8 +272,8 @@ returns void language plpgsql as $body$
 declare person uuid; alias_id uuid; handle text;
 begin
   select person_id into person from identity.auth_user_bindings where auth_user_id = p_auth_user;
-  perform set_config('request.jwt.claim.role', 'authenticated', true);
-  perform set_config('request.jwt.claim.sub', p_auth_user::text, true);
+  perform pg_temp.set_jwt_claim('role', 'authenticated', true);
+  perform pg_temp.set_jwt_claim('sub', p_auth_user::text, true);
   perform set_config('app.auth_user_id', p_auth_user::text, true);
   perform set_config('app.actor_auth_user_id', p_auth_user::text, true);
   perform set_config('app.actor_person_id', person::text, true);
@@ -269,6 +284,7 @@ begin
   perform set_config('app.correlation_id', extensions.gen_random_uuid()::text, true);
   handle := 'S09d' || substr(replace(extensions.gen_random_uuid()::text, '-', ''), 1, 10);
   alias_id := (platform_api.identity_alias_create(handle, handle, 'private')->>'aliasId')::uuid;
+  -- LEGACY FIXTURE FORGERY: a pre-DEC-119 owner receipt shape; initialize_cms_owner is the real producer used by the DEC-108 fixture.
   insert into platform_private.cms_owner_initialization(
     auth_user_id, person_id, alias_id, organization_id, authorization_ref, operator_role, grant_ends_at)
   values (p_auth_user, person, alias_id, p_org, extensions.gen_random_uuid(), current_user,
@@ -290,6 +306,7 @@ declare
   label text := 's09d-grant:' || p_actor || ':' || p_capability || ':' || substr(extensions.gen_random_uuid()::text, 1, 6);
   existing_state text;
 begin
+  -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
   insert into identity_private.membership_tenure(
     organization_id, person_id, state, provenance, governance_mode,
     starts_on, accepted_at, actor_id, version)

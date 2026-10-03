@@ -119,6 +119,10 @@ describe('validation toolchain contracts', () => {
     );
     expect(s09RealPlaywright).toContain('timeout: realRouteServerTimeout');
     expect(s09RealPlaywright).toContain("trace: 'off'");
+    // AC262: the registry performance spec runs in the production-built suite.
+    expect(s09RealPlaywright).toContain(
+      "'phase-02-slice-09-content-schema-registry-performance.spec.ts'",
+    );
     expect(s09RealPlaywright).toContain("channel: 'chrome'");
     expect(s09RealRunner).toContain("'--config=playwright.s09-real.config.ts'");
     expect(s09RealRunner).toContain('runRealRouteWithRetry');

@@ -11,6 +11,10 @@ import {
   type CmsCapabilityGrantPorts,
 } from '../../../server/cms-capability-grant-platform-api';
 import { resolveCmsCapabilityGrantPage } from '../../../server/cms-capability-grant-context';
+import {
+  cmsCapabilityGrantRefusalResponse,
+  isCmsCapabilityGrantRefusal,
+} from '../../../server/cms-capability-grant-page-response';
 import { safeContentSchemaRegistryReturnPath } from '../../../server/content-schema-registry-contracts';
 import { mutationFailureCode } from '../../../server/content-schema-registry-mutation-outcome';
 import {
@@ -73,18 +77,8 @@ if (result.kind === 'unauthenticated') {
     303,
   );
 }
-if (result.kind === 'not_found') {
-  return new Response('Not found', {
-    status: 404,
-    headers: { 'cache-control': 'no-store' },
-  });
-}
-if (result.kind === 'forbidden') {
-  return new Response('Forbidden', {
-    status: 403,
-    headers: { 'cache-control': 'no-store' },
-  });
-}
+if (isCmsCapabilityGrantRefusal(result))
+  return cmsCapabilityGrantRefusalResponse(result);
 if (result.kind === 'degraded' || result.kind === 'error') {
   Astro.response.status = result.status;
 }

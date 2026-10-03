@@ -96,14 +96,12 @@ The next valid pipeline stage is `/plan-phase`.
 | 2026-10-02 | Slice 09 implementation reconciliation for FE shard 03: error lists use only the BE00 `DEPENDENCY_UNAVAILABLE` (502/503/504), and the DEC-108 review reconciliation covers editing a candidate in review (invalidates the review, returns to draft; approved is frozen, 409) and the `MIGRATION_SOURCE_DRIFT` recovery. |
 | 2026-10-02 | Slice 09 follow-ups reconciliation for FE shard 03: the `MIGRATION_SOURCE_DRIFT` conflict copy states that the refused action changed nothing and that a new dry run invalidates the review and returns the candidate to `draft`; `dryRunRef` is mapped with the six sealed-only members, rendered and announced only for a sealed report. |
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Derives from
-
 - [[specs/ia/index|IA Layer — Information Architecture]]
 
 ### References
-
 - [[specs/ia/index|IA Layer — Information Architecture]]

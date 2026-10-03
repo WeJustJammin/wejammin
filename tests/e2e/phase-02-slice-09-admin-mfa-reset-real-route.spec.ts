@@ -31,48 +31,63 @@ const openReset = async (page: Page): Promise<void> => {
   await page.waitForTimeout(500);
 };
 
-for (const [width, height] of [
-  [320, 700],
-  [768, 1000],
-  [1280, 900],
-] as const)
-  test(`[P2-S09-AC-1126] the reset form at ${String(width)} px has 44 px targets, persistent labels and one column`, async ({
-    browser,
-  }) => {
-    const admin = await actor(browser, 'admin', newTestId());
-    const page = admin.page;
-    await enrollFactorViaUi(page, 'Admin phone');
-    await page.setViewportSize({ width, height });
-    await openReset(page);
+const checkResetFormAtWidth = async (
+  browser: Parameters<typeof actor>[0],
+  width: number,
+  height: number,
+): Promise<void> => {
+  const admin = await actor(browser, 'admin', newTestId());
+  const page = admin.page;
+  await enrollFactorViaUi(page, 'Admin phone');
+  await page.setViewportSize({ width, height });
+  await openReset(page);
 
-    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
-    expect(await smallControls(page, 'main', 44)).toEqual([]);
-    // Persistent labels: both fields have a visible label that stays in place.
-    for (const name of ['Person ID', 'Reason']) {
-      const field = page.getByRole('textbox', { name });
-      await expect(field).toBeVisible();
-      const label = await field.evaluate((element) => {
-        const labelElement = (element as HTMLInputElement).labels?.[0];
-        return labelElement === undefined
-          ? null
-          : {
-              visible: labelElement.getBoundingClientRect().height > 0,
-              above:
-                labelElement.getBoundingClientRect().bottom <=
-                element.getBoundingClientRect().top + 1,
-            };
-      });
-      expect(label).toEqual({ visible: true, above: true });
-    }
-    // One column: every field shares the same left edge at every width.
-    const edges = await columnEdges(page, 'main form');
-    expect(new Set(edges).size).toBe(1);
-    // Helper text and the live character count are linked to the field.
-    const describedBy = await page
-      .getByRole('textbox', { name: 'Reason' })
-      .getAttribute('aria-describedby');
-    expect(describedBy ?? '').not.toBe('');
-  });
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+  expect(await smallControls(page, 'main', 44)).toEqual([]);
+  // Persistent labels: both fields have a visible label that stays in place.
+  for (const name of ['Person ID', 'Reason']) {
+    const field = page.getByRole('textbox', { name });
+    await expect(field).toBeVisible();
+    const label = await field.evaluate((element) => {
+      const labelElement = (element as HTMLInputElement).labels?.[0];
+      return labelElement === undefined
+        ? null
+        : {
+            visible: labelElement.getBoundingClientRect().height > 0,
+            above:
+              labelElement.getBoundingClientRect().bottom <=
+              element.getBoundingClientRect().top + 1,
+          };
+    });
+    expect(label).toEqual({ visible: true, above: true });
+  }
+  // One column: every field shares the same left edge at every width.
+  const edges = await columnEdges(page, 'main form');
+  expect(new Set(edges).size).toBe(1);
+  // Helper text and the live character count are linked to the field.
+  const describedBy = await page
+    .getByRole('textbox', { name: 'Reason' })
+    .getAttribute('aria-describedby');
+  expect(describedBy ?? '').not.toBe('');
+};
+
+test('[P2-S09-AC-1126] the reset form at 320 px has 44 px targets, persistent labels and one column', async ({
+  browser,
+}) => {
+  await checkResetFormAtWidth(browser, 320, 700);
+});
+
+test('[P2-S09-AC-1126] the reset form at 768 px has 44 px targets, persistent labels and one column', async ({
+  browser,
+}) => {
+  await checkResetFormAtWidth(browser, 768, 1000);
+});
+
+test('[P2-S09-AC-1126] the reset form at 1280 px has 44 px targets, persistent labels and one column', async ({
+  browser,
+}) => {
+  await checkResetFormAtWidth(browser, 1280, 900);
+});
 
 test('[P2-S09-AC-1126] the admin resets another person through the real form: linked error summary, confirmation focus, Escape cancel, then the reset', async ({
   browser,

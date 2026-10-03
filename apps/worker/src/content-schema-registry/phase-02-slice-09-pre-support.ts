@@ -23,6 +23,12 @@ export type HumanCase = Readonly<{
     | 'bindRelation'
     | 'activateSchema';
   ifMatch: boolean;
+  /**
+   * The one BE03a success status for the harness output: creations are 201;
+   * CMS-03A-04 is 200 because the fixture activation is a completed synchronous
+   * activation (`jobId: null`), where queued work would be 202.
+   */
+  status: 200 | 201;
 }>;
 
 export const HUMAN_CASES: readonly HumanCase[] = [
@@ -31,24 +37,28 @@ export const HUMAN_CASES: readonly HumanCase[] = [
     path: '/api/v1/cms/content-types',
     port: 'createTypeDraft',
     ifMatch: false,
+    status: 201,
   },
   {
     operationId: 'CMS-03A-02',
     path: mutationPath.field,
     port: 'addFieldDefinition',
     ifMatch: true,
+    status: 201,
   },
   {
     operationId: 'CMS-03A-03',
     path: mutationPath.relation,
     port: 'bindRelation',
     ifMatch: true,
+    status: 201,
   },
   {
     operationId: 'CMS-03A-04',
     path: mutationPath.activate,
     port: 'activateSchema',
     ifMatch: true,
+    status: 200,
   },
 ];
 
@@ -108,7 +118,7 @@ export const expectInvalid = async (
     expect(
       paths.some((p) => p === pathPrefix || p.startsWith(`${pathPrefix}/`)),
     ).toBe(true);
-  expect(harness.resolveSession).not.toHaveBeenCalled();
+  expect(harness.rateLimit).not.toHaveBeenCalled();
   expect(harness.ports[humanCase(operationId).port]).not.toHaveBeenCalled();
 };
 
@@ -119,7 +129,7 @@ export const expectAccepted = async (
   body: unknown,
 ): Promise<Record<string, unknown>> => {
   const response = await sendHuman(harness, operationId, body);
-  expect([200, 201, 202]).toContain(response.status);
+  expect(response.status).toBe(humanCase(operationId).status);
   const port = harness.ports[humanCase(operationId).port];
   expect(port).toHaveBeenCalledTimes(1);
   const input = port?.mock.calls[0]?.[0] as { body: Record<string, unknown> };

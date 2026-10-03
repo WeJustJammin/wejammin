@@ -82,7 +82,7 @@ describe('CMS-03A-09 successor locale replacement choice', () => {
     expect(submit(view.form)).toBe(true);
   });
 
-  it('[P2-S09-AC-1222] reveals the controls prefilled from the source when changing', () => {
+  it('[P2-S09-AC-1222] [P2-S09-AC-1227] reveals the controls prefilled from the source when changing', () => {
     const view = render();
     choice(view, 'change');
     expect(view.container.querySelector('[data-locale-fields]')).not.toBeNull();

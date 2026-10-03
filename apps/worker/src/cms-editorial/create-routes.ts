@@ -7,7 +7,7 @@ import {
 } from '@wejammin/contracts';
 import { Hono, type Env } from 'hono';
 
-import { parseJsonBody } from './admission-body';
+import { decodeJsonBody, jsonBodyPreflight, readBytes } from './admission-body';
 import { invalid, issues, rejectCommandQuery } from './admission-common';
 import {
   dependencyDeadline,
@@ -106,43 +106,30 @@ export const registerCmsEditorialCreateRoutes = <E extends Env>(
     const fail = (error: CmsEditorialError, headers?: Headers) =>
       finish(errorResponse(request, dependencies, requestId, error, headers));
 
+    // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
     if (originError !== null) return fail(originError);
-    const queryError = rejectCommandQuery(request);
-    if (queryError !== null) return fail(queryError);
-    if (request.headers.has('if-match'))
-      return fail(invalid('Initial entry creation has no If-Match header.'));
-    const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-    if (media !== 'application/json')
-      return fail(invalid('Use application/json.', {}, 415));
-    const parsedHeaders = EntryCreateHeadersSchema.safeParse({
-      contentType: media,
-      idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-    });
-    if (!parsedHeaders.success)
-      return fail(
-        invalid(
-          'The request headers are invalid.',
-          issues(parsedHeaders.error),
-        ),
-      );
+    const preflight = jsonBodyPreflight(request);
+    if (preflight !== null) return fail(preflight);
     const csrfError = csrfErrorIfCookie(request);
     if (csrfError !== null) return fail(csrfError);
-    const body = await withinDeadline((signal) =>
-      parseJsonBody<ReturnType<typeof EntryCreateRequestSchema.parse>>(
-        request,
-        EntryCreateRequestSchema,
-        signal,
-      ),
-    );
-    if (!body.ok) return fail(body);
-
+    const bytes = await withinDeadline((signal) => readBytes(request, signal));
+    if (!bytes.ok) return fail(bytes);
+    // BE00 steps 4 and 5: verified session, then acting context.
     const identity = await withinDeadline((signal) =>
       dependencies.resolveSession(request, signal),
     );
     if (!identity.ok) return fail(identity);
     const invalidSession = validHumanSession(identity.value);
     if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 6: strict query and body.
+    const queryError = rejectCommandQuery(request);
+    if (queryError !== null) return fail(queryError);
+    const body = decodeJsonBody<
+      ReturnType<typeof EntryCreateRequestSchema.parse>
+    >(bytes.value, EntryCreateRequestSchema);
+    if (!body.ok) return fail(body);
+    // BE00 step 7: capability, then quota.
     const capabilityError = requireEditorialCapability(
       identity.value,
       policy.capabilities,
@@ -164,6 +151,20 @@ export const registerCmsEditorialCreateRoutes = <E extends Env>(
       }
       return fail(rate, rateHeaders);
     }
+    // BE00 step 8: exact Idempotency-Key; creation names no existing version.
+    if (request.headers.has('if-match'))
+      return fail(invalid('Initial entry creation has no If-Match header.'));
+    const parsedHeaders = EntryCreateHeadersSchema.safeParse({
+      contentType: 'application/json',
+      idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+    });
+    if (!parsedHeaders.success)
+      return fail(
+        invalid(
+          'The request headers are invalid.',
+          issues(parsedHeaders.error),
+        ),
+      );
 
     const createEntry = dependencies.ports.createEntry;
     if (typeof createEntry !== 'function') return fail(dependencyUnavailable());

@@ -21,6 +21,7 @@ import {
   versionPageProps,
 } from './content-schema-review-dec108-render.test-support';
 import { completeContentSchemaRegistryMutation } from './content-schema-registry-runtime-dom-mutation-complete';
+import { executeContentSchemaRegistryMutation } from './content-schema-registry-runtime';
 import type { Dec108Target } from './content-schema-review-dec108.test-support';
 
 /**
@@ -303,6 +304,10 @@ describe('[P2-S09-AC-224] the CMS-03A-03 form', () => {
     expect(forwarded?.headers.get('content-type')).toMatch(
       /^application\/json/u,
     );
+    // The CSRF token reaches the Worker as the X-CSRF-Token header (the
+    // façade forwards the session-bound value the form carried).
+    expect(fields.csrf).toBe('csrf-token');
+    expect(forwarded?.headers.get('x-csrf-token')).toBe(fields.csrf);
   });
 
   it('serializes unchecked ordered as false and numbers as numbers, and refuses an out-of-bounds relation locally', async () => {
@@ -351,23 +356,37 @@ describe('[P2-S09-AC-224] the CMS-03A-03 form', () => {
     }
   });
 
-  it('announces the 201 relation resource as saved and shows it in the canonical detail', async () => {
-    const { form } = await submit('CMS-03A-03', RELATION_EDIT, {
-      status: 201,
-      body: relationResource,
+  it('announces the 201 relation resource the facade returned, read by the real browser client, and shows that resource in the canonical detail', async () => {
+    const { form, response, fields } = await submit(
+      'CMS-03A-03',
+      RELATION_EDIT,
+      { status: 201, body: relationResource },
+    );
+    expect(response.status).toBe(201);
+    const formData = new FormData();
+    for (const [name, value] of Object.entries(fields))
+      formData.set(name, value);
+    // The real client reads the real facade response: nothing here hand-builds
+    // the outcome or the resource the page then renders.
+    const result = await executeContentSchemaRegistryMutation({
+      action: form.getAttribute('action') ?? '',
+      operationId: 'CMS-03A-03',
+      formData,
+      fetcher: async () => response.clone(),
+    });
+    expect(result.outcome).toBe('success');
+    expect(result.status).toBe(201);
+    // The client reads the resource only for activation; every other command
+    // shows the canonical server projection after the refetch. The projection
+    // below is the body the facade really returned, not a test constant.
+    const created: unknown = await response.clone().json();
+    expect(created).toMatchObject({
+      resourceKind: 'relation_definition',
+      targetType: 'artist',
+      projectionKey: 'public.summary',
     });
     document.body.appendChild(form);
-    completeContentSchemaRegistryMutation(
-      form,
-      {
-        outcome: 'success',
-        resource: relationResource,
-        location: null,
-        formData: new FormData(form),
-      } as never,
-      window,
-      new Set(),
-    );
+    completeContentSchemaRegistryMutation(form, result, window, new Set());
     expect(form.querySelector('[role="status"]')?.textContent).toMatch(
       /accepted/iu,
     );
@@ -380,7 +399,7 @@ describe('[P2-S09-AC-224] the CMS-03A-03 form', () => {
           stale: false,
           data: {
             ...(versionPageProps().initialDetail as { data: object }).data,
-            relations: [relationResource],
+            relations: [created],
           } as never,
         } as never,
       }),

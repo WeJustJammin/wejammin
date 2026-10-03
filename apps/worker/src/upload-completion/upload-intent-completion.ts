@@ -85,6 +85,7 @@ const execute = async (
       'UNSUPPORTED_MEDIA_TYPE',
       415,
       'The upload completion requires application/json.',
+      { allowedMediaTypes: ['application/json'] },
     );
   }
 

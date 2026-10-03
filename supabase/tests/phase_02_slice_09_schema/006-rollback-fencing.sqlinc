@@ -50,7 +50,9 @@ select pg_temp.s09d_dry_run('z');
 select pg_temp.s09d_seal('z');
 select pg_temp.s09d_guc_restore();
 select pg_temp.s09d_id('z:version') as z_version, pg_temp.s09d_id('z:plan') as z_plan \gset
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+-- a Worker request of its own: nothing a previous (human) command published is still set
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true), set_config('app.mfa_session_subject', '', true);
 select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', :'z_plan'), 'ready',
   'S09 fixture: the rollback candidate plan is sealed ready by the worker producers');
 create temp table s09_z_plan on commit drop as
@@ -90,6 +92,8 @@ select ok(
   'S09 worker rollback records terminal failure while preserving the active fallback version [P2-S09-AC-217]'
 );
 
+-- the immutability guard is what is probed, so the write gate is satisfied first, as a hostile writer would
+select set_config('app.cms_rpc', 'true', true);
 select throws_ok(
   format($q$update platform_private.cms_schema_migration_plans
     set dry_run_report = dry_run_report || jsonb_build_object('targetDefinitionHash', repeat('d', 64))
@@ -97,6 +101,9 @@ select throws_ok(
   'P0001', 'IMMUTABLE_RECORD',
   'S09 completed migration plans reject trusted SQL tampering'
 );
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_migration_plan_ready(
     :'y_plan',
@@ -105,3 +112,4 @@ select ok(
   ),
   'CMS-03A completed migration evidence remains ready after tamper refusal'
 );
+select set_config('app.cms_rpc', '', true);

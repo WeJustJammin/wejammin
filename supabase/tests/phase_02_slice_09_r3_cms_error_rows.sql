@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -24,10 +25,11 @@ select no_plan();
 create or replace function pg_temp.r3_anon(p_label text, p_function text, p_request jsonb) returns jsonb language plpgsql as $body$
 declare k text;
 begin
-  foreach k in array array['app.auth_user_id', 'app.actor_auth_user_id', 'app.actor_person_id', 'app.acting_party_id', 'app.acting_context_id', 'request.jwt.claim.sub'] loop
+  foreach k in array array['app.auth_user_id', 'app.actor_auth_user_id', 'app.actor_person_id', 'app.acting_party_id', 'app.acting_context_id'] loop
     perform set_config(k, '', true);
   end loop;
-  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_temp.set_jwt_claim('sub', '');
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   return pg_temp.s09d_call(p_label, p_function, p_request || jsonb_build_object('context', '{}'::jsonb));
 end;
 $body$;

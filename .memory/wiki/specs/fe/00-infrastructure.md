@@ -553,14 +553,12 @@ None. New product or architecture choices must re-open their originating locked 
 - [x] Global design-system components and state language are consumed without reinvention.
 - [x] Seven mandatory passes, two-implementer review, devil's-advocate review, and convergence pass completed.
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Implemented by
-
 - [[specs/be/00-infrastructure|Cross-cutting Platform Foundation — Backend Specification]]
 
 ### References
-
 - [[specs/be/00-infrastructure|Cross-cutting Platform Foundation — Backend Specification]]

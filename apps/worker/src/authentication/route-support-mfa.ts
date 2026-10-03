@@ -5,8 +5,7 @@ import {
   authError,
   parseIdempotencyKey,
   parseIfMatch,
-  parseJsonBody,
-  verifySameOriginCsrf,
+  admitJsonMutationTransport,
 } from './boundary';
 import { responseForMfaError } from './mfa-error-boundary';
 import { enforceRate, requireSession } from './route-support';
@@ -65,14 +64,6 @@ const normalizeViolations = (
   return { ...error, details };
 };
 
-export const parseMfaBody = async <T>(
-  request: Request,
-  schema: SchemaLike<T>,
-): Promise<AuthenticationResult<T>> => {
-  const parsed = await parseJsonBody(request, schema);
-  return parsed.ok ? parsed : normalizeViolations(parsed);
-};
-
 export const parsePathId = (
   context: WorkerContext,
   schema: Readonly<{
@@ -100,8 +91,12 @@ export type AdmittedMutation<B> = Readonly<{
 }>;
 
 /**
- * Shared admission for the DEC-111 mutations: body shape, headers, CSRF,
- * session and rate limit, in the same order as the existing auth routes.
+ * Shared admission for the DEC-111 mutations, in BE00 "Hono Middleware Order":
+ * origin, body ceiling, content type and session-bound CSRF (step 2); the
+ * verified session and acting context (steps 4 and 5); strict body (step 6);
+ * the quota (step 7); then the exact Idempotency-Key and If-Match (step 8).
+ * The step-up decision of these operations depends on persisted factor state,
+ * so each service makes it inside its own transaction.
  */
 export const admitMfaMutation = async <B>(
   context: WorkerContext,
@@ -109,8 +104,27 @@ export const admitMfaMutation = async <B>(
   operationId: AuthOperationId,
   options: MutationOptions<B>,
 ): Promise<AdmittedMutation<B> | Response> => {
-  const body = await parseMfaBody(context.req.raw, options.schema);
-  if (!body.ok) return responseForMfaError(context, operationId, body);
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok)
+    return responseForMfaError(context, operationId, transport);
+  const resolved = await requireSession(context, dependencies);
+  if (!resolved.ok) return responseForMfaError(context, operationId, resolved);
+  const decoded = transport.value.decode(options.schema);
+  if (!decoded.ok)
+    return responseForMfaError(
+      context,
+      operationId,
+      normalizeViolations(decoded),
+    );
+  const rateError = await enforceRate(
+    context,
+    dependencies,
+    options.rateOperation ?? operationId,
+    resolved.value,
+    null,
+    (target, error) => responseForMfaError(target, operationId, error),
+  );
+  if (rateError !== null) return rateError;
   let idempotencyKey = '';
   if (options.idempotency) {
     const key = parseIdempotencyKey(context.req.raw);
@@ -123,22 +137,8 @@ export const admitMfaMutation = async <B>(
     if (!version.ok) return responseForMfaError(context, operationId, version);
     ifMatch = version.value;
   }
-  const csrfError = await verifySameOriginCsrf(context.req.raw);
-  if (csrfError !== null)
-    return responseForMfaError(context, operationId, csrfError);
-  const resolved = await requireSession(context, dependencies);
-  if (!resolved.ok) return responseForMfaError(context, operationId, resolved);
-  const rateError = await enforceRate(
-    context,
-    dependencies,
-    options.rateOperation ?? operationId,
-    resolved.value,
-    null,
-    (target, error) => responseForMfaError(target, operationId, error),
-  );
-  if (rateError !== null) return rateError;
   return {
-    body: body.value,
+    body: decoded.value,
     session: resolved.value,
     idempotencyKey,
     ifMatch,

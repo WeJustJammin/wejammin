@@ -331,7 +331,7 @@ describe('BE03a 415 UNSUPPORTED_MEDIA_TYPE', () => {
         415,
         'UNSUPPORTED_MEDIA_TYPE',
       );
-      expect(body.details).toEqual({});
+      expect(body.details).toEqual({ allowedMediaTypes: ['application/json'] });
       expect(harness.resolveSession).not.toHaveBeenCalled();
       refusedBefore(op, harness.ports as never);
     },

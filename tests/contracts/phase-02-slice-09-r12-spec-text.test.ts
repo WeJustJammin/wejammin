@@ -23,51 +23,52 @@ const middlewareLine = (): string =>
 const positions = (line: string, steps: readonly string[]): readonly number[] =>
   steps.map((step) => line.indexOf(step));
 
-describe('[P2-S09-AC-025] BE03a middleware order cites and matches the BE00 canonical order', () => {
-  it('names BE00 as the governing order', () => {
-    expect(middlewareLine()).toMatch(/BE00/u);
+describe('[P2-S09-AC-025] BE03a middleware order defers to the BE00 canonical order exactly', () => {
+  it('names BE00 §Hono Middleware Order as the governing order', () => {
+    expect(middlewareLine()).toMatch(/BE00 §Hono Middleware Order/u);
     expect(BE00).toMatch(/### Hono Middleware Order/u);
   });
 
-  it('places the CORS origin allowlist before session verification, as BE00 does', () => {
-    const [cors, session] = positions(middlewareLine(), [
-      'CORS',
+  it('restates no order of its own: no arrow chain and no step list that could contradict BE00', () => {
+    const line = middlewareLine();
+    expect(line).not.toMatch(/→|->/u);
+    for (const step of [
+      'request-id',
+      'Zod validation',
       'session/JWT',
-    ]);
-    expect(cors).toBeGreaterThan(-1);
-    expect(session).toBeGreaterThan(-1);
-    expect(cors).toBeLessThan(session ?? -1);
-  });
-
-  it('keeps the session-bound CSRF check after the session, capability and step-up and before the rate limiter, as implemented', () => {
-    const order = positions(middlewareLine(), [
-      'session/JWT',
-      'acting-context/capability',
-      'step-up',
-      'CSRF',
+      'acting-context',
       'rate limiter',
       'handler/RPC',
-    ]);
-    expect(order.every((index) => index > -1)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    ])
+      expect(line, step).not.toContain(step);
+    expect(line).toMatch(/restates no order/u);
   });
 
-  it('keeps the raw-size/media guard and Zod parse before CORS, session and CSRF (strict parse precedes authorization)', () => {
-    const order = positions(middlewareLine(), [
-      'request-id',
-      'raw-size/media guard',
-      'Zod validation',
-      'CORS',
-    ]);
-    expect(order.every((index) => index > -1)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  it('keeps the BE00 order itself as the contract: security/transport (CORS, session-bound CSRF) before authentication, validation before authorization (step-up inside it), then idempotency', () => {
+    const body = BE00.slice(BE00.indexOf('### Hono Middleware Order'));
+    const steps = [
+      '**Route inventory and request context:**',
+      '**Security/transport:**',
+      '**Webhook raw branch:**',
+      '**Authentication:**',
+      '**Acting-context resolution:**',
+      '**Boundary validation:**',
+      '**Authorization:**',
+      '**Concurrency and idempotency:**',
+    ];
+    const at = steps.map((step) => body.indexOf(step));
+    expect(at.every((index) => index > -1)).toBe(true);
+    expect([...at].sort((x, y) => x - y)).toEqual(at);
+    const transport = body.slice(at[1], at[2]);
+    expect(transport).toContain('CORS allowlist');
+    expect(transport).toContain('session-bound CSRF');
+    expect(body.slice(at[6], at[7])).toContain('step-up freshness');
   });
 
-  it('BE00 places the CORS allowlist in the security/transport step before authentication', () => {
-    const cors = BE00.indexOf('CORS allowlist');
-    const auth = BE00.indexOf('**Authentication:**');
-    expect(cors).toBeGreaterThan(-1);
-    expect(cors).toBeLessThan(auth);
+  it('records the 2026-10-03 correction in the BE03a changelog', () => {
+    expect(BE03A_FLAT).toMatch(
+      /\| 2026-10-03 \| [^|]*middleware order bullet no longer restates an order[^|]*BE00 §Hono Middleware Order/u,
+    );
   });
 });
 

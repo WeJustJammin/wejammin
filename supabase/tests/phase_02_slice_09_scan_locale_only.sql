@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -83,11 +84,14 @@ select pg_temp.s09w_backfill('m');
 select is(pg_temp.s09d_outcome('m:w.complete'), 'OK',
   'the worker backfills, verifies and completes the locale-only breaking plan over the populated type');
 select is(pg_temp.s09o_state('m', 'state'), 'completed', 'the plan is completed');
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok((select count(*) = 3 and bool_and(target.output_hash = target.source_hash)
       and bool_and(target.target_document = platform_private.cms_migration_revision_document(target.source_row_id))
     from platform_private.cms_schema_migration_target_rows target
     where target.plan_id = pg_temp.s09d_id('m:plan') and target.source_table = 'cms_entry_revisions'),
   'the database wrote three target rows equal to their source documents');
+select set_config('app.cms_rpc', '', true);
 select pg_temp.s09d_activate('m');
 select is(pg_temp.s09d_outcome('m:activate'), 'OK', 'CMS-03A-04 activates the locale-only breaking successor over the populated type');
 

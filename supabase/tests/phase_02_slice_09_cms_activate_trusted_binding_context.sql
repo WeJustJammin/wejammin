@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 select plan(16);
@@ -25,6 +26,7 @@ select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('b:re
   'fixture: the candidate holds a real approved CMS review before any gate is probed');
 
 -- Another human who shares the owner party, and the owner's person-party binding.
+-- LEGACY FIXTURE FORGERY: the GUC-era schema fixtures bind a context directly (a fixed id referenced by the legacy assertions); the DEC-108 fixture uses identity_context_bind, the real producer.
 insert into platform_private.acting_context_binding(
   id, person_id, acting_party_id, context_kind, client_binding_id,
   state, selected_at, last_seen_at, expires_at, projection_version, version
@@ -33,6 +35,7 @@ select 'a9140000-0000-4000-8000-00000000020b', person_id, pg_temp.s09d_id('owner
        's09tb-other-tab', 'active', clock_timestamp(), clock_timestamp(),
        clock_timestamp() + interval '2 hours', 1, 1
 from s09d_actor where key = 'designer2';
+-- LEGACY FIXTURE FORGERY: the GUC-era schema fixtures bind a context directly (a fixed id referenced by the legacy assertions); the DEC-108 fixture uses identity_context_bind, the real producer.
 insert into platform_private.acting_context_binding(
   id, person_id, acting_party_id, context_kind, client_binding_id,
   state, selected_at, last_seen_at, expires_at, projection_version, version
@@ -86,6 +89,7 @@ select ok(
   'failed activation leaves no completed idempotency record and repeats deterministically'
 );
 
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp() - interval '11 minutes'
 where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
@@ -94,6 +98,7 @@ select is(
   'STEP_UP_REQUIRED',
   'stale binding heartbeat still fails closed with STEP_UP_REQUIRED'
 );
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp()
 where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
@@ -107,6 +112,7 @@ select is(
   'STEP_UP_REQUIRED',
   'expired binding still fails closed despite a recent heartbeat'
 );
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set selected_at = clock_timestamp(),
     expires_at = clock_timestamp() + interval '2 hours', state = 'revoked'
@@ -116,6 +122,7 @@ select is(
   'STEP_UP_REQUIRED',
   'revoked binding still fails closed despite current expiry and heartbeat'
 );
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set state = 'active'
 where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;

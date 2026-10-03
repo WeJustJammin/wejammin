@@ -62,3 +62,10 @@ shape changes, and Slice 10 traceability. Test every field/block/relation kind,
 version drift, deletion and hidden-target handling, 512-item overflow,
 cross-owner concealment, and a production-built Chrome comparison. A local
 green test is not hosted acceptance.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

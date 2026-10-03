@@ -58,12 +58,13 @@ Only these four artifacts were edited:
 - `.memory/pipeline/progress/phases/phase-02.md`
 - `.memory/pipeline/progress/verification/2026-09-02-slice-09-contract-reconciliation.md`
 
-## DEC-122 transfer addendum (2026-10-03)
+## Transfer addendum (2026-10-03)
 
-The review above concerns the later-only topics the original contract reconciliation removed from Slice 09 (**transfer count: 0**, unchanged). DEC-122 later moved four further scopes out of Slice 09 evidence and obliged the owner slices to carry them as explicit criteria. DEC-122 transfer (2026-10-03): **transferred count: 7** (Slice 11: 3, Slice 12: 3, Slice 16: 1), each an open receiving criterion in the owner slice's plan section and tracker:
+The review above concerns the later-only topics the original contract reconciliation removed from Slice 09 (**transfer count: 0**, unchanged). The amendment rulings later moved further scopes out of Slice 09 evidence and obliged the owner slices to carry them as explicit criteria. Transfer (2026-10-03): **transferred count: 7** (Slice 11: 3, Slice 12: 3, Slice 16: 1), each an open receiving criterion in the owner slice's plan section and tracker. Each row names the ruling that moved it; only the owner-ratified rulings are final:
 
-| Moved scope | Slice 09 criteria | Receiving criteria | Count |
-| --- | --- | --- | --- |
-| Step-up recovery for CMS-03B-06, CMS-03B-07 and CMS-03B-09 (DEC-122, DEC-111) | AC1031 | Slice 11 P2-S11-AC-046, AC-047, AC-048 | 3 |
-| `no_fallback` resolution semantics, stale-translation behavior (DEC-121, DEC-122) and template binding flows beyond DEC-123 | AC005, AC1166 | Slice 12 P2-S12-AC-051, AC-052, AC-053 | 3 |
-| Legal-hold and incident-fence enforcement over CMS records (orchestrator ruling pending owner ratification) | AC185 | Slice 16 P2-S16-AC-029 | 1 |
+| Moved scope | Slice 09 criteria | Receiving criteria | Count | Authority |
+| --- | --- | --- | --- | --- |
+| Step-up recovery for CMS-03B-06, CMS-03B-07 and CMS-03B-09 (DEC-111) | AC1031 | Slice 11 P2-S11-AC-046, AC-047, AC-048 | 3 | DEC-122 (owner-ratified) |
+| `no_fallback` resolution semantics and stale-translation behavior (DEC-121) | AC1166 | Slice 12 P2-S12-AC-051, AC-052 | 2 | DEC-122 (owner-ratified) |
+| Template binding flows beyond the first-successor mechanics | AC003, AC045, AC049 | Slice 12 P2-S12-AC-053 | 1 | DEC-123 (owner) |
+| Legal-hold and incident-fence enforcement over CMS records | AC185 | Slice 16 P2-S16-AC-029 | 1 | AC185 orchestrator ruling, pending owner ratification |

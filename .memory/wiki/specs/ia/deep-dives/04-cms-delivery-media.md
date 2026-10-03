@@ -216,12 +216,11 @@ All three edges point downward (06 → 04, 10 → 04, 20 → 04) and satisfy DEC
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/2026-08-02-architecture-design|WeJammin — Architecture Design]]
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### References
-
 - [[specs/ia/04-cms-delivery-media|Shard 04 — CMS navigation, media and delivery]]
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]
 - [[specs/ia/01-identity-authority|Shard 01 — Identity authority and party governance]]

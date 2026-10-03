@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -29,6 +30,7 @@ select pg_temp.m_user(23);
 
 create or replace function pg_temp.m_member(p_actor text) returns void language plpgsql as $body$
 begin
+  -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
   insert into identity_private.membership_tenure(organization_id, person_id, state, provenance, governance_mode,
     starts_on, accepted_at, actor_id, version)
   select pg_temp.s09d_id('ownerOrg'), member.person_id, 'confirmed', 'invitation', 'ungoverned', current_date,
@@ -40,6 +42,7 @@ create or replace function pg_temp.m_grant(p_actor text, p_org uuid, p_actions t
   p_state text default 'active', p_ends interval default interval '1 day') returns uuid language plpgsql as $body$
 declare gid uuid := extensions.gen_random_uuid();
 begin
+  -- FIXTURE FORGERY: no command in this repository grants an admin capability (CFG-11 record).
   insert into platform_private.admin_capability_grants(id, subject_person_id, capability_key, resource_type, resource_id,
     scope, actions, starts_at, ends_at, grantor_person_id, reason, purpose_grant, state, version_no)
   values (gid, pg_temp.s09d_actor_id(p_actor, 'person')::uuid, 'admin.identity.mfa_reset', 'organization', p_org,

@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -218,13 +219,18 @@ select is((select count(*)::integer from pg_policies p
     where p.schemaname = 'platform_private' and p.tablename like 'cms\_%' and p.tablename <> 'cms_operational_alert_deliveries'
       and p.permissive = 'PERMISSIVE'
       and (p.qual is distinct from 'platform_private.cms_rpc_context_valid()' or p.with_check is distinct from 'platform_private.cms_rpc_context_valid()')
-      and p.tablename not in ('cms_schema_transform_registry', 'cms_workflow_policies')), 0,
+      and p.tablename not in ('cms_schema_transform_registry', 'cms_workflow_policies')
+      -- SEC-2: the SELECT-only authority-reader role's reads and the owner receipt's gated read are the
+      -- only other permissive policies (their roles and predicates are proved in phase_02_slice_09_sec2_definer_rls.sql)
+      and p.roles::text <> '{wejammin_cms_authority_reader}'
+      and not (p.tablename = 'cms_owner_initialization' and p.cmd = 'SELECT' and p.qual = 'platform_private.cms_rpc_context_valid()')), 0,
   'every permissive read predicate and WITH CHECK is the schema-qualified platform_private.cms_rpc_context_valid() gate [P2-S09-AC-181]');
 select is((select count(*)::integer from pg_policies p
     where p.schemaname = 'platform_private' and p.tablename like 'cms\_%' and p.tablename <> 'cms_operational_alert_deliveries'
       and p.permissive = 'RESTRICTIVE'
       and (p.policyname !~ '_session_scope(_insert|_update|_delete)?$'
-           or coalesce(p.qual, '') || coalesce(p.with_check, '') !~ 'platform_private\.cms_session_scope_ok')), 0,
+           -- SEC-2: evaluated once per statement through the session scope lookups (cms_session_scope_ok is their single-row oracle)
+           or coalesce(p.qual, '') || coalesce(p.with_check, '') !~ 'platform_private\.cms_session_(owner_scope|reviewer_scope|report_scope|scope_ok)')), 0,
   'every other cms_ policy is a RESTRICTIVE session-scope policy (AND-ed with the RPC gate) that calls the session-resolving helper [P2-S09-AC-181]');
 select ok((select p.prosecdef and p.proconfig @> array['search_path=""'] from pg_proc p where p.oid = 'platform_private.cms_rpc_context_valid()'::regprocedure),
   'the gate is SECURITY DEFINER with a pinned empty search_path [P2-S09-AC-181]');
@@ -237,8 +243,11 @@ select throws_ok($q$set local role service_role; select count(*) from platform_p
 reset role;
 
 -- ------------------------------------------------ AC716: ambiguity also fails closed ----
+select set_config('app.cms_rpc', 'true', true);
 select ok(platform_private.cms_editorial_workflow_policy_evidence(pg_temp.s09d_id('rk:version')) is not null,
   'control: an activated type resolves its bound policy evidence');
+select set_config('app.cms_rpc', '', true);
+
 create or replace function pg_temp.s09e_evidence_after_ambiguity() returns text language plpgsql as $body$
 declare observed text;
 begin

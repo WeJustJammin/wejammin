@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -52,6 +53,7 @@ select is(pg_temp.s09d_outcome('q:cursor'), 'INVALID_REQUEST', 'a malformed curs
 select is(pg_temp.s09g_fingerprint(), :'before_fp', 'rejected lists left every effect table unchanged [P2-S09-AC-617]');
 
 -- Default list: owner organization only, derived state, no side effects, MFA not required.
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '20 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_list('q:all', 'owner', '{"limit": 100}');
@@ -68,6 +70,7 @@ select is((select string_agg(i->>'capability', ',' order by i->>'capability') fr
   where i->>'state' = 'lapsed'), 'cms.editor', 'the lapsed state is derived from valid_through [P2-S09-AC-520] [P2-S09-AC-614]');
 select is((select string_agg(i->>'capability', ',') from jsonb_array_elements(pg_temp.s09d_resp('q:all')->'items') i
   where i->>'state' = 'revoked'), 'cms.reviewer', 'the revoked aggregate is listed as revoked [P2-S09-AC-520]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 

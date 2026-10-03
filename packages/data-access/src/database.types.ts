@@ -9888,6 +9888,10 @@ export type Database = {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: boolean
       }
+      cms_review_owned_by: {
+        Args: { p_owner_id: string; p_review_id: string }
+        Returns: boolean
+      }
       cms_review_owner_authority_end: {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: string
@@ -9981,6 +9985,15 @@ export type Database = {
       cms_schema_source_row_count: {
         Args: { p_from_version_id: string; p_to_version_id: string }
         Returns: number
+      }
+      cms_session_owner_scope: { Args: never; Returns: string }
+      cms_session_report_scope: { Args: never; Returns: string[] }
+      cms_session_reviewer_scope: {
+        Args: never
+        Returns: {
+          owner_id: string
+          review_id: string
+        }[]
       }
       cms_session_scope_ok: {
         Args: { p_owner_id: string; p_review_id?: string }
@@ -10778,6 +10791,7 @@ export type Database = {
           state: Database["platform_private"]["Enums"]["webhook_receipt_state"]
         }[]
       }
+      request_jwt_claim: { Args: { p_name: string }; Returns: string }
       step_up_capability_designated: {
         Args: { p_key: string }
         Returns: boolean

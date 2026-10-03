@@ -3,6 +3,10 @@ import * as React from 'react';
 import CmsCapabilityGrantRenewForm from './CmsCapabilityGrantRenewForm';
 import CmsCapabilityGrantRevokeConfirmation from './CmsCapabilityGrantRevokeConfirmation';
 import type { GrantCommandKind } from './cms-capability-grant-commands';
+import {
+  keyForCommand,
+  type PendingGrantCommand,
+} from './cms-capability-grant-navigation';
 import type { CmsCapabilityGrantResource } from './cms-capability-grant-types';
 import type {
   CmsCapabilityGrantTermBounds,
@@ -14,6 +18,8 @@ export interface CmsCapabilityGrantRowFormProps {
   readonly grant: CmsCapabilityGrantResource;
   readonly csrfToken: string;
   readonly epoch: number;
+  /** The pending command restored after /step-up, if it targets this form. */
+  readonly restored: PendingGrantCommand | null;
   readonly termWindow: CmsCapabilityGrantTermBounds;
   readonly disabled: boolean;
   readonly disabledReasonId?: string | undefined;
@@ -42,13 +48,23 @@ export default function CmsCapabilityGrantRowForm(
   return props.kind === 'revoke' ? (
     <CmsCapabilityGrantRevokeConfirmation
       {...shared}
-      idempotencyKey={key('17', props.grant.id, props.epoch)}
+      idempotencyKey={keyForCommand(
+        props.restored,
+        'revoke',
+        props.grant.id,
+        key('17', props.grant.id, props.epoch),
+      )}
       pending={props.pending === 'revoke'}
     />
   ) : (
     <CmsCapabilityGrantRenewForm
       {...shared}
-      idempotencyKey={key('16', props.grant.id, props.epoch)}
+      idempotencyKey={keyForCommand(
+        props.restored,
+        'renew',
+        props.grant.id,
+        key('16', props.grant.id, props.epoch),
+      )}
       termWindow={props.termWindow}
       pending={props.pending === 'renew'}
     />

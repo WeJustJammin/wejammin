@@ -186,6 +186,70 @@ describe('[P2-S09-AC-1005] command 422 VALIDATION_FAILED', () => {
   });
 });
 
+describe('[P2-S09-AC-1005] renew and revoke 422 VALIDATION_FAILED', () => {
+  const refuse = (...paths: readonly string[]) =>
+    scriptFetch(() =>
+      jsonResponse(
+        422,
+        apiError('VALIDATION_FAILED', {
+          violations: paths.map((path) => ({
+            path,
+            code: 'invalid',
+            message: 'Server message that is never shown verbatim.',
+          })),
+        }),
+      ),
+    );
+  const openRow = (root: HTMLElement, kind: 'renew' | 'revoke') => {
+    click(query(root, `${ROW} button[data-action="${kind}"]`));
+    return query<HTMLFormElement>(
+      root,
+      `form[data-operation-id="${kind === 'renew' ? 'CMS-03A-16' : 'CMS-03A-17'}"]`,
+    );
+  };
+
+  it('[P2-S09-AC-1005] renew maps /validThrough and /reason onto their own field errors, links the summary and keeps the typed values', async () => {
+    refuse('/validThrough', '/reason');
+    const root = mount();
+    const form = openRow(root, 'renew');
+    typeInto(query(form, 'input[name="validThrough"]'), '2026-12-01');
+    typeInto(query(form, 'textarea[name="reason"]'), 'Quarterly access review');
+    await submit(form);
+    const summary = query(root, '[data-command-error]');
+    for (const name of ['validThrough', 'reason']) {
+      const field = query<HTMLElement>(form, `[name="${name}"]`);
+      expect(query(summary, `a[href="#${field.id}"]`)).not.toBeNull();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+    }
+    expect(
+      query<HTMLInputElement>(form, 'input[name="validThrough"]').value,
+    ).toBe('2026-12-01');
+    expect(
+      query<HTMLTextAreaElement>(form, 'textarea[name="reason"]').value,
+    ).toBe('Quarterly access review');
+  });
+
+  it('[P2-S09-AC-1005] revoke maps /reason onto its own field error, links the summary and keeps the typed reason and acknowledgement', async () => {
+    refuse('/reason');
+    const root = mount();
+    const form = openRow(root, 'revoke');
+    typeInto(query(form, 'textarea[name="reason"]'), 'Access no longer needed');
+    click(query(form, 'input[type="checkbox"][name="confirmed"]'));
+    await submit(form);
+    const summary = query(root, '[data-command-error]');
+    const field = query<HTMLElement>(form, 'textarea[name="reason"]');
+    expect(query(summary, `a[href="#${field.id}"]`)).not.toBeNull();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(textOf(root)).toContain('Keep the reason to 256 characters.');
+    expect(
+      query<HTMLTextAreaElement>(form, 'textarea[name="reason"]').value,
+    ).toBe('Access no longer needed');
+    expect(
+      query<HTMLInputElement>(form, 'input[name="confirmed"]').checked,
+    ).toBe(true);
+  });
+});
+
 describe('[P2-S09-AC-1047] reconciliation against a canonical refetch', () => {
   const renewForm = (root: HTMLElement): HTMLFormElement => {
     click(query(root, `${ROW} button[data-action="renew"]`));

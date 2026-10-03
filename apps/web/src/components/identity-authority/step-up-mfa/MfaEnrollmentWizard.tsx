@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CapabilityGate from '../../infrastructure/CapabilityGate';
 import type { MfaApiDeps } from './mfa-api';
 import { MfaFactorList } from './MfaFactorList';
 import { MfaNameStep } from './MfaNameStep';
@@ -81,7 +82,9 @@ export function MfaEnrollmentWizard(
           onStartAgain={() => actions.openName()}
         />
       )}
-      {gated && <p aria-disabled="true">{state.notice?.message}</p>}
+      {gated && state.notice !== null && (
+        <CapabilityGate access="disabled" reason={state.notice.message} />
+      )}
       <MfaFactorList
         factors={state.factors}
         busy={state.busy}

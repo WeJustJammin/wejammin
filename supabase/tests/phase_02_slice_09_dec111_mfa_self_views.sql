@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -19,7 +20,7 @@ select no_plan();
 create function public.s09v_as(p_role text, p_sub text, p_sql text) returns text language plpgsql as $body$
 declare result text;
 begin
-  perform pg_catalog.set_config('request.jwt.claim.sub', coalesce(p_sub, ''), true);
+  perform pg_temp.set_jwt_claim('sub', coalesce(p_sub, ''), true);
   execute format('set local role %I', p_role);
   begin
     execute p_sql into result;
@@ -59,7 +60,7 @@ select is((select array_agg(attname::text order by attnum) from pg_attribute
             where attrelid = to_regclass('api_identity.mfa_factor_self_v1') and attnum > 0 and not attisdropped),
   array['id', 'method', 'friendly_name', 'state', 'pending_expires_at', 'verified_at', 'last_used_at',
         'removed_at', 'version', 'created_at', 'updated_at'],
-  'the factor projection exposes exactly the safe columns: no auth user id, no provider factor id [P2-S09-AC-903]');
+  'the factor projection exposes exactly the safe columns: no auth user id, no provider factor id [P2-S09-AC-903] [P2-S09-AC-898]');
 select is((select array_agg(attname::text order by attnum) from pg_attribute
             where attrelid = to_regclass('api_identity.step_up_challenge_self_v1') and attnum > 0 and not attisdropped),
   array['id', 'factor_id', 'state', 'expires_at', 'failed_attempt_count', 'consumed_at', 'failed_at', 'version', 'created_at'],
@@ -71,21 +72,29 @@ from unnest(array['mfa_factor_registry', 'step_up_challenges']) t;
 select ok(pg_temp.m_no_grants(t), t || ' still has no table-level grant for anon, authenticated or service_role [P2-S09-AC-903]')
 from unnest(array['mfa_factor_registry', 'step_up_challenges']) t;
 -- AC181 (R3 follow-up) added session-scoped WRITE policies behind the revoked
--- grants; the read surface is still exactly the one self-read policy.
+-- grants; the browser read surface is still exactly the one self-read policy.
+-- SEC-2 added one more read policy, for the NOLOGIN definer role that now owns
+-- the commands (the platform owner bypassed RLS before): it re-resolves the
+-- published subject exactly as the write policies do and is not a browser role.
 select is((select array_agg(policyname::text order by policyname) from pg_policies
             where schemaname = 'identity' and tablename = 'mfa_factor_registry'),
-  array['mfa_factor_registry_session_scope_delete', 'mfa_factor_registry_session_scope_insert',
-        'mfa_factor_registry_session_scope_update', 'mfa_factor_self_read'],
-  'the factor registry has the self read plus only the session-scoped write policies [P2-S09-AC-903]');
+  array['mfa_factor_registry_definer_read', 'mfa_factor_registry_session_scope_delete',
+        'mfa_factor_registry_session_scope_insert', 'mfa_factor_registry_session_scope_update', 'mfa_factor_self_read'],
+  'the factor registry has the self read, the definer role''s scoped read and only the session-scoped write policies [P2-S09-AC-903]');
 select is((select array_agg(policyname::text order by policyname) from pg_policies
             where schemaname = 'identity' and tablename = 'step_up_challenges'),
-  array['step_up_challenge_self_read', 'step_up_challenges_session_scope_delete',
+  array['step_up_challenge_self_read', 'step_up_challenges_definer_read', 'step_up_challenges_session_scope_delete',
         'step_up_challenges_session_scope_insert', 'step_up_challenges_session_scope_update'],
-  'the challenge table has the self read plus only the session-scoped write policies [P2-S09-AC-903]');
+  'the challenge table has the self read, the definer role''s scoped read and only the session-scoped write policies [P2-S09-AC-903]');
 select is((select string_agg(distinct cmd || ':' || roles::text, ',') from pg_policies
             where schemaname = 'identity' and tablename in ('mfa_factor_registry', 'step_up_challenges')
-              and cmd = 'SELECT'),
-  'SELECT:{authenticated}', 'the only read policy is the self read for authenticated [P2-S09-AC-903]');
+              and cmd = 'SELECT' and roles::text <> '{wejammin_cms_definer}'),
+  'SELECT:{authenticated}', 'the only read policy for a browser role is the self read for authenticated [P2-S09-AC-903]');
+select is((select string_agg(distinct tablename || ':' || qual, ',') from pg_policies
+            where schemaname = 'identity' and tablename in ('mfa_factor_registry', 'step_up_challenges')
+              and cmd = 'SELECT' and roles::text = '{wejammin_cms_definer}'),
+  'mfa_factor_registry:platform_private.identity_session_scope_ok(auth_user_id),step_up_challenges:platform_private.identity_session_scope_ok(auth_user_id)',
+  'the definer role''s read policies re-resolve the published subject (not a blanket predicate) [P2-S09-AC-903]');
 select is((select count(*)::integer from pg_policies
             where schemaname = 'identity' and tablename in ('mfa_factor_registry', 'step_up_challenges')
               and cmd <> 'SELECT'

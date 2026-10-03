@@ -1,7 +1,7 @@
 # Spec Graph
 
-- **Nodes**: 1642
-- **Edges**: 10145
+- **Nodes**: 1654
+- **Edges**: 10156
 
 ## Relationship Chains
 
@@ -189,6 +189,13 @@
 - [[specs/audits/2026-09-02-ia-ambiguity-report|IA Ambiguity Audit — Fresh Combined Final Report (2026-09-02)]]
 - [[specs/audits/audit-scope|Ambiguity Audit Scope — BE + FE]]
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]]
+- [[specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number|Propagation scan — CMS-03B-11 draft authoring base]]
+- [[specs/audits/propagation-scan-2026-09-28-cms-editorial-policy-source|Propagation scan — editorial workflow-policy authority]]
+- [[specs/audits/propagation-scan-2026-09-28-cms-pattern-source|Propagation scan — reusable-pattern authority source]]
+- [[specs/audits/propagation-scan-2026-09-28-cms-related-content-source|CMS-16 related-content eligibility and derived-rule source scan]]
+- [[specs/audits/propagation-scan-2026-09-28-cms-restore-chain|Propagation scan — CMS-03B-04 restore-chain identity]]
+- [[specs/audits/propagation-scan-2026-09-28-cms-template-activation|Propagation scan — governed template activation]]
+- [[specs/audits/propagation-scan-2026-10-02|Propagation scan — Slice 09 activation amendment]]
 - [[specs/ideation/09-rights-ownership/09.03-chain-of-title-lifecycle/09.03-chain-of-title-lifecycle-cx|Chain of Title & Rights Lifecycle — Cross-Cuts]]
 - [[specs/ideation/09-rights-ownership/09.05-ai-voice-likeness-consent/09.05-ai-voice-likeness-consent-cx|AI, Voice & Likeness Consent — Cross-Cuts]]
 - [[specs/ideation/11-music-licensing/11.01-sync-licensing/11.01-sync-licensing-cx|Sync Licensing — Cross-Cuts]]

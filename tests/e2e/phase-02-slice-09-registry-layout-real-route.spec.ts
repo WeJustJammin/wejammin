@@ -1,3 +1,5 @@
+import { gzipSync } from 'node:zlib';
+
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { closeLaneContexts, newTestId } from './support/s09-lane-browser';
@@ -342,4 +344,54 @@ test('[P2-S09-AC-245] below the rail breakpoint the action rail stacks between t
   expect(order.heading).not.toBeNull();
   expect(order.rail ?? 0).toBeGreaterThan(order.heading ?? 0);
   expect(order.facts ?? 0).toBeGreaterThan(order.rail ?? 0);
+});
+
+const INITIAL_ROUTE_GZIP_BUDGET = 90 * 1024;
+const WORKBENCH_GZIP_BUDGET = 35 * 1024;
+
+// KNOWN BREACH, deliberately unmarked: the real production build loads about
+// 141 KB gzipped on this route (React client 56 KB, contracts/zod 38 KB, the
+// workbench island 34 KB), over the 90 KB initial-route budget, and the
+// registry chunks alone exceed 35 KB. test.fail() keeps the measurement running
+// and turns red the moment the build meets the budget; it carries no criterion
+// marker, so it can never count as AC261 evidence. Ruling requested in the r14
+// web report (needs ruling: AC261 budget scope or bundle reduction).
+test('AC261 real-bundle budget measurement on the production-built registry route (known breach, unmarked)', async ({
+  browser,
+}) => {
+  test.fail();
+  const owner = await actor(browser, 'owner', newTestId());
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  const scripts: { url: string; gzipBytes: number }[] = [];
+  const pending: Promise<void>[] = [];
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if (!/\.m?js$/u.test(url.pathname)) return;
+    pending.push(
+      response.body().then((body) => {
+        scripts.push({ url: url.pathname, gzipBytes: gzipSync(body).length });
+      }),
+    );
+  });
+  // A cold load: nothing from earlier navigations may be served from cache.
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await Promise.all(pending);
+  const total = scripts.reduce((sum, entry) => sum + entry.gzipBytes, 0);
+  expect(scripts.length, 'the page loaded scripts').toBeGreaterThan(0);
+  expect(total, JSON.stringify(scripts)).toBeLessThanOrEqual(
+    INITIAL_ROUTE_GZIP_BUDGET,
+  );
+  const workbench = scripts.filter((entry) =>
+    /ContentSchemaRegistry|content-schema-registry/u.test(entry.url),
+  );
+  expect(workbench.length, 'registry chunks were loaded').toBeGreaterThan(0);
+  const workbenchTotal = workbench.reduce(
+    (sum, entry) => sum + entry.gzipBytes,
+    0,
+  );
+  expect(workbenchTotal, JSON.stringify(workbench)).toBeLessThanOrEqual(
+    WORKBENCH_GZIP_BUDGET,
+  );
 });

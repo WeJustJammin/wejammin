@@ -187,7 +187,12 @@ describe('freshness window and recovery', () => {
         jar,
         headers: { 'idempotency-key': 'idem-key-0123456789' },
       });
-      expect([404, 405]).toContain(response.status);
+      // An unregistered operation is the Worker's one 404 NOT_FOUND, never a
+      // 405 and never a session or provider interaction.
+      expect(response.status, `${method} ${path}`).toBe(404);
+      expect(((await response.json()) as { code: string }).code).toBe(
+        'NOT_FOUND',
+      );
     }
     expect(world.calls.some((call) => call.rpc?.includes('reset'))).toBe(false);
   });

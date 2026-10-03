@@ -88,7 +88,7 @@ describe('CMS-03A-06 protected list query through the real route', () => {
       const response = await harness.app.request(read(`${LIST}${query}`));
       expect(response.status, query).toBe(400);
       expect(((await response.json()) as Body).code).toBe('INVALID_REQUEST');
-      expect(harness.resolveSession).not.toHaveBeenCalled();
+      expect(harness.rateLimit).not.toHaveBeenCalled();
       expect(listPort(harness)).not.toHaveBeenCalled();
     }
   });
@@ -420,7 +420,7 @@ describe('CMS-03A-06 protected list query through the real route', () => {
         const harness = makeHarness();
         const response = await harness.app.request(read(path, headers));
         expect(response.status).toBe(400);
-        expect(harness.resolveSession).not.toHaveBeenCalled();
+        expect(harness.rateLimit).not.toHaveBeenCalled();
         expect(listPort(harness)).not.toHaveBeenCalled();
         expect(detailPort(harness)).not.toHaveBeenCalled();
       }
@@ -476,7 +476,11 @@ describe('CMS-03A-07 protected detail through the real route', () => {
       const response = await refused.app.request(
         read(`/api/v1/cms/content-types/${type}/versions/${version}`),
       );
-      expect([400, 404], `${type}/${version}`).toContain(response.status);
+      // A non-empty malformed segment is 400; an empty one names no registered
+      // route, so it is the router's 404.
+      expect(response.status, `${type}/${version}`).toBe(
+        version === '' ? 404 : 400,
+      );
       expect(detailPort(refused)).not.toHaveBeenCalled();
     }
     const malformed = await makeHarness().app.request(

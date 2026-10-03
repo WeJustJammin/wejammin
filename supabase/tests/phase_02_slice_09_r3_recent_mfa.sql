@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -50,7 +51,7 @@ select is(pg_temp.s09d_outcome('r:edge'), 'STEP_UP_REQUIRED',
 select pg_temp.s09g_grant('r:future', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(3),
   '{}', null, true, pg_temp.r3_proof(interval '31 seconds'));
 select is(pg_temp.s09d_outcome('r:future'), 'STEP_UP_REQUIRED',
-  'a step-up proof 31 seconds in the future exceeds the 30 second forward tolerance and is refused [P2-S09-AC-523]');
+  'a step-up proof 31 seconds in the future exceeds the 30 second forward tolerance and is refused [P2-S09-AC-523] [P2-S09-AC-545]');
 select pg_temp.s09g_grant('r:unverified', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(3),
   '{}', null, true, jsonb_build_object('stepUpVerified', false));
 select is(pg_temp.s09d_outcome('r:unverified'), 'STEP_UP_REQUIRED',
@@ -92,11 +93,13 @@ select pg_temp.s09g_grant('r:okfwd', 'owner', 'rev2', 'cms.reviewer.policy', pg_
 select is(pg_temp.s09d_outcome('r:okfwd'), 'OK', 'a proof 20 seconds ahead is inside the 30 second forward tolerance [P2-S09-AC-523]');
 
 -- Heartbeat remains a separate binding-liveness check (not an MFA instant).
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '20 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_grant('r:deadbeat', 'owner', 'rev1', 'cms.reviewer.legal', pg_temp.s09g_day(3));
 select is(pg_temp.s09d_outcome('r:deadbeat'), 'STEP_UP_REQUIRED',
   'a dead binding heartbeat is refused even when the step-up proof is fresh (binding liveness stays separate) [P2-S09-AC-523]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp()
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 

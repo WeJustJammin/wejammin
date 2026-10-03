@@ -41,6 +41,24 @@ describe('Slice 07 route runtime defensive branches', () => {
     }
   });
 
+  it('rejects an effective query the strict schema refuses with its violations', async () => {
+    const harness = makeHarness();
+    const response = await harness.app.request(
+      request(
+        '/api/v1/config/profile.visibility/effective?consumerKey=web.profile&supportedDefinitionVersions=not-a-number',
+        { headers: { authorization: 'Bearer verified-session' } },
+      ),
+    );
+    await expectError(
+      response,
+      400,
+      'INVALID_REQUEST',
+      'The query parameters are invalid.',
+      { violations: expect.any(Array) },
+    );
+    expect(harness.port).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid effective, proposal, and action route parameters', async () => {
     const effectiveHarness = makeHarness();
     const effective = await effectiveHarness.app.request(

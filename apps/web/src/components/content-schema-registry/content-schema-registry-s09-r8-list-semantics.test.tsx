@@ -53,7 +53,9 @@ const list = () =>
     ),
   );
 
-describe('[P2-S09-AC-249] result count and active-filter summary', () => {
+// Component-level text only: these inject the count, so the marker lives on the
+// workbench-derived proofs in content-schema-registry-s09-r14-workbench-count.dom.test.tsx.
+describe('status component text for a supplied count and summary', () => {
   const status = (resultCount: number, summary: string) =>
     doc(
       renderToStaticMarkup(
@@ -68,19 +70,19 @@ describe('[P2-S09-AC-249] result count and active-filter summary', () => {
       ),
     ).body.textContent ?? '';
 
-  it('[P2-S09-AC-249] states the plural result count', () => {
+  it('states the plural result count', () => {
     expect(status(3, 'No filters are applied.')).toContain(
       '3 registry records shown.',
     );
   });
 
-  it('[P2-S09-AC-249] states the singular result count', () => {
+  it('states the singular result count', () => {
     expect(status(1, 'No filters are applied.')).toContain(
       '1 registry record shown.',
     );
   });
 
-  it('[P2-S09-AC-249] lists every active filter in the summary', () => {
+  it('lists every active filter in the summary', () => {
     const summary = contentSchemaRegistryFilterSummary(
       queryFor('?resourceKind=content_type&keyPrefix=rel&lifecycle=active'),
     );

@@ -105,10 +105,12 @@ describe('Phase 2 Slice 01 authentication route branches', () => {
         )
       ).status,
     ).toBe(403);
+    // BE00 step 8: a missing Idempotency-Key is refused after the origin, CSRF
+    // and session steps, so the request carries the real same-origin URL.
     expect(
       (
         await app.request(
-          '/api/v1/auth/bootstrap',
+          'https://api.example.test/api/v1/auth/bootstrap',
           { method: 'POST', headers: jsonHeaders, body: '{}' },
           bindings,
         )
@@ -130,7 +132,7 @@ describe('Phase 2 Slice 01 authentication route branches', () => {
     expect(
       (
         await app.request(
-          '/api/v1/auth/logout',
+          'https://api.example.test/api/v1/auth/logout',
           { method: 'POST', headers: jsonHeaders, body: '{}' },
           bindings,
         )

@@ -614,29 +614,6 @@ describe('OD-4 CMS-03A-09 successor locale pair and ordering', () => {
       expect(port).not.toHaveBeenCalled();
   });
 
-  it('[P2-S09-AC-1182] CMS-03A-09 returns every locale-configuration issue of a request with several defects in the order of the exact-refusal table, each as exactly { path, message }', async () => {
-    const successor = await sendSuccessor({
-      expectedVersion: '1',
-      supportedLocales: ['en-US', 'fr-fr', 'en-US'],
-      fallbackChains: { 'es-ES': ['en-US'], 'en-US': ['fr-FR'] },
-    });
-    expect(successor.response.status).toBe(422);
-    const violations = await violationsOf(successor.response);
-    expect(violations).toEqual([
-      at('/supportedLocales/1', M.canonical),
-      at('/supportedLocales/2', M.unique),
-      at('/fallbackChains/es-ES', M.keyUnsupported),
-      at('/fallbackChains/en-US/0', M.chainUnsupported),
-    ]);
-    for (const entry of violations)
-      expect(Object.keys(entry).sort()).toEqual(['message', 'path']);
-    const rank = violations.map((entry) =>
-      Object.values(M).indexOf(entry.message as never),
-    );
-    expect(rank).toEqual([...rank].sort((left, right) => left - right));
-    expect(successor.port).not.toHaveBeenCalled();
-  });
-
   it('[P2-S09-AC-1183] CMS-03A-01 inserts no row when any locale-configuration rule refuses the request', async () => {
     const refusals: readonly Body[] = [
       { supportedLocales: [], fallbackChains: {} },

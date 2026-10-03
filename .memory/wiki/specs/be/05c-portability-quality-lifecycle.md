@@ -1496,3 +1496,10 @@ None.
   projections and diagnostic evidence.
 - Shard 06 Trust and safety: legal holds, safety cases, evidence and
   counsel-gated restrictions; this split stores references and orchestration.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

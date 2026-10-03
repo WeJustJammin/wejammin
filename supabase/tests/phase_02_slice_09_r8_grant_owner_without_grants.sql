@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -31,6 +32,7 @@ select ok((select count(*) >= 1 from identity_private.organization_actor_grant g
 
 set constraints all immediate;
 alter table identity_private.organization_actor_grant disable trigger user;
+-- TIME-WARP: shifts a grant window to reach a time-dependent branch.
 update identity_private.organization_actor_grant g set active = false
   from r8g_ctx c where g.organization_id = c.org and g.person_id = c.owner_person;
 alter table identity_private.organization_actor_grant enable trigger user;

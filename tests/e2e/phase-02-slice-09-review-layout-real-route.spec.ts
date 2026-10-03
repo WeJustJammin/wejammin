@@ -131,7 +131,7 @@ test('[P2-S09-AC-1033] the review route and version page at 375 px are single co
   expect(new Set(await columnEdges(owner, FORMS)).size).toBeLessThanOrEqual(1);
 });
 
-test('[P2-S09-AC-1034] the review route at 768 px sets independent fields in two columns and keeps the evidence summary and step-up disclosure with the forms', async ({
+test('[P2-S09-AC-1034] the review route at 768 px shares a row only between independent fields and keeps the evidence summary and step-up disclosure with the forms', async ({
   browser,
 }) => {
   const { stage, reviewer } = await stageWithReviewer(browser);
@@ -171,14 +171,19 @@ test('[P2-S09-AC-1034] the review route at 768 px sets independent fields in two
     expect(rect.left).toBeGreaterThanOrEqual(container.left - 1);
     expect(rect.right).toBeLessThanOrEqual(container.right + 1);
   }
+  // Two columns are allowed only between independent fields. Every field of
+  // the assignment form is independent of the others, so a shared row is fine
+  // there; the dependent pairs are checked on the decision form below.
+  const INDEPENDENT = new Set(['reviewerPersonId', 'expiresAt', 'reason']);
   for (let index = 1; index < rects.length; index += 1) {
     const previous = rects[index - 1]!;
     const current = rects[index]!;
     const sameRow = Math.abs(previous.top - current.top) <= 2;
-    // Same row (two columns) must not overlap horizontally; otherwise stacked.
-    if (sameRow)
+    if (sameRow) {
+      expect(INDEPENDENT.has(previous.name ?? '')).toBe(true);
+      expect(INDEPENDENT.has(current.name ?? '')).toBe(true);
       expect(current.left).toBeGreaterThanOrEqual(previous.right - 1);
-    else expect(current.top).toBeGreaterThanOrEqual(previous.bottom - 1);
+    } else expect(current.top).toBeGreaterThanOrEqual(previous.bottom - 1);
   }
 
   // The evidence summary stays with the form: same review region, summary above
@@ -218,11 +223,60 @@ test('[P2-S09-AC-1034] the review route at 768 px sets independent fields in two
     .getByRole('definition')
     .filter({ hasText: /^Verified until \d{2}:\d{2} UTC$/u });
   await expect(disclosure).toBeVisible();
-  const inView = await disclosure.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return rect.top >= 0 && rect.bottom <= window.innerHeight * 3;
+  // The prior step-up disclosure sits inside the decision form itself, and the
+  // evidence summary is in the same review region directly above that form.
+  const decision = await reviewer.page.evaluate(() => {
+    const group = [...document.querySelectorAll('main fieldset')].find(
+      (candidate) =>
+        (candidate.textContent ?? '').includes('Record your decision'),
+    );
+    const verified = [...(group?.querySelectorAll('dd') ?? [])].find(
+      (candidate) =>
+        /^Verified until \d{2}:\d{2} UTC$/u.test(candidate.textContent ?? ''),
+    );
+    const region = group?.closest('section') ?? null;
+    const term = [...document.querySelectorAll('main dt')].find(
+      (candidate) => candidate.textContent === 'Review version',
+    );
+    const list = term?.closest('dl') ?? null;
+    if (!group || !verified || !region || !list) return null;
+    const groupRect = group.getBoundingClientRect();
+    const verifiedRect = verified.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    // Dependent fields: the decision choice and the reason it explains.
+    const fields = [
+      ...group.querySelectorAll('input:not([type="hidden"]), textarea'),
+    ].map((field) => ({
+      name: field.getAttribute('name'),
+      top: field.getBoundingClientRect().top,
+      left: field.getBoundingClientRect().left,
+    }));
+    return {
+      disclosureInsideForm:
+        verifiedRect.top >= groupRect.top - 1 &&
+        verifiedRect.bottom <= groupRect.bottom + 1,
+      summaryInRegion:
+        region.contains(list) &&
+        region.querySelector('h3')?.textContent === 'Schema review',
+      summaryAboveForm: listRect.bottom <= groupRect.top + 1,
+      dependentSharedRow: fields.some((first, index) =>
+        fields
+          .slice(index + 1)
+          .some(
+            (second) =>
+              first.name !== second.name &&
+              Math.abs(first.top - second.top) <= 2 &&
+              Math.abs(first.left - second.left) > 2,
+          ),
+      ),
+    };
   });
-  expect(inView).toBe(true);
+  expect(decision).toEqual({
+    disclosureInsideForm: true,
+    summaryInRegion: true,
+    summaryAboveForm: true,
+    dependentSharedRow: false,
+  });
   expect(await smallControls(reviewer.page, 'main', 24)).toEqual([]);
 });
 

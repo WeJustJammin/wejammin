@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -249,7 +250,7 @@ select is(pg_temp.p_run('f:key', pg_temp.p_base('p240_agg_ok'), 'CONFLICT'), 'ok
 select pg_temp.s09d_rpc('f:forbid', 'platform_api.cms_create_type_draft', 'rev1', pg_temp.p_base(pg_temp.p_key('fforbid')));
 select is(pg_temp.s09d_outcome('f:forbid'), 'FORBIDDEN', 'an authenticated human without cms.schema_designer is refused 403 FORBIDDEN [P2-S09-AC-193]');
 select is(pg_temp.p_children(pg_temp.p_key('fforbid')), '0|0|0|0|0|0', 'the forbidden create committed nothing [P2-S09-AC-193]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('f:anon', 'platform_api.cms_create_type_draft', pg_temp.p_base(pg_temp.p_key('fanon')));
 select is(pg_temp.s09d_outcome('f:anon'), 'UNAUTHENTICATED', 'a call with no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-193]');
 select is(pg_temp.p_children(pg_temp.p_key('fanon')), '0|0|0|0|0|0', 'the unauthenticated create committed nothing [P2-S09-AC-193]');

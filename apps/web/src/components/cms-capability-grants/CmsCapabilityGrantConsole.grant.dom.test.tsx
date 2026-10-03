@@ -171,7 +171,7 @@ describe('[DEC-119] grant command', () => {
     ).toBe('');
   });
 
-  it('disables the commit with a stable pending label while in flight and ignores a duplicate', async () => {
+  it('[P2-S09-AC-994] disables the commit with a stable pending label (Granting) while in flight and ignores a duplicate', async () => {
     let release: (response: Response) => void = () => undefined;
     const { fetchMock } = scriptFetch(
       () =>
@@ -193,6 +193,54 @@ describe('[DEC-119] grant command', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     release(jsonResponse(201, grantResource()));
     await settle();
+  });
+
+  const checkPendingLabel = async (
+    kind: 'renew' | 'revoke',
+    operation: 'CMS-03A-16' | 'CMS-03A-17',
+    label: 'Renewing' | 'Revoking',
+  ): Promise<void> => {
+    let release: (response: Response) => void = () => undefined;
+    const { fetchMock } = scriptFetch(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+      () => grantListResponse(),
+    );
+    const root = mount();
+    click(
+      query(
+        root,
+        `tr[data-grant-id="6d1e8b24-5c93-7a0f-8e47-b2d6c9f13a85"] button[data-action="${kind}"]`,
+      ),
+    );
+    const form = query<HTMLFormElement>(
+      root,
+      `form[data-operation-id="${operation}"]`,
+    );
+    if (kind === 'renew')
+      typeInto(query(form, 'input[name="validThrough"]'), '2026-12-01');
+    else click(query(form, 'input[type="checkbox"][name="confirmed"]'));
+    await submit(form);
+    const button = query<HTMLButtonElement>(
+      root,
+      `form[data-operation-id="${operation}"] button[type="submit"]`,
+    );
+    expect(textOf(button)).toBe(label);
+    expect(button.disabled).toBe(true);
+    await submit(form);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    release(jsonResponse(200, grantResource()));
+    await settle();
+  };
+
+  it('[P2-S09-AC-994] renew shows the stable pending label Renewing while in flight, disables the commit and ignores a duplicate', async () => {
+    await checkPendingLabel('renew', 'CMS-03A-16', 'Renewing');
+  });
+
+  it('[P2-S09-AC-994] revoke shows the stable pending label Revoking while in flight, disables the commit and ignores a duplicate', async () => {
+    await checkPendingLabel('revoke', 'CMS-03A-17', 'Revoking');
   });
 
   it('[P2-S09-AC-1000] [P2-S09-AC-1026] routes 401 STEP_UP_REQUIRED to /step-up?returnTo= and keeps the entries in memory', async () => {
@@ -222,9 +270,15 @@ describe('[DEC-119] grant command', () => {
       query<HTMLInputElement>(form, 'input[name="subjectPersonId"]').value,
     ).toBe(GRANT_UUID);
     click(link);
-    expect(window.sessionStorage.getItem('wj:cms-grants:step-up-return')).toBe(
-      '1',
-    );
+    expect(
+      JSON.parse(
+        window.sessionStorage.getItem('wj:cms-grants:step-up-return') ?? 'null',
+      ),
+    ).toEqual({
+      kind: 'grant',
+      grantId: null,
+      idempotencyKey: expect.stringMatching(/^cms-grant-15-/u),
+    });
     expect(window.sessionStorage.length).toBe(1);
     expect(JSON.stringify(Object.entries(window.sessionStorage))).not.toContain(
       GRANT_UUID,
@@ -232,7 +286,14 @@ describe('[DEC-119] grant command', () => {
   });
 
   it('tells the owner nothing was saved when returning from step-up with a cleared form', () => {
-    window.sessionStorage.setItem('wj:cms-grants:step-up-return', '1');
+    window.sessionStorage.setItem(
+      'wj:cms-grants:step-up-return',
+      JSON.stringify({
+        kind: 'grant',
+        grantId: null,
+        idempotencyKey: 'cms-grant-15-original',
+      }),
+    );
     const root = mount();
     expect(textOf(root)).toContain('Your entries were not saved.');
     expect(
@@ -249,7 +310,7 @@ describe('[DEC-119] grant command', () => {
     );
   });
 
-  it('[P2-S09-AC-997] [P2-S09-AC-1004] renders the exact 409 copy with a link that filters the list to the capability', async () => {
+  it('[P2-S09-AC-997] [P2-S09-AC-1004] [P2-S09-AC-527] renders the exact 409 copy with a link that filters the list to the capability', async () => {
     const { calls } = scriptFetch(
       () => jsonResponse(409, apiError('CONFLICT')),
       () => grantListResponse(),

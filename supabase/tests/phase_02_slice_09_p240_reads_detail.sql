@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -81,7 +82,7 @@ select is(pg_temp.s09d_detail('a:other'), pg_temp.s09d_detail('a:absent'), 'and 
 select is(pg_temp.p_get('a:other:own', 'other', pg_temp.s09d_id('o:type'), pg_temp.s09d_id('o:version')), 'OK', 'the other organization reads its own version [P2-S09-AC-141]');
 select pg_temp.s09d_rpc('a:ctx', 'platform_api.cms_get_content_type_version', 'owner', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version')), false, jsonb_build_object('actingPartyId', pg_temp.s09d_id('otherOrg')));
 select ok(pg_temp.s09d_outcome('a:ctx') in ('FORBIDDEN', 'NOT_FOUND'), 'an acting context the human is not bound to is refused: the acting context is rechecked, never widened [P2-S09-AC-141]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('a:anon', 'platform_api.cms_get_content_type_version', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version')));
 select is(pg_temp.s09d_outcome('a:anon'), 'UNAUTHENTICATED', 'no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-141]');
 select ok(has_function_privilege('authenticated', 'platform_api.cms_get_content_type_version(jsonb)', 'execute') and not has_function_privilege('anon', 'platform_api.cms_get_content_type_version(jsonb)', 'execute'),
@@ -141,7 +142,7 @@ select ok((select p.provolatile = 'v' and p.prosecdef from pg_proc p where p.oid
 -- ================================================== AC199 A07 failure mapping ====
 select is(pg_temp.p_get('f:uuid', 'owner', null, pg_temp.s09d_id('a:version'), '{"contentTypeId":"nope"}'), 'INVALID_REQUEST', 'a malformed UUID is 400 INVALID_REQUEST [P2-S09-AC-199]');
 select is(pg_temp.p_get('f:header', 'owner', pg_temp.s09d_id('a:type'), pg_temp.s09d_id('a:version'), '{"ifMatch":"1"}'), 'INVALID_REQUEST', 'a mutation header is 400 INVALID_REQUEST [P2-S09-AC-199]');
-select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), set_config('request.jwt.claim.sub', '', true);
+select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('f:anon', 'platform_api.cms_get_content_type_version', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version')));
 select is(pg_temp.s09d_outcome('f:anon'), 'UNAUTHENTICATED', 'no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-199]');
 select is(pg_temp.p_get('f:forbid', 'rev2', pg_temp.s09d_id('a:type'), pg_temp.s09d_id('a:version')), 'FORBIDDEN', 'a missing capability is 403 FORBIDDEN [P2-S09-AC-199]');

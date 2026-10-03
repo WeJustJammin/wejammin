@@ -261,7 +261,7 @@ describe('[P2-S09-AC-274] [P2-S09-AC-283] phase totals are computed from the per
     ).reduce((sum, count) => sum + count, 0);
     expect(trackerTotal).toBe(authored);
     expect(read(PLAN)).toContain(
-      `**${authored.toLocaleString('en-US')} authored`.slice(0, 0),
+      `**${String(authored)} authored / ${String(authored - gates)} active**`,
     );
   });
 
@@ -315,17 +315,44 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
     expect(record).toMatch(/no later slice file was edited/u);
   });
 
-  it('records the DEC-122 transfer with its transferred counts: seven receiving criteria (Slice 11: 3, Slice 12: 3, Slice 16: 1) beside the unchanged original transfer count of 0', () => {
+  it('records the transfer with its transferred counts (Slice 11: 3, Slice 12: 3, Slice 16: 1) beside the unchanged original transfer count of 0, each row attributed to the ruling that moved it', () => {
     expect(record).toMatch(/\*\*transfer count: 0\*\*/u);
     expect(record).toMatch(
-      /DEC-122 transfer \(2026-10-03\): \*\*transferred count: 7\*\* \(Slice 11: 3, Slice 12: 3, Slice 16: 1\)/u,
+      /Transfer \(2026-10-03\): \*\*transferred count: 7\*\* \(Slice 11: 3, Slice 12: 3, Slice 16: 1\)/u,
     );
-    for (const owner of [
-      'AC-046, AC-047, AC-048',
-      'AC-051, AC-052, AC-053',
-      'AC-029',
-    ])
-      expect(record, owner).toContain(owner);
+    // Only the owner-ratified DEC-122 covers the AC1031 and AC1166 moves, DEC-123
+    // covers the template-binding flows, and the AC185 move is still an
+    // orchestrator ruling pending owner ratification.
+    const attributed: readonly [string, string, string][] = [
+      [
+        'AC1031',
+        'Slice 11 P2-S11-AC-046, AC-047, AC-048',
+        'DEC-122 (owner-ratified)',
+      ],
+      ['AC1166', 'Slice 12 P2-S12-AC-051, AC-052', 'DEC-122 (owner-ratified)'],
+      ['AC003, AC045, AC049', 'Slice 12 P2-S12-AC-053', 'DEC-123 (owner)'],
+      [
+        'AC185',
+        'Slice 16 P2-S16-AC-029',
+        'AC185 orchestrator ruling, pending owner ratification',
+      ],
+    ];
+    const tableRows = record
+      .split(/\r?\n/u)
+      .filter(
+        (line) =>
+          /^\| [^|]+\| (?:AC|Slice)/u.test(line) || line.includes('| AC'),
+      );
+    for (const [moved, receiving, authority] of attributed) {
+      const matching = tableRows.filter(
+        (line) => line.includes(`| ${moved} |`) && line.includes(receiving),
+      );
+      expect(matching, `${moved} row`).toHaveLength(1);
+      expect(matching[0], `${moved} authority`).toMatch(
+        new RegExp(`\\| ${authority.replace(/[()]/gu, '\\$&')} \\|$`, 'u'),
+      );
+    }
+    expect(record).not.toMatch(/DEC-122 transfer \(2026-10-03\)/u);
   });
 
   it('carries each DEC-122 receiving criterion as an open row with a source in the owner slice plan and tracker, with no Slice 09 id in its text', () => {
@@ -422,18 +449,31 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
       }
   });
 
-  it('finds an existing owner criterion in each named slice for the editorial, review, composition, taxonomy, locale and public-delivery topics', () => {
-    const topics: readonly [number, RegExp][] = [
-      [10, /autosave|revision|conflict/iu],
-      [11, /review|reviewer|publication|approval/iu],
-      [12, /template|composition|taxonom|locale/iu],
-      [15, /public|projection|preview|sitemap|delivery/iu],
+  it('maps each later-only topic to the exact owner criteria that carry it, by slice, criterion number and the words of its row', () => {
+    // [topic, slice, criterion, words that row must contain]. The mapping is exact:
+    // a topic is covered only by the named criterion, never by any row that merely
+    // mentions a keyword.
+    const mapping: readonly [string, number, number, string][] = [
+      ['editorial autosave and conflict', 10, 1, 'Autosave only changed paths'],
+      ['editorial conflict preservation', 10, 3, 'conflict preimages'],
+      ['review and approval', 11, 1, 'author/reviewer separation'],
+      ['publication gates', 11, 4, 'Publish only after current revocation'],
+      ['template', 12, 1, 'block compatibility'],
+      ['composition', 12, 2, 'composition trees'],
+      ['taxonomy', 12, 3, 'Keep taxonomy keys stable'],
+      ['locale', 12, 25, 'BCP 47 locale'],
+      ['public projection and preview', 15, 1, 'render-ready projections'],
+      ['public delivery pointers', 15, 2, 'Activate delivery pointers'],
+      ['public last-known-good', 15, 3, 'last-known-good'],
     ];
-    for (const [slice, topic] of topics)
-      expect(
-        ownedBy(slice).filter((row) => topic.test(row.text)).length,
-        `S${slice}`,
-      ).toBeGreaterThan(0);
+    for (const [topic, slice, id, words] of mapping) {
+      const row = ownedBy(slice).find((candidate) => candidate.id === id);
+      expect(row, `${topic}: S${slice} AC${id} exists`).toBeDefined();
+      expect(row?.text, `${topic}: S${slice} AC${id} words`).toContain(words);
+    }
+    expect(new Set(mapping.map(([, slice]) => slice))).toEqual(
+      new Set([10, 11, 12, 15]),
+    );
   });
 
   it('keeps the S09 floor free of any criterion that was transferred in: every S09 baseline row is still mirrored by the tracker and no later slice owns an S09 id', () => {

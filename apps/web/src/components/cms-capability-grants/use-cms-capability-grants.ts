@@ -14,6 +14,8 @@ import {
 } from './cms-capability-grant-commands';
 import {
   consumeStepUpDetour,
+  markStepUpDetour,
+  type PendingGrantCommand,
   navigateTo,
   recordConsoleUrl,
   signInHref,
@@ -118,9 +120,22 @@ export const useCmsCapabilityGrants = (
   const [signedOut, setSignedOut] = React.useState(false);
   const busy = React.useRef(false);
   const attempted = React.useRef('');
+  /** The command the last 401 STEP_UP_REQUIRED interrupted (its original key). */
+  const refused = React.useRef<PendingGrantCommand | null>(null);
+  /** The pending command restored after returning from /step-up, used once. */
+  const [restored, setRestored] = React.useState<PendingGrantCommand | null>(
+    null,
+  );
 
   React.useEffect(() => {
-    if (consumeStepUpDetour()) setNotice(COMMAND_COPY.entriesNotSaved);
+    const detour = consumeStepUpDetour();
+    if (detour.found) setNotice(COMMAND_COPY.entriesNotSaved);
+    setRestored(detour.pending);
+  }, []);
+
+  /** Persist the interrupted command, then let the link navigate to /step-up. */
+  const leaveForStepUp = React.useCallback((): void => {
+    if (refused.current !== null) markStepUpDetour(refused.current);
   }, []);
 
   // FE03 URL state: an invalid address was normalized by the server, so the
@@ -204,12 +219,23 @@ export const useCmsCapabilityGrants = (
         attempted.current = String(submitted.get('capability') ?? '');
       setPending(kind);
       setNotice(null);
+      const sentKey = String(submitted.get('idempotency-key') ?? '');
       const outcome = await runGrantCommand({
         action: actionFor(kind, grantId),
         operationId: OPERATION_FOR_KIND[kind],
         formData: submitted,
       });
       const state = stateForResult(kind, outcome, props.termWindow);
+      refused.current =
+        outcome.outcome === 'step-up-required' && sentKey.length > 0
+          ? { kind, grantId, idempotencyKey: sentKey }
+          : null;
+      // The restored key is used once: only the command that sent it clears it.
+      setRestored((previous) =>
+        previous !== null && previous.idempotencyKey === sentKey
+          ? null
+          : previous,
+      );
       busy.current = false;
       setPending(null);
       setResult((previous) => ({
@@ -300,5 +326,7 @@ export const useCmsCapabilityGrants = (
     applyQuery,
     applyPerson,
     command,
+    restored,
+    leaveForStepUp,
   };
 };

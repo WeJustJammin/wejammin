@@ -6,8 +6,10 @@ import {
   issues,
   MAX_BODY_BYTES,
   type UnknownSchema,
+  unsupportedMediaType,
   UUID_PATTERN,
 } from './admission-common';
+import type { CmsEditorialError } from './types';
 
 /**
  * Bounded body reader. BE03b registers no 413 row for the editorial command
@@ -77,15 +79,35 @@ const decodeJson = <T>(bytes: Uint8Array, schema: UnknownSchema): Result<T> => {
     : invalid('The request body failed validation.', {}, 422);
 };
 
+/**
+ * BE00 step 2 (security/transport), decided from headers alone: the declared
+ * body ceiling, then the content type. `UNSUPPORTED_MEDIA_TYPE` carries the
+ * route allowlist (BE00 error table).
+ */
+export const jsonBodyPreflight = (
+  request: Request,
+): CmsEditorialError | null => {
+  const declaredLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES)
+    return invalid('The request body is too large.');
+  const media = request.headers.get('content-type')?.split(';')[0]?.trim();
+  return media === 'application/json' ? null : unsupportedMediaType();
+};
+
+/** BE00 step 6: JSON syntax and strict Zod on bytes read at step 2. */
+export const decodeJsonBody = <T>(
+  bytes: Uint8Array,
+  schema: UnknownSchema,
+): Result<T> => decodeJson<T>(bytes, schema);
+
 /** Exact-body strict parse: path parameters are bound separately. */
 export const parseJsonBody = async <T>(
   request: Request,
   schema: UnknownSchema,
   signal?: AbortSignal,
 ): Promise<Result<T>> => {
-  const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-  if (media !== 'application/json')
-    return invalid('Use application/json.', {}, 415);
+  const preflight = jsonBodyPreflight(request);
+  if (preflight !== null) return preflight;
   const bytes = await readBytes(request, signal);
   return bytes.ok ? decodeJson<T>(bytes.value, schema) : bytes;
 };

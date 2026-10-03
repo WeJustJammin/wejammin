@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 create extension if not exists pgtap with schema extensions;
 commit;
 
@@ -23,6 +24,10 @@ create or replace function pg_temp.r3sw_sweep(p_label text, p_batch anyelement) 
 language plpgsql as $body$
 declare result jsonb;
 begin
+  -- the sweep is a service-role Worker command: a request of its own, with no human session published
+  perform set_config('app.cms_session_actor', '', true);
+  perform set_config('app.cms_session_party', '', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   begin
     execute format('select platform_api.cms_sweep_expired_review_authority(%L::integer)', p_batch) into result;
     insert into s09d_probe values (p_label, '00000', null, result, null)

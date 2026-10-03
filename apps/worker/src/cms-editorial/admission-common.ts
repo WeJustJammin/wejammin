@@ -94,6 +94,22 @@ export const invalid = (
   details,
 });
 
+/**
+ * BE00 `UNSUPPORTED_MEDIA_TYPE` details are exactly `{ allowedMediaTypes }`,
+ * the route allowlist. A body-carrying command accepts only JSON; a read route
+ * accepts no request media, so its allowlist is empty.
+ */
+export const unsupportedMediaType = (
+  allowedMediaTypes: readonly string[] = ['application/json'],
+): CmsEditorialError =>
+  invalid(
+    allowedMediaTypes.length === 0
+      ? 'The route does not accept request media.'
+      : 'Use application/json.',
+    { allowedMediaTypes: [...allowedMediaTypes] },
+    415,
+  );
+
 /** Distinct from the read-side messages so a misrouted command is diagnostic. */
 export const COMMAND_QUERY_REFUSED_MESSAGE =
   'The command route does not accept query parameters.';

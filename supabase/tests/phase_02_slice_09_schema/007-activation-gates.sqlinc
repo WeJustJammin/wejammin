@@ -4,12 +4,15 @@
 -- be hidden behind a successful API-shaped request.
 select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cfg_rpc', 'true', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_activation_references_valid(
     (select version_id from s09_type_ids)
   ),
   'AC095 activation preflight accepts the complete persisted reference graph [P2-S09-AC-095]'
 );
+select set_config('app.cms_rpc', '', true);
 select throws_ok(
   $$update platform_private.cms_field_definition_versions
     set editor_config = jsonb_build_object('label', 'Tampered title', 'order', 0)
@@ -37,18 +40,24 @@ select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cfg_rpc', 'true', true);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('dep:review')), 'approved',
   'AC189 fixture: the dependency candidate holds a real approved CMS review');
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_registry.read'
 where id = pg_temp.s09d_id('dep:type');
+select set_config('app.cms_rpc', '', true);
 select ok(
   (select state = 'invalidated'
    from platform_private.cms_schema_reviews
    where id = pg_temp.s09d_id('dep:review')),
   'AC189 owner-capability authority changes invalidate approved activation review evidence [P2-S09-AC-102]'
 );
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_designer'
 where id = pg_temp.s09d_id('dep:type');
+select set_config('app.cms_rpc', '', true);
 
 -- Plan creation belongs to CMS-03A-10 and activation only advances the bound
 -- plan (G1).  The candidate is the real additive successor of an active
@@ -90,12 +99,15 @@ select is(
   'completed',
   'AC099 the advanced plan completes only after exact zero-row evidence [P2-S09-AC-099]'
 );
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_migration_plan_ready(
     :'adv_plan', pg_temp.s09d_id('adv:type'), :'adv_version'
   ),
   'AC096 durable plan carries matching source/target/artifact/compiler evidence [P2-S09-AC-096]'
 );
+select set_config('app.cms_rpc', '', true);
 select pg_temp.s09d_guc_save();
 select pg_temp.s09d_dry_run('adv', 'owner', null, null, 's09d-adv-redry-0001');
 select pg_temp.s09d_guc_restore();
@@ -126,9 +138,12 @@ select throws_ok(
   'P0001', 'IMMUTABLE_RECORD',
   'AC096 independent dry-run report cannot be deleted'
 );
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_migration_plan_ready(
     :'adv_plan', pg_temp.s09d_id('adv:type'), :'adv_version'
   ),
   'AC096 tamper attempts leave the immutable completed evidence ready'
 );
+select set_config('app.cms_rpc', '', true);

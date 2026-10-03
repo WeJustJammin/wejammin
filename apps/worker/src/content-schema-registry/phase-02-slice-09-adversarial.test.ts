@@ -67,7 +67,7 @@ describe('S09 adversarial worker admission and recovery', () => {
       );
       await expectError(response, 422, 'VALIDATION_FAILED');
       expect(attack).toEqual(before);
-      expect(harness.resolveSession).not.toHaveBeenCalled();
+      expect(harness.rateLimit).not.toHaveBeenCalled();
       expect(harness.rateLimit).not.toHaveBeenCalled();
       expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
     }

@@ -172,4 +172,52 @@ describe('review route canonical refetch on invalidation', () => {
     });
     expect(fetchStub).not.toHaveBeenCalled();
   });
+
+  it('[P2-S09-AC-1021] the version-detail route state (where the dry-run is read) refetches on a bare hint with one protected GET, no mutation header, and keeps focus', async () => {
+    const props = islandPropsFixture({});
+    const refreshedDetail = props.initialDetail;
+    const fetchStub = vi.fn(
+      async () =>
+        new Response(
+          islandMarkup({
+            state: 'ready',
+            variant: props.variant,
+            access: props.access,
+            supportReference: 'r',
+            initialList: { status: 'empty', reason: 'no-records' },
+            initialDetail: refreshedDetail,
+            initialReview: null,
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchStub);
+    const view = mountView(<ContentSchemaRegistryWorkbenchIsland {...props} />);
+    await settle();
+    fetchStub.mockClear();
+    const focusTarget = view.container.querySelector<HTMLElement>(
+      'form[data-operation-id="CMS-03A-02"] button[type="submit"]',
+    );
+    expect(focusTarget).not.toBeNull();
+    focusTarget?.focus();
+    const focused = document.activeElement;
+    await act(async () => {
+      channel.emit(createContentSchemaRegistryInvalidationHint());
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    await settle();
+    const reads = fetchStub.mock.calls as unknown as [
+      RequestInfo | URL,
+      RequestInit | undefined,
+    ][];
+    expect(reads).toHaveLength(1);
+    const [input, init] = reads[0] as [RequestInfo | URL, RequestInit];
+    expect(String(input)).toContain(props.canonicalRefetchUrl);
+    expect(init?.method ?? 'GET').toBe('GET');
+    expect(init?.body ?? null).toBeNull();
+    const headers = new Headers(init?.headers);
+    for (const name of ['idempotency-key', 'if-match', 'content-type'])
+      expect(headers.has(name)).toBe(false);
+    expect(document.activeElement).toBe(focused);
+  });
 });

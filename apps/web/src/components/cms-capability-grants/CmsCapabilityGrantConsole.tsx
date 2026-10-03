@@ -16,6 +16,7 @@ import type {
   CmsCapabilityGrantConsoleProps,
   CmsCapabilityGrantQueryState,
 } from './cms-capability-grant-types';
+import { keyForCommand } from './cms-capability-grant-navigation';
 import { useCmsCapabilityGrants } from './use-cms-capability-grants';
 
 const FIELD_TARGETS = {
@@ -24,6 +25,24 @@ const FIELD_TARGETS = {
   validThrough: 'cms-grant-valid-through',
   reason: 'cms-grant-reason',
 } as const;
+
+/**
+ * The field ids a failure summary links to are the ids of the form that sent
+ * the command: the grant form, or the renew / revoke form opened on the row.
+ */
+const fieldTargetsFor = (
+  kind: 'grant' | 'renew' | 'revoke',
+  grantId: string | null,
+): Readonly<Record<keyof typeof FIELD_TARGETS, string>> => {
+  if (grantId === null || kind === 'grant') return FIELD_TARGETS;
+  if (kind === 'renew')
+    return {
+      ...FIELD_TARGETS,
+      validThrough: `cms-renew-${grantId}-valid-through`,
+      reason: `cms-renew-${grantId}-reason`,
+    };
+  return { ...FIELD_TARGETS, reason: `cms-revoke-${grantId}-reason` };
+};
 
 const idempotencyKey = (operation: string, scope: string, epoch: number) =>
   `cms-grant-${operation}-${scope}-${epoch}`.slice(0, 128);
@@ -111,9 +130,13 @@ export default function CmsCapabilityGrantConsole(
           state={state.result.state}
           returnTo={returnTo}
           sequence={state.result.sequence}
-          fieldTargets={FIELD_TARGETS}
+          fieldTargets={fieldTargetsFor(
+            state.result.kind,
+            state.openRow?.grantId ?? null,
+          )}
           onShowExisting={state.showAttemptedCapability}
           onRetry={() => void state.refetch()}
+          onVerifyIdentity={state.leaveForStepUp}
         />
       )}
       <CmsCapabilityGrantFilters
@@ -158,6 +181,7 @@ export default function CmsCapabilityGrantConsole(
                   grant={grant}
                   csrfToken={props.csrfToken}
                   epoch={state.epoch}
+                  restored={state.restored}
                   termWindow={props.termWindow}
                   disabled={commandsDisabled}
                   disabledReasonId={disabledReasonId}
@@ -180,7 +204,12 @@ export default function CmsCapabilityGrantConsole(
           <CmsCapabilityGrantForm
             key={`${state.epoch}-${state.prefill?.prefillCount ?? 0}`}
             csrfToken={props.csrfToken}
-            idempotencyKey={idempotencyKey('15', props.requestId, state.epoch)}
+            idempotencyKey={keyForCommand(
+              state.restored,
+              'grant',
+              null,
+              idempotencyKey('15', props.requestId, state.epoch),
+            )}
             termWindow={props.termWindow}
             disabled={commandsDisabled}
             disabledReasonId={disabledReasonId}

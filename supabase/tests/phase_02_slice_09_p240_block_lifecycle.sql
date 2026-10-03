@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -73,10 +74,10 @@ select is(pg_temp.p_lc('s:invalid:unsigned', (select d from p_blocks), 'withdraw
 create or replace function pg_temp.p_role_advance(p_role text) returns text language plpgsql as $body$
 declare before_rows text := pg_temp.p_block_rows(); outcome text;
 begin
-  perform set_config('request.jwt.claim.role', p_role, true);
+  perform pg_temp.set_jwt_claim('role', p_role, true);
   perform pg_temp.s09d_call('lcrole:' || p_role, 'platform_api.cms_advance_block_lifecycle', pg_temp.p_lifecycle_request((select d from p_blocks), 'supported', 'deprecated'));
   outcome := pg_temp.s09d_outcome('lcrole:' || p_role);
-  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   return outcome || ' ' || (before_rows = pg_temp.p_block_rows())::text;
 end;
 $body$;

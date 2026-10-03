@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -37,9 +38,14 @@ $body$;
 create or replace function pg_temp.s09e_evidence(p_tag text) returns jsonb language plpgsql as $body$
 declare result jsonb;
 begin
+  -- the projection is a definer function that reads the registry through the forced
+  -- policies, so it is called under the RPC context, as the producers call it
+  perform set_config('app.cms_rpc', 'true', true);
   select platform_private.cms_editorial_workflow_policy_evidence(pg_temp.s09d_id(p_tag || ':version')) into result;
+  perform set_config('app.cms_rpc', '', true);
   return result;
 exception when others then
+  perform set_config('app.cms_rpc', '', true);
   return jsonb_build_object('error', sqlerrm);
 end;
 $body$;
@@ -63,8 +69,15 @@ language sql stable as $body$
   where version_row.id = pg_temp.s09d_id(p_tag || ':version') and field.field_key = 'title'
 $body$;
 create or replace function pg_temp.s09e_create_entry(p_label text, p_tag text, p_policy jsonb default null)
-returns jsonb language sql as $body$
-  select pg_temp.s09d_rpc(p_label, 'platform_api.cms_create_entry', 'owner', pg_temp.s09e_create_request(p_tag, p_policy))
+returns jsonb language plpgsql as $body$
+declare request jsonb;
+begin
+  -- building the request reads the activation evidence through a definer function
+  perform set_config('app.cms_rpc', 'true', true);
+  request := pg_temp.s09e_create_request(p_tag, p_policy);
+  perform set_config('app.cms_rpc', '', true);
+  return pg_temp.s09d_rpc(p_label, 'platform_api.cms_create_entry', 'owner', request);
+end;
 $body$;
 
 -- An ordinary and a protected type, both activated through the real producers.
@@ -102,8 +115,10 @@ select ok(pg_temp.s09e_evidence('p') = pg_temp.s09e_expected('p') and pg_temp.s0
   'a protected bound policy resolves with two decisions and the ordered specialist slot');
 select ok(pg_temp.s09e_evidence('b') is null or pg_temp.s09e_evidence('b') = 'null'::jsonb,
   'a draft (never activated) version has no editorial policy evidence [P2-S09-AC-716]');
+select set_config('app.cms_rpc', 'true', true);
 select ok(platform_private.cms_editorial_workflow_policy_evidence(extensions.gen_random_uuid()) is null
   and platform_private.cms_editorial_workflow_policy_evidence(null) is null, 'an absent or null version resolves to NULL [P2-S09-AC-716]');
+select set_config('app.cms_rpc', '', true);
 select ok(not (pg_temp.s09d_def('platform_private.cms_editorial_workflow_policy_evidence(uuid)') ilike '%select null::jsonb%'),
   'the fail-closed seam stub is replaced by a registry resolution');
 

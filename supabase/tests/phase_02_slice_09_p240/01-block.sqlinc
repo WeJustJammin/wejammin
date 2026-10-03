@@ -50,7 +50,7 @@ end;
 $body$;
 create or replace function pg_temp.p_register(p_label text, p_request jsonb) returns jsonb language plpgsql as $body$
 begin
-  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   return pg_temp.s09d_call(p_label, 'platform_api.cms_register_block', p_request);
 end;
 $body$;
@@ -68,7 +68,7 @@ end;
 $body$;
 create or replace function pg_temp.p_advance(p_label text, p_request jsonb) returns jsonb language plpgsql as $body$
 begin
-  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   return pg_temp.s09d_call(p_label, 'platform_api.cms_advance_block_lifecycle', p_request);
 end;
 $body$;

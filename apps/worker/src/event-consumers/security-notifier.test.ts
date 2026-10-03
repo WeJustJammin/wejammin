@@ -74,7 +74,7 @@ describe('identity.security-notifier', () => {
     ['MFA_FACTOR_REMOVED', 'mfa_factor_removed'],
     ['MFA_FACTORS_RESET', 'mfa_factors_reset'],
   ] as const)(
-    '[P2-S09-AC-916] sends the %s notice as %s with identifiers only under the security event id',
+    '[P2-S09-AC-916] [P2-S09-AC-895] sends the %s notice as %s with identifiers only under the security event id',
     async (reasonCode, template) => {
       const { notifier, send, read } = build({ source: record(reasonCode) });
       await expect(consume(notifier)).resolves.toEqual({ outcome: 'ack' });

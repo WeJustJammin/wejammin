@@ -6,6 +6,8 @@ import {
   RemedyResourceSchema,
 } from '@wejammin/contracts';
 
+import { isStepUpRequiredBody } from '../step-up-required';
+
 export const responseSchemas = {
   'PRF-API-01': MatchResponseSchema,
   'PRF-API-02': JobStatusSchema,
@@ -81,7 +83,12 @@ export const parseProfileOwnershipResponse = (
 export type CommandOutcome = Readonly<{
   message: string;
   payload?: unknown;
+  /** Set for a 401 STEP_UP_REQUIRED: the command form navigates here. */
+  stepUp?: true;
 }>;
+
+export const STEP_UP_STATUS_MESSAGE =
+  'Recent verification is required. Continuing to verification.';
 
 export const readCommandResult = async (
   response: Response,
@@ -103,7 +110,13 @@ export const readCommandResult = async (
   }
   if (response.status === 409)
     return { message: 'The ownership state changed. Refresh and retry.' };
-  if (response.status === 401) return { message: 'Sign in again to continue.' };
+  if (response.status === 401) {
+    // FE00 error-per-class (DEC-111): a step-up shortfall is navigation to
+    // /step-up, never the sign-in prompt reserved for UNAUTHENTICATED.
+    if (isStepUpRequiredBody(payload))
+      return { message: STEP_UP_STATUS_MESSAGE, stepUp: true };
+    return { message: 'Sign in again to continue.' };
+  }
   if (response.status === 403)
     return { message: 'This capability is not available in this context.' };
   if (response.status === 404)

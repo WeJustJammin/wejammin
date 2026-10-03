@@ -2091,21 +2091,18 @@ None. New product or architecture choices must re-open their originating locked 
 - [x] Global design-system components and state language are consumed without reinvention.
 - [x] Seven mandatory passes, two-implementer review, devil's-advocate review, and convergence pass completed.
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Derives from
-
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]
 - [[specs/ia/deep-dives/03-cms-content-modeling|Deep Dive 03 — CMS content modeling and authoring]]
 
 ### Phases into
-
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
 ### References
-
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]
 - [[specs/ia/deep-dives/03-cms-content-modeling|Deep Dive 03 — CMS content modeling and authoring]]
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

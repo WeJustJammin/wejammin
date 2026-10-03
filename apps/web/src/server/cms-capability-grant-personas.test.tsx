@@ -3,18 +3,19 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import * as React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import CmsCapabilityGrantConsole from '../components/cms-capability-grants/CmsCapabilityGrantConsole';
-import { consoleProps } from '../components/cms-capability-grants/cms-capability-grant-console.test-support';
 import {
   grantBinding,
   grantPageRequest,
   resolveGrantPage,
 } from './cms-capability-grant-context.test-support';
 import { SUBJECT_ID } from './cms-capability-grant.test-support';
+import {
+  cmsAccessNavigationVisible,
+  cmsCapabilityGrantRefusalResponse,
+  isCmsCapabilityGrantRefusal,
+} from './cms-capability-grant-page-response';
 import { probeCmsCapabilityGrantOwner } from './cms-capability-grant-platform-api';
 
 /**
@@ -42,32 +43,34 @@ const read = (relative: string): string =>
 
 describe('grant console persona cells are not-rendered for every non-owner persona', () => {
   it.each(NON_OWNER_PERSONAS)(
-    '%s persona [P2-S09-AC-%i]: forbidden gate, no navigation entry, no route content, no grant controls',
-    async (persona) => {
-      // The persona is a non-owner: the upstream owner proof refuses it.
+    '%s persona [P2-S09-AC-%i]: the production route answers a bare 403 with no console, no navigation entry and no grant controls',
+    async () => {
+      // Ownership comes only from the upstream CMS-03A-18 proof, so every
+      // persona that is not the owner takes this one path. The refusal below
+      // is the Response the page route itself returns (never a rendered
+      // forbiddenHidden console, which the route does not produce).
       const { result } = await resolveGrantPage({ status: 403 });
       expect(result).toStrictEqual({ kind: 'forbidden' });
+      if (!isCmsCapabilityGrantRefusal(result))
+        throw new Error('a non-owner must be refused');
+      const refusal = cmsCapabilityGrantRefusalResponse(result);
+      expect(refusal.status).toBe(403);
+      expect(refusal.headers.get('cache-control')).toBe('no-store');
+      const body = await refusal.text();
+      expect(body).toBe('Forbidden');
+      expect(body).not.toContain('<');
+      expect(body).not.toContain(SUBJECT_ID);
 
       const owner = await probeCmsCapabilityGrantOwner(
         grantPageRequest(),
         grantBinding({ status: 403, errorCode: 'FORBIDDEN' }).binding,
       );
       expect(owner).toBe(false);
-
-      const html = renderToStaticMarkup(
-        React.createElement(
-          CmsCapabilityGrantConsole,
-          consoleProps({ variant: 'forbiddenHidden', access: 'not-rendered' }),
-        ),
-      );
-      expect(html).toContain(
-        'Only the organization owner can manage CMS access.',
-      );
-      expect(html).not.toContain('<table');
-      expect(html).not.toContain('<form');
-      expect(html).not.toContain('data-operation-id');
-      expect(html).not.toContain(SUBJECT_ID);
-      expect(persona.length).toBeGreaterThan(0);
+      // No navigation entry: a failed ownership probe hides it on the owner
+      // variant, and a non-owner registry variant never shows it.
+      expect(cmsAccessNavigationVisible('ownerFull', owner)).toBe(false);
+      expect(cmsAccessNavigationVisible('entitledRead', true)).toBe(false);
+      expect(cmsAccessNavigationVisible('ownerFull', true)).toBe(true);
     },
   );
 

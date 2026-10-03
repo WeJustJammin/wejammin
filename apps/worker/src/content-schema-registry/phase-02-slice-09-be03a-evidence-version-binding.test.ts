@@ -47,7 +47,6 @@ describe('BE03a expectedVersion equals the strong If-Match', () => {
         expect(payload.code).toBe('INVALID_REQUEST');
         expect(payload.details).toEqual({});
         expect(calledPorts(harness.ports)).toBe(0);
-        expect(harness.resolveSession).not.toHaveBeenCalled();
       }
       for (const version of ['1', '7', '9223372036854775807']) {
         const harness = harnessFor(op);

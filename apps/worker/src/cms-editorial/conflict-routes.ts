@@ -8,7 +8,12 @@ import {
 import { Hono, type Env } from 'hono';
 
 import { invalid, rejectCommandQuery } from './admission-common';
-import { parseJsonBody, parseRequestPathId } from './admission-body';
+import {
+  decodeJsonBody,
+  jsonBodyPreflight,
+  parseRequestPathId,
+  readBytes,
+} from './admission-body';
 import {
   checkOrigin,
   csrfErrorIfCookie,
@@ -109,33 +114,33 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
     const fail = (error: CmsEditorialError, headers?: Headers) =>
       finish(errorResponse(request, dependencies, requestId, error, headers));
 
+    // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
     if (originError !== null) return fail(originError);
+    const preflight = jsonBodyPreflight(request);
+    if (preflight !== null) return fail(preflight);
+    const csrfError = csrfErrorIfCookie(request);
+    if (csrfError !== null) return fail(csrfError);
+    const bytes = await withinDeadline((signal) => readBytes(request, signal));
+    if (!bytes.ok) return fail(bytes);
+    // BE00 steps 4 and 5: verified session, then acting context.
+    const identity = await withinDeadline((signal) =>
+      dependencies.resolveSession(request, signal),
+    );
+    if (!identity.ok) return fail(identity);
+    const invalidSession = validHumanSession(identity.value);
+    if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 6: strict query, paths and body.
     const queryError = rejectCommandQuery(request);
     if (queryError !== null) return fail(queryError);
     const entryId = parseRequestPathId(context.req.param('entryId'));
     if (!entryId.ok) return fail(entryId);
     const conflictId = parseRequestPathId(context.req.param('conflictId'));
     if (!conflictId.ok) return fail(conflictId);
-    const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-    if (media !== 'application/json')
-      return fail(invalid('Use application/json.', {}, 415));
-    const headers = parseEditorialHeaders(
-      request,
-      ConflictResolutionHeadersSchema,
-    );
-    if (!headers.ok) return fail(headers);
-    const csrfError = csrfErrorIfCookie(request);
-    if (csrfError !== null) return fail(csrfError);
-    const body = await withinDeadline((signal) =>
-      parseJsonBody<ReturnType<typeof ConflictResolutionRequestSchema.parse>>(
-        request,
-        ConflictResolutionRequestSchema,
-        signal,
-      ),
-    );
+    const body = decodeJsonBody<
+      ReturnType<typeof ConflictResolutionRequestSchema.parse>
+    >(bytes.value, ConflictResolutionRequestSchema);
     if (!body.ok) return fail(body);
-
     if (
       body.value.entryId !== entryId.value ||
       body.value.conflictId !== conflictId.value
@@ -158,24 +163,13 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
           422,
         ),
       );
-    if (body.value.expectedVersion !== headers.value.ifMatch)
-      return fail(
-        invalid('The expected version does not match If-Match.', {}, 422),
-      );
-
-    const identity = await withinDeadline((signal) =>
-      dependencies.resolveSession(request, signal),
-    );
-    if (!identity.ok) return fail(identity);
-    const invalidSession = validHumanSession(identity.value);
-    if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 7: capability, then quota.
     const capabilityError = requireEditorialCapability(
       identity.value,
       policy.capabilities,
       policy.capabilityMode,
     );
     if (capabilityError !== null) return fail(capabilityError);
-
     const rate = await rateCheck(
       request,
       dependencies,
@@ -191,6 +185,16 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
       }
       return fail(rate, rateHeaders);
     }
+    // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+    const headers = parseEditorialHeaders(
+      request,
+      ConflictResolutionHeadersSchema,
+    );
+    if (!headers.ok) return fail(headers);
+    if (body.value.expectedVersion !== headers.value.ifMatch)
+      return fail(
+        invalid('The expected version does not match If-Match.', {}, 422),
+      );
     const resolveConflict = dependencies.ports.resolveConflict;
     if (typeof resolveConflict !== 'function')
       return fail(dependencyUnavailable());

@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -147,14 +148,23 @@ select pg_temp.s09d_to_active('p');
 select pg_temp.s09w_entry('p1', 'p', 'Alpha');
 select pg_temp.s09v_variant('x1', 'p', 'p1', 'fr-FR', '["en-US"]');
 select pg_temp.s09d_successor('q', 'p', 'owner', null, '["en-US","fr-FR","pt-BR"]', '{"fr-FR":["en-US"],"pt-BR":["en-US"]}');
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok((select count(*) = 0 from platform_private.cms_migration_live_rows(
     pg_temp.s09d_id('p:version'), pg_temp.s09d_id('q:version')) where source_table = 'cms_locale_variants'),
   'adding a supported locale affects no stored variant: the additive successor scans no variant row [P2-S09-AC-1197]');
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok((select count(*) = 0 from platform_private.cms_migration_live_rows(
     pg_temp.s09d_id('p:version'), null) where source_table = 'cms_locale_variants'),
   'without a target version no variant row is in scope');
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select is(platform_private.cms_schema_source_row_count(pg_temp.s09d_id('p:version'), pg_temp.s09d_id('q:version')), 2::bigint,
   'the additive source count is the two entry revisions only');
+select set_config('app.cms_rpc', '', true);
 
 select ok(pg_temp.s09x_via_rpc('cms_schema_dry_run_row_evidence') > 0 and pg_temp.s09x_via_rpc('cms_schema_migration_target_rows') > 0,
   'precondition: evidence and target rows were written through named RPCs');

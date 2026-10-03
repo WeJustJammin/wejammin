@@ -148,7 +148,7 @@ describe('S09 worker content-schema-registry admission', () => {
     expect(harness.ports.createTypeDraft).toHaveBeenCalledTimes(3);
   });
 
-  it('applies cookie CSRF to human mutations after session and capability admission', async () => {
+  it('applies cookie CSRF to human mutations at BE00 step 2, before the session is resolved', async () => {
     const harness = makeHarness();
     const response = await harness.app.request(
       jsonRequest('/api/v1/cms/content-types', validDraft, {
@@ -157,15 +157,23 @@ describe('S09 worker content-schema-registry admission', () => {
       }),
     );
     await expectApiError(response, 403, 'FORBIDDEN');
+    expect(harness.resolveSession).not.toHaveBeenCalled();
     expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
   });
 
   describe('[P2-S09-AC-025] BE00 canonical order for a human mutation', () => {
-    const csrf: Record<string, string> = {
+    const wrongCsrf: Record<string, string> = {
       cookie: 'wj_session_ref=session; wj_csrf=server-token',
       'x-csrf-token': 'wrong-token',
     };
-    const send = (harness: ReturnType<typeof makeHarness>, headers = csrf) =>
+    const validCsrf: Record<string, string> = {
+      cookie: 'wj_session_ref=session; wj_csrf=server-token',
+      'x-csrf-token': 'server-token',
+    };
+    const send = (
+      harness: ReturnType<typeof makeHarness>,
+      headers = validCsrf,
+    ) =>
       harness.app.request(
         jsonRequest('/api/v1/cms/content-types', validDraft, headers),
       );
@@ -173,7 +181,7 @@ describe('S09 worker content-schema-registry admission', () => {
     it('refuses a disallowed origin (CORS allowlist) before the session is resolved', async () => {
       const harness = makeHarness();
       const response = await send(harness, {
-        ...csrf,
+        ...wrongCsrf,
         origin: 'https://evil.example.test',
       });
       await expectApiError(response, 403, 'FORBIDDEN');
@@ -181,7 +189,24 @@ describe('S09 worker content-schema-registry admission', () => {
       expect(harness.rateLimit).not.toHaveBeenCalled();
     });
 
-    it('answers a missing session with 401 before the CSRF check or the limiter', async () => {
+    it('answers a failed session-bound CSRF check at step 2, before the session, capability or limiter', async () => {
+      const harness = makeHarness({
+        session: error(401, 'UNAUTHENTICATED', 'Sign in required.'),
+      });
+      const body = await expectApiError(
+        await send(harness, wrongCsrf),
+        403,
+        'FORBIDDEN',
+      );
+      expect((body.details as { reasonCode: string }).reasonCode).toBe(
+        'POLICY_NOT_MET',
+      );
+      expect(harness.resolveSession).not.toHaveBeenCalled();
+      expect(harness.rateLimit).not.toHaveBeenCalled();
+      expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
+    });
+
+    it('answers a missing session with 401 once CSRF has passed, before the limiter', async () => {
       const harness = makeHarness({
         session: error(401, 'UNAUTHENTICATED', 'Sign in required.'),
       });
@@ -190,7 +215,7 @@ describe('S09 worker content-schema-registry admission', () => {
       expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
     });
 
-    it('answers a missing capability before the CSRF check, with the capability reason', async () => {
+    it('answers a missing capability after the session, with the capability reason', async () => {
       const harness = makeHarness({
         session: ok({ ...session, capabilities: [] }),
       });
@@ -198,18 +223,8 @@ describe('S09 worker content-schema-registry admission', () => {
       expect((body.details as { reasonCode: string }).reasonCode).toBe(
         'CAPABILITY_REQUIRED',
       );
-      expect(harness.rateLimit).not.toHaveBeenCalled();
-    });
-
-    it('answers a failed CSRF check after session and capability and before the limiter', async () => {
-      const harness = makeHarness();
-      const body = await expectApiError(await send(harness), 403, 'FORBIDDEN');
-      expect((body.details as { reasonCode: string }).reasonCode).toBe(
-        'POLICY_NOT_MET',
-      );
       expect(harness.resolveSession).toHaveBeenCalledTimes(1);
       expect(harness.rateLimit).not.toHaveBeenCalled();
-      expect(harness.ports.createTypeDraft).not.toHaveBeenCalled();
     });
 
     it('runs the limiter after admission and before the port', async () => {

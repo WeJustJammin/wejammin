@@ -8,6 +8,14 @@ import {
   createCmsPatternInstanceApp,
   type CmsPatternInstanceDependencies,
 } from './pattern-instance-routes';
+import {
+  httpAdapter,
+  httpFresh,
+  httpRequest,
+  registerOrderTests,
+  standardMutationSteps,
+  type HttpState,
+} from '../be00-order.test-support';
 
 const origin = 'https://cms.example.test';
 const revisionId = 'd1200000-0000-4000-8000-000000000011';
@@ -205,5 +213,90 @@ describe('CMS-03C-02 protected pattern instance route', () => {
       'code',
       'DEPENDENCY_INVALID_RESPONSE',
     );
+  });
+});
+
+describe('BE00 middleware order on the CMS pattern instance route', () => {
+  const overridesFor = (
+    state: HttpState,
+  ): Partial<CmsPatternInstanceDependencies> => ({
+    ...(state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: false as const,
+            status: 401 as const,
+            code: 'UNAUTHENTICATED',
+            message: 'No session.',
+          }),
+        }
+      : {}),
+    ...(state.capabilityDropped && !state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: true as const,
+            value: {
+              userId: 'd1200000-0000-4000-8000-000000000014',
+              actingPartyId: 'd1200000-0000-4000-8000-000000000015',
+              capabilities: [],
+              mfaFresh: true,
+            },
+          }),
+        }
+      : {}),
+    ...(state.rateExhausted
+      ? {
+          rateLimit: async (input: { limit: number }) => ({
+            ok: true as const,
+            value: {
+              allowed: false,
+              limit: input.limit,
+              remaining: 0,
+              resetAt: 2_000,
+            },
+          }),
+        }
+      : {}),
+  });
+  registerOrderTests<HttpState>({
+    family: 'cms-pattern-instance',
+    fresh: () =>
+      httpFresh(path, body, {
+        origin,
+        'content-type': 'application/json',
+        'idempotency-key': 'pattern-instance-0001',
+        'if-match': '"1"',
+      }),
+    steps: standardMutationSteps(
+      httpAdapter({
+        codes: {
+          forbidden: 'COMPOSITION_FORBIDDEN',
+          badRequest: 'INVALID_REQUEST',
+          unauthenticated: 'UNAUTHENTICATED',
+          validation: 'COMPOSITION_VALIDATION_FAILED',
+          rateLimited: 'RATE_LIMITED',
+        },
+        oversize: { status: 400, code: 'INVALID_REQUEST' },
+        badPath: null,
+        badBody: {},
+      }),
+    ),
+    send: (state) =>
+      Promise.resolve(
+        createCmsPatternInstanceApp(deps(overridesFor(state))).request(
+          httpRequest(state, 'https://api.example.test'),
+        ),
+      ),
+    accepted: (response) => expect(response.status).toBe(201),
+  });
+});
+
+describe('BE00 step 2 body ceiling on the CMS pattern instance route', () => {
+  it('refuses a streamed body over the ceiling that declared no length', async () => {
+    const insertPattern = vi.fn(deps().insertPattern);
+    const response = await createCmsPatternInstanceApp(
+      deps({ insertPattern }),
+    ).request(request({ body: { ...body, pad: 'x'.repeat(300_000) } }));
+    expect(response.status).toBe(400);
+    expect(insertPattern).not.toHaveBeenCalled();
   });
 });

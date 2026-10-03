@@ -53,3 +53,10 @@ canonical hash checks, editor serialization, and negative tests for unknown
 nodes/marks, active URLs, HTML/script/CSS/template injection, oversize/depth,
 schema drift, and unauthorized reads. Replace the temporary non-null refusal
 only after RED→GREEN tests prove the approved grammar across all surfaces.
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

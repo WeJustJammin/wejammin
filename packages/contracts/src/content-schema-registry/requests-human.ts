@@ -182,15 +182,6 @@ export const SchemaSuccessorRequestSchema = z
     workflowVersion: CmsVersionSchema.nullable().optional(),
   })
   .superRefine((value, context) => {
-    if (
-      (value.workflowKey === undefined || value.workflowKey === null) !==
-      (value.workflowVersion === undefined || value.workflowVersion === null)
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['workflowVersion'],
-        message: WORKFLOW_MEMBER_MESSAGES.pair,
-      });
     const { supportedLocales, fallbackChains } = value;
     if ((supportedLocales === null) !== (fallbackChains === null))
       context.addIssue({
@@ -208,6 +199,17 @@ export const SchemaSuccessorRequestSchema = z
         },
         context,
       );
+    // BE03a OD-4 table order: the locale rules and the locale pair first, then
+    // the workflow member pair, then the template binding rules.
+    if (
+      (value.workflowKey === undefined || value.workflowKey === null) !==
+      (value.workflowVersion === undefined || value.workflowVersion === null)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['workflowVersion'],
+        message: WORKFLOW_MEMBER_MESSAGES.pair,
+      });
     const { defaultTemplateVersionId, templateBindings } = value;
     if ((defaultTemplateVersionId === null) !== (templateBindings === null))
       context.addIssue({

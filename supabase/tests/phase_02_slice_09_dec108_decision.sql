@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -33,11 +34,13 @@ select pg_temp.s09d_decide('a', 'other', 'approve', '{}'::jsonb, 'a:crossowner')
 select is(pg_temp.s09d_outcome('a:crossowner'), 'NOT_FOUND', 'another organization''s designer sees the review as absent (404)');
 select pg_temp.s09d_decide('a', 'rev1', 'approve', jsonb_build_object('actingContextId', null), 'a:nobinding');
 select is(pg_temp.s09d_outcome('a:nobinding'), 'STEP_UP_REQUIRED', 'a decision without the private binding id is 401 STEP_UP_REQUIRED [P2-S09-AC-421]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '11 minutes'
  where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid;
 select pg_temp.s09d_decide('a', 'rev1', 'approve', '{}'::jsonb, 'a:stale');
 select is(pg_temp.s09d_outcome('a:stale'), 'STEP_UP_REQUIRED',
   'a stale binding heartbeat is 401 STEP_UP_REQUIRED even when the envelope claims fresh step-up [P2-S09-AC-421]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp(), state = 'revoked'
  where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid;
 select pg_temp.s09d_decide('a', 'rev1', 'approve', '{}'::jsonb, 'a:revoked');

@@ -20,25 +20,82 @@ export const recordConsoleUrl = (
 
 const STEP_UP_RETURN_KEY = 'wj:cms-grants:step-up-return';
 
-/** Remember only that a step-up detour happened; never any entered value. */
-export const markStepUpDetour = (): void => {
+/**
+ * The pending command a step-up detour interrupted (FE03 DEC-111 recovery).
+ * The 401 reserved no idempotency record, so the command is retried with its
+ * ORIGINAL `Idempotency-Key`. The envelope holds only the command kind, the
+ * grant it targeted (renew and revoke) and that key: never the person ID, a
+ * reason or any entered value, because the owner console returns an empty form.
+ */
+export interface PendingGrantCommand {
+  readonly kind: 'grant' | 'renew' | 'revoke';
+  readonly grantId: string | null;
+  readonly idempotencyKey: string;
+}
+
+const isPendingGrantCommand = (
+  value: unknown,
+): value is PendingGrantCommand => {
+  if (typeof value !== 'object' || value === null) return false;
+  const { kind, grantId, idempotencyKey } = value as Record<string, unknown>;
+  return (
+    (kind === 'grant' || kind === 'renew' || kind === 'revoke') &&
+    (grantId === null || typeof grantId === 'string') &&
+    typeof idempotencyKey === 'string' &&
+    idempotencyKey.length > 0 &&
+    idempotencyKey.length <= 128
+  );
+};
+
+/** Persist the pending command in tab-scoped storage before leaving for /step-up. */
+export const markStepUpDetour = (pending: PendingGrantCommand): void => {
   try {
-    window.sessionStorage.setItem(STEP_UP_RETURN_KEY, '1');
+    window.sessionStorage.setItem(STEP_UP_RETURN_KEY, JSON.stringify(pending));
   } catch {
-    // Without storage the owner simply sees an empty form on return.
+    // Without storage the owner sees an empty form and a fresh key on return.
   }
 };
 
-/** True once after returning from a step-up detour. */
-export const consumeStepUpDetour = (): boolean => {
+export interface ConsumedStepUpDetour {
+  readonly found: boolean;
+  readonly pending: PendingGrantCommand | null;
+}
+
+/** Read and clear the detour once after returning from step-up. */
+export const consumeStepUpDetour = (): ConsumedStepUpDetour => {
   try {
-    const found = window.sessionStorage.getItem(STEP_UP_RETURN_KEY) === '1';
-    if (found) window.sessionStorage.removeItem(STEP_UP_RETURN_KEY);
-    return found;
+    const raw = window.sessionStorage.getItem(STEP_UP_RETURN_KEY);
+    if (raw === null) return { found: false, pending: null };
+    window.sessionStorage.removeItem(STEP_UP_RETURN_KEY);
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // An unreadable envelope still means a detour happened.
+    }
+    return {
+      found: true,
+      pending: isPendingGrantCommand(parsed) ? parsed : null,
+    };
   } catch {
-    return false;
+    return { found: false, pending: null };
   }
 };
+
+/**
+ * The key a form submits: the restored original key when the page returned
+ * from /step-up for exactly this command (same kind, same target grant), the
+ * page's derived key otherwise.
+ */
+export const keyForCommand = (
+  restored: PendingGrantCommand | null,
+  kind: PendingGrantCommand['kind'],
+  grantId: string | null,
+  derived: string,
+): string =>
+  restored !== null && restored.kind === kind && restored.grantId === grantId
+    ? restored.idempotencyKey
+    : derived;
 
 /** `/step-up?returnTo=` for the console's relative path plus query. */
 export const stepUpHref = (returnTo: string): string => {

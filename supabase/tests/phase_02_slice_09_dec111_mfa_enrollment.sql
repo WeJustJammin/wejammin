@@ -87,7 +87,7 @@ select is((select count(*)::integer from jsonb_object_keys(pg_temp.m_resp('rd1')
 
 -- one pending row: a second finish without begin collides.
 select pg_temp.m_finish('f:dup', 1, 'Other', pg_temp.m_ver(1));
-select is(pg_temp.m_out('f:dup'), 'FACTOR_STATE_CONFLICT', 'a second pending row for the same account is FACTOR_STATE_CONFLICT [P2-S09-AC-755]');
+select is(pg_temp.m_out('f:dup'), 'FACTOR_STATE_CONFLICT', 'a second pending row for the same account is FACTOR_STATE_CONFLICT [P2-S09-AC-755] [P2-S09-AC-739]');
 
 -- ---- AUTH-API-18 prepare ----------------------------------------------------
 select pg_temp.m_prepare('p:other', 2, pg_temp.m_fid(1), pg_temp.m_ver(2));
@@ -114,7 +114,7 @@ select pg_temp.m_begin('b:sup', 1, 'Phone');
 select is(pg_temp.m_resp('b:sup')->>'supersededProviderFactorId', pg_temp.m_pfid(1)::text,
   'begin returns the superseded unverified provider factor id for cleanup [P2-S09-AC-748]');
 select is(pg_temp.m_resp('b:sup')->>'version', '3', 'superseding a pending row bumps the version (2 -> 3) [P2-S09-AC-748]');
-select is(pg_temp.m_fstate(pg_temp.m_fid(1)), 'expired', 'the superseded row is expired [P2-S09-AC-748]');
+select is(pg_temp.m_fstate(pg_temp.m_fid(1)), 'expired', 'the superseded row is expired [P2-S09-AC-748] [P2-S09-AC-739]');
 select is(pg_temp.m_events(1, 'mfa.enroll.expired'), 1, 'one mfa.enroll.expired security event');
 select pg_temp.m_finish('f:again', 1, 'Phone', '3');
 select is(pg_temp.m_out('f:again'), 'OK', 'the replacement pending row may reuse the name of the expired one');

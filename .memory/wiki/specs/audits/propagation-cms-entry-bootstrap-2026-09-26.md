@@ -53,14 +53,12 @@ after the plan/tracker denominator update. Spec-graph compilation and
 broader code/database validation are recorded separately in the session
 handoff after the current implementation lanes settle.
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Phases into
-
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
 ### References
-
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

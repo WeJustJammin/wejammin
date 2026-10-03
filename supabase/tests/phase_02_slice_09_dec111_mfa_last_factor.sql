@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -54,6 +55,7 @@ select pg_temp.m_warp('platform_private.cms_schema_review_assignments',
   $$starts_at = clock_timestamp() - interval '3 hours', ends_at = clock_timestamp() - interval '1 hour'$$,
   format('reviewer_person_ref = %L', pg_temp.s09d_actor_id('rev2', 'person')));
 -- rev2 also holds a capability that gates no step-up operation.
+-- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
 insert into identity_private.membership_tenure(organization_id, person_id, state, provenance, governance_mode,
   starts_on, accepted_at, actor_id, version)
 select pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev2', 'person')::uuid, 'confirmed', 'invitation',
@@ -61,6 +63,7 @@ select pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev2', 'person')::uui
 insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
 values (pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev2', 'person')::uuid, 'cms.author', current_date, current_date + 5, true);
 -- rev3 holds an effective admin capability grant (CFG-11 record).
+-- FIXTURE FORGERY: no command in this repository grants an admin capability (CFG-11 record).
 insert into platform_private.admin_capability_grants(subject_person_id, capability_key, resource_type, resource_id, scope,
   actions, starts_at, ends_at, grantor_person_id, reason, purpose_grant, state, version_no)
 values (pg_temp.s09d_actor_id('rev3', 'person')::uuid, 'admin.identity.mfa_reset', 'organization', pg_temp.s09d_id('ownerOrg'),

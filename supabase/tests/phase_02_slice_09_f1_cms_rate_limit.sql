@@ -37,11 +37,11 @@ create or replace function pg_temp.f1_digest(p_label text) returns text language
 create temp table f1_cases(op text, marker text, user_limit integer, party_limit integer) on commit drop;
 insert into f1_cases values
   ('CMS-03A-01', '[P2-S09-AC-193]', 30, 60),
-  ('CMS-03A-09', '[P2-S09-AC-311]', 30, 60),
+  ('CMS-03A-09', '[P2-S09-AC-311] [P2-S09-AC-303]', 30, 60),
   ('CMS-03A-10', '[P2-S09-AC-357]', 30, 60),
   ('CMS-03A-11', '[P2-S09-AC-399]', 30, 60),
   ('CMS-03A-12', '[P2-S09-AC-436]', 30, 60),
-  ('CMS-03A-13', '[P2-S09-AC-459]', 120, 240),
+  ('CMS-03A-13', '[P2-S09-AC-459] [P2-S09-AC-454]', 120, 240),
   ('CMS-03A-14', '[P2-S09-AC-498]', 10, 20),
   ('CMS-03A-15', '[P2-S09-AC-540]', 10, 20),
   ('CMS-03A-16', '[P2-S09-AC-569]', 10, 20),

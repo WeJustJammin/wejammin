@@ -10,7 +10,11 @@ import {
 } from '@wejammin/contracts';
 import { Hono, type Env } from 'hono';
 
-import { parseJsonBody } from '../cms-editorial/admission-body';
+import {
+  decodeJsonBody,
+  jsonBodyPreflight,
+  readBytes,
+} from '../cms-editorial/admission-body';
 import {
   checkOrigin,
   csrfErrorIfCookie,
@@ -78,35 +82,15 @@ export const registerCmsRelatedContentRoutes = <E extends Env>(
       const originError = checkOrigin(request, dependencies.humanOrigins);
       if (originError !== null)
         return reject(failure(statusOf(originError.status)));
-      const pathParse = RelatedContentPathSchema.safeParse({
-        entryId: context.req.param('entryId'),
-      });
-      if (!pathParse.success || new URL(request.url).search !== '')
-        return reject(failure(400));
-      const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-      if (media !== 'application/json') return reject(failure(415));
-      const headers = RelatedContentHeadersSchema.safeParse({
-        contentType: media,
-        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-        ifMatch: request.headers.get('if-match') ?? undefined,
-      });
-      if (!headers.success) return reject(failure(400));
+      // BE00 step 2: body ceiling, content type, session-bound CSRF.
+      const preflight = jsonBodyPreflight(request);
+      if (preflight !== null)
+        return reject(failure(statusOf(preflight.status), preflight.details));
       const csrf = csrfErrorIfCookie(request);
       if (csrf !== null) return reject(failure(statusOf(csrf.status)));
-      const parsed = await parseJsonBody<RelatedContentRuleRequest>(
-        request,
-        RelatedContentRuleRequestSchema,
-        signal,
-      );
-      if (!parsed.ok)
-        return reject(failure(statusOf(parsed.status), parsed.details));
-      const body = parsed.value;
-      const ifMatch = headers.data.ifMatch.slice(1, -1);
-      if (
-        body.entryId !== pathParse.data.entryId ||
-        body.expectedVersion !== ifMatch
-      )
-        return reject(failure(400));
+      const bytes = await readBytes(request, signal);
+      if (!bytes.ok)
+        return reject(failure(statusOf(bytes.status), bytes.details));
 
       let session: CmsRelatedContentResult<CmsEditorialSession>;
       try {
@@ -126,6 +110,21 @@ export const registerCmsRelatedContentRoutes = <E extends Env>(
       const invalidSession = validHumanSession(session.value);
       if (invalidSession !== null)
         return reject(failure(statusOf(invalidSession.status)));
+      // BE00 step 6: strict path, query and body.
+      const pathParse = RelatedContentPathSchema.safeParse({
+        entryId: context.req.param('entryId'),
+      });
+      if (!pathParse.success || new URL(request.url).search !== '')
+        return reject(failure(400));
+      const parsed = decodeJsonBody<RelatedContentRuleRequest>(
+        bytes.value,
+        RelatedContentRuleRequestSchema,
+      );
+      if (!parsed.ok)
+        return reject(failure(statusOf(parsed.status), parsed.details));
+      const body = parsed.value;
+      if (body.entryId !== pathParse.data.entryId) return reject(failure(400));
+      // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.author')
@@ -185,6 +184,16 @@ export const registerCmsRelatedContentRoutes = <E extends Env>(
           );
         }
       }
+
+      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+      const headers = RelatedContentHeadersSchema.safeParse({
+        contentType: 'application/json',
+        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+        ifMatch: request.headers.get('if-match') ?? undefined,
+      });
+      if (!headers.success) return reject(failure(400));
+      const ifMatch = headers.data.ifMatch.slice(1, -1);
+      if (body.expectedVersion !== ifMatch) return reject(failure(400));
 
       let result: CmsRelatedContentResult<RelatedContentResource>;
       try {

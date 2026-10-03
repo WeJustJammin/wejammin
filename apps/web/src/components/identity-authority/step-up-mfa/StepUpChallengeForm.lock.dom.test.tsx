@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { act } from 'react';
+
+import { resolveStepUpPage } from '../../../server/step-up-page-context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -131,6 +133,49 @@ describe('StepUpChallengeForm multi-tab and fresh proof', () => {
         'a[href="/app/cms-content-modeling?tab=versions"]',
       ),
     ).not.toBeNull();
+    expect(harness.navigate).not.toHaveBeenCalled();
+  });
+
+  it('[P2-S09-AC-1064] a page loaded with a fresh proof says it is already verified with the time, offers one Continue link and never redirects', async () => {
+    // The real page resolver reads AUTH-API-16 and the page hands its
+    // projection to the form exactly as step-up.astro does.
+    const resolved = await resolveStepUpPage({
+      request: new Request('https://app.test/step-up', {
+        headers: { cookie: 'wj_access=session' },
+      }),
+      binding: {
+        fetch: async () =>
+          json(200, factorsResource([factor(FACTOR_A)], '4', true), {
+            etag: '"4"',
+          }),
+      },
+      returnToParam: '/app/cms-content-modeling?tab=versions',
+      requestId: 'req-fresh-1',
+    });
+    if (resolved.kind !== 'ready') throw new Error('page did not resolve');
+    const { page } = resolved;
+    expect(page.stepUp.fresh).toBe(true);
+    const fetchImpl = stubFetch();
+    harness = mountForm(fetchImpl, {
+      factors: page.factors.map(({ id, friendlyName }) => ({
+        id,
+        friendlyName,
+      })),
+      initialPhase: page.initialPhase,
+      returnTo: page.returnTo,
+      initialFreshUntil: page.stepUp.fresh ? page.stepUp.freshUntil : null,
+    });
+    await flush();
+    const container = harness.mounted.container;
+    expect(container.textContent).toContain('already verified');
+    expect(
+      container.querySelectorAll(`time[datetime="${FRESH_UNTIL}"]`),
+    ).toHaveLength(1);
+    expect(
+      container.querySelectorAll(
+        'a[href="/app/cms-content-modeling?tab=versions"]',
+      ),
+    ).toHaveLength(1);
     expect(harness.navigate).not.toHaveBeenCalled();
   });
 

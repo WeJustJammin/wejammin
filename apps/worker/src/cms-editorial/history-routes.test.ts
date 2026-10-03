@@ -385,7 +385,9 @@ describe('CMS-03B-03 protected revision-history route', () => {
     expect(
       (await get(app, '', { 'transfer-encoding': 'chunked' })).status,
     ).toBe(400);
-    expect(resolveSession).not.toHaveBeenCalled();
+    // The 415 is BE00 step 2 and never resolves a session; the two 400s are
+    // step 6 and follow authentication.
+    expect(resolveSession).toHaveBeenCalledTimes(2);
     expect(listRevisions).not.toHaveBeenCalled();
   });
 

@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -37,6 +38,7 @@ select pg_temp.s09g_revoke('v:other', 'other', pg_temp.s09d_id('gA'), '1');
 select is(pg_temp.s09d_outcome('v:other'), 'FORBIDDEN', 'revocation by another organization''s designer is 403 [P2-S09-AC-585]');
 select pg_temp.s09g_renew('n:nobinding', 'owner', pg_temp.s09d_id('gA'), '1', pg_temp.s09g_day(8), '{}', null, false);
 select is(pg_temp.s09d_outcome('n:nobinding'), 'STEP_UP_REQUIRED', 'renewal without the private binding is 401 STEP_UP_REQUIRED [P2-S09-AC-556]');
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding set last_seen_at = clock_timestamp() - interval '20 minutes'
  where id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
 select pg_temp.s09g_revoke('v:stale', 'owner', pg_temp.s09d_id('gA'), '1');
@@ -144,7 +146,7 @@ select is((select count(*)::integer from audit_private.audit_events) - :audit_be
 select pg_temp.s09g_renew('rev:renew', 'owner', pg_temp.s09d_id('gE'), '3', pg_temp.s09g_day(9));
 select is(pg_temp.s09d_outcome('rev:renew'), 'CONFLICT', 'a revoked aggregate is refused for renewal (409) [P2-S09-AC-557]');
 select pg_temp.s09g_revoke('rev:again', 'owner', pg_temp.s09d_id('gE'), '3');
-select is(pg_temp.s09d_outcome('rev:again'), 'CONFLICT', 'a revoked aggregate is refused for a second revocation (409)');
+select is(pg_temp.s09d_outcome('rev:again'), 'CONFLICT', 'a revoked aggregate is refused for a second revocation (409) [P2-S09-AC-594]');
 select pg_temp.s09g_grant('rev:regrant', 'owner', 'rev1', 'cms.editor', pg_temp.s09g_day(9));
 select ok(pg_temp.s09d_outcome('rev:regrant') = 'OK' and (select r->>'id' = pg_temp.s09d_id('gE')::text and r->>'version' = '4'
     and r->>'state' = 'active' and r->>'lastAction' = 'granted' from (select pg_temp.s09d_resp('rev:regrant') r) s)

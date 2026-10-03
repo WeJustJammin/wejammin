@@ -8,7 +8,12 @@ import {
 import { Hono, type Env } from 'hono';
 
 import { invalid, rejectCommandQuery } from './admission-common';
-import { parseJsonBody, parseRequestPathId } from './admission-body';
+import {
+  decodeJsonBody,
+  jsonBodyPreflight,
+  parseRequestPathId,
+  readBytes,
+} from './admission-body';
 import {
   checkOrigin,
   csrfErrorIfCookie,
@@ -70,6 +75,16 @@ const safeDetails = (error: CmsEditorialError): Record<string, unknown> => {
       source.conflict === 'INVALID_TRANSITION')
   )
     details.conflict = source.conflict;
+  // BE00: a 415 carries exactly the route allowlist. A route that accepts no
+  // request media states an empty one; a port that names none gets JSON.
+  if (error.status === 415)
+    details.allowedMediaTypes =
+      Array.isArray(source.allowedMediaTypes) &&
+      source.allowedMediaTypes.every(
+        (value): value is string => typeof value === 'string',
+      )
+        ? source.allowedMediaTypes.slice(0, 8)
+        : ['application/json'];
   if (Array.isArray(source.violations)) {
     const violations = source.violations
       .slice(0, 50)
@@ -286,26 +301,30 @@ export const registerCmsEditorialRoutes = <E extends Env>(
     const fail = (error: CmsEditorialError, headers?: Headers) =>
       finish(errorResponse(request, dependencies, requestId, error, headers));
 
+    // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
     if (originError !== null) return fail(originError);
+    const preflight = jsonBodyPreflight(request);
+    if (preflight !== null) return fail(preflight);
+    const csrfError = csrfErrorIfCookie(request);
+    if (csrfError !== null) return fail(csrfError);
+    const bytes = await withinDeadline((signal) => readBytes(request, signal));
+    if (!bytes.ok) return fail(bytes);
+    // BE00 steps 4 and 5: verified session, then acting context.
+    const identity = await withinDeadline((signal) =>
+      dependencies.resolveSession(request, signal),
+    );
+    if (!identity.ok) return fail(identity);
+    const invalidSession = validHumanSession(identity.value);
+    if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 6: strict query, path and body.
     const queryError = rejectCommandQuery(request);
     if (queryError !== null) return fail(queryError);
     const path = parseRequestPathId(context.req.param('entryId'));
     if (!path.ok) return fail(path);
-    const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-    if (media !== 'application/json')
-      return fail(invalid('Use application/json.', {}, 415));
-    const headers = parseEditorialHeaders(request);
-    if (!headers.ok) return fail(headers);
-    const csrfError = csrfErrorIfCookie(request);
-    if (csrfError !== null) return fail(csrfError);
-    const body = await withinDeadline((signal) =>
-      parseJsonBody<ReturnType<typeof EntryRevisionRequestSchema.parse>>(
-        request,
-        EntryRevisionRequestSchema,
-        signal,
-      ),
-    );
+    const body = decodeJsonBody<
+      ReturnType<typeof EntryRevisionRequestSchema.parse>
+    >(bytes.value, EntryRevisionRequestSchema);
     if (!body.ok) return fail(body);
     if (body.value.entryId !== path.value)
       return fail(
@@ -323,12 +342,7 @@ export const registerCmsEditorialRoutes = <E extends Env>(
           422,
         ),
       );
-    const identity = await withinDeadline((signal) =>
-      dependencies.resolveSession(request, signal),
-    );
-    if (!identity.ok) return fail(identity);
-    const invalidSession = validHumanSession(identity.value);
-    if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 7: capability, then quota.
     const capabilityError = requireEditorialCapability(
       identity.value,
       policy.capabilities,
@@ -350,6 +364,9 @@ export const registerCmsEditorialRoutes = <E extends Env>(
       }
       return fail(rate, rateHeaders);
     }
+    // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+    const headers = parseEditorialHeaders(request);
+    if (!headers.ok) return fail(headers);
     if (typeof dependencies.ports.appendRevision !== 'function')
       return fail(dependencyUnavailable());
     const input: CmsEditorialPortInput = {

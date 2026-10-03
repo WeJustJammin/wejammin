@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { cmsCapabilityGrantRefusalResponse } from './cms-capability-grant-page-response';
+
 /**
  * FE03 Page and Route Definitions for the owner-only grant console and the
  * navigation entries that make it (and the review route) reachable. Astro
@@ -43,17 +45,23 @@ describe('[DEC-119] capability grant console page', () => {
     expect(source).toContain('303');
   });
 
-  it.each([
-    ['forbidden', '403'],
-    ['not_found', '404'],
-  ])(
-    '[P2-S09-AC-991] answers %s with %s and a no-store header',
-    (kind, status) => {
-      const branch = source.slice(source.indexOf(`'${kind}'`));
-      expect(branch).toContain(`status: ${status}`);
-      expect(branch.slice(0, 300)).toContain("'cache-control': 'no-store'");
-    },
-  );
+  it('[P2-S09-AC-991] the page returns the shared refusal response before rendering anything', () => {
+    expect(source).toMatch(
+      /if \(isCmsCapabilityGrantRefusal\(result\)\)\s+return cmsCapabilityGrantRefusalResponse\(result\);/u,
+    );
+  });
+
+  it('[P2-S09-AC-991] answers forbidden with 403 and a no-store header', () => {
+    const response = cmsCapabilityGrantRefusalResponse({ kind: 'forbidden' });
+    expect(response.status).toBe(403);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('[P2-S09-AC-991] answers not_found with 404 and a no-store header', () => {
+    const response = cmsCapabilityGrantRefusalResponse({ kind: 'not_found' });
+    expect(response.status).toBe(404);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
 
   it('keeps a single h1 focused by the shared route-heading script', () => {
     expect(source).toContain('id="page-title"');

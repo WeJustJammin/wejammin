@@ -7,6 +7,21 @@
 --   other     - owner of a second organization (cross-owner concealment).
 -- Test humans' CMS grants are provisioned here (D3); no review, decision,
 -- dry-run, approved or completed-plan row is ever inserted by this suite.
+--
+-- Authority provenance (SEC-2 item 3), every actor and where it comes from:
+--   * accounts, self persons and their self contexts: platform_api.auth_bootstrap (real);
+--   * the owner organization, its WeBeJammin alias and the owner's CMS authority:
+--     platform_private.initialize_cms_owner, the operator command (real);
+--   * the second organization and its owner membership: platform_api.rpc_create_organization (real);
+--   * every acting-context binding: platform_api.identity_context_bind, the real selection
+--     command, run as the human it binds (real);
+--   * designer2's CONFIRMED membership of the owner organization and `other`'s own schema-designer
+--     grant are FIXTURE FORGERIES (labelled below): the repository has no command that confirms an
+--     ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only, and the
+--     terms are seeded directly by the Slice 04 suites) and none that grants a CMS capability of
+--     a non-initialized organization (CMS-03A-15 is the owner-receipt holder's command).  Neither
+--     forgery is a claimed producer path: designer2's CMS grant itself is issued through
+--     CMS-03A-15, and `other` is only the cross-owner NEGATIVE-CONTROL actor.
 insert into auth.users(id, email, email_confirmed_at) values
   ('a9d10000-0000-4000-8000-000000000001', 'dec108-owner@example.test', clock_timestamp()),
   ('a9d10000-0000-4000-8000-000000000002', 'dec108-designer2@example.test', clock_timestamp()),
@@ -40,8 +55,9 @@ select pg_temp.s09d_remember('ownerOrg', (platform_private.initialize_cms_owner(
   'dec108-owner@example.test', clock_timestamp() + interval '3 days',
   'a9d10000-0000-4000-8000-000000000099', false)->>'organizationId')::uuid);
 
--- designer2 joins the owner organization (its schema-designer grant is issued
--- through CMS-03A-15 once the owner's acting-context binding exists, below).
+-- FIXTURE FORGERY (no producer, see the provenance table above): designer2 joins the owner
+-- organization; its schema-designer grant is issued through CMS-03A-15 once the owner's
+-- acting-context binding exists, below.
 insert into identity_private.membership_tenure(
   organization_id, person_id, state, provenance, governance_mode,
   starts_on, accepted_at, actor_id, version
@@ -57,6 +73,9 @@ select set_config('app.idempotency_key_hash', 's09d-other-org-create', true);
 select set_config('app.request_hash', 's09d-other-org-create-request', true);
 select pg_temp.s09d_remember('otherOrg', (platform_api.rpc_create_organization(
   'self_member', '{}'::text[])->>'organizationId')::uuid);
+-- FIXTURE FORGERY / NEGATIVE-CONTROL AUTHORITY (no producer, see the provenance table above):
+-- the second organization's own schema-designer grant.  `other` exists only to prove that a
+-- designer of ANOTHER organization is concealed from the owner's rows.
 insert into identity_private.organization_actor_grant(
   organization_id, person_id, capability_code, valid_from, valid_through, active
 )
@@ -70,19 +89,29 @@ update s09d_actor set party_id = case key
   when 'designer2' then pg_temp.s09d_id('ownerOrg')
   when 'other' then pg_temp.s09d_id('otherOrg')
   else person_id end;
-insert into platform_private.acting_context_binding(
-  person_id, acting_party_id, context_kind, client_binding_id, state,
-  selected_at, last_seen_at, expires_at, projection_version, version
-)
-select person_id, party_id,
-       case when party_id = person_id then 'person' else 'organization' end,
-       's09d-' || key, 'active', clock_timestamp(), clock_timestamp(),
-       clock_timestamp() + interval '2 hours', 1, 1
-from s09d_actor;
-update s09d_actor actor set binding_id = binding.id
-from platform_private.acting_context_binding binding
-where binding.client_binding_id = 's09d-' || actor.key
-  and binding.person_id = actor.person_id;
+-- Acting contexts: every actor selects its acting party through the real command
+-- (platform_api.identity_context_bind, an `authenticated` human command), so the binding
+-- carries the producer's own recency, expiry, projection version and source relationship.
+create or replace function pg_temp.s09d_bind_context(p_key text) returns void language plpgsql as $body$
+declare actor s09d_actor%rowtype; bound jsonb;
+begin
+  select * into actor from s09d_actor where key = p_key;
+  perform pg_temp.s09d_session(p_key, 'authenticated');
+  perform set_config('app.correlation_id', 'a9d10000-0000-4000-8000-0000000000b1', true);
+  perform set_config('app.idempotency_key_hash', 's09d-bind-' || p_key, true);
+  perform set_config('app.request_hash', 's09d-bind-' || p_key || '-request', true);
+  bound := platform_api.identity_context_bind(actor.party_id, true, 's09d-' || p_key);
+  update s09d_actor set binding_id = (bound->>'bindingId')::uuid where key = p_key;
+end;
+$body$;
+select pg_temp.s09d_bind_context(key) from s09d_actor order by key;
+do $check$
+begin
+  if exists (select 1 from s09d_actor where binding_id is null) then
+    raise exception 'fixture: an actor could not select its acting context through identity_context_bind';
+  end if;
+end
+$check$;
 
 -- designer2's schema-designer grant: the real owner grant command, not a direct row.
 select pg_temp.s09d_grant_via_rpc('designer2', 'cms.schema_designer', 1);

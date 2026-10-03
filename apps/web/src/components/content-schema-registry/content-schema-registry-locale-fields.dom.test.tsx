@@ -79,7 +79,7 @@ const config = (view: Mounted) => ({
 });
 
 describe('supported languages tag list', () => {
-  it('[P2-S09-AC-1236] [P2-S09-AC-1207] [P2-S09-AC-1210] renders the persistent label, help, input attributes and counter', () => {
+  it('[P2-S09-AC-1236] [P2-S09-AC-1207] [P2-S09-AC-1210] [P2-S09-AC-1227] renders the persistent label, help, input attributes and counter', () => {
     const view = render();
     const input = inputByLabel(view.container, 'Add a language tag');
     expect(input.getAttribute('autocomplete')).toBe('off');

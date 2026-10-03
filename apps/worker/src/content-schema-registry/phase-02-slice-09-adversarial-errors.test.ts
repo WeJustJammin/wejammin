@@ -55,7 +55,7 @@ describe('S09 adversarial worker admission errors', () => {
       readRequest(undefined, { 'if-match': '"1"' }),
     );
     await expectError(response, 400, 'INVALID_REQUEST');
-    expect(harness.resolveSession).not.toHaveBeenCalled();
+    expect(harness.rateLimit).not.toHaveBeenCalled();
     expect(harness.ports.listContentTypes).not.toHaveBeenCalled();
 
     expect(

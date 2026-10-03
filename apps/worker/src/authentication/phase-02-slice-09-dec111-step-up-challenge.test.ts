@@ -68,7 +68,12 @@ describe('AUTH-API-20 step-up challenge (production composition)', () => {
     ]) {
       const world = createWorld();
       const response = await send(world.app, { ...BASE[20], body, jar });
-      expect([400, 422]).toContain(response.status);
+      // A strict-object violation (an unknown or missing member) is the one
+      // 422 VALIDATION_FAILED outcome, never a 400.
+      expect(response.status).toBe(422);
+      expect(((await response.clone().json()) as { code: string }).code).toBe(
+        'VALIDATION_FAILED',
+      );
       expect(rpcNames(world.calls)).not.toContain(
         'auth_step_up_challenge_begin',
       );

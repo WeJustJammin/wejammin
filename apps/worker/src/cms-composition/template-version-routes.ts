@@ -10,7 +10,11 @@ import {
 } from '@wejammin/contracts';
 import { Hono, type Env } from 'hono';
 
-import { parseJsonBody } from '../cms-editorial/admission-body';
+import {
+  decodeJsonBody,
+  jsonBodyPreflight,
+  readBytes,
+} from '../cms-editorial/admission-body';
 import {
   checkOrigin,
   csrfErrorIfCookie,
@@ -91,30 +95,13 @@ export const registerCmsTemplateVersionRoutes = <E extends Env>(
     const execute = async (signal: AbortSignal): Promise<Response> => {
       const originError = checkOrigin(request, dependencies.humanOrigins);
       if (originError !== null) return respondError(originError);
-      const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-      if (media !== 'application/json') return respondError(failure(415));
-      const parsedHeaders = TemplateVersionHeadersSchema.safeParse({
-        contentType: media,
-        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-        ifMatch: request.headers.get('if-match') ?? undefined,
-      });
-      if (!parsedHeaders.success) return respondError(failure(400));
+      // BE00 step 2: body ceiling, content type, session-bound CSRF.
+      const preflight = jsonBodyPreflight(request);
+      if (preflight !== null) return respondError(preflight);
       const csrfError = csrfErrorIfCookie(request);
       if (csrfError !== null) return respondError(csrfError);
-      const parsedBody = await parseJsonBody<TemplateVersionRequest>(
-        request,
-        TemplateVersionRequestSchema,
-        signal,
-      );
-      if (!parsedBody.ok) return respondError(parsedBody);
-      const body = parsedBody.value;
-      const quoted = parsedHeaders.data.ifMatch;
-      const ifMatch = quoted === undefined ? null : quoted.slice(1, -1);
-      if (
-        (body.expectedVersion === null) !== (ifMatch === null) ||
-        (ifMatch !== null && body.expectedVersion !== ifMatch)
-      )
-        return respondError(failure(400));
+      const bytes = await readBytes(request, signal);
+      if (!bytes.ok) return respondError(bytes);
 
       let session: CmsTemplateResult<CmsEditorialSession>;
       try {
@@ -126,6 +113,14 @@ export const registerCmsTemplateVersionRoutes = <E extends Env>(
       if (!session.ok) return respondError(session);
       const malformed = validHumanSession(session.value);
       if (malformed !== null) return respondError(malformed);
+      // BE00 step 6: strict body.
+      const parsedBody = decodeJsonBody<TemplateVersionRequest>(
+        bytes.value,
+        TemplateVersionRequestSchema,
+      );
+      if (!parsedBody.ok) return respondError(parsedBody);
+      const body = parsedBody.value;
+      // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.template_designer')
@@ -179,6 +174,21 @@ export const registerCmsTemplateVersionRoutes = <E extends Env>(
       }
 
       if (signal.aborted) return respondError(failure(504, {}, 15));
+      // BE00 step 8: exact Idempotency-Key and optional quoted If-Match.
+      const parsedHeaders = TemplateVersionHeadersSchema.safeParse({
+        contentType: 'application/json',
+        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+        ifMatch: request.headers.get('if-match') ?? undefined,
+      });
+      if (!parsedHeaders.success) return respondError(failure(400));
+      const quoted = parsedHeaders.data.ifMatch;
+      const ifMatch = quoted === undefined ? null : quoted.slice(1, -1);
+      if (
+        (body.expectedVersion === null) !== (ifMatch === null) ||
+        (ifMatch !== null && body.expectedVersion !== ifMatch)
+      )
+        return respondError(failure(400));
+
       let result: CmsTemplateResult<TemplateVersionResource>;
       try {
         result = await dependencies.defineTemplate(

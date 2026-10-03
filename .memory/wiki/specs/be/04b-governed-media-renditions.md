@@ -824,3 +824,10 @@ None.
 - 01b-party-identity-aliases.md — canonical platform party foreign-key boundary
 - 04c-public-delivery-cache.md — consumer of the single DeliveryPurgeRecord table through the BE00 purge seam
 - 05a-settings-flags-runtime.md — S07 service-credential pattern authenticating the scanner principal
+
+
+<!-- spec-graph: auto-generated -->
+## Related Specs
+
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

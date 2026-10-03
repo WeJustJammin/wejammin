@@ -293,7 +293,11 @@ describe('Slice 03 identity helper coverage boundaries', () => {
         }),
       },
     );
-    expect(unsupportedBody).toMatchObject({ ok: false, status: 415 });
+    expect(unsupportedBody).toMatchObject({
+      ok: false,
+      status: 415,
+      details: { allowedMediaTypes: ['application/json'] },
+    });
 
     const emptyIssues = vi
       .spyOn(IdentityCommandHeadersSchema, 'safeParse')

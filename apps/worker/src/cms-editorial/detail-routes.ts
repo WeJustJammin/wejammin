@@ -7,7 +7,7 @@ import {
 import { type Env, Hono } from 'hono';
 
 import { parseRequestPathId } from './admission-body';
-import { invalid, issues } from './admission-common';
+import { invalid, issues, unsupportedMediaType } from './admission-common';
 import {
   dependencyDeadline,
   dependencyUnavailable,
@@ -55,11 +55,13 @@ const parseDraftQuery = (request: Request, entryId: string) => {
       );
 };
 
+/** BE00 step 2: a read accepts no request media, so the allowlist is empty. */
+const readMediaError = (request: Request): CmsEditorialError | null =>
+  request.headers.has('content-type') ? unsupportedMediaType([]) : null;
+
 const readHeadersError = (request: Request): CmsEditorialError | null => {
   if (request.headers.has('idempotency-key') || request.headers.has('if-match'))
     return invalid('The draft-detail request headers are invalid.');
-  if (request.headers.has('content-type'))
-    return invalid('A draft-detail read has no request media.', {}, 415);
   const contentLength = request.headers.get('content-length');
   if (
     request.body !== null ||
@@ -139,21 +141,26 @@ export const registerCmsEditorialDetailRoutes = <E extends Env>(
     const fail = (error: CmsEditorialError, headers?: Headers) =>
       finish(errorResponse(request, dependencies, requestId, error, headers));
 
+    // BE00 step 2: CORS origin and request media.
     const originError = checkOrigin(request, dependencies.humanOrigins);
     if (originError !== null) return fail(originError);
-    const path = parseRequestPathId(context.req.param('entryId'));
-    if (!path.ok) return fail(path);
-    const headersError = readHeadersError(request);
-    if (headersError !== null) return fail(headersError);
-    const query = parseDraftQuery(request, path.value);
-    if (!query.ok) return fail(query);
-
+    const mediaError = readMediaError(request);
+    if (mediaError !== null) return fail(mediaError);
+    // BE00 steps 4 and 5: verified session, then acting context.
     const identity = await withinDeadline((signal) =>
       dependencies.resolveSession(request, signal),
     );
     if (!identity.ok) return fail(identity);
     const invalidSession = validHumanSession(identity.value);
     if (invalidSession !== null) return fail(invalidSession);
+    // BE00 step 6: strict path, headers, body absence and query.
+    const path = parseRequestPathId(context.req.param('entryId'));
+    if (!path.ok) return fail(path);
+    const headersError = readHeadersError(request);
+    if (headersError !== null) return fail(headersError);
+    const query = parseDraftQuery(request, path.value);
+    if (!query.ok) return fail(query);
+    // BE00 step 7: capability, then quota.
     const capabilityError = requireEditorialCapability(
       identity.value,
       policy.capabilities,

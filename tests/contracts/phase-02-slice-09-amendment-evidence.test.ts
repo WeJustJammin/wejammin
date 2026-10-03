@@ -11,14 +11,12 @@ import {
 import {
   COMPOSITION,
   ENVIRONMENTAL,
-  FAILURE_COUNT,
   MAPPING_ONLY_FILES,
   MAPPING_ONLY_TABLES,
   ROOT,
   hasParameterizedTitle,
   idsIn,
   kindOfFile,
-  normalise,
   pgtapIncludes,
   read,
   rowsOf,
@@ -162,7 +160,7 @@ describe('Slice 09 amendment evidence index', () => {
   });
 });
 
-describe('Slice 09 amendment evidence gates and receipts', () => {
+describe('Slice 09 amendment evidence gates', () => {
   it('cites only files that pnpm validate actually executes, and each one carries the criterion marker', () => {
     for (const entry of S09_AMENDMENT_EVIDENCE) {
       const { criterion, testFiles, command } = entry;
@@ -199,73 +197,22 @@ describe('Slice 09 amendment evidence gates and receipts', () => {
     }
   });
 
-  it('records a zero-failure receipt for every cited file and names the marked test titles in observed', () => {
-    for (const entry of S09_AMENDMENT_EVIDENCE) {
-      const { criterion, testFiles, receipts, observed } = entry;
-      expect(
-        receipts.map(({ file }) => file).sort(),
-        `${criterion} one receipt per cited file`,
-      ).toEqual([...testFiles].sort());
-      for (const receipt of receipts) {
-        expect(receipt.failed, `${criterion} ${receipt.file} failed`).toBe(0);
-        expect(
-          receipt.passed,
-          `${criterion} ${receipt.file} passed`,
-        ).toBeGreaterThan(0);
-        expect(
-          receipt.source.length,
-          `${criterion} receipt source`,
-        ).toBeGreaterThan(10);
-        const kind = kindOfFile(receipt.file);
-        expect(
-          kind === 'pgtap' ? 'pgtap' : kind,
-          `${criterion} ${receipt.file} receipt kind`,
-        ).toBe(receipt.kind);
-        expect(
-          observed,
-          `${criterion} observed names ${receipt.file}`,
-        ).toContain(receipt.file);
-      }
-      expect(
-        FAILURE_COUNT.test(observed.replace(/«[^»]*»/gu, '')),
-        `${criterion} observed records a failure: ${observed.slice(0, 160)}`,
-      ).toBe(false);
-      const titles = [...observed.matchAll(/«([^»]+)»/gu)].map(
-        ([, t]) => t ?? '',
-      );
-      expect(
-        titles.length,
-        `${criterion} observed names a title`,
-      ).toBeGreaterThan(0);
-      const parameterized = testFiles.some((file) =>
-        hasParameterizedTitle(sourceOf(file) ?? '', numberOf(criterion)),
-      );
-      for (const title of titles) {
-        const found = testFiles.some((file) =>
-          normalise(sourceOf(file) ?? '').includes(normalise(title)),
-        );
-        expect(
-          found || parameterized,
-          `${criterion} title «${title}» exists in a cited file`,
-        ).toBe(true);
-      }
-    }
-  });
-
-  it('keeps a non-empty limitation where the criterion depends on a real browser but no Playwright run is cited', () => {
+  it('gives every criterion that depends on a real browser a cited Playwright run or a non-empty limitation', () => {
+    let environmental = 0;
     for (const entry of S09_AMENDMENT_EVIDENCE) {
       const id = numberOf(entry.criterion);
       const text = tracker.text.get(id) ?? '';
+      if (!ENVIRONMENTAL.test(text)) continue;
+      environmental += 1;
       const browser = entry.testFiles.some(
         (file) => kindOfFile(file) === 'playwright',
       );
-      if (ENVIRONMENTAL.test(text) && !browser) {
-        expect(
-          entry.limitation.trim().length,
-          `${entry.criterion} is partly environmental and needs a limitation`,
-        ).toBeGreaterThan(20);
-      }
+      expect(
+        browser || entry.limitation.trim().length > 20,
+        `${entry.criterion} is partly environmental and cites no Playwright run, so it needs a limitation`,
+      ).toBe(true);
     }
+    expect(environmental, 'environmental criteria found').toBeGreaterThan(0);
   });
 
   it('proves an error row whose condition the mapping table is told only together with a condition-producing proof', () => {

@@ -564,7 +564,9 @@ describe('A01-A08 route registry parity', () => {
       const harness = makeHarness({ session: error(401, 'UNAUTHENTICATED') });
       const headers =
         policy.ifMatch === 'required' ? { 'if-match': '"1"' } : {};
-      const syntax = await harness.app.request(
+      // Strict parsing is BE00 step 6, after authentication: a malformed body
+      // from an authenticated caller is a 400.
+      const syntax = await makeHarness().app.request(
         new Request(`${API_ORIGIN}${PATHS[policy.operationId] as string}`, {
           method: 'POST',
           headers: {
@@ -607,7 +609,7 @@ describe('A01-A08 route registry parity', () => {
     const reads = makeHarness({ session: error(401, 'UNAUTHENTICATED') });
     expect(
       (
-        await reads.app.request(
+        await makeHarness().app.request(
           new Request(`${API_ORIGIN}/api/v1/cms/content-types?bogus=1`, {
             headers: { origin: CMS_ORIGIN },
           }),

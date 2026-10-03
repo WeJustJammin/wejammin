@@ -20,6 +20,10 @@ export const readMemberships = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'MEM-06');
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolveRelationshipSession(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 6: strict path and query.
   const path = OrganizationMembershipsPathSchema.safeParse({
     organizationId: context.req.param('organizationId'),
   });
@@ -41,8 +45,6 @@ export const readMemberships = async (
     });
   const query = rejectRelationshipQuery(context.req.raw, true);
   if (!query.ok) return responseForAuthError(context, query);
-  const resolved = await resolveRelationshipSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
   const limited = await enforceRelationshipRate(
     context,
     dependencies,

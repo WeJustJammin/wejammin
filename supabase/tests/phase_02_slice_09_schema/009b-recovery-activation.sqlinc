@@ -41,10 +41,14 @@ select (select schema_artifact_id from platform_private.cms_content_type_version
        (select artifact_hash from platform_private.cms_schema_artifacts
         where content_type_version_id = ids.target_version_id) as artifact_hash
 from s09_ac217_ids ids;
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+-- a Worker request of its own: nothing a previous (human) command published is still set
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true), set_config('app.mfa_session_subject', '', true);
 select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cfg_rpc', 'true', true);
 
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_activation_references_valid(
     (select target_version_id from s09_ac217_ids)
@@ -53,6 +57,7 @@ select ok(
   ),
   'AC217 recovery candidate passes the persisted artifact and approval boundary'
 );
+select set_config('app.cms_rpc', '', true);
 
 create temp table s09_ac217_activation on commit drop as
 select pg_temp.s09d_call('ac217:activation', 'platform_api.cms_activate_schema_migration', jsonb_build_object(

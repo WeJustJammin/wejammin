@@ -322,7 +322,7 @@ if (existsSync(SPEC_PIPELINE_PATH)) {
 // which remain open. The separately reopened AC250 (a disclosure clause, not
 // private-binding proof) was Chrome-verified on 2026-10-01 and closed. The
 // 2026-10-02 DEC-108 depth-floor cascade added 956 open criteria and reopened
-// AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, so the current claim is 1235/1235. Keep it distinct from
+// AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, so the current claim is the checked-row count over 1235 (19 held criteria are unchecked pending owner ratification). Keep it distinct from
 // historical 262/279, 261/279 and 279/279 evidence, and never label the 17-item
 // activation set as 18 criteria.
 const policySection = (text, heading, nextHeading = /^##\s/imu) => {
@@ -345,6 +345,22 @@ const assertPolicy = (file, text, checks) => {
     }
   }
 };
+
+// Slice 09 active criteria verified now: the checked P2-S09 rows of the tracker
+// (the held criteria are unchecked, so the claim is never hard-coded).
+const slice09TrackerPath = join(SLICES_DIR, 'phase-02-slice-09.md');
+const SLICE09_VERIFIED = existsSync(slice09TrackerPath)
+  ? [
+      ...readFileSync(slice09TrackerPath, 'utf8').matchAll(
+        /^- \[x\] \*\*P2-S09-AC-(\d{3,4})\*\*/gmu,
+      ),
+    ].filter(([, id]) => ![209, 211, 265, 266].includes(Number(id))).length
+  : 0;
+const withVerified = (pattern) =>
+  new RegExp(
+    pattern.source.replaceAll('__V__', String(SLICE09_VERIFIED)),
+    pattern.flags,
+  );
 
 const checkPhaseTwoCompletionPolicy = () => {
   const phasePath = join(PHASES_DIR, 'phase-02.md');
@@ -377,9 +393,11 @@ const checkPhaseTwoCompletionPolicy = () => {
         'index.md must publish the 2,974 active / 2,978 authored Phase 2 denominator',
     },
     {
-      pattern: /Slice 09 is 1235\/1235\s+active\s+with\s+1239\s+authored IDs/iu,
+      pattern: withVerified(
+        /Slice 09 is __V__\/1235\s+active\s+with\s+1239\s+authored IDs/iu,
+      ),
       message:
-        'index.md must publish Slice 09 as 1235/1235 active with 1239 authored IDs',
+        'index.md must publish Slice 09 as <verified>/1235 active with 1239 authored IDs',
     },
     {
       pattern:
@@ -397,10 +415,11 @@ const checkPhaseTwoCompletionPolicy = () => {
         'phase-02.md must publish the 2,974 active / 2,978 authored Phase 2 denominator',
     },
     {
-      pattern:
-        /Slice 09 is \*\*1235\/1235\s+active\*\* \(\*\*1239\s+authored IDs\*\*\)/iu,
+      pattern: withVerified(
+        /Slice 09 is \*\*__V__\/1235\s+active\*\* \(\*\*1239\s+authored IDs\*\*\)/iu,
+      ),
       message:
-        'phase-02.md current gate must publish Slice 09 as 1235/1235 active with 1239 authored IDs',
+        'phase-02.md current gate must publish Slice 09 as <verified>/1235 active with 1239 authored IDs',
     },
     {
       pattern:
@@ -435,10 +454,11 @@ const checkPhaseTwoCompletionPolicy = () => {
 
   assertPolicy('phases/phase-02.md#slice-09', phaseRows, [
     {
-      pattern:
-        /\|\s*09\s+Content schemas[^|]*\|\s*in progress\s*\|\s*1235\/1235\s+active\s*\(1239\s+authored\)\s*\|/iu,
+      pattern: withVerified(
+        /\|\s*09\s+Content schemas[^|]*\|\s*in progress\s*\|\s*__V__\/1235\s+active\s*\(1239\s+authored\)\s*\|/iu,
+      ),
       message:
-        'phase-02.md Slice 09 row must use in progress, 1235/1235 active, and 1239 authored notation',
+        'phase-02.md Slice 09 row must use in progress, <verified>/1235 active, and 1239 authored notation',
     },
   ]);
 
@@ -452,10 +472,11 @@ const checkPhaseTwoCompletionPolicy = () => {
       message: 'Slice 09 must declare a 1235-item active release denominator',
     },
     {
-      pattern:
-        /\*\*Current active verification\*\*:\s*1235\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+      pattern: withVerified(
+        /\*\*Current active verification\*\*:\s*__V__\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01/iu,
+      ),
       message:
-        'Slice 09 must publish 1235/1235 active evidence (17 activation-chain criteria, AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264, AC273 and 956 amendment criteria are verified by the evidence index except those it lists open; separately reopened AC250 Chrome-verified and closed 2026-10-01) while retaining 1239 authored IDs',
+        'Slice 09 must publish <verified>/1235 active evidence (17 activation-chain criteria, AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264, AC273 and 956 amendment criteria are verified by the evidence index except those it lists open; separately reopened AC250 Chrome-verified and closed 2026-10-01) while retaining 1239 authored IDs',
     },
     {
       pattern:
@@ -527,9 +548,9 @@ const checkPhaseTwoCompletionPolicy = () => {
           'spec-pipeline.md NEXT must retain AC265 pre-release hosted route and matrix work',
       },
       {
-        pattern: /Slice 09 at 1235\/1235\s+active/iu,
+        pattern: withVerified(/Slice 09 at __V__\/1235\s+active/iu),
         message:
-          'spec-pipeline.md NEXT must publish Slice 09 as 1235/1235 active',
+          'spec-pipeline.md NEXT must publish Slice 09 as <verified>/1235 active',
       },
       {
         pattern: /2,974 active criteria/iu,

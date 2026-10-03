@@ -10,7 +10,11 @@ import {
 } from '@wejammin/contracts';
 import { Hono, type Env } from 'hono';
 
-import { parseJsonBody } from '../cms-editorial/admission-body';
+import {
+  decodeJsonBody,
+  jsonBodyPreflight,
+  readBytes,
+} from '../cms-editorial/admission-body';
 import {
   checkOrigin,
   csrfErrorIfCookie,
@@ -79,37 +83,17 @@ export const registerCmsLocaleRoutes = <E extends Env>(
       const originError = checkOrigin(request, dependencies.humanOrigins);
       if (originError !== null)
         return respondError(failure(statusOf(originError.status)));
-      const parsedPath = LocaleVariantPathSchema.safeParse({
-        entryId: context.req.param('entryId'),
-        locale: context.req.param('locale'),
-      });
-      if (!parsedPath.success || new URL(request.url).search !== '')
-        return respondError(failure(400));
-      const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-      if (media !== 'application/json') return respondError(failure(415));
-      const parsedHeaders = LocaleVariantHeadersSchema.safeParse({
-        contentType: media,
-        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-        ifMatch: request.headers.get('if-match') ?? undefined,
-      });
-      if (!parsedHeaders.success) return respondError(failure(400));
+      // BE00 step 2: body ceiling, content type, session-bound CSRF.
+      const preflight = jsonBodyPreflight(request);
+      if (preflight !== null)
+        return respondError(
+          failure(statusOf(preflight.status), preflight.details),
+        );
       const csrf = csrfErrorIfCookie(request);
       if (csrf !== null) return respondError(failure(statusOf(csrf.status)));
-      const parsedBody = await parseJsonBody<LocaleVariantRequest>(
-        request,
-        LocaleVariantRequestSchema,
-        signal,
-      );
-      if (!parsedBody.ok)
-        return respondError(failure(statusOf(parsedBody.status)));
-      const body = parsedBody.value;
-      const ifMatch = parsedHeaders.data.ifMatch.slice(1, -1);
-      if (
-        body.entryId !== parsedPath.data.entryId ||
-        body.locale !== parsedPath.data.locale ||
-        body.expectedVersion !== ifMatch
-      )
-        return respondError(failure(400));
+      const bytes = await readBytes(request, signal);
+      if (!bytes.ok)
+        return respondError(failure(statusOf(bytes.status), bytes.details));
 
       let session: CmsLocaleResult<CmsEditorialSession>;
       try {
@@ -129,6 +113,26 @@ export const registerCmsLocaleRoutes = <E extends Env>(
       const malformed = validHumanSession(session.value);
       if (malformed !== null)
         return respondError(failure(statusOf(malformed.status)));
+      // BE00 step 6: strict path, query and body.
+      const parsedPath = LocaleVariantPathSchema.safeParse({
+        entryId: context.req.param('entryId'),
+        locale: context.req.param('locale'),
+      });
+      if (!parsedPath.success || new URL(request.url).search !== '')
+        return respondError(failure(400));
+      const parsedBody = decodeJsonBody<LocaleVariantRequest>(
+        bytes.value,
+        LocaleVariantRequestSchema,
+      );
+      if (!parsedBody.ok)
+        return respondError(failure(statusOf(parsedBody.status)));
+      const body = parsedBody.value;
+      if (
+        body.entryId !== parsedPath.data.entryId ||
+        body.locale !== parsedPath.data.locale
+      )
+        return respondError(failure(400));
+      // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.some(
@@ -198,6 +202,16 @@ export const registerCmsLocaleRoutes = <E extends Env>(
           );
         }
       }
+
+      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+      const parsedHeaders = LocaleVariantHeadersSchema.safeParse({
+        contentType: 'application/json',
+        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+        ifMatch: request.headers.get('if-match') ?? undefined,
+      });
+      if (!parsedHeaders.success) return respondError(failure(400));
+      const ifMatch = parsedHeaders.data.ifMatch.slice(1, -1);
+      if (body.expectedVersion !== ifMatch) return respondError(failure(400));
 
       let result: CmsLocaleResult<LocaleVariantResource>;
       try {

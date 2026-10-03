@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 create extension if not exists pgtap with schema extensions;
 commit;
 
@@ -22,6 +23,10 @@ select no_plan();
 \ir phase_02_slice_09_dec108/03-support.sqlinc
 \ir phase_02_slice_09_dec119/00-support.sqlinc
 
+-- SEC-2 note: the restrictive policies evaluate the session scope once per statement through
+-- cms_session_owner_scope / cms_session_reviewer_scope / cms_session_report_scope (20261003120380);
+-- cms_session_scope_ok is the single-row oracle they must agree with (proved in
+-- phase_02_slice_09_sec2_definer_rls.sql).
 -- ------------------------------------------------------------ structure ----
 select ok(
   to_regprocedure('platform_private.cms_session_scope_ok(uuid, uuid)') is not null
@@ -61,7 +66,7 @@ select is((select string_agg(t.table_name, ',' order by t.table_name)
                 select 1 from pg_policies p
                  where p.schemaname = t.schema_name and p.tablename = t.table_name
                    and p.permissive = 'RESTRICTIVE' and p.cmd in ('ALL', 'INSERT')
-                   and coalesce(p.with_check, '') ~ 'cms_session_scope_ok')), null,
+                   and coalesce(p.with_check, '') ~ 'cms_session_(owner_scope|reviewer_scope|report_scope|scope_ok)')), null,
   'every new private CMS table carries a RESTRICTIVE policy whose WITH CHECK re-resolves the session scope on INSERT [P2-S09-AC-181]');
 select is((select string_agg(t.table_name, ',' order by t.table_name)
              from r3rls_tables t
@@ -71,7 +76,7 @@ select is((select string_agg(t.table_name, ',' order by t.table_name)
                 select 1 from pg_policies p
                  where p.schemaname = t.schema_name and p.tablename = t.table_name
                    and p.permissive = 'RESTRICTIVE' and p.cmd = 'ALL'
-                   and coalesce(p.qual, '') ~ 'cms_session_scope_ok' and coalesce(p.with_check, '') ~ 'cms_session_scope_ok')), null,
+                   and coalesce(p.qual, '') ~ 'cms_session_(owner_scope|reviewer_scope|report_scope|scope_ok)' and coalesce(p.with_check, '') ~ 'cms_session_(owner_scope|reviewer_scope|report_scope|scope_ok)')), null,
   'every scoped CMS table re-resolves the session scope on read (USING) and on every write (WITH CHECK) [P2-S09-AC-181]');
 select is((select string_agg(t.table_name || ':' || c.cmd, ',' order by t.table_name, c.cmd)
              from r3rls_tables t
@@ -147,6 +152,7 @@ create function platform_private.s09_forged_assignment(p_owner uuid, p_review uu
 returns integer language plpgsql security definer set search_path = '' as $body$
 begin
   perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   insert into platform_private.cms_schema_review_assignments(
     owner_id, review_id, reviewer_person_ref, grantor_person_ref, capability_key, actions, state,
     starts_at, ends_at, reason)
@@ -161,6 +167,7 @@ returns integer language plpgsql security definer set search_path = '' as $body$
 declare touched integer;
 begin
   perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   update platform_private.cms_schema_reviews set updated_at = updated_at where id = p_review;
   get diagnostics touched = row_count;
   return touched;
@@ -194,7 +201,7 @@ end;
 $body$;
 create or replace function pg_temp.r3rls_clear() returns void language sql as $body$
   select set_config('app.cms_rpc', '', true), set_config('app.cms_session_actor', '', true),
-         set_config('app.cms_session_party', '', true), set_config('request.jwt.claim.role', '', true),
+         set_config('app.cms_session_party', '', true), pg_temp.set_jwt_claim('role', '', true),
          set_config('app.mfa_session_subject', '', true)
 $body$;
 
@@ -212,7 +219,7 @@ select pg_temp.r3rls_clear();
 select ok(not platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), null)
   and not platform_private.cms_session_scope_ok_report(gen_random_uuid()),
   'with no published session the helper admits nothing [P2-S09-AC-181]');
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
 select ok(platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), null)
   and platform_private.cms_session_scope_ok_report(gen_random_uuid())
   and platform_private.identity_session_scope_ok((select rev1_auth from r3rls_ctx)),
@@ -231,6 +238,10 @@ select is(pg_temp.r3rls_as_probe('select count(*)::integer from platform_private
 select is(platform_private.s09_forged_review_touch((select review_id from r3rls_ctx)), 0,
   'a definer context that sets the RPC flag itself updates no review row without session scope [P2-S09-AC-181]');
 select pg_temp.r3rls_clear();
+-- The owner-consistency guard (a definer function of the NOLOGIN definer role) now reads the review
+-- through the same policies, so for a session without scope it would refuse the row (CONFLICT) before
+-- the policy's WITH CHECK is reached; it is switched off for these statements so the policy itself is proved.
+alter table platform_private.cms_schema_review_assignments disable trigger cms_schema_review_assignments_z_state_guard;
 select throws_ok(format($q$select platform_private.s09_forged_assignment(%L, %L, %L, %L)$q$,
     (select owner_org from r3rls_ctx), (select review_id from r3rls_ctx), (select rev1_person from r3rls_ctx), (select owner_person from r3rls_ctx)),
   '42501', 'new row violates row-level security policy "cms_schema_review_assignments_session_scope" for table "cms_schema_review_assignments"', 'a definer context with the RPC flag but no session scope: WITH CHECK refuses the assignment insert [P2-S09-AC-181]');
@@ -242,6 +253,7 @@ select platform_private.cms_publish_session((select other_auth from r3rls_ctx), 
 select throws_ok(format($q$select platform_private.s09_forged_assignment(%L, %L, %L, %L)$q$,
     (select owner_org from r3rls_ctx), (select review_id from r3rls_ctx), (select rev1_person from r3rls_ctx), (select owner_person from r3rls_ctx)),
   '42501', 'new row violates row-level security policy "cms_schema_review_assignments_session_scope" for table "cms_schema_review_assignments"', 'a session scoped to another organization cannot write an out-of-scope assignment even inside a definer context [P2-S09-AC-181]');
+alter table platform_private.cms_schema_review_assignments enable trigger cms_schema_review_assignments_z_state_guard;
 select is(platform_private.s09_forged_review_touch((select review_id from r3rls_ctx)), 0,
   'and cannot touch the owner organization''s review [P2-S09-AC-181]');
 select pg_temp.r3rls_clear();
@@ -296,6 +308,7 @@ create function platform_private.s09_forged_decision(p_owner uuid, p_review uuid
 returns integer language plpgsql security definer set search_path = '' as $body$
 begin
   perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
   insert into platform_private.cms_schema_review_decisions(
     owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
     capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
@@ -384,6 +397,10 @@ select ok((select count(*) from platform_private.cms_schema_review_assignments a
   'fixture: exactly one cross-owner assignment row exists to be hidden [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
 select is(platform_private.s09_forged_review_touch((select review_id from r3rls_ctx)), 1,
   'and updates the review it is assigned to [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+-- The owner-consistency guard (a definer function of the NOLOGIN definer role) now reads the review
+-- through the same policies, so for a session without scope it would refuse the row (CONFLICT) before
+-- the policy's WITH CHECK is reached; it is switched off for these statements so the policy itself is proved.
+alter table platform_private.cms_schema_review_assignments disable trigger cms_schema_review_assignments_z_state_guard;
 do $body$
 declare
   life record;
@@ -421,6 +438,7 @@ begin
 end;
 $body$;
 
+alter table platform_private.cms_schema_review_assignments enable trigger cms_schema_review_assignments_z_state_guard;
 select is((select v from r3rls_results where k = 'using:revoked'), '0/0/0',
   'USING: a revoked assignment reads no review, no assignment and updates no review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
 select is((select v from r3rls_results where k = 'using:expired'), '0/0/0',
@@ -473,7 +491,7 @@ select is((
    where p.pronamespace::regnamespace::text in ('platform_private', 'platform_api', 'identity')
      and p.proname not like 's09\_forged\_%'
      and p.prosrc !~ 'cms_acting_party|cms_publish_session|mfa_lock_binding'),
-  'admin_mfa_factor_reset_settle,auth_mfa_registry_sweep,cms_advance_activation_plan,cms_backfill_owner_capability_grants,cms_begin_schema_migration_verification,cms_capability_grant_record_event,cms_claim_schema_migration_lease,cms_complete_schema_migration,cms_finalize_schema_migration_dry_run,cms_heartbeat_schema_migration_lease,cms_invalidate_activation_reviews,cms_process_schema_migration_batch,cms_rollback_schema_migration,in_app_notification_record,rpc_admin_reset_mfa_factors',
+  'admin_mfa_factor_reset_settle,auth_mfa_registry_sweep,cms_advance_activation_plan,cms_begin_schema_migration_verification,cms_capability_grant_record_event,cms_claim_schema_migration_lease,cms_complete_schema_migration,cms_finalize_schema_migration_dry_run,cms_heartbeat_schema_migration_lease,cms_invalidate_activation_reviews,cms_process_schema_migration_batch,cms_rollback_schema_migration,in_app_notification_record,rpc_admin_reset_mfa_factors',
   'every other function that writes a scoped table publishes the session itself; the unpublished writers are exactly the reviewed system paths and internal steps [P2-S09-AC-181]');
 
 select * from finish();

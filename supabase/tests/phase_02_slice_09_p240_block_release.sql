@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -24,17 +25,17 @@ create or replace function pg_temp.p_bad(p_label text, p_expected text, p_key te
 language sql as $body$ select pg_temp.p_block_expect(p_label, pg_temp.p_block_request(p_key, p_version, p_over, p_post), p_expected) $body$;
 create or replace function pg_temp.p_block_id(p_key text, p_version integer) returns uuid language sql stable as $body$
   select id from platform_private.cms_block_definition_versions where block_key = p_key and block_version = p_version $body$;
-create or replace function pg_temp.p_as_role(p_role text) returns void language sql as $body$ select set_config('request.jwt.claim.role', p_role, true) $body$;
+create or replace function pg_temp.p_as_role(p_role text) returns void language sql as $body$ select pg_temp.set_jwt_claim('role', p_role, true) $body$;
 
 -- ============================================================ AC119 key trust ====
 select is(pg_temp.p_ok('t:ok', 'p240trust', 1), 'ok', 'control: the trusted, active, in-window release key registers a block [P2-S09-AC-119]');
 create or replace function pg_temp.p_role_call(p_role text, p_request jsonb) returns text language plpgsql as $body$
 declare before_rows text := pg_temp.p_block_rows(); outcome text;
 begin
-  perform set_config('request.jwt.claim.role', p_role, true);
+  perform pg_temp.set_jwt_claim('role', p_role, true);
   perform pg_temp.s09d_call('role:' || p_role, 'platform_api.cms_register_block', p_request);
   outcome := pg_temp.s09d_outcome('role:' || p_role);
-  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform pg_temp.set_jwt_claim('role', 'service_role', true);
   return outcome || ' ' || (before_rows = pg_temp.p_block_rows())::text;
 end;
 $body$;

@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -10,6 +11,7 @@ select no_plan();
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
 
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(
   organization_id, person_id, capability_code, valid_from, valid_through, active
 )

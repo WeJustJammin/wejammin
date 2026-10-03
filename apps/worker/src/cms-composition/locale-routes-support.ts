@@ -1,3 +1,4 @@
+import { mediaTypeDetails } from './media-type-details';
 import type {
   LocaleVariantRequest,
   LocaleVariantResource,
@@ -59,6 +60,7 @@ export const safeDetails = (
   status: CmsLocaleStatus,
   source: unknown,
 ): Record<string, unknown> => {
+  if (status === 415) return mediaTypeDetails(source);
   if (status === 401) return { recoveryAction: 'reauthenticate' };
   if (typeof source !== 'object' || source === null || Array.isArray(source))
     return {};

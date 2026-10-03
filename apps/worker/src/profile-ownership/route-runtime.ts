@@ -10,7 +10,7 @@ import {
   statusFor,
   validateResponse,
 } from './route-outcome';
-import { inputFor, prepare } from './route-preparation';
+import { inputFor, prepare, type PathResult } from './route-preparation';
 import type { ActiveOperation, ActivePortName, Outcome } from './route-types';
 import {
   enforceProfileRate,
@@ -30,13 +30,13 @@ export type ProfileRouteRuntime = Readonly<{
     schema: SchemaLike<T>,
     authMode: 'public' | 'session' | 'session_step_up',
     ifMatchRequired: boolean,
-    path?: Readonly<Record<string, string>>,
+    path?: PathResult,
   ) => Promise<Response>;
   read: (
     context: WorkerContext,
     operationId: ActiveOperation,
     portName: ActivePortName,
-    path: Readonly<Record<string, string>>,
+    path: PathResult,
   ) => Promise<Response>;
 }>;
 
@@ -166,7 +166,7 @@ export const createProfileRouteRuntime = (
     schema: SchemaLike<T>,
     authMode: 'public' | 'session' | 'session_step_up',
     ifMatchRequired: boolean,
-    path?: Readonly<Record<string, string>>,
+    path?: PathResult,
   ): Promise<Response> => {
     const prepared = await prepare(
       context,
@@ -175,6 +175,7 @@ export const createProfileRouteRuntime = (
       dependencies.auth,
       authMode,
       ifMatchRequired,
+      path,
     );
     if ('response' in prepared) return prepared.response;
     return send(
@@ -182,7 +183,12 @@ export const createProfileRouteRuntime = (
       await runCommand(
         context,
         portName,
-        inputFor(context, operationId, prepared.value, path),
+        inputFor(
+          context,
+          operationId,
+          prepared.value,
+          path === undefined || !path.ok ? undefined : path.value,
+        ),
       ),
       operationId,
     );
@@ -192,16 +198,13 @@ export const createProfileRouteRuntime = (
     context: WorkerContext,
     operationId: ActiveOperation,
     portName: ActivePortName,
-    path: Readonly<Record<string, string>>,
+    path: PathResult,
   ): Promise<Response> => {
+    const session = await requireProfileSession(context, dependencies.auth);
+    if (!session.ok) return responseForAuthError(context, session);
     const queryError = parseProfileQuery(context.req.raw);
     if (queryError !== null) return responseForAuthError(context, queryError);
-    const session = await requireProfileSession(
-      context,
-      dependencies.auth,
-      false,
-    );
-    if (!session.ok) return responseForAuthError(context, session);
+    if (!path.ok) return responseForAuthError(context, path);
     const rateError = await enforceProfileRate(
       context,
       dependencies.auth,
@@ -216,7 +219,7 @@ export const createProfileRouteRuntime = (
       {
         operationId,
         request: context.req.raw,
-        path,
+        path: path.value,
         session: session.value,
       },
     );

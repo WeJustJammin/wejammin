@@ -248,47 +248,91 @@ const grantsReady = async (page: Page): Promise<void> => {
   ).toBeVisible();
 };
 
-for (const viewport of VIEWPORTS) {
-  test(`[P2-S09-AC-262] the registry route meets the LCP, INP, CLS and long-task budgets on ${viewport.name}`, async ({
-    browser,
-  }, testInfo) => {
-    const review = await openReview(browser);
-    const vitals = await measure(
-      review.owner,
-      REGISTRY,
-      viewport,
-      testInfo,
-      waitForWorkbench,
-    );
-    expectBudgets(vitals, `registry ${viewport.name}`);
-  });
+type Viewport = (typeof VIEWPORTS)[number];
+const MOBILE: Viewport = VIEWPORTS[0];
+const DESKTOP: Viewport = VIEWPORTS[1];
 
-  test(`[P2-S09-AC-262] the schema-review route meets the LCP, INP, CLS and long-task budgets on ${viewport.name}`, async ({
-    browser,
-  }, testInfo) => {
-    const review = await openReview(browser);
-    const vitals = await measure(
-      review.owner,
-      review.reviewPath,
-      viewport,
-      testInfo,
-      waitForWorkbench,
-    );
-    expectBudgets(vitals, `review ${viewport.name}`);
-  });
+const registryBudgets = async (
+  browser: Parameters<typeof actor>[0],
+  testInfo: TestInfo,
+  viewport: Viewport,
+): Promise<void> => {
+  const review = await openReview(browser);
+  const vitals = await measure(
+    review.owner,
+    REGISTRY,
+    viewport,
+    testInfo,
+    waitForWorkbench,
+  );
+  expectBudgets(vitals, `registry ${viewport.name}`);
+};
 
-  test(`[P2-S09-AC-262] the capability-grant route meets the LCP, INP, CLS and long-task budgets on ${viewport.name}`, async ({
-    browser,
-  }, testInfo) => {
-    const owner = await actor(browser, 'owner', newTestId());
-    await enrollFactorViaUi(owner.page, 'Owner phone');
-    const vitals = await measure(
-      owner,
-      `${REGISTRY}/capability-grants`,
-      viewport,
-      testInfo,
-      grantsReady,
-    );
-    expectBudgets(vitals, `grants ${viewport.name}`);
-  });
-}
+const reviewBudgets = async (
+  browser: Parameters<typeof actor>[0],
+  testInfo: TestInfo,
+  viewport: Viewport,
+): Promise<void> => {
+  const review = await openReview(browser);
+  const vitals = await measure(
+    review.owner,
+    review.reviewPath,
+    viewport,
+    testInfo,
+    waitForWorkbench,
+  );
+  expectBudgets(vitals, `review ${viewport.name}`);
+};
+
+const grantsBudgets = async (
+  browser: Parameters<typeof actor>[0],
+  testInfo: TestInfo,
+  viewport: Viewport,
+): Promise<void> => {
+  const owner = await actor(browser, 'owner', newTestId());
+  await enrollFactorViaUi(owner.page, 'Owner phone');
+  const vitals = await measure(
+    owner,
+    `${REGISTRY}/capability-grants`,
+    viewport,
+    testInfo,
+    grantsReady,
+  );
+  expectBudgets(vitals, `grants ${viewport.name}`);
+};
+
+test('[P2-S09-AC-262] the registry route meets the LCP, INP, CLS and long-task budgets on mobile', async ({
+  browser,
+}, testInfo) => {
+  await registryBudgets(browser, testInfo, MOBILE);
+});
+
+test('[P2-S09-AC-262] the registry route meets the LCP, INP, CLS and long-task budgets on desktop', async ({
+  browser,
+}, testInfo) => {
+  await registryBudgets(browser, testInfo, DESKTOP);
+});
+
+test('[P2-S09-AC-262] the schema-review route meets the LCP, INP, CLS and long-task budgets on mobile', async ({
+  browser,
+}, testInfo) => {
+  await reviewBudgets(browser, testInfo, MOBILE);
+});
+
+test('[P2-S09-AC-262] the schema-review route meets the LCP, INP, CLS and long-task budgets on desktop', async ({
+  browser,
+}, testInfo) => {
+  await reviewBudgets(browser, testInfo, DESKTOP);
+});
+
+test('[P2-S09-AC-262] the capability-grant route meets the LCP, INP, CLS and long-task budgets on mobile', async ({
+  browser,
+}, testInfo) => {
+  await grantsBudgets(browser, testInfo, MOBILE);
+});
+
+test('[P2-S09-AC-262] the capability-grant route meets the LCP, INP, CLS and long-task budgets on desktop', async ({
+  browser,
+}, testInfo) => {
+  await grantsBudgets(browser, testInfo, DESKTOP);
+});

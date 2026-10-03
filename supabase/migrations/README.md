@@ -387,6 +387,25 @@ Forward-only migrations for the R12 database holdovers (each has a RED-first pgT
   and an absent organization), while a member lacking `cms.schema_designer` keeps `FORBIDDEN`
   (`../tests/phase_02_slice_09_p240_a01_aggregate.sql`).
 
+### Slice 09 SEC-2 migrations (`20261003120000`-`20261003120500`)
+
+- `120000` creates `wejammin_cms_definer` and `wejammin_cms_authority_reader` (NOLOGIN, NOSUPERUSER,
+  NOBYPASSRLS, no memberships; `postgres` is a member WITH INHERIT and SET). Only statements that work
+  on hosted Supabase (CREATEROLE, not SUPERUSER).
+- `120100` grants them exactly what their function bodies need (schema usage, per-table verbs, EXECUTE);
+  row-lock-only relations get a one-column UPDATE grant.
+- `120200` gives the definer and reader roles per-verb policies on the non-Slice-09 forced tables their
+  functions touch (mirrors the grants).
+- `120300` gates `cms_template_versions` and `cms_owner_initialization`, exempts the reader's own reads
+  from three restrictive policies, and adds the identity read policies for the definer role.
+- `120350` runs the owner-grant backfill as the receipt holder; `120360` makes the two read-only
+  consumer reads hold the RPC context; `120370` answers the CMS-03A-13 403 branch through a boolean
+  helper; `120380` evaluates the session scope once per statement (three lookups through
+  uncorrelated sub-selects) instead of once per row.
+- `120400` and `120410` make every `platform_api` function that sets or reaches the RPC flag restore its previous
+  value on return; `120500` hands ownership of the functions to the two roles.
+Proof: `../tests/phase_02_slice_09_sec2_definer_rls.sql`.
+
 ## Related links
 
 - `../tests/README.md`

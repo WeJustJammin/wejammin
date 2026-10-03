@@ -107,7 +107,8 @@ describe('CFG-05B-06 production composition wire', () => {
         return new Response('{}', { status: 503 });
       },
     });
-    expect(response.status).toBeLessThan(500);
+    // The reservation is committed and one factor failed: 202 reconciling.
+    expect(response.status).toBe(202);
     expect(attempts).toHaveLength(1);
     expect(attempts[0]).not.toContain('caller-access-token-secret');
     expect(
@@ -248,7 +249,7 @@ describe('CFG-05B-06 production composition wire', () => {
     expect(limits).toStrictEqual(new Set([5, 10]));
   });
 
-  it('[P2-S09-AC-939][P2-S09-AC-940][P2-S09-AC-941] maps TARGET_NOT_FOUND to 404 and IDEMPOTENCY_CONFLICT and MFA_RESET_IN_PROGRESS to 409 with the BE00 envelope', async () => {
+  it('[P2-S09-AC-939][P2-S09-AC-940][P2-S09-AC-941][P2-S09-AC-929] maps TARGET_NOT_FOUND to 404 and IDEMPOTENCY_CONFLICT and MFA_RESET_IN_PROGRESS to 409 with the BE00 envelope', async () => {
     for (const [message, status] of [
       ['TARGET_NOT_FOUND', 404],
       ['IDEMPOTENCY_CONFLICT', 409],

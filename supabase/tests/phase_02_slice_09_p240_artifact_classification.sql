@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -59,10 +60,13 @@ select is((select count(*)::integer from platform_private.cms_schema_artifacts w
 select is(pg_temp.s09e_unique('cms_schema_artifacts', (select id from platform_private.cms_schema_artifacts where content_type_version_id = pg_temp.s09d_id('a:version')),
     array['content_type_version_id'], jsonb_build_object('content_type_version_id', extensions.gen_random_uuid())), 'dup:REJECTED:23505|ctl:ACCEPTED',
   'a second artifact for one version is rejected by the unique constraint (a control with another version is accepted) [P2-S09-AC-008]');
+-- the definition rebuild is a definer function: it reads the graph under the RPC context
+select set_config('app.cms_rpc', 'true', true);
 select is((select a.artifact_hash = platform_private.cms_definition_artifact_hash(platform_private.cms_candidate_definition_request(v.id), v.version_no)
       and v.definition_hash = a.artifact_hash
     from platform_private.cms_content_type_versions v join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id where v.id = pg_temp.s09d_id('a:version')),
   true, 'the hash is content-addressed: recomputing it from the persisted definition graph gives the stored hash, which is the version''s definition hash [P2-S09-AC-008]');
+select set_config('app.cms_rpc', '', true);
 create temp table p_art_before on commit drop as select pg_temp.p_artifact('a') as row,
   (select artifact_hash::text from platform_private.cms_schema_artifacts where content_type_version_id = pg_temp.s09d_id('a:version')) as hash;
 select pg_temp.s09d_dry_run('a');
@@ -83,10 +87,12 @@ select throws_ok(format('delete from platform_private.cms_schema_artifacts where
 select pg_temp.s09d_seal('a');
 select pg_temp.s09d_submit('a');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'review', 'fixture: the candidate left draft for review [P2-S09-AC-008]');
+select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cms_compile', 'true', true);
 select throws_ok(format('update platform_private.cms_schema_artifacts set artifact_hash = %L where content_type_version_id = %L', repeat('b', 64), pg_temp.s09d_id('a:version')), 'P0001', 'IMMUTABLE_RECORD',
   'once the candidate leaves draft its artifact is immutable even inside the compile context [P2-S09-AC-008]');
 select set_config('app.cms_compile', '', true);
+select set_config('app.cms_rpc', '', true);
 select is(pg_temp.s09e_writers('cms_schema_artifacts', 'delete[[:space:]]+from'), '', 'no function deletes an artifact [P2-S09-AC-008]');
 select is(pg_temp.s09e_writers('cms_schema_artifacts', 'insert[[:space:]]+into'), 'cms_create_schema_successor,cms_create_type_draft', 'artifacts are inserted only by the two draft producers [P2-S09-AC-008]');
 

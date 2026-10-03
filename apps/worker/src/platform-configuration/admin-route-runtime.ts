@@ -12,17 +12,18 @@ import { registerAdminCapabilitySnapshotRoute } from './admin-capability-snapsho
 import { registerAdminMfaResetRoute } from './admin-mfa-reset-route';
 import { createAdminWorkspacePortRunner } from './admin-runtime-port';
 import {
+  admitConfigurationTransport,
   checkConfigurationSameOrigin,
-  csrfIfCookie,
   enforceConfigurationRate,
   isConfigurationStepUpFresh,
   parseConfigurationCommandHeaders,
 } from './route-support';
 import type { AdminWorkspacePortInput } from './types';
 import {
-  admit,
-  parseBody,
+  admitSession,
+  decodeAdminBody,
   parseQuery,
+  requireAdminCapability,
   withDeadline,
 } from './admin-route-admission';
 
@@ -58,12 +59,22 @@ export const createAdminWorkspaceRouteRuntime = (
     const operationId = 'CFG-05B-01' as const;
     context.set('operation', operationId);
     return withDeadline(context, operationId, async (signal) => {
+      // BE00 step 2: origin (a read has no body, CSRF or media).
       const origin = checkConfigurationSameOrigin(context);
       if (!origin.ok) return responseForAuthError(context, origin);
+      // BE00 steps 4 and 5: verified session, then the acting context.
+      const admitted = await admitSession(context, dependencies, signal);
+      if ('response' in admitted) return admitted.response;
+      // BE00 step 6: strict query.
       const query = await parseQuery(context.req.raw);
       if (!query.ok) return responseForAuthError(context, query);
-      const admitted = await admit(context, dependencies, operationId, signal);
-      if ('response' in admitted) return admitted.response;
+      // BE00 step 7: capability, then quota.
+      const denied = requireAdminCapability(
+        context,
+        operationId,
+        admitted.requestContext,
+      );
+      if (denied !== null) return denied;
       const rate = await enforceConfigurationRate(
         context,
         operationId,
@@ -95,22 +106,27 @@ export const createAdminWorkspaceRouteRuntime = (
     const operationId = 'CFG-05B-04' as const;
     context.set('operation', operationId);
     return withDeadline(context, operationId, async (signal) => {
-      const origin = checkConfigurationSameOrigin(context);
-      if (!origin.ok) return responseForAuthError(context, origin);
-      const body = await parseBody(
-        context.req.raw,
+      // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+      const transport = await admitConfigurationTransport(context, signal);
+      if (!transport.ok) return responseForAuthError(context, transport);
+      // BE00 steps 4 and 5: verified session, then the acting context.
+      const admitted = await admitSession(context, dependencies, signal);
+      if ('response' in admitted) return admitted.response;
+      // BE00 step 6: strict body.
+      const body = decodeAdminBody(
+        transport.value,
         Cfg05b04CapabilityActionRequestSchema,
-        signal,
       );
       if (!body.ok) return responseForAuthError(context, body);
-      const headers = parseConfigurationCommandHeaders(context.req.raw);
-      if (!headers.ok) return responseForAuthError(context, headers);
-      const admitted = await admit(context, dependencies, operationId, signal);
-      if ('response' in admitted) return admitted.response;
+      // BE00 step 7: capability, step-up freshness, then quota.
+      const denied = requireAdminCapability(
+        context,
+        operationId,
+        admitted.requestContext,
+      );
+      if (denied !== null) return denied;
       if (!isConfigurationStepUpFresh(admitted.session))
         return responseForAuthError(context, stepUpRequiredError());
-      const csrf = await csrfIfCookie(context);
-      if (!csrf.ok) return responseForAuthError(context, csrf);
       const rate = await enforceConfigurationRate(
         context,
         operationId,
@@ -120,6 +136,9 @@ export const createAdminWorkspaceRouteRuntime = (
         signal,
       );
       if (rate !== null) return rate;
+      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+      const headers = parseConfigurationCommandHeaders(context.req.raw);
+      if (!headers.ok) return responseForAuthError(context, headers);
       const input: AdminWorkspacePortInput = {
         operationId,
         request: context.req.raw,
@@ -144,12 +163,16 @@ export const createAdminWorkspaceRouteRuntime = (
     const operationId = 'CFG-05B-05' as const;
     context.set('operation', operationId);
     return withDeadline(context, operationId, async (signal) => {
-      const origin = checkConfigurationSameOrigin(context);
-      if (!origin.ok) return responseForAuthError(context, origin);
-      const body = await parseBody(
-        context.req.raw,
+      // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+      const transport = await admitConfigurationTransport(context, signal);
+      if (!transport.ok) return responseForAuthError(context, transport);
+      // BE00 steps 4 and 5: verified session, then the acting context.
+      const admitted = await admitSession(context, dependencies, signal);
+      if ('response' in admitted) return admitted.response;
+      // BE00 step 6: strict body.
+      const body = decodeAdminBody(
+        transport.value,
         Cfg05b05AuditDiagnosticRequestSchema,
-        signal,
       );
       if (!body.ok) return responseForAuthError(context, body);
       if (
@@ -163,10 +186,13 @@ export const createAdminWorkspaceRouteRuntime = (
             'Diagnostic runs are deferred from this route.',
           ),
         );
-      const admitted = await admit(context, dependencies, operationId, signal);
-      if ('response' in admitted) return admitted.response;
-      const headers = parseConfigurationCommandHeaders(context.req.raw, true);
-      if (!headers.ok) return responseForAuthError(context, headers);
+      // BE00 step 7: capability, then quota.
+      const denied = requireAdminCapability(
+        context,
+        operationId,
+        admitted.requestContext,
+      );
+      if (denied !== null) return denied;
       const rate = await enforceConfigurationRate(
         context,
         operationId,
@@ -176,6 +202,9 @@ export const createAdminWorkspaceRouteRuntime = (
         signal,
       );
       if (rate !== null) return rate;
+      // BE00 step 8: exact Idempotency-Key and strong quoted If-Match.
+      const headers = parseConfigurationCommandHeaders(context.req.raw, true);
+      if (!headers.ok) return responseForAuthError(context, headers);
       const input: AdminWorkspacePortInput = {
         operationId,
         request: context.req.raw,

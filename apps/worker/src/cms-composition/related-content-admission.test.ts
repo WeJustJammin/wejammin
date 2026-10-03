@@ -7,11 +7,22 @@ import {
 import {
   body,
   dependencies,
+  ENTRY_ID,
   PATH,
   request,
   TARGET_A,
+  validResource,
 } from './related-content-routes.test-support';
 import { PARTY_ID, USER_ID } from '../cms-editorial-production.test-support';
+import type { CmsRelatedContentDependencies } from './related-content-routes';
+import {
+  httpAdapter,
+  httpFresh,
+  httpRequest,
+  registerOrderTests,
+  standardMutationSteps,
+  type HttpState,
+} from '../be00-order.test-support';
 
 describe('CMS-03C-05 admission gate', () => {
   it('enforces origin, path binding, media, validators, and CSRF before the port', async () => {
@@ -185,5 +196,110 @@ describe('CMS-03C-05 admission gate', () => {
         capabilities: ['cms.author'],
       },
     });
+  });
+});
+
+describe('BE00 middleware order on the CMS related-content route', () => {
+  const overridesFor = (
+    state: HttpState,
+  ): Partial<CmsRelatedContentDependencies> => ({
+    actRelatedContent: async () => ({
+      ok: true as const,
+      value: validResource(),
+    }),
+    ...(state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: false as const,
+            status: 401 as const,
+            code: 'UNAUTHENTICATED',
+            message: 'No session.',
+          }),
+        }
+      : {}),
+    ...(state.capabilityDropped && !state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: true as const,
+            value: {
+              userId: USER_ID,
+              actingPartyId: PARTY_ID,
+              capabilities: [],
+              mfaFresh: true,
+            },
+          }),
+        }
+      : {}),
+    ...(state.rateExhausted
+      ? {
+          rateLimit: async (input: { limit: number }) => ({
+            ok: true as const,
+            value: {
+              allowed: false,
+              limit: input.limit,
+              remaining: 0,
+              resetAt: 2_000,
+            },
+          }),
+        }
+      : {}),
+  });
+  registerOrderTests<HttpState>({
+    family: 'cms-related-content',
+    fresh: () =>
+      httpFresh(PATH, body, {
+        origin: 'https://cms.example.test',
+        'content-type': 'application/json',
+        'idempotency-key': 'related-content-0001',
+        'if-match': '"1"',
+      }),
+    steps: standardMutationSteps(
+      httpAdapter({
+        codes: {
+          forbidden: 'RELATED_CONTENT_FORBIDDEN',
+          badRequest: 'INVALID_REQUEST',
+          unauthenticated: 'UNAUTHENTICATED',
+          validation: 'RELATED_CONTENT_VALIDATION_FAILED',
+          rateLimited: 'RATE_LIMITED',
+        },
+        oversize: { status: 400, code: 'INVALID_REQUEST' },
+        badPath: PATH.replace(ENTRY_ID, 'not-a-uuid'),
+        badBody: {},
+      }),
+    ),
+    send: (state) =>
+      Promise.resolve(
+        createCmsRelatedContentApp(dependencies(overridesFor(state))).request(
+          httpRequest(state, 'https://api.example.test'),
+        ),
+      ),
+    accepted: (response) => expect(response.status).toBe(201),
+  });
+});
+
+describe('BE00 steps 2 and 8 on the CMS related-content route', () => {
+  it('refuses a streamed body over the ceiling that declared no length', async () => {
+    const actRelatedContent = vi.fn(async () => ({
+      ok: true as const,
+      value: validResource(),
+    }));
+    const response = await createCmsRelatedContentApp(
+      dependencies({ actRelatedContent }),
+    ).request(request({}, { ...body, pad: 'x'.repeat(300_000) } as never));
+    expect(response.status).toBe(400);
+    expect(actRelatedContent).not.toHaveBeenCalled();
+  });
+
+  it('refuses a body expectedVersion that differs from If-Match once headers are checked', async () => {
+    const actRelatedContent = vi.fn(async () => ({
+      ok: true as const,
+      value: validResource(),
+    }));
+    const response = await createCmsRelatedContentApp(
+      dependencies({ actRelatedContent }),
+    ).request(request({ 'if-match': '"2"' }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(actRelatedContent).not.toHaveBeenCalled();
   });
 });

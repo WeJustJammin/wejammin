@@ -1,9 +1,11 @@
+import { mediaTypeDetails } from './media-type-details';
 import type { CmsRelatedContentStatus } from './related-content-types';
 
 export const safeDetails = (
   status: CmsRelatedContentStatus,
   source: unknown,
 ): Readonly<Record<string, unknown>> => {
+  if (status === 415) return mediaTypeDetails(source);
   if (status === 401) return { recoveryAction: 'reauthenticate' };
   if (typeof source !== 'object' || source === null || Array.isArray(source))
     return {};

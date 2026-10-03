@@ -5,6 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { assignmentRevoked } from './phase-02-slice-09-dec108-test-values';
+import { ok } from './phase-02-slice-09-test-values';
 import {
   bodyWith,
   calledPorts,
@@ -322,10 +324,17 @@ describe('BE03a request-body field rules through the route', () => {
       expect(response.status).toBe(422);
       expect(calledPorts(harness.ports)).toBe(0);
     }
-    for (const body of [op.body, REVOKE_BASE]) {
+    // BE03a CMS-03A-14: "201/200": a created assignment is 201 and a revoked
+    // one (the resource state names it) is 200.
+    for (const [body, status, answer] of [
+      [op.body, 201, undefined],
+      [REVOKE_BASE, 200, assignmentRevoked],
+    ] as const) {
       const harness = harnessFor(op);
+      if (answer !== undefined)
+        harness.ports[op.portName]?.mockResolvedValueOnce(ok(answer));
       const response = await harness.app.request(requestFor(op, { body }));
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(status);
       expect(harness.ports[op.portName]).toHaveBeenCalledTimes(1);
     }
   });

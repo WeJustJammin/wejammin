@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -79,12 +80,15 @@ select ok(coalesce(pg_temp.s09d_scalar(format($q$select (
   pg_temp.s09d_id('a:version'), (select (first->>'id')::uuid from s09d_replay)))::boolean, false),
   'earlier immutable attempts are retained with distinct attempt numbers; exactly one live plan remains and earlier ones are superseded [P2-S09-AC-346] [P2-S09-AC-347] [P2-S09-AC-673]');
 
+-- the reference check is a definer function: called outside an RPC it holds the RPC context itself
+select set_config('app.cms_rpc', 'true', true);
 select ok(pg_temp.s09d_outcome('a:dryRun') = 'OK'
   and coalesce(platform_private.cms_activation_references_valid(pg_temp.s09d_id('a:version')), false)
   and pg_temp.s09d_read('cms_content_type_versions', 'definition_hash', pg_temp.s09d_id('a:version'))
       = pg_temp.s09d_scalar(format('select artifact_hash from platform_private.cms_schema_artifacts where content_type_version_id = %L',
           pg_temp.s09d_id('a:version'))),
   'the dry-run compiles the edited candidate: its immutable artifact matches the persisted field/relation graph, with no hand-rebuilt artifact');
+select set_config('app.cms_rpc', '', true);
 
 -- Server-side derivation: callers cannot supply evidence.
 select pg_temp.s09d_rpc('a:extra:' || k, 'platform_api.cms_start_schema_dry_run', 'owner',

@@ -47,7 +47,8 @@ const portOf = (harness: ReturnType<typeof makeHarness>, spec: HumanCase) =>
 
 const matrix = async (op: Op): Promise<void> => {
   const spec = humanCase(op);
-  // 400 INVALID_REQUEST: a malformed mutation header never reaches authority or the RPC.
+  // 400 INVALID_REQUEST: a malformed mutation header (BE00 step 8) follows the
+  // session, capability and quota steps and never reaches the RPC.
   const missingKey = makeHarness();
   const r400 = await sendHuman(missingKey, op, BODY[op], {
     'idempotency-key': 'short',
@@ -55,7 +56,7 @@ const matrix = async (op: Op): Promise<void> => {
   expect(r400.status).toBe(400);
   expect((await bodyOf(r400)).code).toBe('INVALID_REQUEST');
   expect(portOf(missingKey, spec)).not.toHaveBeenCalled();
-  expect(missingKey.resolveSession).not.toHaveBeenCalled();
+  expect(missingKey.resolveSession).toHaveBeenCalledTimes(1);
   // 401 UNAUTHENTICATED with the reauthenticate recovery.
   const anonymous = makeHarness({
     session: error(401, 'UNAUTHENTICATED', 'Sign in required.', {

@@ -152,7 +152,19 @@ describe('MfaEnrollmentWizard scan step', () => {
     expect(container.querySelector('a[href="/app/x"]')?.textContent).toMatch(
       /Continue/u,
     );
-    expect(container.textContent).toContain('account recovery by email');
+    const done = container.querySelector(
+      'section[aria-labelledby="mfa-done-heading"]',
+    );
+    // One Continue link, and the full recovery note (email first, then an
+    // administrator reset, and no recovery codes).
+    expect(done?.querySelectorAll('a')).toHaveLength(1);
+    expect(
+      (done?.textContent ?? '')
+        .replace(/\s+/gu, ' ')
+        .includes(
+          'If you lose every authenticator, account recovery by email comes first, then an administrator resets your authenticators. There are no recovery codes.',
+        ),
+    ).toBe(true);
     expect(container.textContent).not.toContain(GROUPED_KEY);
     expect(container.querySelector('svg[role="img"]')).toBeNull();
     expect(h.channel.posts()).toBe(1);
@@ -212,8 +224,12 @@ describe('MfaEnrollmentWizard scan step', () => {
     pressButton(container, 'Verify and finish');
     await flush();
     expect(container.textContent).toContain('Authenticator added');
+    const done = container.querySelector(
+      'section[aria-labelledby="mfa-done-heading"]',
+    );
+    expect(done?.querySelectorAll('a')).toHaveLength(1);
     expect(
-      container.querySelector('a[href="#mfa-factor-list-heading"]'),
+      done?.querySelector('a[href="#mfa-factor-list-heading"]'),
     ).not.toBeNull();
   });
 });

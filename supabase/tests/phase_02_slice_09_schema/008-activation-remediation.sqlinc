@@ -5,6 +5,8 @@ select set_config('app.cfg_rpc', 'true', true);
 
 -- Build a review candidate whose artifact contains one exact field.  The
 -- persisted graph is intentionally changed after the artifact is compiled.
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_content_type_versions(
   id, owner_id, state, version, content_type_id, version_no, labels,
   workflow_key, workflow_version, source_locale, default_locale,
@@ -21,6 +23,9 @@ insert into platform_private.cms_content_type_versions(
   'a9090000-0000-4000-8000-000000000405',
   'a9090000-0000-4000-8000-000000000001'
 );
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_field_definition_versions(
   id, owner_id, state, version, content_type_version_id, stable_field_id,
   field_key, kind, constraints, required, default_mode, localization_mode,
@@ -34,6 +39,9 @@ insert into platform_private.cms_field_definition_versions(
   false, 'none', 'none', '{"label":"Title","order":0}'::jsonb,
   'a9090000-0000-4000-8000-000000000001'
 );
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_schema_artifacts(
   id, owner_id, state, version, content_type_version_id, compiler_version,
   zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
@@ -74,6 +82,9 @@ insert into platform_private.cms_schema_artifacts(
     'capabilityBindings', '[]'::jsonb
   ), repeat('9', 64), clock_timestamp()
 );
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_activation_references_valid(
     'a9090000-0000-4000-8000-000000000150'
@@ -84,6 +95,9 @@ create or replace function pg_temp.s09_forged_graph_invalid(p_sql text) returns 
 declare result boolean;
 begin
   begin
+    -- negative-control forgery under the RPC flag a hostile writer would set itself, probed by the
+    -- definer reference check under the same context; the sub-transaction rollback undoes both
+    perform set_config('app.cms_rpc', 'true', true);
     execute p_sql;
     result := not platform_private.cms_activation_references_valid('a9090000-0000-4000-8000-000000000150');
     raise exception 'S09_ROLLBACK';
@@ -233,29 +247,46 @@ select pg_temp.s09d_to_approved('wk', array['rev1']);
 select pg_temp.s09d_guc_restore();
 select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cfg_rpc', 'true', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
   'AC102 worker accepts a real approved CMS review with current assignment authority'
 );
+select set_config('app.cms_rpc', '', true);
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp() - interval '11 minutes'
 where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid
    or id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
   'AC102 worker does not re-require MFA freshness for a recorded decision'
 );
+select set_config('app.cms_rpc', '', true);
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp()
 where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid
    or id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_registry.read'
 where id = pg_temp.s09d_id('wk:type');
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_types
 set owner_capability = 'cms.schema_designer'
 where id = pg_temp.s09d_id('wk:type');
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   not platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
   'AC102 worker rejects an approval whose review evidence drifted and was invalidated [P2-S09-AC-102]'
 );
+select set_config('app.cms_rpc', '', true);

@@ -94,14 +94,12 @@ Every BE specification must include endpoint reconciliation, Zod 4 request/succe
 | [41 Career finance and business operations](../ia/41-career-finance.md)                                      | Multi-domain split | [41a income/tax/receivables](41a-income-tax-receivables.md); [41b deals/recoupment/P&L](41b-deals-recoupment-pl.md)                                                                                                                                                                                                                                                                                                            | complete (2/2) |
 | [42 Career planning, insurance and sustainability](../ia/42-career-planning-risk.md)                         | Single domain      | [42 career planning/risk](42-career-planning-risk.md)                                                                                                                                                                                                                                                                                                                                                                          | complete (1/1) |
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Derives from
-
 - [[specs/ia/index|IA Layer — Information Architecture]]
 
 ### References
-
 - [[specs/ia/index|IA Layer — Information Architecture]]

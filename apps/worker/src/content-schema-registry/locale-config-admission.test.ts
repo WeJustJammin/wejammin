@@ -226,19 +226,18 @@ describe('CMS-03A-09 successor locale configuration admission (OD-4)', () => {
     expect(port).not.toHaveBeenCalled();
   });
 
-  it('refuses an invalid replacement before the port', async () => {
+  it('forwards a replacement whose rules need the inherited source and default to the database, which owns the full ordered list (AC1182)', async () => {
     const { response, port } = await send({
       expectedVersion: '1',
       supportedLocales: ['en-US', 'fr-FR'],
       fallbackChains: { 'fr-FR': ['de-DE'] },
     });
-    expect(await violationsOf(response)).toEqual([
-      {
-        path: '/fallbackChains/fr-FR/0',
-        message: 'fallback chain locale must be a supported locale',
-      },
-    ]);
-    expect(port).not.toHaveBeenCalled();
+    expect(response.status).toBe(201);
+    expect(port).toHaveBeenCalledTimes(1);
+    expect((port?.mock.calls[0]?.[0] as { body: unknown }).body).toMatchObject({
+      supportedLocales: ['en-US', 'fr-FR'],
+      fallbackChains: { 'fr-FR': ['de-DE'] },
+    });
   });
 
   it('passes both-null (clone) and both-present (replace) to the port unchanged', async () => {

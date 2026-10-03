@@ -209,3 +209,105 @@ export const rowsOf = (path: string): Rows => {
   }
   return { all, checked, text };
 };
+
+const TEST_CALL = /\b(?:it|test|describe)((?:\.\w+)*)\(/gu;
+
+const closingParen = (source: string, open: number): number => {
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '(') depth += 1;
+    else if (char === ')') {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+};
+
+const literalAfter = (source: string, from: number): string => {
+  const match = /^\s*(['"`])((?:\\[\s\S]|(?!\1)[^\\])*)\1/u.exec(
+    source.slice(from, from + 2000),
+  );
+  return match?.[2] ?? '';
+};
+
+/**
+ * Criteria a test file names in a test title: the marker sits in the title
+ * literal of an it, test or describe call (for `.each`, in the title or in the
+ * table), in a pgTAP assertion description, or in a race-runner assertion
+ * string. Mentions in comments or in data a guard reads are not carriers.
+ */
+export const carriedIds = (file: string, source: string): Set<number> => {
+  const kind = kindOfFile(file);
+  const ids = new Set<number>();
+  if (kind === 'pgtap') {
+    const code = source.replace(/^\s*--.*$/gmu, '');
+    for (const [literal] of code.matchAll(/'(?:[^']|'')*'/gu)) {
+      for (const id of idsIn(literal)) ids.add(id);
+    }
+    return ids;
+  }
+  if (kind === 'vitest' || kind === 'playwright') {
+    for (const match of source.matchAll(TEST_CALL)) {
+      const open = (match.index ?? 0) + match[0].length - 1;
+      if (/\.each$/u.test(match[1] ?? '')) {
+        const close = closingParen(source, open);
+        if (close < 0) continue;
+        for (const id of idsIn(source.slice(open, close))) ids.add(id);
+        for (const id of idsIn(literalAfter(source, close + 2))) {
+          ids.add(id);
+        }
+      } else {
+        for (const id of idsIn(literalAfter(source, open + 1))) {
+          ids.add(id);
+        }
+      }
+    }
+    return ids;
+  }
+  if (file.endsWith('.mjs')) {
+    const code = source.replace(/^\s*\/\/.*$/gmu, '');
+    for (const [literal] of code.matchAll(
+      /'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`/gu,
+    )) {
+      for (const id of idsIn(literal)) ids.add(id);
+    }
+  }
+  return ids;
+};
+
+const SKIPPED_DIRECTORIES = new Set([
+  'node_modules',
+  '.wrangler',
+  '.astro',
+  'dist',
+  'coverage',
+  'playwright-report',
+  'test-results',
+]);
+
+/** Every candidate evidence file under the test-bearing directories. */
+export const evidenceFilesOnDisk = (): string[] => {
+  const found: string[] = [];
+  const visit = (directory: string): void => {
+    for (const entry of readdirSync(resolve(ROOT, directory), {
+      withFileTypes: true,
+    })) {
+      if (SKIPPED_DIRECTORIES.has(entry.name)) continue;
+      const path = posix.join(directory, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (/\.(?:tsx?|sql|sqlinc|mjs)$/u.test(entry.name)) found.push(path);
+    }
+  };
+  for (const directory of [
+    'apps',
+    'packages',
+    'tests',
+    'supabase/tests',
+    'infra',
+  ]) {
+    visit(directory);
+  }
+  return found.sort();
+};

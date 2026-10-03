@@ -350,7 +350,11 @@ const expectError = async (
   status: AuthenticationError['status'],
   code: string,
   message: string,
-  details: Record<string, unknown> = {},
+  // BE00: an UNAUTHENTICATED 401 always carries `{ recoveryAction:
+  // 'reauthenticate' }`; every other row in these suites has empty details.
+  details: Record<string, unknown> = code === 'UNAUTHENTICATED'
+    ? { recoveryAction: 'reauthenticate' }
+    : {},
 ): Promise<void> => {
   expect(response.status).toBe(status);
   await expect(response.json()).resolves.toEqual({

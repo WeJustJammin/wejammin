@@ -295,6 +295,11 @@ create or replace function pg_temp.s09w_entry_request(
 language plpgsql as $body$
 declare request jsonb; summary_id uuid;
 begin
+  -- The policy-evidence and activation-evidence builders below are definer
+  -- functions owned by the NOLOGIN definer role, so they read their tables through
+  -- the forced policies: the caller (the Worker, in production) holds the RPC
+  -- context while it builds the request, and releases it afterwards.
+  perform set_config('app.cms_rpc', 'true', true);
   select stable_field_id into summary_id from platform_private.cms_field_definition_versions
    where content_type_version_id = pg_temp.s09d_id(p_tag || ':version') and field_key = 'summary';
   select jsonb_build_object(
@@ -318,6 +323,7 @@ begin
   join platform_private.cms_schema_artifacts artifact on artifact.id = version_row.schema_artifact_id
   join platform_private.cms_field_definition_versions field on field.content_type_version_id = version_row.id
   where version_row.id = pg_temp.s09d_id(p_tag || ':version') and field.field_key = 'title';
+  perform set_config('app.cms_rpc', '', true);
   return request;
 end;
 $body$;

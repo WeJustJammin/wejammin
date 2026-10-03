@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -25,9 +26,14 @@ select no_plan();
 \ir phase_02_slice_09_dec108/04-worker.sqlinc
 \ir phase_02_slice_09_dec119/00-support.sqlinc
 
+-- Runs a statement INSIDE the RPC context (the immutability guards are what is probed, so the
+-- write gate itself must already be satisfied, as a hostile writer would satisfy it) and returns
+-- its error message; the flag is released afterwards (a failed statement rolls it back).
 create or replace function pg_temp.r3_err(p_sql text) returns text language plpgsql as $body$
 begin
+  perform set_config('app.cms_rpc', 'true', true);
   execute p_sql;
+  perform set_config('app.cms_rpc', '', true);
   return 'OK';
 exception when others then
   return sqlerrm;
@@ -285,9 +291,12 @@ select pg_temp.s09d_create_type('e', 'r3gate_e');
 select pg_temp.s09d_add_relation('e');
 select pg_temp.s09d_to_approved('e');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('e:review')), 'approved', 'fixture: candidate e (with a relation dependency) is approved');
+-- negative-control drift (no command edits a bound relation's bounds): written under the RPC flag a hostile writer sets itself
+select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_relation_definitions set max_count = 4
  where field_definition_id in (select id from platform_private.cms_field_definition_versions
                                 where content_type_version_id = pg_temp.s09d_id('e:version'));
+select set_config('app.cms_rpc', '', true);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('e:review')), 'invalidated',
   'a relation dependency change invalidates the approved review [P2-S09-AC-102]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('e:version')), 'draft',
@@ -363,6 +372,7 @@ select is(pg_temp.s09d_get_pr('w')->'failureCode', 'null'::jsonb,
   'the latest attempt is queued, so the projection carries null, not the superseded attempt code [P2-S09-AC-641]');
 set constraints all immediate;
 alter table platform_private.cms_schema_dry_run_reports disable trigger user;
+-- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
 update platform_private.cms_schema_dry_run_reports
    set state = 'failed', failure_code = 'WORKER_CRASH_AFTER_COMMIT', version = version + 1
  where id = pg_temp.s09d_id('w:dryRun');

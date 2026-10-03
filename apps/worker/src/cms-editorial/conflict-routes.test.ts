@@ -164,8 +164,14 @@ describe('CMS-03B-02 protected conflict-resolution route', () => {
       capabilities: ['cms.reviewer'],
     });
     expect((await post(app)).status).toBe(403);
-    expect((await post(app, body, { 'if-match': 'W/"2"' })).status).toBe(400);
+    // BE00 step 7 (capability) precedes step 8 (If-Match grammar).
+    expect((await post(app, body, { 'if-match': 'W/"2"' })).status).toBe(403);
     expect(resolveConflict).not.toHaveBeenCalled();
+    const editor = harness();
+    expect((await post(editor.app, body, { 'if-match': 'W/"2"' })).status).toBe(
+      400,
+    );
+    expect(editor.resolveConflict).not.toHaveBeenCalled();
   });
 
   it('does not expose a hidden conflict or call the port on invalid UUID path', async () => {
@@ -287,30 +293,41 @@ describe('CMS-03B-02 protected conflict-resolution route', () => {
   });
 
   it('fails closed for thrown, denied, or malformed session resolution', async () => {
-    const cases: CmsEditorialDependencies['resolveSession'][] = [
-      async () => {
-        throw new Error('private auth failure');
-      },
-      async () => ({
-        ok: false,
-        status: 401,
-        code: 'UNAUTHENTICATED',
-        message: 'No session.',
-      }),
-      async () => ({
-        ok: true,
-        value: {
-          userId: 'not-a-uuid',
-          actingPartyId: null,
-          capabilities: ['cms.author'],
-          mfaFresh: true,
+    const cases: [CmsEditorialDependencies['resolveSession'], number][] = [
+      [
+        async () => {
+          throw new Error('private auth failure');
         },
-      }),
+        503,
+      ],
+      [
+        async () => ({
+          ok: false,
+          status: 401,
+          code: 'UNAUTHENTICATED',
+          message: 'No session.',
+        }),
+        401,
+      ],
+      [
+        async () => ({
+          ok: true,
+          value: {
+            userId: 'not-a-uuid',
+            actingPartyId: null,
+            capabilities: ['cms.author'],
+            mfaFresh: true,
+          },
+        }),
+        401,
+      ],
     ];
-    for (const resolveSession of cases) {
+    for (const [resolveSession, status] of cases) {
       const { app, resolveConflict } = harness({ resolveSession });
       const response = await post(app);
-      expect([401, 503]).toContain(response.status);
+      // A thrown resolver is a dependency outage (503); a denied or malformed
+      // session is never authority (401).
+      expect(response.status).toBe(status);
       expect(resolveConflict).not.toHaveBeenCalled();
     }
   });

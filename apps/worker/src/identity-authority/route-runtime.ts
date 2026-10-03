@@ -4,7 +4,6 @@ import type { WorkerContext } from '../index';
 import {
   applyRateHeaders,
   responseForAuthError,
-  verifySameOriginCsrf,
 } from '../authentication/boundary';
 import { parseClientBindingIdHeader } from '../authentication/client-binding-header';
 import type {
@@ -19,13 +18,6 @@ import {
   invalidPersistence,
   quotedVersion,
 } from './route-parse';
-
-export const requireIdentityCsrf = async (
-  context: WorkerContext,
-): Promise<Response | null> => {
-  const error = await verifySameOriginCsrf(context.req.raw);
-  return error === null ? null : responseForAuthError(context, error);
-};
 
 export const requireIdentitySession = async (
   context: WorkerContext,

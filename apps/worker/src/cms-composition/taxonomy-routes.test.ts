@@ -9,6 +9,14 @@ import {
   type CmsTaxonomyDependencies,
   type CmsTaxonomyError,
 } from './taxonomy-routes';
+import {
+  httpAdapter,
+  httpFresh,
+  httpRequest,
+  registerOrderTests,
+  standardMutationSteps,
+  type HttpState,
+} from '../be00-order.test-support';
 
 const taxonomyId = 'd1200000-0000-4000-8000-000000000001';
 const termId = 'd1200000-0000-4000-8000-000000000002';
@@ -605,5 +613,90 @@ describe('CMS-03C-03 taxonomy term actions route', () => {
       }),
     ).request(request());
     expect(successful.status).toBe(200);
+  });
+});
+
+describe('BE00 middleware order on the CMS taxonomy term action route', () => {
+  const overridesFor = (
+    state: HttpState,
+  ): Partial<CmsTaxonomyDependencies> => ({
+    ...(state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: false as const,
+            status: 401 as const,
+            code: 'UNAUTHENTICATED',
+            message: 'No session.',
+          }),
+        }
+      : {}),
+    ...(state.capabilityDropped && !state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: true as const,
+            value: {
+              userId: 'd1200000-0000-4000-8000-000000000003',
+              actingPartyId: 'd1200000-0000-4000-8000-000000000004',
+              capabilities: [],
+              mfaFresh: true,
+            },
+          }),
+        }
+      : {}),
+    ...(state.rateExhausted
+      ? {
+          rateLimit: async (input: { limit: number }) => ({
+            ok: true as const,
+            value: {
+              allowed: false,
+              limit: input.limit,
+              remaining: 0,
+              resetAt: 2_000,
+            },
+          }),
+        }
+      : {}),
+  });
+  registerOrderTests<HttpState>({
+    family: 'cms-taxonomy',
+    fresh: () =>
+      httpFresh(path, body, {
+        origin,
+        'content-type': 'application/json',
+        'idempotency-key': 'taxonomy-action-0001',
+        'if-match': '"1"',
+      }),
+    steps: standardMutationSteps(
+      httpAdapter({
+        codes: {
+          forbidden: 'TAXONOMY_FORBIDDEN',
+          badRequest: 'INVALID_REQUEST',
+          unauthenticated: 'UNAUTHENTICATED',
+          validation: 'TAXONOMY_VALIDATION_FAILED',
+          rateLimited: 'RATE_LIMITED',
+        },
+        oversize: { status: 400, code: 'INVALID_REQUEST' },
+        badPath: '/api/v1/cms/taxonomies/not-a-uuid/terms/actions',
+        badBody: {},
+      }),
+    ),
+    send: (state) =>
+      Promise.resolve(
+        createCmsTaxonomyApp(deps(overridesFor(state))).request(
+          httpRequest(state, 'https://api.example.test'),
+        ),
+      ),
+    accepted: (response) => expect(response.status).toBe(200),
+  });
+});
+
+describe('BE00 step 2 body ceiling on the CMS taxonomy route', () => {
+  it('refuses a streamed body over the ceiling that declared no length', async () => {
+    const actTerm = vi.fn(deps().actTerm);
+    const response = await createCmsTaxonomyApp(deps({ actTerm })).request(
+      request({ body: { ...body, pad: 'x'.repeat(300_000) } }),
+    );
+    expect(response.status).toBe(400);
+    expect(actTerm).not.toHaveBeenCalled();
   });
 });

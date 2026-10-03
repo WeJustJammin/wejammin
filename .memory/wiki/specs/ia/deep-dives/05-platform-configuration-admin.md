@@ -193,12 +193,14 @@ their existing `config_change_review` and `config_approval` ownership.
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/2026-08-02-architecture-design|WeJammin — Architecture Design]]
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
-### References
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
+### References
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
 - [[specs/ia/04-cms-delivery-media|Shard 04 — CMS navigation, media and delivery]]
 - [[specs/ia/03-cms-content-modeling|Shard 03 — CMS content modeling and authoring]]

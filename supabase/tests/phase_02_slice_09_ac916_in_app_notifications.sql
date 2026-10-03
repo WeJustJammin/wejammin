@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists pgtap with schema extensions;
 commit;
@@ -16,7 +17,7 @@ select no_plan();
 create function public.s09n_as(p_role text, p_sub text, p_sql text) returns text language plpgsql as $body$
 declare result text;
 begin
-  perform pg_catalog.set_config('request.jwt.claim.sub', coalesce(p_sub, ''), true);
+  perform pg_temp.set_jwt_claim('sub', coalesce(p_sub, ''), true);
   execute format('set local role %I', p_role);
   begin
     execute p_sql into result;
@@ -75,6 +76,10 @@ create function pg_temp.n_request(p_override jsonb default '{}'::jsonb) returns 
 $body$;
 
 -- ---- delivery ----------------------------------------------------------------------
+-- The recorder is a service-role Worker command (granted to service_role only), so it runs
+-- under the verified service-role JWT with no human session published: the system scope
+-- that the intent store's write policy admits.
+select pg_temp.set_jwt_claim('role', 'service_role', true);
 create temp table n_first on commit drop as select platform_api.in_app_notification_record(pg_temp.n_request()) as response;
 select ok((select (select array_agg(k order by k) from jsonb_object_keys(response) k)
       = array['acceptedAt', 'deliveryAttemptId', 'deliveryState', 'providerReference']

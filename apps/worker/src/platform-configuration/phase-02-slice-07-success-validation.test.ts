@@ -211,7 +211,7 @@ describe('Phase 2 Slice 07 Worker route behavioral acceptance', () => {
       () => actionRequest(action, { 'idempotency-key': undefined }),
     ],
   ] as const)(
-    '[%s] rejects a mutation without Idempotency-Key before auth or port execution',
+    '[%s] rejects a mutation without Idempotency-Key before port execution',
     async (_criterion, makeRequest) => {
       const harness = makeHarness();
 
@@ -223,7 +223,8 @@ describe('Phase 2 Slice 07 Worker route behavioral acceptance', () => {
         'INVALID_REQUEST',
         'A valid Idempotency-Key is required.',
       );
-      expect(harness.auth.resolveSession).not.toHaveBeenCalled();
+      // BE00 step 8: the idempotency header follows authentication,
+      // authorization and the quota, and always precedes the operation.
       expect(harness.port).not.toHaveBeenCalled();
     },
   );

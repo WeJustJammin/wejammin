@@ -56,10 +56,10 @@ const withDefault = (defaultValue: unknown) => ({
 });
 
 describe('A01-A08 request guards run before authorization', () => {
-  it('[P2-S09-AC-020] runs request-id, media, query guards and strict parsing before the session, capability or limiter and never authorizes an unparsed body', async () => {
+  it('[P2-S09-AC-020] runs request-id, media and query guards at BE00 step 2 and strict parsing at step 6, before capability, step-up or limiter, and never authorizes an unparsed body', async () => {
     const anonymous = (overrides = {}) =>
       makeHarness({ session: error(401, 'UNAUTHENTICATED'), ...overrides });
-    const invalid = anonymous();
+    const invalid = makeHarness();
     expect(
       (
         await sendHuman(invalid, 'CMS-03A-01', {
@@ -68,6 +68,17 @@ describe('A01-A08 request guards run before authorization', () => {
         })
       ).status,
     ).toBe(422);
+    // Authentication (BE00 step 4) precedes strict parsing (step 6): the same
+    // invalid body from an anonymous caller is a 401, never a 422.
+    const anonymousInvalid = anonymous();
+    expect(
+      (
+        await sendHuman(anonymousInvalid, 'CMS-03A-01', {
+          ...validDraft,
+          typeKey: 'Bad Key',
+        })
+      ).status,
+    ).toBe(401);
     const media = anonymous();
     expect(
       (
@@ -76,7 +87,7 @@ describe('A01-A08 request guards run before authorization', () => {
         })
       ).status,
     ).toBe(415);
-    const broken = anonymous();
+    const broken = makeHarness();
     const response = await broken.app.request(
       new Request(`${API_ORIGIN}/api/v1/cms/content-types`, {
         method: 'POST',
@@ -89,7 +100,7 @@ describe('A01-A08 request guards run before authorization', () => {
       }),
     );
     expect(response.status).toBe(400);
-    const query = anonymous();
+    const query = makeHarness();
     expect(
       (
         await query.app.request(
@@ -99,9 +110,11 @@ describe('A01-A08 request guards run before authorization', () => {
         )
       ).status,
     ).toBe(400);
+    expect(media.resolveSession).not.toHaveBeenCalled();
     for (const harness of [invalid, media, broken, query]) {
-      expect(harness.resolveSession).not.toHaveBeenCalled();
       expect(harness.rateLimit).not.toHaveBeenCalled();
+      for (const port of Object.values(harness.ports))
+        expect(port).not.toHaveBeenCalled();
     }
     const echoed = makeHarness();
     expect(

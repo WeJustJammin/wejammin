@@ -8,6 +8,14 @@ import {
   failure,
   type CmsTemplateDependencies,
 } from './template-routes';
+import {
+  httpAdapter,
+  httpFresh,
+  httpRequest,
+  registerOrderTests,
+  standardMutationSteps,
+  type HttpState,
+} from '../be00-order.test-support';
 
 const path = '/api/v1/cms/templates/versions';
 const origin = 'https://cms-console.example.test';
@@ -841,5 +849,93 @@ describe('CMS-03C-01 protected template-version route', () => {
     expect(commonHeaders(request, dependencies, requestId).get('vary')).toBe(
       'Origin',
     );
+  });
+});
+
+describe('BE00 middleware order on the CMS template version route', () => {
+  const overridesFor = (
+    state: HttpState,
+  ): Partial<CmsTemplateDependencies> => ({
+    ...(state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: false as const,
+            status: 401 as const,
+            code: 'UNAUTHENTICATED',
+            message: 'No session.',
+          }),
+        }
+      : {}),
+    ...(state.capabilityDropped && !state.unauthenticated
+      ? {
+          resolveSession: async () => ({
+            ok: true as const,
+            value: {
+              userId: actorId,
+              actingPartyId: partyId,
+              capabilities: [],
+              mfaFresh: false,
+            },
+          }),
+        }
+      : {}),
+    ...(state.rateExhausted
+      ? {
+          rateLimit: async (input: { limit: number }) => ({
+            ok: true as const,
+            value: {
+              allowed: false,
+              limit: input.limit,
+              remaining: 0,
+              resetAt: 60_000,
+            },
+          }),
+        }
+      : {}),
+  });
+  registerOrderTests<HttpState>({
+    family: 'cms-template-version',
+    fresh: () =>
+      httpFresh(path, body, {
+        origin,
+        'content-type': 'application/json',
+        'idempotency-key': 'template-create-0001',
+        'x-request-id': requestId,
+      }),
+    // The template command route registers no query member and ignores a query
+    // string today, so the strict-query step does not apply to it.
+    steps: standardMutationSteps(
+      httpAdapter({
+        codes: {
+          forbidden: 'TEMPLATE_FORBIDDEN',
+          badRequest: 'INVALID_REQUEST',
+          unauthenticated: 'UNAUTHENTICATED',
+          validation: 'TEMPLATE_VALIDATION_FAILED',
+          rateLimited: 'RATE_LIMITED',
+        },
+        oversize: { status: 400, code: 'INVALID_REQUEST' },
+        badPath: null,
+        badBody: {},
+      }),
+    ).filter((step) => step.name !== 'strict query validation'),
+    send: (state) =>
+      Promise.resolve(
+        harness(overridesFor(state)).app.request(
+          httpRequest(state, 'https://api.example.test'),
+        ),
+      ),
+    accepted: (response) => expect(response.status).toBe(201),
+  });
+});
+
+describe('BE00 step 2 body ceiling on the CMS template version route', () => {
+  it('refuses a streamed body over the ceiling that declared no length', async () => {
+    const { app, defineTemplate } = harness();
+    const response = await post(app, {
+      ...body,
+      pad: 'x'.repeat(300_000),
+    });
+    expect(response.status).toBe(400);
+    expect(defineTemplate).not.toHaveBeenCalled();
   });
 });

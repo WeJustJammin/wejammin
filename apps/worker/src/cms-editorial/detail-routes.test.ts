@@ -265,7 +265,15 @@ describe('CMS-03B-11 protected draft-detail route', () => {
     }
   });
 
-  it('rejects unknown and duplicate query keys before session or persistence', async () => {
+  it('rejects unknown and duplicate query keys after authentication and before authorization or persistence', async () => {
+    const { app, getEntryDraft } = harness();
+    expect((await get(app, '?ownerId=x')).status).toBe(400);
+    expect((await get(app, '?locale=en-US&locale=fr')).status).toBe(400);
+    expect((await get(app, '?entryId=x')).status).toBe(400);
+    expect(getEntryDraft).not.toHaveBeenCalled();
+  });
+
+  it('answers an anonymous caller 401 before it validates the query', async () => {
     const resolveSession = vi.fn(async () => ({
       ok: false as const,
       status: 401 as const,
@@ -273,10 +281,8 @@ describe('CMS-03B-11 protected draft-detail route', () => {
       message: 'No session.',
     }));
     const { app, getEntryDraft } = harness({ resolveSession });
-    expect((await get(app, '?ownerId=x')).status).toBe(400);
-    expect((await get(app, '?locale=en-US&locale=fr')).status).toBe(400);
-    expect((await get(app, '?entryId=x')).status).toBe(400);
-    expect(resolveSession).not.toHaveBeenCalled();
+    expect((await get(app, '?ownerId=x')).status).toBe(401);
+    expect(resolveSession).toHaveBeenCalledTimes(1);
     expect(getEntryDraft).not.toHaveBeenCalled();
   });
 

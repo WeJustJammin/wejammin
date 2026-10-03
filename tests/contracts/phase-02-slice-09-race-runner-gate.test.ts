@@ -63,13 +63,18 @@ describe('independent-session race runners are executed by the database gate', (
       'node infra/run-database-race-runners.mjs',
     );
     const steps = (packageScripts['db:verify'] ?? '').split(' && ');
-    expect(steps).toEqual([
+    // Other database gates (the PostgREST API test) may sit between the steps;
+    // what must hold is the order of these five and that none is skipped.
+    const required = [
       'pnpm db:reset',
       'pnpm db:lint',
       'pnpm db:test',
       'pnpm db:races',
       'pnpm db:types:check',
-    ]);
+    ];
+    expect(steps.filter((step) => required.includes(step))).toEqual(required);
+    expect(steps.at(0)).toBe('pnpm db:reset');
+    expect(steps.at(-1)).toBe('pnpm db:types:check');
     expect(packageScripts['db:ci']).toBe('bash infra/verify-database.sh');
     expect(read('infra/verify-database.sh')).toContain('pnpm db:verify');
     expect(read('.github/workflows/ci.yml')).toContain('pnpm db:ci');

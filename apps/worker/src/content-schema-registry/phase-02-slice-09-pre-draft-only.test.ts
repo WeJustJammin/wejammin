@@ -41,8 +41,11 @@ describe('[P2-S09-AC-004] field and relation edits exist only on an unactivated 
           body: JSON.stringify(validField),
         }),
       );
-      expect(response.status, `${method} ${path}`).toBeGreaterThanOrEqual(404);
-      expect(response.status).toBeLessThanOrEqual(405);
+      // No route is registered for the path, whatever the method: 404.
+      expect(response.status, `${method} ${path}`).toBe(404);
+      expect(((await response.json()) as { code: string }).code).toBe(
+        'NOT_FOUND',
+      );
       expect(harness.ports.addFieldDefinition).not.toHaveBeenCalled();
       expect(harness.ports.bindRelation).not.toHaveBeenCalled();
     }
