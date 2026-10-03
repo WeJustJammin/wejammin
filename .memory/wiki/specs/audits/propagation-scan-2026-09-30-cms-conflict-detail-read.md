@@ -68,3 +68,6 @@ contract or criterion is changed by this scan.
 
 ### Phases into
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
+
+### References
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

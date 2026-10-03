@@ -83,12 +83,13 @@ export const installLazyCommandEnhancement = (
   // A draft saved before the step-up detour is restored on arrival, so the
   // enhancement must be ready without waiting for intent.
   const pathname = windowObject?.location.pathname ?? '';
-  let storage: Storage | null = null;
-  try {
-    storage = windowObject?.sessionStorage ?? null;
-  } catch {
-    storage = null;
-  }
+  const storage = ((): Storage | null => {
+    try {
+      return windowObject?.sessionStorage ?? null;
+    } catch {
+      return null;
+    }
+  })();
   if (
     document.querySelector(FORM_SELECTOR) !== null &&
     hasStepUpDraftWithPrefix(storage, stepUpDraftScopePrefix(pathname))

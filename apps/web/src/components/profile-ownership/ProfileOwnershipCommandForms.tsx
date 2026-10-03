@@ -35,7 +35,9 @@ export const CommandForm = ({
   onStatus,
   onSuccess,
 }: CommandFormProps): React.ReactElement => {
+  const formRef = React.useRef<HTMLFormElement | null>(null);
   const draft = useProfileOwnershipStepUpDraft({
+    formRef,
     operation,
     action,
     expectedVersion,
@@ -89,7 +91,7 @@ export const CommandForm = ({
 
   return (
     <form
-      ref={draft.formRef}
+      ref={formRef}
       method="post"
       action={action}
       data-operation={operation}

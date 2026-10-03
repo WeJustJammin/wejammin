@@ -112,7 +112,7 @@ select is(pg_temp.p_review_state('h'), 'invalidated', 'a change of the owning ty
 update platform_private.cms_content_types set owner_capability = 'cms.schema_designer' where id = pg_temp.s09d_id('h:type');
 select set_config('app.cms_rpc', '', true);
 select pg_temp.s09d_activate('h', 'owner', '{}'::jsonb, 'drift:act');
-select ok(pg_temp.s09d_outcome('drift:act') <> 'OK' and pg_temp.p_state('h') <> 'active', 'the invalidated approval can no longer activate the candidate [P2-S09-AC-189]');
+select ok(pg_temp.s09d_outcome('drift:act') = 'CONFLICT' and pg_temp.p_state('h') <> 'active', 'the invalidated approval can no longer activate the candidate [P2-S09-AC-189]');
 select is(pg_temp.p_state('h'), 'draft', 'the drifted candidate was returned to draft [P2-S09-AC-189]');
 create temp table p_old_review on commit drop as select pg_temp.s09d_id('h:review') as id;
 select pg_temp.s09d_submit('h');
@@ -121,8 +121,8 @@ select ok(pg_temp.s09d_id('h:review') <> (select id from p_old_review) and pg_te
     and (select count(*) = 0 from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('h:review')),
   'the new review is a different record with no decisions: the invalidated approval is never reused [P2-S09-AC-189]');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', (select id from p_old_review)), 'invalidated', 'the old review stays invalidated [P2-S09-AC-189]');
-select pg_temp.s09d_activate('h', 'owner', '{}'::jsonb, 'drift:act2');
-select ok(pg_temp.s09d_outcome('drift:act2') <> 'OK', 'the open review cannot activate: review again means new independent decisions [P2-S09-AC-189]');
+select pg_temp.s09d_activate('h', 'owner', '{}'::jsonb, 'drift:act2', jsonb_build_object('dryRunId', extensions.gen_random_uuid(), 'approvalIds', jsonb_build_array(extensions.gen_random_uuid()), 'migrationPlanId', null));
+select ok(pg_temp.s09d_outcome('drift:act2') = 'CONFLICT', 'the open review cannot activate: review again means new independent decisions [P2-S09-AC-189]');
 select pg_temp.s09d_assign('h', 'rev1'); select pg_temp.s09d_decide('h', 'rev1');
 select ok(pg_temp.p_review_state('h') = 'approved' and pg_temp.p_state('h') = 'approved', 'a fresh independent decision approves the new review [P2-S09-AC-189]');
 select pg_temp.s09d_activate('h');
@@ -131,8 +131,8 @@ select is(pg_temp.s09d_outcome('h:activate'), 'OK', 'and the re-reviewed candida
 -- ===================================== AC186 the definition state machine ====
 select pg_temp.s09d_create_type('s', 'p240_states');
 create temp table p_trail on commit drop as select 1 as step, pg_temp.p_state('s') as state;
-select pg_temp.s09d_activate('s', 'owner', '{}'::jsonb, 's:early');
-select ok(pg_temp.s09d_outcome('s:early') <> 'OK' and pg_temp.p_state('s') = 'draft', 'a draft cannot be activated: it has no approved review, sealed dry run or plan [P2-S09-AC-186]');
+select pg_temp.s09d_activate('s', 'owner', '{}'::jsonb, 's:early', jsonb_build_object('dryRunId', extensions.gen_random_uuid(), 'approvalIds', jsonb_build_array(extensions.gen_random_uuid()), 'migrationPlanId', null));
+select ok(pg_temp.s09d_outcome('s:early') = 'CONFLICT' and pg_temp.p_state('s') = 'draft', 'a draft cannot be activated: it has no approved review, sealed dry run or plan [P2-S09-AC-186]');
 select pg_temp.s09d_dry_run('s'); select pg_temp.s09d_seal('s'); select pg_temp.s09d_submit('s');
 insert into p_trail select 2, pg_temp.p_state('s');
 select pg_temp.s09d_assign('s', 'rev1'); select pg_temp.s09d_decide('s', 'rev1');
@@ -150,8 +150,8 @@ select pg_temp.s09d_submit('s2');
 select is(pg_temp.s09d_outcome('s2:submit'), 'CONFLICT', 'an active version cannot be submitted [P2-S09-AC-186]');
 select pg_temp.s09d_create_type('s3', 'p240_states3');
 select pg_temp.s09d_to_review('s3');
-select pg_temp.s09d_activate('s3', 'owner', '{}'::jsonb, 's3:activate');
-select ok(pg_temp.s09d_outcome('s3:activate') <> 'OK' and pg_temp.p_state('s3') = 'review', 'a candidate in review cannot be activated [P2-S09-AC-186]');
+select pg_temp.s09d_activate('s3', 'owner', '{}'::jsonb, 's3:activate', jsonb_build_object('dryRunId', extensions.gen_random_uuid(), 'approvalIds', jsonb_build_array(extensions.gen_random_uuid()), 'migrationPlanId', null));
+select ok(pg_temp.s09d_outcome('s3:activate') = 'CONFLICT' and pg_temp.p_state('s3') = 'review', 'a candidate in review cannot be activated [P2-S09-AC-186]');
 select set_config('app.cms_rpc', 'true', true);
 -- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_content_type_versions set labels = %L where id = %L', '{"label":"Changed"}', pg_temp.s09d_id('s2:version')), 'P0001', 'IMMUTABLE_RECORD', 'an active version is immutable: a content update is rejected [P2-S09-AC-186]');

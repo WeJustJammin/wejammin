@@ -133,3 +133,17 @@ begin
   return true;
 end;
 $body$;
+
+-- AC714 path guard: a CMS capability row of the owner organization that no CMS-03A-15 aggregate and granted event
+-- backs (and that is not the exact receipt-derived owner set) means a test human was provisioned by a direct insert.
+create or replace function pg_temp.s09e_unprovisioned() returns bigint language sql stable as $body$
+  select count(*) from identity_private.organization_actor_grant ag
+   where ag.organization_id = pg_temp.s09d_id('ownerOrg') and ag.capability_code like 'cms.%'
+     and not exists (select 1 from platform_private.cms_capability_grants g
+                       join platform_private.cms_capability_grant_events e on e.grant_id = g.id and e.aggregate_version = 1
+                      where g.owner_id = ag.organization_id and g.subject_person_ref = ag.person_id
+                        and g.capability_code = ag.capability_code)
+     and not exists (select 1 from platform_private.cms_owner_initialization r
+                      where r.person_id = ag.person_id and r.organization_id = ag.organization_id
+                        and ag.capability_code in ('cms.schema_registry.read', 'cms.schema_designer'))
+$body$;

@@ -122,8 +122,24 @@ select pg_temp.s09t_raw_successor('r:withdrawn', 'a',
     'templateBindings', jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.s09d_id('tw:templateVersion')))));
 select is(pg_temp.s09d_outcome('r:withdrawn'), 'CONFLICT',
   'a withdrawn template is the resolver WITHDRAWN mapped to 409 CONFLICT [P2-S09-AC-049]');
+-- AC045 "a present reference must be readable": the DEFAULT reference, not only a binding, is resolved.
+select pg_temp.s09t_raw_successor('r:absent-default', 'a',
+  jsonb_build_object('defaultTemplateVersionId', extensions.gen_random_uuid(),
+    'templateBindings', jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.s09d_id('t1:templateVersion')))));
+select is(pg_temp.s09d_outcome('r:absent-default'), 'NOT_FOUND',
+  'an absent or concealed default template reference is the resolver NOT_FOUND, concealed as 404, as for a binding [P2-S09-AC-045]');
 select is(pg_temp.s09t_state(), (select state from s09t_baseline),
   'every refusal committed nothing: no version, no binding, no idempotency, audit or outbox row [P2-S09-AC-003]');
+-- AC045 "a present reference must be ... immutable": the referenced template version is a content-immutable record
+-- (the guard refuses a change of any content column in every state, including a draft; only its state moves).
+select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement against the producer-made template version a default reference names, proving the guard refuses a content change; never a producer path.
+select throws_ok(format('update platform_private.cms_template_versions set template_key = template_key || ''x'' where id = %L', pg_temp.s09d_id('t1:templateVersion')),
+  'P0001', 'CONFLICT', 'the template version a default reference names cannot change its content: the reference is immutable [P2-S09-AC-045]');
+-- NEGATIVE CONTROL: same, for the compatible-type set the resolver reads.
+select throws_ok(format('update platform_private.cms_template_versions set compatible_type_ids = ''[]''::jsonb where id = %L', pg_temp.s09d_id('t1:templateVersion')),
+  'P0001', 'CONFLICT', 'nor can its compatible-type set, which the resolver reads, be rewritten after a reference was accepted [P2-S09-AC-045]');
+select set_config('app.cms_rpc', '', true);
 
 -- ----------------------------------- the first successor binds the template ----
 select pg_temp.s09d_successor('b', 'a', 'owner', 'p241-successor-bind-0001', null, null,
@@ -242,7 +258,7 @@ select pg_temp.s09t_resolve('b:ri', pg_temp.s09d_id('ti:templateVersion'), pg_te
 select ok(pg_temp.s09d_outcome('b:r1') = 'OK' and pg_temp.s09d_resp('b:r1')->>'compatible' = 'true'
     and pg_temp.s09d_outcome('b:r2') = 'OK' and pg_temp.s09d_resp('b:r2')->>'compatible' = 'true',
   'both persisted bindings resolve as compatible for their exact parent version through the named compatibility RPC [P2-S09-AC-169]');
-select isnt(pg_temp.s09d_outcome('b:ri'), 'OK',
+select is(pg_temp.s09d_outcome('b:ri'), 'INCOMPATIBLE',
   'a template that excludes the type, which no binding row names, is refused by the same named RPC [P2-S09-AC-169]');
 select set_config('app.cms_rpc', 'true', true);
 -- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.

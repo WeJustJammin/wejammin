@@ -203,7 +203,7 @@ create trigger s09g_fail_outbox before insert on platform_private.outbox_events
 for each row execute function public.s09g_fail_outbox();
 select pg_temp.s09g_fingerprint() as atomic_before \gset
 select pg_temp.s09g_grant('g:atomic', 'owner', 'rev1', 'cms.template_designer', pg_temp.s09g_day(4), '{}', 's09g-atomic-key');
-select ok(pg_temp.s09d_outcome('g:atomic') <> 'OK' and pg_temp.s09d_outcome('g:atomic') <> 'MISSING',
+select ok(pg_temp.s09d_outcome('g:atomic') = 'S09G_FORCED_OUTBOX_FAILURE',
   'a failing outbox write fails the grant command [P2-S09-AC-531]');
 select is(pg_temp.s09g_fingerprint(), :'atomic_before',
   'the failure rolled back the aggregate, event, projection, audit, outbox and idempotency record [P2-S09-AC-531]');

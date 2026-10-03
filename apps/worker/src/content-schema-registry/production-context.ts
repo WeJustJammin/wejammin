@@ -110,8 +110,14 @@ const requestBodyFor = (
   const body: unknown = input.body;
   if (input.operationId !== 'CMS-03A-02' || !isRecord(body))
     return isRecord(body) ? body : {};
-  const { migrationPlanId, ...field } = body;
-  return { field, migrationPlanId };
+  // `context` is server-authoritative (contextFor sets it), so a caller-supplied
+  // member of that name is never forwarded, nested or not.
+  const field = Object.fromEntries(
+    Object.entries(body).filter(
+      ([key]) => key !== 'migrationPlanId' && key !== 'context',
+    ),
+  );
+  return { field, migrationPlanId: body.migrationPlanId };
 };
 
 export const rpcBodyFor = (

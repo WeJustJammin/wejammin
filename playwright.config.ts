@@ -48,7 +48,8 @@ export default defineConfig({
     '**/*.ac265-hosted.spec.ts',
     // Vitest-only unit suite colocated under the Playwright testDir; it imports
     // workspace packages and must run under Vitest, never the browser runner.
-    '**/support/s09-disclosure-fixture.test.ts',
+    '**/support/*.test.ts',
+    'phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
     'phase-02-slice-09-content-schema-registry-performance.spec.ts',
     'phase-02-slice-09-content-schema-registry-real-route.spec.ts',
     'phase-02-slice-09-confirmation-disclosure-real-route.spec.ts',

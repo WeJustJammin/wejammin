@@ -35,7 +35,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
   // verified authority, so a usable access level is the only signal needed.
   const ssrHasAuthority =
     props.access === 'full' || props.access === 'read-only';
-  const fence = React.useRef(createHydrationFence()).current;
+  const [fence] = React.useState(createHydrationFence);
   const {
     projectionState,
     contextEpoch,

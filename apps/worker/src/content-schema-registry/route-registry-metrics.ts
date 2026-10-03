@@ -1,4 +1,5 @@
 import { registeredConflict, conflictForCode } from './error-detail-values';
+import { RELEASE_NONCE_REPLAY_CODE } from './production-errors';
 import { metricKey } from './route-metric-key';
 import type {
   ContentSchemaRegistryOperationId,
@@ -124,7 +125,13 @@ export const registryMetrics = (
           conflictForCode(result.code),
       })
     ] = 1;
-  if (releaseWorker && result.status === 401)
+  // A rejected nonce claim is a refused release principal or signature (401) or a
+  // replayed (release key, nonce) pair, which the database reports as a CONFLICT
+  // carrying the replay detail; no other 409 is a nonce rejection.
+  if (
+    releaseWorker &&
+    (result.status === 401 || result.code === RELEASE_NONCE_REPLAY_CODE)
+  )
     metrics[
       metricKey('cms_release_nonce_claim_total', { outcome: 'rejected' })
     ] = 1;

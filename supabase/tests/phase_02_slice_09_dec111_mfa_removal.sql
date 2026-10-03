@@ -46,7 +46,7 @@ select pg_temp.m('rb:hash', 'auth_mfa_removal_begin', jsonb_build_object(
   'p_key_hash', '\x' || repeat('a1', 16), 'p_request_hash', pg_temp.m_h('b2')));
 select is(pg_temp.m_out('rb:hash'), 'INVALID_REQUEST', 'a key hash that is not 32 bytes is INVALID_REQUEST [P2-S09-AC-810]');
 select pg_temp.m_rbegin('rb:stale', 1, (select id from m_f where name = 'One'), 'user_request', '1');
-select is(pg_temp.m_out('rb:stale'), 'VERSION_MISMATCH', 'a stale If-Match is VERSION_MISMATCH [P2-S09-AC-796]');
+select is(pg_temp.m_out('rb:stale'), 'VERSION_MISMATCH', 'a stale If-Match is VERSION_MISMATCH (wire 409 CONFLICT with the version-conflict detail) [P2-S09-AC-796] [P2-S09-AC-814]');
 select pg_temp.m_rbegin('rb:other', 2, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(2));
 select is(pg_temp.m_out('rb:other'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND [P2-S09-AC-813]');
 select pg_temp.m_rbegin('rb:nosess', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a1', 'b2', extensions.gen_random_uuid());
@@ -103,6 +103,13 @@ select pg_temp.m_rbegin('rb:replay', 1, (select id from m_f where name = 'One'),
 select is(pg_temp.m_out('rb:replay'), 'OK', 'the same key and hash after completion replays [P2-S09-AC-797]');
 select is(pg_temp.m_resp('rb:replay')#>>'{replay,factors,0,friendlyName}', 'Two', 'the replay carries the current snapshot');
 select is(pg_temp.m_resp('rb:replay')->>'providerFactorId', (select pid::text from m_f where name = 'One'), 'and the provider id');
+-- AC736 "among live factors": the removed factor's name is free again, and uniqueness is per user.
+select pg_temp.m_begin('nm:removed', 1, 'One');
+select is(pg_temp.m_out('nm:removed'), 'OK', 'a friendly name of a removed factor is reusable: uniqueness holds among live factors only [P2-S09-AC-736]');
+select pg_temp.m_begin('nm:live', 1, 'TWO');
+select is(pg_temp.m_out('nm:live'), 'FACTOR_NAME_TAKEN', 'control: the live factor "Two" still collides case-insensitively [P2-S09-AC-736]');
+select pg_temp.m_begin('nm:other', 2, 'two');
+select is(pg_temp.m_out('nm:other'), 'OK', 'another user may use the same friendly name: uniqueness is per user [P2-S09-AC-736]');
 select pg_temp.m_rbegin('rb:gone', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a7', 'a8');
 select is(pg_temp.m_out('rb:gone'), 'FACTOR_STATE_CONFLICT', 'removing an already removed factor with a new key is FACTOR_STATE_CONFLICT [P2-S09-AC-814]');
 

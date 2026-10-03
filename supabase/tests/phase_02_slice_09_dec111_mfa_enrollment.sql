@@ -197,6 +197,41 @@ select ok((select binding_id is not null and binding_id = (select id from identi
 select ok((select revocation_reason is not null and revoked_at is not null
              from identity.auth_session_index where session_id = pg_temp.m_sid(2, 1)),
   'the revoked row records its time and reason');
+-- AC880 discriminators.  (1) The initiating row is revoked by EXACT session_id: a sibling live session of the same user
+-- (another device) survives the rotation, so an implementation that revokes every other session of the user fails here.
+-- (2) The rotation is ONE transaction: a failure after the work (the outbox write) leaves the initiating row live, registers
+-- no new row and leaves the factor pending; the same settle then commits all of it at once.
+select pg_temp.m_user(6);
+select pg_temp.m_session(6, 2);
+select pg_temp.m_pending(6, 'Tablet');
+create temp table m_pending_user6 on commit drop as
+  select id from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(6) and state = 'pending';
+create temp table m_rot6_before on commit drop as
+  select (select string_agg(session_id::text || ':' || state::text, ',' order by session_id) from identity.auth_session_index where auth_user_id = pg_temp.m_uid(6)) as sessions,
+         (select state::text from identity.mfa_factor_registry where id = (select id from m_pending_user6)) as factor;
+create function public.s09m_fail_outbox() returns trigger language plpgsql as $body$
+begin
+  if new.event_type = 'identity.mfa-factor.changed.v1' then raise exception 'S09M_FORCED_OUTBOX_FAILURE'; end if;
+  return new;
+end;
+$body$;
+create trigger s09m_fail_outbox before insert on platform_private.outbox_events for each row execute function public.s09m_fail_outbox();
+select pg_temp.m_settle('s:rot6:fail', 6, (select id from m_pending_user6), pg_temp.m_ver(6), pg_temp.m_sid(6, 3), pg_temp.m_sid(6, 1));
+select is(pg_temp.m_out('s:rot6:fail'), 'S09M_FORCED_OUTBOX_FAILURE', 'a failing outbox write fails the rotating settle [P2-S09-AC-880]');
+select is((select string_agg(session_id::text || ':' || state::text, ',' order by session_id) from identity.auth_session_index where auth_user_id = pg_temp.m_uid(6)),
+  (select sessions from m_rot6_before),
+  'the failed settle left the initiating row live and registered no new row: register and revoke are one transaction [P2-S09-AC-880]');
+select is((select state::text from identity.mfa_factor_registry where id = (select id from m_pending_user6)), (select factor from m_rot6_before),
+  'and the factor is still pending [P2-S09-AC-880]');
+drop trigger s09m_fail_outbox on platform_private.outbox_events;
+select pg_temp.m_settle('s:rot6', 6, (select id from m_pending_user6), pg_temp.m_ver(6), pg_temp.m_sid(6, 3), pg_temp.m_sid(6, 1));
+select is(pg_temp.m_out('s:rot6'), 'OK', 'the same settle commits once the fault is removed [P2-S09-AC-880]');
+select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(6, 1)), 'revoked', 'the initiating session is revoked by exact session id [P2-S09-AC-880]');
+select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(6, 3)), 'active', 'the rotated session is the new active row [P2-S09-AC-880]');
+select is((select state::text from identity.auth_session_index where session_id = pg_temp.m_sid(6, 2)), 'active',
+  'a sibling live session of the same user is NOT revoked: the revoke is by exact session_id, not by user [P2-S09-AC-880]');
+select is((select count(*)::integer from identity.auth_session_index where auth_user_id = pg_temp.m_uid(6) and state = 'active'), 2,
+  'the user holds exactly the sibling and the rotated session afterwards [P2-S09-AC-880]');
 select pg_temp.m_settle('s:revoked', 2, (select id from m_pending_user2), pg_temp.m_ver(2), pg_temp.m_sid(2, 3), pg_temp.m_sid(2, 1));
 select is(pg_temp.m_out('s:revoked'), 'UNAUTHENTICATED', 'a revoked initiating session can no longer settle [P2-S09-AC-780]');
 

@@ -102,7 +102,7 @@ select pg_temp.s09d_to_active('f');
 select set_config('s09e.fail_event', 'cms.schema.draft.created.v1', true);
 select pg_temp.s09e_fp() as atomic_before \gset
 select pg_temp.s09d_successor('g', 'f', 'owner', 's09e-succ-atomic-0001');
-select ok(pg_temp.s09d_outcome('g:successor') not in ('OK', 'MISSING'),
+select ok(pg_temp.s09d_outcome('g:successor') = 'S09E_FORCED_OUTBOX_FAILURE',
   'a failing outbox write fails CMS-03A-09 [P2-S09-AC-302]');
 select is(pg_temp.s09e_fp(), :'atomic_before',
   'the failure left the source, the cloned definition rows, audit, outbox and idempotency record unchanged [P2-S09-AC-302]');
@@ -163,7 +163,7 @@ select pg_temp.s09d_create_type('i', 'ev10atomic');
 select set_config('s09e.fail_event', 'cms.schema.dry_run.requested.v1', true);
 select pg_temp.s09e_fp() as dry_before \gset
 select pg_temp.s09d_dry_run('i', 'owner', null, null, 's09e-dry-atomic-0001');
-select ok(pg_temp.s09d_outcome('i:dryRun') not in ('OK', 'MISSING'), 'a failing outbox write fails CMS-03A-10 [P2-S09-AC-348]');
+select ok(pg_temp.s09d_outcome('i:dryRun') = 'S09E_FORCED_OUTBOX_FAILURE', 'a failing outbox write fails CMS-03A-10 [P2-S09-AC-348]');
 select is(pg_temp.s09e_fp(), :'dry_before',
   'the failure left no report, plan, BE00 job, outbox, audit or idempotency row [P2-S09-AC-348]');
 select set_config('s09e.fail_event', '', true);

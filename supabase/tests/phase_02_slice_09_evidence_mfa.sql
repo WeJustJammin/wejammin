@@ -183,7 +183,7 @@ $body$;
 select set_config('s09e.fail_event', 'admin.mfa-factor.reset.v1', true);
 select pg_temp.m_reset_fp() as reset_before \gset
 select pg_temp.m_reset('rt:fail', 'designer2', 'rev1', 'reset-key-evidence-0003');
-select ok(pg_temp.m_out('rt:fail') not in ('OK', 'MISSING'), 'a failing outbox write fails the reset reservation [P2-S09-AC-931]');
+select ok(pg_temp.m_out('rt:fail') = 'S09E_FORCED_OUTBOX_FAILURE', 'a failing outbox write fails the reset reservation [P2-S09-AC-931]');
 select is(pg_temp.m_reset_fp(), :'reset_before',
   'the failure rolled back the reset row, every factor move, the version bump, the audit, security evidence, notification intent, outbox and idempotency rows together [P2-S09-AC-931]');
 select set_config('s09e.fail_event', '', true);
@@ -231,9 +231,9 @@ select is(pg_temp.m_out('k:8'), 'INVALID_REQUEST', 'the reset RPC refuses an 8-c
 select pg_temp.m_reset('k:129', 'designer2', 'rev2', repeat('k', 129));
 select is(pg_temp.m_out('k:129'), 'INVALID_REQUEST', 'the reset RPC refuses a 129-character idempotency key [P2-S09-AC-945]');
 select pg_temp.m_reset('k:16', 'designer2', 'rev2', repeat('k', 16));
-select isnt(pg_temp.m_out('k:16'), 'INVALID_REQUEST', 'the reset RPC accepts a 16-character key as well-formed (a later predicate may still refuse) [P2-S09-AC-945]');
+select is(pg_temp.m_out('k:16'), 'MFA_RESET_IN_PROGRESS', 'the reset RPC accepts a 16-character key as well-formed: it passes the key gate and is refused only by the live-reset predicate that follows [P2-S09-AC-945]');
 select pg_temp.m_reset('k:128', 'designer2', 'rev2', repeat('k', 128));
-select isnt(pg_temp.m_out('k:128'), 'INVALID_REQUEST', 'the reset RPC accepts a 128-character key as well-formed [P2-S09-AC-945]');
+select is(pg_temp.m_out('k:128'), 'MFA_RESET_IN_PROGRESS', 'the reset RPC accepts a 128-character key as well-formed: it passes the key gate and is refused only by the live-reset predicate that follows [P2-S09-AC-945]');
 select ok(pg_temp.s09d_has_columns('admin_mfa_factor_resets', array['target_person_id','organization_id','operator_person_id','grant_id','reason',
     'idempotency_key','state','removed_factor_count','completed_at']), 'the reset record persists target, organization, operator, grant, reason, idempotency key, state, removed count and completed_at [P2-S09-AC-945]');
 

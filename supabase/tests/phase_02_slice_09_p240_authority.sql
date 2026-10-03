@@ -213,7 +213,7 @@ select pg_temp.p_claim('cl:mismatch', extensions.gen_random_uuid(), jsonb_build_
 select is(pg_temp.s09d_outcome('cl:mismatch'), 'CONFLICT', 'a claim whose plan identity differs from the event is a conflict [P2-S09-AC-192]');
 select pg_temp.s09d_call('cl:dlq', 'platform_api.cms_dead_letter_schema_migration_event', (select jsonb_build_object('eventId', id, 'eventType', event_type, 'schemaVersion', schema_version, 'aggregateType', aggregate_type,
     'aggregateId', aggregate_id, 'aggregateVersion', aggregate_version::text, 'migrationPlanId', payload->'migrationPlanId', 'claimToken', (select t2 from p_tokens), 'reasonCode', 'UNKNOWN_EVENT_VERSION') from p_act_event));
-select ok(pg_temp.s09d_outcome('cl:dlq') in ('OK', 'CONFLICT', 'NOT_FOUND'), 'an event routed to the dead-letter queue is answered with a typed result (' || pg_temp.s09d_outcome('cl:dlq') || ') [P2-S09-AC-192]');
+select is(pg_temp.s09d_outcome('cl:dlq'), 'OK', 'an event routed to the dead-letter queue is answered with exactly the typed OK result [P2-S09-AC-192]');
 
 -- ============================================== AC015 the IA common envelope and exceptions ====
 select is((select string_agg(t.table_name || ':' || m.cols, ';' order by t.table_name) from (select distinct table_name from information_schema.tables where table_schema = 'platform_private' and table_name like 'cms\_%' and table_type = 'BASE TABLE') t

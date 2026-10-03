@@ -307,6 +307,14 @@ export const knownFailure = (
       code: 'CONFLICT',
       message: 'The CMS registry operation conflicts with current state.',
     },
+    // Internal only: the wire answer is the ordinary 409 CONFLICT. The code names
+    // both the nonce and the conflict so the nonce-rejection and conflict-rate
+    // counters each see it.
+    [RELEASE_NONCE_REPLAY_CODE]: {
+      status: 409,
+      code: RELEASE_NONCE_REPLAY_CODE,
+      message: 'The CMS registry operation conflicts with current state.',
+    },
     VALIDATION_FAILED: {
       status: 422,
       code: 'VALIDATION_FAILED',
@@ -346,11 +354,28 @@ export const codeFromRpcError = (value: unknown): string => {
   return RPC_FAILURE_CODES.find((candidate) => text.includes(candidate)) ?? '';
 };
 
+/**
+ * The database raises CONFLICT with DETAIL `RELEASE_NONCE_REPLAYED` for a (release
+ * key, nonce) pair it already claimed. Only that exact detail on a CONFLICT is a
+ * replay; the internal code lets the telemetry count it as a rejected nonce claim.
+ */
+export const RELEASE_NONCE_REPLAY_CODE = 'RELEASE_NONCE_REPLAY_CONFLICT';
+const RELEASE_NONCE_REPLAYED_DETAIL = 'RELEASE_NONCE_REPLAYED';
+
+const replayAwareCode = (payload: unknown): string => {
+  const code = codeFromRpcError(payload);
+  return code === 'CONFLICT' &&
+    isRecord(payload) &&
+    payload.details === RELEASE_NONCE_REPLAYED_DETAIL
+    ? RELEASE_NONCE_REPLAY_CODE
+    : code;
+};
+
 export const mapRpcFailure = (
   status: number,
   payload: unknown,
 ): ContentSchemaRegistryError => {
-  const code = codeFromRpcError(payload);
+  const code = replayAwareCode(payload);
   const mapped = code === '' ? null : knownFailure(code);
   if (mapped !== null)
     return errorResult(

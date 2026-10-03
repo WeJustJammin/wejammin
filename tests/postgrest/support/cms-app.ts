@@ -44,6 +44,13 @@ export type CmsApp = Readonly<{
       ifMatch?: string;
     }>,
   ) => Promise<Readonly<{ status: number; body: Record<string, unknown> }>>;
+  /** Sends one request exactly as given (the signed release routes need untouched bytes). */
+  sendRaw: (
+    method: 'GET' | 'POST',
+    path: string,
+    headers: Readonly<Record<string, string>>,
+    rawBody?: string,
+  ) => Promise<Readonly<{ status: number; body: Record<string, unknown> }>>;
   /** Every RPC the production adapter issued, with the database's own answer. */
   observed: () => readonly ObservedRpc[];
   sent: () => readonly SentRpc[];
@@ -51,12 +58,22 @@ export type CmsApp = Readonly<{
   telemetry: () => readonly TelemetryEvent[];
 }>;
 
-const environment = (): ServerEnvironment =>
+export const CMS_TEST_RELEASE_ORIGIN = 'https://release-worker.example.test';
+
+export type CmsAppOptions = Readonly<{
+  /** The Worker's CMS_RELEASE_KEY_REGISTRY (JSON); absent means no release key is trusted. */
+  releaseRegistry?: string;
+}>;
+
+const environment = (options: CmsAppOptions): ServerEnvironment =>
   ({
     SUPABASE_URL: API_URL,
     SUPABASE_SECRET_KEY: workerServiceCredential(),
     APP_ENVIRONMENT: 'development',
     APP_RELEASE: 'api-gate',
+    ...(options.releaseRegistry === undefined
+      ? {}
+      : { CMS_RELEASE_KEY_REGISTRY: options.releaseRegistry }),
   }) as unknown as ServerEnvironment;
 
 export const ownerSession = (
@@ -70,7 +87,10 @@ export const ownerSession = (
   mfaFresh: false,
 });
 
-export const createCmsApp = (session: ContentSchemaRegistrySession): CmsApp => {
+export const createCmsApp = (
+  session: ContentSchemaRegistrySession,
+  options: CmsAppOptions = {},
+): CmsApp => {
   const observed: ObservedRpc[] = [];
   const sent: SentRpc[] = [];
   const events: TelemetryEvent[] = [];
@@ -102,12 +122,13 @@ export const createCmsApp = (session: ContentSchemaRegistrySession): CmsApp => {
     return response;
   }) as typeof fetch;
   const production = createProductionContentSchemaRegistryDependencies({
-    environment: environment(),
+    environment: environment(options),
     fetchImpl: spyFetch,
   });
   const dependencies: ContentSchemaRegistryDependencies = {
     ...production,
     humanOrigins: [CMS_TEST_ORIGIN],
+    releaseOrigins: [CMS_TEST_RELEASE_ORIGIN],
     resolveSession: async () => ({ ok: true as const, value: session }),
     rateLimit: async () => ({
       ok: true as const,
@@ -141,6 +162,19 @@ export const createCmsApp = (session: ContentSchemaRegistrySession): CmsApp => {
           method,
           headers,
           ...(method === 'POST' ? { body: JSON.stringify(options.body) } : {}),
+        }),
+      );
+      return {
+        status: response.status,
+        body: (await response.json()) as Record<string, unknown>,
+      };
+    },
+    sendRaw: async (method, path, headers, rawBody) => {
+      const response = await app.request(
+        new Request(`https://api.example.test${path}`, {
+          method,
+          headers: { 'x-request-id': randomUUID(), ...headers },
+          ...(rawBody === undefined ? {} : { body: rawBody }),
         }),
       );
       return {

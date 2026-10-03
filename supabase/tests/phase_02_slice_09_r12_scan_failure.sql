@@ -80,7 +80,7 @@ select pg_temp.s09d_call('b:seal', 'platform_api.cms_finalize_schema_migration_d
     'cursor', pg_temp.s09w_plan_cursor('b'), 'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0'));
 select is(pg_temp.s09d_outcome('b:seal'), 'CONFLICT', 'a failed scan cannot be sealed afterwards [P2-S09-AC-641]');
 select pg_temp.s09d_submit('b');
-select isnt(pg_temp.s09d_outcome('b:submit'), 'OK', 'the candidate with a failed scan cannot be submitted for review [P2-S09-AC-641]');
+select is(pg_temp.s09d_outcome('b:submit'), 'CONFLICT', 'the candidate with a failed scan cannot be submitted for review [P2-S09-AC-641]');
 
 -- Recovery: a new dry run supersedes the blocked plan; attempt 1 stays as evidence.
 select pg_temp.s09d_dry_run('b', 'owner', null, null, 's09r-recover-0001');

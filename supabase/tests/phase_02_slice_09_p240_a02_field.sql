@@ -87,8 +87,8 @@ select is(pg_temp.p_expect('sid:change', 'a', pg_temp.p_efield('title', 'short_t
 select is((select (editor_config->>'label') || '/' || version::text from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version') and field_key = 'title'),
   'Headline/2', 'the change updated the one existing field and advanced only its CAS version [P2-S09-AC-058]');
 select pg_temp.p_a02('sid:unknown', 'a', pg_temp.p_efield('ghost', 'short_text', jsonb_build_object('stableFieldId', extensions.gen_random_uuid())));
-select ok(pg_temp.s09d_outcome('sid:unknown') in ('VALIDATION_FAILED', 'CONFLICT'),
-  'a stableFieldId that names no field of this version is refused with 422 or 409 and no field is created [P2-S09-AC-058]');
+select is(pg_temp.s09d_outcome('sid:unknown'), 'CONFLICT',
+  'a stableFieldId that names no field of this version is refused with exactly 409 CONFLICT and no field is created [P2-S09-AC-058]');
 select is(pg_temp.s09d_scalar('select count(*)::text from platform_private.cms_field_definition_versions where field_key = ''ghost'''), '0', 'no ghost field row exists [P2-S09-AC-058]');
 select is(pg_temp.p_expect('sid:bad', 'a', pg_temp.p_efield('freshtwo', 'short_text', '{"stableFieldId":"nope"}'), 'INVALID_REQUEST'), 'ok',
   'a malformed stableFieldId is refused and nothing changes [P2-S09-AC-058]');

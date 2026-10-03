@@ -53,7 +53,6 @@ const setNative = (element: HTMLInputElement, value: string): void => {
 };
 
 export interface ProfileOwnershipStepUpDraft {
-  readonly formRef: React.RefObject<HTMLFormElement | null>;
   /** The key for this submit: the interrupted one once, else a fresh key. */
   readonly keyForSubmit: () => string;
   /** Persist the draft, then the caller navigates. Never throws. */
@@ -63,13 +62,13 @@ export interface ProfileOwnershipStepUpDraft {
 }
 
 export const useProfileOwnershipStepUpDraft = (input: {
+  readonly formRef: React.RefObject<HTMLFormElement | null>;
   readonly operation: ProfileOwnershipOperation;
   readonly action: string;
   readonly expectedVersion: string;
   readonly onStatus: (message: string) => void;
 }): ProfileOwnershipStepUpDraft => {
-  const { operation, action, expectedVersion, onStatus } = input;
-  const formRef = React.useRef<HTMLFormElement | null>(null);
+  const { formRef, operation, action, expectedVersion, onStatus } = input;
   const pinnedKey = React.useRef<string | null>(null);
   const fields = DRAFT_FIELDS[operation];
 
@@ -94,11 +93,9 @@ export const useProfileOwnershipStepUpDraft = (input: {
       onStatus(PROFILE_OWNERSHIP_STATE_CHANGED);
     }
     // Mount only: a restored draft is consumed once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
-    formRef,
     keyForSubmit: () => {
       const key = pinnedKey.current ?? newIdempotencyKey(operation);
       pinnedKey.current = null;

@@ -98,7 +98,7 @@ end;
 $body$;
 select is(pg_temp.p_out_of_order('o', 'cms_begin_schema_migration_verification', pg_temp.s09w_counts('o')), 'CONFLICT true', 'verification cannot begin from ready (no running pass happened) and the plan is unchanged [P2-S09-AC-187]');
 select pg_temp.s09d_call('o:ooo:complete', 'platform_api.cms_complete_schema_migration', jsonb_build_object('migrationPlanId', pg_temp.s09d_id('o:plan'), 'expectedVersion', pg_temp.s09w_plan_version('o'), 'leaseToken', extensions.gen_random_uuid()));
-select ok(pg_temp.s09d_outcome('o:ooo:complete') in ('CONFLICT', 'VALIDATION_FAILED', 'UNAUTHENTICATED', 'NOT_FOUND') and pg_temp.p_state('o') = 'ready', 'completion cannot skip the run and verification: the plan stays ready [P2-S09-AC-187]');
+select ok(pg_temp.s09d_outcome('o:ooo:complete') = 'CONFLICT' and pg_temp.p_state('o') = 'ready', 'completion cannot skip the run and verification: the plan stays ready [P2-S09-AC-187]');
 select pg_temp.s09w_claim('o');
 select is(pg_temp.p_state('o'), 'running', 'the worker claim moves ready to running [P2-S09-AC-187]');
 select pg_temp.s09w_pass('o', false);
@@ -167,7 +167,7 @@ begin
   return pg_temp.s09d_outcome('l:oldtoken:batch') || ' ' || (before_cursor = pg_temp.p_col('l', 'cursor'))::text;
 end;
 $body$;
-select ok(pg_temp.p_old_token_batch() like '%true' and pg_temp.s09d_outcome('l:oldtoken:batch') <> 'OK', 'the displaced worker''s old token can no longer advance the plan [P2-S09-AC-188]');
+select is(pg_temp.p_old_token_batch(), 'LEASE_EXPIRED true', 'the displaced worker''s old token is refused and the plan cursor does not move [P2-S09-AC-188]');
 select pg_temp.s09w_finish('l');
 select is(pg_temp.p_state('l'), 'completed', 'the replacement worker completes the migration it resumed [P2-S09-AC-188]');
 

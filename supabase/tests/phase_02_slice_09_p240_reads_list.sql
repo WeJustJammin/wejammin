@@ -214,7 +214,7 @@ select is((select string_agg(i->>'typeKey', ',') from jsonb_array_elements(pg_te
 select is(pg_temp.p_read('c:other:fields', 'other', '{"resourceKind":"field_definition_version","limit":100}'), 'OK', 'child rows are scoped the same way [P2-S09-AC-136]');
 select is(jsonb_array_length(pg_temp.p_items('c:other:fields')), 1, 'the other organization sees one field, not the owner''s 43 [P2-S09-AC-136]');
 select pg_temp.s09d_rpc('c:ctx', 'platform_api.cms_list_content_types', 'owner', '{}', false, jsonb_build_object('actingPartyId', pg_temp.s09d_id('otherOrg')));
-select ok(pg_temp.s09d_outcome('c:ctx') in ('FORBIDDEN', 'NOT_FOUND'), 'an acting context the human is not bound to is refused, never widened [P2-S09-AC-136]');
+select ok(pg_temp.s09d_outcome('c:ctx') = 'FORBIDDEN', 'an acting context the human is not bound to is refused, never widened [P2-S09-AC-136]');
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.p_items('c:ctx'))), 0, 'and returns no rows [P2-S09-AC-136]');
 
 -- ================================================== AC198 A06 failure mapping ====

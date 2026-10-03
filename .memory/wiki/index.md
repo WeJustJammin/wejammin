@@ -1576,6 +1576,8 @@
 
 ## Structured Memory
 
+- decision: DEC-130: AC1122 admin MFA reset errors are proven per branch (2026-10-03) — 2026-10-03T21:56:49.084Z
+- decision: DEC-129: Delete the CMS-03A-05 'unknown release target is 404' clause (2026-10-03) — 2026-10-03T21:45:03.750Z
 - decision: DEC-126: CMS-03A-09 keeps the optional workflowKey/workflowVersion pair (2026-10-03) — 2026-10-03T17:11:54.904Z
 - decision: DEC-127: Rollback RPC may fail a dry_running schema migration plan (2026-10-03) — 2026-10-03T17:11:54.904Z
 - decision: DEC-128: AC906 projections refetch AUTH-API-16 under the pull model (2026-10-03) — 2026-10-03T17:11:54.904Z

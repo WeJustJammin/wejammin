@@ -13,7 +13,6 @@ import {
 } from './admission';
 import type {
   ContentSchemaRegistryDependencies,
-  ContentSchemaRegistryError,
   ContentSchemaRegistryPortInput,
   ContentSchemaRegistryResult,
   HumanMutationOperationId,
@@ -22,8 +21,8 @@ import type {
 import type { FeatureContext } from './route-types';
 import { invalid } from './admission-common';
 import { successorDeferredToDatabase } from './admission-successor';
-import { errorResponse } from './route-response';
 import { createHumanAuthority } from './route-human-authority';
+import { createRefuse } from './route-refusal-telemetry';
 import type { RouteExecutor } from './route-execution';
 
 type PathResult = ContentSchemaRegistryResult<Readonly<Record<string, string>>>;
@@ -68,21 +67,30 @@ export const createHumanHandlers = (
     parsePath,
   ): Promise<Response> => {
     const requestId = context.get('requestId');
-    const refuse = (error: ContentSchemaRegistryError): Response =>
-      errorResponse(context, error, requestId);
+    // Every early answer is reported as sanitized denial telemetry before it is
+    // returned; the actor is anonymous until the session is verified.
+    let actorClass: 'anonymous' | 'human' = 'anonymous';
+    const refuse = createRefuse(
+      dependencies,
+      context,
+      operationId,
+      dependencies.now?.() ?? Date.now(),
+      () => actorClass,
+    );
     // Step 2: CORS origin, body size ceiling, content type, then CSRF.
-    const origin = gates.origin(context);
+    const origin = await gates.origin(context, refuse);
     if (origin !== null) return origin;
     const preflight = jsonBodyPreflight(context.req.raw);
     if (preflight !== null) return refuse(preflight);
-    const csrf = gates.csrf(context);
+    const csrf = await gates.csrf(context, refuse);
     if (csrf !== null) return csrf;
     const bytes = await readBytes(context.req.raw);
     if (!bytes.ok) return refuse(bytes);
     // Steps 4 and 5: verified session, then the acting context.
-    const authentication = await gates.authenticate(context);
+    const authentication = await gates.authenticate(context, refuse);
     if (!authentication.ok) return authentication.response;
     const { session } = authentication;
+    actorClass = 'human';
     // Step 6: strict path, then strict body (CMS-03A-10: a caller-supplied
     // count, hash, classification or report is an unknown key and a
     // structural 400, BE03a error matrix, AC356).
@@ -96,7 +104,7 @@ export const createHumanHandlers = (
     });
     if (!body.ok) return refuse(body);
     // Step 7: capability, step-up freshness, quota.
-    const denied = await gates.authorize(context, operationId, session);
+    const denied = await gates.authorize(context, operationId, session, refuse);
     if (denied !== null) return denied;
     // Step 8: exact Idempotency-Key and quoted If-Match.
     const headers = parseMutationHeaders(context.req.raw, operationId);
@@ -133,18 +141,26 @@ export const createHumanHandlers = (
     validate,
   ): Promise<Response> => {
     const requestId = context.get('requestId');
-    const origin = gates.origin(context);
+    let actorClass: 'anonymous' | 'human' = 'anonymous';
+    const refuse = createRefuse(
+      dependencies,
+      context,
+      operationId,
+      dependencies.now?.() ?? Date.now(),
+      () => actorClass,
+    );
+    const origin = await gates.origin(context, refuse);
     if (origin !== null) return origin;
-    const authentication = await gates.authenticate(context);
+    const authentication = await gates.authenticate(context, refuse);
     if (!authentication.ok) return authentication.response;
     const { session } = authentication;
+    actorClass = 'human';
     // Step 6: no mutation headers or body, strict path and query.
     const readHeaders = await rejectReadMutationHeadersOrBody(context.req.raw);
-    if (readHeaders !== null)
-      return errorResponse(context, readHeaders, requestId);
+    if (readHeaders !== null) return refuse(readHeaders);
     const input = validate(context);
-    if (!input.ok) return errorResponse(context, input, requestId);
-    const denied = await gates.authorize(context, operationId, session);
+    if (!input.ok) return refuse(input);
+    const denied = await gates.authorize(context, operationId, session, refuse);
     if (denied !== null) return denied;
     return execute(context, operationId, 'human', {
       operationId,

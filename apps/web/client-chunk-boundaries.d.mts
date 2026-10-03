@@ -8,3 +8,8 @@ export const clientChunkGroups: readonly {
   readonly test?: (id: string) => boolean;
   readonly priority?: number;
 }[];
+export const clientChunkOutput: {
+  readonly codeSplitting: {
+    readonly groups: (typeof clientChunkGroups)[number][];
+  };
+};

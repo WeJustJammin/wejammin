@@ -53,10 +53,7 @@ if (Astro.request.method === 'POST') {
     // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
     // itself; only a native form post is redirected from the server.
     if (!json && isStepUpRequiredCode(await mutationFailureCode(mutation)))
-      return Astro.redirect(
-        stepUpTargetForLocation(Astro.url),
-        303,
-      );
+      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
     return mutation;
   }
   const continueTo = `/app/cms-content-modeling/schema-reviews/${encodeURIComponent(reviewId)}`;

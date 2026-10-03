@@ -404,7 +404,31 @@ Forward-only migrations for the R12 database holdovers (each has a RED-first pgT
   uncorrelated sub-selects) instead of once per row.
 - `120400` and `120410` make every `platform_api` function that sets or reaches the RPC flag restore its previous
   value on return; `120500` hands ownership of the functions to the two roles.
-Proof: `../tests/phase_02_slice_09_sec2_definer_rls.sql`.
+  Proof: `../tests/phase_02_slice_09_sec2_definer_rls.sql`.
+
+### Slice 09 DB3 migrations (`20261003130000`-`20261003130600`)
+
+- `130000` D-IDEM: `cms_reserve_conflict` is a pass-through of `cms_reserve`, so the nine commands that
+  reserve through it (CMS-03A-04, 09-12, 14-17) raise `IDEMPOTENCY_MISMATCH` for a reused key with a changed
+  body (wire: 409 CONFLICT, `conflict: IDEMPOTENCY_MISMATCH`, `recoveryAction: use_new_idempotency_key`),
+  instead of a bare CONFLICT that reached the wire as `INVALID_TRANSITION` / `refresh`
+  (`../tests/phase_02_slice_09_dec108_*.sql`, `../../tests/postgrest/cms-idempotency-mismatch.apispec.ts`).
+- `130100` `cms_json_bounded` expands each node only through a `jsonb_typeof` CASE (never a WHERE qual) and reads key
+  and element counts only in the matching branch (`../tests/phase_02_slice_09_r14_json_bounded.sql`).
+- `130200` CFG-05B-06 settlement receipts: `admin_mfa_factor_reset_settlements` is keyed by (reset, factor, outcome,
+  factor version); the reconciler wake-up of a `failed` outcome is emitted by the first report only, so a replay or a
+  concurrent duplicate adds no outbox row (`../tests/phase_02_slice_09_dec111_admin_mfa_reset.sql`,
+  `../tests/phase_02_slice_09_dec111/010-admin-reset-race.mjs` S3).
+- `130300` `cms_valid_field_input`: only a MISSING `defaultValue` is refused for a literal default; an explicit JSON
+  null is a literal default (BE03a `Json.nullable().optional()`), in agreement with the contract, the Worker and the
+  storage CHECK (`../tests/phase_02_slice_09_p240_a02_field.sql`).
+- `130400` `cms_release_route_gate`: a human or admin caller (role `authenticated`, or a request context naming a
+  human actor) on CMS-03A-05 and CMS-03A-08 is `FORBIDDEN` (403) instead of `UNAUTHENTICATED`; the migration-worker
+  gates keep `cms_require_release_worker` unchanged.
+- `130500` a replayed release nonce raises `CONFLICT` with DETAIL `RELEASE_NONCE_REPLAYED`, so the Worker counts it as
+  a rejected nonce claim.
+- `130600` the CMS-03A-05 answer carries `contentHash`, `createdAt` and `updatedAt` (BE03a ResourceMeta), without which
+  the Worker refused every committed registration as 502.
 
 ## Related links
 

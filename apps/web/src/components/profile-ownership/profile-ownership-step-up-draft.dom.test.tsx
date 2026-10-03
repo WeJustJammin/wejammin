@@ -41,7 +41,7 @@ const refusal = (code: string, status: number) =>
 
 type Seen = { headers: Headers; body: string }[];
 
-let cleanup: (() => void)[] = [];
+const cleanup: (() => void)[] = [];
 let assign: ReturnType<typeof vi.fn>;
 let seen: Seen;
 let upstream: () => Response;

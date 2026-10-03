@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 129
-- **Unique decision titles**: 129
+- **Total decisions**: 131
+- **Unique decision titles**: 131
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -1889,6 +1889,34 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Reversibility**: High
 - **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
 
+## DEC-129: Delete the CMS-03A-05 'unknown release target is 404' clause (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T21:45:03.750Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14b DB3 ruling
+- **Index**: [[index]]
+
+- **Problem**: BE03a rows for CMS-03A-05 (block release registration) required 404 for an unknown release target, but no target is defined: references are 422 per the field matrix, an unregistered release key is 401 WEBHOOK_REJECTED, and the block key/version is created by the command.
+- **Options considered**: delete the clause; define a release-channel registry to give it meaning; keep it open.
+- **Decision**: Owner chose deletion. BE03a drops the A05 unknown-target 404 (changelog row); CMS-03A-08 keeps its 404 for unknown block versions.
+- **Downstream**: BE03a rows ~164/1825/2219, Worker A05 refusal rows, AC034-adjacent evidence.
+- **Reversibility**: High
+
+## DEC-130: AC1122 admin MFA reset errors are proven per branch (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-03T21:56:49.084Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14b web ruling
+- **Index**: [[index]]
+
+- **Problem**: AC1122 required the self-target copy plus schema field errors for one 422 MFA_RESET_INVALID response; production sends MFA_RESET_INVALID only for self-targeting and VALIDATION_FAILED for schema-invalid input, so no response carries both.
+- **Options considered**: reword to each branch; make the API send both (new envelope variant outside BE00); leave open.
+- **Decision**: Owner chose rewording: self-target gives 422 MFA_RESET_INVALID shown with the self-target copy; schema-invalid input gives VALIDATION_FAILED shown as field errors from the schema.
+- **Downstream**: AC1122 text; admin MFA reset form tests.
+- **Reversibility**: High
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -3645,3 +3673,29 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: AC906 text; web MFA tests; any future projection cache.
 - **Reversibility**: High
 - **Source**: scratchpad/decisions/r14-ratification-bundle.md (copied to the verification ledger)
+
+### DEC-129: Delete the CMS-03A-05 'unknown release target is 404' clause (2026-10-03)
+
+- **Timestamp**: 2026-10-03T21:45:03.750Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14b DB3 ruling
+- **Tags**: decision, owner
+
+- **Problem**: BE03a rows for CMS-03A-05 (block release registration) required 404 for an unknown release target, but no target is defined: references are 422 per the field matrix, an unregistered release key is 401 WEBHOOK_REJECTED, and the block key/version is created by the command.
+- **Options considered**: delete the clause; define a release-channel registry to give it meaning; keep it open.
+- **Decision**: Owner chose deletion. BE03a drops the A05 unknown-target 404 (changelog row); CMS-03A-08 keeps its 404 for unknown block versions.
+- **Downstream**: BE03a rows ~164/1825/2219, Worker A05 refusal rows, AC034-adjacent evidence.
+- **Reversibility**: High
+
+### DEC-130: AC1122 admin MFA reset errors are proven per branch (2026-10-03)
+
+- **Timestamp**: 2026-10-03T21:56:49.084Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14b web ruling
+- **Tags**: decision, owner
+
+- **Problem**: AC1122 required the self-target copy plus schema field errors for one 422 MFA_RESET_INVALID response; production sends MFA_RESET_INVALID only for self-targeting and VALIDATION_FAILED for schema-invalid input, so no response carries both.
+- **Options considered**: reword to each branch; make the API send both (new envelope variant outside BE00); leave open.
+- **Decision**: Owner chose rewording: self-target gives 422 MFA_RESET_INVALID shown with the self-target copy; schema-invalid input gives VALIDATION_FAILED shown as field errors from the schema.
+- **Downstream**: AC1122 text; admin MFA reset form tests.
+- **Reversibility**: High

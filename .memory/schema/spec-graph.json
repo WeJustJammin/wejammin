@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-10-03T17:11:55.982Z",
+  "builtAt": "2026-10-03T21:56:49.774Z",
   "nodeCount": 1654,
-  "edgeCount": 10156,
+  "edgeCount": 10166,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -12010,6 +12010,12 @@
       "source": "phase-ref"
     },
     {
+      "from": "audit:audits/propagation-scan-2026-09-27-cms-template-latest-read",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "audit:audits/propagation-scan-2026-09-28-cms-taxonomy-source",
       "to": "decision:d-01",
       "type": "constrained_by",
@@ -12022,7 +12028,25 @@
       "source": "phase-ref"
     },
     {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-conflict-detail-read",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "audit:audits/propagation-scan-2026-09-30-cms-revision-comparison",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-revision-comparison",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-rich-text-ast",
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
       "source": "phase-ref"
@@ -12030,8 +12054,8 @@
     {
       "from": "audit:audits/propagation-scan-2026-09-30-cms-rich-text-ast",
       "to": "phase-plan:phases/phase-2",
-      "type": "phases_into",
-      "source": "phase-ref"
+      "type": "references",
+      "source": "wikilink"
     },
     {
       "from": "audit:audits/remediation-state",
@@ -12448,7 +12472,25 @@
       "source": "phase-ref"
     },
     {
+      "from": "be-spec:be/04b-governed-media-renditions",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "be-spec:be/04c-public-delivery-cache",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/04c-public-delivery-cache",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "be-spec:be/05c-portability-quality-lifecycle",
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
       "source": "phase-ref"
@@ -12456,8 +12498,8 @@
     {
       "from": "be-spec:be/05c-portability-quality-lifecycle",
       "to": "phase-plan:phases/phase-2",
-      "type": "phases_into",
-      "source": "phase-ref"
+      "type": "references",
+      "source": "wikilink"
     },
     {
       "from": "be-spec:be/08d-ai-contribution-disclosure",
@@ -13666,6 +13708,12 @@
       "source": "wikilink"
     },
     {
+      "from": "fe-spec:fe/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "fe-spec:fe/06-trust-safety",
       "to": "ia-spec:ia/06-trust-safety",
       "type": "derives_from",
@@ -14766,6 +14814,12 @@
     {
       "from": "ia-spec:ia/05-platform-configuration-admin",
       "to": "ia-spec:ia/06-trust-safety",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "ia-spec:ia/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -16578,6 +16632,12 @@
     {
       "from": "ia-spec:ia/deep-dives/05-platform-configuration-admin",
       "to": "plan:2026-08-02-architecture-design",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "ia-spec:ia/deep-dives/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -72535,7 +72595,7 @@
     "byEdgeType": {
       "phases_into": 113,
       "constrained_by": 9042,
-      "references": 928,
+      "references": 938,
       "derives_from": 64,
       "implemented_by": 6,
       "split_from": 3

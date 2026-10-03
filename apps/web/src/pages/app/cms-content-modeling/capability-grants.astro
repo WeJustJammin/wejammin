@@ -56,10 +56,7 @@ if (Astro.request.method === 'POST') {
   );
   if (!mutation.ok) {
     if (isStepUpRequiredCode(await mutationFailureCode(mutation)))
-      return Astro.redirect(
-        stepUpTargetForLocation(Astro.url),
-        303,
-      );
+      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
     return mutation;
   }
   return Astro.redirect(consolePath, 303);

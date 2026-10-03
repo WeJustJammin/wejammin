@@ -207,3 +207,4 @@ their existing `config_change_review` and `config_approval` ownership.
 - [[specs/ia/01-identity-authority|Shard 01 — Identity authority and party governance]]
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 - [[specs/2026-08-02-architecture-design|WeJammin — Architecture Design]]
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

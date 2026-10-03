@@ -5,7 +5,7 @@ import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import cloudflare from '@astrojs/cloudflare';
-import { clientChunkGroups } from './client-chunk-boundaries.mjs';
+import { clientChunkOutput } from './client-chunk-boundaries.mjs';
 const runtimeProcess = /** @type {{
   env?: Record<string, string | undefined>;
   argv?: unknown;
@@ -23,7 +23,6 @@ const runtimeArgv = Array.isArray(runtimeProcess.argv)
   ? runtimeProcess.argv
   : [];
 const isAstroDevCommand = runtimeArgv.includes('dev');
-
 /**
  * Astro's Cloudflare entry checks static and fallback assets before invoking
  * Astro middleware. Append one outer fetch boundary after the adapter emits
@@ -73,7 +72,6 @@ worker_entry_default.fetch = __wejamminCreateEdgeFetchHandler(worker_entry_defau
   },
 });
 
-// https://astro.build/config
 export default defineConfig({
   output: 'server',
   session: false,
@@ -81,9 +79,7 @@ export default defineConfig({
   integrations: [react(), edgeSecurityIntegration()],
   vite: {
     build: {
-      rollupOptions: {
-        output: { codeSplitting: { groups: [...clientChunkGroups] } },
-      },
+      rollupOptions: { output: clientChunkOutput },
     },
     optimizeDeps: {
       include: [

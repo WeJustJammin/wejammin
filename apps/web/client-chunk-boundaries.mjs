@@ -75,3 +75,8 @@ export const clientChunkGroups = Object.freeze([
   },
   { name: clientChunkFor },
 ]);
+
+/** The Rolldown `output` option the Astro build applies to browser chunks. */
+export const clientChunkOutput = {
+  codeSplitting: { groups: [...clientChunkGroups] },
+};

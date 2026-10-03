@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { newTestId, closeLaneContexts } from './support/s09-lane-browser';
 import {
   WORKER_ORIGIN,
+  awaitIslandsHydrated,
   completeStepUpViaUi,
   enrollFactorViaUi,
   expireStepUp,
@@ -30,6 +31,7 @@ const STEP_UP = '/step-up?returnTo=%2Fapp%2Fcms-content-modeling';
 
 const settle = async (page: Page, path: string): Promise<void> => {
   await page.goto(path, { waitUntil: 'networkidle' });
+  await awaitIslandsHydrated(page);
   await page.waitForTimeout(400);
 };
 

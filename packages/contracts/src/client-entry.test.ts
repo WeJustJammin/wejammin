@@ -175,7 +175,9 @@ describe('[P2-S09-AC-261] zod-free registry client entry', () => {
       barrel.ContentSchemaRegistryListPageSchema,
     );
     expect(
-      staticValueImports(resolve(import.meta.dirname, 'content-schema-registry/validators.ts')),
+      staticValueImports(
+        resolve(import.meta.dirname, 'content-schema-registry/validators.ts'),
+      ),
     ).toEqual(['zod']);
   });
 });

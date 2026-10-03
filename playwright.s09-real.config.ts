@@ -25,6 +25,10 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   retries: 0,
+  // Waits are conditions, not budgets (those are asserted inside the specs): a
+  // loaded machine may slow a run down, it must not fail it.
+  timeout: 120_000,
+  expect: { timeout: 15_000 },
   testDir: './tests/e2e',
   testMatch: [
     'phase-02-slice-09-content-schema-registry-real-route.spec.ts',

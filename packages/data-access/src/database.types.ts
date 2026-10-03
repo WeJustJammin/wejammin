@@ -2991,6 +2991,38 @@ export type Database = {
           },
         ]
       }
+      admin_mfa_factor_reset_settlements: {
+        Row: {
+          created_at: string
+          factor_id: string
+          factor_version: number
+          outcome: string
+          reset_id: string
+        }
+        Insert: {
+          created_at?: string
+          factor_id: string
+          factor_version: number
+          outcome: string
+          reset_id: string
+        }
+        Update: {
+          created_at?: string
+          factor_id?: string
+          factor_version?: number
+          outcome?: string
+          reset_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_mfa_factor_reset_settlements_reset_id_fkey"
+            columns: ["reset_id"]
+            isOneToOne: false
+            referencedRelation: "admin_mfa_factor_resets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_mfa_factor_resets: {
         Row: {
           completed_at: string | null
@@ -9756,6 +9788,7 @@ export type Database = {
         }
         Returns: string
       }
+      cms_release_route_gate: { Args: { p_request: Json }; Returns: undefined }
       cms_release_schema_migration_event: {
         Args: { p_request: Json }
         Returns: Json

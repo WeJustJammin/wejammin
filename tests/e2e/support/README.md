@@ -80,3 +80,15 @@ The web-side test adapter lives at `apps/web/content-schema-registry-web.mjs`
 and delegates all non-test paths to the production server entry. Its temporary
 Wrangler config is created under the operating-system temp directory, never in
 `apps/web`.
+
+## Real-route server supervision
+
+`run-s09-real-servers.mjs` starts the Worker API and the web Wrangler session as
+detached process groups and fronts the web session with `s09-hold-proxy.mjs` on
+the public port. `wrangler dev` treats any network error in its ProxyWorker as
+fatal to the whole dev session, so the runner restarts the web child (at most 20
+times, killing the orphaned process group first) while the proxy holds in-flight
+requests and replays them to the new child. A parent-death watchdog and the
+shutdown path kill every detached tree, so an interrupted run leaves no server
+behind. `s09-hold-proxy.test.ts` is a Vitest-only unit suite; the functional
+Playwright config ignores `support/*.test.ts`.

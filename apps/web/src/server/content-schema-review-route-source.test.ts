@@ -104,8 +104,8 @@ describe('[DEC-108] protected review route page', () => {
 
   it('routes a native 401 STEP_UP_REQUIRED to the step-up page instead of returning JSON', () => {
     const source = requireSource(REVIEW_PAGE);
-    expect(source).toContain('STEP_UP_REQUIRED');
-    expect(source).toContain('/step-up?returnTo=');
+    expect(source).toContain('isStepUpRequiredCode(');
+    expect(source).toContain('stepUpTargetForLocation(Astro.url)');
   });
 });
 
@@ -132,8 +132,8 @@ describe('[DEC-108] version page native POST allowlist', () => {
 
   it('routes a native 401 STEP_UP_REQUIRED activation to the step-up page', () => {
     const source = requireSource(VERSION_PAGE);
-    expect(source).toContain('STEP_UP_REQUIRED');
-    expect(source).toContain('/step-up?returnTo=');
+    expect(source).toContain('isStepUpRequiredCode(');
+    expect(source).toContain('stepUpTargetForLocation(Astro.url)');
   });
 
   it('[P2-S09-AC-981] sends a submitted review to the protected review route', () => {

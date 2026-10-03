@@ -187,7 +187,7 @@ select set_config('app.cms_rpc', 'true', true);
 select pg_temp.s09d_try(format($q$update platform_private.cms_schema_reviews set state = 'approved', decided_at = clock_timestamp(),
       approval_evidence_hash = repeat('a', 64) where id = %L$q$, pg_temp.s09d_id('g:review'))) as forged_approved \gset
 select pg_temp.s09d_activate('g', 'owner', '{}'::jsonb, 'g:forged', jsonb_build_object('approvalIds', jsonb_build_array(extensions.gen_random_uuid())));
-select ok(pg_temp.s09d_outcome('g:forged') <> 'OK' and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('g:version')) <> 'active',
+select ok(pg_temp.s09d_outcome('g:forged') = 'CONFLICT' and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('g:version')) <> 'active',
   'a forged approved review with a forged decision id cannot satisfy activation [P2-S09-AC-713]');
 
 -- ---------------------------------------- AC714: test humans via CMS-03A-15 ----
@@ -198,17 +198,7 @@ select ok(pg_temp.s09d_outcome('g:forged') <> 'OK' and pg_temp.s09d_read('cms_co
 -- which names the exact (person, organization, capability) set the operator
 -- initialization wrote and nothing else.  Editor and publisher humans are
 -- provisioned through the same command before the guard is asserted clean.
-create or replace function pg_temp.s09e_unprovisioned() returns bigint language sql stable as $body$
-  select count(*) from identity_private.organization_actor_grant ag
-   where ag.organization_id = pg_temp.s09d_id('ownerOrg') and ag.capability_code like 'cms.%'
-     and not exists (select 1 from platform_private.cms_capability_grants g
-                       join platform_private.cms_capability_grant_events e on e.grant_id = g.id and e.aggregate_version = 1
-                      where g.owner_id = ag.organization_id and g.subject_person_ref = ag.person_id
-                        and g.capability_code = ag.capability_code)
-     and not exists (select 1 from platform_private.cms_owner_initialization r
-                      where r.person_id = ag.person_id and r.organization_id = ag.organization_id
-                        and ag.capability_code in ('cms.schema_registry.read', 'cms.schema_designer'))
-$body$;
+-- (the path guard pg_temp.s09e_unprovisioned() lives in dec119/00-support.sqlinc so every integrated path asserts the same rule)
 select pg_temp.s09d_grant_specialist('rev3', 'cms.editor');
 select pg_temp.s09d_grant_specialist('rev3', 'cms.publisher');
 select is((select count(*)::integer from identity_private.organization_actor_grant ag
@@ -236,6 +226,8 @@ select is(pg_temp.s09e_unprovisioned(), 0::bigint, 'the forged owner row is gone
 
 -- ------------------------------ AC715: the second path consumes real producers ----
 select pg_temp.s09d_grant_specialist('owner', 'cms.template_designer');
+select is(pg_temp.s09e_unprovisioned(), 0::bigint,
+  'the template designer the second path adds is provisioned through CMS-03A-15 too: the guard is clean again after that grant [P2-S09-AC-714]');
 select pg_temp.s09d_create_type('tp', 'evp_path2');
 select pg_temp.s09d_to_active('tp');
 select pg_temp.s09w_entry('t1', 'tp', 'Alpha title');
@@ -297,6 +289,8 @@ select ok(pg_temp.s09d_outcome('tq:activate') = 'OK'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('tq:version')) = 'active'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('tp:version')) = 'superseded',
   'the second atomic switch completes over the real entries, the real template and the real review [P2-S09-AC-715]');
+select is(pg_temp.s09e_unprovisioned(), 0::bigint,
+  'after both paths every CMS capability row of every test human, the template designer included, has an aggregate and a granted event from CMS-03A-15 [P2-S09-AC-714]');
 
 select * from finish();
 rollback;

@@ -25,6 +25,16 @@ language sql as $body$ select pg_temp.p_block_expect(p_label, pg_temp.p_block_re
 
 -- ================================================ AC103 strict request, AC104 identity ====
 select is(pg_temp.p_ok('r:ok', 'p240blk', 1), 'ok', 'control: a complete signed registration is accepted [P2-S09-AC-103]');
+-- BE03a: BlockDefinitionVersionResource is ResourceMeta (id, version, contentHash, createdAt, updatedAt) plus the
+-- block members, a strict object.  The Worker validates the RPC answer against that schema, so a missing member is a
+-- 502 for a registration that already committed.
+select is((select string_agg(k, ',' order by k) from jsonb_object_keys(pg_temp.s09d_resp('r:ok')) k),
+  'blockKey,blockVersion,contentHash,createdAt,id,lifecycle,propsSchemaHash,propsSchemaRef,propsSchemaSnapshot,propsSnapshotAttestation,propsSnapshotHash,releaseDigest,releaseKeyId,releaseNonceHash,releaseRawBodyHash,releaseSignatureHash,releaseVerifiedAt,rendererRef,resourceKind,updatedAt,version',
+  'the registration resource carries exactly the BlockDefinitionVersionResource members, ResourceMeta included: a strict 201 resource with the full worker-only registration and verification evidence [P2-S09-AC-103] [P2-S09-AC-122]');
+select ok((pg_temp.s09d_resp('r:ok')->>'contentHash') ~ '^[a-f0-9]{64}$'
+    and (pg_temp.s09d_resp('r:ok')->>'createdAt')::timestamptz is not null
+    and (pg_temp.s09d_resp('r:ok')->>'updatedAt')::timestamptz = (pg_temp.s09d_resp('r:ok')->>'createdAt')::timestamptz,
+  'contentHash is a lowercase SHA-256 and an immutable registration has updatedAt equal to createdAt [P2-S09-AC-103]');
 select is(pg_temp.p_block_expect('r:extra', pg_temp.p_sign(pg_temp.p_block_request('p240blk', 2) || '{"surprise":true}', 'CMS-03A-05'), 'VALIDATION_FAILED'), 'ok',
   'an unknown member is refused: the request is a strict object [P2-S09-AC-103]');
 select is(pg_temp.p_block_expect('r:miss:' || k, pg_temp.p_sign(pg_temp.p_block_request('p240blk', 2) - k, 'CMS-03A-05'), 'VALIDATION_FAILED'), 'ok',

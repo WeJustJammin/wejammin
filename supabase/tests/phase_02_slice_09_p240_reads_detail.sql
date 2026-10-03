@@ -81,7 +81,7 @@ select is(pg_temp.s09d_resp('a:other'), pg_temp.s09d_resp('a:absent'), 'the conc
 select is(pg_temp.s09d_detail('a:other'), pg_temp.s09d_detail('a:absent'), 'and carry no differing detail [P2-S09-AC-142]');
 select is(pg_temp.p_get('a:other:own', 'other', pg_temp.s09d_id('o:type'), pg_temp.s09d_id('o:version')), 'OK', 'the other organization reads its own version [P2-S09-AC-141]');
 select pg_temp.s09d_rpc('a:ctx', 'platform_api.cms_get_content_type_version', 'owner', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version')), false, jsonb_build_object('actingPartyId', pg_temp.s09d_id('otherOrg')));
-select ok(pg_temp.s09d_outcome('a:ctx') in ('FORBIDDEN', 'NOT_FOUND'), 'an acting context the human is not bound to is refused: the acting context is rechecked, never widened [P2-S09-AC-141]');
+select ok(pg_temp.s09d_outcome('a:ctx') = 'FORBIDDEN', 'an acting context the human is not bound to is refused: the acting context is rechecked, never widened [P2-S09-AC-141]');
 select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user_id', '', true), set_config('app.actor_person_id', '', true), pg_temp.set_jwt_claim('sub', '', true);
 select pg_temp.s09d_call('a:anon', 'platform_api.cms_get_content_type_version', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version')));
 select is(pg_temp.s09d_outcome('a:anon'), 'UNAUTHENTICATED', 'no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-141]');

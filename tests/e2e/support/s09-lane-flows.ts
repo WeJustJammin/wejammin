@@ -9,6 +9,30 @@ import { totpCode } from './s09-lane-totp';
  */
 
 export const REGISTRY = '/app/cms-content-modeling';
+/**
+ * How long a lane flow waits for something asynchronous (an island hydrating,
+ * a dry-run job sealing, a redirect landing). These are conditions, not budgets:
+ * the measured budgets (LCP, INP, bundle size) are asserted elsewhere. The wait
+ * is generous so a loaded machine slows a run down without failing it.
+ */
+export const LANE_WAIT_MS = 45_000;
+
+/**
+ * Every Astro island on the page has finished hydrating (Astro removes the
+ * island's `ssr` attribute once it has). Real keyboard and focus assertions
+ * must not start before that, or a late re-render changes what they read.
+ */
+export const awaitIslandsHydrated = async (page: Page): Promise<void> => {
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('astro-island')].every(
+        (island) => !island.hasAttribute('ssr'),
+      ),
+    undefined,
+    { timeout: LANE_WAIT_MS },
+  );
+};
+
 export const WORKER_ORIGIN = 'http://127.0.0.1:8788';
 export const WEB_ORIGIN = 'http://127.0.0.1:4324';
 
@@ -21,7 +45,7 @@ export const waitForWorkbench = async (page: Page): Promise<void> => {
   await expect(
     page.locator('[data-workbench="content-schema-registry"]'),
   ).toHaveAttribute('data-content-schema-registry-hydrated', 'true', {
-    timeout: 15_000,
+    timeout: LANE_WAIT_MS,
   });
 };
 
@@ -92,21 +116,21 @@ export const startDryRunViaUi = async (page: Page): Promise<void> => {
   await page.getByRole('button', { name: 'Save dry-run request' }).click();
   await expect(page.locator('[data-cms-dry-run-status]')).toContainText(
     /dry run is queued/iu,
-    { timeout: 15_000 },
+    { timeout: LANE_WAIT_MS },
   );
 };
 
 export const waitForSealedDryRun = async (page: Page): Promise<void> => {
   await expect(page.locator('[data-cms-dry-run-status]')).toContainText(
     /sealed dry run passed/iu,
-    { timeout: 20_000 },
+    { timeout: LANE_WAIT_MS },
   );
 };
 
 /** Submit the sealed dry run for review; resolves with the review route path. */
 export const submitReviewViaUi = async (page: Page): Promise<string> => {
   await page.getByRole('button', { name: 'Save review submission' }).click();
-  await page.waitForURL(/\/schema-reviews\//u, { timeout: 20_000 });
+  await page.waitForURL(/\/schema-reviews\//u, { timeout: LANE_WAIT_MS });
   await waitForWorkbench(page);
   return new URL(page.url()).pathname;
 };
@@ -142,7 +166,7 @@ const openEnrollment = async (page: Page): Promise<void> => {
       })
       .click();
     await expect(name).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
+  }).toPass({ timeout: LANE_WAIT_MS });
 };
 
 /** The manual entry key as an authenticator app would take it (no spaces). */
@@ -151,7 +175,7 @@ export const readManualKey = async (page: Page): Promise<string> => {
     .locator('code')
     .filter({ hasText: /^[A-Z2-7 ]{30,}$/u })
     .first();
-  await expect(code).toBeVisible({ timeout: 15_000 });
+  await expect(code).toBeVisible({ timeout: LANE_WAIT_MS });
   return (await code.innerText()).replaceAll(/\s/gu, '');
 };
 
@@ -171,7 +195,7 @@ export const enrollFactorViaUi = async (
     .fill(await totpCode(secret, Date.now()));
   await page.getByRole('button', { name: 'Verify and finish' }).click();
   await expect(page.getByRole('table')).toContainText(friendlyName, {
-    timeout: 15_000,
+    timeout: LANE_WAIT_MS,
   });
   return secret;
 };
@@ -201,7 +225,7 @@ export const completeStepUpViaUi = async (
     .getByRole('textbox', { name: '6-digit code' })
     .fill(await totpCode(secret, Date.now()));
   await page.getByRole('button', { name: 'Verify' }).click();
-  await page.waitForURL(expectUrl, { timeout: 20_000 });
+  await page.waitForURL(expectUrl, { timeout: LANE_WAIT_MS });
 };
 
 /** Read one JSON resource straight from the Worker API as the page's session. */
@@ -237,7 +261,7 @@ export const decideViaUi = async (
     .check();
   await page.getByRole('button', { name: 'Save review decision' }).click();
   await expect(page.getByText(/decision (was )?recorded/iu)).toBeVisible({
-    timeout: 15_000,
+    timeout: LANE_WAIT_MS,
   });
 };
 

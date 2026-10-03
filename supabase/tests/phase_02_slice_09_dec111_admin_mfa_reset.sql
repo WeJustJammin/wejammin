@@ -266,6 +266,27 @@ select is((select count(*)::integer from platform_private.outbox_events where ev
 select is((select count(*)::integer from platform_private.outbox_events where event_type = 'identity.security-notification.requested.v1'
             and payload->>'securityEventId' in (select id::text from identity.security_events where action = 'mfa.factors.reset')), 1,
   'the target''s security-notification request references the security event only [P2-S09-AC-895] [P2-S09-AC-931]');
+-- AC895 "safeTemplateCode mfa_factors_reset": the notifier's delivery command maps the reset's generic reason to exactly that
+-- template.  The in-app recorder is the database half of that mapping: for the target's real factors-reset security event it
+-- accepts the code mfa_factors_reset, records it against the account holder, and refuses the other two codes for that event.
+create temp table m_reset_notice on commit drop as
+select e.id as event_id, e.request_id
+  from identity.security_events e
+ where e.action = 'mfa.factors.reset' and e.actor_auth_user_id = pg_temp.m_uid(13);
+create function pg_temp.m_reset_notice_request(p_code text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('notificationId', (select event_id from m_reset_notice),
+    'eventType', 'identity.security-notification.requested.v1', 'recipientClass', 'account_holder',
+    'operationId', (select request_id from m_reset_notice), 'safeTemplateCode', p_code, 'requestId', extensions.gen_random_uuid())
+$body$;
+select is(platform_api.in_app_notification_record(pg_temp.m_reset_notice_request('mfa_factors_reset'))->>'deliveryState', 'recorded',
+  'the target''s factors-reset security event is delivered with the safe template code mfa_factors_reset [P2-S09-AC-895]');
+select is((select safe_template_code || '|' || recipient_class || '|' || (recipient_auth_user_id = pg_temp.m_uid(13))::text
+             from identity.in_app_notification_intents where notification_id = (select event_id from m_reset_notice)),
+  'mfa_factors_reset|account_holder|true', 'the recorded template is mfa_factors_reset and the recipient is the target account holder [P2-S09-AC-895]');
+select throws_ok($$select platform_api.in_app_notification_record(pg_temp.m_reset_notice_request('mfa_factor_added'))$$,
+  'P0001', 'INVALID_REQUEST', 'the factor-added template is refused for a factors-reset event: the template follows the event reason [P2-S09-AC-895]');
+select throws_ok($$select platform_api.in_app_notification_record(pg_temp.m_reset_notice_request('mfa_factor_removed'))$$,
+  'P0001', 'INVALID_REQUEST', 'and so is the factor-removed template [P2-S09-AC-895]');
 select ok(not exists (select 1 from platform_private.outbox_events where event_type like 'admin.mfa-factor.reset%' and payload::text ~* '(factor|provider|secret|reason|code)Id?'
     and payload::text !~ '^\{"resetId"'), 'no event carries a factor identifier [P2-S09-AC-947]');
 select ok((select state::text from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(13)) = 'active', 'the account state is unchanged [P2-S09-AC-896]');
@@ -285,6 +306,11 @@ select is((select md5(coalesce(string_agg(t::text, ',' order by id), '')) from p
 select pg_temp.m_reset('r:replay', 'designer2', 'rev1', 'reset-key-ac945-0100', 'lost every verified factor');
 select is(pg_temp.m_out('r:replay'), 'OK', 'the same key and request replays [P2-S09-AC-930]');
 select is(pg_temp.m_resp('r:replay')->>'resetId', pg_temp.m_resp('r:ok')->>'resetId', 'to the same reset');
+select is(pg_temp.m_resp('r:replay') - 'pendingProviderFactorIds', pg_temp.m_resp('r:ok') - 'pendingProviderFactorIds' - 'targetAuthUserId',
+  'the replay returns the first response: the same reset view member for member (only the Worker-internal hand-off members, the provider ids to remove and the target auth user, are not repeated) [P2-S09-AC-930]');
+select is((select string_agg(k, ',' order by k) from jsonb_object_keys(pg_temp.m_resp('r:replay') - 'pendingProviderFactorIds') k),
+  'mfaVersion,outboxEventId,removedFactorCount,resetId,state,targetPersonId',
+  'and the replayed view carries exactly the six public members, no factor or provider identifier [P2-S09-AC-930]');
 select is(jsonb_array_length(pg_temp.m_resp('r:replay')->'pendingProviderFactorIds'), 0, 'a replay never asks the Worker to resend a provider removal');
 select is(pg_temp.m_one('select count(*)::text from platform_private.admin_mfa_factor_resets')::integer, 1, 'and creates no second row');
 select pg_temp.m_reset('r:conflict', 'designer2', 'rev1', 'reset-key-ac945-0100', 'a different reason');

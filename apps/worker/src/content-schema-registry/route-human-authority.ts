@@ -8,7 +8,8 @@ import {
 import { CMS_STEP_UP_ALLOWED_METHODS } from './production-errors';
 import { rateLimitedError } from './route-rate-refusal';
 import { reportRateRefusal } from './route-rate-telemetry';
-import { errorResponse, policyFor, setRateHeaders } from './route-response';
+import type { Refuse } from './route-refusal-telemetry';
+import { policyFor, setRateHeaders } from './route-response';
 import type { FeatureContext } from './route-types';
 import type {
   ContentSchemaRegistryDependencies,
@@ -54,37 +55,41 @@ export const partyLimitFor = (
  * - steps 4 and 5 `authenticate` (verified session, then acting context);
  * - step 7 `authorize` (route capability, step-up freshness, then the per-user
  *   and per-party quota).
- * A refusal is the complete response and the operation port is never reached.
+ * A refusal is the complete response and the operation port is never reached;
+ * each gate answers through the caller's `refuse`, which reports the refusal as
+ * sanitized denial telemetry before returning it.
  */
 export const createHumanAuthority = (
   dependencies: ContentSchemaRegistryDependencies,
 ) => {
-  const refuse = (
+  const origin = (
     context: FeatureContext,
-    error: ContentSchemaRegistryError,
-  ): Response => errorResponse(context, error, context.get('requestId'));
-
-  const origin = (context: FeatureContext): Response | null => {
+    refuse: Refuse,
+  ): Promise<Response | null> => {
     const refusal = checkOrigin(context.req.raw, dependencies.humanOrigins);
-    return refusal === null ? null : refuse(context, refusal);
+    return refusal === null ? Promise.resolve(null) : refuse(refusal);
   };
 
-  const csrf = (context: FeatureContext): Response | null => {
+  const csrf = (
+    context: FeatureContext,
+    refuse: Refuse,
+  ): Promise<Response | null> => {
     const refusal = csrfErrorIfCookie(context.req.raw);
-    return refusal === null ? null : refuse(context, refusal);
+    return refusal === null ? Promise.resolve(null) : refuse(refusal);
   };
 
   const authenticate = async (
     context: FeatureContext,
+    refuse: Refuse,
   ): Promise<HumanAuthentication> => {
     const resolved = await dependencyDeadline(
       (signal) => dependencies.resolveSession(context.req.raw, signal),
       dependencies.deadlineMs ?? 15_000,
     );
-    if (!resolved.ok) return { ok: false, response: refuse(context, resolved) };
+    if (!resolved.ok) return { ok: false, response: await refuse(resolved) };
     const invalidSession = validHumanSession(resolved.value);
     if (invalidSession !== null)
-      return { ok: false, response: refuse(context, invalidSession) };
+      return { ok: false, response: await refuse(invalidSession) };
     return { ok: true, session: resolved.value };
   };
 
@@ -92,14 +97,15 @@ export const createHumanAuthority = (
     context: FeatureContext,
     operationId: HumanMutationOperationId | HumanReadOperationId,
     session: ContentSchemaRegistrySession,
+    refuse: Refuse,
   ): Promise<Response | null> => {
     const startedAt = dependencies.now?.() ?? Date.now();
     const deadlineMs = dependencies.deadlineMs ?? 15_000;
     const policy = policyFor(operationId);
     const capability = requireCapability(session, operationId);
-    if (capability !== null) return refuse(context, capability);
+    if (capability !== null) return refuse(capability);
     if (policy.stepUp === 'required' && !session.mfaFresh)
-      return refuse(context, stepUpRequired());
+      return refuse(stepUpRequired());
     const rate = await dependencyDeadline(
       (signal) =>
         dependencies.rateLimit(
@@ -118,7 +124,7 @@ export const createHumanAuthority = (
         ),
       deadlineMs,
     );
-    if (!rate.ok) return refuse(context, rate);
+    if (!rate.ok) return refuse(rate);
     setRateHeaders(context, rate.value);
     if (!rate.value.allowed) {
       await reportRateRefusal(
@@ -130,7 +136,6 @@ export const createHumanAuthority = (
         startedAt,
       );
       return refuse(
-        context,
         rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
       );
     }

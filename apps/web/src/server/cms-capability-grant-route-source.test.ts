@@ -93,8 +93,8 @@ describe('[DEC-119] capability grant console page', () => {
   });
 
   it('routes a native 401 STEP_UP_REQUIRED to the step-up page and redirects success back', () => {
-    expect(source).toContain('STEP_UP_REQUIRED');
-    expect(source).toContain('/step-up?returnTo=');
+    expect(source).toContain('isStepUpRequiredCode(');
+    expect(source).toContain('stepUpTargetForLocation(Astro.url)');
     expect(source).toContain('/app/cms-content-modeling/capability-grants');
   });
 

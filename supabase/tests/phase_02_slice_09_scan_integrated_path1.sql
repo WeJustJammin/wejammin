@@ -79,5 +79,7 @@ select ok(pg_temp.s09x_via_rpc('cms_schema_reviews') > 0 and pg_temp.s09x_via_rp
 select is(pg_temp.s09x_direct(), 0::bigint,
   'no review, decision, assignment, dry-run, plan or evidence row was written by a direct statement [P2-S09-AC-711]');
 
+select is(pg_temp.s09e_unprovisioned(), 0::bigint,
+  'every CMS capability row of every human of this path (designer, reviewer, specialist, author) was provisioned through CMS-03A-15: no direct organization_actor_grant row satisfies the path [P2-S09-AC-714]');
 select * from finish();
 rollback;

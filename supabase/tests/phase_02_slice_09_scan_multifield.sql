@@ -118,6 +118,17 @@ select pg_temp.s09d_call('n:seal', 'platform_api.cms_finalize_schema_migration_d
   (pg_temp.s09w_base('n') - 'schemaVersionId') || jsonb_build_object('expectedVersion', pg_temp.s09w_plan_version('n'),
     'cursor', pg_temp.s09w_plan_cursor('n'), 'sourceCount', '4', 'targetCount', '2', 'rowErrorCount', '2'));
 select is(pg_temp.s09m_state('n', 'state'), 'blocked', 'a multi-field scan with row errors seals blocked');
+-- AC963: a COMPLETED attempt whose result is `failed` (row errors) is projected through the real CMS-03A-07 read from the
+-- immutable report row only: the six sealed members equal the stored counts and hashes and the result is the stored one
+-- (the column holds `fail`, the BE00 resource names it `failed`).
+select ok((select pr->>'state' = 'completed' and pr->>'result' = 'failed' and pr ?& array['sourceCount', 'targetCount', 'rowErrorCount', 'sourceHash', 'targetHash', 'reportHash']
+    and (pr->>'sourceCount')::bigint = r.source_count and (pr->>'targetCount')::bigint = r.target_count
+    and (pr->>'rowErrorCount')::bigint = r.row_error_count and r.row_error_count = 2
+    and pr->>'sourceHash' = r.source_hash and pr->>'targetHash' = r.target_hash
+    and pr->>'reportHash' = platform_private.cms_jcs_sha256(r.report)
+    and r.state = 'completed' and r.result = 'fail'
+    from (select pg_temp.s09d_get_pr('n') as pr) p, platform_private.cms_schema_dry_run_reports r where r.id = pg_temp.s09d_id('n:dryRun')),
+  'a completed attempt with result failed reads its counts, hashes and result only from the immutable report row, through the real detail read [P2-S09-AC-963]');
 
 -- --------------------------------- multi-field identity.revalidate, clean ----
 select pg_temp.s09d_create_type('q', 'multiclean');

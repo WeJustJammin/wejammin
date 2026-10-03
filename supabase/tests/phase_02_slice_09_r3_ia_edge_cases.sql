@@ -305,6 +305,37 @@ select is(pg_temp.s09d_outcome('u:selfassign'), 'CONFLICT', 'holding the self-gr
 select pg_temp.s09d_decide('u', 'owner', 'approve', '{}'::jsonb, 'u:selfdecide');
 select is(pg_temp.s09d_outcome('u:selfdecide'), 'FORBIDDEN', 'and a direct decision by the self-granted submitter is refused at decision time (no assignment, review readable): FORBIDDEN [P2-S09-AC-1138]');
 select is((select count(*) from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('u:review')), 0::bigint, 'the separation of duties recorded no decision [P2-S09-AC-1138]');
+-- The decision trigger itself: even a direct write of a decision whose reviewer is the review's submitter is refused by the
+-- append guard with a plain CONFLICT (the submitter branch), distinct from the assignment-owner branch it would reach next.
+create or replace function pg_temp.r3_try(p_sql text) returns text language plpgsql as $body$
+declare message_text text; detail_text text;
+begin
+  execute p_sql;
+  return 'ACCEPTED';
+exception when others then
+  get stacked diagnostics message_text = message_text, detail_text = pg_exception_detail;
+  return message_text || '|' || coalesce(detail_text, '');
+end;
+$body$;
+select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a hand-written decision by the submitter of an open review; the guard must refuse it, no decision is claimed.
+select is(pg_temp.r3_try(format($q$insert into platform_private.cms_schema_review_decisions(
+      owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
+      capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
+    select review.owner_id, review.id, extensions.gen_random_uuid(), 1, review.submitter_person_ref, repeat('a', 64),
+      'cms.schema_review', 1, 'approve', review.definition_hash, clock_timestamp()
+    from platform_private.cms_schema_reviews review where review.id = %L and review.state = 'open'$q$, pg_temp.s09d_id('u:review'))),
+  'CONFLICT|', 'a decision whose reviewer is the submitter (here the self-granted owner) is refused by the decision trigger with a plain CONFLICT: the submitter-is-not-reviewer rule holds at decision time [P2-S09-AC-1138]');
+-- NEGATIVE CONTROL: the same write for a reviewer who is NOT the submitter passes the submitter branch and stops at the assignment-owner branch, so the plain CONFLICT above is the submitter rule.
+select is(pg_temp.r3_try(format($q$insert into platform_private.cms_schema_review_decisions(
+      owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
+      capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
+    select review.owner_id, review.id, extensions.gen_random_uuid(), 1, %L::uuid, repeat('a', 64),
+      'cms.schema_review', 1, 'approve', review.definition_hash, clock_timestamp()
+    from platform_private.cms_schema_reviews review where review.id = %L and review.state = 'open'$q$,
+    pg_temp.s09d_actor_id('rev1', 'person'), pg_temp.s09d_id('u:review'))),
+  'CONFLICT|decision_assignment_owner_mismatch', 'control: a non-submitter reviewer without an assignment passes the submitter branch and is refused at the assignment branch [P2-S09-AC-1138]');
+select set_config('app.cms_rpc', '', true);
 -- When another designer submitted, the self-granted owner may be assigned and decide.
 select pg_temp.s09d_create_type('v', 'r3ia_v');
 select pg_temp.s09d_dry_run('v', 'designer2');
@@ -318,8 +349,21 @@ select is(pg_temp.s09d_outcome('v:decide:owner'), 'OK', 'and decides: the separa
 -- ===================================================================== AC1133 ==
 select pg_temp.s09g_member('rev1');
 select pg_temp.s09g_grant('n:g', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(3));
-select ok(pg_temp.s09g_warp('owner', 'cms.schema_designer', -5, -1) and not pg_temp.s09g_holds('owner', 'cms.schema_designer'),
-  'fixture: the owner''s own cms.schema_designer grant lapsed yesterday and the owner holds no current CMS grant');
+-- The owner holds its backfilled aggregates and the three self-grants made above; every one of them lapses, so
+-- the owner holds no current CMS grant of any kind (not only the one capability the earlier version lapsed).
+-- (collected first: the warp alters the grants table, which a query still reading it would block)
+create temp table r3_owner_caps on commit drop as
+select distinct capability_code from platform_private.cms_capability_grants
+ where subject_person_ref = pg_temp.s09d_actor_id('owner', 'person')::uuid;
+select ok((select bool_and(pg_temp.s09g_warp('owner', c.capability_code, -5, -1)) from r3_owner_caps c)
+    and not exists (select 1 from unnest(array['cms.schema_designer', 'cms.template_designer', 'cms.taxonomy_curator', 'cms.editor', 'cms.reviewer',
+        'cms.reviewer.policy', 'cms.reviewer.legal', 'cms.reviewer.security', 'cms.reviewer.financial', 'cms.publisher',
+        'cms.navigation_editor', 'cms.media_contributor', 'cms.media_curator', 'cms.author']) cap where pg_temp.s09g_holds('owner', cap)),
+  'fixture: every one of the owner''s own CMS grants lapsed yesterday and the owner holds none of the fourteen grantable capabilities');
+select is((select count(*) from platform_private.cms_capability_grants g
+            where g.subject_person_ref = pg_temp.s09d_actor_id('owner', 'person')::uuid and g.state = 'active'
+              and g.valid_from <= pg_temp.s09g_today() and g.valid_through >= pg_temp.s09g_today()), 0::bigint,
+  'fixture: the owner holds no valid CMS grant of any kind, canonical aggregates and projection alike [P2-S09-AC-1133]');
 select count(*) as n_persons from platform_private.person_party \gset
 select count(*) as n_parties from platform_private.party \gset
 select count(*) as n_members from identity_private.membership_tenure \gset

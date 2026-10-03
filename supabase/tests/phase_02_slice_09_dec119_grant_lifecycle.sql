@@ -48,7 +48,16 @@ update platform_private.acting_context_binding set last_seen_at = clock_timestam
 select pg_temp.s09g_renew('n:absent', 'owner', extensions.gen_random_uuid(), '1', pg_temp.s09g_day(8));
 select is(pg_temp.s09d_outcome('n:absent'), 'NOT_FOUND', 'an absent grant is 404');
 select pg_temp.s09g_revoke('v:absent', 'owner', extensions.gen_random_uuid(), '1');
-select is(pg_temp.s09d_outcome('v:absent'), 'NOT_FOUND', 'revoking an absent grant is 404');
+select is(pg_temp.s09d_outcome('v:absent'), 'NOT_FOUND', 'revoking an absent grant is 404 [P2-S09-AC-593]');
+-- AC593 "hidden, absent or cross-organization grant": an identifier that names something that exists but is not a grant of
+-- this owner (the owner organization itself, a grant EVENT of another aggregate) is the same refusal as an absent id.  No
+-- foreign-organization aggregate can be produced (cms_capability_grants exist only for the receipt organization), so the
+-- identifiers a caller can name that are not its grants are exactly these.
+select pg_temp.s09g_revoke('v:notgrant', 'owner', pg_temp.s09d_id('ownerOrg'), '1');
+select pg_temp.s09g_revoke('v:event', 'owner', (select id from platform_private.cms_capability_grant_events order by created_at, id limit 1), '1');
+select is((select count(distinct (state, message, coalesce(detail, ''))) from s09d_probe where label in ('v:absent', 'v:notgrant', 'v:event')), 1::bigint,
+  'an existing id that is not one of the owner''s grants (the organization, a grant event) is byte-for-byte the absent-grant refusal: SQLSTATE, message and detail [P2-S09-AC-593]');
+select is(pg_temp.s09d_outcome('v:notgrant') || '/' || pg_temp.s09d_outcome('v:event'), 'NOT_FOUND/NOT_FOUND', 'and that refusal is NOT_FOUND [P2-S09-AC-593]');
 select pg_temp.s09d_rpc('n:badid', 'platform_api.cms_renew_capability_grant', 'owner', jsonb_build_object(
   'grantId', 'not-a-uuid', 'expectedVersion', '1', 'validThrough', pg_temp.s09g_day(8),
   'idempotencyKey', pg_temp.s09g_key('badid')), true);
@@ -169,7 +178,7 @@ for each row execute function public.s09g_fail_outbox();
 select pg_temp.s09g_fingerprint() as atomic_before \gset
 select pg_temp.s09g_renew('at:renew', 'owner', pg_temp.s09d_id('gE'), '4', pg_temp.s09g_day(12));
 select pg_temp.s09g_revoke('at:revoke', 'owner', pg_temp.s09d_id('gA'), '6');
-select ok(pg_temp.s09d_outcome('at:renew') not in ('OK', 'MISSING') and pg_temp.s09d_outcome('at:revoke') not in ('OK', 'MISSING'),
+select ok(pg_temp.s09d_outcome('at:renew') = 'S09G_FORCED_OUTBOX_FAILURE' and pg_temp.s09d_outcome('at:revoke') = 'S09G_FORCED_OUTBOX_FAILURE',
   'a failing outbox write fails both commands [P2-S09-AC-560] [P2-S09-AC-588]');
 select is(pg_temp.s09g_fingerprint(), :'atomic_before', 'the failures rolled back aggregate, projection, event, audit, outbox and idempotency');
 drop trigger s09g_fail_outbox on platform_private.outbox_events;

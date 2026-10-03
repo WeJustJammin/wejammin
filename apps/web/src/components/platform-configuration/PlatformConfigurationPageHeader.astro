@@ -1,5 +1,8 @@
 ---
-import { ADMIN_MFA_RESET_ROUTE } from '../../server/admin-mfa-reset-page-context';
+import {
+  ADMIN_MFA_RESET_ROUTE,
+  showsAdminMfaResetEntry,
+} from '../../server/admin-mfa-reset-page-context';
 
 interface Props {
   readonly pageDescription: string;
@@ -8,7 +11,7 @@ interface Props {
   readonly tab: string;
   readonly initialQuery: Readonly<Record<string, string>>;
   /** Only an actor whose snapshot holds the reset capability sees the entry. */
-  readonly showMfaReset?: boolean;
+  readonly capabilitySnapshot?: readonly string[];
 }
 
 const {
@@ -17,7 +20,7 @@ const {
   selectedId,
   tab,
   initialQuery,
-  showMfaReset = false,
+  capabilitySnapshot = [],
 } = Astro.props;
 const settingsContextKeys = [
   'key',
@@ -81,7 +84,7 @@ const auditHref = sectionHref('audit');
       >Audit activity</a
     >
     {
-      showMfaReset ? (
+      showsAdminMfaResetEntry(capabilitySnapshot) ? (
         <a href={ADMIN_MFA_RESET_ROUTE}>Reset two-step verification</a>
       ) : null
     }

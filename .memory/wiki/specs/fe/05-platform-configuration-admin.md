@@ -916,3 +916,4 @@ None. New product or architecture choices must re-open their originating locked 
 
 ### References
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

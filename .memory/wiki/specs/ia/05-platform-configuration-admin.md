@@ -359,3 +359,4 @@ All events use Shard 00 identifier-only envelopes.
 - [[specs/ia/04-cms-delivery-media|Shard 04 — CMS navigation, media and delivery]]
 - [[specs/2026-08-02-architecture-design|WeJammin — Architecture Design]]
 - [[specs/ia/06-trust-safety|Shard 06 — Trust, safety, disputes and evidence]]
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

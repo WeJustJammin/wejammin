@@ -3,7 +3,6 @@ import '@wejammin/ui/styles.css';
 import '../../styles/platform-configuration.css';
 import AdminWorkspaceOperationsWorkbench from './AdminWorkspaceOperationsWorkbench';
 import PlatformConfigurationPageHeader from './PlatformConfigurationPageHeader.astro';
-import { showsAdminMfaResetEntry } from '../../server/admin-mfa-reset-page-context';
 import PlatformConfigurationStatus from './PlatformConfigurationStatus.astro';
 import SettingsFlagsRuntimeWorkbench from './SettingsFlagsRuntimeWorkbench';
 import type {
@@ -58,7 +57,6 @@ const {
   adminInitial,
   adminAccess,
 } = Astro.props;
-
 const pageDescription =
   state === 'degraded'
     ? 'Platform configuration is temporarily unavailable. Protected changes remain disabled.'
@@ -126,7 +124,7 @@ const pageTitle = `${titleRecord} (${state}) | Platform configuration | WeJammin
         selectedId={selectedId}
         tab={tab}
         initialQuery={initialQuery}
-        showMfaReset={showsAdminMfaResetEntry(capabilitySnapshot)}
+        capabilitySnapshot={capabilitySnapshot}
       />
       <PlatformConfigurationStatus
         state={state}

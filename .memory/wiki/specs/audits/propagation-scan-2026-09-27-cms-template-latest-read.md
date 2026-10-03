@@ -43,3 +43,6 @@ graph; do not repeat the already-proven local 409 flow as a missing prerequisite
 
 ### Phases into
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
+
+### References
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

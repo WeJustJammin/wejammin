@@ -242,6 +242,8 @@ from (values (jsonb_build_object('locale_config_hash', repeat('A', 64))), (jsonb
   (jsonb_build_object('locale_config_hash', repeat('a', 63)))) as c(over);
 select is(pg_temp.s09d_scalar('select format_type(a.atttypid, a.atttypmod) from pg_attribute a where a.attrelid = ''platform_private.cms_content_type_versions''::regclass and a.attname = ''locale_config_hash'''),
   'character(64)', 'locale_config_hash is char(64) [P2-S09-AC-1202]');
+select is(pg_temp.s09d_scalar('select format_type(a.atttypid, a.atttypmod) from pg_attribute a where a.attrelid = ''platform_private.cms_schema_reviews''::regclass and a.attname = ''locale_config_hash'' and not a.attisdropped'),
+  'character(64)', 'cms_schema_reviews.locale_config_hash is exactly char(64), the type of the candidate version value it must equal [P2-S09-AC-1204]');
 select is(pg_temp.s09e_check('cms_schema_reviews', 'locale_config_hash', (select review_done from s09e_ids), '{"locale_config_hash":null}'),
   'control:ACCEPTED|override:REJECTED:23502:locale_config_hash', 'cms_schema_reviews.locale_config_hash is NOT NULL [P2-S09-AC-1204]');
 select is(pg_temp.s09e_check('cms_schema_reviews', 'cms_schema_reviews_locale_config_hash_check', (select review_done from s09e_ids),

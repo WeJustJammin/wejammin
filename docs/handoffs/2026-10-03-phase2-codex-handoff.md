@@ -1,6 +1,6 @@
 # Phase 2 — Codex continuation handoff (from Claude)
 
-**Status:** live document, refreshed at every Claude checkpoint. Last refresh: 2026-10-03 16:45 EDT.
+**Status:** live document, refreshed at every Claude checkpoint. Last refresh: 2026-10-03 16:55 EDT.
 **Why this exists:** the owner asked Claude to hand Phase 2 to Codex when Claude's usage reaches its limit.
 **Goal (owner, verbatim intent):** finish Phase 2 Slices 09–17 through `/implement-slice`. Do not stop until Phase 2 is complete. Clean up every completed worktree and branch as you go, and leave no stale worktrees, branches or temp files.
 
@@ -65,7 +65,7 @@
   - Running at the last refresh (workflow `wf_7194570c-35c`): DB2 finishing SEC-2, then DB3, then WEB2. Check the lane reports for their final state.
     - DB3 covers: the `cms_json_bounded` type-safety fix, the MFA settlement receipt, D-IDEM (`IDEMPOTENCY_MISMATCH` instead of `CONFLICT`), AC064 literal null, SEC-5 release-route 403/404, SEC-3 nonce/denial telemetry, SEC-8 owner-without-grants tests, disjunctive pgTAP assertions, and race-runner JSON output.
     - WEB2 covers: AC1127 draft persistence and consolidation, the "ownerFull" label defect, the AC261 bundle reduction (the real build is ~141.7 KB gzipped against a 90 KB budget), AC233 input, AC1122, AC248, the persona fixture, the AC1108 marker, and the stability problem where the Wrangler "Network connection lost" crash forced s09-real to be split into 4 runs.
-  - Latest WIP checkpoint: `8a411d6b` (not pushed). Every lane's later output is uncommitted until the next checkpoint commit.
+  - Latest WIP checkpoint: `d8f9de1f` (not pushed). DB2 (SEC-2) finished: `pnpm db:verify` green, 197 files / 8076 tests, db:api-test 22, races 6/6. Every lane's later output is uncommitted until the next checkpoint commit.
 
 ## Next steps, in order
 

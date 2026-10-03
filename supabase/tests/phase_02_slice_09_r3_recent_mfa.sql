@@ -116,6 +116,26 @@ select pg_temp.s09d_rpc('r:renew:unverified', 'platform_api.cms_renew_capability
     'validThrough', pg_temp.s09g_day(5), 'idempotencyKey', pg_temp.s09g_key('r-renew2')), true,
   jsonb_build_object('stepUpVerified', false));
 select is(pg_temp.s09d_outcome('r:renew:unverified'), 'STEP_UP_REQUIRED', 'renewal with stepUpVerified=false is refused [P2-S09-AC-556]');
+-- AC574 "missing, stale, future-dated or aal1 proof ... evaluated before idempotency reservation" for CMS-03A-16: every
+-- variant of the proof the database sees is 401 STEP_UP_REQUIRED and leaves no reservation, audit, outbox or row.
+select pg_temp.s09g_fingerprint() as renew_before \gset
+select pg_temp.s09d_rpc('r:renew:future', 'platform_api.cms_renew_capability_grant', 'owner',
+  jsonb_build_object('grantId', (pg_temp.s09d_resp('r:base')->>'id')::uuid, 'expectedVersion', (pg_temp.s09d_resp('r:base')->>'version'),
+    'validThrough', pg_temp.s09g_day(5), 'idempotencyKey', pg_temp.s09g_key('r-renew-fut')), true, pg_temp.r3_proof(interval '31 seconds'));
+select is(pg_temp.s09d_outcome('r:renew:future'), 'STEP_UP_REQUIRED',
+  'renewal with a step-up proof 31 seconds in the future is 401 STEP_UP_REQUIRED [P2-S09-AC-574]');
+select pg_temp.s09d_rpc('r:renew:edge', 'platform_api.cms_renew_capability_grant', 'owner',
+  jsonb_build_object('grantId', (pg_temp.s09d_resp('r:base')->>'id')::uuid, 'expectedVersion', (pg_temp.s09d_resp('r:base')->>'version'),
+    'validThrough', pg_temp.s09g_day(5), 'idempotencyKey', pg_temp.s09g_key('r-renew-edge')), true, pg_temp.r3_proof(interval '-601 seconds'));
+select is(pg_temp.s09d_outcome('r:renew:edge'), 'STEP_UP_REQUIRED',
+  'renewal with a step-up proof 601 seconds old is 401 STEP_UP_REQUIRED: the window is 600 seconds [P2-S09-AC-574]');
+select pg_temp.s09d_rpc('r:renew:nullat', 'platform_api.cms_renew_capability_grant', 'owner',
+  jsonb_build_object('grantId', (pg_temp.s09d_resp('r:base')->>'id')::uuid, 'expectedVersion', (pg_temp.s09d_resp('r:base')->>'version'),
+    'validThrough', pg_temp.s09g_day(5), 'idempotencyKey', pg_temp.s09g_key('r-renew-null')), true, jsonb_build_object('stepUpAt', null));
+select is(pg_temp.s09d_outcome('r:renew:nullat'), 'STEP_UP_REQUIRED',
+  'renewal with no step-up instant (a missing proof) is 401 STEP_UP_REQUIRED [P2-S09-AC-574]');
+select is(pg_temp.s09g_fingerprint(), :'renew_before',
+  'every refused renewal proof left no idempotency reservation, audit, outbox, event, grant or projection row: the step-up check precedes the reservation [P2-S09-AC-574]');
 select pg_temp.s09d_rpc('r:revoke:old', 'platform_api.cms_revoke_capability_grant', 'owner',
   jsonb_build_object('grantId', (pg_temp.s09d_resp('r:base')->>'id')::uuid, 'expectedVersion', (pg_temp.s09d_resp('r:base')->>'version'),
     'idempotencyKey', pg_temp.s09g_key('r-revoke')), true, pg_temp.r3_proof(interval '-11 minutes'));

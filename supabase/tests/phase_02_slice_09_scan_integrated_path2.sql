@@ -128,5 +128,7 @@ update platform_private.cms_schema_migration_plans set updated_at = updated_at
  where to_version_id = pg_temp.s09d_id('b:version') and superseded_at is not null;
 select is(pg_temp.s09x_direct('cms_schema_migration_plans'), 1::bigint,
   'negative control: a hand-written plan update is recorded as a direct write [P2-S09-AC-713]');
+select is(pg_temp.s09e_unprovisioned(), 0::bigint,
+  'every CMS capability row of every human of this path (designer, reviewer, specialist, author) was provisioned through CMS-03A-15: no direct organization_actor_grant row satisfies the path [P2-S09-AC-714]');
 select * from finish();
 rollback;

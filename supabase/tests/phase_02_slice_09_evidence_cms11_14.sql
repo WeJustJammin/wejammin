@@ -46,7 +46,7 @@ select pg_temp.s09d_seal('a');
 select set_config('s09e.fail_event', 'cms.schema.review.submitted.v1', true);
 select pg_temp.s09e_fp() as submit_before \gset
 select pg_temp.s09d_submit('a');
-select ok(pg_temp.s09d_outcome('a:submit') not in ('OK', 'MISSING'), 'a failing outbox write fails CMS-03A-11 [P2-S09-AC-388]');
+select ok(pg_temp.s09d_outcome('a:submit') = 'S09E_FORCED_OUTBOX_FAILURE', 'a failing outbox write fails CMS-03A-11 [P2-S09-AC-388]');
 select is(pg_temp.s09e_fp(), :'submit_before',
   'the failed freeze left no review, no draft -> review transition, no audit, outbox or idempotency row [P2-S09-AC-388]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'draft',
@@ -116,7 +116,7 @@ select pg_temp.s09d_to_review('s');
 select pg_temp.s09d_assign('s', 'rev1');
 select pg_temp.s09d_decide('s', 'owner', 'approve', '{}'::jsonb, 's:ownerdecide');
 select ok(pg_temp.s09d_outcome('s:ownerdecide') = 'FORBIDDEN'
-  and pg_temp.s09d_outcome('s:ownerdecide') <> 'OK',
+ ,
   'the submitter holds no assignment and cannot decide their own review: the review is readable to them, so 403 FORBIDDEN [P2-S09-AC-417] [P2-S09-AC-431]');
 select set_config('app.cms_rpc', 'true', true);
 select pg_temp.s09d_try(format($q$insert into platform_private.cms_schema_review_assignments(
@@ -126,7 +126,7 @@ select pg_temp.s09d_try(format($q$insert into platform_private.cms_schema_review
     from platform_private.cms_schema_reviews review where review.id = %L$q$, pg_temp.s09d_id('s:review'))) as forged \gset
 select pg_temp.s09d_decide('s', 'owner', 'approve', '{}'::jsonb, 's:forgeddecide');
 select ok(pg_temp.s09d_outcome('s:forgeddecide') = 'CONFLICT'
-  and pg_temp.s09d_outcome('s:forgeddecide') <> 'OK'
+ 
   and pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_schema_review_decisions where review_id = %L',
         pg_temp.s09d_id('s:review'))) = '0',
   'negative control: even with a forged assignment the submitter is refused and no decision is recorded [P2-S09-AC-417]');
@@ -206,11 +206,11 @@ select pg_temp.s09d_assign('m', 'rev1');
 select set_config('s09e.fail_event', 'cms.schema.review.decided.v1', true);
 select pg_temp.s09e_fp() as decide_before \gset
 select pg_temp.s09d_decide('m', 'rev1', 'approve', '{}'::jsonb, 'm:approve-fail');
-select ok(pg_temp.s09d_outcome('m:approve-fail') not in ('OK', 'MISSING'), 'a failing outbox write fails an approve decision [P2-S09-AC-426]');
+select ok(pg_temp.s09d_outcome('m:approve-fail') = 'S09E_FORCED_OUTBOX_FAILURE', 'a failing outbox write fails an approve decision [P2-S09-AC-426]');
 select is(pg_temp.s09e_fp(), :'decide_before', 'the failed approve appended no decision, audit, outbox or idempotency row [P2-S09-AC-426]');
 select is(pg_temp.s09e_drift_state('m'), 'open/review', 'the review stayed open and the candidate stayed in review [P2-S09-AC-426]');
 select pg_temp.s09d_decide('m', 'rev1', 'reject', '{}'::jsonb, 'm:reject-fail');
-select ok(pg_temp.s09d_outcome('m:reject-fail') not in ('OK', 'MISSING')
+select ok(pg_temp.s09d_outcome('m:reject-fail') = 'S09E_FORCED_OUTBOX_FAILURE'
   and pg_temp.s09e_fp() = :'decide_before' and pg_temp.s09e_drift_state('m') = 'open/review',
   'a failing outbox write fails a reject decision with no partial draft transition [P2-S09-AC-427]');
 select set_config('s09e.fail_event', '', true);
@@ -318,7 +318,7 @@ select pg_temp.s09d_to_review('q');
 select set_config('s09e.fail_event', 'cms.schema.review.assignment.changed.v1', true);
 select pg_temp.s09e_fp() as assign_before \gset
 select pg_temp.s09d_assign('q', 'rev1', interval '1 day', 'owner', 'q:fail');
-select ok(pg_temp.s09d_outcome('q:fail') not in ('OK', 'MISSING') and pg_temp.s09e_fp() = :'assign_before',
+select ok(pg_temp.s09d_outcome('q:fail') = 'S09E_FORCED_OUTBOX_FAILURE' and pg_temp.s09e_fp() = :'assign_before',
   'a failing outbox write rolls the assignment create back with its audit and idempotency rows [P2-S09-AC-489]');
 select set_config('s09e.fail_event', '', true);
 select pg_temp.s09d_assign('q', 'rev1', interval '1 day', 'owner', 'q:ok');
@@ -328,7 +328,7 @@ select pg_temp.s09d_rpc('q:revoke', 'platform_api.cms_assign_schema_review', 'ow
   jsonb_build_object('reviewId', pg_temp.s09d_id('q:review'), 'action', 'revoke',
     'expectedVersion', pg_temp.s09d_review_version('q'), 'assignmentId', pg_temp.s09d_id('q:assignment:rev1'),
     'idempotencyKey', 's09e-revoke-atomic-0001'), true);
-select ok(pg_temp.s09d_outcome('q:revoke') not in ('OK', 'MISSING') and pg_temp.s09e_fp() = :'revoke_before'
+select ok(pg_temp.s09d_outcome('q:revoke') = 'S09E_FORCED_OUTBOX_FAILURE' and pg_temp.s09e_fp() = :'revoke_before'
   and pg_temp.s09d_read('cms_schema_review_assignments', 'state', pg_temp.s09d_id('q:assignment:rev1')) = 'active',
   'a failing outbox write rolls the assignment revoke back: the assignment stays active [P2-S09-AC-489]');
 

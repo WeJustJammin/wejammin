@@ -41,9 +41,9 @@ select pg_temp.s09d_successor('b', 'a');
 create temp table r8u_old on commit drop as select pg_temp.r8u_row('a') as whole, pg_temp.r8u_row_without_state('a') as stable_columns;
 
 -- refused switch 1: the candidate is a draft, not approved
-select pg_temp.s09d_activate('b', 'owner', '{}'::jsonb, 'b:activate-draft');
-select ok(pg_temp.s09d_outcome('b:activate-draft') in ('CONFLICT', 'VALIDATION_FAILED', 'APPROVAL_INVALID', 'INVALID_REQUEST'),
-  'an unapproved candidate cannot be switched in (' || pg_temp.s09d_outcome('b:activate-draft') || ') [P2-S09-AC-098]');
+select pg_temp.s09d_activate('b', 'owner', '{}'::jsonb, 'b:activate-draft', jsonb_build_object('dryRunId', extensions.gen_random_uuid(), 'approvalIds', jsonb_build_array(extensions.gen_random_uuid()), 'migrationPlanId', null));
+select is(pg_temp.s09d_outcome('b:activate-draft'), 'CONFLICT',
+  'an unapproved candidate (a well-formed request naming no review, dry run or plan of it) cannot be switched in [P2-S09-AC-098]');
 select is(pg_temp.r8u_row('a'), (select whole from r8u_old),
   'the refused switch left the previously active row byte-identical: every column, including version and updated_at [P2-S09-AC-098]');
 
