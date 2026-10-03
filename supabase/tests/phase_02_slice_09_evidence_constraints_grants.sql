@@ -220,7 +220,7 @@ select is(pg_temp.s09d_scalar('select (count(*) = 2)::text from information_sche
     and table_name = ''cms_content_type_versions'' and column_name in (''workflow_key'', ''workflow_version'') and is_nullable = ''NO'''), 'true',
   'a content-type version carries a NOT NULL workflow_key and workflow_version: exactly one bound registry member [P2-S09-AC-669]');
 select pg_temp.s09d_create_type('ux', 'evc_unseeded', 'no.such.policy');
-select ok(pg_temp.s09d_outcome('ux:create') in ('VALIDATION_FAILED', 'CONFLICT'),
+select ok(pg_temp.s09d_outcome('ux:create') = 'VALIDATION_FAILED',
   'CMS-03A-01 refuses a workflow key outside the seeded registry (422/409) and creates nothing [P2-S09-AC-669]');
 select pg_temp.s09d_rpc('ux:authority', 'platform_api.cms_create_type_draft', 'owner',
   jsonb_build_object('typeKey', 'evc_authority', 'label', 'x', 'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',

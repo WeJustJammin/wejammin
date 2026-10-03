@@ -70,13 +70,13 @@ values (pg_temp.s09d_actor_id('rev3', 'person')::uuid, 'admin.identity.mfa_reset
 -- Refusals (each leaves the factor verified and nothing else changed).
 create temp table m_lf_before on commit drop as select pg_temp.m_ver(n)::bigint v, n from generate_series(11, 16) n;
 select pg_temp.m_rbegin('lf:owner', 11, pg_temp.m_fid(11), 'user_request', pg_temp.m_ver(11));
-select is(pg_temp.m_out('lf:owner'), 'LAST_FACTOR_REQUIRED', 'the receipt-derived owner (receipt + grant) cannot remove the last factor [P2-S09-AC-802]');
+select is(pg_temp.m_out('lf:owner'), 'LAST_FACTOR_REQUIRED', 'the receipt-derived owner (receipt + grant) cannot remove the last factor [P2-S09-AC-802] [P2-S09-AC-814]');
 select pg_temp.m_warp('identity_private.organization_actor_grant', 'active = false',
   format('person_id = %L', pg_temp.s09d_actor_id('owner', 'person')));
 select pg_temp.m_rbegin('lf:receipt', 11, pg_temp.m_fid(11), 'user_request', pg_temp.m_ver(11), 'a2', 'b3');
-select is(pg_temp.m_out('lf:receipt'), 'LAST_FACTOR_REQUIRED', 'the immutable owner-initialization receipt alone is enough to refuse');
+select is(pg_temp.m_out('lf:receipt'), 'LAST_FACTOR_REQUIRED', 'the immutable owner-initialization receipt alone is enough to refuse [P2-S09-AC-814]');
 select pg_temp.m_rbegin('lf:grant', 12, pg_temp.m_fid(12), 'user_request', pg_temp.m_ver(12));
-select is(pg_temp.m_out('lf:grant'), 'LAST_FACTOR_REQUIRED', 'an effective cms.schema_designer grant refuses the last factor removal [P2-S09-AC-802]');
+select is(pg_temp.m_out('lf:grant'), 'LAST_FACTOR_REQUIRED', 'an effective cms.schema_designer grant refuses the last factor removal [P2-S09-AC-802] [P2-S09-AC-814]');
 select pg_temp.m_rbegin('lf:assign', 13, pg_temp.m_fid(13), 'user_request', pg_temp.m_ver(13));
 select is(pg_temp.m_out('lf:assign'), 'LAST_FACTOR_REQUIRED', 'an active cms.schema_review assignment refuses the last factor removal [P2-S09-AC-802]');
 select pg_temp.m_rbegin('lf:admin', 15, pg_temp.m_fid(15), 'user_request', pg_temp.m_ver(15));

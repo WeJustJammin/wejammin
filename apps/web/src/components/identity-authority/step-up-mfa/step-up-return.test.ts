@@ -5,6 +5,7 @@ import {
   STEP_UP_ROUTE,
   computeStepUpReturnTo,
   mfaSettingsHref,
+  recoverySignInHref,
   resolveStepUpReturnTo,
   stepUpHref,
   stepUpSignInHref,
@@ -105,6 +106,23 @@ describe('step-up navigation targets', () => {
     const long = `/app/${'a'.repeat(495)}`;
     expect(stepUpSignInHref(long)).toBe(
       `/auth/sign-in?returnTo=${encodeURIComponent('/step-up')}`,
+    );
+  });
+});
+
+describe('recovery sign-in target', () => {
+  it('[P2-S09-AC-1098] opens sign-in with intent=recovery and the same safe return target as the expired-session redirect', () => {
+    expect(recoverySignInHref('/app/x')).toBe(
+      `/auth/sign-in?intent=recovery&returnTo=${encodeURIComponent('/step-up?returnTo=%2Fapp%2Fx')}`,
+    );
+    expect(recoverySignInHref('https://evil.example/app')).toBe(
+      `/auth/sign-in?intent=recovery&returnTo=${encodeURIComponent('/step-up?returnTo=%2Fapp')}`,
+    );
+  });
+
+  it('[P2-S09-AC-1098] drops the nested returnTo when the combined value exceeds 512 characters', () => {
+    expect(recoverySignInHref(`/app/${'a'.repeat(495)}`)).toBe(
+      `/auth/sign-in?intent=recovery&returnTo=${encodeURIComponent('/step-up')}`,
     );
   });
 });

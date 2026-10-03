@@ -22,17 +22,17 @@ select pg_temp.m('rd0', 'auth_mfa_factors_read', jsonb_build_object('p_auth_user
 select is(pg_temp.m_resp('rd0'), jsonb_build_object('factors', '[]'::jsonb, 'version', '1'),
   'a new account reads an empty factor list at MFA version "1"');
 select pg_temp.m('rd:none', 'auth_mfa_factors_read', jsonb_build_object('p_auth_user_id', extensions.gen_random_uuid()));
-select is(pg_temp.m_out('rd:none'), 'UNAUTHENTICATED', 'an Auth UUID with no binding reads 401');
+select is(pg_temp.m_out('rd:none'), 'UNAUTHENTICATED', 'an Auth UUID with no binding reads 401 [P2-S09-AC-726]');
 update identity.auth_user_bindings set state = 'suspended' where auth_user_id = pg_temp.m_uid(5);
 select pg_temp.m('rd:susp', 'auth_mfa_factors_read', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(5)));
-select is(pg_temp.m_out('rd:susp'), 'ACCOUNT_NOT_ELIGIBLE', 'a suspended account is not eligible (403 account_not_eligible)');
+select is(pg_temp.m_out('rd:susp'), 'ACCOUNT_NOT_ELIGIBLE', 'a suspended account is not eligible (403 account_not_eligible) [P2-S09-AC-727]');
 update identity.auth_user_bindings set state = 'active' where auth_user_id = pg_temp.m_uid(5);
 
 -- ---- AUTH-API-17 transaction A (begin) ------------------------------------
 select pg_temp.m_begin('b:stale', 1, 'Phone', '7');
-select is(pg_temp.m_out('b:stale'), 'VERSION_MISMATCH', 'a stale If-Match is VERSION_MISMATCH [P2-S09-AC-889]');
+select is(pg_temp.m_out('b:stale'), 'VERSION_MISMATCH', 'a stale If-Match is VERSION_MISMATCH [P2-S09-AC-889] [P2-S09-AC-749]');
 select pg_temp.m_begin('b:badver', 1, 'Phone', '01');
-select is(pg_temp.m_out('b:badver'), 'INVALID_REQUEST', 'a malformed version is INVALID_REQUEST');
+select is(pg_temp.m_out('b:badver'), 'INVALID_REQUEST', 'a malformed version is INVALID_REQUEST [P2-S09-AC-752]');
 select pg_temp.m_begin('bn1', 1, '');
 select pg_temp.m_begin('bn2', 1, ' padded');
 select pg_temp.m_begin('bn3', 1, repeat('x', 81));
@@ -49,11 +49,11 @@ select is(pg_temp.m_out('b:user2'), 'OK', 'a begin for user 2 is independent of 
 
 -- ---- transaction B (finish) -------------------------------------------------
 select pg_temp.m_finish('f:stale', 1, 'Phone', '9');
-select is(pg_temp.m_out('f:stale'), 'VERSION_MISMATCH', 'finish with a stale version is VERSION_MISMATCH');
+select is(pg_temp.m_out('f:stale'), 'VERSION_MISMATCH', 'finish with a stale version is VERSION_MISMATCH [P2-S09-AC-749]');
 select pg_temp.m('f:badsession', 'auth_mfa_enrollment_finish', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(1), 'p_provider_factor_id', extensions.gen_random_uuid(),
   'p_friendly_name', 'Phone', 'p_expected_version', '1', 'p_session_id', pg_temp.m_sid(2)));
-select is(pg_temp.m_out('f:badsession'), 'UNAUTHENTICATED', 'finish with another user''s session is 401');
+select is(pg_temp.m_out('f:badsession'), 'UNAUTHENTICATED', 'finish with another user''s session is 401 [P2-S09-AC-753]');
 select is(pg_temp.m_ver(1), '1', 'a refused finish leaves the MFA version unchanged');
 select pg_temp.m_finish('f:ok', 1, 'Phone', '1');
 select is(pg_temp.m_out('f:ok'), 'OK', 'finish inserts the pending row [P2-S09-AC-750]');
@@ -87,11 +87,11 @@ select is((select count(*)::integer from jsonb_object_keys(pg_temp.m_resp('rd1')
 
 -- one pending row: a second finish without begin collides.
 select pg_temp.m_finish('f:dup', 1, 'Other', pg_temp.m_ver(1));
-select is(pg_temp.m_out('f:dup'), 'FACTOR_STATE_CONFLICT', 'a second pending row for the same account is FACTOR_STATE_CONFLICT');
+select is(pg_temp.m_out('f:dup'), 'FACTOR_STATE_CONFLICT', 'a second pending row for the same account is FACTOR_STATE_CONFLICT [P2-S09-AC-755]');
 
 -- ---- AUTH-API-18 prepare ----------------------------------------------------
 select pg_temp.m_prepare('p:other', 2, pg_temp.m_fid(1), pg_temp.m_ver(2));
-select is(pg_temp.m_out('p:other'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND (no existence oracle)');
+select is(pg_temp.m_out('p:other'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND (no existence oracle) [P2-S09-AC-782]');
 select pg_temp.m_prepare('p:stale', 1, pg_temp.m_fid(1), '1');
 select is(pg_temp.m_out('p:stale'), 'VERSION_MISMATCH', 'prepare with a stale version is VERSION_MISMATCH');
 select pg_temp.m_prepare('p:ok', 1, pg_temp.m_fid(1), pg_temp.m_ver(1));
@@ -103,9 +103,9 @@ select is(pg_temp.m_ver(1), '2', 'prepare is read-only (no version change)');
 select pg_temp.m_warp('mfa_factor_registry', $$pending_expires_at = clock_timestamp() - interval '1 second'$$,
   format('id = %L', pg_temp.m_fid(1)));
 select pg_temp.m_prepare('p:exp', 1, pg_temp.m_fid(1), pg_temp.m_ver(1));
-select is(pg_temp.m_out('p:exp'), 'ENROLLMENT_EXPIRED', 'prepare on an expired pending row is ENROLLMENT_EXPIRED');
+select is(pg_temp.m_out('p:exp'), 'ENROLLMENT_EXPIRED', 'prepare on an expired pending row is ENROLLMENT_EXPIRED [P2-S09-AC-783]');
 select pg_temp.m_settle('s:exp', 1, pg_temp.m_fid(1), pg_temp.m_ver(1));
-select is(pg_temp.m_out('s:exp'), 'ENROLLMENT_EXPIRED', 'settle on an expired pending row is ENROLLMENT_EXPIRED');
+select is(pg_temp.m_out('s:exp'), 'ENROLLMENT_EXPIRED', 'settle on an expired pending row is ENROLLMENT_EXPIRED [P2-S09-AC-783]');
 select pg_temp.m('rd:exp', 'auth_mfa_factors_read', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1)));
 select is(jsonb_array_length(pg_temp.m_resp('rd:exp')->'factors'), 0, 'an expired pending row is hidden from the list');
 
@@ -128,14 +128,14 @@ select pg_temp.m_settle('s:stale', 1, (select id from m_pending_user1), '2');
 select is(pg_temp.m_out('s:stale'), 'VERSION_MISMATCH', 'settle with a stale version is VERSION_MISMATCH');
 -- a new session id that already belongs to another user cannot be rotated onto.
 select pg_temp.m_settle('s:badrot', 1, (select id from m_pending_user1), '4', pg_temp.m_sid(2));
-select is(pg_temp.m_out('s:badrot'), 'UNAUTHENTICATED', 'rotating onto another user''s session id is refused');
+select is(pg_temp.m_out('s:badrot'), 'UNAUTHENTICATED', 'rotating onto another user''s session id is refused [P2-S09-AC-780]');
 select is(pg_temp.m_fstate((select id from m_pending_user1)), 'pending', 'a refused rotation rolls the settlement back (factor still pending)');
 select is(pg_temp.m_ver(1), '4', 'a refused rotation leaves the MFA version unchanged');
 select pg_temp.m('s:nosess', 'auth_mfa_enrollment_verify_settle', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from m_pending_user1), 'p_expected_version', '4',
   'p_session_id', extensions.gen_random_uuid(), 'p_new_session_id', extensions.gen_random_uuid(),
   'p_issued_at', clock_timestamp()));
-select is(pg_temp.m_out('s:nosess'), 'UNAUTHENTICATED', 'an unknown initiating session is 401');
+select is(pg_temp.m_out('s:nosess'), 'UNAUTHENTICATED', 'an unknown initiating session is 401 [P2-S09-AC-780]');
 
 -- Same-session settle: touch, no new row.
 select pg_temp.m_warp('auth_session_index', $$last_seen_at = clock_timestamp() - interval '1 hour'$$, format('session_id = %L', pg_temp.m_sid(1)));
@@ -171,13 +171,13 @@ select is((select payload from platform_private.outbox_events where event_type =
     'authBindingId', (select id from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(1))),
   'a security-notification request references the security event only (no email, no body) [P2-S09-AC-776]');
 select pg_temp.m_settle('s:again', 1, (select id from m_pending_user1), pg_temp.m_ver(1));
-select is(pg_temp.m_out('s:again'), 'FACTOR_NOT_PENDING', 'settling a verified factor again is FACTOR_NOT_PENDING');
+select is(pg_temp.m_out('s:again'), 'FACTOR_NOT_PENDING', 'settling a verified factor again is FACTOR_NOT_PENDING [P2-S09-AC-783]');
 select pg_temp.m_prepare('p:again', 1, (select id from m_pending_user1), pg_temp.m_ver(1));
-select is(pg_temp.m_out('p:again'), 'FACTOR_NOT_PENDING', 'preparing a verified factor is FACTOR_NOT_PENDING');
+select is(pg_temp.m_out('p:again'), 'FACTOR_NOT_PENDING', 'preparing a verified factor is FACTOR_NOT_PENDING [P2-S09-AC-783]');
 
 -- name collision with the verified factor, case-insensitively.
 select pg_temp.m_begin('b:name', 1, 'PHONE');
-select is(pg_temp.m_out('b:name'), 'FACTOR_NAME_TAKEN', 'a live friendly name collides case-insensitively (409 factor_name_taken) [P2-S09-AC-736]');
+select is(pg_temp.m_out('b:name'), 'FACTOR_NAME_TAKEN', 'a live friendly name collides case-insensitively (409 factor_name_taken) [P2-S09-AC-736] [P2-S09-AC-755]');
 
 -- ---- settle with session rotation -------------------------------------------
 select pg_temp.m_pending(2, 'Laptop');
@@ -198,16 +198,16 @@ select ok((select revocation_reason is not null and revoked_at is not null
              from identity.auth_session_index where session_id = pg_temp.m_sid(2, 1)),
   'the revoked row records its time and reason');
 select pg_temp.m_settle('s:revoked', 2, (select id from m_pending_user2), pg_temp.m_ver(2), pg_temp.m_sid(2, 3), pg_temp.m_sid(2, 1));
-select is(pg_temp.m_out('s:revoked'), 'UNAUTHENTICATED', 'a revoked initiating session can no longer settle');
+select is(pg_temp.m_out('s:revoked'), 'UNAUTHENTICATED', 'a revoked initiating session can no longer settle [P2-S09-AC-780]');
 
 -- ---- ten-live-factor bound ---------------------------------------------------
 select pg_temp.m_enroll(4, 'F' || n) from generate_series(1, 10) n;
 select is((select count(*)::integer from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(4) and state = 'verified'), 10,
   'ten verified factors can exist [P2-S09-AC-737]');
 select pg_temp.m_begin('lim:b', 4, 'Eleventh');
-select is(pg_temp.m_out('lim:b'), 'MFA_FACTOR_LIMIT', 'the eleventh live factor is refused at begin (409 mfa_factor_limit) [P2-S09-AC-737]');
+select is(pg_temp.m_out('lim:b'), 'MFA_FACTOR_LIMIT', 'the eleventh live factor is refused at begin (409 mfa_factor_limit) [P2-S09-AC-737] [P2-S09-AC-755]');
 select pg_temp.m_finish('lim:f', 4, 'Eleventh', pg_temp.m_ver(4));
-select is(pg_temp.m_out('lim:f'), 'MFA_FACTOR_LIMIT', 'and refused again at finish [P2-S09-AC-737]');
+select is(pg_temp.m_out('lim:f'), 'MFA_FACTOR_LIMIT', 'and refused again at finish [P2-S09-AC-737] [P2-S09-AC-755]');
 select is((select count(*)::integer from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(4)), 10, 'no eleventh row exists [P2-S09-AC-737]');
 
 -- ---- reconciliation ------------------------------------------------------------
@@ -226,7 +226,7 @@ select pg_temp.m('mr:again', 'auth_mfa_factor_mark_reconciling', jsonb_build_obj
 select is(pg_temp.m_out('mr:again'), 'OK', 'marking an already-reconciling row is idempotent');
 select is(pg_temp.m_ver(5), '3', 'and does not bump the version again');
 select pg_temp.m_settle('s:recon', 5, (select id from m_pending_user5), pg_temp.m_ver(5));
-select is(pg_temp.m_out('s:recon'), 'FACTOR_NOT_PENDING', 'a reconciling row cannot be settled by the user');
+select is(pg_temp.m_out('s:recon'), 'FACTOR_NOT_PENDING', 'a reconciling row cannot be settled by the user [P2-S09-AC-783]');
 select pg_temp.m('rd:recon', 'auth_mfa_factors_read', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(5)));
 select is(pg_temp.m_resp('rd:recon')#>>'{factors,0,state}', 'reconciling', 'the list shows the reconciling factor');
 select pg_temp.m('rc:bad', 'auth_mfa_factor_reconcile', jsonb_build_object(
@@ -240,7 +240,13 @@ select pg_temp.m('mr:again2', 'auth_mfa_factor_mark_reconciling', jsonb_build_ob
 select pg_temp.m_warp('mfa_factor_registry', $$pending_expires_at = clock_timestamp() - interval '1 second'$$, format('id = %L', (select id from m_pending_user5)));
 select pg_temp.m('rc:expired', 'auth_mfa_factor_reconcile', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_outcome', 'pending'));
-select is(pg_temp.m_fstate((select id from m_pending_user5)), 'expired', 'a pending outcome after the window closed settles to expired [P2-S09-AC-904]');
+select is(pg_temp.m_fstate((select id from m_pending_user5)), 'pending',
+  'a pending outcome after the window closed still settles to pending: reconciling never goes to expired [P2-S09-AC-904]');
+select is(pg_temp.m_one(format('select (pending_expires_at < clock_timestamp())::text from identity.mfa_factor_registry where id = %L', (select id from m_pending_user5))), 'true',
+  'the settled pending row keeps its elapsed window so the registry sweep, not the reconciler, writes pending -> expired [P2-S09-AC-904]');
+select pg_temp.m('rc:sweep', 'auth_mfa_registry_sweep', jsonb_build_object('p_batch', 100, '_notrace', true));
+select is(pg_temp.m_fstate((select id from m_pending_user5)), 'expired',
+  'the registry sweep writes pending -> expired for the elapsed window [P2-S09-AC-904]');
 select pg_temp.m('rc:term', 'auth_mfa_factor_reconcile', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_outcome', 'verified'));
 select is(pg_temp.m_out('rc:term'), 'FACTOR_STATE_CONFLICT', 'reconciling a terminal row is FACTOR_STATE_CONFLICT [P2-S09-AC-904]');
@@ -256,6 +262,31 @@ select ok(pg_temp.m_one(format('select (verified_at is not null)::text from iden
   'and sets verified_at');
 select is(pg_temp.m_outbox('identity.mfa-factor.changed.v1', (select id from m_pending_user5b)) >= 1, true,
   'every reconciliation emits the factor-changed event');
+
+-- Superseded reconciling row (another pending row exists): the reconciler can
+-- never settle it to pending (one pending row per user) or expired, so the
+-- provider-unverified factor settles to removed.
+select pg_temp.m_pending(5, 'Recon3');
+create temp table m_pending_user5c on commit drop as
+  select id from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(5) and state = 'pending';
+select pg_temp.m('mr:c', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5c)));
+select pg_temp.m_pending(5, 'Recon4');
+select pg_temp.m('rc:superseded', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5c), 'p_outcome', 'pending'));
+select is(pg_temp.m_fstate((select id from m_pending_user5c)), 'removed',
+  'a superseded reconciling row settles to removed, never expired [P2-S09-AC-904]');
+select is((select count(*)::integer from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(5) and state = 'pending'), 1,
+  'exactly one pending row per user remains after the superseded settlement [P2-S09-AC-904]');
+-- A factor that was verified cannot go back to pending.
+select pg_temp.m('mr:v', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b)));
+select is(pg_temp.m_fstate((select id from m_pending_user5b)), 'reconciling', 'a verified factor can be marked reconciling [P2-S09-AC-904]');
+select pg_temp.m('rc:vpending', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b), 'p_outcome', 'pending'));
+select is(pg_temp.m_out('rc:vpending'), 'FACTOR_STATE_CONFLICT',
+  'a previously verified factor cannot settle reconciling -> pending [P2-S09-AC-904]');
+select is(pg_temp.m_fstate((select id from m_pending_user5b)), 'reconciling', 'the refused settlement left the row reconciling [P2-S09-AC-904]');
 
 select * from finish();
 

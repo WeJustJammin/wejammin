@@ -6,6 +6,9 @@ import '../styles/infrastructure.css';
 import '../styles/step-up-mfa.css';
 
 import StepUpChallengeForm from '../components/identity-authority/step-up-mfa/StepUpChallengeForm.tsx';
+import StepUpPageHeading from '../components/identity-authority/step-up-mfa/StepUpPageHeading.tsx';
+import { STEP_UP_PAGE_HEADINGS } from '../components/identity-authority/step-up-mfa/step-up-page-headings.ts';
+import { authPageRedirect } from '../server/auth-page-redirect.ts';
 import { resolveStepUpPage } from '../server/step-up-page-context.ts';
 
 export const prerender = false;
@@ -22,7 +25,7 @@ const resolved = await resolveStepUpPage({
   requestId,
 });
 if (resolved.kind === 'unauthenticated')
-  return Astro.redirect(resolved.location, 303);
+  return authPageRedirect(resolved.location);
 ---
 
 <html lang="en">
@@ -34,21 +37,14 @@ if (resolved.kind === 'unauthenticated')
       name="description"
       content="Confirm it is you with your authenticator before a protected action."
     />
-    <title>Verify it's you | WeJammin</title>
+    <title>{STEP_UP_PAGE_HEADINGS['step-up'].documentTitle}</title>
   </head>
   <body class="infra-page">
     <nav aria-label="Skip navigation">
       <a class="infra-skip-link" href="#main-content">Skip to main content</a>
     </nav>
     <main id="main-content" class="infra-main" tabindex="-1">
-      <div class="infra-shell-header">
-        <p class="infra-eyebrow">Your account</p>
-        <h1 id="page-title" tabindex="-1">Verify it's you</h1>
-        <p>
-          This action needs a recent check with the authenticator on your
-          account. Your work is not submitted until you confirm it again.
-        </p>
-      </div>
+      <StepUpPageHeading page="step-up" />
       {
         resolved.kind === 'ready' ? (
           <StepUpChallengeForm

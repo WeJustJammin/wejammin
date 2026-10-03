@@ -1,6 +1,7 @@
 import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
 
 import {
+  authoritativeResource,
   isAuthoritativeContentSchemaRegistryMutationResponse,
   reconcileContentSchemaRegistryMutation,
 } from './content-schema-registry-runtime-mutation-reconciliation';
@@ -56,6 +57,8 @@ export interface ContentSchemaRegistryMutationResult {
   readonly serverVersion: string | null;
   /** The request ID of a degraded step-up response, for recovery copy. */
   readonly requestId?: string | null;
+  /** Unvalidated JSON body of an authoritative CMS-03A-04 answer, else null. */
+  readonly resource?: unknown;
   readonly formData: FormData;
 }
 
@@ -219,6 +222,10 @@ export const executeContentSchemaRegistryMutation = async (input: {
     const stepUp =
       response === null ? null : await classifyStepUpResponse(response);
     const outcome = outcomeFor(response, isAuthoritative, stepUp);
+    const resource =
+      outcome === 'success' && response !== null
+        ? await authoritativeResource(input.operationId, response)
+        : null;
     return {
       outcome,
       attempts,
@@ -240,6 +247,7 @@ export const executeContentSchemaRegistryMutation = async (input: {
         response === null ? null : await mutationServerVersion(response),
       requestId:
         stepUp !== null && stepUp.kind !== 'navigate' ? stepUp.requestId : null,
+      resource,
       formData: input.formData,
     };
   };

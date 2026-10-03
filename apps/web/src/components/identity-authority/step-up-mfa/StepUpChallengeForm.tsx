@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import type { MfaApiDeps } from './mfa-api';
 import { OneTimeCodeField } from './OneTimeCodeField';
-import { stepUpSignInHref } from './step-up-return';
+import { recoverySignInHref, stepUpSignInHref } from './step-up-return';
 import type { StepUpChannelPort } from './step-up-channel';
 import type { StepUpFactorChoice, StepUpPhase } from './step-up-phase';
 import { LockoutNotice } from './LockoutNotice';
@@ -130,7 +130,7 @@ export function StepUpChallengeForm({
       )}
       {state.phase !== 'signed-out' && (
         <p className="infra-help">
-          <a href={stepUpSignInHref(returnTo)}>{LOST_ACCESS_LABEL}</a>
+          <a href={recoverySignInHref(returnTo)}>{LOST_ACCESS_LABEL}</a>
         </p>
       )}
     </section>

@@ -15,6 +15,10 @@ import {
   renderValidationSummary,
   startRetryAfterCountdown,
 } from './content-schema-registry-runtime-dom-renderers';
+import {
+  parseActivationResult,
+  renderActivationResult,
+} from './content-schema-registry-runtime-dom-activation-result';
 import type { ContentSchemaRegistryMutationResult } from './content-schema-registry-runtime';
 import { persistStepUpDraft } from './content-schema-registry-step-up-draft';
 import {
@@ -95,6 +99,29 @@ export const completeContentSchemaRegistryMutation = (
     result.outcome !== 'success' && result.outcome !== 'rate-limited',
   );
   if (result.outcome === 'success') {
+    if (form.dataset.operationId === 'CMS-03A-04') {
+      const activation = parseActivationResult(result.resource);
+      if (activation === null) {
+        focusWithoutScroll(
+          announce(
+            form,
+            'The activation result could not be verified. Reload to see the current version.',
+            true,
+          ),
+        );
+        return;
+      }
+      const continueTo =
+        result.location === null
+          ? null
+          : sameOriginLocation(form, result.location);
+      focusWithoutScroll(
+        renderActivationResult(form, activation, continueTo).querySelector(
+          'h3',
+        )!,
+      );
+      return;
+    }
     const flash = reviewFlashFor(
       form.dataset.operationId ?? '',
       result.formData,

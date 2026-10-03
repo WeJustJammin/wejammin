@@ -56,10 +56,7 @@ if (Astro.request.method === 'POST') {
   if (!mutation.ok) {
     // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
     // itself; only a native form post is redirected from the server.
-    if (
-      !json &&
-      (await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED'
-    )
+    if (!json && (await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED')
       return Astro.redirect(
         `/step-up?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
         303,

@@ -232,6 +232,37 @@ select ok(has_function_privilege('postgres', to_regprocedure('identity.rpc_admin
   and not has_function_privilege('service_role', to_regprocedure('identity.rpc_admin_reset_mfa_factors(uuid, uuid, uuid)'), 'execute'),
   'the identity reset RPC is reachable only through the admin wrapper, never by a client role directly [P2-S09-AC-892]');
 
+-- AC904 negative matrix: only the BE01a transitions exist, with the exact guard error.
+create or replace function pg_temp.m_err(p_sql text) returns text language plpgsql as $body$
+begin
+  execute p_sql;
+  return 'OK';
+exception when others then
+  return sqlerrm;
+end;
+$body$;
+select ok(pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
+  values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'transition probe', 'pending', clock_timestamp() + interval '5 minutes')$$),
+  'precondition: a live pending probe row exists for the transition matrix');
+select is(pg_temp.m_err(format($$update identity.mfa_factor_registry set state = 'removed', removed_at = clock_timestamp(), pending_expires_at = null, version = version + 1
+  where auth_user_id = %L and friendly_name = 'transition probe'$$, pg_temp.m_uid(2))), 'MFA_FACTOR_TRANSITION',
+  'pending -> removed is refused with MFA_FACTOR_TRANSITION [P2-S09-AC-904]');
+select is(pg_temp.m_err(format($$update identity.mfa_factor_registry set state = 'expired', version = version + 1
+  where auth_user_id = %L and friendly_name = 'Laptop'$$, pg_temp.m_uid(2))), 'MFA_FACTOR_TRANSITION',
+  'verified -> expired is refused with MFA_FACTOR_TRANSITION [P2-S09-AC-904]');
+select is(pg_temp.m_err(format($$update identity.mfa_factor_registry set state = 'reconciling', version = version + 1
+  where auth_user_id = %L and friendly_name = 'Laptop'$$, pg_temp.m_uid(2))), 'OK',
+  'verified -> reconciling is a transition [P2-S09-AC-904]');
+select is(pg_temp.m_err(format($$update identity.mfa_factor_registry set state = 'expired', version = version + 1
+  where auth_user_id = %L and friendly_name = 'Laptop'$$, pg_temp.m_uid(2))), 'MFA_FACTOR_TRANSITION',
+  'reconciling -> expired is refused with MFA_FACTOR_TRANSITION [P2-S09-AC-904]');
+select is(pg_temp.m_err(format($$update identity.mfa_factor_registry set state = 'verified', version = version + 1
+  where auth_user_id = %L and friendly_name = 'Laptop'$$, pg_temp.m_uid(2))), 'OK',
+  'reconciling -> verified is a transition [P2-S09-AC-904]');
+select is(pg_temp.m_err(format($$update identity.mfa_factor_registry set state = 'expired', pending_expires_at = null, version = version + 1
+  where auth_user_id = %L and friendly_name = 'transition probe'$$, pg_temp.m_uid(2))), 'OK',
+  'pending -> expired is a transition [P2-S09-AC-904]');
+
 select * from finish();
 
 rollback;

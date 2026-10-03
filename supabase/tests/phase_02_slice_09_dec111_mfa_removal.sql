@@ -39,18 +39,18 @@ insert into m_f select 1, 'Two', pg_temp.m_enroll(1, 'Two'), null;
 update m_f set pid = pg_temp.m_one(format('select provider_factor_id::text from identity.mfa_factor_registry where id = %L', id))::uuid;
 
 select pg_temp.m_rbegin('rb:reason', 1, (select id from m_f where name = 'One'), 'bogus', pg_temp.m_ver(1));
-select is(pg_temp.m_out('rb:reason'), 'INVALID_REQUEST', 'an unknown removal reason is INVALID_REQUEST');
+select is(pg_temp.m_out('rb:reason'), 'INVALID_REQUEST', 'an unknown removal reason is INVALID_REQUEST [P2-S09-AC-810]');
 select pg_temp.m('rb:hash', 'auth_mfa_removal_begin', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from m_f where name = 'One'), 'p_reason', 'user_request',
   'p_expected_version', pg_temp.m_ver(1), 'p_session_id', pg_temp.m_sid(1),
   'p_key_hash', '\x' || repeat('a1', 16), 'p_request_hash', pg_temp.m_h('b2')));
-select is(pg_temp.m_out('rb:hash'), 'INVALID_REQUEST', 'a key hash that is not 32 bytes is INVALID_REQUEST');
+select is(pg_temp.m_out('rb:hash'), 'INVALID_REQUEST', 'a key hash that is not 32 bytes is INVALID_REQUEST [P2-S09-AC-810]');
 select pg_temp.m_rbegin('rb:stale', 1, (select id from m_f where name = 'One'), 'user_request', '1');
-select is(pg_temp.m_out('rb:stale'), 'VERSION_MISMATCH', 'a stale If-Match is VERSION_MISMATCH');
+select is(pg_temp.m_out('rb:stale'), 'VERSION_MISMATCH', 'a stale If-Match is VERSION_MISMATCH [P2-S09-AC-796]');
 select pg_temp.m_rbegin('rb:other', 2, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(2));
-select is(pg_temp.m_out('rb:other'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND');
+select is(pg_temp.m_out('rb:other'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND [P2-S09-AC-813]');
 select pg_temp.m_rbegin('rb:nosess', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a1', 'b2', extensions.gen_random_uuid());
-select is(pg_temp.m_out('rb:nosess'), 'UNAUTHENTICATED', 'an unknown session is 401');
+select is(pg_temp.m_out('rb:nosess'), 'UNAUTHENTICATED', 'an unknown session is 401 [P2-S09-AC-811]');
 select is(pg_temp.m_fstate((select id from m_f where name = 'One')), 'verified', 'refused removals change nothing');
 
 create temp table m_v0 on commit drop as select pg_temp.m_ver(1)::bigint as v;
@@ -68,16 +68,16 @@ select ok(pg_temp.m_outbox('identity.mfa-factor.changed.v1', (select id from m_f
 select is((select state::text from platform_private.idempotency_records where actor_id = pg_temp.m_uid(1) and operation = 'AUTH-API-19' and key_hash = decode(repeat('a1', 32), 'hex')),
   'reserved', 'the AUTH-API-19 idempotency record is reserved [P2-S09-AC-807]');
 select pg_temp.m_rbegin('rb:retry', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1));
-select is(pg_temp.m_out('rb:retry'), 'FACTOR_STATE_CONFLICT', 'a retry while the provider effect is unresolved is blocked (no blind resend) [P2-S09-AC-808]');
+select is(pg_temp.m_out('rb:retry'), 'FACTOR_STATE_CONFLICT', 'a retry while the provider effect is unresolved is blocked (no blind resend) [P2-S09-AC-808] [P2-S09-AC-814]');
 select pg_temp.m_rbegin('rb:mismatch', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a1', 'c3');
 select is(pg_temp.m_out('rb:mismatch'), 'IDEMPOTENCY_MISMATCH', 'the same key with a different request hash is IDEMPOTENCY_MISMATCH');
 select pg_temp.m_rbegin('rb:newkey', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'd4', 'e5');
-select is(pg_temp.m_out('rb:newkey'), 'FACTOR_STATE_CONFLICT', 'a new key for a reconciling factor is FACTOR_STATE_CONFLICT [P2-S09-AC-808]');
+select is(pg_temp.m_out('rb:newkey'), 'FACTOR_STATE_CONFLICT', 'a new key for a reconciling factor is FACTOR_STATE_CONFLICT [P2-S09-AC-808] [P2-S09-AC-814]');
 
 select pg_temp.m_rfinish('rf:other', 2, (select id from m_f where name = 'One'), 'user_request');
-select is(pg_temp.m_out('rf:other'), 'NOT_FOUND', 'finish by another user is NOT_FOUND');
+select is(pg_temp.m_out('rf:other'), 'NOT_FOUND', 'finish by another user is NOT_FOUND [P2-S09-AC-813]');
 select pg_temp.m_rfinish('rf:notrec', 1, (select id from m_f where name = 'Two'), 'user_request', 'f6');
-select is(pg_temp.m_out('rf:notrec'), 'FACTOR_STATE_CONFLICT', 'finish on a factor that was never reserved is FACTOR_STATE_CONFLICT');
+select is(pg_temp.m_out('rf:notrec'), 'FACTOR_STATE_CONFLICT', 'finish on a factor that was never reserved is FACTOR_STATE_CONFLICT [P2-S09-AC-814]');
 create temp table m_v1 on commit drop as select pg_temp.m_ver(1)::bigint as v;
 select pg_temp.m_rfinish('rf:ok', 1, (select id from m_f where name = 'One'), 'user_request');
 select is(pg_temp.m_out('rf:ok'), 'OK', 'finish confirms the removal');
@@ -104,7 +104,7 @@ select is(pg_temp.m_out('rb:replay'), 'OK', 'the same key and hash after complet
 select is(pg_temp.m_resp('rb:replay')#>>'{replay,factors,0,friendlyName}', 'Two', 'the replay carries the current snapshot');
 select is(pg_temp.m_resp('rb:replay')->>'providerFactorId', (select pid::text from m_f where name = 'One'), 'and the provider id');
 select pg_temp.m_rbegin('rb:gone', 1, (select id from m_f where name = 'One'), 'user_request', pg_temp.m_ver(1), 'a7', 'a8');
-select is(pg_temp.m_out('rb:gone'), 'FACTOR_STATE_CONFLICT', 'removing an already removed factor with a new key is FACTOR_STATE_CONFLICT');
+select is(pg_temp.m_out('rb:gone'), 'FACTOR_STATE_CONFLICT', 'removing an already removed factor with a new key is FACTOR_STATE_CONFLICT [P2-S09-AC-814]');
 
 -- user_request does not touch other sessions.
 select platform_api.auth_session_register(pg_temp.m_uid(1), pg_temp.m_sid(1, 2), clock_timestamp(), extensions.gen_random_uuid(), extensions.gen_random_uuid());

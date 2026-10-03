@@ -93,7 +93,7 @@ export interface GrantRowTarget {
 export interface GrantPrefill {
   readonly subjectPersonId: string;
   readonly capability: string;
-  readonly nonce: number;
+  readonly prefillCount: number;
 }
 
 /** State and commands of the owner grant console; the server stays authoritative. */
@@ -273,7 +273,7 @@ export const useCmsCapabilityGrants = (
     setPrefill((previous) => ({
       subjectPersonId: grant.subjectPersonId,
       capability: grant.capability,
-      nonce: (previous?.nonce ?? 0) + 1,
+      prefillCount: (previous?.prefillCount ?? 0) + 1,
     }));
 
   return {

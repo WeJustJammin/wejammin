@@ -42,7 +42,7 @@ select pg_temp.s09d_rpc('l:relation:locale', 'platform_api.cms_bind_relation', '
     'fieldId', pg_temp.s09d_id('l:fieldId'), 'targetKind', 'domain', 'targetType', 'profile', 'projectionKey', 'profile.summary',
     'cardinality', 'many', 'min', 0, 'max', 3, 'ordered', false, 'onUnavailable', 'placeholder',
     'expectedVersion', pg_temp.s09d_version('l'), 'idempotencyKey', 's09e-locale-relation-0001', 'supportedLocales', '["en-US"]'::jsonb));
-select ok(pg_temp.s09d_outcome('l:relation:locale') in ('INVALID_REQUEST', 'VALIDATION_FAILED'), 'CMS-03A-03 refuses a locale configuration key [P2-S09-AC-1186]');
+select ok(pg_temp.s09d_outcome('l:relation:locale') = 'VALIDATION_FAILED', 'CMS-03A-03 refuses a locale configuration key [P2-S09-AC-1186]');
 select pg_temp.s09d_rpc('l:relation:control', 'platform_api.cms_bind_relation', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('l:type'), 'versionId', pg_temp.s09d_id('l:version'),
     'fieldId', pg_temp.s09d_id('l:fieldId'), 'targetKind', 'domain', 'targetType', 'profile', 'projectionKey', 'profile.summary',
@@ -160,9 +160,16 @@ select is((select string_agg(c.relname, ',' order by c.relname) from pg_class c 
   'no cms_ table grants any direct privilege to anon, authenticated or service_role [P2-S09-AC-181]');
 select is((select count(*)::integer from pg_policies p
     where p.schemaname = 'platform_private' and p.tablename like 'cms\_%' and p.tablename <> 'cms_operational_alert_deliveries'
+      and p.permissive = 'PERMISSIVE'
       and (p.qual is distinct from 'platform_private.cms_rpc_context_valid()' or p.with_check is distinct from 'platform_private.cms_rpc_context_valid()')
       and p.tablename not in ('cms_schema_transform_registry', 'cms_workflow_policies')), 0,
-  'every read predicate and WITH CHECK is the schema-qualified platform_private.cms_rpc_context_valid() gate [P2-S09-AC-181]');
+  'every permissive read predicate and WITH CHECK is the schema-qualified platform_private.cms_rpc_context_valid() gate [P2-S09-AC-181]');
+select is((select count(*)::integer from pg_policies p
+    where p.schemaname = 'platform_private' and p.tablename like 'cms\_%' and p.tablename <> 'cms_operational_alert_deliveries'
+      and p.permissive = 'RESTRICTIVE'
+      and (p.policyname !~ '_session_scope(_insert|_update|_delete)?$'
+           or coalesce(p.qual, '') || coalesce(p.with_check, '') !~ 'platform_private\.cms_session_scope_ok')), 0,
+  'every other cms_ policy is a RESTRICTIVE session-scope policy (AND-ed with the RPC gate) that calls the session-resolving helper [P2-S09-AC-181]');
 select ok((select p.prosecdef and p.proconfig @> array['search_path=""'] from pg_proc p where p.oid = 'platform_private.cms_rpc_context_valid()'::regprocedure),
   'the gate is SECURITY DEFINER with a pinned empty search_path [P2-S09-AC-181]');
 select set_config('app.cms_rpc', '', true);

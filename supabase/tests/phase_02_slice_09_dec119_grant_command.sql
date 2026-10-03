@@ -17,6 +17,7 @@ select no_plan();
 \ir phase_02_slice_09_dec108/02-chain.sqlinc
 \ir phase_02_slice_09_dec108/03-support.sqlinc
 \ir phase_02_slice_09_dec119/00-support.sqlinc
+\ir phase_02_slice_09_dec108/05-probes.sqlinc
 
 select pg_temp.s09g_member('rev1');
 select pg_temp.s09g_member('rev2');
@@ -165,8 +166,13 @@ select ok(pg_temp.s09g_holds('owner', 'cms.reviewer.policy') and pg_temp.s09g_ho
   'a self-granted capability is effective');
 
 -- Active aggregates refuse a second grant (even with a new key); backfilled ones too.
-select pg_temp.s09g_grant('g:dup', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(5));
-select is(pg_temp.s09d_outcome('g:dup'), 'CONFLICT', 'a second grant of an active aggregate under a new key is 409 [P2-S09-AC-527] [P2-S09-AC-530]');
+select pg_temp.s09g_grant('g:dup', 'owner', 'rev1', 'cms.author', pg_temp.s09g_day(0), '{"reason": "Authoring access"}');
+select is(pg_temp.s09d_outcome('g:dup'), 'CONFLICT', 'the byte-identical body (same subject, capability, validThrough day and reason) under a NEW key against an active aggregate is 409 [P2-S09-AC-527] [P2-S09-AC-530]');
+select is(pg_temp.s09d_resp('g:ok')->>'validThrough', pg_temp.s09g_day(0),
+  'the 409 body repeats the first grant exactly: same validThrough day [P2-S09-AC-530]');
+select is((select count(*)::integer from platform_private.cms_capability_grants
+            where subject_person_ref = pg_temp.s09d_actor_id('rev1', 'person')::uuid and capability_code = 'cms.author'), 1,
+  'the refused duplicate created no second aggregate [P2-S09-AC-530]');
 select pg_temp.s09g_grant('g:dup:init', 'owner', 'owner', 'cms.schema_designer', pg_temp.s09g_day(5));
 select is(pg_temp.s09d_outcome('g:dup:init'), 'CONFLICT', 'the backfilled owner-initialization aggregate is active: grant is 409, renewal is the path [P2-S09-AC-527]');
 
@@ -210,6 +216,57 @@ select ok(pg_temp.s09g_warp('owner', 'cms.schema_designer', -5, -1) and not pg_t
 select pg_temp.s09g_grant('g:lapsedowner2', 'owner', 'rev1', 'cms.media_curator', pg_temp.s09g_day(2));
 select is(pg_temp.s09d_outcome('g:lapsedowner2'), 'OK', 'the owner still grants with a lapsed own CMS grant (no capability key required) [P2-S09-AC-523]');
 select ok(pg_temp.s09g_holds('rev1', 'cms.media_curator'), 'and the new grant is effective');
+
+-- AC-514: the reason is NFC-normalized and then counted in Unicode characters
+-- (code points), 1..256, matching the contract; octets are irrelevant.
+select pg_temp.s09g_member('rev3');
+create or replace function pg_temp.r3_constraint(p_sql text) returns text language plpgsql as $body$
+declare cname text;
+begin
+  execute p_sql;
+  return 'OK';
+exception when others then
+  get stacked diagnostics cname = constraint_name;
+  return coalesce(nullif(cname, ''), sqlerrm);
+end;
+$body$;
+select pg_temp.s09g_grant('r:e256', 'owner', 'rev3', 'cms.author', pg_temp.s09g_day(3),
+  jsonb_build_object('reason', repeat(U&'\00E9', 256)));
+select is(pg_temp.s09d_outcome('r:e256'), 'OK',
+  '256 precomposed e-acute characters (512 octets) are accepted: the bound counts characters, not octets [P2-S09-AC-514]');
+select is((select char_length(reason) from platform_private.cms_capability_grants where id = pg_temp.s09g_grant_id(pg_temp.s09d_resp('r:e256'))), 256,
+  'the stored reason is 256 characters [P2-S09-AC-514]');
+select pg_temp.s09g_grant('r:e257', 'owner', 'rev3', 'cms.editor', pg_temp.s09g_day(3),
+  jsonb_build_object('reason', repeat(U&'\00E9', 257)));
+select is(pg_temp.s09d_outcome('r:e257'), 'VALIDATION_FAILED', '257 characters are refused with VALIDATION_FAILED [P2-S09-AC-514]');
+select pg_temp.s09g_grant('r:decomp256', 'owner', 'rev3', 'cms.reviewer', pg_temp.s09g_day(3),
+  jsonb_build_object('reason', repeat(U&'e\0301', 256)));
+select is(pg_temp.s09d_outcome('r:decomp256'), 'OK',
+  '256 decomposed e + U+0301 pairs (512 code points before NFC) normalize to 256 characters and are accepted [P2-S09-AC-514]');
+select is((select reason from platform_private.cms_capability_grants where id = pg_temp.s09g_grant_id(pg_temp.s09d_resp('r:decomp256'))),
+  repeat(U&'\00E9', 256), 'the decomposed reason is stored as 256 composed NFC characters [P2-S09-AC-514]');
+select pg_temp.s09g_grant('r:decomp257', 'owner', 'rev3', 'cms.publisher', pg_temp.s09g_day(3),
+  jsonb_build_object('reason', repeat(U&'e\0301', 257)));
+select is(pg_temp.s09d_outcome('r:decomp257'), 'VALIDATION_FAILED', '257 decomposed pairs normalize to 257 characters and are refused [P2-S09-AC-514]');
+select pg_temp.s09g_grant('r:emoji256', 'owner', 'rev3', 'cms.navigation_editor', pg_temp.s09g_day(3),
+  jsonb_build_object('reason', repeat(U&'\+01F600', 256)));
+select is(pg_temp.s09d_outcome('r:emoji256'), 'OK', '256 astral characters (U+1F600, 1024 octets, 512 UTF-16 units) are accepted [P2-S09-AC-514]');
+select pg_temp.s09g_grant('r:emoji257', 'owner', 'rev3', 'cms.media_curator', pg_temp.s09g_day(3),
+  jsonb_build_object('reason', repeat(U&'\+01F600', 257)));
+select is(pg_temp.s09d_outcome('r:emoji257'), 'VALIDATION_FAILED', '257 astral characters are refused with VALIDATION_FAILED [P2-S09-AC-514]');
+select pg_temp.s09g_grant('r:empty', 'owner', 'rev3', 'cms.media_contributor', pg_temp.s09g_day(3), '{"reason": ""}');
+select is(pg_temp.s09d_outcome('r:empty'), 'VALIDATION_FAILED', 'an empty reason is refused with VALIDATION_FAILED [P2-S09-AC-514]');
+select is(pg_temp.s09e_check('cms_capability_grants', 'cms_capability_grants_reason_check', pg_temp.s09g_grant_id(pg_temp.s09d_resp('r:e256')),
+  jsonb_build_object('reason', repeat(U&'\+01F600', 257))),
+  'control:ACCEPTED|override:REJECTED:23514:cms_capability_grants_reason_check',
+  'the table CHECK itself counts characters: 257 characters violate cms_capability_grants_reason_check [P2-S09-AC-514]');
+select is(pg_temp.s09e_check('cms_capability_grants', 'cms_capability_grants_reason_check', pg_temp.s09g_grant_id(pg_temp.s09d_resp('r:e256')),
+  jsonb_build_object('reason', repeat(U&'\+01F600', 256))),
+  'control:ACCEPTED|override:ACCEPTED', '256 astral characters satisfy the table CHECK (octets irrelevant) [P2-S09-AC-514]');
+select is(pg_temp.s09e_check('cms_capability_grants', 'cms_capability_grants_reason_check', pg_temp.s09g_grant_id(pg_temp.s09d_resp('r:e256')),
+  jsonb_build_object('reason', U&'e\0301')),
+  'control:ACCEPTED|override:REJECTED:23514:cms_capability_grants_reason_check',
+  'a stored reason that is not NFC (decomposed e + U+0301) violates the table CHECK [P2-S09-AC-514]');
 
 select * from finish();
 rollback;

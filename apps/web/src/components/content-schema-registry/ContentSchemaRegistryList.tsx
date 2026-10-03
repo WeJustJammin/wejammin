@@ -49,6 +49,20 @@ const detailHref = (
   return `${url.pathname}${url.search}`;
 };
 
+/** Facts only a content type row carries (it has no version detail). */
+const TypeFacts = ({
+  record,
+}: {
+  readonly record: ContentSchemaRegistryRecord;
+}) =>
+  record.resourceKind === 'content_type' ? (
+    <small data-safe-field="contentType">
+      Type ID <code>{record.id}</code> ·{' '}
+      {record.builtIn ? 'Built-in type' : 'Custom type'} · Created{' '}
+      <time dateTime={record.createdAt}>{record.createdAt}</time>
+    </small>
+  ) : null;
+
 const detailFocusKey = (record: ContentSchemaRegistryRecord): string =>
   `content-schema-registry-view-${record.id}`;
 
@@ -124,6 +138,7 @@ export default function ContentSchemaRegistryList({
                       View details
                     </a>
                   )}
+                  <TypeFacts record={record} />
                   {record.resourceKind ===
                   'block_definition_registry_record' ? (
                     <small data-safe-field="releaseDigest">
@@ -159,6 +174,7 @@ export default function ContentSchemaRegistryList({
                 <dt>Updated</dt>
                 <dd>{updatedValue(record) ?? 'Not supplied'}</dd>
               </dl>
+              <TypeFacts record={record} />
               {href === null ? (
                 <span>Included in version detail</span>
               ) : (

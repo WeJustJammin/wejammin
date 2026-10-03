@@ -27,6 +27,18 @@ export default function ContentSchemaRegistryCompatibilityProjection({
         <dd>
           <code>{projection.templateDigest}</code>
         </dd>
+        <dt>Template version ID</dt>
+        <dd>
+          <code>{projection.templateVersionId}</code>
+        </dd>
+        <dt>Checked against content type</dt>
+        <dd>
+          <code>{projection.contentTypeId}</code>
+        </dd>
+        <dt>Checked against content type version</dt>
+        <dd>
+          <code>{projection.contentTypeVersionId}</code>
+        </dd>
       </dl>
     </section>
   );

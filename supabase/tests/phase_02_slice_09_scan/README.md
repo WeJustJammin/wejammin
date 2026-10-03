@@ -6,7 +6,7 @@ include, not a Supabase-discovered test file.
 
 | Fragment | Purpose |
 | -------- | ------- |
-| `00-guard.sqlinc` | In-test direct-write guard: BEFORE triggers on every producer-owned table record the top-level statement behind each write, so a suite can prove no review, decision, assignment, dry-run, evidence, target-row or plan row was written by a hand-written statement (`s09x_direct`) and that the named RPCs did write them (`s09x_via_rpc`). |
+| `00-guard.sqlinc` | In-test direct-write guard: BEFORE triggers on every producer-owned table classify each write from the PL/pgSQL call stack (GET DIAGNOSTICS PG_CONTEXT). A write is a producer write only when its innermost function is a `platform_private`/`platform_api` function that existed when the guard was armed; a hand-written statement, a DO block, a pg_temp helper (even one named like a producer) and a function created after arming are all direct writes (`s09x_direct`), so a suite can prove no review, decision, assignment, dry-run, evidence, target-row or plan row was substituted and that the named RPCs did write them (`s09x_via_rpc`). `../phase_02_slice_09_evidence_paths.sql` proves each bypass is caught (AC713). |
 
 ## Adding a suite
 

@@ -34,12 +34,52 @@ export default function ContentSchemaRegistryReviewFacts({
     <>
       {note === null ? null : <p>{note}</p>}
       <dl className="content-schema-registry-summary">
+        <dt>Review ID</dt>
+        <dd>
+          <code>{review.id}</code>
+        </dd>
+        <dt>Review version</dt>
+        <dd>{review.version}</dd>
+        <dt>Content hash</dt>
+        <dd>
+          <code>{review.contentHash}</code>
+        </dd>
+        <dt>Created</dt>
+        <dd>
+          <time dateTime={review.createdAt}>{review.createdAt}</time>
+        </dd>
+        <dt>Updated</dt>
+        <dd>
+          <time dateTime={review.updatedAt}>{review.updatedAt}</time>
+        </dd>
+        <dt>Submitted</dt>
+        <dd>
+          <time dateTime={review.submittedAt}>{review.submittedAt}</time>
+        </dd>
+        <dt>Content type ID</dt>
+        <dd>
+          <code>{review.contentTypeId}</code>
+        </dd>
+        <dt>Candidate version ID</dt>
+        <dd>
+          <code>{review.contentTypeVersionId}</code>
+        </dd>
+        <dt>Dry run ID</dt>
+        <dd>
+          <code>{review.dryRunId}</code>
+        </dd>
         <dt>State</dt>
         <dd>{review.state}</dd>
         <dt>Risk class</dt>
         <dd>{review.riskClass}</dd>
         <dt>Required decisions</dt>
         <dd>{String(review.requiredDecisionCount)}</dd>
+        <dt>Required capabilities</dt>
+        <dd>
+          {review.requiredCapabilities.length === 0
+            ? 'None'
+            : review.requiredCapabilities.join(', ')}
+        </dd>
         <dt>Recorded decisions</dt>
         <dd>{String(review.recordedDecisionCount)}</dd>
         <dt>Distinct approvals</dt>
@@ -47,6 +87,10 @@ export default function ContentSchemaRegistryReviewFacts({
         <dt>Policy</dt>
         <dd>
           <code>{review.policyKey}</code> version {review.policyVersion}
+        </dd>
+        <dt>Policy hash</dt>
+        <dd>
+          <code>{review.policyHash}</code>
         </dd>
         {review.approvalEvidenceHash === null ? null : (
           <>
@@ -68,6 +112,10 @@ export default function ContentSchemaRegistryReviewFacts({
       <section aria-labelledby="content-schema-registry-frozen-heading">
         <h4 id="content-schema-registry-frozen-heading">Frozen evidence</h4>
         <dl>
+          <dt>Frozen candidate version ID</dt>
+          <dd>
+            <code>{frozen.contentTypeVersionId}</code>
+          </dd>
           <dt>Candidate version</dt>
           <dd>{frozen.contentTypeVersionNo}</dd>
           <dt>Definition hash</dt>
@@ -78,6 +126,11 @@ export default function ContentSchemaRegistryReviewFacts({
           <dd>
             <code>{frozen.localeConfigHash}</code>
           </dd>
+          <dt>Compiled artifact ID</dt>
+          <dd>
+            <code>{frozen.schemaArtifact.id}</code> (
+            {frozen.schemaArtifact.state})
+          </dd>
           <dt>Compiled artifact</dt>
           <dd>
             <code>{frozen.schemaArtifact.zodContractRef}</code> · compiler{' '}
@@ -87,6 +140,10 @@ export default function ContentSchemaRegistryReviewFacts({
           <dt>Dependency manifest</dt>
           <dd>
             <code>{frozen.dependencyManifestHash}</code>
+          </dd>
+          <dt>Sealed dry run ID</dt>
+          <dd>
+            <code>{frozen.dryRun.id}</code>
           </dd>
           <dt>Sealed dry run</dt>
           <dd>

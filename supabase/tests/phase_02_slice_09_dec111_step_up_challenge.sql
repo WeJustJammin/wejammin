@@ -72,19 +72,19 @@ create temp table m_ver_before on commit drop as select n, pg_temp.m_ver(n) v fr
 
 -- ---- AUTH-API-20 begin ------------------------------------------------------
 select pg_temp.m_cbegin('cb:method', 1, null, 'sms');
-select is(pg_temp.m_out('cb:method'), 'INVALID_REQUEST', 'a method outside the registry is INVALID_REQUEST');
+select is(pg_temp.m_out('cb:method'), 'INVALID_REQUEST', 'a method outside the registry is INVALID_REQUEST [P2-S09-AC-840]');
 select pg_temp.m_cbegin('cb:nosess', 1, null, 'totp', 9);
-select is(pg_temp.m_out('cb:nosess'), 'UNAUTHENTICATED', 'an unregistered session is 401');
+select is(pg_temp.m_out('cb:nosess'), 'UNAUTHENTICATED', 'an unregistered session is 401 [P2-S09-AC-841]');
 select pg_temp.m_cbegin('cb:none', 3);
-select is(pg_temp.m_out('cb:none'), 'NO_VERIFIED_FACTOR', 'an account with no factor is NO_VERIFIED_FACTOR');
+select is(pg_temp.m_out('cb:none'), 'NO_VERIFIED_FACTOR', 'an account with no factor is NO_VERIFIED_FACTOR [P2-S09-AC-844]');
 select pg_temp.m_cbegin('cb:pendonly', 4);
-select is(pg_temp.m_out('cb:pendonly'), 'NO_VERIFIED_FACTOR', 'an account with only a pending factor is NO_VERIFIED_FACTOR');
+select is(pg_temp.m_out('cb:pendonly'), 'NO_VERIFIED_FACTOR', 'an account with only a pending factor is NO_VERIFIED_FACTOR [P2-S09-AC-844]');
 select pg_temp.m_cbegin('cb:many', 2);
-select is(pg_temp.m_out('cb:many'), 'FACTOR_ID_REQUIRED', 'two verified factors without a factorId is FACTOR_ID_REQUIRED');
+select is(pg_temp.m_out('cb:many'), 'FACTOR_ID_REQUIRED', 'two verified factors without a factorId is FACTOR_ID_REQUIRED [P2-S09-AC-847]');
 select pg_temp.m_cbegin('cb:foreign', 1, pg_temp.m_fid(2));
-select is(pg_temp.m_out('cb:foreign'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND');
+select is(pg_temp.m_out('cb:foreign'), 'NOT_FOUND', 'another user''s factor id is NOT_FOUND [P2-S09-AC-843]');
 select pg_temp.m_cbegin('cb:pending', 4, pg_temp.m_fid(4));
-select is(pg_temp.m_out('cb:pending'), 'FACTOR_NOT_VERIFIED', 'a pending factor is FACTOR_NOT_VERIFIED');
+select is(pg_temp.m_out('cb:pending'), 'FACTOR_NOT_VERIFIED', 'a pending factor is FACTOR_NOT_VERIFIED [P2-S09-AC-844]');
 select pg_temp.m_cbegin('cb:ok', 1);
 select is(pg_temp.m_resp('cb:ok'), jsonb_build_object('factorId', pg_temp.m_fid(1), 'providerFactorId', pg_temp.m_pfid(1), 'friendlyName', 'Phone'),
   'begin resolves the single verified factor and returns the protected ids');
@@ -95,11 +95,11 @@ select is(pg_temp.m_one('select count(*)::text from identity.step_up_challenges 
 
 -- ---- finish -----------------------------------------------------------------
 select pg_temp.m_cfinish('cf:past', 1, pg_temp.m_fid(1), interval '-1 second');
-select is(pg_temp.m_out('cf:past'), 'CHALLENGE_EXPIRED', 'a provider challenge that is already expired is CHALLENGE_EXPIRED');
+select is(pg_temp.m_out('cf:past'), 'CHALLENGE_EXPIRED', 'a provider challenge that is already expired is CHALLENGE_EXPIRED [P2-S09-AC-844]');
 select pg_temp.m_cfinish('cf:notver', 4, pg_temp.m_fid(4));
-select is(pg_temp.m_out('cf:notver'), 'FACTOR_NOT_VERIFIED', 'finish on a non-verified factor is FACTOR_NOT_VERIFIED');
+select is(pg_temp.m_out('cf:notver'), 'FACTOR_NOT_VERIFIED', 'finish on a non-verified factor is FACTOR_NOT_VERIFIED [P2-S09-AC-844]');
 select pg_temp.m_cfinish('cf:foreign', 1, pg_temp.m_fid(2));
-select is(pg_temp.m_out('cf:foreign'), 'NOT_FOUND', 'finish with another user''s factor is NOT_FOUND');
+select is(pg_temp.m_out('cf:foreign'), 'NOT_FOUND', 'finish with another user''s factor is NOT_FOUND [P2-S09-AC-843]');
 select pg_temp.m_cfinish('cf:ok', 1, pg_temp.m_fid(1), interval '5 minutes');
 select is(pg_temp.m_out('cf:ok'), 'OK', 'finish inserts the pending challenge');
 select ok(pg_temp.m_resp('cf:ok')->>'challengeId' ~ '^[0-9a-f-]{36}$'
@@ -133,9 +133,9 @@ select is(pg_temp.m_one(format($$select count(*)::text from identity.step_up_cha
 
 -- ---- prepare -----------------------------------------------------------------
 select pg_temp.m_cprep('cp:othersession', 1, (select id from m_c2), 2);
-select is(pg_temp.m_out('cp:othersession'), 'NOT_FOUND', 'another session of the same user cannot use the challenge (404)');
+select is(pg_temp.m_out('cp:othersession'), 'NOT_FOUND', 'another session of the same user cannot use the challenge (404) [P2-S09-AC-869]');
 select pg_temp.m_cprep('cp:otheruser', 2, (select id from m_c2));
-select is(pg_temp.m_out('cp:otheruser'), 'NOT_FOUND', 'another user cannot use the challenge (404)');
+select is(pg_temp.m_out('cp:otheruser'), 'NOT_FOUND', 'another user cannot use the challenge (404) [P2-S09-AC-869]');
 select pg_temp.m_cprep('cp:ok', 1, (select id from m_c2));
 select is(pg_temp.m_resp('cp:ok')->>'providerChallengeId',
   pg_temp.m_one(format('select provider_challenge_id::text from identity.step_up_challenges where id = %L', (select id from m_c2))),
@@ -144,13 +144,13 @@ select ok(pg_temp.m_resp('cp:ok')->>'factorId' = pg_temp.m_fid(1)::text and pg_t
     and pg_temp.m_resp('cp:ok')->>'expiresAt' is not null, 'and the factor ids and expiry');
 select is(pg_temp.m_cstate((select id from m_c2)), 'pending', 'prepare is read-only');
 select pg_temp.m_cprep('cp:old', 1, (select id from m_c1));
-select is(pg_temp.m_out('cp:old'), 'CHALLENGE_EXPIRED', 'a superseded (expired) challenge is CHALLENGE_EXPIRED');
+select is(pg_temp.m_out('cp:old'), 'CHALLENGE_EXPIRED', 'a superseded (expired) challenge is CHALLENGE_EXPIRED [P2-S09-AC-870]');
 
 -- failure bookkeeping
 select pg_temp.m_cfail('fl:bad', 1, (select id from m_c2), 'bogus');
-select is(pg_temp.m_out('fl:bad'), 'INVALID_REQUEST', 'an unknown failure outcome is INVALID_REQUEST');
+select is(pg_temp.m_out('fl:bad'), 'INVALID_REQUEST', 'an unknown failure outcome is INVALID_REQUEST [P2-S09-AC-866]');
 select pg_temp.m_cfail('fl:other', 1, (select id from m_c2), 'incorrect', 2);
-select is(pg_temp.m_out('fl:other'), 'NOT_FOUND', 'recording a failure from another session is NOT_FOUND');
+select is(pg_temp.m_out('fl:other'), 'NOT_FOUND', 'recording a failure from another session is NOT_FOUND [P2-S09-AC-869]');
 select pg_temp.m_cfail('fl:1', 1, (select id from m_c2), 'incorrect');
 select pg_temp.m_cfail('fl:2', 1, (select id from m_c2), 'incorrect');
 select is(pg_temp.m_one(format('select failed_attempt_count::text || state::text from identity.step_up_challenges where id = %L', (select id from m_c2))), '2pending',
@@ -164,9 +164,9 @@ select pg_temp.m_cfail('fl:amb', 1, (select id from m_c3), 'ambiguous', 2);
 select is(pg_temp.m_cstate((select id from m_c3)), 'failed', 'an ambiguous provider outcome fails the challenge [P2-S09-AC-905]');
 select is(pg_temp.m_one(format('select (failed_at is not null)::text from identity.step_up_challenges where id = %L', (select id from m_c3))), 'true', 'failed_at is recorded');
 select pg_temp.m_cprep('fl:after', 1, (select id from m_c3), 2);
-select is(pg_temp.m_out('fl:after'), 'CHALLENGE_CONSUMED', 'a failed challenge is CHALLENGE_CONSUMED (start a new one) [P2-S09-AC-905]');
+select is(pg_temp.m_out('fl:after'), 'CHALLENGE_CONSUMED', 'a failed challenge is CHALLENGE_CONSUMED (start a new one) [P2-S09-AC-905] [P2-S09-AC-870]');
 select pg_temp.m_cfail('fl:nonpending', 1, (select id from m_c3), 'incorrect', 2);
-select is(pg_temp.m_out('fl:nonpending'), 'CHALLENGE_CONSUMED', 'a failure cannot be recorded on a non-pending challenge');
+select is(pg_temp.m_out('fl:nonpending'), 'CHALLENGE_CONSUMED', 'a failure cannot be recorded on a non-pending challenge [P2-S09-AC-870]');
 
 -- expired window
 select pg_temp.m_cbegin('ex:b', 2, pg_temp.m_fid(2));
@@ -174,20 +174,20 @@ select pg_temp.m_cfinish('ex:f', 2, pg_temp.m_fid(2));
 create temp table m_cx on commit drop as select (pg_temp.m_resp('ex:f')->>'challengeId')::uuid id;
 select pg_temp.m_warp('step_up_challenges', $$expires_at = clock_timestamp() - interval '1 second'$$, format('id = %L', (select id from m_cx)));
 select pg_temp.m_cprep('ex:prep', 2, (select id from m_cx));
-select is(pg_temp.m_out('ex:prep'), 'CHALLENGE_EXPIRED', 'prepare after the window is CHALLENGE_EXPIRED');
+select is(pg_temp.m_out('ex:prep'), 'CHALLENGE_EXPIRED', 'prepare after the window is CHALLENGE_EXPIRED [P2-S09-AC-870]');
 select pg_temp.m_csettle('ex:settle', 2, (select id from m_cx));
-select is(pg_temp.m_out('ex:settle'), 'CHALLENGE_EXPIRED', 'settle after the window is CHALLENGE_EXPIRED');
+select is(pg_temp.m_out('ex:settle'), 'CHALLENGE_EXPIRED', 'settle after the window is CHALLENGE_EXPIRED [P2-S09-AC-870]');
 select pg_temp.m_cfail('ex:fail', 2, (select id from m_cx), 'incorrect');
-select is(pg_temp.m_out('ex:fail'), 'CHALLENGE_EXPIRED', 'a failure after the window is CHALLENGE_EXPIRED');
+select is(pg_temp.m_out('ex:fail'), 'CHALLENGE_EXPIRED', 'a failure after the window is CHALLENGE_EXPIRED [P2-S09-AC-870]');
 
 -- ---- AUTH-API-21 settle -------------------------------------------------------
 create temp table m_lu on commit drop as
   select pg_temp.m_one(format('select last_used_at::text from identity.mfa_factor_registry where id = %L', pg_temp.m_fid(1))) v;
 select pg_temp.m_csettle('st:badrot', 1, (select id from m_c2), 1, pg_temp.m_sid(2));
-select is(pg_temp.m_out('st:badrot'), 'UNAUTHENTICATED', 'rotating onto another user''s session id is refused');
+select is(pg_temp.m_out('st:badrot'), 'UNAUTHENTICATED', 'rotating onto another user''s session id is refused [P2-S09-AC-867]');
 select is(pg_temp.m_cstate((select id from m_c2)), 'pending', 'a refused rotation rolls the consumption back');
 select pg_temp.m_csettle('st:othersess', 1, (select id from m_c2), 2);
-select is(pg_temp.m_out('st:othersess'), 'NOT_FOUND', 'settle from another session is NOT_FOUND');
+select is(pg_temp.m_out('st:othersess'), 'NOT_FOUND', 'settle from another session is NOT_FOUND [P2-S09-AC-869]');
 select pg_temp.m_csettle('st:ok', 1, (select id from m_c2));
 select is(pg_temp.m_out('st:ok'), 'OK', 'settle consumes the challenge [P2-S09-AC-862]');
 select is(pg_temp.m_cstate((select id from m_c2)), 'consumed', 'the challenge is consumed');
@@ -200,9 +200,9 @@ select is(pg_temp.m_events(1, 'step_up.verified'), 1, 'one step_up.verified secu
 select is(pg_temp.m_one(format($$select count(*)::text from audit_private.audit_events where action = 'identity.step_up.verified' and target_id = %L$$, (select id from m_c2))), '1',
   'one BE00 audit row for the verification [P2-S09-AC-862]');
 select pg_temp.m_csettle('st:again', 1, (select id from m_c2));
-select is(pg_temp.m_out('st:again'), 'CHALLENGE_CONSUMED', 'a challenge is consumed once (replay is CHALLENGE_CONSUMED) [P2-S09-AC-905]');
+select is(pg_temp.m_out('st:again'), 'CHALLENGE_CONSUMED', 'a challenge is consumed once (replay is CHALLENGE_CONSUMED) [P2-S09-AC-905] [P2-S09-AC-870]');
 select pg_temp.m_cprep('st:prep', 1, (select id from m_c2));
-select is(pg_temp.m_out('st:prep'), 'CHALLENGE_CONSUMED', 'a consumed challenge cannot be prepared again');
+select is(pg_temp.m_out('st:prep'), 'CHALLENGE_CONSUMED', 'a consumed challenge cannot be prepared again [P2-S09-AC-870]');
 
 -- settle with rotation to a new session
 select pg_temp.m_cbegin('rt:b', 5);
@@ -220,11 +220,11 @@ select pg_temp.m_cfinish('nv:f', 6, pg_temp.m_fid(6));
 create temp table m_cn on commit drop as select (pg_temp.m_resp('nv:f')->>'challengeId')::uuid id;
 select pg_temp.m('nv:mark', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(6), 'p_factor_id', pg_temp.m_fid(6)));
 select pg_temp.m_csettle('nv:settle', 6, (select id from m_cn));
-select is(pg_temp.m_out('nv:settle'), 'FACTOR_NOT_VERIFIED', 'settle for a factor that is no longer verified is FACTOR_NOT_VERIFIED');
+select is(pg_temp.m_out('nv:settle'), 'FACTOR_NOT_VERIFIED', 'settle for a factor that is no longer verified is FACTOR_NOT_VERIFIED [P2-S09-AC-870]');
 select pg_temp.m_cprep('nv:prep', 6, (select id from m_cn));
-select is(pg_temp.m_out('nv:prep'), 'FACTOR_NOT_VERIFIED', 'prepare for a factor that is no longer verified is FACTOR_NOT_VERIFIED');
+select is(pg_temp.m_out('nv:prep'), 'FACTOR_NOT_VERIFIED', 'prepare for a factor that is no longer verified is FACTOR_NOT_VERIFIED [P2-S09-AC-870]');
 select pg_temp.m_cbegin('nv:begin', 6, pg_temp.m_fid(6));
-select is(pg_temp.m_out('nv:begin'), 'FACTOR_STATE_CONFLICT', 'a reconciling factor cannot start a challenge (409 factor_state_conflict)');
+select is(pg_temp.m_out('nv:begin'), 'FACTOR_STATE_CONFLICT', 'a reconciling factor cannot start a challenge (409 factor_state_conflict) [P2-S09-AC-844]');
 
 select * from finish();
 

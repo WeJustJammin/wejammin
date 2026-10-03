@@ -21,6 +21,7 @@ import {
   createProductionAsyncEntrypoint,
   runProductionOperationalAlerts,
 } from './production-async-entrypoint';
+import { runProductionCmsReviewAuthoritySweep } from './production-cms-review-authority-sweep';
 import { runProductionIdempotencyExpirySweep } from './production-idempotency-expiry-sweep';
 import {
   logRequest,
@@ -203,13 +204,21 @@ const handler = {
       executionContext,
     );
     const idempotencyExpirySweep = runProductionIdempotencyExpirySweep(env);
+    const reviewAuthoritySweep = runProductionCmsReviewAuthoritySweep(env);
     const operationalAlerts = runProductionOperationalAlerts(controller, env);
-    const [sweepResult, expiryResult, alertResult] = await Promise.allSettled([
-      outboxSweep,
-      idempotencyExpirySweep,
-      operationalAlerts,
-    ]);
-    const rejectedResults = [sweepResult, expiryResult, alertResult].filter(
+    const [sweepResult, expiryResult, reviewAuthorityResult, alertResult] =
+      await Promise.allSettled([
+        outboxSweep,
+        idempotencyExpirySweep,
+        reviewAuthoritySweep,
+        operationalAlerts,
+      ]);
+    const rejectedResults = [
+      sweepResult,
+      expiryResult,
+      reviewAuthorityResult,
+      alertResult,
+    ].filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
     );
 
@@ -225,6 +234,8 @@ const handler = {
     // above so manual-review-only failures remain visible without replay.
     if (sweepResult.status === 'rejected') throw sweepResult.reason;
     if (expiryResult.status === 'rejected') throw expiryResult.reason;
+    if (reviewAuthorityResult.status === 'rejected')
+      throw reviewAuthorityResult.reason;
     if (alertResult.status === 'rejected') throw alertResult.reason;
   },
 } satisfies ExportedHandler<AsyncWorkerBindings>;

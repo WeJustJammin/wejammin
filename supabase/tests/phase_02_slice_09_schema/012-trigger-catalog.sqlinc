@@ -23,7 +23,7 @@ select is((select count(*)::integer from (select table_name, trigger_name, funct
   'every proved trigger still exists with its function, timing, row level and events [P2-S09-AC-215]');
 select is((select count(*)::integer from s09t_catalog where enabled <> 'O'), 0,
   'every cms_ trigger fires in the origin session role, none is disabled or replica-only [P2-S09-AC-215]');
-select is((select count(*)::integer from s09t_inventory), 95, 'the inventory holds exactly 95 triggers [P2-S09-AC-215]');
+select is((select count(*)::integer from s09t_inventory), 96, 'the inventory holds exactly 96 triggers [P2-S09-AC-215]');
 
 -- Every cms_ table has INSERT, UPDATE and DELETE each covered by a BEFORE row trigger, except the two
 -- named exceptions: the alert delivery log has no trigger (its RLS policy admits only RPC context) and

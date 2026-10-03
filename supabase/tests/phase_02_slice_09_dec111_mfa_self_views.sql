@@ -70,15 +70,28 @@ select ok(pg_temp.m_rls(t), t || ' keeps ENABLE and FORCE row level security [P2
 from unnest(array['mfa_factor_registry', 'step_up_challenges']) t;
 select ok(pg_temp.m_no_grants(t), t || ' still has no table-level grant for anon, authenticated or service_role [P2-S09-AC-903]')
 from unnest(array['mfa_factor_registry', 'step_up_challenges']) t;
+-- AC181 (R3 follow-up) added session-scoped WRITE policies behind the revoked
+-- grants; the read surface is still exactly the one self-read policy.
 select is((select array_agg(policyname::text order by policyname) from pg_policies
             where schemaname = 'identity' and tablename = 'mfa_factor_registry'),
-  array['mfa_factor_self_read'], 'the factor registry has exactly one policy: the self read [P2-S09-AC-903]');
+  array['mfa_factor_registry_session_scope_delete', 'mfa_factor_registry_session_scope_insert',
+        'mfa_factor_registry_session_scope_update', 'mfa_factor_self_read'],
+  'the factor registry has the self read plus only the session-scoped write policies [P2-S09-AC-903]');
 select is((select array_agg(policyname::text order by policyname) from pg_policies
             where schemaname = 'identity' and tablename = 'step_up_challenges'),
-  array['step_up_challenge_self_read'], 'the challenge table has exactly one policy: the self read [P2-S09-AC-903]');
+  array['step_up_challenge_self_read', 'step_up_challenges_session_scope_delete',
+        'step_up_challenges_session_scope_insert', 'step_up_challenges_session_scope_update'],
+  'the challenge table has the self read plus only the session-scoped write policies [P2-S09-AC-903]');
 select is((select string_agg(distinct cmd || ':' || roles::text, ',') from pg_policies
-            where schemaname = 'identity' and tablename in ('mfa_factor_registry', 'step_up_challenges')),
-  'SELECT:{authenticated}', 'both policies are SELECT-only for authenticated [P2-S09-AC-903]');
+            where schemaname = 'identity' and tablename in ('mfa_factor_registry', 'step_up_challenges')
+              and cmd = 'SELECT'),
+  'SELECT:{authenticated}', 'the only read policy is the self read for authenticated [P2-S09-AC-903]');
+select is((select count(*)::integer from pg_policies
+            where schemaname = 'identity' and tablename in ('mfa_factor_registry', 'step_up_challenges')
+              and cmd <> 'SELECT'
+              and (policyname !~ '_session_scope_(insert|update|delete)$'
+                   or coalesce(qual, '') || coalesce(with_check, '') !~ 'platform_private\.identity_session_scope_ok')), 0,
+  'every write policy is a session-scope policy that re-resolves the published subject [P2-S09-AC-181]');
 
 -- ---- who holds any privilege ----------------------------------------------------
 select is((select coalesce(string_agg(distinct r.rolname, ',' order by r.rolname), '') from pg_attribute a

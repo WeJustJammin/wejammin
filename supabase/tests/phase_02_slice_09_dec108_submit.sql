@@ -89,13 +89,13 @@ select pg_temp.s09d_rpc('p:submit', 'platform_api.cms_submit_schema_review', 'ow
     'expectedVersion', pg_temp.s09d_version('p'),
     'dryRunId', extensions.gen_random_uuid(), 'idempotencyKey', 's09d-submit-pseudo-0001'), true);
 select ok(pg_temp.s09d_outcome('p:create') = 'OK'
-  and pg_temp.s09d_outcome('p:submit') in ('CONFLICT', 'VALIDATION_FAILED', 'NOT_FOUND'),
+  and pg_temp.s09d_outcome('p:submit') = 'CONFLICT',
   'a dryRunId that is no persisted CMS-03A-10 attempt (a candidate with no dry-run at all) cannot be frozen [P2-S09-AC-366]');
 select pg_temp.s09d_rpc('p:foreign', 'platform_api.cms_submit_schema_review', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('p:type'), 'versionId', pg_temp.s09d_id('p:version'),
     'expectedVersion', pg_temp.s09d_version('p'), 'dryRunId', pg_temp.s09d_id('r:dryRun'),
     'idempotencyKey', 's09d-submit-foreign-0001'), true);
-select ok(pg_temp.s09d_id('r:dryRun') is not null and pg_temp.s09d_outcome('p:foreign') in ('CONFLICT', 'VALIDATION_FAILED'),
+select ok(pg_temp.s09d_id('r:dryRun') is not null and pg_temp.s09d_outcome('p:foreign') = 'CONFLICT',
   'a sealed dry-run of a different candidate cannot be reused (same candidate/evidence only) [P2-S09-AC-366]');
 select pg_temp.s09d_create_type('d', 'dec108subdrift');
 select pg_temp.s09d_dry_run('d');
@@ -105,8 +105,8 @@ select pg_temp.s09d_rpc('d:submit', 'platform_api.cms_submit_schema_review', 'ow
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('d:type'), 'versionId', pg_temp.s09d_id('d:version'),
     'expectedVersion', pg_temp.s09d_version('d'), 'dryRunId', pg_temp.s09d_id('d:dryRun'),
     'idempotencyKey', 's09d-submit-drift-0001'), true);
-select ok(pg_temp.s09d_outcome('d:relation') <> 'MISSING' and pg_temp.s09d_outcome('d:submit') in ('CONFLICT', 'VALIDATION_FAILED'),
-  'a candidate edited after its dry-run sealed no longer matches that evidence and cannot be frozen [P2-S09-AC-366]');
+select ok(pg_temp.s09d_outcome('d:relation') <> 'MISSING' and pg_temp.s09d_outcome('d:submit') = 'VALIDATION_FAILED',
+  'a candidate edited after its dry-run sealed no longer matches that evidence and cannot be frozen: exactly VALIDATION_FAILED (422) [P2-S09-AC-366] [P2-S09-AC-398]');
 
 -- One live review, authority and request shape (all atomic).
 create temp table s09d_refusal_baseline on commit drop as select pg_temp.s09d_fingerprint(false) as fingerprint;

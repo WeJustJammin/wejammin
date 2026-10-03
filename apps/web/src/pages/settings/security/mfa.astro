@@ -6,6 +6,9 @@ import '../../../styles/infrastructure.css';
 import '../../../styles/step-up-mfa.css';
 
 import MfaEnrollmentWizard from '../../../components/identity-authority/step-up-mfa/MfaEnrollmentWizard.tsx';
+import StepUpPageHeading from '../../../components/identity-authority/step-up-mfa/StepUpPageHeading.tsx';
+import { STEP_UP_PAGE_HEADINGS } from '../../../components/identity-authority/step-up-mfa/step-up-page-headings.ts';
+import { authPageRedirect } from '../../../server/auth-page-redirect.ts';
 import { resolveMfaSettingsPage } from '../../../server/mfa-settings-page-context.ts';
 
 export const prerender = false;
@@ -22,7 +25,7 @@ const resolved = await resolveMfaSettingsPage({
   requestId,
 });
 if (resolved.kind === 'unauthenticated')
-  return Astro.redirect(resolved.location, 303);
+  return authPageRedirect(resolved.location);
 ---
 
 <html lang="en">
@@ -34,7 +37,7 @@ if (resolved.kind === 'unauthenticated')
       name="description"
       content="Add or remove the authenticators that protect your WeJammin account."
     />
-    <title>Two-step verification | WeJammin</title>
+    <title>{STEP_UP_PAGE_HEADINGS.mfa.documentTitle}</title>
   </head>
   <body class="infra-page">
     <nav aria-label="Skip navigation">
@@ -48,14 +51,7 @@ if (resolved.kind === 'unauthenticated')
       </nav>
     </header>
     <main id="main-content" class="infra-main" tabindex="-1">
-      <div class="infra-shell-header">
-        <p class="infra-eyebrow">Account security</p>
-        <h1 id="page-title" tabindex="-1">Two-step verification</h1>
-        <p>
-          Authenticators protect your account. Your own account is always the
-          one changed here, whichever profile or role you are acting as.
-        </p>
-      </div>
+      <StepUpPageHeading page="mfa" />
       {
         resolved.kind === 'ready' ? (
           <MfaEnrollmentWizard

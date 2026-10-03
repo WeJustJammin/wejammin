@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsCapabilityGrantRowActions from './CmsCapabilityGrantRowActions';
 import { capabilityLabel } from './cms-capability-grant-labels';
 import type {
   CmsCapabilityGrantListPage,
@@ -21,6 +22,8 @@ export interface CmsCapabilityGrantListProps {
   readonly page: CmsCapabilityGrantListPage;
   readonly query: CmsCapabilityGrantQueryState;
   readonly commandsDisabled: boolean;
+  /** Id of the visible reason the commands are disabled, if any. */
+  readonly disabledReasonId?: string | undefined;
   readonly openGrantId: string | null;
   readonly onSort: (sort: 'validThrough' | 'updatedAt') => void;
   readonly onRenew: (grant: Item, trigger: HTMLButtonElement) => void;
@@ -57,57 +60,6 @@ const SortHeader = ({
     </button>
   </th>
 );
-
-const RowActions = ({
-  grant,
-  disabled,
-  props,
-}: {
-  readonly grant: Item;
-  readonly disabled: boolean;
-  readonly props: CmsCapabilityGrantListProps;
-}): React.ReactElement => {
-  const label = capabilityLabel(grant.capability);
-  const personId = `cms-grant-person-${grant.id}`;
-  if (grant.state === 'revoked')
-    return (
-      <button
-        type="button"
-        data-action="grant-again"
-        disabled={disabled}
-        aria-describedby={personId}
-        onClick={() => props.onGrantAgain(grant)}
-      >
-        Grant again
-      </button>
-    );
-  const name = (verb: string): string =>
-    `${verb} ${label} grant ending ${grant.validThrough}`;
-  return (
-    <>
-      <button
-        type="button"
-        data-action="renew"
-        disabled={disabled}
-        aria-label={name('Renew')}
-        aria-describedby={personId}
-        onClick={(event) => props.onRenew(grant, event.currentTarget)}
-      >
-        Renew
-      </button>
-      <button
-        type="button"
-        data-action="revoke"
-        disabled={disabled}
-        aria-label={name('Revoke')}
-        aria-describedby={personId}
-        onClick={(event) => props.onRevoke(grant, event.currentTarget)}
-      >
-        Revoke
-      </button>
-    </>
-  );
-};
 
 /** CMS-03A-18 rows: server-authoritative, derived state as text plus icon. */
 export default function CmsCapabilityGrantList(
@@ -164,10 +116,13 @@ export default function CmsCapabilityGrantList(
                   <time dateTime={grant.updatedAt}>{grant.updatedAt}</time>
                 </td>
                 <td data-actions-cell>
-                  <RowActions
+                  <CmsCapabilityGrantRowActions
                     grant={grant}
-                    props={props}
                     disabled={props.commandsDisabled}
+                    disabledReasonId={props.disabledReasonId}
+                    onRenew={props.onRenew}
+                    onRevoke={props.onRevoke}
+                    onGrantAgain={props.onGrantAgain}
                   />
                 </td>
               </tr>,

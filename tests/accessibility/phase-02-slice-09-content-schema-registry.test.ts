@@ -1,8 +1,13 @@
 import * as React from '../../apps/web/node_modules/react/index.js';
 import { renderToStaticMarkup } from '../../apps/web/node_modules/react-dom/server.node.js';
 import { readFileSync } from 'node:fs';
+import {
+  ContentSchemaRegistryDetailSchema,
+  ContentSchemaRegistryListPageSchema,
+} from '@wejammin/contracts';
 import { describe, expect, it } from 'vitest';
 
+import { emptyActivationPreparation } from '../../apps/web/src/components/content-schema-registry/content-schema-registry-activation-preparation.test-support';
 import ContentSchemaRegistryWorkbench from '../../apps/web/src/components/content-schema-registry/ContentSchemaRegistryWorkbench';
 import {
   CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
@@ -14,10 +19,14 @@ const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
 const VERSION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132db';
 const ARTIFACT_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dc';
 const REQUEST_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dd';
+const SUPPORT_REFERENCE = 'SR-1A2B-3C4D-5E6F-7A8B9C0D1E2F';
 const HASH = 'a'.repeat(64);
 const INSTANT = '2026-09-02T12:00:00.000Z';
 
-const list = {
+// Fixtures are parsed through the real BE03a contract schemas, so a fixture
+// that no longer matches the contract (for example one missing the OD-4
+// locale members) fails here instead of inside a component render.
+const list = ContentSchemaRegistryListPageSchema.parse({
   items: [
     {
       resourceKind: 'content_type',
@@ -43,6 +52,9 @@ const list = {
       ownerCapability: 'cms.schema_registry.read',
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',
+      supportedLocales: ['en-US'],
+      fallbackChains: {},
+      localeConfigHash: HASH,
       workflowKey: 'cms.content.workflow',
       workflowVersion: '1',
       defaultTemplateVersionId: null,
@@ -76,9 +88,9 @@ const list = {
     },
   ],
   nextCursor: 'opaque-next-cursor',
-} as const;
+});
 
-const detail = {
+const detail = ContentSchemaRegistryDetailSchema.parse({
   resourceKind: 'content_type_version',
   resource: list.items[1],
   fields: [],
@@ -99,7 +111,8 @@ const detail = {
   templateBindings: [],
   capabilityBindings: [],
   blockDefinitions: [list.items[2]],
-} as const;
+  activationPreparation: emptyActivationPreparation,
+});
 
 const baseProps: ContentSchemaRegistryWorkbenchProps = {
   initialList: { status: 'success', data: list, version: '4', stale: false },
@@ -111,17 +124,17 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   },
   variant: 'entitledRead',
   access: 'read-only',
-  actorId: REQUEST_ID,
-  actingPartyId: REQUEST_ID,
   query: { limit: 25, sort: 'key', direction: 'asc' },
   contentTypeId: TYPE_ID,
   versionId: VERSION_ID,
   cursor: null,
   expectedVersion: '4',
-  requestId: REQUEST_ID,
+  supportReference: SUPPORT_REFERENCE,
+  csrfToken: 'csrf-token',
   canonicalUrl: '/app/cms-content-modeling',
   listUrl: '/app/cms-content-modeling?limit=25&sort=key&direction=asc',
   retryUrl: '/app/cms-content-modeling?limit=25&sort=key&direction=asc',
+  onCanonicalRefetch: async () => undefined,
   contractFields: CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
 };
 
@@ -139,7 +152,7 @@ const routeSource = (relativePath: string): string =>
   readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 
 describe('P2-S09 content schema registry accessibility contract', () => {
-  it('[P2-S09-AC-219, P2-S09-AC-242, P2-S09-AC-243] keeps both protected pages useful server-first documents', () => {
+  it('[P2-S09-AC-219] [P2-S09-AC-242] [P2-S09-AC-243] keeps both protected pages useful server-first documents', () => {
     const listPage = routeSource(
       '../../apps/web/src/pages/app/cms-content-modeling/index.astro',
     );
@@ -166,7 +179,7 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     }
   });
 
-  it('[P2-S09-AC-219, P2-S09-AC-247, P2-S09-AC-248, P2-S09-AC-249] exposes named native controls, table semantics, status regions, and URL state in SSR HTML', () => {
+  it('[P2-S09-AC-219] [P2-S09-AC-247] [P2-S09-AC-248] [P2-S09-AC-249] exposes named native controls, table semantics, status regions, and URL state in SSR HTML', () => {
     const markup = render();
 
     expect(markup).toContain(
@@ -198,7 +211,7 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     expect(markup).toContain('Next page</a>');
   });
 
-  it('[P2-S09-AC-251, P2-S09-AC-266] uses non-color status cues and a visible high-contrast focus indicator with reduced-motion handling', () => {
+  it('[P2-S09-AC-251] [P2-S09-AC-266] uses non-color status cues and a visible high-contrast focus indicator with reduced-motion handling', () => {
     const css = routeSource(
       '../../apps/web/src/components/content-schema-registry/content-schema-registry.css',
     );
@@ -223,11 +236,16 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     expect(reducedMotion).toContain('role="status"');
     expect(reducedMotion).toContain('aria-live="polite"');
     expect(reducedMotion).toContain('The registry is temporarily unavailable.');
-    expect(reducedMotion).toContain('Request ID:');
+    // The browser shows the opaque support reference; the server-side request
+    // identifier never crosses into the island markup (FE03 context evidence).
+    expect(reducedMotion).toContain(
+      `Support reference: <code>${SUPPORT_REFERENCE}</code>`,
+    );
+    expect(reducedMotion).not.toContain(REQUEST_ID);
     expect(reducedMotion).toContain('Retry');
   });
 
-  it('[P2-S09-AC-254, P2-S09-AC-263] renders every declared async state with bounded, exact recovery copy', () => {
+  it('[P2-S09-AC-254] [P2-S09-AC-263] renders every declared async state with bounded, exact recovery copy', () => {
     const states: readonly ContentSchemaRegistryWorkbenchProps['initialList'][] =
       [
         { status: 'idle' },
@@ -279,7 +297,7 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     }
   });
 
-  it('[P2-S09-AC-258, P2-S09-AC-259, P2-S09-AC-260] keeps worker-only evidence, owner authority, and raw secrets out of browser HTML', () => {
+  it('[P2-S09-AC-258] [P2-S09-AC-259] [P2-S09-AC-260] keeps worker-only evidence, owner authority, and raw secrets out of browser HTML', () => {
     const markup = render();
     const forbiddenNames = [
       'ownerId',
@@ -323,7 +341,7 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     expect(untrusted).not.toContain('<script>do-not-execute</script>');
   });
 
-  it('[P2-S09-AC-244, P2-S09-AC-245, P2-S09-AC-246] declares the responsive layout and target-size contract in the route stylesheet', () => {
+  it('[P2-S09-AC-244] [P2-S09-AC-245] [P2-S09-AC-246] declares the responsive layout and target-size contract in the route stylesheet', () => {
     const css = routeSource(
       '../../apps/web/src/components/content-schema-registry/content-schema-registry.css',
     );

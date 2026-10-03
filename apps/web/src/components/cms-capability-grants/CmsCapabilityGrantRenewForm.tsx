@@ -16,6 +16,7 @@ export interface CmsCapabilityGrantRenewFormProps {
   readonly idempotencyKey: string;
   readonly termWindow: CmsCapabilityGrantTermBounds;
   readonly disabled: boolean;
+  readonly disabledReasonId?: string | undefined;
   readonly pending: boolean;
   readonly serverErrors: GrantFieldErrors;
   readonly onSubmit: (form: HTMLFormElement) => void;
@@ -101,6 +102,7 @@ export default function CmsCapabilityGrantRenewForm(
         <button
           type="submit"
           disabled={props.disabled || props.pending}
+          aria-describedby={props.disabled ? props.disabledReasonId : undefined}
           aria-busy={props.pending ? 'true' : undefined}
         >
           {props.pending ? 'Renewing' : 'Renew grant'}

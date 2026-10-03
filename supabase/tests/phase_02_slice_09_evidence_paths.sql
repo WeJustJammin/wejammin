@@ -52,7 +52,7 @@ select ok(pg_temp.s09d_outcome('d:nullplan') = 'VALIDATION_FAILED'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('d:version')) = 'approved',
   'migrationPlanId null for a conditional (data-bearing) candidate is a 422 and the candidate stays approved [P2-S09-AC-093]');
 select pg_temp.s09d_activate('d', 'owner', '{}'::jsonb, 'd:badplan', jsonb_build_object('migrationPlanId', 'not-a-uuid'));
-select ok(pg_temp.s09d_outcome('d:badplan') in ('VALIDATION_FAILED', 'INVALID_REQUEST'),
+select ok(pg_temp.s09d_outcome('d:badplan') = 'VALIDATION_FAILED',
   'a migrationPlanId that is neither a UUID nor null is refused [P2-S09-AC-093]');
 
 -- ------------------------------------------ AC633: specialist capability lost ----
@@ -62,7 +62,7 @@ select pg_temp.s09d_to_approved('p', array['rev1', 'rev2']);
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('p:review')), 'approved', 'fixture: the protected review is approved with a specialist holder');
 select is(pg_temp.s09d_revoke_via_rpc('rev1', 'cms.reviewer.policy'), 'OK', 'the owner revokes the counted approver''s specialist capability through CMS-03A-17');
 select pg_temp.s09d_activate('p', 'owner', '{}'::jsonb, 'p:late');
-select ok(pg_temp.s09d_outcome('p:late') in ('APPROVAL_INVALID', 'CONFLICT')
+select ok(pg_temp.s09d_outcome('p:late') = 'CONFLICT'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('p:version')) <> 'active'
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('p:review')) = 'invalidated',
   'CMS-03A-04 refuses activation and the review stays invalidated when a counted approver stops holding the specialist capability [P2-S09-AC-633]');
@@ -110,6 +110,61 @@ select throws_ok(format('update platform_private.cms_schema_migration_plans set 
 update platform_private.cms_schema_migration_plans set updated_at = updated_at where id = pg_temp.s09d_id('q:plan');
 select is(pg_temp.s09x_direct('cms_schema_migration_plans'), 2::bigint, 'negative control: a hand-written plan update is recorded as a direct write [P2-S09-AC-713]');
 select cmp_ok(pg_temp.s09x_direct(), '>=', 5::bigint, 'the integrated-path guard assertion s09x_direct() = 0 fails on any of these substitutes [P2-S09-AC-713]');
+-- AC713 (bypass attempts): the guard classifies a write by the PL/pgSQL call
+-- stack of the writing statement, not by the top-level SQL text.  A write is a
+-- producer write only when its innermost enclosing function is a platform_private /
+-- platform_api function that existed when the guard was armed.  A DO block, a
+-- pg_temp helper (even one named like a producer) and a function created after
+-- arming are therefore all recorded as direct writes.
+select pg_temp.s09d_create_type('h', 'evp_guard_bypass');
+select pg_temp.s09d_to_review('h');
+select pg_temp.s09x_direct('cms_schema_reviews') as bypass_base, pg_temp.s09x_via_rpc('cms_schema_reviews') as bypass_rpc_base \gset
+do $guard$
+begin
+  update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
+end;
+$guard$;
+select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 1)::bigint,
+  'a DO-block write of a review is recorded as a direct write [P2-S09-AC-713]');
+create or replace function pg_temp.s09x_cheat_helper() returns void language plpgsql as $body$
+begin
+  update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
+end;
+$body$;
+select pg_temp.s09x_cheat_helper();
+select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 2)::bigint,
+  'a write through a pg_temp helper (top-level text "select ...") is recorded as a direct write [P2-S09-AC-713]');
+create or replace function pg_temp.cms_submit_schema_review() returns void language plpgsql as $body$
+begin
+  update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
+end;
+$body$;
+select pg_temp.cms_submit_schema_review();
+select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 3)::bigint,
+  'a pg_temp helper named like a producer is still a direct write [P2-S09-AC-713]');
+create function platform_private.cms_s09x_late_helper(p_id uuid) returns void
+language plpgsql security definer set search_path = '' as $body$
+begin
+  update platform_private.cms_schema_reviews set updated_at = updated_at where id = p_id;
+end;
+$body$;
+select platform_private.cms_s09x_late_helper(pg_temp.s09d_id('h:review'));
+select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 4)::bigint,
+  'a platform_private helper created after arming is not a producer: its write is direct [P2-S09-AC-713]');
+do $guard$
+begin
+  perform pg_temp.s09d_get_review('h:read', 'h');
+  update platform_private.cms_schema_reviews set updated_at = updated_at where id = pg_temp.s09d_id('h:review');
+end;
+$guard$;
+select is(pg_temp.s09x_direct('cms_schema_reviews'), (:bypass_base + 5)::bigint,
+  'a DO block that calls a real producer and then writes by hand is still caught for the hand write [P2-S09-AC-713]');
+select is(pg_temp.s09x_via_rpc('cms_schema_reviews'), (:bypass_rpc_base)::bigint,
+  'none of the five substitutes was classified as a producer write [P2-S09-AC-713]');
+select pg_temp.s09d_assign('h', 'rev1');
+select ok(pg_temp.s09x_via_rpc('cms_schema_review_assignments') > 0 and pg_temp.s09x_direct('cms_schema_review_assignments') = 0,
+  'a genuine producer RPC write is classified as a producer write and not as direct [P2-S09-AC-713]');
+
 -- A forged approved review and decision cannot activate a candidate.
 select pg_temp.s09d_create_type('g', 'evp_forge2');
 select pg_temp.s09d_to_review('g');

@@ -14,6 +14,11 @@ import {
   sameOriginLocation,
   setFormBusy,
 } from './content-schema-registry-runtime-dom-feedback';
+import {
+  localVersion,
+  reapplyTarget,
+  rebaseForm,
+} from './content-schema-registry-runtime-dom-reapply';
 
 const fieldNameFromPointer = (pointer: string): string | null => {
   const name = pointer.split('/').filter(Boolean).at(-1);
@@ -135,11 +140,6 @@ export const renderCapabilityGate = (form: HTMLFormElement): HTMLElement => {
   return gate;
 };
 
-const localVersion = (form: HTMLFormElement): string =>
-  (
-    form.elements.namedItem('if-match') as HTMLInputElement | null
-  )?.value.replace(/^"|"$/gu, '') || 'unknown';
-
 export const renderConflict = (
   form: HTMLFormElement,
   result: Pick<ContentSchemaRegistryMutationResult, 'serverVersion'>,
@@ -189,9 +189,28 @@ export const renderConflict = (
   const reapply = form.ownerDocument.createElement('button');
   reapply.type = 'button';
   reapply.textContent = localeForm ? 'Reapply' : 'Reapply retained input';
+  // FE03 "Reapply when permitted": a locale draft is reapplied only over a
+  // typed version drift the server disclosed (a current version that differs
+  // from the one the form holds). Any other conflict would only repeat.
+  const reapplyVersion =
+    localeForm && result.serverVersion !== null && reapplyTarget(form, result)
+      ? result.serverVersion
+      : null;
+  if (localeForm && reapplyVersion === null) {
+    reapply.disabled = true;
+    reapply.setAttribute('aria-disabled', 'true');
+    reapply.setAttribute('aria-describedby', `${form.id}-reapply-reason`);
+    const reason = form.ownerDocument.createElement('p');
+    reason.id = `${form.id}-reapply-reason`;
+    reason.textContent =
+      'Reapply is not available because the server did not report a newer version. Review changes first.';
+    conflict.appendChild(reason);
+  }
   reapply.addEventListener('click', () => {
+    if (localeForm && reapplyVersion === null) return;
     clearDynamicFeedback(form);
     setFormBusy(form, false);
+    if (reapplyVersion !== null) rebaseForm(form, reapplyVersion);
     form.requestSubmit();
   });
   const discard = form.ownerDocument.createElement('button');

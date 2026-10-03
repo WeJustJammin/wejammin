@@ -16,6 +16,7 @@ export interface CmsCapabilityGrantRowFormProps {
   readonly epoch: number;
   readonly termWindow: CmsCapabilityGrantTermBounds;
   readonly disabled: boolean;
+  readonly disabledReasonId?: string | undefined;
   readonly pending: GrantCommandKind | null;
   readonly serverErrors: GrantFieldErrors;
   readonly onCancel: () => void;
@@ -33,6 +34,7 @@ export default function CmsCapabilityGrantRowForm(
     grant: props.grant,
     csrfToken: props.csrfToken,
     disabled: props.disabled,
+    disabledReasonId: props.disabledReasonId,
     serverErrors: props.serverErrors,
     onCancel: props.onCancel,
     onSubmit: props.onSubmit,

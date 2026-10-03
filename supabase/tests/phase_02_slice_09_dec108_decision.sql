@@ -27,7 +27,7 @@ create temp table s09d_baseline on commit drop as select pg_temp.s09d_fingerprin
 
 -- Authority refusals against the open review (nothing may be recorded).
 select pg_temp.s09d_decide('a', 'rev2', 'approve', '{}'::jsonb, 'a:unassigned');
-select ok(pg_temp.s09d_outcome('a:unassigned') in ('FORBIDDEN', 'NOT_FOUND'),
+select ok(pg_temp.s09d_outcome('a:unassigned') = 'NOT_FOUND',
   'a human who was never assigned cannot decide (the review is concealed or denied) [P2-S09-AC-414]');
 select pg_temp.s09d_decide('a', 'other', 'approve', '{}'::jsonb, 'a:crossowner');
 select is(pg_temp.s09d_outcome('a:crossowner'), 'NOT_FOUND', 'another organization''s designer sees the review as absent (404)');
@@ -170,7 +170,7 @@ select pg_temp.s09d_timewarp('cms_schema_review_assignments', format($q$update p
    set starts_at = clock_timestamp() - interval '2 hours', ends_at = clock_timestamp() - interval '1 second'
  where id = %L$q$, pg_temp.s09d_id('x:assignment:rev1')));
 select pg_temp.s09d_decide('x', 'rev1', 'approve');
-select ok(pg_temp.s09d_outcome('x:assign:rev1') = 'OK' and pg_temp.s09d_outcome('x:decide:rev1') in ('FORBIDDEN', 'NOT_FOUND'),
+select ok(pg_temp.s09d_outcome('x:assign:rev1') = 'OK' and pg_temp.s09d_outcome('x:decide:rev1') = 'NOT_FOUND',
   'an assignment past ends_at stops authorizing decisions with no expiry sweep [P2-S09-AC-416] [P2-S09-AC-653]');
 select pg_temp.s09d_create_type('v', 'dec108decrevoke');
 select pg_temp.s09d_to_review('v');
@@ -180,7 +180,7 @@ select pg_temp.s09d_rpc('v:revoke', 'platform_api.cms_assign_schema_review', 'ow
     'expectedVersion', pg_temp.s09d_review_version('v'), 'assignmentId', pg_temp.s09d_id('v:assignment:rev1'),
     'idempotencyKey', 's09d-decide-revoke-0001'), true);
 select pg_temp.s09d_decide('v', 'rev1', 'approve');
-select ok(pg_temp.s09d_outcome('v:revoke') = 'OK' and pg_temp.s09d_outcome('v:decide:rev1') in ('FORBIDDEN', 'NOT_FOUND'),
+select ok(pg_temp.s09d_outcome('v:revoke') = 'OK' and pg_temp.s09d_outcome('v:decide:rev1') = 'NOT_FOUND',
   'a revoked assignment stops authorizing decisions [P2-S09-AC-414] [P2-S09-AC-416]');
 
 -- Protected policy (G17 / DEC-110): two distinct humans; a repeated human never counts.

@@ -82,11 +82,11 @@ select pg_temp.s09d_activate('a', 'owner', jsonb_build_object('actingContextId',
 select is(pg_temp.s09d_outcome('a:nobinding'), 'STEP_UP_REQUIRED', 'an activation without the private binding id is 401 STEP_UP_REQUIRED [P2-S09-AC-631]');
 select pg_temp.s09d_activate('a', 'owner', '{}'::jsonb, 'a:wrongplan',
   jsonb_build_object('migrationPlanId', extensions.gen_random_uuid()));
-select ok(pg_temp.s09d_outcome('a:wrongplan') in ('VALIDATION_FAILED', 'CONFLICT') and pg_temp.s09d_id('a:plan') is not null,
+select ok(pg_temp.s09d_outcome('a:wrongplan') = 'VALIDATION_FAILED' and pg_temp.s09d_id('a:plan') is not null,
   'a plan that is not the one bound to the dry run is refused');
 select pg_temp.s09d_activate('a', 'owner', '{}'::jsonb, 'a:wrongdry',
   jsonb_build_object('dryRunId', extensions.gen_random_uuid()));
-select ok(pg_temp.s09d_outcome('a:wrongdry') in ('VALIDATION_FAILED', 'CONFLICT') and pg_temp.s09d_id('a:dryRun') is not null,
+select ok(pg_temp.s09d_outcome('a:wrongdry') = 'VALIDATION_FAILED' and pg_temp.s09d_id('a:dryRun') is not null,
   'a dry-run id that is not the candidate''s bound sealed attempt is refused [P2-S09-AC-087]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'approved',
   'every refused activation left the candidate approved and unswitched');
@@ -144,7 +144,7 @@ update platform_private.cms_content_types set owner_capability = 'cms.schema_des
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('d:review')), 'invalidated',
   'an owner-capability authority change invalidates the approved review [P2-S09-AC-632] [P2-S09-AC-102]');
 select pg_temp.s09d_activate('d', 'owner');
-select ok(pg_temp.s09d_outcome('d:activate') in ('APPROVAL_INVALID', 'CONFLICT')
+select ok(pg_temp.s09d_outcome('d:activate') = 'CONFLICT'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('d:version')) <> 'active',
   'an invalidated review cannot activate the candidate');
 
@@ -156,7 +156,7 @@ select pg_temp.s09d_timewarp('cms_schema_review_assignments', format($q$update p
    set starts_at = clock_timestamp() - interval '2 hours', ends_at = clock_timestamp() - interval '1 second'
  where id = %L$q$, pg_temp.s09d_id('v:assignment:rev1')));
 select pg_temp.s09d_activate('v', 'owner');
-select ok(pg_temp.s09d_outcome('v:decide:rev1') = 'OK' and pg_temp.s09d_outcome('v:activate') in ('APPROVAL_INVALID', 'CONFLICT')
+select ok(pg_temp.s09d_outcome('v:decide:rev1') = 'OK' and pg_temp.s09d_outcome('v:activate') = 'APPROVAL_INVALID'
   and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('v:version')) <> 'active',
   'a reviewer whose assignment window ended no longer qualifies the approval at activation [P2-S09-AC-632] [P2-S09-AC-089] [P2-S09-AC-653]');
 

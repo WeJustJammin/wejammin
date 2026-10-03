@@ -52,6 +52,7 @@ export function MfaRemoveConfirmation({
             type="radio"
             name="reason"
             value="user_request"
+            required
             checked={reason === 'user_request'}
             onChange={() => onReason('user_request')}
           />{' '}
@@ -62,6 +63,7 @@ export function MfaRemoveConfirmation({
             type="radio"
             name="reason"
             value="factor_compromise"
+            required
             aria-describedby="mfa-compromise-note"
             checked={reason === 'factor_compromise'}
             onChange={() => onReason('factor_compromise')}

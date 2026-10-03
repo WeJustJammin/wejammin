@@ -71,6 +71,7 @@ insert into s09t_inventory values
   ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_identity_guard', 'cms_nonce_guard', 19),
   ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_immutable_guard', 'cms_immutable_guard', 11),
   ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_write_guard', 'cms_write_guard', 31),
+  ('cms_schema_artifacts', 'cms_schema_artifacts_activation_review_invalidation', 'cms_artifact_review_invalidation_trigger', 17),
   ('cms_schema_artifacts', 'cms_schema_artifacts_write_guard', 'cms_write_guard', 23),
   ('cms_schema_artifacts', 'cms_schema_artifacts_z_compile_guard', 'cms_schema_artifact_guard', 27),
   ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_write_guard', 'cms_write_guard', 31),

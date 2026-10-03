@@ -227,6 +227,32 @@ review-lifecycle alert codes (`review_open_past_window`, `decision_denial_spike`
 and claim RPC (pgTAP `../tests/phase_02_slice_09_operational_review_age.sql` and
 `../tests/phase_02_slice_09_operational_alert_codes.sql`).
 
+Slice 09 audit remediation (R3) adds four forward-only migrations. `20261002188000`
+makes the "recent binding-bound MFA" check of every CMS review/grant command use the
+Worker-verified step-up proof (`context.stepUpVerified` and `context.stepUpAt`, fresh when
+`-30 s <= now - stepUpAt <= 600 s`) instead of the acting-context binding heartbeat, which
+stays a separate liveness check (`../tests/phase_02_slice_09_r3_recent_mfa.sql`).
+`20261002189000` removes `reconciling -> expired` from the MFA factor guard and from
+`auth_mfa_factor_reconcile` (BE01a: reconciling goes only to verified, pending or removed;
+the registry sweep writes `pending -> expired`). `20261002190000` counts the CMS grant
+reason in Unicode characters after NFC, in the function and both table CHECKs, matching the
+contract (`../tests/phase_02_slice_09_dec119_grant_command.sql`). `20261002191000`
+invalidates an open or approved schema review when the compiled artifact of its candidate
+changes (`../tests/phase_02_slice_09_r3_activation_gates.sql`). `20261002192000`
+(AC181) adds the session-resolving RLS helpers (`cms_session_scope_ok`,
+`cms_session_scope_ok_report`, `identity_session_scope_ok`) and RESTRICTIVE session-scope
+policies, AND-ed with the RPC gate, on every new private CMS table and write policies on the
+identity MFA tables; `cms_acting_party()` and `mfa_lock_binding()` publish the verified
+session, and a service-role call with no published human session is the system scope
+(`../tests/phase_02_slice_09_r3_rls_session_scope.sql`; the platform `postgres` role has
+BYPASSRLS, so the behavioural proofs run as a non-bypass probe role). `20261002193000`
+(AC1135) adds the service-role `platform_api.cms_sweep_expired_review_authority(p_batch)`
+sweep that invalidates open or approved reviews whose counted approve decision relied on an
+assignment or specialist capability that has since lapsed; the Worker schedules it each cron
+tick (`../tests/phase_02_slice_09_r3_expiry_sweep.sql`). The R3 suites
+`phase_02_slice_09_r3_*.sql` also hold the activation-gate, grant, rate-limit, error-row
+and IA edge-case assertions.
+
 ## Related links
 
 - `../tests/README.md`

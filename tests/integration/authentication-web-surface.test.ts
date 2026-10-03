@@ -24,10 +24,13 @@ describe('authentication web boundary', () => {
   });
 
   it('renders email and reviewed provider choices without a legacy GitHub shortcut', () => {
-    const source = readFileSync(
-      workspaceFile('apps/web/src/pages/auth/sign-in.astro'),
-      'utf8',
-    );
+    // The email form lives in the server-rendered SignInEmailForm component.
+    const source = [
+      'apps/web/src/pages/auth/sign-in.astro',
+      'apps/web/src/components/authentication/sign-in/SignInEmailForm.tsx',
+    ]
+      .map((file) => readFileSync(workspaceFile(file), 'utf8'))
+      .join('\n');
     expect(source).toContain('Email me a sign-in link');
     expect(source).toContain('Recover my account');
     expect(source).toContain("provider.state !== 'enabled'");

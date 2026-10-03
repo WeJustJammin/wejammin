@@ -77,6 +77,15 @@ export const useMfaWizard = (
       patch({ factors: outcome.data.factors, version: outcome.data.version });
   }, [api, patch]);
 
+  // A factor changed in another tab: read the canonical factor list again. The
+  // signal carries nothing, and a one-time secret shown here is left alone.
+  const refreshRef = React.useRef(refresh);
+  refreshRef.current = refresh;
+  React.useEffect(
+    () => channel?.subscribe(() => void refreshRef.current()),
+    [channel],
+  );
+
   const fail = (failure: MfaFailure, context: MfaContext): void => {
     const view = mfaFailureView(failure, context);
     if (view.kind === 'step-up') {
@@ -186,6 +195,7 @@ export const useMfaWizard = (
         announcement: done,
         focus: focus('heading'),
       });
+      channel?.post();
     });
   };
 

@@ -126,3 +126,18 @@ export const reconcileContentSchemaRegistryMutation = async (
     return { outcome: 'unknown', status: null, response: null };
   }
 };
+
+/**
+ * The parsed, still unvalidated JSON body of an authoritative CMS-03A-04
+ * answer (rendered by the confirmation); other operations leave it null.
+ */
+export const authoritativeResource = async (
+  operationId: string,
+  response: Response,
+): Promise<unknown> =>
+  operationId === 'CMS-03A-04'
+    ? response
+        .clone()
+        .json()
+        .catch((): unknown => null)
+    : null;

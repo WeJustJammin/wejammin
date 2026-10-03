@@ -9,6 +9,7 @@ export type AsyncRpcOperation =
   | 'claim_outbox_batch'
   | 'complete_outbox_event'
   | 'idempotency_expiry_sweep'
+  | 'cms_sweep_expired_review_authority'
   | 'read_canonical_job'
   | 'read_restore_fence'
   | 'claim_job'

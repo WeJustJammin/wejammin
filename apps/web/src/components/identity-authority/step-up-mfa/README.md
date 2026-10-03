@@ -38,3 +38,13 @@ in `../../platform-configuration/admin-mfa-reset/` is the reference consumer.
 `StepUpRecoveryLink` is the shared 401 `STEP_UP_REQUIRED` recovery anchor for
 legacy surfaces (login-method manager, provider evidence): it links to
 `/step-up?returnTo=<current relative path>` and never renders a gate.
+
+## Page headings, recovery entry and multi-tab refresh
+
+- `StepUpPageHeading` and `step-up-page-headings.ts` own the one h1, eyebrow,
+  description and document title of `/step-up` and `/settings/security/mfa`;
+  both pages return `authPageRedirect` (`server/auth-page-redirect.ts`, status 303) for a missing or expired session.
+- `recoverySignInHref` opens `/auth/sign-in?intent=recovery`; the sign-in page
+  then offers only the recovery intent (`SignInEmailForm`).
+- `MfaEnrollmentWizard` posts the empty invalidation signal after a factor is
+  added or removed and re-reads AUTH-API-16 when another tab posts it.

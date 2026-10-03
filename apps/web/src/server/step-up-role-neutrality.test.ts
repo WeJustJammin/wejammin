@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { STEP_UP_PAGE_HEADINGS } from '../components/identity-authority/step-up-mfa/step-up-page-headings';
+
 /**
  * FE01 role matrix for the step-up and MFA pages: the self-account surface is
  * identical for every role. Acting context, alias, mandate or representation
@@ -23,6 +25,8 @@ const ISLANDS = [
   '../components/identity-authority/step-up-mfa/StepUpPhases.tsx',
   '../components/identity-authority/step-up-mfa/MfaEnrollmentWizard.tsx',
   '../components/identity-authority/step-up-mfa/MfaFactorList.tsx',
+  '../components/identity-authority/step-up-mfa/StepUpPageHeading.tsx',
+  '../components/identity-authority/step-up-mfa/step-up-page-headings.ts',
 ].map(read);
 
 const ROLE_INPUTS =
@@ -48,10 +52,12 @@ describe('step-up and MFA pages are role-neutral self-account surfaces', () => {
   });
 
   it('[P2-S09-AC-1099] says "your account" in the heading area and help of both pages', () => {
-    expect(STEP_UP_PAGE).toContain('Your account');
-    expect(MFA_PAGE).toMatch(/Authenticators protect your account/u);
-    expect(MFA_PAGE).toMatch(
-      /Your own account is always\s+the\s+one changed here, whichever profile or role you are acting as/u,
+    expect(STEP_UP_PAGE_HEADINGS['step-up'].eyebrow).toBe('Your account');
+    expect(STEP_UP_PAGE_HEADINGS.mfa.description).toMatch(
+      /Authenticators protect your account/u,
+    );
+    expect(STEP_UP_PAGE_HEADINGS.mfa.description).toMatch(
+      /Your own account is always the one changed here, whichever profile or role you are acting as/u,
     );
   });
 

@@ -4,8 +4,9 @@ import CmsCapabilityGrantCommandResult from './CmsCapabilityGrantCommandResult';
 import CmsCapabilityGrantFilters from './CmsCapabilityGrantFilters';
 import CmsCapabilityGrantForm from './CmsCapabilityGrantForm';
 import CmsCapabilityGrantListRegion from './CmsCapabilityGrantListRegion';
-import CmsCapabilityGrantContextEvidence from './CmsCapabilityGrantContextEvidence';
+import CmsCapabilityGrantHeader from './CmsCapabilityGrantHeader';
 import CmsCapabilityGrantRowForm from './CmsCapabilityGrantRowForm';
+import { disabledReasonIdFor } from './cms-capability-grant-reasons';
 import { COMMAND_COPY } from './cms-capability-grant-commands';
 import { stepUpHref } from './cms-capability-grant-navigation';
 import { cmsCapabilityGrantConsoleUrl } from './cms-capability-grant-url';
@@ -61,6 +62,12 @@ export default function CmsCapabilityGrantConsole(
   const stepUpVerified =
     props.contextEvidence.stepUpState === 'verified' && freshness.fresh;
   const commandsDisabled = disabledAccess || degraded || !stepUpVerified;
+  // Every disabled command points at the visible reason it is disabled.
+  const disabledReasonId = disabledReasonIdFor({
+    commandsDisabled,
+    degraded,
+    disabledAccess,
+  });
   const returnTo = cmsCapabilityGrantConsoleUrl(state.query);
   const failure =
     state.result?.state.status === 'failure' ? state.result : null;
@@ -85,21 +92,12 @@ export default function CmsCapabilityGrantConsole(
       data-contract-source={props.contractFields.source}
       aria-labelledby="cms-grants-heading"
     >
-      <header className="content-schema-registry-header">
-        <p className="content-schema-registry-eyebrow">Owner only</p>
-        <h2 id="cms-grants-heading">CMS access</h2>
-        <p>
-          Grant, renew or revoke CMS capabilities for people in your
-          organization. Each grant ends on a date you choose, within 90 days.
-        </p>
-        <CmsCapabilityGrantContextEvidence evidence={props.contextEvidence} />
-        {stepUpVerified || disabledAccess ? null : (
-          <p data-step-up-recovery="true">
-            {COMMAND_COPY.stepUp}{' '}
-            <a href={stepUpHref(returnTo)}>Verify identity</a>
-          </p>
-        )}
-      </header>
+      <CmsCapabilityGrantHeader
+        evidence={props.contextEvidence}
+        recoveryHref={
+          stepUpVerified || disabledAccess ? null : stepUpHref(returnTo)
+        }
+      />
       <div role="status" aria-live="polite" aria-atomic="true">
         {state.result?.state.status === 'success'
           ? state.result.state.announcement
@@ -134,6 +132,7 @@ export default function CmsCapabilityGrantConsole(
             requestId={props.requestId}
             loading={state.listLoading}
             commandsDisabled={commandsDisabled}
+            disabledReasonId={disabledReasonId}
             personFilterActive={state.person.trim() !== ''}
             openGrantId={state.openRow?.grantId ?? null}
             onSort={state.sortBy}
@@ -161,6 +160,7 @@ export default function CmsCapabilityGrantConsole(
                   epoch={state.epoch}
                   termWindow={props.termWindow}
                   disabled={commandsDisabled}
+                  disabledReasonId={disabledReasonId}
                   pending={state.pending}
                   serverErrors={serverErrors(state.openRow.kind)}
                   onCancel={close}
@@ -178,11 +178,12 @@ export default function CmsCapabilityGrantConsole(
         </div>
         {disabledAccess ? null : (
           <CmsCapabilityGrantForm
-            key={`${state.epoch}-${state.prefill?.nonce ?? 0}`}
+            key={`${state.epoch}-${state.prefill?.prefillCount ?? 0}`}
             csrfToken={props.csrfToken}
             idempotencyKey={idempotencyKey('15', props.requestId, state.epoch)}
             termWindow={props.termWindow}
             disabled={commandsDisabled}
+            disabledReasonId={disabledReasonId}
             pending={state.pending === 'grant'}
             serverErrors={serverErrors('grant')}
             initial={{

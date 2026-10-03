@@ -306,7 +306,9 @@ describe('validation and review', () => {
   it('still reveals the summary when the tag input blurs empty', () => {
     const view = render();
     blur(inputByLabel(view.container, 'Add a language tag'));
-    expect(view.container.querySelector('[data-locale-summary]')).not.toBeNull();
+    expect(
+      view.container.querySelector('[data-locale-summary]'),
+    ).not.toBeNull();
   });
 
   it('[P2-S09-AC-1213] [P2-S09-AC-1228] blocks submit, lists exact messages with paths and focuses the summary', () => {

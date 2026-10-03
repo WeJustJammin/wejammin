@@ -54,8 +54,19 @@ export const mfaSettingsHref = (returnTo: string | null): string =>
  * Sign-in redirect that carries `/step-up?returnTo=...`; when that combined
  * value exceeds 512 characters only `/step-up` is carried.
  */
-export const stepUpSignInHref = (returnTo: string): string => {
+const carriedStepUpTarget = (returnTo: string): string => {
   const nested = `${STEP_UP_ROUTE}?returnTo=${encodeURIComponent(resolveStepUpReturnTo(returnTo))}`;
-  const carried = nested.length > MAX_RETURN_TO_LENGTH ? STEP_UP_ROUTE : nested;
-  return `/auth/sign-in?returnTo=${encodeURIComponent(carried)}`;
+  return nested.length > MAX_RETURN_TO_LENGTH ? STEP_UP_ROUTE : nested;
 };
+
+export const stepUpSignInHref = (returnTo: string): string =>
+  `/auth/sign-in?returnTo=${encodeURIComponent(carriedStepUpTarget(returnTo))}`;
+
+/**
+ * "Lost your authenticator? Recover your account": the sign-in page opened on
+ * its recovery entry (`intent=recovery`, the AUTH-API-02 intent). It carries
+ * the same safe return target as the expired-session redirect and is a
+ * sign-in, never a way around the step-up proof.
+ */
+export const recoverySignInHref = (returnTo: string): string =>
+  `/auth/sign-in?intent=recovery&returnTo=${encodeURIComponent(carriedStepUpTarget(returnTo))}`;

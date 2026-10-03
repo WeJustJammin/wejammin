@@ -10,13 +10,13 @@
  * exactly one effect exists:
  *
  *   [P2-S09-AC-301] CMS-03A-09  two successor commands for one source: one draft
- *   [P2-S09-AC-424] CMS-03A-12  two reviewers decide one review version: one
+ *   [P2-S09-AC-424] [P2-S09-AC-1130] CMS-03A-12  two reviewers decide one review version: one
  *                               approval, the approved review holds exactly the
  *                               policy count of decisions
  *   [P2-S09-AC-529] CMS-03A-15  two grants of one (owner, subject, capability):
  *                               the key lock serializes them, one aggregate
- *   [P2-S09-AC-558] CMS-03A-16  two renewals of one aggregate at one version
- *   [P2-S09-AC-586] CMS-03A-17  two revocations of one aggregate at one version
+ *   [P2-S09-AC-558] [P2-S09-AC-1137] CMS-03A-16  two renewals of one aggregate at one version
+ *   [P2-S09-AC-586] [P2-S09-AC-1137] CMS-03A-17  two revocations of one aggregate at one version
  *
  * Run only against the disposable local Supabase database right after
  * `pnpm db:reset`; run `pnpm db:reset` again afterwards so the pgTAP suite finds
@@ -250,7 +250,7 @@ assert(
   runValue(
     `select (select state from platform_private.cms_schema_reviews where id = ${sql(ids.reviewB)}::uuid) || ':' || (select count(*) from platform_private.cms_schema_review_decisions where review_id = ${sql(ids.reviewB)}::uuid) || ':' || (select required_decision_count from platform_private.cms_schema_reviews where id = ${sql(ids.reviewB)}::uuid);`,
   ) === 'approved:1:1',
-  '[P2-S09-AC-424] concurrent decisions on one review version: the loser got a typed 409 and the approved review holds exactly the policy count (1) of decisions',
+  '[P2-S09-AC-424] [P2-S09-AC-1130] concurrent decisions on one review version: the loser got a typed 409 and the approved review holds exactly the policy count (1) of decisions',
 );
 
 // --------------------------------------------------------------- AC529 ----
@@ -278,7 +278,7 @@ assert(
   runValue(
     `select (select version from platform_private.cms_capability_grants where id = ${sql(ids.grant558)}::uuid) || ':' || (select count(*) from platform_private.cms_capability_grant_events where grant_id = ${sql(ids.grant558)}::uuid and action = 'renewed');`,
   ) === '2:1',
-  '[P2-S09-AC-558] two concurrent renewals at one expected version: the loser got a typed 409, the aggregate is at version 2 with one renewed event',
+  '[P2-S09-AC-558] [P2-S09-AC-1137] two concurrent renewals at one expected version: the loser got a typed 409, the aggregate is at version 2 with one renewed event',
 );
 
 // --------------------------------------------------------------- AC586 ----
@@ -292,6 +292,6 @@ assert(
   runValue(
     `select (select version || '/' || state from platform_private.cms_capability_grants where id = ${sql(ids.grant586)}::uuid) || ':' || (select count(*) from platform_private.cms_capability_grant_events where grant_id = ${sql(ids.grant586)}::uuid and action = 'revoked');`,
   ) === '2/revoked:1',
-  '[P2-S09-AC-586] two concurrent revocations at one expected version: the loser got a typed 409, the aggregate is revoked at version 2 with one revoked event',
+  '[P2-S09-AC-586] [P2-S09-AC-1137] two concurrent revocations at one expected version: the loser got a typed 409, the aggregate is revoked at version 2 with one revoked event',
 );
 console.log('# all race assertions passed; run `pnpm db:reset` before the pgTAP suite');

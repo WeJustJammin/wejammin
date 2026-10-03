@@ -101,7 +101,7 @@ const workerEvidenceFields = [
 ] as const;
 
 describe('Phase 2 Slice 09 release and browser security boundaries', () => {
-  it('[P2-S09-AC-117, P2-S09-AC-120, P2-S09-AC-164, P2-S09-AC-281] gates A05 and A08 behind signed release-worker admission', () => {
+  it('[P2-S09-AC-117] [P2-S09-AC-120] [P2-S09-AC-164] [P2-S09-AC-281] gates A05 and A08 behind signed release-worker admission', () => {
     expect(releaseWorkerSource).not.toBe('');
     expect(releaseWorkerSource).toMatch(/CMS-03A-05/iu);
     expect(releaseWorkerSource).toMatch(/CMS-03A-08/iu);
@@ -126,7 +126,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     ).not.toMatch(/JSON\.parse|\.json\s*\(/u);
   });
 
-  it('[P2-S09-AC-135, P2-S09-AC-200] reserves WEBHOOK_REJECTED for the exact 401 release-principal/signature boundary', () => {
+  it('[P2-S09-AC-135] [P2-S09-AC-200] reserves WEBHOOK_REJECTED for the exact 401 release-principal/signature boundary', () => {
     const occurrences = [
       ...signedContractSource.matchAll(/WEBHOOK_REJECTED/gu),
     ];
@@ -148,7 +148,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     expect(webCmsSource).not.toContain('WEBHOOK_REJECTED');
   });
 
-  it('[P2-S09-AC-156, P2-S09-AC-158, P2-S09-AC-159, P2-S09-AC-163] persists durable nonce and append-only lifecycle evidence', () => {
+  it('[P2-S09-AC-156] [P2-S09-AC-158] [P2-S09-AC-159] [P2-S09-AC-163] persists durable nonce and append-only lifecycle evidence', () => {
     expect(s09MigrationSource).toMatch(/cms_release_nonce_receipts/iu);
     expect(s09MigrationSource).toMatch(
       /cms_block_definition_lifecycle_events/iu,
@@ -166,7 +166,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     );
   });
 
-  it('[P2-S09-AC-123, P2-S09-AC-259, P2-S09-AC-260] keeps browser projections free of ownership and worker evidence', () => {
+  it('[P2-S09-AC-123] [P2-S09-AC-259] [P2-S09-AC-260] keeps browser projections free of ownership and worker evidence', () => {
     expect(webCmsFiles.length).toBeGreaterThan(0);
     expect(webCmsSource).toMatch(
       /BlockDefinitionRegistryRecord|block_definition_registry_record/iu,
@@ -177,7 +177,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     expect(leakedFields).toEqual([]);
   });
 
-  it('[P2-S09-AC-222, P2-S09-AC-223, P2-S09-AC-257, P2-S09-AC-258] keeps protected CMS UI free of release controls', () => {
+  it('[P2-S09-AC-222] [P2-S09-AC-223] [P2-S09-AC-257] [P2-S09-AC-258] keeps protected CMS UI free of release controls', () => {
     expect(webCmsSource).toMatch(/ContentSchemaRegistryWorkbench/iu);
     expect(webCmsSource).toMatch(/(?:protected|session|capabilit|auth)/iu);
     const releaseControls = [

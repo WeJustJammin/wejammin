@@ -136,6 +136,22 @@ authority from browser headers or query parameters.
 - `setFormBusy(form, busy, saving)` sets the commit label to "Saving…" and
   `aria-disabled` on the locale fields while a command is in flight.
 
+## Detail, activation result and mapping tests
+
+- `ContentSchemaRegistryDetailFacts`, `...Definitions`, `...Bindings` and
+  `...Artifact` render every browser-safe member of the CMS-03A-07 detail; a new
+  contract member needs a row there and an alternative value in
+  `content-schema-registry-s09-r4-mapping-detail.dom.test.tsx`.
+- `content-schema-registry-runtime-dom-activation-result.ts` validates and
+  renders the CMS-03A-04 `SchemaActivationResource`; an unverifiable body is
+  never shown as a success.
+- `content-schema-registry-runtime-dom-reapply.ts` holds the locale conflict
+  rule: Reapply is enabled only over a server-disclosed newer version.
+- The `content-schema-registry-s09-r4-mapping-*` tests are generated-fixture
+  checks: each contract field must change the markup the real component
+  renders, each form control must equal a request field, and each generated
+  error code must reach one UI class.
+
 ## Extension rules
 
 Keep browser code free of server secrets and private evidence. Add new commands

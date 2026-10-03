@@ -9,6 +9,11 @@ import { env } from 'cloudflare:workers';
 import '@wejammin/ui/styles.css';
 import '../../styles/infrastructure.css';
 import { forwardAuthRequest } from '../../server/auth-platform-api.ts';
+import SignInEmailForm from '../../components/authentication/sign-in/SignInEmailForm.tsx';
+import {
+  SIGN_IN_ENTRY_HEADING,
+  signInEntryFrom,
+} from '../../components/authentication/sign-in/sign-in-entry.ts';
 
 export const prerender = false;
 
@@ -18,6 +23,7 @@ const normalized = normalizeSafeReturnPath(
 const returnTo = AuthReturnTargetSchema.safeParse(normalized).success
   ? normalized
   : '/app';
+const entry = signInEntryFrom(Astro.url.searchParams.get('intent'));
 const outcome = Astro.url.searchParams.get('outcome');
 const outcomeMessage =
   {
@@ -84,7 +90,7 @@ const providers =
         </p>
       </div>
       <section class="infra-workbench-header" aria-labelledby="sign-in-heading">
-        <h2 id="sign-in-heading">Continue to your workspace</h2>
+        <h2 id="sign-in-heading">{SIGN_IN_ENTRY_HEADING[entry]}</h2>
         {
           outcomeMessage !== null && (
             <p role="status" aria-live="polite">
@@ -92,53 +98,38 @@ const providers =
             </p>
           )
         }
-        <form method="post" action="/auth/start" class="infra-stack">
-          <input type="hidden" name="returnTo" value={returnTo} />
-          <label for="email">Email address</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autocomplete="email"
-            required
-            maxlength="254"
-          />
-          <button type="submit" name="intent" value="sign_in">
-            Email me a sign-in link
-          </button>
-          <button type="submit" name="intent" value="recovery">
-            Recover my account
-          </button>
-        </form>
-        <div class="infra-stack" aria-labelledby="social-sign-in-heading">
-          <h3 id="social-sign-in-heading">Social sign-in</h3>
-          {
-            providers.map((provider) => (
-              <form method="post" action="/auth/start">
-                <input type="hidden" name="returnTo" value={returnTo} />
-                <input type="hidden" name="intent" value="sign_in" />
-                <button
-                  type="submit"
-                  name="provider"
-                  value={provider.code}
-                  disabled={provider.state !== 'enabled'}
-                  aria-describedby={
-                    provider.state !== 'enabled'
-                      ? `${provider.code}-status`
-                      : undefined
-                  }
-                >
-                  Continue with {provider.label}
-                </button>
-                {provider.state !== 'enabled' && (
-                  <span id={`${provider.code}-status`} class="infra-help">
-                    Temporarily unavailable
-                  </span>
-                )}
-              </form>
-            ))
-          }
-        </div>
+        <SignInEmailForm returnTo={returnTo} entry={entry} />
+        {
+          entry === 'sign_in' && (
+            <div class="infra-stack" aria-labelledby="social-sign-in-heading">
+              <h3 id="social-sign-in-heading">Social sign-in</h3>
+              {providers.map((provider) => (
+                <form method="post" action="/auth/start">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="intent" value="sign_in" />
+                  <button
+                    type="submit"
+                    name="provider"
+                    value={provider.code}
+                    disabled={provider.state !== 'enabled'}
+                    aria-describedby={
+                      provider.state !== 'enabled'
+                        ? `${provider.code}-status`
+                        : undefined
+                    }
+                  >
+                    Continue with {provider.label}
+                  </button>
+                  {provider.state !== 'enabled' && (
+                    <span id={`${provider.code}-status`} class="infra-help">
+                      Temporarily unavailable
+                    </span>
+                  )}
+                </form>
+              ))}
+            </div>
+          )
+        }
         <p class="infra-help">
           Return target: <code>{returnTo}</code>. If authentication expires,
           your unsent local input remains in the current form and is never

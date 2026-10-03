@@ -45,7 +45,10 @@ describe('content schema registry runtime retry contract', () => {
     const fetcher = vi.fn(
       async (_input: RequestInfo | URL, init?: RequestInit) => {
         accept = new Headers(init?.headers).get('accept');
-        return new Response('{}', { status: 303, headers: { location: '/next' } });
+        return new Response('{}', {
+          status: 303,
+          headers: { location: '/next' },
+        });
       },
     );
     await executeContentSchemaRegistryMutation({

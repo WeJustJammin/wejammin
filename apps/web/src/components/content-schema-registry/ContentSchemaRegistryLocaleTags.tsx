@@ -67,12 +67,10 @@ export default function ContentSchemaRegistryLocaleTags({
           aria-invalid={invalid ? 'true' : undefined}
           aria-describedby={describedBy}
           onChange={(event) => controller.setTagText(event.target.value)}
-          // Revealing the issue summary moves every control below it, which
-          // swallows the click on Add that caused this blur. A typed tag is
-          // pending, so wait for the commit (or the submit guard) instead.
-          onBlur={() => {
-            if (tagText.trim() === '') controller.reveal();
-          }}
+          // Only the tag's own issue is shown on blur, below the Add button, so
+          // the click on Add that caused this blur is never displaced. The typed
+          // text is never changed here; a typed tag stays pending until Add.
+          onBlur={controller.checkTag}
           onKeyDown={(event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();

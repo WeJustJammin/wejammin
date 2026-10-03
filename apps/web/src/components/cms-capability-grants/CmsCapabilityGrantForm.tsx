@@ -19,6 +19,8 @@ export interface CmsCapabilityGrantFormProps {
   readonly idempotencyKey: string;
   readonly termWindow: CmsCapabilityGrantTermBounds;
   readonly disabled: boolean;
+  /** Id of the visible reason the command is disabled, if any. */
+  readonly disabledReasonId?: string | undefined;
   readonly pending: boolean;
   /** Server 422 field errors for the last attempt, mapped by the console. */
   readonly serverErrors: GrantFieldErrors;
@@ -144,6 +146,7 @@ export default function CmsCapabilityGrantForm(
       <button
         type="submit"
         disabled={props.disabled || props.pending}
+        aria-describedby={props.disabled ? props.disabledReasonId : undefined}
         aria-busy={props.pending ? 'true' : undefined}
       >
         {props.pending ? 'Granting' : 'Grant capability'}

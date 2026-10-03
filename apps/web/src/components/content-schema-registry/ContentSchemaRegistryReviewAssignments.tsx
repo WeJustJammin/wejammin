@@ -100,7 +100,7 @@ export default function ContentSchemaRegistryReviewAssignments({
                 </time>{' '}
                 until{' '}
                 <time dateTime={assignment.endsAt}>{assignment.endsAt}</time>{' '}
-                (UTC).
+                (UTC). Assignment version {assignment.version}.
               </p>
               {assignment.state === 'active' ? (
                 <RevokeForm {...shared} assignment={assignment} index={index} />

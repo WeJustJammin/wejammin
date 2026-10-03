@@ -45,7 +45,7 @@ select pg_temp.s09d_assign_raw('a:crossowner', 'a', 'other', jsonb_build_object(
 select is(pg_temp.s09d_outcome('a:crossowner'), 'NOT_FOUND', 'another organization''s designer sees the review as absent (404) [P2-S09-AC-485]');
 select pg_temp.s09d_assign_raw('a:unassigned', 'a', 'rev2', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev3', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
-select ok(pg_temp.s09d_outcome('a:unassigned') in ('FORBIDDEN', 'NOT_FOUND'), 'a human with no standing on the review cannot assign');
+select ok(pg_temp.s09d_outcome('a:unassigned') = 'NOT_FOUND', 'a human with no standing on the review cannot assign');
 select pg_temp.s09d_assign_raw('a:self', 'a', 'owner', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('owner', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
 select is(pg_temp.s09d_outcome('a:self'), 'CONFLICT', 'assigning the submitter as a reviewer is a 409 CONFLICT [P2-S09-AC-386] [P2-S09-AC-469]');
@@ -77,7 +77,7 @@ select pg_temp.s09d_assign_raw('a:past', 'a', 'owner', jsonb_build_object('actio
 select is(pg_temp.s09d_outcome('a:past'), 'CONFLICT', 'an expiry in the past is refused (409 CONFLICT) [P2-S09-AC-471]');
 select pg_temp.s09d_assign_raw('a:malformed', 'a', 'owner', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'expiresAt', 'infinity'));
-select ok(pg_temp.s09d_outcome('a:malformed') in ('VALIDATION_FAILED', 'INVALID_REQUEST'), 'a non-finite expiresAt is a schema failure [P2-S09-AC-471]');
+select ok(pg_temp.s09d_outcome('a:malformed') = 'VALIDATION_FAILED', 'a non-finite expiresAt is a schema failure [P2-S09-AC-471]');
 select pg_temp.s09d_assign_raw('a:broad:' || k, 'a', 'owner', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day'), k, v))
 from (values ('actions', '["read","decide","assign"]'::jsonb), ('capabilityKey', '"cms.schema_designer"'::jsonb),
@@ -158,7 +158,7 @@ update identity_private.organization_actor_grant set valid_from = current_date -
  where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s09d_actor_id('owner', 'person')::uuid;
 select pg_temp.s09d_assign_raw('k:lapsed', 'k', 'owner', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 hour')));
-select ok(pg_temp.s09d_id('k:review') is not null and pg_temp.s09d_outcome('k:lapsed') in ('FORBIDDEN', 'NOT_FOUND'),
+select ok(pg_temp.s09d_id('k:review') is not null and pg_temp.s09d_outcome('k:lapsed') = 'NOT_FOUND',
   'the owner receipt identity without a currently valid CMS grant cannot assign [P2-S09-AC-486]');
 
 select ok(pg_temp.s09d_service_only('platform_api.cms_assign_schema_review(jsonb)')

@@ -14,24 +14,27 @@ const read = (relative: string): string =>
 describe('/step-up page', () => {
   const source = read('../pages/step-up.astro');
 
-  it('[P2-S09-AC-1101] is a non-prerendered, no-store, noindex page with one focusable heading', () => {
+  // The heading, title and 303 are executable behavior, observed in
+  // step-up-auth-pages.dom.test.tsx; this block only checks the page wiring.
+  it('is a non-prerendered, no-store, noindex page wired to the shared heading, title and route focus', () => {
     expect(source).toContain('export const prerender = false');
     expect(source).toMatch(
       /Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u,
     );
     expect(source).toContain('name="robots" content="noindex"');
     expect(source).toContain('lang="en"');
-    expect(source).toContain('<title>Verify it');
-    expect(source).toMatch(/<h1 id="page-title" tabindex="-1">/u);
+    expect(source).toContain('<StepUpPageHeading page="step-up" />');
+    expect(source).toContain("STEP_UP_PAGE_HEADINGS['step-up'].documentTitle");
+    expect(source).not.toContain('<h1');
     expect(source).toContain('id="main-content"');
     expect(source).toContain('aria-label="Skip navigation"');
     expect(source).toContain('focus-page-heading');
   });
 
-  it('[P2-S09-AC-1065] [P2-S09-AC-1067] resolves on the server, validates returnTo there and 303s a missing session', () => {
+  it('[P2-S09-AC-1065] resolves on the server, validates returnTo there and hands a missing session to the shared 303 redirect', () => {
     expect(source).toContain('resolveStepUpPage');
     expect(source).toContain("Astro.url.searchParams.get('returnTo')");
-    expect(source).toMatch(/Astro\.redirect\([^)]*303/su);
+    expect(source).toContain('return authPageRedirect(resolved.location)');
     expect(source).toContain("kind === 'unauthenticated'");
   });
 
@@ -56,22 +59,21 @@ describe('/step-up page', () => {
 describe('/settings/security/mfa page', () => {
   const source = read('../pages/settings/security/mfa.astro');
 
-  it('[P2-S09-AC-1101] is a non-prerendered, no-store, noindex page with one focusable heading', () => {
+  it('is a non-prerendered, no-store, noindex page wired to the shared heading, title and route focus', () => {
     expect(source).toContain('export const prerender = false');
     expect(source).toMatch(
       /Astro\.response\.headers\.set\(\s*'Cache-Control',\s*'no-store'/u,
     );
     expect(source).toContain('name="robots" content="noindex"');
-    expect(source).toContain('<title>Two-step verification');
-    expect(source).toMatch(
-      /<h1 id="page-title" tabindex="-1">\s*Two-step verification/u,
-    );
+    expect(source).toContain('<StepUpPageHeading page="mfa" />');
+    expect(source).toContain('STEP_UP_PAGE_HEADINGS.mfa.documentTitle');
+    expect(source).not.toContain('<h1');
     expect(source).toContain('focus-page-heading');
   });
 
-  it('[P2-S09-AC-1070] resolves on the server and 303s a missing session', () => {
+  it('resolves on the server and hands a missing session to the shared 303 redirect', () => {
     expect(source).toContain('resolveMfaSettingsPage');
-    expect(source).toMatch(/Astro\.redirect\([^)]*303/su);
+    expect(source).toContain('return authPageRedirect(resolved.location)');
   });
 
   it('[P2-S09-AC-1078] hydrates the wizard on load with only server-derived props', () => {

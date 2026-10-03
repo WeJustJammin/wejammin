@@ -210,8 +210,8 @@ const capabilityResolver = (
     typeof binding !== 'object' ||
     binding === null ||
     !Object.hasOwn(binding, 'resolveCapabilities') ||
-    typeof (binding as { resolveCapabilities?: unknown }).resolveCapabilities !==
-      'function'
+    typeof (binding as { resolveCapabilities?: unknown })
+      .resolveCapabilities !== 'function'
   ) {
     return null;
   }

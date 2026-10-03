@@ -802,6 +802,10 @@ export type Database = {
       }
       cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
       cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_sweep_expired_review_authority: {
+        Args: { p_batch: number }
+        Returns: Json
+      }
       cms_template_context: { Args: { p_request: Json }; Returns: Json }
       cms_template_latest: { Args: { p_request: Json }; Returns: Json }
       cms_validate_locale_config: {
@@ -9678,6 +9682,10 @@ export type Database = {
         Args: { p_request: Json }
         Returns: string
       }
+      cms_publish_session: {
+        Args: { p_acting_party_id: string; p_actor_id: string }
+        Returns: undefined
+      }
       cms_read_schema_migration_source_rows: {
         Args: { p_request: Json }
         Returns: Json
@@ -9816,6 +9824,10 @@ export type Database = {
         Args: { p_ends_at: string; p_starts_at: string; p_state: string }
         Returns: boolean
       }
+      cms_review_authority_lapsed: {
+        Args: { p_review_id: string }
+        Returns: boolean
+      }
       cms_review_binding: {
         Args: {
           p_acting_party_id: string
@@ -9935,12 +9947,27 @@ export type Database = {
         Args: { p_from_version_id: string; p_to_version_id: string }
         Returns: number
       }
+      cms_session_scope_ok: {
+        Args: { p_owner_id: string; p_review_id?: string }
+        Returns: boolean
+      }
+      cms_session_scope_ok_report: {
+        Args: { p_report_id: string }
+        Returns: boolean
+      }
+      cms_session_scope_ok_system: { Args: never; Returns: boolean }
+      cms_session_system_scope: { Args: never; Returns: boolean }
+      cms_session_uuid: { Args: { p_name: string }; Returns: string }
       cms_stale_locale_dependents: {
         Args: { p_backfill: boolean; p_source_revision_id: string }
         Returns: number
       }
       cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
       cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_sweep_expired_review_authority: {
+        Args: { p_batch: number }
+        Returns: Json
+      }
       cms_template_binding_compatible: {
         Args: {
           p_content_type_id: string
@@ -10344,6 +10371,10 @@ export type Database = {
           p_target_type: string
         }
         Returns: undefined
+      }
+      identity_session_scope_ok: {
+        Args: { p_auth_user_id: string }
+        Returns: boolean
       }
       identity_uuid_setting: { Args: { p_name: string }; Returns: string }
       identity_validate_display_name: {

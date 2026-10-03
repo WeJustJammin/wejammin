@@ -14,6 +14,7 @@ export interface CmsCapabilityGrantRevokeConfirmationProps {
   readonly csrfToken: string;
   readonly idempotencyKey: string;
   readonly disabled: boolean;
+  readonly disabledReasonId?: string | undefined;
   readonly pending: boolean;
   readonly serverErrors: GrantFieldErrors;
   readonly onSubmit: (form: HTMLFormElement) => void;
@@ -104,6 +105,7 @@ export default function CmsCapabilityGrantRevokeConfirmation(
         <button
           type="submit"
           disabled={props.disabled || props.pending || !confirmed}
+          aria-describedby={props.disabled ? props.disabledReasonId : undefined}
           aria-busy={props.pending ? 'true' : undefined}
         >
           {props.pending ? 'Revoking' : 'Revoke grant'}

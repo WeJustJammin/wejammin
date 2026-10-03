@@ -29,6 +29,8 @@ export interface LocaleDraftController {
   readonly cycle: readonly string[];
   setTagText: (value: string) => void;
   commitTag: () => void;
+  /** Blur of the tag input: shows the issue for the typed text, never edits it. */
+  checkTag: () => void;
   applySuggestion: (suggestion: string) => void;
   dropTag: (tag: string) => void;
   chooseSource: (tag: string) => void;
@@ -94,6 +96,13 @@ export const useLocaleConfigDraft = (
         setTagText('');
       }
       setFocusId(inputId);
+    },
+    checkTag: () => {
+      if (tagText.trim() === '') {
+        setRevealed(true);
+        return;
+      }
+      setTagError(addTag(draft, tagText).error);
     },
     applySuggestion: (suggestion) => {
       setTagText(suggestion);

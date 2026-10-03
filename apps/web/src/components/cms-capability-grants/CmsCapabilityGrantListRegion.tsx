@@ -5,6 +5,7 @@ import CmsCapabilityGrantList from './CmsCapabilityGrantList';
 import { safeContentSchemaRegistryErrorMessage } from '../content-schema-registry/content-schema-registry-types';
 import { grantListSummary } from './cms-capability-grant-summary';
 import type { CmsCapabilityGrantListState } from './cms-capability-grant-types';
+import { DEGRADED_REASON_ID } from './cms-capability-grant-reasons';
 
 export interface CmsCapabilityGrantListRegionProps extends Omit<
   CmsCapabilityGrantListProps,
@@ -132,7 +133,7 @@ export default function CmsCapabilityGrantListRegion(
       return (
         <>
           <div role="status" aria-live="polite" aria-atomic="true">
-            <p>
+            <p id={DEGRADED_REASON_ID}>
               The grants could not be refreshed. Every change is disabled until
               the list is current.
               {state.lastVerifiedAt === null ? null : (

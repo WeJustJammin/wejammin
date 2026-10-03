@@ -61,3 +61,10 @@ lines; split by form rather than growing the console.
   re-read the list without pushing a new entry.
 - The shared step-up recovery (`step-up-mfa/step-up-return.ts`) builds
   `/step-up?returnTo=`; the console still persists no entries across the detour.
+
+## Disabled commands and their reason
+
+Every disabled command (row Renew, Revoke, Grant again and the form submits)
+carries `aria-describedby` naming the visible reason: the degraded-list notice
+(`DEGRADED_REASON_ID`) or the step-up recovery (`STEP_UP_REASON_ID`), chosen by
+`disabledReasonIdFor` in `cms-capability-grant-reasons.ts`.

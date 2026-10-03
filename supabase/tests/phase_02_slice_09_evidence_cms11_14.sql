@@ -111,7 +111,7 @@ select pg_temp.s09d_create_type('s', 'ev12submitter');
 select pg_temp.s09d_to_review('s');
 select pg_temp.s09d_assign('s', 'rev1');
 select pg_temp.s09d_decide('s', 'owner', 'approve', '{}'::jsonb, 's:ownerdecide');
-select ok(pg_temp.s09d_outcome('s:ownerdecide') in ('NOT_FOUND', 'FORBIDDEN', 'CONFLICT')
+select ok(pg_temp.s09d_outcome('s:ownerdecide') = 'NOT_FOUND'
   and pg_temp.s09d_outcome('s:ownerdecide') <> 'OK',
   'the submitter holds no assignment and cannot decide their own review [P2-S09-AC-417]');
 select set_config('app.cms_rpc', 'true', true);
@@ -121,7 +121,7 @@ select pg_temp.s09d_try(format($q$insert into platform_private.cms_schema_review
       'cms.schema_review', array['read','decide']::text[], 'active', clock_timestamp(), clock_timestamp() + interval '1 day'
     from platform_private.cms_schema_reviews review where review.id = %L$q$, pg_temp.s09d_id('s:review'))) as forged \gset
 select pg_temp.s09d_decide('s', 'owner', 'approve', '{}'::jsonb, 's:forgeddecide');
-select ok(pg_temp.s09d_outcome('s:forgeddecide') in ('NOT_FOUND', 'FORBIDDEN', 'CONFLICT')
+select ok(pg_temp.s09d_outcome('s:forgeddecide') = 'CONFLICT'
   and pg_temp.s09d_outcome('s:forgeddecide') <> 'OK'
   and pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_schema_review_decisions where review_id = %L',
         pg_temp.s09d_id('s:review'))) = '0',
@@ -135,7 +135,7 @@ select pg_temp.s09d_timewarp('cms_schema_review_assignments', format($q$update p
    set starts_at = clock_timestamp() + interval '1 hour', ends_at = clock_timestamp() + interval '2 hours'
  where id = %L$q$, pg_temp.s09d_id('f:assignment:rev1')));
 select pg_temp.s09d_decide('f', 'rev1', 'approve');
-select ok(pg_temp.s09d_outcome('f:assign:rev1') = 'OK' and pg_temp.s09d_outcome('f:decide:rev1') in ('FORBIDDEN', 'NOT_FOUND'),
+select ok(pg_temp.s09d_outcome('f:assign:rev1') = 'OK' and pg_temp.s09d_outcome('f:decide:rev1') = 'NOT_FOUND',
   'an assignment whose starts_at has not been reached confers no authority (starts_at <= now < ends_at) [P2-S09-AC-416]');
 select pg_temp.s09d_get_review('f:get', 'f', 'rev1');
 select is(pg_temp.s09d_outcome('f:get'), 'NOT_FOUND',
@@ -249,7 +249,7 @@ select pg_temp.s09d_call('w:member', 'platform_api.cms_get_schema_review',
   jsonb_build_object('reviewId', pg_temp.s09d_id('w:review'),
     'context', pg_temp.s09d_context('rev3', false, jsonb_build_object('actingPartyId', pg_temp.s09d_id('ownerOrg')))));
 select is(pg_temp.s09d_outcome('w:member'), 'FORBIDDEN',
-  'a member of the owner organization acting as it, with no designer capability and no assignment, is denied a known readable review with 403 [P2-S09-AC-452]');
+  'a member of the owner organization acting as it, with no designer capability and no assignment, is denied a known readable review with 403 [P2-S09-AC-452] [P2-S09-AC-457]');
 select pg_temp.s09d_get_review('w:other', 'w', 'other');
 select is(pg_temp.s09d_outcome('w:other'), 'NOT_FOUND', 'another organization still sees the review as absent (404) [P2-S09-AC-452]');
 select pg_temp.s09d_get_review('w:rev2', 'w', 'rev2');
@@ -296,7 +296,7 @@ select pg_temp.s09d_rpc('x:revoke:malformed', 'platform_api.cms_assign_schema_re
   jsonb_build_object('reviewId', pg_temp.s09d_id('x:review'), 'action', 'revoke',
     'expectedVersion', pg_temp.s09d_review_version('x'), 'assignmentId', 'not-a-uuid',
     'idempotencyKey', 's09e-revoke-malformed-0001'), true);
-select ok(pg_temp.s09d_outcome('x:revoke:malformed') in ('VALIDATION_FAILED', 'INVALID_REQUEST'),
+select ok(pg_temp.s09d_outcome('x:revoke:malformed') = 'INVALID_REQUEST',
   'a malformed assignmentId is an assignment schema failure [P2-S09-AC-474]');
 select ok(pg_temp.s09d_scalar(format('select state from platform_private.cms_schema_review_assignments where id = %L',
   pg_temp.s09d_id('y:assignment:rev2'))) = 'active', 'the other review''s assignment was not revoked [P2-S09-AC-474]');
@@ -326,15 +326,16 @@ select set_config('s09e.fail_event', '', true);
 select pg_temp.s09d_create_type('z', 'ev14daylimit');
 select pg_temp.s09d_to_review('z');
 select pg_temp.s09g_warp('owner', 'cms.schema_designer', -3, 0) as warped \gset
-select pg_temp.s09d_assign('z', 'rev1', interval '1 hour', 'owner', 'z:lastday');
+-- the expiry stays inside the current UTC day whatever the time of day the suite runs
+select pg_temp.s09d_assign('z', 'rev1', least(interval '1 hour', (date_trunc('day', (clock_timestamp() at time zone 'UTC') + interval '1 day') - (clock_timestamp() at time zone 'UTC')) / 2), 'owner', 'z:lastday');
 select is(pg_temp.s09d_outcome('z:lastday'), 'OK',
   'on the last valid UTC day the owner authority is still current and an expiry within it is accepted [P2-S09-AC-486]');
 select pg_temp.s09d_assign('z', 'rev2', interval '2 days', 'owner', 'z:beyond');
 select is(pg_temp.s09d_outcome('z:beyond'), 'CONFLICT',
   'an expiry past the end of the owner grant''s valid_through UTC day is refused [P2-S09-AC-486]');
 select pg_temp.s09g_warp('owner', 'cms.schema_designer', -3, -1) as lapsed \gset
-select pg_temp.s09d_assign('z', 'rev3', interval '1 hour', 'owner', 'z:lapsed');
-select ok(pg_temp.s09d_outcome('z:lapsed') in ('FORBIDDEN', 'NOT_FOUND'),
+select pg_temp.s09d_assign('z', 'rev3', least(interval '1 hour', (date_trunc('day', (clock_timestamp() at time zone 'UTC') + interval '1 day') - (clock_timestamp() at time zone 'UTC')) / 2), 'owner', 'z:lapsed');
+select ok(pg_temp.s09d_outcome('z:lapsed') = 'NOT_FOUND',
   'the day after valid_through the owner grant no longer gives current owner authority [P2-S09-AC-486]');
 
 select * from finish();

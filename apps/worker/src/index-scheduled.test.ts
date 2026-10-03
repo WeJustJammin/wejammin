@@ -23,6 +23,12 @@ describe('Worker scheduled operational boundaries', () => {
         void init;
         if (String(input).includes('/rest/v1/rpc/idempotency_expiry_sweep'))
           return Response.json({ deletedCount: 0, hasMore: false });
+        if (
+          String(input).includes(
+            '/rest/v1/rpc/cms_sweep_expired_review_authority',
+          )
+        )
+          return Response.json({ invalidatedReviews: 0 });
         return Response.json([], { status: 200 });
       },
     );
@@ -49,9 +55,10 @@ describe('Worker scheduled operational boundaries', () => {
       asyncBindings,
       executionContext,
     );
-    // The outbox sweep, the idempotency expiry sweep and the [P2-S09-AC-908]
-    // reconciling-age gauge sample each make one protected RPC per tick.
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    // The outbox sweep, the idempotency expiry sweep, the [P2-S09-AC-1135]
+    // reviewer-authority expiry sweep and the [P2-S09-AC-908] reconciling-age
+    // gauge sample each make one protected RPC per tick.
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(
       fetchImpl.mock.calls
         .map(([input]) => String(input).split('/rest/v1/rpc/')[1])
@@ -59,6 +66,7 @@ describe('Worker scheduled operational boundaries', () => {
     ).toEqual([
       'auth_mfa_reconciling_age',
       'claim_outbox_batch',
+      'cms_sweep_expired_review_authority',
       'idempotency_expiry_sweep',
     ]);
     expect(createProductionAsyncEntrypoint(fetchImpl)).toHaveProperty(
@@ -144,6 +152,11 @@ describe('Worker scheduled operational boundaries', () => {
           return Response.json({ deletedCount: 0, hasMore: false });
         }
         if (
+          target.includes('/rest/v1/rpc/cms_sweep_expired_review_authority')
+        ) {
+          return Response.json({ invalidatedReviews: 0 });
+        }
+        if (
           target.includes('/rest/v1/rpc/cms_get_operational_state_snapshot')
         ) {
           return new Response('alert unavailable', { status: 503 });
@@ -197,6 +210,6 @@ describe('Worker scheduled operational boundaries', () => {
         String(input).includes('/rest/v1/rpc/auth_mfa_reconciling_age'),
       ),
     ).toHaveLength(1);
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
   });
 });

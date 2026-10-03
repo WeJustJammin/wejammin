@@ -128,43 +128,50 @@ select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('plat
 
 -- ---- request validation and authority ------------------------------------------
 select pg_temp.m_reset('r:key', 'designer2', 'rev1', 'reset-key-ac945-0001', 'x', '{}', jsonb_build_object('unknown', true));
-select is(pg_temp.m_out('r:key'), 'INVALID_REQUEST', 'an unknown request key is INVALID_REQUEST');
+select is(pg_temp.m_out('r:key'), 'INVALID_REQUEST', 'an unknown request key is INVALID_REQUEST [P2-S09-AC-935]');
+-- CFG-05B-06 without any verified actor session is 401 UNAUTHENTICATED (no session GUC, no envelope).
+select set_config(k, '', true) from unnest(array['app.auth_user_id', 'app.actor_auth_user_id', 'app.actor_person_id', 'app.acting_party_id', 'app.acting_context_id', 'request.jwt.claim.sub']) k;
+select pg_temp.s09d_call('r:unauth', 'platform_api.admin_mfa_factor_reset',
+  jsonb_build_object('targetPersonId', pg_temp.s09d_actor_id('rev1', 'person'), 'reason', 'lost every factor',
+    'idempotencyKey', 'reset-key-ac936-0001', 'context', '{}'::jsonb));
+select pg_temp.m_sync('r:unauth');
+select is(pg_temp.m_out('r:unauth'), 'UNAUTHENTICATED', 'a request without a verified actor session is 401 UNAUTHENTICATED [P2-S09-AC-936]');
 select pg_temp.m_reset('r:reason0', 'designer2', 'rev1', 'reset-key-ac945-0002', '   ');
-select is(pg_temp.m_out('r:reason0'), 'INVALID_REQUEST', 'a blank reason is INVALID_REQUEST');
+select is(pg_temp.m_out('r:reason0'), 'INVALID_REQUEST', 'a blank reason is INVALID_REQUEST [P2-S09-AC-935]');
 select pg_temp.m_reset('r:reason513', 'designer2', 'rev1', 'reset-key-ac945-0003', repeat('x', 513));
-select is(pg_temp.m_out('r:reason513'), 'INVALID_REQUEST', 'a 513-character reason is INVALID_REQUEST');
+select is(pg_temp.m_out('r:reason513'), 'INVALID_REQUEST', 'a 513-character reason is INVALID_REQUEST [P2-S09-AC-935]');
 select pg_temp.m_reset('r:uuid', 'designer2', 'not-a-uuid', 'reset-key-ac945-0004');
-select is(pg_temp.m_out('r:uuid'), 'INVALID_REQUEST', 'a malformed target is INVALID_REQUEST');
+select is(pg_temp.m_out('r:uuid'), 'INVALID_REQUEST', 'a malformed target is INVALID_REQUEST [P2-S09-AC-935]');
 select pg_temp.m_reset('r:idem', 'designer2', 'rev1', 'short');
-select is(pg_temp.m_out('r:idem'), 'INVALID_REQUEST', 'a short idempotency key is INVALID_REQUEST');
+select is(pg_temp.m_out('r:idem'), 'INVALID_REQUEST', 'a short idempotency key is INVALID_REQUEST [P2-S09-AC-935]');
 select pg_temp.m_reset('r:stepup', 'designer2', 'rev1', 'reset-key-ac945-0005', 'lost', jsonb_build_object('stepUpAt', clock_timestamp() - interval '11 minutes'));
-select is(pg_temp.m_out('r:stepup'), 'STEP_UP_REQUIRED', 'a stale step-up is 401 STEP_UP_REQUIRED');
+select is(pg_temp.m_out('r:stepup'), 'STEP_UP_REQUIRED', 'a stale step-up is 401 STEP_UP_REQUIRED [P2-S09-AC-937]');
 select pg_temp.m_reset('r:nostepup', 'designer2', 'rev1', 'reset-key-ac945-0006', 'lost', jsonb_build_object('stepUpVerified', false));
-select is(pg_temp.m_out('r:nostepup'), 'STEP_UP_REQUIRED', 'an absent step-up is 401 STEP_UP_REQUIRED');
+select is(pg_temp.m_out('r:nostepup'), 'STEP_UP_REQUIRED', 'an absent step-up is 401 STEP_UP_REQUIRED [P2-S09-AC-937]');
 select pg_temp.m_reset('r:nocap', 'owner', 'rev1', 'reset-key-ac945-0007');
-select is(pg_temp.m_out('r:nocap'), 'FORBIDDEN', 'an operator without the named capability is 403');
+select is(pg_temp.m_out('r:nocap'), 'FORBIDDEN', 'an operator without the named capability is 403 [P2-S09-AC-938] [P2-S09-AC-926]');
 select pg_temp.s09d_remember('otherGrant', pg_temp.m_grant('other', pg_temp.s09d_id('otherOrg')));
 select pg_temp.m_reset('r:othercap', 'other', 'rev1', 'reset-key-ac945-0008');
-select is(pg_temp.m_out('r:othercap'), 'TARGET_NOT_FOUND', 'an operator of another organization cannot see the target (404) [P2-S09-AC-927]');
+select is(pg_temp.m_out('r:othercap'), 'TARGET_NOT_FOUND', 'an operator of another organization cannot see the target (404) [P2-S09-AC-927] [P2-S09-AC-939]');
 select pg_temp.m_reset('r:self', 'designer2', 'designer2', 'reset-key-ac945-0009');
-select is(pg_temp.m_out('r:self'), 'MFA_RESET_INVALID', 'self-target is 422 MFA_RESET_INVALID [P2-S09-AC-897]');
+select is(pg_temp.m_out('r:self'), 'MFA_RESET_INVALID', 'self-target is 422 MFA_RESET_INVALID [P2-S09-AC-897] [P2-S09-AC-942]');
 select pg_temp.m_reset('r:nonmember', 'designer2', 'rev3', 'reset-key-ac945-0010');
-select is(pg_temp.m_out('r:nonmember'), 'TARGET_NOT_FOUND', 'a person outside the organization is an indistinguishable 404 [P2-S09-AC-927]');
+select is(pg_temp.m_out('r:nonmember'), 'TARGET_NOT_FOUND', 'a person outside the organization is an indistinguishable 404 [P2-S09-AC-927] [P2-S09-AC-939]');
 select pg_temp.m_reset('r:unknown', 'designer2', extensions.gen_random_uuid()::text, 'reset-key-ac945-0011');
-select is(pg_temp.m_out('r:unknown'), 'TARGET_NOT_FOUND', 'an unknown person is the same 404');
+select is(pg_temp.m_out('r:unknown'), 'TARGET_NOT_FOUND', 'an unknown person is the same 404 [P2-S09-AC-939]');
 select pg_temp.m_warp('platform_private.admin_capability_grants', $$actions = array['read']$$, format('id = %L', pg_temp.s09d_id('opGrant')));
 select pg_temp.m_reset('r:action', 'designer2', 'rev1', 'reset-key-ac945-0012');
-select is(pg_temp.m_out('r:action'), 'FORBIDDEN', 'a grant without the reset action is 403 [P2-S09-AC-946]');
+select is(pg_temp.m_out('r:action'), 'FORBIDDEN', 'a grant without the reset action is 403 [P2-S09-AC-946] [P2-S09-AC-938] [P2-S09-AC-926]');
 select pg_temp.m_warp('platform_private.admin_capability_grants',
   format($$actions = array['reset'], state = 'revoked', revoked_at = clock_timestamp(), revoked_by = %L$$, pg_temp.s09d_actor_id('owner', 'person')),
   format('id = %L', pg_temp.s09d_id('opGrant')));
 select pg_temp.m_reset('r:revoked', 'designer2', 'rev1', 'reset-key-ac945-0013');
-select is(pg_temp.m_out('r:revoked'), 'FORBIDDEN', 'a revoked grant is 403 [P2-S09-AC-946]');
+select is(pg_temp.m_out('r:revoked'), 'FORBIDDEN', 'a revoked grant is 403 [P2-S09-AC-946] [P2-S09-AC-938] [P2-S09-AC-926]');
 select pg_temp.m_warp('platform_private.admin_capability_grants',
   $$state = 'active', revoked_at = null, revoked_by = null, ends_at = clock_timestamp() - interval '1 minute'$$,
   format('id = %L', pg_temp.s09d_id('opGrant')));
 select pg_temp.m_reset('r:expired', 'designer2', 'rev1', 'reset-key-ac945-0014');
-select is(pg_temp.m_out('r:expired'), 'FORBIDDEN', 'an expired grant is 403 [P2-S09-AC-946]');
+select is(pg_temp.m_out('r:expired'), 'FORBIDDEN', 'an expired grant is 403 [P2-S09-AC-946] [P2-S09-AC-938] [P2-S09-AC-926]');
 select pg_temp.m_warp('platform_private.admin_capability_grants', $$ends_at = clock_timestamp() + interval '1 day'$$, format('id = %L', pg_temp.s09d_id('opGrant')));
 update auth.users set banned_until = clock_timestamp() + interval '1 year' where id = pg_temp.m_uid(13);
 select pg_temp.m_reset('r:banned', 'designer2', 'rev1', 'reset-key-ac945-0015');
@@ -234,9 +241,9 @@ select is(pg_temp.m_resp('r:replay')->>'resetId', pg_temp.m_resp('r:ok')->>'rese
 select is(jsonb_array_length(pg_temp.m_resp('r:replay')->'pendingProviderFactorIds'), 0, 'a replay never asks the Worker to resend a provider removal');
 select is(pg_temp.m_one('select count(*)::text from platform_private.admin_mfa_factor_resets')::integer, 1, 'and creates no second row');
 select pg_temp.m_reset('r:conflict', 'designer2', 'rev1', 'reset-key-ac945-0100', 'a different reason');
-select is(pg_temp.m_out('r:conflict'), 'IDEMPOTENCY_CONFLICT', 'the same key with a changed body is IDEMPOTENCY_CONFLICT [P2-S09-AC-930]');
+select is(pg_temp.m_out('r:conflict'), 'IDEMPOTENCY_CONFLICT', 'the same key with a changed body is IDEMPOTENCY_CONFLICT [P2-S09-AC-930] [P2-S09-AC-940]');
 select pg_temp.m_reset('r:inflight', 'designer2', 'rev1', 'reset-key-ac945-0101');
-select is(pg_temp.m_out('r:inflight'), 'MFA_RESET_IN_PROGRESS', 'a second reset for a target with a reconciling reset is 409 MFA_RESET_IN_PROGRESS [P2-S09-AC-929]');
+select is(pg_temp.m_out('r:inflight'), 'MFA_RESET_IN_PROGRESS', 'a second reset for a target with a reconciling reset is 409 MFA_RESET_IN_PROGRESS [P2-S09-AC-929] [P2-S09-AC-941]');
 
 -- ---- settlement ---------------------------------------------------------------------
 create temp table m_reset_id on commit drop as select pg_temp.m_resp('r:ok')->>'resetId' id;
@@ -256,14 +263,14 @@ select pg_temp.m_settle_reset('s:partial', 'designer2', (select id from m_reset_
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'V2'), 'outcome', 'absent'),
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Gone'), 'outcome', 'removed'),
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Pend'), 'outcome', 'failed')));
-select is(pg_temp.m_out('s:partial'), 'OK', 'a partial provider result settles');
-select is(pg_temp.m_resp('s:partial')->>'state', 'reconciling', 'any failed factor leaves the reset reconciling (202)');
+select is(pg_temp.m_out('s:partial'), 'OK', 'a partial provider result settles [P2-S09-AC-933]');
+select is(pg_temp.m_resp('s:partial')->>'state', 'reconciling', 'any failed factor leaves the reset reconciling (202) and never rolls back the committed first transaction [P2-S09-AC-933]');
 select is(pg_temp.m_resp('s:partial')->>'removedFactorCount', '3', 'removed and absent factors count as removed');
 select is(pg_temp.m_fstate(pg_temp.m_fid_named(13, 'V1')) || pg_temp.m_fstate(pg_temp.m_fid_named(13, 'V2')) || pg_temp.m_fstate(pg_temp.m_fid_named(13, 'Gone')),
-  'removedremovedremoved', 'confirmed factors are removed');
-select is(pg_temp.m_fstate(pg_temp.m_fid_named(13, 'Pend')), 'reconciling', 'a failed factor stays reconciling for the reconciler (no rollback, no blind resend)');
+  'removedremovedremoved', 'confirmed factors are removed in the committed first transaction [P2-S09-AC-933]');
+select is(pg_temp.m_fstate(pg_temp.m_fid_named(13, 'Pend')), 'reconciling', 'a failed factor stays reconciling for the reconciler (no rollback, no blind resend) [P2-S09-AC-933]');
 select ok(pg_temp.m_one(format($q$select (completed_at is null and state = 'reconciling')::text from platform_private.admin_mfa_factor_resets where id = %L$q$, (select id from m_reset_id))) = 'true',
-  'the reset row stays reconciling with no completed_at');
+  'the reset row stays reconciling with no completed_at [P2-S09-AC-933]');
 select is(pg_temp.m_ver(13)::bigint, (select v + 1 from m_v_res), 'the settlement transaction bumps mfa_version once');
 select ok(not (pg_temp.m_resp('s:partial')::text ~ ('(' || pg_temp.m_pid_named(13, 'V1')::text || '|' || pg_temp.m_uid(13)::text || ')')),
   'the settle response carries no provider factor id and no Auth UUID');
