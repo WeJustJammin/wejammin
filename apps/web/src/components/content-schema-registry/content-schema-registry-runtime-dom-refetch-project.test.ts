@@ -1,8 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { parseCanonicalWorkbenchOutcome } from './content-schema-registry-runtime-dom-refetch-project';
+import { loadContractValidators } from './content-schema-registry-contract-validators';
 import { CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS } from './content-schema-registry-canonical-keys';
 import { emptyActivationPreparation } from './content-schema-registry-activation-preparation.test-support';
+
+// The strict resource contracts load lazily in the browser; this suite checks
+// the strict verdicts themselves, so it loads them first. The lazy path itself
+// is proven in the r14b lazy-validation suite.
+beforeAll(async () => {
+  await loadContractValidators();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

@@ -136,6 +136,12 @@ select ok(pg_temp.s09d_replay_pair('r:activate', 'platform_api.cms_activate_sche
       'approvalIds', pg_temp.s09d_approval_ids('r'), 'migrationPlanId', pg_temp.s09d_id('r:plan'),
       'idempotencyKey', 's09d-activate-replay-0001'), true),
   'an activation replay returns the exact original resource without a second switch');
+select is(pg_temp.s09d_replay_changed('r:activate:mismatch', 'platform_api.cms_activate_schema', 'owner',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id('r:type'), 'versionId', pg_temp.s09d_id('r:version'),
+      'expectedVersion', pg_temp.s09d_version('r'), 'dryRunId', pg_temp.s09d_id('r:dryRun'),
+      'approvalIds', pg_temp.s09d_approval_ids('r'), 'migrationPlanId', pg_temp.s09d_id('r:plan'),
+      'idempotencyKey', 's09d-activate-replay-0001'), jsonb_build_object('expectedVersion', '999'), true),
+  'IDEMPOTENCY_MISMATCH', 'the activation key reused with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT)');
 
 -- Authority drift after approval refuses activation (AC189 successor).
 select pg_temp.s09d_create_type('d', 'dec108actdrift');

@@ -138,6 +138,12 @@ select ok(pg_temp.s09d_replay_pair('a:replay', 'platform_api.cms_assign_schema_r
       'idempotencyKey', 's09d-assign-replay-0001'), true)
   and pg_temp.s09d_scalar('select count(*)::text from platform_private.cms_schema_review_assignments') = '2',
   'a same-key replay returns the exact original assignment and creates no second one [P2-S09-AC-488]');
+select is(pg_temp.s09d_replay_changed('a:replay:mismatch', 'platform_api.cms_assign_schema_review', 'owner',
+    jsonb_build_object('reviewId', pg_temp.s09d_id('a:review'), 'action', 'create',
+      'expectedVersion', pg_temp.s09d_review_version('a'),
+      'reviewerPersonId', pg_temp.s09d_actor_id('rev2', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day'),
+      'idempotencyKey', 's09d-assign-replay-0001'), jsonb_build_object('reviewerPersonId', pg_temp.s09d_actor_id('rev3', 'person')), true),
+  'IDEMPOTENCY_MISMATCH', 'the assignment key reused with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-495]');
 select pg_temp.s09d_assign_raw('a:delegate', 'a', 'rev1', jsonb_build_object('action', 'create',
   'reviewerPersonId', pg_temp.s09d_actor_id('rev3', 'person'), 'expiresAt', pg_temp.s09d_iso(interval '1 day')));
 select is(pg_temp.s09d_outcome('a:delegate'), 'FORBIDDEN', 'an assigned reviewer cannot delegate or re-assign (403) [P2-S09-AC-484]');

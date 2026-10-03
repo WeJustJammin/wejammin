@@ -98,6 +98,7 @@ select ok(coalesce(pg_temp.s09d_scalar('select (not exists (
 -- Direct writes, deletes and identity changes are rejected.  The RPC context flag
 -- a previous command left behind is cleared first.
 select set_config('app.cms_rpc', '', true);
+-- NEGATIVE CONTROL: a direct INSERT of a grant aggregate outside the RPC context is refused; no grant is claimed.
 select ok(to_regclass('platform_private.cms_capability_grants') is not null and not pg_temp.s09d_try(format(
   'insert into platform_private.cms_capability_grants(owner_id, state, subject_person_ref, capability_code, '
   || 'valid_from, valid_through, grantor_person_ref, last_action) values (%L, ''active'', %L, ''cms.author'', '
@@ -109,6 +110,7 @@ select ok(pg_temp.s09d_scalar('select count(*)::text from platform_private.cms_c
   pg_temp.s09d_id('ownerOrg'))), 'DELETE of an aggregate is rejected even inside the RPC context');
 select ok(to_regclass('platform_private.cms_capability_grants') is not null and not pg_temp.s09d_try(format('select set_config(''app.cms_rpc'', ''true'', true); update platform_private.cms_capability_grants set capability_code = ''cms.author'' where owner_id = %L',
   pg_temp.s09d_id('ownerOrg'))), 'the capability of an aggregate is immutable');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(to_regclass('platform_private.cms_capability_grants') is not null and not pg_temp.s09d_try(format('select set_config(''app.cms_rpc'', ''true'', true); update platform_private.cms_capability_grants set subject_person_ref = %L where owner_id = %L',
   pg_temp.s09d_actor_id('rev1', 'person'), pg_temp.s09d_id('ownerOrg'))), 'the subject of an aggregate is immutable');
 select set_config('app.cms_rpc', '', true);

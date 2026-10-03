@@ -28,6 +28,7 @@ import {
   executePublicRelationship,
   executeRelationship,
 } from './relationship-handler-runtime';
+import { refuseForeignReadOrigin } from './handler-support';
 import type { RecoveryState } from './recovery';
 
 export const createOrganization = async (
@@ -96,6 +97,8 @@ export const readOrganization = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'ORG-02');
+  const foreignOrigin = refuseForeignReadOrigin(context);
+  if (foreignOrigin !== null) return foreignOrigin;
   const path = OrganizationPathSchema.safeParse({
     organizationId: context.req.param('organizationId'),
   });

@@ -190,7 +190,7 @@ select is((select count(*)::integer from platform_private.cms_capability_grant_e
 select is((select reason from platform_private.cms_capability_grants where id = pg_temp.s09g_grant_id(pg_temp.s09d_resp('g:r.1'))),
   normalize(U&'caf\0065\0301', NFC), 'the reason is stored normalized NFC');
 select pg_temp.s09g_grant('g:changed', 'owner', 'rev1', 'cms.editor', pg_temp.s09g_day(11), '{}', 's09g-replay-fixed-key');
-select is(pg_temp.s09d_outcome('g:changed'), 'CONFLICT', 'the same key with a changed body is 409 [P2-S09-AC-530]');
+select is(pg_temp.s09d_outcome('g:changed'), 'IDEMPOTENCY_MISMATCH', 'the same key with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-530] [P2-S09-AC-537]');
 
 -- Atomicity: a failing outbox write rolls back aggregate, projection, event, audit and idempotency.
 create function public.s09g_fail_outbox() returns trigger language plpgsql as $body$

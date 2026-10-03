@@ -6,6 +6,7 @@ import {
 import ContentSchemaRegistryDetailBindings from './ContentSchemaRegistryDetailBindings';
 import ContentSchemaRegistryDetailDefinitions from './ContentSchemaRegistryDetailDefinitions';
 import ContentSchemaRegistryDetailFacts from './ContentSchemaRegistryDetailFacts';
+import ContentSchemaRegistryDetailPlaceholder from './ContentSchemaRegistryDetailPlaceholder';
 import ContentSchemaRegistryLocaleSummaryView from './ContentSchemaRegistryLocaleSummaryView';
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
 import type {
@@ -62,17 +63,7 @@ export default function ContentSchemaRegistryDetail({
   supportReference,
   actingContextLabel,
 }: Props) {
-  if (state === null) {
-    return (
-      <section
-        className="content-schema-registry-detail"
-        aria-labelledby="content-schema-registry-detail-heading"
-      >
-        <h3 id="content-schema-registry-detail-heading">Version detail</h3>
-        <p>Select a registry record to view its version detail.</p>
-      </section>
-    );
-  }
+  if (state === null) return <ContentSchemaRegistryDetailPlaceholder />;
   if (state.status !== 'success') {
     return (
       <section

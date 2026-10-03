@@ -1,8 +1,12 @@
 import * as React from 'react';
 
+import {
+  HydrationFenceContext,
+  createHydrationFence,
+} from './content-schema-registry-hydration-fence';
 import { initialFailureOf } from './content-schema-registry-initial-failure';
 import { useContentSchemaRegistryIslandRuntime } from './use-content-schema-registry-island-runtime';
-import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
@@ -31,6 +35,7 @@ export default function ContentSchemaRegistryWorkbenchIsland(
   // verified authority, so a usable access level is the only signal needed.
   const ssrHasAuthority =
     props.access === 'full' || props.access === 'read-only';
+  const fence = React.useRef(createHydrationFence()).current;
   const {
     projectionState,
     contextEpoch,
@@ -38,13 +43,13 @@ export default function ContentSchemaRegistryWorkbenchIsland(
     offline,
     message,
     onCanonicalRefetch,
-  } = useContentSchemaRegistryIslandRuntime(props, ssrHasAuthority);
+  } = useContentSchemaRegistryIslandRuntime(props, ssrHasAuthority, fence);
 
   if (props.access === 'not-rendered') {
     return (
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="not-rendered"
-        reasonCode={props.variant}
       />
     );
   }
@@ -69,47 +74,50 @@ export default function ContentSchemaRegistryWorkbenchIsland(
 
   if (projectionState.access === 'disabled' || !ssrHasAuthority) {
     return (
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="disabled"
-        reasonCode={projectionState.variant}
+        reasonCode="SCHEMA_REGISTRY_UNAVAILABLE"
         recoveryHref={props.canonicalRefetchUrl}
       />
     );
   }
 
   return (
-    <ContentSchemaRegistryWorkbench
-      query={props.query}
-      contractFields={props.contractFields}
-      contentTypeId={props.contentTypeId}
-      versionId={props.versionId}
-      cursor={props.cursor}
-      expectedVersion={props.expectedVersion}
-      supportReference={props.supportReference}
-      canonicalUrl={props.canonicalUrl}
-      listUrl={props.listUrl}
-      retryUrl={props.retryUrl}
-      csrfToken={props.csrfToken}
-      access={projectionState.access}
-      variant={projectionState.variant}
-      initialList={projectionState.initialList}
-      initialDetail={projectionState.initialDetail}
-      {...(projectionState.actingContextLabel === undefined
-        ? {}
-        : { actingContextLabel: projectionState.actingContextLabel })}
-      {...(projectionState.stepUpState === undefined
-        ? {}
-        : { stepUpState: projectionState.stepUpState })}
-      {...(projectionState.stepUpFreshUntil === undefined
-        ? {}
-        : { stepUpFreshUntil: projectionState.stepUpFreshUntil })}
-      reviewId={props.reviewId ?? null}
-      initialReview={projectionState.initialReview}
-      contextEpoch={contextEpoch}
-      onCanonicalRefetch={onCanonicalRefetch}
-      loading={loading}
-      offline={offline}
-      message={message}
-    />
+    <HydrationFenceContext.Provider value={fence}>
+      <ContentSchemaRegistryWorkbench
+        query={props.query}
+        contractFields={props.contractFields}
+        contentTypeId={props.contentTypeId}
+        versionId={props.versionId}
+        cursor={props.cursor}
+        expectedVersion={props.expectedVersion}
+        supportReference={props.supportReference}
+        canonicalUrl={props.canonicalUrl}
+        listUrl={props.listUrl}
+        retryUrl={props.retryUrl}
+        csrfToken={props.csrfToken}
+        access={projectionState.access}
+        variant={projectionState.variant}
+        initialList={projectionState.initialList}
+        initialDetail={projectionState.initialDetail}
+        {...(projectionState.actingContextLabel === undefined
+          ? {}
+          : { actingContextLabel: projectionState.actingContextLabel })}
+        {...(projectionState.stepUpState === undefined
+          ? {}
+          : { stepUpState: projectionState.stepUpState })}
+        {...(projectionState.stepUpFreshUntil === undefined
+          ? {}
+          : { stepUpFreshUntil: projectionState.stepUpFreshUntil })}
+        reviewId={props.reviewId ?? null}
+        initialReview={projectionState.initialReview}
+        contextEpoch={contextEpoch}
+        onCanonicalRefetch={onCanonicalRefetch}
+        loading={loading}
+        offline={offline}
+        message={message}
+      />
+    </HydrationFenceContext.Provider>
   );
 }

@@ -24,8 +24,14 @@ authority from browser headers or query parameters.
 - `ContentSchemaRegistryInteractions.tsx` — compatibility barrel for the
   action bar, capability, confirmation, offline, and conflict surfaces.
 - `ContentSchemaRegistryActionBar.tsx` — native command controls.
-- `ContentSchemaRegistryCapabilityGate.tsx` — server-authoritative capability
-  presentation.
+- The registry uses the one FE00 gate, `../infrastructure/CapabilityGate.tsx`
+  with `surface="content-schema-registry"`; it shows a reason only when the
+  server gave a typed code, never a presentation variant name.
+- `ContentSchemaRegistryLazyViews.tsx` — the detail, review and editor views the
+  list route never renders; loaded on demand in the browser (AC261).
+- `content-schema-registry-runtime-dom-lazy.ts` — loads the command enhancement
+  on first intent; `content-schema-registry-contract-validators.ts` loads zod
+  only for a payload the server did not already vouch for.
 - `ContentSchemaRegistryConfirmationStep.tsx` — activation confirmation and
   step-up state.
 - `ContentSchemaRegistryOfflineStatus.tsx` — truthful connectivity status.

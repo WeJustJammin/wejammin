@@ -161,11 +161,16 @@ select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('h:ol
 select pg_temp.s09d_create_type('i', 'r3ia_i');
 select pg_temp.s09d_to_approved('i');
 set constraints all immediate;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts disable trigger cms_schema_artifacts_write_guard;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts disable trigger cms_schema_artifacts_z_compile_guard;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 update platform_private.cms_schema_artifacts set compiler_version = '2'
  where id = (select schema_artifact_id from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('i:version'));
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts enable trigger cms_schema_artifacts_write_guard;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts enable trigger cms_schema_artifacts_z_compile_guard;
 set constraints all deferred;
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('i:review')), 'invalidated', 'compiler drift invalidates the approved review [P2-S09-AC-1131]');
@@ -232,10 +237,13 @@ select is((select count(*) from audit_private.audit_events a join platform_priva
   'the rejection transition is audited: one cms.schema.review.decide audit event targets the rejecting decision [P2-S09-AC-1132]');
 select is((select count(*) from platform_private.outbox_events o where o.event_type = 'cms.schema.review.decided.v1' and o.aggregate_id = pg_temp.s09d_id('m:review')), 1::bigint,
   'and one cms.schema.review.decided.v1 outbox event announces it [P2-S09-AC-1132]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.s09d_scalar(format($q$select pg_temp.s09d_try(%L)::text$q$, format('update platform_private.cms_schema_review_decisions set decision = ''approve'' where review_id = %L', pg_temp.s09d_id('m:review')))), 'false',
   'the rejecting decision row cannot be updated [P2-S09-AC-1132]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.s09d_scalar(format($q$select pg_temp.s09d_try(%L)::text$q$, format('delete from platform_private.cms_schema_review_decisions where review_id = %L', pg_temp.s09d_id('m:review')))), 'false',
   'the rejecting decision row cannot be deleted [P2-S09-AC-1132]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.s09d_scalar(format($q$select pg_temp.s09d_try(%L)::text$q$, format('update platform_private.cms_schema_reviews set state = ''open'' where id = %L', pg_temp.s09d_id('m:review')))), 'false',
   'the rejected review row cannot be reopened [P2-S09-AC-1132]');
 select pg_temp.s09d_add_field_only('m');

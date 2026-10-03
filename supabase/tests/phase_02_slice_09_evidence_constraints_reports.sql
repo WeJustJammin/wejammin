@@ -94,14 +94,19 @@ select is(pg_temp.s09e_check('cms_schema_dry_run_reports', 'cms_schema_dry_run_r
     '{"result":null}'), 'control:ACCEPTED|override:REJECTED:23514:cms_schema_dry_run_reports_evidence_shape_check',
   'a sealed row without its result is rejected: sealing writes result, counts, hashes and report together [P2-S09-AC-672]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_dry_run_reports set failure_code = ''LATE'' where id = %L', (select failed_id from s09e_report_ids)),
   'P0001', 'IMMUTABLE_RECORD', 'a failed row rejects every UPDATE [P2-S09-AC-672]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_dry_run_reports set result = ''fail'' where id = %L', (select report_done from s09e_ids)),
   'P0001', 'IMMUTABLE_RECORD', 'a completed row rejects every UPDATE [P2-S09-AC-672]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_dry_run_reports where id = %L', (select queued_id from s09e_report_ids)),
   'P0001', 'IMMUTABLE_RECORD', 'DELETE is always rejected, even of an unsealed row [P2-S09-AC-672]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(pg_temp.s09d_try(format('update platform_private.cms_schema_dry_run_reports set state = ''running'', version = version + 1 where id = %L', (select queued_id from s09e_report_ids))),
   'queued advances forward to running [P2-S09-AC-672]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format('update platform_private.cms_schema_dry_run_reports set state = ''queued'', version = version + 1 where id = %L', (select queued_id from s09e_report_ids))),
   'running never returns to queued: states advance only forward [P2-S09-AC-672]');
 select is(pg_temp.s09e_writers('cms_schema_dry_run_reports', 'insert[[:space:]]+into'), 'cms_start_schema_dry_run',
@@ -152,8 +157,10 @@ select is(pg_temp.s09e_writers('cms_schema_dry_run_row_evidence', 'insert[[:spac
 select is(pg_temp.s09e_writers('cms_schema_dry_run_row_evidence', 'update') || pg_temp.s09e_writers('cms_schema_dry_run_row_evidence', 'delete[[:space:]]+from'), '',
   'no function updates or deletes row evidence [P2-S09-AC-675]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_dry_run_row_evidence set error_code = ''LATE'' where id = %L', (select error_id from s09e_evidence)),
   'P0001', 'IMMUTABLE_RECORD', 'row evidence UPDATE is rejected [P2-S09-AC-675]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_dry_run_row_evidence where id = %L', (select error_id from s09e_evidence)),
   'P0001', 'IMMUTABLE_RECORD', 'row evidence DELETE is rejected [P2-S09-AC-675]');
 select ok(pg_temp.s09d_rls('cms_schema_dry_run_row_evidence') and pg_temp.s09d_no_direct_grants('cms_schema_dry_run_row_evidence'),

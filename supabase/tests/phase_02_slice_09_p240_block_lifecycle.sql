@@ -81,11 +81,11 @@ begin
   return outcome || ' ' || (before_rows = pg_temp.p_block_rows())::text;
 end;
 $body$;
-select is(pg_temp.p_role_advance('authenticated'), 'UNAUTHENTICATED true', 'an authenticated browser caller is refused and nothing is committed [P2-S09-AC-164]');
+select is(pg_temp.p_role_advance('authenticated'), 'FORBIDDEN true', 'an authenticated browser caller (a human or admin session) is refused 403 and nothing is committed [P2-S09-AC-164] [P2-S09-AC-034]');
 select is(pg_temp.p_role_advance('anon'), 'UNAUTHENTICATED true', 'an anonymous caller is refused and nothing is committed [P2-S09-AC-164]');
 select pg_temp.s09d_session('owner', 'service_role');
 select pg_temp.s09d_call('human:lc', 'platform_api.cms_advance_block_lifecycle', (pg_temp.p_lifecycle_request((select d from p_blocks), 'supported', 'deprecated') - 'context') || jsonb_build_object('context', pg_temp.s09d_context('owner')));
-select is(pg_temp.s09d_outcome('human:lc'), 'UNAUTHENTICATED', 'a verified human designer holds no release principal and cannot advance a lifecycle [P2-S09-AC-164]');
+select is(pg_temp.s09d_outcome('human:lc'), 'FORBIDDEN', 'a verified human designer holds no release principal and cannot advance a lifecycle: 403, not 401 [P2-S09-AC-164] [P2-S09-AC-034]');
 select ok(not has_function_privilege('authenticated', 'platform_api.cms_advance_block_lifecycle(jsonb)', 'execute') and not has_function_privilege('anon', 'platform_api.cms_advance_block_lifecycle(jsonb)', 'execute')
     and pg_temp.s09d_no_direct_grants('cms_block_definition_lifecycle_events'), 'no browser role can execute the lifecycle RPC or touch the event table: there is no browser mutation path [P2-S09-AC-164]');
 select ok((select count(*) = 3 and bool_and(outcome = 'consumed') from platform_private.cms_release_nonce_receipts where operation_id = 'CMS-03A-08'), 'nonce evidence for the three committed advances stays on the release-worker boundary, in the same table as the registrations [P2-S09-AC-164]');
@@ -98,6 +98,7 @@ select ok((select r.operation_id = 'CMS-03A-08' and r.outcome = 'consumed' and r
   'the (release key, nonce hash) receipt was claimed and consumed with the mutation and is retained for ten minutes [P2-S09-AC-156]');
 select is(pg_temp.p_block_expect('n:replay', pg_temp.p_lifecycle_request((select blk from p_nonce_case), 'deprecated', 'withdrawn', '1', '{}', '{}', (select nonce from p_nonce_case)), 'CONFLICT', true), 'ok',
   'the same nonce cannot admit a second advance: CONFLICT and no second event [P2-S09-AC-156]');
+select is(pg_temp.s09d_detail('n:replay'), 'RELEASE_NONCE_REPLAYED', 'the replayed lifecycle nonce is a CONFLICT whose DETAIL names RELEASE_NONCE_REPLAYED [P2-S09-AC-156] [P2-S09-AC-208]');
 select is(pg_temp.p_events((select blk from p_nonce_case)), 'supported>deprecated', 'only the first transition was recorded [P2-S09-AC-156]');
 select ok((select signature_hash ~ '^[a-f0-9]{64}$' and raw_body_hash ~ '^[a-f0-9]{64}$' from platform_private.cms_release_nonce_receipts where operation_id = 'CMS-03A-08' limit 1), 'the receipt stores the raw-body and signature hashes of the advance [P2-S09-AC-156]');
 
@@ -184,6 +185,7 @@ select is(pg_temp.p_block_expect('rp:nonce', pg_temp.p_lifecycle_request((select
   'the same nonce under another key is CONFLICT and appends nothing [P2-S09-AC-161]');
 select is(pg_temp.p_block_expect('rp:newnonce', pg_temp.p_lifecycle_request((select blk from p_replay), 'supported', 'deprecated'), 'CONFLICT', true), 'ok',
   'a fresh nonce for the already applied transition is CONFLICT and appends nothing [P2-S09-AC-161]');
+select is(coalesce(pg_temp.s09d_detail('rp:newnonce'), ''), '', 'a stale lifecycle CONFLICT with a fresh nonce carries no replay detail [P2-S09-AC-208]');
 select is(pg_temp.p_events((select blk from p_replay)), 'supported>deprecated', 'the block still has exactly one event [P2-S09-AC-161]');
 
 -- ===================================================== AC200 A08 failure mapping ====

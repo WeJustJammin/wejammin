@@ -58,14 +58,40 @@ type State = Readonly<{
 
 type Operation = Readonly<{
   id: string;
-  method: 'POST' | 'PUT';
+  method: 'POST' | 'PUT' | 'DELETE';
   path: string;
   badPath: string;
   body: unknown;
   ifMatch: string;
 }>;
 
+const sectionPath = `/api/v1/profiles/${PARTY_ID}/sections/biography`;
+
 const OPERATIONS: readonly Operation[] = [
+  {
+    id: 'PRF-PROF-03 put section',
+    method: 'PUT',
+    path: sectionPath,
+    badPath: '/api/v1/profiles/not-a-uuid/sections/biography',
+    body: {
+      state: 'active',
+      blocks: [{ kind: 'paragraph', text: 'A safe profile section.' }],
+      clientReason: 'Refresh the asserted profile section',
+    },
+    ifMatch: '"1"',
+  },
+  {
+    id: 'PRF-PROF-04 put emphasis',
+    method: 'PUT',
+    path: `/api/v1/profiles/${PARTY_ID}/emphasis`,
+    badPath: '/api/v1/profiles/not-a-uuid/emphasis',
+    body: {
+      surface: 'public',
+      defaultFilter: { roleCodes: ['performer'] },
+      orderedRefs: [factRef],
+    },
+    ifMatch: '"3"',
+  },
   {
     id: 'PRF-PROF-07 create reel item',
     method: 'POST',
@@ -87,6 +113,14 @@ const OPERATIONS: readonly Operation[] = [
       desiredState: 'draft',
     },
     ifMatch: '"3"',
+  },
+  {
+    id: 'PRF-PROF-09 remove reel item',
+    method: 'DELETE',
+    path: `/api/v1/reel-items/${REEL_ITEM_ID}`,
+    badPath: '/api/v1/reel-items/not-a-uuid',
+    body: { reasonCode: 'controller_unlisted' },
+    ifMatch: '"1"',
   },
 ];
 
@@ -222,6 +256,169 @@ describe('BE00 middleware order on the profile portfolio commands', () => {
                 method: operation.method,
                 headers: state.headers,
                 body: JSON.stringify(state.body),
+              }),
+              bindings,
+            ),
+          );
+        },
+        accepted: (response) => expect(response.ok).toBe(true),
+      });
+    });
+});
+
+type ReadOperation = Readonly<{
+  id: string;
+  path: string;
+  badPath: string;
+  protectedRead: boolean;
+  /** The valid query the route needs, with no leading question mark. */
+  query?: string;
+}>;
+
+const READS: readonly ReadOperation[] = [
+  {
+    id: 'PRF-PROF-01 public profile',
+    path: `/api/v1/profiles/${PARTY_ID}`,
+    badPath: '/api/v1/profiles/not-a-uuid',
+    protectedRead: false,
+  },
+  {
+    id: 'PRF-PROF-02 section revisions',
+    path: `${sectionPath}/revisions`,
+    badPath: '/api/v1/profiles/not-a-uuid/sections/biography/revisions',
+    protectedRead: true,
+  },
+  {
+    id: 'PRF-PROF-05 portfolio',
+    path: `/api/v1/profiles/${PARTY_ID}/portfolio`,
+    badPath: '/api/v1/profiles/not-a-uuid/portfolio',
+    protectedRead: false,
+  },
+  {
+    id: 'PRF-PROF-06 reel',
+    path: `/api/v1/profiles/${PARTY_ID}/reel`,
+    badPath: '/api/v1/profiles/not-a-uuid/reel',
+    protectedRead: false,
+  },
+  {
+    id: 'PRF-PROF-11 emphasis',
+    path: `/api/v1/profiles/${PARTY_ID}/emphasis`,
+    badPath: '/api/v1/profiles/not-a-uuid/emphasis',
+    protectedRead: true,
+    query: 'surface=public',
+  },
+];
+
+type ReadState = Readonly<{
+  path: string;
+  query: string;
+  headers: Readonly<Record<string, string>>;
+  unauthenticated: boolean;
+  rateExhausted: boolean;
+}>;
+
+const readSteps = (
+  operation: ReadOperation,
+): readonly OrderStep<ReadState>[] => [
+  {
+    name: 'CORS origin allowlist',
+    status: 403,
+    code: 'FORBIDDEN',
+    break: (state) => ({
+      ...state,
+      headers: { ...state.headers, origin: 'https://evil.example.test' },
+    }),
+  },
+  ...(operation.protectedRead
+    ? [
+        {
+          name: 'authentication',
+          status: 401,
+          code: 'UNAUTHENTICATED',
+          break: (state: ReadState): ReadState => ({
+            ...state,
+            unauthenticated: true,
+          }),
+        },
+      ]
+    : []),
+  {
+    name: 'strict query validation',
+    status: 400,
+    code: 'INVALID_REQUEST',
+    break: (state) => ({
+      ...state,
+      query: `?${[operation.query, 'unexpected=1'].filter(Boolean).join('&')}`,
+    }),
+  },
+  {
+    name: 'strict path validation',
+    status: 422,
+    code: 'VALIDATION_FAILED',
+    break: (state) => ({ ...state, path: operation.badPath }),
+  },
+  {
+    name: 'rate limit',
+    status: 429,
+    code: 'RATE_LIMITED',
+    break: (state) => ({ ...state, rateExhausted: true }),
+  },
+];
+
+describe('BE00 middleware order on the profile portfolio reads', () => {
+  for (const operation of READS)
+    describe(operation.id, () => {
+      registerOrderTests<ReadState>({
+        family: 'profile-portfolio',
+        fresh: () => ({
+          path: operation.path,
+          query: operation.query === undefined ? '' : `?${operation.query}`,
+          headers: {
+            accept: 'application/json',
+            origin: ORIGIN,
+            cookie: `wj_session_ref=slice02-session-ref; wj_csrf=${CSRF}`,
+            'x-request-id': REQUEST_ID,
+          },
+          unauthenticated: false,
+          rateExhausted: false,
+        }),
+        steps: readSteps(operation),
+        send: (state) => {
+          const harness = createProfilePortfolioApp();
+          vi.mocked(harness.auth.resolveSession).mockImplementation(async () =>
+            state.unauthenticated
+              ? {
+                  ok: false as const,
+                  status: 401 as const,
+                  code: 'UNAUTHENTICATED',
+                  message: 'Sign in again.',
+                }
+              : {
+                  ok: true as const,
+                  value: {
+                    ...session,
+                    personId: PARTY_ID,
+                    actingPartyId: PARTY_ID,
+                  },
+                },
+          );
+          if (state.rateExhausted)
+            vi.mocked(harness.auth.rateLimit).mockImplementation(
+              async (input) => ({
+                ok: true as const,
+                value: {
+                  allowed: false,
+                  limit: input.limit,
+                  remaining: 0,
+                  resetAt: Math.floor(Date.now() / 1000) + 30,
+                },
+              }),
+            );
+          return Promise.resolve(
+            harness.app.fetch(
+              new Request(`${ORIGIN}${state.path}${state.query}`, {
+                method: 'GET',
+                headers: state.headers,
               }),
               bindings,
             ),

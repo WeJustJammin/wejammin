@@ -83,18 +83,21 @@ $body$;
 select pg_temp.s09d_create_type('p', 'ev11policy');
 select pg_temp.s09d_dry_run('p');
 select pg_temp.s09d_seal('p');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select pg_temp.s09e_policy_probe('p', 'cms_workflow_policies', format(
   'update platform_private.cms_workflow_policies set policy_key = %L where policy_key = %L and policy_version = 1',
   'editorial.gone', 'editorial')) as probe_missing \gset
 select ok(:'probe_missing'::jsonb->>'outcome' = 'DEPENDENCY_UNAVAILABLE' and (:'probe_missing'::jsonb->>'reviews')::int = 0
   and :'probe_missing'::jsonb->>'state' = 'draft',
   'a missing bound policy row is 503 DEPENDENCY_UNAVAILABLE and creates no review [P2-S09-AC-389]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select pg_temp.s09e_policy_probe('p', 'cms_workflow_policies', format(
   'update platform_private.cms_workflow_policies set policy_hash = %L where policy_key = %L and policy_version = 1',
   repeat('0', 64), 'editorial')) as probe_hash \gset
 select ok(:'probe_hash'::jsonb->>'outcome' = 'DEPENDENCY_UNAVAILABLE' and (:'probe_hash'::jsonb->>'reviews')::int = 0
   and :'probe_hash'::jsonb->>'state' = 'draft',
   'a hash-mismatched bound policy row is 503 DEPENDENCY_UNAVAILABLE and creates no review [P2-S09-AC-389]');
+-- NEGATIVE CONTROL: policy-row tampering inside a rolled-back probe; the bound-policy check must refuse, no policy is claimed.
 select pg_temp.s09e_policy_probe('p', 'cms_workflow_policies', $q$
   alter table platform_private.cms_workflow_policies drop constraint cms_workflow_policies_member_unique;
   insert into platform_private.cms_workflow_policies(owner_id, state, version, policy_key, policy_version, policy_hash, risk_class, required_decision_count, required_capabilities)
@@ -163,9 +166,12 @@ select is(pg_temp.s09e_drift_state('dh'), 'invalidated/draft',
 -- policy: the candidate's bound workflow member changes.
 select pg_temp.s09e_open_review('dp', 'ev12driftpolicy');
 set constraints all immediate;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_content_type_versions disable trigger cms_content_type_versions_guard;
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 update platform_private.cms_content_type_versions set workflow_key = 'cms.standard' where id = pg_temp.s09d_id('dp:version');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_content_type_versions enable trigger cms_content_type_versions_guard;
 set constraints all deferred;
 select is(pg_temp.s09e_drift_state('dp'), 'invalidated/draft',

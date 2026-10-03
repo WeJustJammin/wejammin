@@ -34,6 +34,14 @@ verification, or readiness.
 See [`../../lib/`](../../lib/) for shared web helpers and
 [`../../../README.md`](../../../README.md) for the web application boundary.
 
+## Capability gate (FE00)
+
+`CapabilityGate.tsx` is the one FE00 `<CapabilityGate>` for every surface
+(`{ variant, reasonCode, recoveryHref, disclosure }` plus a `surface` that
+selects the heading copy, level and class in `capability-gate-surfaces.ts`).
+Add a surface by adding a profile there, never by copying the component. A
+reason code is a typed server code; pass none when the server gave none.
+
 ## Step-up recovery (FE00, DEC-111)
 
 A 401 `STEP_UP_REQUIRED` is the `step_up_required` view state

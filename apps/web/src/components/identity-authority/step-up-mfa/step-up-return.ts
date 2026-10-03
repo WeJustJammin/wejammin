@@ -1,4 +1,4 @@
-import { AuthReturnTargetSchema } from '@wejammin/contracts';
+import { isAuthReturnTarget } from '@wejammin/contracts/client';
 
 export const STEP_UP_ROUTE = '/step-up';
 export const MFA_SETTINGS_ROUTE = '/settings/security/mfa';
@@ -23,7 +23,7 @@ export const resolveStepUpReturnTo = (
   raw: string | null | undefined,
 ): string => {
   if (typeof raw !== 'string') return FALLBACK_RETURN_TO;
-  if (!AuthReturnTargetSchema.safeParse(raw).success) return FALLBACK_RETURN_TO;
+  if (!isAuthReturnTarget(raw)) return FALLBACK_RETURN_TO;
   return isStepUpOrAuthPath(pathOf(raw)) ? FALLBACK_RETURN_TO : raw;
 };
 

@@ -279,6 +279,35 @@ describe('sole-administrator recovery after the provider factor was removed in t
     );
   });
 
+  it('[P2-S09-AC-1150] the runbook states are produced in order by the real path: verified listing and refused enrollment, reconciling listing after the challenge, and a 401 once the primary sign-in is older than 600 s', async () => {
+    const world = dashboardRemoval();
+    const jar = await signedInAgain();
+    const listed = async (): Promise<string[]> => {
+      const response = await send(world.app, { ...BASE[16], jar });
+      expect(response.status).toBe(200);
+      return (
+        (await bodyOf(response)) as unknown as {
+          factors: { state: string }[];
+        }
+      ).factors.map((factor) => factor.state);
+    };
+    expect(await listed()).toStrictEqual(['verified']);
+    expect((await send(world.app, { ...BASE[17], jar })).status).toBe(401);
+    expect((await send(world.app, { ...BASE[20], jar })).status).toBe(409);
+    expect(await listed()).toStrictEqual(['reconciling']);
+    const lapsed = await mintJar({
+      stepUpAt: null,
+      accessClaims: {
+        aal: 'aal1',
+        amr: [{ method: 'otp', timestamp: SECOND - 601 }],
+      },
+    });
+    const refused = await send(world.app, { ...BASE[17], jar: lapsed });
+    expect(refused.status).toBe(401);
+    expect(rpcNames(world.calls)).not.toContain('auth_mfa_enrollment_prepare');
+    expect(providerCalls(world.calls)).not.toContain('POST /auth/v1/factors');
+  });
+
   it('[P2-S09-AC-1150] the recovery runs end to end: refused enrollment, challenge that reconciles the factor, then first-factor enrollment succeeds on the fresh sign-in', async () => {
     const world = dashboardRemoval();
     const jar = await signedInAgain();

@@ -196,8 +196,8 @@ export function IdentityCapabilityDisclosure({
 }) {
   return (
     <CapabilityGate
-      access={value.variant}
-      reason={value.disclosure}
+      variant={value.variant}
+      disclosure={value.disclosure}
       recoveryHref={value.recoveryHref}
     />
   );

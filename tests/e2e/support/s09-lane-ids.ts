@@ -18,9 +18,44 @@ export const LANE_ROLES = {
   outsider: '05',
   admin: '06',
   reviewer2: '07',
+  // Persona-bearing adult test sessions (FE03 conditional rendering matrix):
+  // the persona is the session's own presentation scope, so the protected
+  // routes answer each persona from the server projection. Guardian and junior
+  // personas are adult test sessions that exercise the rejected context, never
+  // provisioned minor or guardian accounts (FE03 AC265 overlay).
+  free: '08',
+  paid: '09',
+  creator: '0a',
+  guardian: '0b',
+  junior: '0c',
+  business: '0d',
+  staff: '0e',
+} as const;
+
+/** The FE03 persona columns, in matrix order, as lane roles. */
+export const LANE_PERSONAS = [
+  'free',
+  'paid',
+  'creator',
+  'guardian',
+  'junior',
+  'business',
+  'staff',
+] as const satisfies readonly LaneRoleName[];
+
+/** The registry presentation variant the server projects for each persona. */
+export const LANE_PERSONA_VARIANTS = {
+  free: 'forbiddenHidden',
+  paid: 'entitledRead',
+  creator: 'ownerFull',
+  guardian: 'guardianMandate',
+  junior: 'juniorRestricted',
+  business: 'businessMandate',
+  staff: 'staffCaseScoped',
 } as const;
 
 export type LaneRole = keyof typeof LANE_ROLES;
+type LaneRoleName = LaneRole;
 
 const ROLE_BY_CODE = Object.fromEntries(
   Object.entries(LANE_ROLES).map(([role, code]) => [code, role]),
@@ -42,6 +77,16 @@ export const LANE_CAPABILITIES: Readonly<Record<LaneRole, readonly string[]>> =
     reader: ['cms.schema_registry.read'],
     outsider: [],
     admin: [],
+    // Personas hold only what the matrix gives them: Free, Guardian, Junior and
+    // Business hold no registry authority (the denied cases), Paid and Staff
+    // read, Creator designs. None holds the owner-only grant authority.
+    free: [],
+    paid: ['cms.schema_registry.read'],
+    creator: ['cms.schema_registry.read', 'cms.schema_designer'],
+    guardian: [],
+    junior: [],
+    business: [],
+    staff: ['cms.schema_registry.read'],
   };
 
 const SESSION_PREFIX = '80000000-0000-4000-8000-';

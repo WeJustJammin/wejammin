@@ -138,7 +138,7 @@ $body$;
 select is(pg_temp.s09p_try('b:bad.short', (select evidence - 2 from s09p_good)), 'VALIDATION_FAILED',
   'evidence that omits a served row is refused');
 select is(pg_temp.s09p_try('b:bad.many', (select jsonb_agg(evidence->0) from s09p_good, generate_series(1, 129))), 'INVALID_REQUEST',
-  'more than 128 evidence entries are refused');
+  'more than 128 evidence entries are refused: one write inserts at most 128 row-evidence rows [P2-S09-AC-675]');
 select is(pg_temp.s09p_try('b:bad.limit', (select evidence from s09p_good), '{}'::jsonb, '2'), 'INVALID_REQUEST',
   'more evidence entries than the declared page limit is refused');
 select is(pg_temp.s09p_try('b:bad.order', (select jsonb_build_array(evidence->1, evidence->0, evidence->2) from s09p_good)),
@@ -185,6 +185,7 @@ select is(pg_temp.s09p_try('b:replay', (select evidence from s09p_good), '{"curs
   'replaying the first page after the cursor advanced is refused and writes no second evidence row');
 select is((select count(*)::integer from platform_private.cms_schema_dry_run_row_evidence where plan_id = pg_temp.s09d_id('b:plan')), 3,
   'the append-only evidence still holds exactly one row per source row');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_schema_dry_run_row_evidence set error_code = null, output_hash = source_hash
   where plan_id = %L$q$, pg_temp.s09d_id('b:plan')))
   and not pg_temp.s09d_try(format($q$delete from platform_private.cms_schema_dry_run_row_evidence where plan_id = %L$q$, pg_temp.s09d_id('b:plan'))),

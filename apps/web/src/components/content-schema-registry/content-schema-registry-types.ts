@@ -1,5 +1,5 @@
-import { CONTENT_SCHEMA_REGISTRY_OPERATION_IDS as GENERATED_CONTENT_SCHEMA_REGISTRY_OPERATION_IDS } from '@wejammin/contracts';
-import type { ContentSchemaRegistryOperationId as GeneratedContentSchemaRegistryOperationId } from '@wejammin/contracts';
+import { CONTENT_SCHEMA_REGISTRY_OPERATION_IDS as GENERATED_CONTENT_SCHEMA_REGISTRY_OPERATION_IDS } from '@wejammin/contracts/client';
+import type { ContentSchemaRegistryOperationId as GeneratedContentSchemaRegistryOperationId } from '@wejammin/contracts/client';
 import type { ContentSchemaRegistryStepUpState } from './ContentSchemaRegistryConfirmationStep';
 import type {
   ContentSchemaRegistryDetail,

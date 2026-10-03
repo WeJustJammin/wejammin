@@ -7,6 +7,7 @@ import {
   type UploadPrincipal,
   type UploadTargetPolicy,
 } from './upload-intent';
+import { UPLOAD_INTENT_BROWSER_HEADERS } from './upload-intent.test-support';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
 const PARTY = '22222222-2222-4222-8222-222222222222';
@@ -61,6 +62,7 @@ const request = () =>
       targetType: 'recording',
     }),
     headers: {
+      ...UPLOAD_INTENT_BROWSER_HEADERS,
       'content-type': 'application/json',
       'idempotency-key': 'upload-key-1',
       'if-match': '"7"',

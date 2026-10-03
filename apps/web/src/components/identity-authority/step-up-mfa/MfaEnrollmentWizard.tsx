@@ -83,7 +83,7 @@ export function MfaEnrollmentWizard(
         />
       )}
       {gated && state.notice !== null && (
-        <CapabilityGate access="disabled" reason={state.notice.message} />
+        <CapabilityGate variant="disabled" disclosure={state.notice.message} />
       )}
       <MfaFactorList
         factors={state.factors}

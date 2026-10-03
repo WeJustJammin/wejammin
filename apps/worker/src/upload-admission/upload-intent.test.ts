@@ -8,6 +8,7 @@ import {
   type UploadPrincipal,
   type UploadTargetPolicy,
 } from './upload-intent';
+import { UPLOAD_INTENT_BROWSER_HEADERS } from './upload-intent.test-support';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
 const PARTY = '22222222-2222-4222-8222-222222222222';
@@ -52,6 +53,7 @@ const jsonRequest = (body: unknown, headers: Record<string, string> = {}) =>
   new Request('https://api.example.test/api/v1/upload-intents', {
     body: JSON.stringify(body),
     headers: {
+      ...UPLOAD_INTENT_BROWSER_HEADERS,
       'content-type': 'application/json',
       'idempotency-key': 'upload-key-1',
       'if-match': '"7"',
@@ -173,6 +175,7 @@ describe('upload-intent Worker boundary', () => {
       {
         body: '{',
         headers: {
+          ...UPLOAD_INTENT_BROWSER_HEADERS,
           'content-type': 'application/json',
           'idempotency-key': 'upload-key-1',
           'if-match': '"7"',
@@ -208,6 +211,7 @@ describe('upload-intent Worker boundary', () => {
       {
         body: JSON.stringify(body()),
         headers: {
+          ...UPLOAD_INTENT_BROWSER_HEADERS,
           'content-type': 'application/json',
           'idempotency-key': 'upload-key-1',
           'if-match': '"7"',
@@ -226,7 +230,10 @@ describe('upload-intent Worker boundary', () => {
       },
     });
     expect((await handler(unreadable)).status).toBe(400);
-    expect(resolvePrincipal).not.toHaveBeenCalled();
+    // BE00: transport refusals (type, declared size, unreadable body) precede
+    // the session; JSON syntax, unknown keys and the concurrency headers follow
+    // it, so the session was resolved for exactly those four requests.
+    expect(resolvePrincipal).toHaveBeenCalledTimes(4);
   });
 
   it('returns semantic validation errors without target lookup', async () => {
@@ -260,6 +267,7 @@ describe('upload-intent Worker boundary', () => {
       {
         body: JSON.stringify(body()),
         headers: {
+          ...UPLOAD_INTENT_BROWSER_HEADERS,
           'content-type': 'application/json',
           'idempotency-key': 'upload-key-1',
         },

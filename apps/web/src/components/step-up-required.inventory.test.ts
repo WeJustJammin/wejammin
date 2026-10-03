@@ -125,7 +125,7 @@ describe('401 STEP_UP_REQUIRED mapper inventory (AC1127 sweep guard)', () => {
     for (const file of stepUpAware) {
       const source = readFileSync(`${SRC}${file}`, 'utf8');
       expect(source, file).toMatch(
-        /STEP_UP_REQUIRED|isStepUpRequiredBody|classifyStepUpResponse/u,
+        /STEP_UP_REQUIRED|isStepUpRequired(?:Body|Code)|classifyStepUpResponse/u,
       );
     }
   });
@@ -133,5 +133,39 @@ describe('401 STEP_UP_REQUIRED mapper inventory (AC1127 sweep guard)', () => {
   it('every exemption states a reason', () => {
     for (const [file, reason] of Object.entries(exempt))
       expect(reason.length, file).toBeGreaterThan(20);
+  });
+});
+
+const filesComparingTheLiteral = (): string[] =>
+  walk(SRC)
+    .filter((file) => /\.(ts|tsx|astro)$/u.test(file))
+    .filter((file) => !/\.test\.|test-support|\.fixtures?\./u.test(file))
+    .filter((file) =>
+      /(?:===|!==|==|!=)\s*'STEP_UP_REQUIRED'|'STEP_UP_REQUIRED'\s*(?:===|!==)|case\s+'STEP_UP_REQUIRED'/u.test(
+        withoutComments(readFileSync(file, 'utf8')),
+      ),
+    )
+    .map((file) => file.slice(SRC.length))
+    .sort();
+
+const filesBuildingTheHref = (): string[] =>
+  walk(SRC)
+    .filter((file) => /\.(ts|tsx|astro)$/u.test(file))
+    .filter((file) => !/\.test\.|test-support|\.fixtures?\./u.test(file))
+    .filter((file) =>
+      /['"`]\/step-up\?returnTo=/u.test(
+        withoutComments(readFileSync(file, 'utf8')),
+      ),
+    )
+    .map((file) => file.slice(SRC.length))
+    .sort();
+
+describe('one shared reading of STEP_UP_REQUIRED (AC1127 consolidation)', () => {
+  it('no surface builds the /step-up?returnTo= target by hand; step-up-return.ts is the only builder', () => {
+    expect(filesBuildingTheHref()).toEqual([]);
+  });
+
+  it('no surface compares an error code with the STEP_UP_REQUIRED literal; they all use step-up-required.ts', () => {
+    expect(filesComparingTheLiteral()).toEqual([]);
   });
 });

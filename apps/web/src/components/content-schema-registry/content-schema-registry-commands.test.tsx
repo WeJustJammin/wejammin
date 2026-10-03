@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import ContentSchemaRegistryActivationForm from './ContentSchemaRegistryActivationForm';
 import ContentSchemaRegistryActionBar from './ContentSchemaRegistryActionBar';
-import ContentSchemaRegistryCapabilityGate from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryConfirmationStep from './ContentSchemaRegistryConfirmationStep';
 import ContentSchemaRegistryCreateForm from './ContentSchemaRegistryCreateForm';
 import ContentSchemaRegistryFieldForm from './ContentSchemaRegistryFieldForm';
@@ -174,7 +174,8 @@ describe('content schema registry command forms and interaction primitives', () 
 
   it('keeps capability, pending, confirmation, offline, and conflict semantics explicit', () => {
     const hidden = renderToStaticMarkup(
-      React.createElement(ContentSchemaRegistryCapabilityGate, {
+      React.createElement(CapabilityGate, {
+        surface: 'content-schema-registry',
         variant: 'not-rendered',
         reasonCode: 'FORBIDDEN',
       }),
@@ -182,7 +183,8 @@ describe('content schema registry command forms and interaction primitives', () 
     expect(hidden).toBe('');
 
     const disabled = renderToStaticMarkup(
-      React.createElement(ContentSchemaRegistryCapabilityGate, {
+      React.createElement(CapabilityGate, {
+        surface: 'content-schema-registry',
         variant: 'disabled',
         reasonCode: 'SCHEMA_DESIGNER_REQUIRED',
         recoveryHref: '/app/security',

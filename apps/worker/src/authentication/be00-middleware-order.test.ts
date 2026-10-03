@@ -19,6 +19,7 @@ import { createApp, failure, success } from './phase-02-slice-02.test-support';
  */
 
 type State = Readonly<{
+  path?: string;
   headers: Readonly<Record<string, string>>;
   body: unknown;
   unauthenticated: boolean;
@@ -35,6 +36,8 @@ type Operation = Readonly<{
   idempotency: boolean;
   ifMatch: boolean;
   stepUp: boolean;
+  /** A path whose identifier is malformed; null when the route has none. */
+  badPath?: string;
 }>;
 
 const OPERATIONS: readonly Operation[] = [
@@ -87,6 +90,7 @@ const OPERATIONS: readonly Operation[] = [
     idempotency: true,
     ifMatch: true,
     stepUp: false,
+    badPath: '/api/v1/account/login-methods/not-a-uuid',
   },
   {
     id: 'AUTH-API-12 merge create',
@@ -96,7 +100,7 @@ const OPERATIONS: readonly Operation[] = [
     invalidBody: { unknown: true },
     idempotency: true,
     ifMatch: true,
-    stepUp: false,
+    stepUp: true,
   },
   {
     id: 'AUTH-API-14 merge proof',
@@ -106,7 +110,22 @@ const OPERATIONS: readonly Operation[] = [
     invalidBody: { unknown: true },
     idempotency: true,
     ifMatch: true,
-    stepUp: false,
+    stepUp: true,
+    badPath: '/api/v1/account-merges/not-a-uuid/prove-duplicate',
+  },
+  {
+    id: 'AUTH-API-15 merge confirm',
+    path: `/api/v1/account-merges/${MERGE_ID}/confirm`,
+    method: 'POST',
+    body: {
+      conflictPlanVersion: '4',
+      acknowledgements: ['profiles.safe_repoint', 'aliases.reviewed'],
+    },
+    invalidBody: { conflictPlanVersion: '4', unknown: true },
+    idempotency: true,
+    ifMatch: true,
+    stepUp: true,
+    badPath: '/api/v1/account-merges/not-a-uuid/confirm',
   },
 ];
 
@@ -152,6 +171,19 @@ const stepsFor = (operation: Operation): readonly OrderStep<State>[] => [
     code: 'UNAUTHENTICATED',
     break: (state) => ({ ...state, unauthenticated: true }),
   },
+  ...(operation.badPath === undefined
+    ? []
+    : [
+        {
+          name: 'strict path validation',
+          status: 400,
+          code: 'INVALID_REQUEST',
+          break: (state: State): State => ({
+            ...state,
+            path: operation.badPath as string,
+          }),
+        },
+      ]),
   {
     name: 'strict body validation',
     status: 422,
@@ -243,7 +275,7 @@ describe('BE00 middleware order on the authentication human routes', () => {
           });
           return Promise.resolve(
             app.request(
-              new Request(`${ORIGIN}${operation.path}`, {
+              new Request(`${ORIGIN}${state.path ?? operation.path}`, {
                 method: operation.method,
                 headers: state.headers,
                 body: JSON.stringify(state.body),

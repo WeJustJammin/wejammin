@@ -114,6 +114,7 @@ select pg_temp.s09d_guc_restore();
 select is(pg_temp.s09d_outcome('adv:dryRun'), 'CONFLICT',
   'AC096 a completed attempt is immutable evidence: a new dry-run cannot supersede it');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(
   format($q$update platform_private.cms_schema_migration_plans
     set dry_run_report = dry_run_report || jsonb_build_object('sourceCount', '1')

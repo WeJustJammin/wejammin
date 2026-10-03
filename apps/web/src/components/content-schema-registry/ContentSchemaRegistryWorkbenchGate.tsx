@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import { initialFailureOf } from './content-schema-registry-initial-failure';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
@@ -34,9 +34,9 @@ export function contentSchemaRegistryWorkbenchGate({
 }: GateInput): React.ReactElement | null {
   if (access === 'not-rendered') {
     return (
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="not-rendered"
-        reasonCode="FORBIDDEN"
       />
     );
   }
@@ -64,7 +64,8 @@ export function contentSchemaRegistryWorkbenchGate({
       : 'A server capability prerequisite is not satisfied.';
   if (access === 'disabled') {
     return (
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="disabled"
         reasonCode="SCHEMA_REGISTRY_UNAVAILABLE"
         disclosure={disabledReason}

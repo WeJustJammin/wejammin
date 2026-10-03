@@ -78,6 +78,7 @@ select ok(
   and pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('md:review')) = 'invalidated',
   'AC189 binding moves invalidate the new parent''s review and never revive the old parent''s'
 );
+-- NEGATIVE CONTROL: a direct binding INSERT into a version that holds none is refused by the parent-state guard; no binding is claimed.
 select throws_ok(
   $$insert into platform_private.cms_content_type_template_bindings(
       id, owner_id, state, version, content_type_version_id,

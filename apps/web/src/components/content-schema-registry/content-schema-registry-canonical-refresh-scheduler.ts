@@ -50,6 +50,8 @@ export interface SchedulerHost {
     ) => ContentSchemaRegistryProjectionState,
   ) => void;
   readonly setFocusLocator: (locator: FocusLocator) => void;
+  /** The projection the island currently renders (already server-validated). */
+  readonly currentProjection: () => ContentSchemaRegistryProjectionState;
   /** Commit the fail-closed state, then navigate (synchronously committed). */
   readonly navigate: (target: string) => void;
 }
@@ -125,6 +127,7 @@ export class CanonicalRefreshScheduler {
       outcome = await readContentSchemaRegistryCanonicalOutcome(
         document,
         this.url,
+        this.host.currentProjection(),
       );
     } catch {
       clearTimeout(loadingTimer);

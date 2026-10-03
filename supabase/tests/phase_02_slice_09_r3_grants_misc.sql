@@ -125,6 +125,7 @@ select is(pg_temp.s09d_outcome('l:revoke'), 'OK', 'fixture: the revocation succe
 select is(pg_temp.r3_projection('rev1', 'cms.author'), pg_temp.r3_aggregate('rev1', 'cms.author'),
   'after cms_revoke_capability_grant the actor-grant row equals the aggregate (inactive) [P2-S09-AC-658]');
 select is(split_part(pg_temp.r3_projection('rev1', 'cms.author'), '|', 1), 'f', 'and the projection is inactive [P2-S09-AC-658]');
+-- NEGATIVE CONTROL: a direct INSERT into the actor-grant projection by each API role is refused (42501); no grant is claimed.
 select is(pg_temp.r3_state(format($$set local role %s; insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
    values (%L, %L, 'cms.author', current_date, current_date + 1, true)$$, r, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev3', 'person'))),
   '42501', 'role ' || r || ' cannot INSERT into the actor-grant projection [P2-S09-AC-658]')
@@ -242,40 +243,43 @@ select is((select count(*) from pg_class c join pg_namespace n on n.oid = c.reln
 
 -- ================================================================ AC169 ========
 -- Template-binding immutability after activation, with the guard triggers ENABLED.
--- The parent version is activated through the real chain; the one binding row is a
--- negative-control fixture injected with the triggers disabled (an approved
--- template version is not needed to prove the parent-state guard).
+-- Every row here comes from a named command: the template from CMS-03C-01, the binding from
+-- CMS-03A-09 (successor with template bindings) and the activation from the real chain.  The
+-- probes below then attack that producer-made binding directly (negative controls).
+select pg_temp.s09d_grant_specialist('owner', 'cms.template_designer');
 select pg_temp.s09d_create_type('tb', 'r3_tmplbind');
 select pg_temp.s09d_to_active('tb');
-select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('tb:version')), 'active', 'fixture: the parent version is active through the real chain');
-set constraints all immediate;
-alter table platform_private.cms_content_type_template_bindings disable trigger user;
-insert into platform_private.cms_content_type_template_bindings(owner_id, state, version, content_type_version_id, template_version_id, position)
-select owner_id, 'active', 1, id, extensions.gen_random_uuid(), 0 from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('tb:version');
-alter table platform_private.cms_content_type_template_bindings enable trigger user;
-set constraints all deferred;
+select pg_temp.s09d_template('tbt', 'r3-tmpl-bind', 'tb');
+select pg_temp.s09d_successor('tbs', 'tb', 'owner', 'r3-tmplbind-successor-0001', null, null,
+  pg_temp.s09d_id('tbt:templateVersion'),
+  jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.s09d_id('tbt:templateVersion'))));
+select is(pg_temp.s09d_outcome('tbs:successor'), 'OK', 'fixture: CMS-03A-09 wrote the template binding of the successor');
+select pg_temp.s09d_to_active('tbs');
+select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('tbs:version')), 'active', 'fixture: the bound version is active through the real chain');
 create temp table r3_binding on commit drop as
-select id, template_version_id from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tb:version');
-select is((select count(*) from r3_binding), 1::bigint, 'fixture: one binding row on the activated version');
+select id, template_version_id from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tbs:version');
+select is((select count(*) from r3_binding), 1::bigint, 'fixture: one producer-made binding row on the activated version');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: direct UPDATE / DELETE / INSERT against a producer-made binding of an activated version.
 select is(pg_temp.r3_err(format($$update platform_private.cms_content_type_template_bindings set position = 1, version = version + 1 where id = %L$$, (select id from r3_binding))),
   'IMMUTABLE_RECORD', 'UPDATE of a binding of an activated version raises IMMUTABLE_RECORD with the guards enabled [P2-S09-AC-169]');
 select is(pg_temp.r3_err(format($$delete from platform_private.cms_content_type_template_bindings where id = %L$$, (select id from r3_binding))),
   'IMMUTABLE_RECORD', 'DELETE of a binding of an activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
 select is(pg_temp.r3_err(format($$insert into platform_private.cms_content_type_template_bindings(owner_id, state, version, content_type_version_id, template_version_id, position)
-   select owner_id, 'draft', 1, id, extensions.gen_random_uuid(), 1 from platform_private.cms_content_type_versions where id = %L$$, pg_temp.s09d_id('tb:version'))),
+   select owner_id, 'draft', 1, id, extensions.gen_random_uuid(), 1 from platform_private.cms_content_type_versions where id = %L$$, pg_temp.s09d_id('tbs:version'))),
   'IMMUTABLE_RECORD', 'INSERT of a binding into an activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
-select is((select count(*) from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tb:version')),
+select is((select count(*) from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tbs:version')),
   1::bigint, 'the activated version still has exactly its one binding [P2-S09-AC-169]');
 select pg_temp.s09d_create_type('tb2', 'r3_tmplbind2');
-set constraints all immediate;
-alter table platform_private.cms_content_type_template_bindings disable trigger user;
-insert into platform_private.cms_content_type_template_bindings(owner_id, state, version, content_type_version_id, template_version_id, position)
-select owner_id, 'draft', 1, id, extensions.gen_random_uuid(), 0 from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('tb2:version');
-alter table platform_private.cms_content_type_template_bindings enable trigger user;
-set constraints all deferred;
+select pg_temp.s09d_to_active('tb2');
+select pg_temp.s09d_template('tb2t', 'r3-tmpl-bind-two', 'tb2');
+select pg_temp.s09d_successor('tb2s', 'tb2', 'owner', 'r3-tmplbind-successor-0002', null, null,
+  pg_temp.s09d_id('tb2t:templateVersion'),
+  jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.s09d_id('tb2t:templateVersion'))));
+select is(pg_temp.s09d_outcome('tb2s:successor'), 'OK', 'fixture: CMS-03A-09 wrote the draft successor binding the unique pair probe overrides');
+-- NEGATIVE CONTROL: the probe overrides the producer-made binding row (duplicate pair, then a different template).
 select is(pg_temp.s09e_unique('cms_content_type_template_bindings',
-    (select id from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tb2:version')),
+    (select id from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tb2s:version')),
     array['content_type_version_id', 'template_version_id'], jsonb_build_object('template_version_id', extensions.gen_random_uuid())), 'dup:REJECTED:23505|ctl:ACCEPTED',
   'the unique (parent version, template version) pair rejects a duplicate and accepts a different template [P2-S09-AC-169]');
 

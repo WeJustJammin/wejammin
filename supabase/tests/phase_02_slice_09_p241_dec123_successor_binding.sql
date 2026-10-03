@@ -23,19 +23,6 @@ select no_plan();
 
 select pg_temp.s09d_grant_specialist('owner', 'cms.template_designer');
 
-create or replace function pg_temp.s09t_template(p_tag text, p_key text, p_type_tag text) returns jsonb
-language plpgsql as $body$
-declare resource jsonb;
-begin
-  resource := pg_temp.s09d_rpc(p_tag || ':template', 'platform_api.cms_define_template', 'owner',
-    jsonb_build_object('templateKey', p_key, 'compatibleTypeIds', jsonb_build_array(pg_temp.s09d_id(p_type_tag || ':type')),
-      'slots', '[]'::jsonb, 'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
-      'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
-      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'template')));
-  if resource is not null then perform pg_temp.s09d_remember(p_tag || ':templateVersion', (resource->>'id')::uuid); end if;
-  return resource;
-end;
-$body$;
 create or replace function pg_temp.s09t_raw_successor(p_label text, p_source_tag text, p_extra jsonb) returns jsonb
 language plpgsql as $body$
 begin
@@ -66,10 +53,10 @@ select pg_temp.s09d_create_type('a', 'p241src');
 select pg_temp.s09d_to_active('a');
 select pg_temp.s09d_create_type('x', 'p241other');
 select pg_temp.s09d_to_active('x');
-select pg_temp.s09t_template('t1', 'p241-template-one', 'a');
-select pg_temp.s09t_template('t2', 'p241-template-two', 'a');
-select pg_temp.s09t_template('ti', 'p241-template-other', 'x');
-select pg_temp.s09t_template('tw', 'p241-template-withdrawn', 'a');
+select pg_temp.s09d_template('t1', 'p241-template-one', 'a');
+select pg_temp.s09d_template('t2', 'p241-template-two', 'a');
+select pg_temp.s09d_template('ti', 'p241-template-other', 'x');
+select pg_temp.s09d_template('tw', 'p241-template-withdrawn', 'a');
 select pg_temp.s09d_timewarp('cms_template_versions', format($q$update platform_private.cms_template_versions
    set state = 'retired' where id = %L$q$, pg_temp.s09d_id('tw:templateVersion')));
 select ok(pg_temp.s09d_outcome('t1:template') = 'OK' and pg_temp.s09d_outcome('t2:template') = 'OK'
@@ -214,7 +201,7 @@ select ok((select default_template_version_id from platform_private.cms_content_
 -- ------------------------------ both present with an empty binding list ----
 select pg_temp.s09d_create_type('e', 'p241empty');
 select pg_temp.s09d_to_active('e');
-select pg_temp.s09t_template('te', 'p241-template-empty', 'e');
+select pg_temp.s09d_template('te', 'p241-template-empty', 'e');
 select pg_temp.s09d_successor('f', 'e', 'owner', null, null, null, pg_temp.s09d_id('te:templateVersion'), '[]'::jsonb);
 select ok(pg_temp.s09d_outcome('f:successor') = 'OK'
     and (select default_template_version_id from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('f:version')) = pg_temp.s09d_id('te:templateVersion')
@@ -258,18 +245,22 @@ select ok(pg_temp.s09d_outcome('b:r1') = 'OK' and pg_temp.s09d_resp('b:r1')->>'c
 select isnt(pg_temp.s09d_outcome('b:ri'), 'OK',
   'a template that excludes the type, which no binding row names, is refused by the same named RPC [P2-S09-AC-169]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.s09t_err(format($q$update platform_private.cms_content_type_template_bindings set position = 5, version = version + 1
     where content_type_version_id = %L$q$, pg_temp.s09d_id('b:version'))), 'IMMUTABLE_RECORD',
   'UPDATE of a producer-made binding of the activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
 select is(pg_temp.s09t_err(format($q$delete from platform_private.cms_content_type_template_bindings where content_type_version_id = %L$q$, pg_temp.s09d_id('b:version'))), 'IMMUTABLE_RECORD',
   'DELETE of a producer-made binding of the activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
+-- NEGATIVE CONTROL: direct write against a producer-made binding (CMS-03A-09) of an activated or draft successor is refused; no binding is claimed.
 select is(pg_temp.s09t_err(format($q$insert into platform_private.cms_content_type_template_bindings(owner_id, content_type_version_id, template_version_id, position)
     values (%L, %L, %L, 2)$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_id('b:version'), pg_temp.s09d_id('tw:templateVersion'))), 'IMMUTABLE_RECORD',
   'INSERT of a further binding into the activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
+-- NEGATIVE CONTROL: direct write against a producer-made binding (CMS-03A-09) of an activated or draft successor is refused; no binding is claimed.
 select is(pg_temp.s09t_err(format($q$insert into platform_private.cms_content_type_template_bindings(owner_id, content_type_version_id, template_version_id, position)
     values (%L, %L, %L, 2)$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_id('d:version'), pg_temp.s09d_id('t1:templateVersion'))),
   'duplicate key value violates unique constraint "cms_content_type_template_bindings_unique"',
   'a second binding of one template to the draft successor d is rejected by the unique parent/template pair [P2-S09-AC-169]');
+-- NEGATIVE CONTROL: direct write against a producer-made binding (CMS-03A-09) of an activated or draft successor is refused; no binding is claimed.
 select is(pg_temp.s09t_err(format($q$insert into platform_private.cms_content_type_template_bindings(owner_id, content_type_version_id, template_version_id, position)
     values (%L, %L, %L, 2)$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_id('d:version'), pg_temp.s09d_id('ti:templateVersion'))),
   'VALIDATION_FAILED', 'a direct binding of an incompatible template to the draft is refused by the compatibility guard [P2-S09-AC-169]');

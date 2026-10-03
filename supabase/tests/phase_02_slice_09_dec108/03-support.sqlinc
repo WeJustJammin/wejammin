@@ -189,6 +189,21 @@ begin
 end;
 $body$;
 
+-- Sends a request that already completed under its Idempotency-Key again with one or
+-- more members changed (p_patch is merged over the original request) and returns the
+-- database outcome.  The BE00 request binding (actor, operation, key hash, request hash)
+-- refuses it before any other check, so the outcome is the idempotency refusal itself.
+create or replace function pg_temp.s09d_replay_changed(
+  p_label text, p_function text, p_actor text, p_request jsonb, p_patch jsonb, p_binding boolean default false
+) returns text language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session(p_actor);
+  perform pg_temp.s09d_call(p_label, p_function,
+    (p_request || p_patch) || jsonb_build_object('context', pg_temp.s09d_context(p_actor, p_binding)));
+  return pg_temp.s09d_outcome(p_label);
+end;
+$body$;
+
 -- Test-human provisioning (D3): a confirmed membership of the owner organization
 -- and an effective capability (a specialist reviewer slot, a template designer)
 -- granted through the owner command CMS-03A-15.  This provisions authority only;
@@ -202,5 +217,22 @@ begin
   if outcome not in ('OK', 'EXISTS') then
     raise exception 'owner grant of % to % failed: %', p_capability, p_actor, outcome;
   end if;
+end;
+$body$;
+
+-- A real CMS-03C-01 template definition (platform_api.cms_define_template) compatible with the
+-- type of p_type_tag; requires the owner to hold cms.template_designer (s09d_grant_specialist).
+-- Its template version is the only template evidence a binding of this suite may cite.
+create or replace function pg_temp.s09d_template(p_tag text, p_key text, p_type_tag text) returns jsonb
+language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(p_tag || ':template', 'platform_api.cms_define_template', 'owner',
+    jsonb_build_object('templateKey', p_key, 'compatibleTypeIds', jsonb_build_array(pg_temp.s09d_id(p_type_tag || ':type')),
+      'slots', '[]'::jsonb, 'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+      'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'template')));
+  if resource is not null then perform pg_temp.s09d_remember(p_tag || ':templateVersion', (resource->>'id')::uuid); end if;
+  return resource;
 end;
 $body$;

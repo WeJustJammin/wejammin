@@ -41,14 +41,12 @@ begin
       delete from platform_private.cms_schema_artifacts where id = %L::uuid;
       delete from platform_private.cms_content_type_versions where id = %L::uuid;
       delete from platform_private.cms_content_types where id = %L::uuid;
-      -- LEGACY FIXTURE FORGERY: the GUC-era schema fixtures bind a context directly (a fixed id referenced by the legacy assertions); the DEC-108 fixture uses identity_context_bind, the real producer.
       delete from platform_private.acting_context_binding where id in (%L::uuid, %L::uuid);
       delete from identity_private.organization_actor_grant
        where organization_id = %L::uuid and person_id = %L::uuid;
       delete from identity_private.membership_tenure where id = %L::uuid;
       delete from identity.auth_user_bindings where auth_user_id = %L::uuid;
       delete from platform_private.person_party where party_id = %L::uuid;
-      -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
       delete from identity_private.organization_party where party_id = %L::uuid;
       delete from platform_private.party where id in (%L::uuid, %L::uuid);
       delete from auth.users where id = %L::uuid;
@@ -84,6 +82,10 @@ begin
   setup_sql := format($setup$
     do $body$
     begin
+      -- FIXTURE FORGERY (lock-order probe): this committed setup builds a throwaway party, membership, grant, context binding,
+      -- type, version and artifact so two independent sessions can contend for the graph and authority locks.  No command can
+      -- build an organization outside owner initialization, so none of these rows is a claimed producer path or review evidence;
+      -- the cleanup SQL above removes them.
       insert into auth.users(id, is_sso_user, is_anonymous)
       values (%L::uuid, false, false);
       insert into platform_private.party(id, kind)
@@ -92,7 +94,6 @@ begin
       values (%L::uuid, %L::uuid, 'active');
       insert into identity.auth_user_bindings(auth_user_id, person_id, state)
       values (%L::uuid, %L::uuid, 'active');
-      -- NEGATIVE CONTROL: a hand-written review/decision/dry-run/plan row or state change: never a producer path, only proof that the guard sees and refuses it.
       insert into identity_private.organization_party(
         party_id, ownership_state, governance_mode, lifecycle
       ) values (%L::uuid, 'owned', 'ungoverned', 'active');
@@ -103,7 +104,6 @@ begin
         %L::uuid, %L::uuid, %L::uuid, 'confirmed', 'invitation', 'ungoverned',
         current_date, clock_timestamp(), %L::uuid
       );
-      -- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
       insert into identity_private.organization_actor_grant(
         organization_id, person_id, capability_code, valid_from, active
       ) values (%L::uuid, %L::uuid, 'cms.schema_designer', current_date, true);

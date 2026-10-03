@@ -35,21 +35,25 @@ select is((select array_agg(e.enumlabel::text order by e.enumsortorder) from pg_
   array['pending', 'verified', 'reconciling', 'removed', 'expired'],
   'the factor state vocabulary is exactly pending, verified, reconciling, removed, expired [P2-S09-AC-898]');
 select pg_temp.m_user(1);
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select is(pg_temp.r8m_probe($q$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state)
     values ('b1110000-0000-4000-8000-000000000001', 'totp', extensions.gen_random_uuid(), 'bogus', 'archived')$q$),
   '22P02:invalid input value for enum identity.mfa_factor_state: "archived"', 'a state outside the vocabulary is refused (invalid enum input) [P2-S09-AC-898]');
 
 -- pending_expires_at is nullable only while pending or reconciling.
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(pg_temp.r8m_probe(format($q$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at, verified_at, removed_at)
     values ('b1110000-0000-4000-8000-000000000001', 'totp', extensions.gen_random_uuid(), 'v-%1$s', %1$L, clock_timestamp() + interval '5 minutes',
             case when %1$L = 'verified' then clock_timestamp() end, case when %1$L = 'removed' then clock_timestamp() end)$q$, s.state))
     like '23514:%mfa_factor_registry_check%',
   'a ' || s.state || ' row carrying pending_expires_at is refused by the CHECK constraint [P2-S09-AC-898]')
 from (values ('verified'), ('removed'), ('expired')) s(state);
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select is(pg_temp.r8m_probe(format($q$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
     values ('b1110000-0000-4000-8000-000000000001', 'totp', extensions.gen_random_uuid(), 'c-%1$s', %1$L, clock_timestamp() + interval '5 minutes')$q$, s.state)),
   'ACCEPTED', 'control: a ' || s.state || ' row may carry pending_expires_at [P2-S09-AC-898]')
 from (values ('pending'), ('reconciling')) s(state);
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select is(pg_temp.r8m_probe($q$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state)
     values ('b1110000-0000-4000-8000-000000000001', 'totp', extensions.gen_random_uuid(), 'c-reconciling-null', 'reconciling')$q$),
   'ACCEPTED', 'control: a reconciling row may have no pending_expires_at (nullable) [P2-S09-AC-898]');

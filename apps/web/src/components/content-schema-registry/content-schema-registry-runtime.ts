@@ -1,7 +1,7 @@
 import {
   LOCALE_CONFIG_MESSAGES,
   TEMPLATE_BINDING_MESSAGES,
-} from '@wejammin/contracts';
+} from '@wejammin/contracts/client';
 
 import {
   authoritativeResource,
@@ -14,6 +14,7 @@ import {
   classifyStepUpResponse,
   type StepUpClassification,
 } from './content-schema-registry-step-up-classify';
+import { loadContractValidators } from './content-schema-registry-contract-validators';
 
 export {
   CONTENT_SCHEMA_REGISTRY_LOADING_DELAY_MS,
@@ -231,6 +232,9 @@ export const executeContentSchemaRegistryMutation = async (input: {
       outcome === 'success' && response !== null
         ? await authoritativeResource(input.operationId, response)
         : null;
+    // CMS-03A-04 renders its authoritative answer after strict validation, so
+    // the validators are loaded here, on the first activation, never earlier.
+    if (resource !== null) await loadContractValidators().catch(() => null);
     return {
       outcome,
       attempts,

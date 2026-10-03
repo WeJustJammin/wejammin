@@ -170,6 +170,7 @@ select is(pg_temp.p_run('np:dup', pg_temp.p_full('p240_agg_ok'), 'CONFLICT'), 'o
 select ok((select c.condeferrable and c.condeferred and pg_get_constraintdef(c.oid) like 'FOREIGN KEY (schema_artifact_id, id) REFERENCES platform_private.cms_schema_artifacts(id, content_type_version_id)%'
     from pg_constraint c where c.conrelid = 'platform_private.cms_content_type_versions'::regclass and c.contype = 'f' and c.confrelid = 'platform_private.cms_schema_artifacts'::regclass),
   'the version-to-artifact composite foreign key is DEFERRABLE INITIALLY DEFERRED over (schema_artifact_id, id) [P2-S09-AC-053]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 create or replace function pg_temp.p_mismatch() returns text language plpgsql as $body$
 declare other_artifact uuid; target_version uuid; result text;
 begin

@@ -1,8 +1,8 @@
 import {
   LOCALE_CONFIG_MESSAGES,
-  refineLocaleConfig,
-} from '@wejammin/contracts';
-import { z } from 'zod';
+  evaluateLocaleConfig,
+  type LocaleConfigIssue,
+} from '@wejammin/contracts/client';
 
 import {
   submitConfig,
@@ -13,30 +13,19 @@ import {
 
 export * from './content-schema-registry-locale-draft';
 
-const MESSAGE_ISSUES = z.object({}).readonly();
-
-/** Client validation reuses the BE03a refinement so messages cannot drift. */
+/** Client validation reuses the BE03a rule table so messages cannot drift. */
 export const validateDraft = (draft: LocaleConfigDraft): LocaleIssue[] => {
-  const config = submitConfig(draft);
-  const schema = MESSAGE_ISSUES.superRefine((_value, context) =>
-    refineLocaleConfig(config, context),
-  );
-  const result = schema.safeParse({});
-  if (result.success) return [];
-  return result.error.issues
-    .map((issue) => ({
-      path: issue.path.map((segment) =>
-        typeof segment === 'symbol' ? String(segment) : segment,
+  const issues: LocaleConfigIssue[] = [];
+  evaluateLocaleConfig(submitConfig(draft), (path, message) => {
+    issues.push({ path, message });
+  });
+  return issues.filter(
+    (issue) =>
+      !(
+        draft.defaultLocale === '' &&
+        issue.message === LOCALE_CONFIG_MESSAGES.chainMissing
       ),
-      message: issue.message,
-    }))
-    .filter(
-      (issue) =>
-        !(
-          draft.defaultLocale === '' &&
-          issue.message === LOCALE_CONFIG_MESSAGES.chainMissing
-        ),
-    );
+  );
 };
 
 /** Languages whose fallback groups sit on a cycle, in supported order. */

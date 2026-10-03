@@ -99,6 +99,7 @@ select is(pg_temp.s09e_writers('cms_schema_reviews', 'update'), 'cms_decide_sche
   'only the decision RPC and the invalidation function change a review''s state [P2-S09-AC-646]');
 select is(pg_temp.s09e_writers('cms_schema_reviews', 'delete[[:space:]]+from'), '', 'no function deletes a review [P2-S09-AC-646]');
 select set_config('app.cms_rpc', '', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format($q$update platform_private.cms_schema_reviews set state = 'approved', decided_at = clock_timestamp(),
       approval_evidence_hash = repeat('a', 64) where id = %L$q$, (select review_open from s09e_ids)),
   'P0001', null, 'a direct state change outside the RPC context is refused [P2-S09-AC-646]');
@@ -167,8 +168,10 @@ select is(pg_temp.s09e_writers('cms_schema_review_decisions', 'delete[[:space:]]
 select ok(pg_temp.s09d_rls('cms_schema_review_decisions') and pg_temp.s09d_no_direct_grants('cms_schema_review_decisions'),
   'cms_schema_review_decisions has forced RLS and every direct privilege revoked [P2-S09-AC-651]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_review_decisions set decision = ''reject'' where id = %L', (select decision from s09e_ids)),
   'P0001', 'IMMUTABLE_RECORD', 'a decision UPDATE is rejected even inside the RPC context [P2-S09-AC-651]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_review_decisions where id = %L', (select decision from s09e_ids)),
   'P0001', 'IMMUTABLE_RECORD', 'a decision DELETE is rejected [P2-S09-AC-651]');
 
@@ -207,10 +210,13 @@ select is(pg_temp.s09e_writers('cms_schema_review_assignments', 'update'), 'cms_
 select is(pg_temp.s09e_writers('cms_schema_review_assignments', 'delete[[:space:]]+from'), '', 'no function deletes an assignment [P2-S09-AC-654]');
 select ok(pg_temp.s09d_rls('cms_schema_review_assignments') and pg_temp.s09d_no_direct_grants('cms_schema_review_assignments'),
   'cms_schema_review_assignments has forced RLS and every direct privilege revoked [P2-S09-AC-654]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_review_assignments where id = %L', (select assignment from s09e_ids)),
   'P0001', 'IMMUTABLE_RECORD', 'an assignment DELETE is rejected [P2-S09-AC-654]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_review_assignments set ends_at = ends_at + interval ''1 hour'' where id = %L', (select assignment from s09e_ids)),
   'P0001', null, 'an assignment cannot be broadened (its window cannot be extended in place) [P2-S09-AC-654]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_review_assignments set actions = array[''read'',''decide'',''assign''] where id = %L', (select assignment from s09e_ids)),
   null, null, 'an assignment cannot be broadened to another action [P2-S09-AC-654]');
 

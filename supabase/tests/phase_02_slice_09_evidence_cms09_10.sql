@@ -92,9 +92,9 @@ create temp table s09e_first_resp on commit drop as select pg_temp.s09d_resp('e:
 select pg_temp.s09d_rpc('p:reuse', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('p:type'), 'versionId', pg_temp.s09d_id('p:version'),
     'expectedVersion', pg_temp.s09d_version('p'), 'idempotencyKey', 's09e-succ-active-0001'));
-select ok(pg_temp.s09d_outcome('p:reuse') = 'CONFLICT'
+select ok(pg_temp.s09d_outcome('p:reuse') = 'IDEMPOTENCY_MISMATCH'
   and pg_temp.s09d_resp('p:reuse') is distinct from (select response from s09e_first_resp),
-  'a key reused by the same actor for another source path is a 409 CONFLICT: it never replays the first response [P2-S09-AC-300]');
+  'a key reused by the same actor for another source path is refused IDEMPOTENCY_MISMATCH: it never replays the first response [P2-S09-AC-300]');
 
 -- AC302: the clone, its audit row and its outbox row commit together or not at all.
 select pg_temp.s09d_create_type('f', 'ev09atomic');

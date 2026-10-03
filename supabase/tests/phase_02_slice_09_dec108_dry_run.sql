@@ -62,6 +62,11 @@ select ok((select first is not null and pg_temp.s09d_rpc('a:replay', 'platform_a
       'expectedVersion', '1', 'transformKey', null, 'transformVersion', null,
       'idempotencyKey', 's09d-dry-replay-0001')) = first from s09d_replay),
   'a same-key retry returns the same report, plan and job [P2-S09-AC-345]');
+select is(pg_temp.s09d_replay_changed('a:replay:mismatch', 'platform_api.cms_start_schema_dry_run', 'owner',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
+      'expectedVersion', '1', 'transformKey', null, 'transformVersion', null,
+      'idempotencyKey', 's09d-dry-replay-0001'), jsonb_build_object('expectedVersion', '999')),
+  'IDEMPOTENCY_MISMATCH', 'the dry-run key reused with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-354]');
 select is(pg_temp.s09d_scalar(format($q$select count(*)::text from platform_private.cms_schema_dry_run_reports
     where target_version_id = %L and state in ('queued', 'running', 'completed', 'failed')$q$,
     pg_temp.s09d_id('a:version'))), '1', 'the same-key retry created no second attempt [P2-S09-AC-345]');

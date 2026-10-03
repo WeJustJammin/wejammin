@@ -9,6 +9,7 @@
 create temp table p_release_key on commit drop as
 select (keypair).public as public_key, (keypair).secret as secret_key
 from lateral (select pgsodium.crypto_sign_seed_new_keypair(decode(repeat('2a', 32), 'hex')) as keypair) generated;
+-- FIXTURE FORGERY: no command registers a release signing principal (the release key registry is operator-provisioned trust configuration); the row only lets the signed CMS-03A-05 / CMS-03A-08 commands verify, it claims no producer path.
 insert into platform_private.cfg_release_principals(principal_id, key_id, scope, active, public_key)
 select 'a9d10000-0000-4000-8000-000000000005'::uuid, 'release.p240', 'registry-release', true, public_key from p_release_key
 on conflict (key_id) do update set active = excluded.active, public_key = excluded.public_key, revoked_at = null, valid_from = null, valid_through = null;

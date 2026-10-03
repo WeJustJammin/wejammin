@@ -4,6 +4,7 @@ import {
   ADMIN_RESET_COPY,
   type ResetFieldErrors,
 } from './admin-mfa-reset-values';
+import { isStepUpRequiredCode } from '../../step-up-required';
 
 export type ResetNoticeKind =
   | 'degraded'
@@ -56,7 +57,7 @@ const schemaFieldErrors = (failure: MfaFailure): ResetFieldErrors => ({
 export const resetFailureView = (failure: MfaFailure): ResetFailureView => {
   const { status, code } = failure;
   if (status === 401)
-    return code === 'STEP_UP_REQUIRED'
+    return isStepUpRequiredCode(code)
       ? view('step-up', '')
       : view('sign-in', ADMIN_RESET_COPY.sessionEnded);
   if (status === 403) return view('forbidden', ADMIN_RESET_COPY.forbidden);

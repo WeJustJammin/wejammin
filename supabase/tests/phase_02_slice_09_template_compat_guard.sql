@@ -152,6 +152,7 @@ select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_type_versions
 set state = 'review', version = version + 1, updated_at = clock_timestamp()
 where id = (select (response->>'id')::uuid from s09_review_candidate);
+-- NEGATIVE CONTROL: a hand-written incompatible binding (a tamper after the review state change) must make the activation switch refuse; never a producer path.
 insert into platform_private.cms_content_type_template_bindings(
   owner_id, state, version, content_type_version_id, template_version_id, position
 )

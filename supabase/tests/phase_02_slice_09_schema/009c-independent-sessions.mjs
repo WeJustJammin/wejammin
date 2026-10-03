@@ -320,18 +320,29 @@ const main = async () => {
     typeof organizationId === 'string',
     'owner initialization returned no organization',
   );
-  const binding = (person, party, kind, client) =>
+  // Every acting-context binding is selected through the real human command
+  // (platform_api.identity_context_bind, run as the human it binds); none is inserted.
+  const binding = (authUserId, person, party, client) =>
     scalar(
-      `with inserted as (insert into platform_private.acting_context_binding(person_id,acting_party_id,context_kind,client_binding_id,state,selected_at,last_seen_at,expires_at,projection_version,version) values (${sql(person)}::uuid,${sql(party)}::uuid,${sql(kind)},${sql(client)},'active',clock_timestamp(),clock_timestamp(),clock_timestamp()+interval '1 hour',1,1) returning id) select id::text from inserted;`,
+      `select set_config('request.jwt.claims',${sql(JSON.stringify({ role: 'authenticated', sub: authUserId }))},true);
+select set_config('app.auth_user_id',${sql(authUserId)},true);
+select set_config('app.actor_auth_user_id',${sql(authUserId)},true);
+select set_config('app.actor_person_id',${sql(person)},true);
+select set_config('app.acting_party_id','',true);
+select set_config('app.acting_context_id','',true);
+select set_config('app.correlation_id',${sql(randomUUID())},true);
+select set_config('app.idempotency_key_hash',${sql(`${client}-bind`)},true);
+select set_config('app.request_hash',${sql(`${client}-bind-request`)},true);
+select (platform_api.identity_context_bind(${sql(party)}::uuid,true,${sql(client)})->>'bindingId');`,
     );
   const owner = {
     authUserId: userId,
     personId: ownerPerson,
     partyId: organizationId,
     bindingId: binding(
+      userId,
       ownerPerson,
       organizationId,
-      'organization',
       'ac217-owner-session',
     ),
   };
@@ -340,9 +351,9 @@ const main = async () => {
     personId: reviewerPerson,
     partyId: reviewerPerson,
     bindingId: binding(
+      reviewerId,
       reviewerPerson,
       reviewerPerson,
-      'person',
       'ac217-reviewer-session',
     ),
   };

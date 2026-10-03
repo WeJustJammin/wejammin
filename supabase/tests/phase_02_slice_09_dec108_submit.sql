@@ -72,6 +72,11 @@ select ok(pg_temp.s09d_replay_pair('r:submit', 'platform_api.cms_submit_schema_r
       'expectedVersion', pg_temp.s09d_version('r'), 'dryRunId', pg_temp.s09d_id('r:dryRun'),
       'idempotencyKey', 's09d-submit-replay-0001'), true),
   'a same-key replay returns the exact original review and freezes nothing twice [P2-S09-AC-387]');
+select is(pg_temp.s09d_replay_changed('r:submit:mismatch', 'platform_api.cms_submit_schema_review', 'owner',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id('r:type'), 'versionId', pg_temp.s09d_id('r:version'),
+      'expectedVersion', pg_temp.s09d_version('r'), 'dryRunId', pg_temp.s09d_id('r:dryRun'),
+      'idempotencyKey', 's09d-submit-replay-0001'), jsonb_build_object('expectedVersion', '999'), true),
+  'IDEMPOTENCY_MISMATCH', 'the submission key reused with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-396]');
 select is(pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_schema_reviews where content_type_version_id = %L',
     pg_temp.s09d_id('r:version'))), '1', 'exactly one review exists for the replayed submission');
 

@@ -73,7 +73,7 @@ describe('parseMfaFailure', () => {
   it('uses the first violation code for 422', async () => {
     const failure = await parseMfaFailure(
       respond(422, 'VALIDATION_FAILED', {
-        violations: [{ field: 'code', code: 'code_incorrect' }],
+        violations: [{ path: '/code', code: 'code_incorrect' }],
       }),
     );
     expect(failure.reason).toBe('code_incorrect');
@@ -148,11 +148,11 @@ describe('parseMfaFailure', () => {
     const failure = await parseMfaFailure(
       respond(422, 'VALIDATION_FAILED', {
         violations: [
-          { field: 'targetPersonId', code: 'invalid_uuid' },
-          { field: 7, code: 'x' },
-          { field: 'f'.repeat(100), code: 'x' },
+          { path: '/targetPersonId', code: 'invalid_uuid' },
+          { path: 7, code: 'x' },
+          { path: `/${'f'.repeat(100)}`, code: 'x' },
           ...Array.from({ length: 12 }, (_, i) => ({
-            field: `f${i}`,
+            path: `/f${i}`,
             code: 'x',
           })),
         ],
@@ -161,6 +161,43 @@ describe('parseMfaFailure', () => {
     expect(failure.violationFields).toHaveLength(8);
     expect(failure.violationFields[0]).toBe('targetPersonId');
     expect(failure.violationFields).not.toContain('f'.repeat(100));
+  });
+
+  // BE00 FieldViolation as the Worker emits it: `path` is an RFC 6901 JSON
+  // Pointer. Captured from the production CFG-05B-06 route (schema-invalid
+  // request answers 400 INVALID_REQUEST with this body).
+  it('[P2-S09-AC-1122] reads the field named by a JSON Pointer path, as production sends it', async () => {
+    const failure = await parseMfaFailure(
+      respond(400, 'INVALID_REQUEST', {
+        violations: [
+          {
+            path: '/targetPersonId',
+            code: 'invalid_value',
+            message: 'The value is invalid.',
+          },
+          { path: '/reason', code: 'too_small', message: 'Too short.' },
+          { path: '/nested/deep/leaf', code: 'x', message: 'x' },
+          { path: '', code: 'x', message: 'x' },
+          { path: '/' + 'f'.repeat(100), code: 'x', message: 'x' },
+          { code: 'x', message: 'no path at all' },
+        ],
+      }),
+    );
+    expect(failure.violationFields).toEqual([
+      'targetPersonId',
+      'reason',
+      'leaf',
+    ]);
+    expect(failure.reason).toBe('invalid_value');
+  });
+
+  it('[P2-S09-AC-1122] decodes JSON Pointer escapes in a violation path', async () => {
+    const failure = await parseMfaFailure(
+      respond(422, 'VALIDATION_FAILED', {
+        violations: [{ path: '/a~1b', code: 'x', message: 'x' }],
+      }),
+    );
+    expect(failure.violationFields).toEqual(['a/b']);
   });
 
   it('has no violation fields without violations', async () => {

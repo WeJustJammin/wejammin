@@ -177,6 +177,7 @@ alter function platform_private.s09_forged_review_touch(uuid) owner to s09_rls_p
 create function platform_private.s09_forged_factor(p_user uuid)
 returns integer language plpgsql security definer set search_path = '' as $body$
 begin
+  -- NEGATIVE CONTROL: a forged definer writes an MFA factor row directly; the session-scope policy must refuse it, no factor is claimed.
   insert into identity.mfa_factor_registry(auth_user_id, provider_factor_id, friendly_name, state, pending_expires_at)
   values (p_user, extensions.gen_random_uuid(), 'forged-' || substr(p_user::text, 1, 8), 'pending',
           pg_catalog.clock_timestamp() + interval '5 minutes');
@@ -438,6 +439,7 @@ begin
 end;
 $body$;
 
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_review_assignments enable trigger cms_schema_review_assignments_z_state_guard;
 select is((select v from r3rls_results where k = 'using:revoked'), '0/0/0',
   'USING: a revoked assignment reads no review, no assignment and updates no review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');

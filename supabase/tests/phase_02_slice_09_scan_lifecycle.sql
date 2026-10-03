@@ -125,6 +125,7 @@ select is((select count(*)::integer from platform_private.cms_schema_migration_p
   'the superseded completed plan stays immutable history (only superseded_at changed)');
 select is((select source_count from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('e:plan')), 4::bigint,
   'the latest attempt scans all four rows');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_schema_migration_plans set cursor = 0 where to_version_id = %L and state = 'completed'$q$,
   pg_temp.s09d_id('e:version'))), 'a completed plan still rejects any other update');
 

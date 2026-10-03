@@ -23,6 +23,7 @@ select pg_temp.s09g_grant('e:author', 'owner', 'owner', 'cms.author', pg_temp.s0
 
 -- A newer registry version of an existing key, shipped after the review.  The
 -- registry is code-owned: the row is inserted the way a release migration would.
+-- FIXTURE FORGERY (release-migration stand-in): the workflow policy registry is code-owned and written only by a release migration; this inserts the member a later migration would add, so it claims no producer path.
 create or replace function pg_temp.s09r_newer_version(p_key text, p_risk text) returns void language plpgsql as $body$
 declare caps jsonb := case when p_risk = 'protected' then '["cms.reviewer","cms.reviewer.policy"]'::jsonb
                            else '["cms.reviewer"]'::jsonb end;

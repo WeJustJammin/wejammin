@@ -81,14 +81,17 @@ select is((select artifact_hash from platform_private.cms_schema_artifacts where
   'the recompiled artifact hash is again the definition hash [P2-S09-AC-008]');
 select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cms_compile', '', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_artifacts set artifact_hash = %L where content_type_version_id = %L', repeat('b', 64), pg_temp.s09d_id('a:version')), 'P0001', 'IMMUTABLE_RECORD',
   'outside the compile command even a draft artifact cannot be updated [P2-S09-AC-008]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_artifacts where content_type_version_id = %L', pg_temp.s09d_id('a:version')), 'P0001', 'IMMUTABLE_RECORD', 'an artifact cannot be deleted [P2-S09-AC-008]');
 select pg_temp.s09d_seal('a');
 select pg_temp.s09d_submit('a');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('a:version')), 'review', 'fixture: the candidate left draft for review [P2-S09-AC-008]');
 select set_config('app.cms_rpc', 'true', true);
 select set_config('app.cms_compile', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_artifacts set artifact_hash = %L where content_type_version_id = %L', repeat('b', 64), pg_temp.s09d_id('a:version')), 'P0001', 'IMMUTABLE_RECORD',
   'once the candidate leaves draft its artifact is immutable even inside the compile context [P2-S09-AC-008]');
 select set_config('app.cms_compile', '', true);
@@ -151,6 +154,7 @@ select is(pg_temp.s09d_outcome('br:submit'), 'CONFLICT', 'a breaking candidate c
 select pg_temp.s09d_create_type('c3', 'p240_cls_unk');
 select pg_temp.s09d_to_active('c3');
 select pg_temp.s09d_successor('un', 'c3');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 create or replace function pg_temp.p_underivable() returns text language plpgsql as $body$
 declare before_counts text := concat_ws('|', pg_temp.p_count('cms_schema_migration_plans'), pg_temp.p_count('cms_schema_dry_run_reports'), pg_temp.p_count('jobs')); result text;
 begin

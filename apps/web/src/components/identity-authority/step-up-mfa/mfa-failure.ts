@@ -53,16 +53,27 @@ const methodsOf = (value: unknown): readonly string[] =>
         .slice(0, 8)
     : [];
 
+/** The last segment of an RFC 6901 JSON Pointer, with its escapes decoded. */
+const pointerField = (pointer: unknown): string | null => {
+  if (typeof pointer !== 'string' || !pointer.startsWith('/')) return null;
+  const segment = pointer.split('/').at(-1);
+  if (segment === undefined || segment.length === 0) return null;
+  return segment.replaceAll('~1', '/').replaceAll('~0', '~');
+};
+
+/**
+ * Field names of the schema violations. BE00 `FieldViolation` names a field
+ * with a JSON Pointer `path` (`/targetPersonId`); there is no `field` member.
+ */
 const violationFieldsOf = (value: unknown): readonly string[] => {
   if (!Array.isArray(value)) return [];
   const fields: string[] = [];
   for (const violation of value) {
     const field =
       typeof violation === 'object' && violation !== null
-        ? (violation as Record<string, unknown>)['field']
+        ? pointerField((violation as Record<string, unknown>)['path'])
         : null;
-    if (typeof field === 'string' && field.length > 0 && field.length <= 64)
-      fields.push(field);
+    if (field !== null && field.length <= 64) fields.push(field);
     if (fields.length === 8) break;
   }
   return fields;

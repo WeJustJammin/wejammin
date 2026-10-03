@@ -11,6 +11,7 @@ export type {
   RefetchReason,
   ServerInitialState,
 } from './infrastructure-workbench-types';
+import { stepUpTargetForReturnTo } from '../step-up-required';
 
 export const CHANNEL_NAME = 'wejammin:infrastructure-invalidation';
 
@@ -146,7 +147,7 @@ type StepUpViewState = Extract<
 /** BE00/FE00 (DEC-111): 401 STEP_UP_REQUIRED routes to `/step-up?returnTo=`. */
 export const stepUpRecoveryHref = (
   state: Pick<StepUpViewState, 'returnTo'>,
-): string => `/step-up?returnTo=${encodeURIComponent(state.returnTo)}`;
+): string => stepUpTargetForReturnTo(state.returnTo);
 
 export const parseContractState = (
   state: ServerInitialState,

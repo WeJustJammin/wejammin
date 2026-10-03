@@ -6,6 +6,7 @@ import {
 import type { ApiError, JsonValue } from '@wejammin/contracts';
 
 import { rfc3339ResetAt } from './rate-limit-reset-at';
+import { isStepUpRequiredCode } from '../components/step-up-required';
 
 export interface ContentSchemaRegistryErrorMetadata {
   readonly apiError: ApiError | null;
@@ -97,7 +98,7 @@ const safeDetails = (
     };
   }
   if (status === 401) {
-    if (code === 'STEP_UP_REQUIRED') return safeStepUpDetails(details);
+    if (isStepUpRequiredCode(code)) return safeStepUpDetails(details);
     return details.recoveryAction === 'reauthenticate'
       ? { recoveryAction: 'reauthenticate' }
       : {};

@@ -129,6 +129,22 @@ select ok(exists (select 1 from pg_indexes where schemaname = 'platform_private'
 select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('platform_private.admin_mfa_factor_resets')
     and contype = 'u' and pg_get_constraintdef(oid) like '%operator_person_id%idempotency_key%'), 'UNIQUE(operator_person_id, idempotency_key) [P2-S09-AC-930]');
 
+select has_table('platform_private', 'admin_mfa_factor_reset_settlements', 'the settlement receipt table exists [P2-S09-AC-933]');
+select ok(coalesce((select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('platform_private.admin_mfa_factor_reset_settlements')), false),
+  'the settlement receipt forces row level security [P2-S09-AC-933]');
+select ok(to_regclass('platform_private.admin_mfa_factor_reset_settlements') is not null and not exists (
+    select 1 from unnest(array['anon', 'authenticated', 'service_role']) r, unnest(array['select', 'insert', 'update', 'delete']) p
+     where has_table_privilege(r, 'platform_private.admin_mfa_factor_reset_settlements', p)),
+  'the settlement receipt has no direct grant for any API role [P2-S09-AC-933]');
+select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('platform_private.admin_mfa_factor_reset_settlements')
+    and contype = 'p' and pg_get_constraintdef(oid) = 'PRIMARY KEY (reset_id, factor_id, outcome, factor_version)'),
+  'a receipt is keyed by reset, factor, outcome and factor version [P2-S09-AC-933]');
+select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('platform_private.admin_mfa_factor_reset_settlements')
+    and contype = 'f' and pg_get_constraintdef(oid) like '%admin_mfa_factor_resets%')
+  and not exists (select 1 from pg_constraint where conrelid = to_regclass('platform_private.admin_mfa_factor_reset_settlements')
+    and contype = 'f' and pg_get_constraintdef(oid) like '%mfa_factor_registry%'),
+  'a receipt references its reset and deliberately not the factor row the 30-day sweep purges [P2-S09-AC-933]');
+
 -- ---- request validation and authority ------------------------------------------
 select pg_temp.m_reset('r:key', 'designer2', 'rev1', 'reset-key-ac945-0001', 'x', '{}', jsonb_build_object('unknown', true));
 select is(pg_temp.m_out('r:key'), 'INVALID_REQUEST', 'an unknown request key is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
@@ -193,9 +209,8 @@ select is(pg_temp.m_ver(13)::bigint, (select v13 from m_pre), 'and changed no MF
 
 -- ---- reservation ------------------------------------------------------------------
 -- The target also holds a step-up capability: the reset is not subject to last_factor_required.
--- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
-insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
-values (pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('rev1', 'person')::uuid, 'cms.schema_designer', current_date, current_date + 3, true);
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.schema_designer', 3), 'OK',
+  'fixture: the target holds cms.schema_designer through the real owner grant command (CMS-03A-15)');
 -- AC896 baseline: the target's linked email login method and a second linked
 -- provider (provisioning fixture rows of the login-methods domain, not S09
 -- producer rows), plus every session and proof-bearing column, are snapshotted
@@ -321,6 +336,35 @@ select ok(pg_temp.m_one(format($q$select (completed_at is null and state = 'reco
 select is(pg_temp.m_ver(13)::bigint, (select v + 1 from m_v_res), 'the settlement transaction bumps mfa_version once');
 select ok(not (pg_temp.m_resp('s:partial')::text ~ ('(' || pg_temp.m_pid_named(13, 'V1')::text || '|' || pg_temp.m_uid(13)::text || ')')),
   'the settle response carries no provider factor id and no Auth UUID');
+-- A replay of the same settlement (the Worker retries a settle whose response it never saw) reports the
+-- same outcomes for the same factor versions.  The reconciler wake-up is sent once for the first report; a
+-- replay is answered with the same reset view and emits nothing (settlement receipt keyed by reset,
+-- factor, outcome and factor version).
+create temp table m_ev_replay on commit drop as
+  select pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'Pend')) as pend,
+         pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'V1')) as removed,
+         pg_temp.m_ver(13)::bigint as mfa_version;
+select pg_temp.m_settle_reset('s:replay1', 'designer2', (select id from m_reset_id), jsonb_build_array(
+  jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'V1'), 'outcome', 'removed'),
+  jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'V2'), 'outcome', 'absent'),
+  jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Gone'), 'outcome', 'removed'),
+  jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Pend'), 'outcome', 'failed')));
+select pg_temp.m_settle_reset('s:replay2', 'designer2', (select id from m_reset_id), jsonb_build_array(
+  jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Pend'), 'outcome', 'failed')));
+select is(pg_temp.m_out('s:replay1') || pg_temp.m_out('s:replay2'), 'OKOK', 'a replayed settlement is accepted [P2-S09-AC-933]');
+select is(pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'Pend')),
+  (select pend from m_ev_replay),
+  'a replayed failed outcome for the same factor version emits no second reconciler event (exactly one wake-up per factor version) [P2-S09-AC-933]');
+select is(pg_temp.m_outbox('identity.mfa-factor.changed.v1', pg_temp.m_fid_named(13, 'V1')),
+  (select removed from m_ev_replay), 'a replayed removal emits no second change event [P2-S09-AC-933]');
+select ok(pg_temp.m_resp('s:replay1') = pg_temp.m_resp('s:partial') and pg_temp.m_resp('s:replay2') = pg_temp.m_resp('s:partial'),
+  'every replay answers the same reset view as the first settlement [P2-S09-AC-933]');
+select is(pg_temp.m_ver(13)::bigint, (select mfa_version from m_ev_replay), 'a replay bumps no mfa_version [P2-S09-AC-933]');
+select is((xpath('/row/c/text()', query_to_xml(format(
+    $q$select count(*) as c from platform_private.admin_mfa_factor_reset_settlements
+        where reset_id = %L and outcome = 'failed' and factor_id = %L$q$,
+    (select id from m_reset_id), pg_temp.m_fid_named(13, 'Pend')), false, true, '')))[1]::text, '1',
+  'one settlement receipt holds the failed outcome of the factor [P2-S09-AC-933]');
 select pg_temp.m_settle_reset('s:final', 'designer2', (select id from m_reset_id), jsonb_build_array(
   jsonb_build_object('providerFactorId', pg_temp.m_pid_named(13, 'Pend'), 'outcome', 'removed')));
 select is(pg_temp.m_resp('s:final')->>'state', 'completed', 'the last confirmation completes the reset [P2-S09-AC-918]');
@@ -347,6 +391,12 @@ select is(pg_temp.m_out('after:begin'), 'OK', 'after a reset the target can star
 select is(pg_temp.m_fstate(pg_temp.m_fid(14)), 'verified', 'another person''s factors are untouched');
 select pg_temp.m_reset('r:two', 'designer2', 'rev2', 'reset-key-ac945-0300');
 select is(pg_temp.m_out('r:two'), 'OK', 'a reset of a different target is independent');
+
+-- NEGATIVE CONTROL: a settlement receipt is append-only evidence; the guard refuses a rewrite or a delete even from the owner.
+select throws_ok($$update platform_private.admin_mfa_factor_reset_settlements set factor_version = factor_version + 1$$,
+  'P0001', 'ADMIN_MFA_RESET_SETTLEMENT_APPEND_ONLY', 'a settlement receipt cannot be rewritten [P2-S09-AC-933]');
+select throws_ok($$delete from platform_private.admin_mfa_factor_reset_settlements$$,
+  'P0001', 'ADMIN_MFA_RESET_SETTLEMENT_APPEND_ONLY', 'a settlement receipt cannot be deleted [P2-S09-AC-933]');
 
 select * from finish();
 

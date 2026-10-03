@@ -17,6 +17,7 @@ import {
   deadlineExceeded,
   invalidResponse,
   isAbortError,
+  isRecord,
   unavailable,
 } from './production-errors';
 import {
@@ -96,12 +97,29 @@ export const contextFor = (
   };
 };
 
+/**
+ * BE03a's FieldSchemaChangeRequest is flat on the wire, but cms_add_field_definition
+ * takes the field definition as one `field` member beside `migrationPlanId` (its
+ * exact-key check refuses the flat members). Own keys are moved, never rebuilt, so
+ * the missing/null distinction of `defaultValue` survives: an absent key stays
+ * absent and an explicit JSON null stays an explicit null.
+ */
+const requestBodyFor = (
+  input: ContentSchemaRegistryPortInput,
+): Readonly<Record<string, unknown>> => {
+  const body: unknown = input.body;
+  if (input.operationId !== 'CMS-03A-02' || !isRecord(body))
+    return isRecord(body) ? body : {};
+  const { migrationPlanId, ...field } = body;
+  return { field, migrationPlanId };
+};
+
 export const rpcBodyFor = (
   input: ContentSchemaRegistryPortInput,
   contexts: WeakMap<Request, ServerSessionContext>,
   now: () => number,
 ): Readonly<Record<string, unknown>> => ({
-  ...(input.body ?? {}),
+  ...requestBodyFor(input),
   ...(input.query ?? {}),
   ...(input.path ?? {}),
   ...(input.idempotencyKey === undefined

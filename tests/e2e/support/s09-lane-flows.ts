@@ -31,13 +31,14 @@ export type CreatedVersion = Readonly<{
   path: string;
 }>;
 
-/** Fill the real CMS-03A-01 form (including the locale fields) and save. */
-export const createTypeViaUi = async (
+/**
+ * Fill the real CMS-03A-01 form (including the locale fields) on the open
+ * registry page without saving it.
+ */
+export const fillCreateTypeForm = async (
   page: Page,
   options: Readonly<{ typeKey?: string; label?: string }> = {},
-): Promise<CreatedVersion> => {
-  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
-  await waitForWorkbench(page);
+): Promise<void> => {
   const tags = page.getByRole('textbox', { name: 'Add a language tag' });
   for (const tag of ['en-US', 'fr-CA', 'fr']) {
     await tags.fill(tag);
@@ -68,6 +69,16 @@ export const createTypeViaUi = async (
     .getByRole('textbox', { name: 'Workflow key' })
     .fill('editorial.default');
   await page.getByRole('textbox', { name: 'Workflow version' }).fill('1');
+};
+
+/** Fill the real CMS-03A-01 form (including the locale fields) and save. */
+export const createTypeViaUi = async (
+  page: Page,
+  options: Readonly<{ typeKey?: string; label?: string }> = {},
+): Promise<CreatedVersion> => {
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await fillCreateTypeForm(page, options);
   await page.getByRole('button', { name: 'Save content type draft' }).click();
   await page.waitForURL(/\/versions\//u);
   await waitForWorkbench(page);

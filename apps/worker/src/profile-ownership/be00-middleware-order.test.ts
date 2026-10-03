@@ -11,8 +11,10 @@ import { registerOrderTests, type OrderStep } from '../be00-order.test-support';
 import {
   CHALLENGE_ID,
   CLAIM_ID,
+  CONTACT_ROUTE_ID,
   PARTY_ID,
   PERSON_ID,
+  SHADOW_ID,
   createProfileApp,
   failure,
 } from './phase-02-slice-05.test-support';
@@ -40,9 +42,61 @@ type Operation = Readonly<{
   body: unknown;
   invalidBody: unknown;
   stepUp: boolean;
+  /** Null when the route rejects an If-Match header. */
+  ifMatch?: string | null;
+  /** A public command has no session: no origin gate, CSRF or authentication. */
+  publicCommand?: boolean;
 }>;
 
 const OPERATIONS: readonly Operation[] = [
+  {
+    id: 'PRF-API-01 match shadow party',
+    path: '/api/v1/shadow-party-matches',
+    badPath: null,
+    body: {
+      partyId: PARTY_ID,
+      sourceDomain: 'projects',
+      sourceEntityId: 'work-812',
+      sourceVersion: '3',
+      roleCode: 'performer',
+    },
+    invalidBody: { partyId: PARTY_ID, extra: true },
+    stepUp: false,
+    ifMatch: null,
+  },
+  {
+    id: 'PRF-API-02 dispatch invitation',
+    path: `/api/v1/shadow-parties/${SHADOW_ID}/invitations`,
+    badPath: '/api/v1/shadow-parties/not-a-uuid/invitations',
+    body: { contactRouteId: CONTACT_ROUTE_ID, trigger: 'initial' },
+    invalidBody: { contactRouteId: CONTACT_ROUTE_ID, extra: true },
+    stepUp: false,
+    ifMatch: '"1"',
+  },
+  {
+    id: 'PRF-API-03 submit remedy (public)',
+    path: '/api/v1/shadow-remedies',
+    badPath: null,
+    body: {
+      pointerToken: 'rM8p2V6q9Yw4aBcDeFgHiJkLmNoPqRsTuVwXyZ1AbCdEfGhIjKlMn',
+      action: 'suppress',
+      scope: 'both',
+      proof: { kind: 'route_code', code: '482901' },
+    },
+    invalidBody: { action: 'suppress', extra: true },
+    stepUp: false,
+    ifMatch: null,
+    publicCommand: true,
+  },
+  {
+    id: 'PRF-API-08 convert claim',
+    path: `/api/v1/party-claims/${CLAIM_ID}/convert`,
+    badPath: '/api/v1/party-claims/not-a-uuid/convert',
+    body: { reasonCode: 'claim_conversion' },
+    invalidBody: { reasonCode: 'claim_conversion', extra: true },
+    stepUp: true,
+    ifMatch: '"3"',
+  },
   {
     id: 'PRF-API-04 start claim',
     path: '/api/v1/party-claims',
@@ -79,7 +133,7 @@ const withHeaders = (state: State, headers: Record<string, string>): State => ({
   headers: { ...state.headers, ...headers },
 });
 
-const stepsFor = (operation: Operation): readonly OrderStep<State>[] => [
+const allSteps = (operation: Operation): readonly OrderStep<State>[] => [
   {
     name: 'CORS origin allowlist',
     status: 403,
@@ -165,6 +219,20 @@ const stepsFor = (operation: Operation): readonly OrderStep<State>[] => [
   },
 ];
 
+const SESSION_ONLY_STEPS: readonly string[] = [
+  'CORS origin allowlist',
+  'session-bound CSRF',
+  'authentication',
+  'step-up freshness',
+];
+
+const stepsFor = (operation: Operation): readonly OrderStep<State>[] =>
+  operation.publicCommand === true
+    ? allSteps(operation).filter(
+        (step) => !SESSION_ONLY_STEPS.includes(step.name),
+      )
+    : allSteps(operation);
+
 describe('BE00 middleware order on the profile ownership commands', () => {
   for (const operation of OPERATIONS)
     describe(operation.id, () => {
@@ -181,7 +249,9 @@ describe('BE00 middleware order on the profile ownership commands', () => {
             'x-request-id': REQUEST_ID,
             'content-type': 'application/json',
             'idempotency-key': 'be00-order-key-01',
-            'if-match': '"2"',
+            ...(operation.ifMatch === null
+              ? {}
+              : { 'if-match': operation.ifMatch ?? '"2"' }),
           },
           body: operation.body,
           unauthenticated: false,
@@ -233,6 +303,96 @@ describe('BE00 middleware order on the profile ownership commands', () => {
         accepted: (response) => expect(response.ok).toBe(true),
       });
     });
+});
+
+type ReadState = Readonly<{
+  path: string;
+  query: string;
+  headers: Readonly<Record<string, string>>;
+  unauthenticated: boolean;
+  rateExhausted: boolean;
+}>;
+
+const readSteps: readonly OrderStep<ReadState>[] = [
+  {
+    name: 'CORS origin allowlist',
+    status: 403,
+    code: 'FORBIDDEN',
+    break: (state) => ({
+      ...state,
+      headers: { ...state.headers, origin: 'https://evil.example.test' },
+    }),
+  },
+  {
+    name: 'authentication',
+    status: 401,
+    code: 'UNAUTHENTICATED',
+    break: (state) => ({ ...state, unauthenticated: true }),
+  },
+  {
+    name: 'strict query validation',
+    status: 400,
+    code: 'INVALID_REQUEST',
+    break: (state) => ({ ...state, query: '?unexpected=1' }),
+  },
+  {
+    name: 'strict path validation',
+    status: 422,
+    code: 'VALIDATION_FAILED',
+    break: (state) => ({ ...state, path: '/api/v1/party-claims/not-a-uuid' }),
+  },
+  {
+    name: 'rate limit',
+    status: 429,
+    code: 'RATE_LIMITED',
+    break: (state) => ({ ...state, rateExhausted: true }),
+  },
+];
+
+describe('BE00 middleware order on the profile ownership read (PRF-API-05)', () => {
+  registerOrderTests<ReadState>({
+    family: 'profile-ownership',
+    fresh: () => ({
+      path: `/api/v1/party-claims/${CLAIM_ID}`,
+      query: '',
+      headers: {
+        accept: 'application/json',
+        origin: ORIGIN,
+        cookie: `wj_session_ref=slice02-session-ref; wj_csrf=${CSRF}`,
+        'x-request-id': REQUEST_ID,
+      },
+      unauthenticated: false,
+      rateExhausted: false,
+    }),
+    steps: readSteps,
+    send: (state) => {
+      const harness = createProfileApp();
+      if (state.unauthenticated)
+        vi.mocked(harness.auth.resolveSession).mockImplementation(async () =>
+          failure(401, 'UNAUTHENTICATED', 'Sign in again.'),
+        );
+      if (state.rateExhausted)
+        vi.mocked(harness.auth.rateLimit).mockImplementation(async (input) => ({
+          ok: true as const,
+          value: {
+            allowed: false,
+            limit: input.limit,
+            remaining: 0,
+            resetAt: Math.floor(Date.now() / 1000) + 30,
+          },
+        }));
+      return Promise.resolve(
+        harness.app.fetch(
+          new Request(`${ORIGIN}${state.path}${state.query}`, {
+            method: 'GET',
+            headers: state.headers,
+          }),
+          bindings,
+        ),
+      );
+    },
+    accepted: (response) => expect(response.ok).toBe(true),
+  });
 });
 
 describe('BE00 step 2 body read on the profile ownership commands', () => {

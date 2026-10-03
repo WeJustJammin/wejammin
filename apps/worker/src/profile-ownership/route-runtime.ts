@@ -1,6 +1,10 @@
 import type { WorkerContext, WorkerDependencies } from '../index';
 import type { ProfileEvent } from '@wejammin/contracts';
-import { authError, responseForAuthError } from '../authentication/boundary';
+import {
+  authError,
+  responseForAuthError,
+  verifyReadOrigin,
+} from '../authentication/boundary';
 import { callProfilePort } from './execution';
 import {
   claimEvent,
@@ -200,6 +204,9 @@ export const createProfileRouteRuntime = (
     portName: ActivePortName,
     path: PathResult,
   ): Promise<Response> => {
+    // BE00 step 2: a read has no body or CSRF token; the origin is the gate.
+    const originError = verifyReadOrigin(context.req.raw);
+    if (originError !== null) return responseForAuthError(context, originError);
     const session = await requireProfileSession(context, dependencies.auth);
     if (!session.ok) return responseForAuthError(context, session);
     const queryError = parseProfileQuery(context.req.raw);

@@ -1,3 +1,5 @@
+import { isStepUpRequiredCode } from '../../step-up-required';
+
 export type ProviderCode =
   'email' | 'google' | 'apple' | 'facebook' | 'soundcloud';
 
@@ -138,11 +140,11 @@ export const safeEtag = (etag: string | null, version: string): string =>
   etag !== null && /^"[1-9][0-9]{0,18}"$/u.test(etag) ? etag : `"${version}"`;
 
 export const errorCopy = (error: UiError): string => {
+  if (isStepUpRequiredCode(error.code))
+    return 'Recent verification is required before this security change. Continue to verify; your place is kept.';
   switch (error.code) {
     case 'UNAUTHENTICATED':
       return 'Your session expired. Sign in again to manage account security.';
-    case 'STEP_UP_REQUIRED':
-      return 'Recent verification is required before this security change. Continue to verify; your place is kept.';
     case 'FORBIDDEN':
       return 'Your current access does not allow this security change.';
     case 'NOT_FOUND':

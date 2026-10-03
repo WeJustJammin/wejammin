@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+import {
+  AUTH_RETURN_TARGET_MAX_LENGTH,
+  isRelativeFirstPartyPath,
+} from './return-target.ts';
+
+export { isRelativeFirstPartyPath };
+
 export const AuthProviderCodeSchema = z.enum([
   'email',
   'google',
@@ -10,52 +17,10 @@ export const AuthProviderCodeSchema = z.enum([
 
 export type AuthProviderCode = z.infer<typeof AuthProviderCodeSchema>;
 
-const hasAmbiguousEncoding = (value: string): boolean => {
-  try {
-    return (
-      /%(?:25|2e|2f|5c)/iu.test(value) ||
-      decodeURIComponent(value).includes('\\')
-    );
-  } catch {
-    return true;
-  }
-};
-
-export const isRelativeFirstPartyPath = (value: string): boolean =>
-  value.startsWith('/') &&
-  !value.startsWith('//') &&
-  !value.includes('\\') &&
-  ![...value].some((character) => {
-    const codePoint = character.charCodeAt(0);
-    return codePoint <= 31 || codePoint === 127;
-  }) &&
-  !hasAmbiguousEncoding(value) &&
-  (() => {
-    try {
-      const parsed = new URL(value, 'https://wejammin.invalid');
-      const allowedPath =
-        /^(?:\/$|\/(?:account|app|auth|settings|system)(?:\/|$))/u.test(
-          parsed.pathname,
-        );
-      const nestedRedirect = [...parsed.searchParams].some(
-        ([key, candidate]) =>
-          /^(?:callback|continue|next|redirect|returnto)$/iu.test(key) &&
-          /^(?:[a-z][a-z0-9+.-]*:|\/\/)/iu.test(candidate),
-      );
-      return (
-        parsed.origin === 'https://wejammin.invalid' &&
-        allowedPath &&
-        !nestedRedirect
-      );
-    } catch {
-      return false;
-    }
-  })();
-
 export const AuthReturnTargetSchema = z
   .string()
   .min(1, 'return_target_invalid')
-  .max(512, 'return_target_invalid')
+  .max(AUTH_RETURN_TARGET_MAX_LENGTH, 'return_target_invalid')
   .refine(isRelativeFirstPartyPath, 'return_target_invalid');
 
 export const AuthIsoTimeSchema = z.iso

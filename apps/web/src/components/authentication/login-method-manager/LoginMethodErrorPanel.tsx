@@ -1,5 +1,6 @@
 import { StepUpRecoveryLink } from '../../identity-authority/step-up-mfa/StepUpRecoveryLink';
 import { errorCopy, type UiError } from './types';
+import { isStepUpRequiredCode } from '../../step-up-required';
 
 export const SECURITY_SETTINGS_PATH = '/settings/security';
 
@@ -22,7 +23,7 @@ export function LoginMethodErrorPanel({
     >
       <h3 id="security-error-heading">Security action could not complete</h3>
       <p>{errorCopy(error)}</p>
-      {error.code === 'STEP_UP_REQUIRED' && (
+      {isStepUpRequiredCode(error.code) && (
         <p>
           <StepUpRecoveryLink fallbackPath={SECURITY_SETTINGS_PATH} />
         </p>

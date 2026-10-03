@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ActionBar from './ActionBar';
-import CapabilityGate from './CapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ConfirmationStep from './ConfirmationStep';
 import DataTable from './DataTable';
 import FilterBar from './FilterBar';
@@ -100,12 +100,17 @@ describe('Phase 2 Slice 07 global primitive behavior', () => {
 
   it('[P2-S07-AC-082] conceals protected labels and explains recoverable denial', () => {
     const hidden = mount(
-      <CapabilityGate variant="not-rendered" reasonCode="FORBIDDEN" />,
+      <CapabilityGate
+        surface="platform-configuration"
+        variant="not-rendered"
+        reasonCode="FORBIDDEN"
+      />,
     );
     expect(hidden.container.innerHTML).toBe('');
 
     const disabled = mount(
       <CapabilityGate
+        surface="platform-configuration"
         variant="disabled"
         reasonCode="STEP_UP_REQUIRED"
         recoveryHref="/app/security"

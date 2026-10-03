@@ -1,6 +1,12 @@
-import { executeContentSchemaRegistryRead } from './content-schema-registry-runtime';
+import { executeContentSchemaRegistryRead } from './content-schema-registry-runtime-read';
 import { parseCanonicalWorkbenchOutcome } from './content-schema-registry-runtime-dom-refetch-project';
+import { createCanonicalPayloadCheck } from './content-schema-registry-canonical-payload-check';
+import type { ContentSchemaRegistryProjectionState } from './content-schema-registry-canonical-projection-state';
 import type { ContentSchemaRegistryWorkbenchProjection } from './content-schema-registry-canonical-state-validate';
+import {
+  loadContractValidators,
+  loadedContractValidators,
+} from './content-schema-registry-contract-validators';
 
 /**
  * Maps one canonical read into a React-ownable outcome. It never touches the
@@ -34,9 +40,36 @@ const signInTarget = (document: Document): string => {
   return '/auth/sign-in?returnTo=' + encodeURIComponent(returnTo);
 };
 
+/**
+ * Parse one canonical response. A payload identical to the one `held` already
+ * renders needs no second validation; a changed payload is validated strictly
+ * with the contract validators, loaded here on that first need.
+ */
+const parseCanonicalMarkup = async (
+  markup: string,
+  held: ContentSchemaRegistryProjectionState | null,
+): Promise<ReturnType<typeof parseCanonicalWorkbenchOutcome>> => {
+  const first = parseCanonicalWorkbenchOutcome(
+    markup,
+    createCanonicalPayloadCheck(held, loadedContractValidators()),
+  );
+  if (first.kind !== 'contract-needed') return first;
+  let validators;
+  try {
+    validators = await loadContractValidators();
+  } catch {
+    return { kind: 'disabled', reason: 'unavailable' };
+  }
+  return parseCanonicalWorkbenchOutcome(
+    markup,
+    createCanonicalPayloadCheck(held, validators),
+  );
+};
+
 export const readContentSchemaRegistryCanonicalOutcome = async (
   document: Document,
   canonicalUrl: string,
+  held: ContentSchemaRegistryProjectionState | null = null,
 ): Promise<ContentSchemaRegistryCanonicalReadResult> => {
   const result = await executeContentSchemaRegistryRead({ url: canonicalUrl });
   const response = result.response;
@@ -73,8 +106,11 @@ export const readContentSchemaRegistryCanonicalOutcome = async (
   } catch {
     return { kind: 'disabled', reason: 'unavailable' };
   }
-  const outcome = parseCanonicalWorkbenchOutcome(markup);
+  const outcome = await parseCanonicalMarkup(markup, held);
   return outcome.kind === 'projection'
     ? { kind: 'projection', projection: outcome.projection }
-    : { kind: 'disabled', reason: outcome.reason };
+    : {
+        kind: 'disabled',
+        reason: outcome.kind === 'disabled' ? outcome.reason : 'invalid',
+      };
 };

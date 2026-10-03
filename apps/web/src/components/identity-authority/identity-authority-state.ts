@@ -1,4 +1,5 @@
 import { stepUpHref } from './step-up-mfa/step-up-return';
+import { isStepUpRequiredCode } from '../step-up-required';
 interface IdentityAuthorityError {
   readonly code: string;
   readonly message: string;
@@ -175,7 +176,7 @@ export type IdentityAuthorityStatePresentation = Readonly<{
 const recoveryActionForError = (code: string, retryable: boolean): string => {
   if (code === 'UNAUTHENTICATED') return 'reauthenticate';
   // DEC-111: a 401 STEP_UP_REQUIRED is step-up navigation, never a 403 gate.
-  if (code === 'STEP_UP_REQUIRED') return 'step-up';
+  if (isStepUpRequiredCode(code)) return 'step-up';
   if (code === 'FORBIDDEN') {
     return 'capability-gate';
   }
@@ -238,7 +239,7 @@ export function presentIdentityAuthorityState(
           state.error.code,
           state.retryable,
         ),
-        ...(state.error.code === 'STEP_UP_REQUIRED'
+        ...(isStepUpRequiredCode(state.error.code)
           ? {
               recoveryHref: stepUpHref(
                 typeof input.currentPath === 'string' ? input.currentPath : '',

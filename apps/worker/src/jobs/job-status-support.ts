@@ -16,6 +16,7 @@ export const JOBS_PATH_PREFIX = `${JOBS_PATH}/`;
 export const NOT_FOUND_MESSAGE = 'The requested job was not found.';
 
 export type JobErrorCode =
+  | 'FORBIDDEN'
   | 'INVALID_REQUEST'
   | 'UNAUTHENTICATED'
   | 'NOT_FOUND'
@@ -27,7 +28,7 @@ export type JobError = Readonly<{
   code: JobErrorCode;
   details: Readonly<Record<string, JsonValue>>;
   message: string;
-  status: 400 | 401 | 404 | 429 | 500 | 503;
+  status: 400 | 401 | 403 | 404 | 429 | 500 | 503;
   retryAfterSeconds?: number;
   rate?: JobRateLimitDecision;
 }>;
@@ -219,6 +220,13 @@ export const notFoundError = (): JobError => ({
   details: {},
   message: NOT_FOUND_MESSAGE,
   status: 404,
+});
+
+export const forbiddenOriginError = (): JobError => ({
+  code: 'FORBIDDEN',
+  details: {},
+  message: 'The request origin is not allowed.',
+  status: 403,
 });
 
 export const unauthenticatedError = (): JobError => ({

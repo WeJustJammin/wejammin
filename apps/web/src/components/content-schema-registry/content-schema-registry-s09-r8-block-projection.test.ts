@@ -1,9 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   buildProjection,
   CanonicalStateError,
 } from './content-schema-registry-canonical-state-validate';
+import { loadContractValidators } from './content-schema-registry-contract-validators';
+
+// The strict resource contracts load lazily in the browser; this suite checks
+// the strict verdicts themselves, so it loads them first.
+beforeAll(async () => {
+  await loadContractValidators();
+});
 
 /**
  * R8 proof for AC260: the browser parser accepts only the safe

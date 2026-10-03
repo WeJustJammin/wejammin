@@ -9,7 +9,7 @@ import type {
   ContentSchemaRegistryMutationTarget,
 } from './content-schema-registry-platform-shared';
 import { filteredCookieHeader } from './content-schema-registry-platform-shared';
-import { localeViolations } from './content-schema-registry-platform-locale-issues';
+import { fieldViolations } from './content-schema-registry-platform-locale-issues';
 
 const MUTATION_RESPONSE_HEADERS = new Set([
   'allow',
@@ -253,7 +253,7 @@ export const invalidPayloadError = (
   request: Request,
   issues: readonly { path: readonly PropertyKey[]; message: string }[],
 ): Response => {
-  const violations = localeViolations(issues);
+  const violations = fieldViolations(issues);
   return localMutationError(
     request,
     422,

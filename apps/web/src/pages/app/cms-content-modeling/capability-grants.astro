@@ -21,6 +21,10 @@ import {
   contentSchemaRegistryMutationOperationFromRequest,
   forwardContentSchemaRegistryMutation,
 } from '../../../server/content-schema-registry-platform-api';
+import {
+  isStepUpRequiredCode,
+  stepUpTargetForLocation,
+} from '../../../components/step-up-required';
 
 export const prerender = false;
 
@@ -51,9 +55,9 @@ if (Astro.request.method === 'POST') {
     { operationId, ...(grantId === undefined ? {} : { grantId }) },
   );
   if (!mutation.ok) {
-    if ((await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED')
+    if (isStepUpRequiredCode(await mutationFailureCode(mutation)))
       return Astro.redirect(
-        `/step-up?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
+        stepUpTargetForLocation(Astro.url),
         303,
       );
     return mutation;

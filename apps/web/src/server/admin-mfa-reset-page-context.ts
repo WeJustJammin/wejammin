@@ -9,6 +9,16 @@ export const ADMIN_MFA_RESET_CAPABILITY = 'admin.identity.mfa_reset';
 export const ADMIN_MFA_RESET_ROUTE =
   '/app/platform-configuration-admin/mfa-reset';
 
+/**
+ * FE05: the reset is a section of the admin workbench shown only to an actor
+ * whose server capability snapshot names `admin.identity.mfa_reset` exactly.
+ * The snapshot is the server's projection; a role label, a URL parameter or a
+ * substring never selects the entry.
+ */
+export const showsAdminMfaResetEntry = (
+  capabilitySnapshot: readonly string[],
+): boolean => capabilitySnapshot.includes(ADMIN_MFA_RESET_CAPABILITY);
+
 export type AdminMfaResetVariant = 'adminStepUp' | 'disabledPrerequisite';
 
 export type AdminMfaResetPageResolution =

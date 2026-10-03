@@ -1,5 +1,4 @@
-import { SchemaActivationResourceSchema } from '@wejammin/contracts';
-
+import { loadedContractValidators } from './content-schema-registry-contract-validators';
 import type { SchemaActivationResource } from './content-schema-registry-types';
 
 /**
@@ -10,7 +9,12 @@ import type { SchemaActivationResource } from './content-schema-registry-types';
 export const parseActivationResult = (
   body: unknown,
 ): SchemaActivationResource | null => {
-  const parsed = SchemaActivationResourceSchema.safeParse(body);
+  // The mutation executor loads the validators before it hands a CMS-03A-04
+  // success to this renderer; without them the body is unverified, and an
+  // unverified body is never shown as a success.
+  const validators = loadedContractValidators();
+  if (validators === null) return null;
+  const parsed = validators.SchemaActivationResourceSchema.safeParse(body);
   return parsed.success ? parsed.data : null;
 };
 

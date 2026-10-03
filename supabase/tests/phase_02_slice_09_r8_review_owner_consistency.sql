@@ -64,6 +64,7 @@ select ok((select owner_org <> other_org and review_id is not null and rev1_assi
   'fixture: two organizations, one frozen review and two real assignments exist');
 
 -- ---------------------------------------------- the assignment write guard ----
+-- NEGATIVE CONTROL: a hand-written assignment / decision against the append and write guards (the 'ACCEPTED' controls are rolled back by the probe and are never evidence of a producer path).
 select is(pg_temp.r8o_probe(format($q$insert into platform_private.cms_schema_review_assignments(
       owner_id, review_id, reviewer_person_ref, grantor_person_ref, capability_key, actions, state,
       starts_at, ends_at, reason)
@@ -101,20 +102,24 @@ select ok(pg_temp.s09d_fingerprint(false) = (select fingerprint from r8o_baselin
   'both refusals wrote nothing: no decision, no review or version change, no idempotency or outbox row [P2-S09-AC-414]');
 
 -- ---------------------------------------------- the decision append guard ----
-select is(pg_temp.r8o_probe(format($q$insert into platform_private.cms_schema_review_decisions(
+-- NEGATIVE CONTROL: a hand-written assignment / decision against the append and write guards (the 'ACCEPTED' controls are rolled back by the probe and are never evidence of a producer path).
+select is(pg_temp.r8o_probe(format($q$with stamp as (select clock_timestamp() as at)
+    insert into platform_private.cms_schema_review_decisions(
       owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
-      capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
-    values (%L, %L, %L, 1, %L, repeat('a', 64), 'cms.schema_review', 1, 'approve', repeat('b', 64),
-            clock_timestamp())$q$,
+      capability_key, capability_version, decision, reviewed_hash, mfa_verified_at, created_at, updated_at)
+    select %L, %L, %L, 1, %L, repeat('a', 64), 'cms.schema_review', 1, 'approve', repeat('b', 64),
+            stamp.at, stamp.at, stamp.at from stamp$q$,
     (select owner_org from r8o_ctx), (select review_id from r8o_ctx), (select rev2_assignment from r8o_ctx),
     (select rev2_person from r8o_ctx))),
   'P0001:CONFLICT:decision_assignment_owner_mismatch',
   'a database append guard refuses a decision that cites an assignment of another owner [P2-S09-AC-414] [P2-S09-AC-431]');
-select is(pg_temp.r8o_probe(format($q$insert into platform_private.cms_schema_review_decisions(
+-- NEGATIVE CONTROL: a hand-written assignment / decision against the append and write guards (the 'ACCEPTED' controls are rolled back by the probe and are never evidence of a producer path).
+select is(pg_temp.r8o_probe(format($q$with stamp as (select clock_timestamp() as at)
+    insert into platform_private.cms_schema_review_decisions(
       owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
-      capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
-    values (%L, %L, %L, 1, %L, repeat('a', 64), 'cms.schema_review', 1, 'approve', repeat('b', 64),
-            clock_timestamp())$q$,
+      capability_key, capability_version, decision, reviewed_hash, mfa_verified_at, created_at, updated_at)
+    select %L, %L, %L, 1, %L, repeat('a', 64), 'cms.schema_review', 1, 'approve', repeat('b', 64),
+            stamp.at, stamp.at, stamp.at from stamp$q$,
     (select owner_org from r8o_ctx), (select review_id from r8o_ctx), (select rev1_assignment from r8o_ctx),
     (select rev1_person from r8o_ctx))),
   'ACCEPTED',

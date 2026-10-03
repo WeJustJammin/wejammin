@@ -1,17 +1,22 @@
-import ContentSchemaRegistryDetail from './ContentSchemaRegistryDetail';
 import ContentSchemaRegistryFilterBar, {
   contentSchemaRegistryFilterSummary,
 } from './ContentSchemaRegistryFilterBar';
 import ContentSchemaRegistryList from './ContentSchemaRegistryList';
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
-import ContentSchemaRegistryActivationPreparation from './ContentSchemaRegistryActivationPreparation';
 import ContentSchemaRegistryCreateForm from './ContentSchemaRegistryCreateForm';
-import ContentSchemaRegistryReviewMode from './ContentSchemaRegistryReviewMode';
-import ContentSchemaRegistryReviewPanel from './ContentSchemaRegistryReviewPanel';
+import ContentSchemaRegistryDetailPlaceholder from './ContentSchemaRegistryDetailPlaceholder';
+import { useExpectedLazyBoundaries } from './content-schema-registry-hydration-fence';
+import {
+  ContentSchemaRegistryActivationPreparationView,
+  ContentSchemaRegistryDetailView,
+  LazyBoundary,
+  ContentSchemaRegistryReviewModeView,
+  ContentSchemaRegistryReviewPanelView,
+  ContentSchemaRegistryVersionCommandsView,
+} from './ContentSchemaRegistryLazyViews';
 import ContentSchemaRegistryShell from './ContentSchemaRegistryShell';
-import ContentSchemaRegistryVersionCommands from './ContentSchemaRegistryVersionCommands';
 import ContentSchemaRegistryWorkbenchBanners from './ContentSchemaRegistryWorkbenchBanners';
-import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import { contentSchemaRegistryWorkbenchGate } from './ContentSchemaRegistryWorkbenchGate';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
 
@@ -38,6 +43,26 @@ export default function ContentSchemaRegistryWorkbench({
   offline = false,
   message = null,
 }: ContentSchemaRegistryWorkbenchProps) {
+  const reviewMode = reviewId !== null;
+  const ready = initialDetail?.status === 'success' ? initialDetail : null;
+  const detail = ready?.data ?? null;
+  // FE03 dry-run `degraded`: the last verified detail keeps its preparation
+  // visible with its time, while no command consumes it.
+  const degradedDetail =
+    initialDetail?.status === 'degraded' && initialDetail.data !== null
+      ? initialDetail
+      : null;
+  const prepared = detail ?? degradedDetail?.data ?? null;
+  // The lazily loaded regions this render holds, for the island's hydration
+  // fence: the review view alone, or the detail, preparation and command views.
+  const showDetail = !reviewMode && initialDetail !== null;
+  const showPrepared = !reviewMode && prepared !== null;
+  const showCommands = !reviewMode && access === 'full' && detail !== null;
+  useExpectedLazyBoundaries(
+    reviewMode
+      ? 1
+      : Number(showDetail) + Number(showPrepared) + Number(showCommands),
+  );
   const gate = contentSchemaRegistryWorkbenchGate({
     access,
     variant,
@@ -50,7 +75,6 @@ export default function ContentSchemaRegistryWorkbench({
   });
   if (gate !== null) return gate;
 
-  const reviewMode = reviewId !== null;
   const hasListState =
     !reviewMode &&
     (initialDetail === null ||
@@ -71,15 +95,6 @@ export default function ContentSchemaRegistryWorkbench({
   // Event payloads never become registry state; the server refetch does.
   const canonicalRefetchBinding =
     onCanonicalRefetch === undefined ? 'unbound' : 'bound';
-  const ready = initialDetail?.status === 'success' ? initialDetail : null;
-  const detail = ready?.data ?? null;
-  // FE03 dry-run `degraded`: the last verified detail keeps its preparation
-  // visible with its time, while no command consumes it.
-  const degradedDetail =
-    initialDetail?.status === 'degraded' && initialDetail.data !== null
-      ? initialDetail
-      : null;
-  const prepared = detail ?? degradedDetail?.data ?? null;
 
   return (
     <section
@@ -118,10 +133,7 @@ export default function ContentSchemaRegistryWorkbench({
           message={message}
         />
         {variant === 'schemaReviewAssigned' ? null : (
-          <ContentSchemaRegistryCapabilityGate
-            variant={access}
-            reasonCode={variant}
-          />
+          <CapabilityGate surface="content-schema-registry" variant={access} />
         )}
         {!reviewMode && (access === 'read-only' || access === 'full') ? (
           <ContentSchemaRegistryFilterBar
@@ -141,19 +153,21 @@ export default function ContentSchemaRegistryWorkbench({
           />
         ) : null}
         {reviewMode ? (
-          <ContentSchemaRegistryReviewMode
-            reviewId={reviewId}
-            state={initialReview}
-            variant={variant}
-            access={access}
-            retryUrl={retryUrl}
-            supportReference={supportReference}
-            csrfToken={csrfToken}
-            idempotencyKey={idempotencyKey}
-            stepUpState={stepUpState ?? 'required'}
-            stepUpFreshUntil={stepUpFreshUntil}
-            actingContextLabel={actingContextLabel}
-          />
+          <LazyBoundary>
+            <ContentSchemaRegistryReviewModeView
+              reviewId={reviewId}
+              state={initialReview}
+              variant={variant}
+              access={access}
+              retryUrl={retryUrl}
+              supportReference={supportReference}
+              csrfToken={csrfToken}
+              idempotencyKey={idempotencyKey}
+              stepUpState={stepUpState ?? 'required'}
+              stepUpFreshUntil={stepUpFreshUntil}
+              actingContextLabel={actingContextLabel}
+            />
+          </LazyBoundary>
         ) : (
           <div className="content-schema-registry-grid">
             {showListColumn ? (
@@ -176,49 +190,59 @@ export default function ContentSchemaRegistryWorkbench({
                 ) : null}
               </div>
             ) : null}
-            <ContentSchemaRegistryDetail
-              state={initialDetail}
-              backUrl={listUrl}
-              retryUrl={retryUrl}
-              supportReference={supportReference}
-              actingContextLabel={actingContextLabel}
-            />
-            {prepared === null ? null : (
-              <div className="content-schema-registry-version-side">
-                <ContentSchemaRegistryActivationPreparation
-                  preparation={prepared.activationPreparation}
-                  review={initialReview}
-                  {...(degradedDetail === null
-                    ? {}
-                    : {
-                        degraded: {
-                          lastVerifiedAt: degradedDetail.lastVerifiedAt,
-                        },
-                      })}
-                  onCanonicalRefetch={() => {
-                    void onCanonicalRefetch('detail-read');
-                  }}
-                />
-                <ContentSchemaRegistryReviewPanel
-                  state={initialReview}
+            {initialDetail === null ? (
+              <ContentSchemaRegistryDetailPlaceholder />
+            ) : (
+              <LazyBoundary>
+                <ContentSchemaRegistryDetailView
+                  state={initialDetail}
+                  backUrl={listUrl}
                   retryUrl={retryUrl}
                   supportReference={supportReference}
+                  actingContextLabel={actingContextLabel}
                 />
+              </LazyBoundary>
+            )}
+            {prepared === null ? null : (
+              <div className="content-schema-registry-version-side">
+                <LazyBoundary>
+                  <ContentSchemaRegistryActivationPreparationView
+                    preparation={prepared.activationPreparation}
+                    review={initialReview}
+                    {...(degradedDetail === null
+                      ? {}
+                      : {
+                          degraded: {
+                            lastVerifiedAt: degradedDetail.lastVerifiedAt,
+                          },
+                        })}
+                    onCanonicalRefetch={() => {
+                      void onCanonicalRefetch('detail-read');
+                    }}
+                  />
+                  <ContentSchemaRegistryReviewPanelView
+                    state={initialReview}
+                    retryUrl={retryUrl}
+                    supportReference={supportReference}
+                  />
+                </LazyBoundary>
               </div>
             )}
             {access === 'full' && detail !== null ? (
-              <ContentSchemaRegistryVersionCommands
-                detail={detail}
-                review={initialReview}
-                action={detailAction}
-                csrfToken={csrfToken}
-                idempotencyKey={idempotencyKey}
-                expectedVersion={ready?.version ?? '1'}
-                actingContextLabel={actingContextLabel}
-                stepUpState={stepUpState}
-                stepUpFreshUntil={stepUpFreshUntil}
-                contextEpoch={contextEpoch}
-              />
+              <LazyBoundary>
+                <ContentSchemaRegistryVersionCommandsView
+                  detail={detail}
+                  review={initialReview}
+                  action={detailAction}
+                  csrfToken={csrfToken}
+                  idempotencyKey={idempotencyKey}
+                  expectedVersion={ready?.version ?? '1'}
+                  actingContextLabel={actingContextLabel}
+                  stepUpState={stepUpState}
+                  stepUpFreshUntil={stepUpFreshUntil}
+                  contextEpoch={contextEpoch}
+                />
+              </LazyBoundary>
             ) : null}
           </div>
         )}

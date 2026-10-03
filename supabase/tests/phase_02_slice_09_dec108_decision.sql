@@ -120,6 +120,7 @@ select pg_temp.s09d_create_type('sb', 'dec108decsubmitter');
 select pg_temp.s09d_to_review('sb');
 select pg_temp.s09d_assign('sb', 'rev1');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a hand-written decision by the submitter is refused by the trigger; no decision is claimed.
 select throws_ok(format($q$insert into platform_private.cms_schema_review_decisions(
       owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
       capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
@@ -139,6 +140,10 @@ select ok(pg_temp.s09d_replay_pair('r:decide', 'platform_api.cms_decide_schema_r
   and pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_schema_review_decisions where review_id = %L',
     pg_temp.s09d_id('r:review'))) = '1',
   'a same-key replay returns the same decision and appends nothing [P2-S09-AC-425]');
+select is(pg_temp.s09d_replay_changed('r:decide:mismatch', 'platform_api.cms_decide_schema_review', 'rev1',
+    jsonb_build_object('reviewId', pg_temp.s09d_id('r:review'), 'expectedVersion', pg_temp.s09d_review_version('r'),
+      'decision', 'approve', 'idempotencyKey', 's09d-decide-replay-0001'), jsonb_build_object('decision', 'reject'), true),
+  'IDEMPOTENCY_MISMATCH', 'the decision key reused with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-433]');
 
 -- Rejection returns the candidate to an editable draft; resubmission freezes new evidence.
 select pg_temp.s09d_create_type('j', 'dec108decreject');

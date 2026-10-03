@@ -81,8 +81,10 @@ select throws_ok(format('update platform_private.cms_block_definition_versions s
 select throws_ok(format('delete from platform_private.cms_block_definition_versions where id = %L', (select id from platform_private.cms_block_definition_versions limit 1)), 'P0001', 'IMMUTABLE_RECORD', 'a DELETE of a block version is rejected [P2-S09-AC-166]');
 select throws_ok(format('update platform_private.cms_block_definition_lifecycle_events set version = version where id = %L', (select id from platform_private.cms_block_definition_lifecycle_events limit 1)), 'P0001', 'IMMUTABLE_RECORD', 'an UPDATE of a lifecycle event is rejected [P2-S09-AC-166]');
 select throws_ok(format('delete from platform_private.cms_block_definition_lifecycle_events where id = %L', (select id from platform_private.cms_block_definition_lifecycle_events limit 1)), 'P0001', 'IMMUTABLE_RECORD', 'a DELETE of a lifecycle event is rejected [P2-S09-AC-166]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_artifacts where id = %L', (select id from platform_private.cms_schema_artifacts limit 1)), 'P0001', 'IMMUTABLE_RECORD', 'a DELETE of an artifact is rejected [P2-S09-AC-166]');
 select set_config('app.cms_compile', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_artifacts set artifact_hash = %L where content_type_version_id = %L', repeat('f', 64), pg_temp.s09d_id('act:version')), 'P0001', 'IMMUTABLE_RECORD',
   'an artifact whose version has left draft cannot be updated even in the compile context [P2-S09-AC-166]');
 select set_config('app.cms_compile', '', true);
@@ -96,6 +98,7 @@ select is((select string_agg(column_name, ',' order by ordinal_position) from in
   'id,owner_id,state,version,created_at,updated_at,type_key,owner_capability,built_in,created_by', 'cms_content_types persists identity, owner, state, version, timestamps, the immutable type key, owner capability, built-in flag and creator [P2-S09-AC-167]');
 select is(pg_temp.s09e_auto_unique('cms_content_types', array['type_key']), 'PROVEN:type_key', 'the type key is unique: a duplicate row collides, a distinct key does not, so keys are never reused [P2-S09-AC-167]');
 select is((select count(*)::integer from pg_indexes where schemaname = 'platform_private' and tablename = 'cms_content_types' and indexname in ('cms_content_types_owner_state_idx', 'cms_content_types_owner_updated_idx')), 2, 'the owner/state and owner/time indexes exist [P2-S09-AC-167]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_content_types set type_key = %L where type_key = ''tb_alpha''', 'tb_renamed'), 'P0001', 'IMMUTABLE_RECORD', 'the type key is an immutable identity: a rename is rejected [P2-S09-AC-167]');
 select is((select string_agg(column_name, ',' order by ordinal_position) from information_schema.columns where table_schema = 'platform_private' and table_name = 'cms_content_type_versions'),
   'id,owner_id,state,version,created_at,updated_at,content_type_id,version_no,labels,workflow_key,workflow_version,source_locale,default_locale,default_template_version_id,schema_artifact_id,definition_hash,compatibility,supersedes_id,dry_run_id,created_by,approved_at,activation_workflow_policy_key,activation_workflow_policy_version,activation_workflow_policy_hash,activation_required_decision_count,activation_required_capabilities,activation_approval_evidence_hash,supported_locales,fallback_chains,locale_config_hash',
@@ -162,6 +165,7 @@ select is(pg_temp.s09e_check('cms_schema_artifacts', 'cms_schema_artifacts_state
   'keys and immutable evidence are never reused or rewritten: the immutable evidence tables reject updates (proved above) and the keys are unique [P2-S09-AC-178]');
 
 -- ==================================================== AC179 deferred composite FK ====
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 create or replace function pg_temp.p_deferred_probe() returns text language plpgsql as $body$
 declare result text;
 begin
@@ -191,6 +195,7 @@ select is((select count(*)::integer from p_tables pt where pt.t <> 'cms_release_
 select is(pg_temp.s09e_writers('cms_content_types', 'delete[[:space:]]+from') || pg_temp.s09e_writers('cms_content_type_versions', 'delete[[:space:]]+from') || pg_temp.s09e_writers('cms_schema_migration_plans', 'delete[[:space:]]+from')
     || pg_temp.s09e_writers('cms_schema_dry_run_reports', 'delete[[:space:]]+from'), '', 'no function deletes a definition, a version, a plan or a report: active and superseded definitions and migration evidence are retained [P2-S09-AC-185]');
 select is((select string_agg(distinct state, ',' order by state) from platform_private.cms_content_types), 'active,retired', 'retirement is a state value on the type row, beside active (a never activated type is physically retired): states, not deletions, carry the lifecycle [P2-S09-AC-185]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_migration_plans where id = %L', (select id from platform_private.cms_schema_migration_plans limit 1)), 'P0001', null, 'a migration plan cannot be deleted [P2-S09-AC-185]');
 select is((select count(*)::integer from pg_proc p where p.pronamespace in ('platform_private'::regnamespace, 'platform_api'::regnamespace) and p.prokind = 'f' and p.proname ~* '(purge|legal_hold|incident_fence|fence)' and p.proname like 'cms\_%'), 0,
   'no purge, legal-hold or incident-fence object exists for the registry: nothing can purge, and no hold mechanism is modelled [P2-S09-AC-185]');

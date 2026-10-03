@@ -4,6 +4,7 @@ import type { ContentSchemaRegistrySession } from '../../../apps/worker/src/cont
 import {
   LANE_ACTING_PARTY_ID,
   LANE_CAPABILITIES,
+  LANE_PERSONA_VARIANTS,
   lanePersonId,
   laneRoleOfUser,
   laneUserId,
@@ -190,6 +191,16 @@ export const registrySessionFor = (
     ),
     mfaFresh: freshUntil !== null,
     ...(freshUntil === null ? {} : { stepUpFreshUntil: freshUntil }),
+    // A persona session carries the presentation scope the server projects for
+    // it; the other lane roles let the Worker derive it from capabilities.
+    ...(claim.role in LANE_PERSONA_VARIANTS
+      ? {
+          presentationVariant:
+            LANE_PERSONA_VARIANTS[
+              claim.role as keyof typeof LANE_PERSONA_VARIANTS
+            ],
+        }
+      : {}),
   };
 };
 

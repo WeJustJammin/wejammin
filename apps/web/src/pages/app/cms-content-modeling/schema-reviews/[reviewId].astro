@@ -20,6 +20,10 @@ import {
   createContentSchemaReviewPlatformPorts,
   type ContentSchemaReviewPorts,
 } from '../../../../server/content-schema-review-platform-api';
+import {
+  isStepUpRequiredCode,
+  stepUpTargetForLocation,
+} from '../../../../components/step-up-required';
 
 export const prerender = false;
 
@@ -48,9 +52,9 @@ if (Astro.request.method === 'POST') {
   if (!mutation.ok) {
     // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
     // itself; only a native form post is redirected from the server.
-    if (!json && (await mutationFailureCode(mutation)) === 'STEP_UP_REQUIRED')
+    if (!json && isStepUpRequiredCode(await mutationFailureCode(mutation)))
       return Astro.redirect(
-        `/step-up?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
+        stepUpTargetForLocation(Astro.url),
         303,
       );
     return mutation;

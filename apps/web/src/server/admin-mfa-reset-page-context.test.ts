@@ -131,3 +131,22 @@ describe('resolveAdminMfaResetPage', () => {
     expect(JSON.stringify(await promise)).not.toMatch(/private-(actor|party)/u);
   });
 });
+
+describe('[P2-S09-AC-1108] the workbench entry for the reset', () => {
+  it('[P2-S09-AC-1108] shows only for a snapshot that names the capability exactly', async () => {
+    const { showsAdminMfaResetEntry } =
+      await import('./admin-mfa-reset-page-context');
+    expect(showsAdminMfaResetEntry(['admin.identity.mfa_reset'])).toBe(true);
+    expect(
+      showsAdminMfaResetEntry(['admin.inbox.read', 'admin.identity.mfa_reset']),
+    ).toBe(true);
+    expect(showsAdminMfaResetEntry([])).toBe(false);
+    expect(showsAdminMfaResetEntry(['admin.inbox.read'])).toBe(false);
+    // Never a substring, a case variant or a role label.
+    expect(showsAdminMfaResetEntry(['admin.identity.mfa_reset.extra'])).toBe(
+      false,
+    );
+    expect(showsAdminMfaResetEntry(['ADMIN.IDENTITY.MFA_RESET'])).toBe(false);
+    expect(showsAdminMfaResetEntry(['admin'])).toBe(false);
+  });
+});

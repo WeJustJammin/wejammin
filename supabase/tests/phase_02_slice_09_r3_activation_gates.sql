@@ -121,14 +121,19 @@ select ok((select p.dry_run_report->>'result' = 'pass' and r.state = 'completed'
              join platform_private.cms_schema_dry_run_reports r on r.plan_id = p.id
             where p.id = pg_temp.s09d_id('a:plan')),
   'after sealing, the sealed report row remains the result authority and the plan fingerprint is unchanged in shape [P2-S09-AC-678]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.r3_err(format($$update platform_private.cms_schema_dry_run_reports set compiler_version = '9', version = version + 1 where id = %L$$, pg_temp.s09d_id('a:dryRun'))),
   'IMMUTABLE_RECORD', 'an UPDATE of compiler_version on a sealed report raises IMMUTABLE_RECORD [P2-S09-AC-087]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.r3_err(format($$update platform_private.cms_schema_dry_run_reports set source_count = 5, version = version + 1 where id = %L$$, pg_temp.s09d_id('a:dryRun'))),
   'IMMUTABLE_RECORD', 'an UPDATE of the counts on a sealed report raises IMMUTABLE_RECORD [P2-S09-AC-087]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.r3_err(format($$update platform_private.cms_schema_dry_run_reports set target_hash = repeat('e', 64), version = version + 1 where id = %L$$, pg_temp.s09d_id('a:dryRun'))),
   'IMMUTABLE_RECORD', 'an UPDATE of the hashes on a sealed report raises IMMUTABLE_RECORD [P2-S09-AC-087]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.r3_err(format($$update platform_private.cms_schema_dry_run_reports set result = 'fail', version = version + 1 where id = %L$$, pg_temp.s09d_id('a:dryRun'))),
   'IMMUTABLE_RECORD', 'an UPDATE of the result on a sealed report raises IMMUTABLE_RECORD [P2-S09-AC-087]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.r3_err(format($$delete from platform_private.cms_schema_dry_run_reports where id = %L$$, pg_temp.s09d_id('a:dryRun'))),
   'IMMUTABLE_RECORD', 'a sealed report cannot be deleted [P2-S09-AC-087]');
 
@@ -191,6 +196,7 @@ select pg_temp.s09d_successor('c2', 'c');
 select pg_temp.s09d_to_approved('c2');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('c2:review')), 'approved', 'fixture: the successor is approved through the real chain');
 create temp table r3_probes(label text primary key, kind text, tamper text, tbls text[]) on commit drop;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 insert into r3_probes values
  ('c2:field', 'a persisted field that no longer matches the artifact manifest',
   format($$update platform_private.cms_field_definition_versions
@@ -270,11 +276,16 @@ select pg_temp.s09d_create_type('d', 'r3gate_d');
 select pg_temp.s09d_to_approved('d');
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('d:review')), 'approved', 'fixture: candidate d is approved');
 set constraints all immediate;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts disable trigger cms_schema_artifacts_write_guard;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts disable trigger cms_schema_artifacts_z_compile_guard;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 update platform_private.cms_schema_artifacts set compiler_version = '2'
  where id = (select schema_artifact_id from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('d:version'));
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts enable trigger cms_schema_artifacts_write_guard;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_schema_artifacts enable trigger cms_schema_artifacts_z_compile_guard;
 set constraints all deferred;
 select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('d:review')), 'invalidated',

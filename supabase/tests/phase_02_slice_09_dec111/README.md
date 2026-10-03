@@ -23,7 +23,7 @@ It is a psql `\ir` include, not a Supabase-discovered test file.
 
 ## Race runners
 
-`010-admin-reset-race.mjs` (membership and grant revocation in flight vs the administrative reset), `011-verification-lock-race.mjs` (fourteen concurrent failure charges) and `012-settle-race.mjs` (lockout set while verify settles are queued on the binding lock; reconciler version CAS with two concurrent reconcilers and a delayed poll) commit real rows across independent `psql` sessions. Run each only right after `pnpm db:reset` and run `pnpm db:reset` again afterwards; they are not Supabase-discovered tests.
+`010-admin-reset-race.mjs` (a duplicate failed settlement report racing the first, then membership and grant revocation in flight vs the administrative reset), `011-verification-lock-race.mjs` (fourteen concurrent failure charges) and `012-settle-race.mjs` (lockout set while verify settles are queued on the binding lock; reconciler version CAS with two concurrent reconcilers and a delayed poll) commit real rows across independent `psql` sessions. Run each only right after `pnpm db:reset` and run `pnpm db:reset` again afterwards; they are not Supabase-discovered tests.
 
 ## Adding a suite
 

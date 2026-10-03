@@ -2,7 +2,8 @@ import * as React from 'react';
 import { flushSync } from 'react-dom';
 
 import { ACTING_CONTEXT_CHANGED_EVENT } from '../../lib/client-binding';
-import { installContentSchemaRegistryCommandEnhancement } from './content-schema-registry-runtime-dom';
+import type { HydrationFence } from './content-schema-registry-hydration-fence';
+import { installLazyCommandEnhancement } from './content-schema-registry-runtime-dom-lazy';
 import { subscribeContentSchemaRegistryInvalidation } from './content-schema-registry-invalidation';
 import {
   canonicalAuthNavigate,
@@ -38,8 +39,15 @@ export function useContentSchemaRegistryIslandRuntime(
     readonly canonicalRefetchUrl: string;
   },
   ssrHasAuthority: boolean,
+  fence: HydrationFence,
 ): ContentSchemaRegistryIslandRuntime {
   const [contextEpoch, setContextEpoch] = React.useState(0);
+  // The lazily loaded views keep their server HTML until their chunk arrives;
+  // nothing edits that DOM (draft restore, status, enhancement) before React
+  // has hydrated it, or React would discard the edit.
+  const [viewsReady, setViewsReady] = React.useState(false);
+  React.useEffect(() => fence.whenReady(() => setViewsReady(true)), [fence]);
+  const active = ssrHasAuthority && viewsReady;
   const [projectionState, setProjectionState] =
     React.useState<ContentSchemaRegistryProjectionState>(() =>
       initialProjectionState(props),
@@ -47,6 +55,8 @@ export function useContentSchemaRegistryIslandRuntime(
   const [loading, setLoading] = React.useState(false);
   const [offline, setOffline] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
+  const projectionRef = React.useRef(projectionState);
+  projectionRef.current = projectionState;
   const commandCleanupRef = React.useRef<() => void>(() => undefined);
   const [focusLocator, setFocusLocator] = React.useState<FocusLocator>(null);
   const schedulerRef = React.useRef<CanonicalRefreshScheduler | null>(null);
@@ -57,6 +67,7 @@ export function useContentSchemaRegistryIslandRuntime(
         setMessage,
         setProjection: (updater) => setProjectionState(updater),
         setFocusLocator,
+        currentProjection: () => projectionRef.current,
         navigate: (target) => {
           // Commit the fail-closed state to the DOM before navigating so the
           // protected controls are gone at the moment navigation is observed.
@@ -87,9 +98,8 @@ export function useContentSchemaRegistryIslandRuntime(
   );
 
   React.useEffect(() => {
-    if (typeof document === 'undefined' || !ssrHasAuthority) return undefined;
-    commandCleanupRef.current =
-      installContentSchemaRegistryCommandEnhancement(document);
+    if (typeof document === 'undefined' || !active) return undefined;
+    commandCleanupRef.current = installLazyCommandEnhancement(document).dispose;
     document
       .querySelector<HTMLElement>('[data-workbench="content-schema-registry"]')
       ?.setAttribute('data-content-schema-registry-hydrated', 'true');
@@ -97,10 +107,10 @@ export function useContentSchemaRegistryIslandRuntime(
       commandCleanupRef.current();
       commandCleanupRef.current = () => undefined;
     };
-  }, [ssrHasAuthority]);
+  }, [active]);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined' || !ssrHasAuthority) return undefined;
+    if (typeof window === 'undefined' || !active) return undefined;
     const scheduler = schedulerRef.current;
     const subscription = subscribeContentSchemaRegistryInvalidation({
       onInvalidate: () => scheduler?.request('list-read'),
@@ -140,7 +150,7 @@ export function useContentSchemaRegistryIslandRuntime(
         onActingContextChanged,
       );
     };
-  }, [ssrHasAuthority]);
+  }, [active]);
 
   const projectionRevision = JSON.stringify([
     projectionState.access,

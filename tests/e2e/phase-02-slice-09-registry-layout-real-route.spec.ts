@@ -1,6 +1,12 @@
 import { gzipSync } from 'node:zlib';
 
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Browser,
+  type Page,
+  type Response,
+} from '@playwright/test';
 
 import { closeLaneContexts, newTestId } from './support/s09-lane-browser';
 import {
@@ -348,24 +354,22 @@ test('[P2-S09-AC-245] below the rail breakpoint the action rail stacks between t
 
 const INITIAL_ROUTE_GZIP_BUDGET = 90 * 1024;
 const WORKBENCH_GZIP_BUDGET = 35 * 1024;
+/** Chunks that must stay out of a route that renders no detail or editor view. */
+const DEFERRED_CHUNK =
+  /ContentSchemaRegistry(?:Detail(?!Placeholder)|ReviewMode|ReviewPanel|VersionCommands|ActivationPreparation)|useJobPolling|content-schema-registry-runtime-dom\.|\/contracts\.[\w-]+\.js/u;
 
-// KNOWN BREACH, deliberately unmarked: the real production build loads about
-// 141 KB gzipped on this route (React client 56 KB, contracts/zod 38 KB, the
-// workbench island 34 KB), over the 90 KB initial-route budget, and the
-// registry chunks alone exceed 35 KB. test.fail() keeps the measurement running
-// and turns red the moment the build meets the budget; it carries no criterion
-// marker, so it can never count as AC261 evidence. Ruling requested in the r14
-// web report (needs ruling: AC261 budget scope or bundle reduction).
-test('AC261 real-bundle budget measurement on the production-built registry route (known breach, unmarked)', async ({
-  browser,
-}) => {
-  test.fail();
-  const owner = await actor(browser, 'owner', newTestId());
-  const page = owner.page;
-  await enrollFactorViaUi(page, 'Owner phone');
-  const scripts: { url: string; gzipBytes: number }[] = [];
+type LoadedScript = Readonly<{ url: string; gzipBytes: number }>;
+
+/** Cold-load one route and return every script it loaded, with gzip sizes. */
+const coldLoadScripts = async (
+  page: Page,
+  path: string,
+): Promise<readonly LoadedScript[]> => {
+  const scripts: LoadedScript[] = [];
   const pending: Promise<void>[] = [];
-  page.on('response', (response) => {
+  // Leave the previous page first: its late responses are not this load.
+  await page.goto('about:blank');
+  const onResponse = (response: Response): void => {
     const url = new URL(response.url());
     if (!/\.m?js$/u.test(url.pathname)) return;
     pending.push(
@@ -373,25 +377,68 @@ test('AC261 real-bundle budget measurement on the production-built registry rout
         scripts.push({ url: url.pathname, gzipBytes: gzipSync(body).length });
       }),
     );
-  });
-  // A cold load: nothing from earlier navigations may be served from cache.
-  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  };
+  page.on('response', onResponse);
+  // Nothing from an earlier navigation may be served from cache.
+  await page.goto(path, { waitUntil: 'networkidle' });
   await waitForWorkbench(page);
   await Promise.all(pending);
-  const total = scripts.reduce((sum, entry) => sum + entry.gzipBytes, 0);
+  page.off('response', onResponse);
+  return scripts;
+};
+
+const totalGzip = (scripts: readonly LoadedScript[]): number =>
+  scripts.reduce((sum, entry) => sum + entry.gzipBytes, 0);
+
+// P2-S09-AC-261 on the production-built registry route (the list route), read
+// from what Chrome really loads cold: <=90 KiB of initial JavaScript, <=35 KiB
+// in the registry chunks, and no detail, editor, job-polling, mutation or zod
+// chunk until a route or an action needs one. `pnpm bundle:check` measures the
+// same graph from the build output; this proves it on the served bytes.
+test('[P2-S09-AC-261] the real production registry route loads <=90 KiB of initial JavaScript, <=35 KiB in registry chunks, and no detail or editor chunk', async ({
+  browser,
+}) => {
+  const owner = await actor(browser, 'owner', newTestId());
+  await enrollFactorViaUi(owner.page, 'Owner phone');
+  const scripts = await coldLoadScripts(owner.page, REGISTRY);
   expect(scripts.length, 'the page loaded scripts').toBeGreaterThan(0);
-  expect(total, JSON.stringify(scripts)).toBeLessThanOrEqual(
+  expect(totalGzip(scripts), JSON.stringify(scripts)).toBeLessThanOrEqual(
     INITIAL_ROUTE_GZIP_BUDGET,
   );
   const workbench = scripts.filter((entry) =>
     /ContentSchemaRegistry|content-schema-registry/u.test(entry.url),
   );
   expect(workbench.length, 'registry chunks were loaded').toBeGreaterThan(0);
-  const workbenchTotal = workbench.reduce(
-    (sum, entry) => sum + entry.gzipBytes,
-    0,
-  );
-  expect(workbenchTotal, JSON.stringify(workbench)).toBeLessThanOrEqual(
+  expect(totalGzip(workbench), JSON.stringify(workbench)).toBeLessThanOrEqual(
     WORKBENCH_GZIP_BUDGET,
   );
+  expect(
+    scripts.filter((entry) => DEFERRED_CHUNK.test(entry.url)),
+    'detail, editor, job-polling, mutation and zod chunks stay deferred on the list route',
+  ).toEqual([]);
+});
+
+// The split is real, not a hidden cost: the version detail route is a
+// different route that renders the detail views, so it loads exactly those
+// chunks (and hydrates). Its total is reported, not budgeted: AC261 budgets
+// the registry (list) route.
+test('[P2-S09-AC-261] the version detail route loads its detail chunks on demand and still hydrates', async ({
+  browser,
+}) => {
+  const { page, created } = await seed(browser);
+  const listScripts = await coldLoadScripts(page, REGISTRY);
+  const detailScripts = await coldLoadScripts(page, created.path);
+  const loadedForDetail = detailScripts.filter((entry) =>
+    DEFERRED_CHUNK.test(entry.url),
+  );
+  expect(
+    loadedForDetail.length,
+    'the detail route loaded its deferred chunks',
+  ).toBeGreaterThan(0);
+  expect(listScripts.filter((entry) => DEFERRED_CHUNK.test(entry.url))).toEqual(
+    [],
+  );
+  await expect(
+    page.locator('[data-content-schema-registry-hydrated]'),
+  ).toHaveCount(1);
 });

@@ -74,6 +74,9 @@ const resolved = await resolvePlatformConfigurationPage({
   key,
   requestId,
   surface: 'index',
+  // The section navigation shows the reset entry only for an actor whose
+  // server capability snapshot holds admin.identity.mfa_reset (FE05).
+  projectCapabilities: true,
 });
 if (resolved.kind === 'unauthenticated') {
   return Astro.redirect(

@@ -22,8 +22,8 @@ export function InfrastructureWorkbenchMeta({
     <>
       {access !== 'full' && (
         <CapabilityGate
-          access={access}
-          reason={capabilityReason}
+          variant={access}
+          disclosure={capabilityReason}
           recoveryHref="/app/infrastructure"
         />
       )}

@@ -1,8 +1,3 @@
-import {
-  ContentSchemaRegistryDetailSchema,
-  ContentSchemaRegistryListPageSchema,
-} from '@wejammin/contracts';
-
 import { CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS } from './content-schema-registry-canonical-keys';
 import type { ContentSchemaRegistryStepUpState } from './ContentSchemaRegistryConfirmationStep';
 import type {
@@ -23,12 +18,18 @@ import {
   validateRequestId,
 } from './content-schema-registry-canonical-validate-primitives';
 import { validateReviewState } from './content-schema-registry-canonical-review-validate';
+import {
+  createCanonicalPayloadCheck,
+  type CanonicalPayloadCheck,
+} from './content-schema-registry-canonical-payload-check';
 
 /**
  * Exact per-status structural validation for the canonical refetch projection.
  * Every wrapper is checked field-by-field (no unchecked casts); unknown keys or
  * unsupported reason variants fail closed. Successful payloads are validated by
- * the shared public team zod aggregates so no parallel contract is invented.
+ * the shared contract zod aggregates (through the payload check, which skips a
+ * payload identical to the one already held) so no parallel contract is
+ * invented.
  */
 
 export interface ContentSchemaRegistryWorkbenchProjection {
@@ -97,15 +98,17 @@ const DEGRADED_KEYS = new Set([
   'etag',
 ]);
 const DISABLED_KEYS = new Set(['status', 'reason']);
-const validateListState = (value: unknown): ContentSchemaRegistryListState => {
+const validateListState = (
+  value: unknown,
+  check: CanonicalPayloadCheck,
+): ContentSchemaRegistryListState => {
   if (!isRecord(value)) throw new CanonicalStateError('list');
   const status = requireString(value, 'status');
   if (status === 'idle' || status === 'loading') {
     rejectUnknownKeys(value, IDLE_KEYS);
   } else if (status === 'success') {
     rejectUnknownKeys(value, SUCCESS_KEYS);
-    if (!ContentSchemaRegistryListPageSchema.safeParse(value.data).success)
-      throw new CanonicalStateError('list data');
+    if (!check.list(value.data)) throw new CanonicalStateError('list data');
     requireString(value, 'version');
     if (typeof value.stale !== 'boolean')
       throw new CanonicalStateError('list stale');
@@ -121,10 +124,7 @@ const validateListState = (value: unknown): ContentSchemaRegistryListState => {
     validateRouteMeta(value);
   } else if (status === 'degraded') {
     rejectUnknownKeys(value, DEGRADED_KEYS);
-    if (
-      value.data !== null &&
-      !ContentSchemaRegistryListPageSchema.safeParse(value.data).success
-    )
+    if (value.data !== null && !check.list(value.data))
       throw new CanonicalStateError('list degraded data');
     if (value.code !== undefined && !DEGRADED_CODES.has(String(value.code)))
       throw new CanonicalStateError('list degraded code');
@@ -148,6 +148,7 @@ const validateListState = (value: unknown): ContentSchemaRegistryListState => {
 
 const validateDetailState = (
   value: unknown,
+  check: CanonicalPayloadCheck,
 ): ContentSchemaRegistryDetailState | null => {
   if (value === null || value === undefined) return null;
   if (!isRecord(value)) throw new CanonicalStateError('detail');
@@ -156,8 +157,7 @@ const validateDetailState = (
     rejectUnknownKeys(value, IDLE_KEYS);
   } else if (status === 'success') {
     rejectUnknownKeys(value, SUCCESS_KEYS);
-    if (!ContentSchemaRegistryDetailSchema.safeParse(value.data).success)
-      throw new CanonicalStateError('detail data');
+    if (!check.detail(value.data)) throw new CanonicalStateError('detail data');
     requireString(value, 'version');
     if (typeof value.stale !== 'boolean')
       throw new CanonicalStateError('detail stale');
@@ -173,10 +173,7 @@ const validateDetailState = (
     validateRouteMeta(value);
   } else if (status === 'degraded') {
     rejectUnknownKeys(value, DEGRADED_KEYS);
-    if (
-      value.data !== null &&
-      !ContentSchemaRegistryDetailSchema.safeParse(value.data).success
-    )
+    if (value.data !== null && !check.detail(value.data))
       throw new CanonicalStateError('detail degraded data');
     if (value.code !== undefined && !DEGRADED_CODES.has(String(value.code)))
       throw new CanonicalStateError('detail degraded code');
@@ -200,6 +197,7 @@ const validateDetailState = (
 
 export const buildProjection = (
   props: unknown,
+  check: CanonicalPayloadCheck = createCanonicalPayloadCheck(null),
 ): ContentSchemaRegistryWorkbenchProjection => {
   if (!isRecord(props)) throw new CanonicalStateError('props');
   rejectUnknownKeys(props, CONTENT_SCHEMA_REGISTRY_PROJECTION_KEYS);
@@ -215,9 +213,9 @@ export const buildProjection = (
   return {
     access: access as ContentSchemaRegistryAccess,
     variant: variant as ContentSchemaRegistryVariant,
-    initialList: validateListState(props.initialList),
-    initialDetail: validateDetailState(props.initialDetail),
-    initialReview: validateReviewState(props.initialReview),
+    initialList: validateListState(props.initialList, check),
+    initialDetail: validateDetailState(props.initialDetail, check),
+    initialReview: validateReviewState(props.initialReview, check),
     ...(actingContextLabel === undefined ? {} : { actingContextLabel }),
     ...(stepUpState === undefined
       ? {}

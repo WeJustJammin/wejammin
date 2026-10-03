@@ -140,8 +140,10 @@ select ok((select bool_and(revocation_reason is not null and revoked_at is not n
 -- last verified factor with a step-up capability: see the guard suite; here the
 -- fail-closed behavior when the capability read is unavailable.
 select pg_temp.m_enroll(4, 'Only');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table identity_private.organization_actor_grant rename to organization_actor_grant_unavailable;
 select pg_temp.m_rbegin('lf:down', 4, pg_temp.m_fid(4), 'user_request', pg_temp.m_ver(4));
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table identity_private.organization_actor_grant_unavailable rename to organization_actor_grant;
 select is(pg_temp.m_out('lf:down'), 'LAST_FACTOR_REQUIRED', 'an unavailable capability read refuses the last-factor removal (fail closed) [P2-S09-AC-803]');
 select is(pg_temp.m_fstate(pg_temp.m_fid(4)), 'verified', 'and mutates nothing [P2-S09-AC-803]');

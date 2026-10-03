@@ -75,19 +75,18 @@ export const registerStepUpRoutes = (
     '/api/v1/auth/step-up/challenges/:challengeId/verify',
     async (context) => {
       configureRoute(context, 'AUTH-API-21');
-      const challengeId = parsePathId(
-        context,
-        AuthStepUpChallengePathSchema.shape.challengeId,
-        context.req.param('challengeId'),
-      );
-      if (!challengeId.ok)
-        return responseForMfaError(context, 'AUTH-API-21', challengeId);
       const admitted = await admitMfaMutation(
         context,
         dependencies,
         'AUTH-API-21',
         {
           schema: StepUpVerifyRequestSchema,
+          path: () =>
+            parsePathId(
+              context,
+              AuthStepUpChallengePathSchema.shape.challengeId,
+              context.req.param('challengeId'),
+            ),
           idempotency: false,
           ifMatch: false,
         },
@@ -100,7 +99,7 @@ export const registerStepUpRoutes = (
           {
             session: admitted.session,
             request: context.req.raw,
-            challengeId: challengeId.value,
+            challengeId: admitted.path,
             code: admitted.body.code,
           },
           context.env,

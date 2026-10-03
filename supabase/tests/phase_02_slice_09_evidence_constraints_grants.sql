@@ -157,11 +157,13 @@ select is(pg_temp.s09e_writers('cms_workflow_policies', 'insert[[:space:]]+into'
   || pg_temp.s09e_writers('cms_workflow_policies', 'delete[[:space:]]+from'), '',
   'no function inserts, updates or deletes a workflow policy: the rows are seeded only by a forward migration [P2-S09-AC-663]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_workflow_policies set required_decision_count = 3 where id = %L', (select id from s09e_policy)),
-  'P0001', null, 'a policy UPDATE is rejected [P2-S09-AC-663]');
+  'P0001', null, 'a policy UPDATE is rejected [P2-S09-AC-663] [P2-S09-AC-686]');
 select throws_ok(format('delete from platform_private.cms_workflow_policies where id = %L', (select id from s09e_policy)),
-  'P0001', null, 'a policy DELETE is rejected [P2-S09-AC-663]');
+  'P0001', null, 'a policy DELETE is rejected [P2-S09-AC-663] [P2-S09-AC-686]');
 select set_config('app.cms_rpc', '', true);
+-- NEGATIVE CONTROL: a runtime INSERT of a policy member is refused; the registry is code-owned.
 select ok(not pg_temp.s09d_try(format($q$insert into platform_private.cms_workflow_policies(owner_id, state, version, policy_key, policy_version, policy_hash, risk_class, required_decision_count, required_capabilities)
     select owner_id, state, version, 'editorial.runtime', policy_version, policy_hash, risk_class, required_decision_count, required_capabilities
       from platform_private.cms_workflow_policies where id = %L$q$, (select id from s09e_policy))),
@@ -238,6 +240,7 @@ select pg_temp.s09d_grant_specialist('rev1', 'cms.reviewer.policy');
 select pg_temp.s09d_to_active('sp', array['rev1', 'rev2']);
 select pg_temp.s09d_successor('sq', 'sp');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 update platform_private.cms_content_type_versions set workflow_key = 'editorial', workflow_version = 1 where id = pg_temp.s09d_id('sq:version');
 select pg_temp.s09d_to_active('sq', array['rev1', 'rev2']);
 -- the evidence projection is a definer function: called outside a command it holds the RPC context itself

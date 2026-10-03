@@ -93,6 +93,7 @@ select is(pg_temp.p_expect('st:ident', 'a', pg_temp.p_efield('title', 'short_tex
 select ok((select f.id = f.stable_field_id and f.version = 2 and f.field_key = 'title' and f.created_at <= f.updated_at and f.owner_id = pg_temp.s09d_id('ownerOrg')
       and f.created_by = pg_temp.s09d_actor_id('owner', 'auth')::uuid from platform_private.cms_field_definition_versions f where f.stable_field_id = pg_temp.p_field_id('a', 'title')),
   'identity (id, stable_field_id, key, owner, creator) is preserved and only the CAS version advanced [P2-S09-AC-069]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_field_definition_versions set stable_field_id = %L where stable_field_id = %L', extensions.gen_random_uuid(), pg_temp.p_field_id('a', 'title')),
   'P0001', null, 'a direct rewrite of a stable field identity is rejected by the identity guard [P2-S09-AC-069]');
 
@@ -160,11 +161,14 @@ select is(pg_temp.p_a02('lc:dep:ok', 'b', pg_temp.p_efield('title', 'long_text',
     'editorConfig', jsonb_build_object('label', 'Title', 'order', 0))), jsonb_build_object('migrationPlanId', pg_temp.s09d_id('b:plan'))), 'OK', 'with the ready plan the field is deprecated, never deleted [P2-S09-AC-067]');
 select is((select state from platform_private.cms_field_definition_versions where stable_field_id = pg_temp.p_field_id('b', 'title') and content_type_version_id = pg_temp.s09d_id('b:version')), 'deprecated', 'the deprecated field row still exists [P2-S09-AC-067] [P2-S09-AC-171]');
 select set_config('app.cms_rpc', '', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_field_definition_versions where stable_field_id = %L', pg_temp.p_field_id('a', 'lc_active')), 'P0001', 'IMMUTABLE_RECORD',
   'a direct DELETE of a field row outside a named RPC is rejected [P2-S09-AC-067] [P2-S09-AC-171]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_field_definition_versions where stable_field_id = %L', pg_temp.p_field_id('sp', 'title')), 'P0001', 'IMMUTABLE_RECORD',
   'even inside an RPC context the field of an active version cannot be deleted [P2-S09-AC-067] [P2-S09-AC-171]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_field_definition_versions where stable_field_id = %L', pg_temp.p_field_id('a', 'lc_active')), 'P0001', 'IMMUTABLE_RECORD',
   'nor can the field of a draft: no definition is removed except by deprecation or retirement [P2-S09-AC-067]');
 select set_config('app.cms_rpc', '', true);

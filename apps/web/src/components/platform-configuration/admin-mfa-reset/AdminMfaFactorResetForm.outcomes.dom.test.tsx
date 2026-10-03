@@ -148,6 +148,38 @@ describe('AdminMfaFactorResetForm errors', () => {
     expect(statusText(c)).not.toContain(ADMIN_RESET_COPY.completed);
   });
 
+  // The Worker's own refusal of a schema-invalid CFG-05B-06 request, as the
+  // real route emits it (BE00 FieldViolation: a JSON Pointer `path`, a `code`
+  // and a `message`; never a `field` member). Captured from the production
+  // Worker route in the real-route Chrome run of the same criterion.
+  it('[P2-S09-AC-1122] a schema-invalid refusal in the Worker shape marks the offending field and links the summary, and never shows the self-target copy', async () => {
+    const { c } = await commit(
+      apiError(400, 'INVALID_REQUEST', {
+        violations: [
+          {
+            path: '/targetPersonId',
+            code: 'invalid_value',
+            message: 'The value is invalid.',
+          },
+          { path: '/reason', code: 'too_small', message: 'Too short.' },
+        ],
+      }),
+    );
+    // With field errors the linked summary replaces the generic notice.
+    expect(c.textContent).not.toContain(ADMIN_RESET_COPY.selfTarget);
+    expect(personInput(c).getAttribute('aria-invalid')).toBe('true');
+    expect(reasonInput(c).getAttribute('aria-invalid')).toBe('true');
+    expect(c.textContent).toContain(ADMIN_RESET_COPY.personInvalid);
+    expect(c.textContent).toContain(ADMIN_RESET_COPY.reasonInvalid);
+  });
+
+  it('[P2-S09-AC-1122] a self-target refusal carries no field errors and shows only the self-target copy', async () => {
+    const { c } = await commit(apiError(422, 'MFA_RESET_INVALID', {}));
+    expect(alertText(c)).toContain(ADMIN_RESET_COPY.selfTarget);
+    expect(personInput(c).getAttribute('aria-invalid')).not.toBe('true');
+    expect(c.textContent).not.toContain(ADMIN_RESET_COPY.personInvalid);
+  });
+
   it('[P2-S09-AC-1118] [P2-S09-AC-1119] [P2-S09-AC-1120] [P2-S09-AC-1121] [P2-S09-AC-1122] keeps the entries after a refusal so the operator can correct them', async () => {
     const { c } = await commit(apiError(404, 'TARGET_NOT_FOUND'));
     expect(personInput(c).value).toBe(PERSON);

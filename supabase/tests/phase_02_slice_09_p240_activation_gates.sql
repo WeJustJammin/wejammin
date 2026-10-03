@@ -105,8 +105,10 @@ select pg_temp.s09d_create_type('h', 'p240_drift');
 select pg_temp.s09d_to_approved('h');
 select is(pg_temp.p_review_state('h'), 'approved', 'fixture: the second candidate is approved [P2-S09-AC-189]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 update platform_private.cms_content_types set owner_capability = 'cms.schema_registry.read' where id = pg_temp.s09d_id('h:type');
 select is(pg_temp.p_review_state('h'), 'invalidated', 'a change of the owning type''s authority invalidates the approved review [P2-S09-AC-189]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 update platform_private.cms_content_types set owner_capability = 'cms.schema_designer' where id = pg_temp.s09d_id('h:type');
 select set_config('app.cms_rpc', '', true);
 select pg_temp.s09d_activate('h', 'owner', '{}'::jsonb, 'drift:act');
@@ -151,9 +153,13 @@ select pg_temp.s09d_to_review('s3');
 select pg_temp.s09d_activate('s3', 'owner', '{}'::jsonb, 's3:activate');
 select ok(pg_temp.s09d_outcome('s3:activate') <> 'OK' and pg_temp.p_state('s3') = 'review', 'a candidate in review cannot be activated [P2-S09-AC-186]');
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_content_type_versions set labels = %L where id = %L', '{"label":"Changed"}', pg_temp.s09d_id('s2:version')), 'P0001', 'IMMUTABLE_RECORD', 'an active version is immutable: a content update is rejected [P2-S09-AC-186]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_content_type_versions set state = ''draft'' where id = %L', pg_temp.s09d_id('s2:version')), 'P0001', 'IMMUTABLE_RECORD', 'an active version cannot return to draft [P2-S09-AC-186]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_content_type_versions set state = ''active'' where id = %L', pg_temp.s09d_id('s:version')), 'P0001', 'IMMUTABLE_RECORD', 'a superseded version cannot be reactivated [P2-S09-AC-186]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_content_type_versions where id = %L', pg_temp.s09d_id('s2:version')), 'P0001', 'IMMUTABLE_RECORD', 'an active version cannot be deleted [P2-S09-AC-186]');
 select is(pg_temp.s09d_scalar('select count(*)::text from platform_private.cms_content_type_versions where state = ''scheduled'''), '0', 'no schema version is ever scheduled: the value exists only in the shared vocabulary (OD-6) [P2-S09-AC-186]');
 select set_config('app.cms_rpc', '', true);
@@ -165,6 +171,7 @@ select is((select string_agg(version_no::text || ':' || state, ',' order by vers
   'version numbers of one type count 1, 2 in order of creation [P2-S09-AC-016]');
 select ok(exists (select 1 from pg_constraint c where c.conrelid = 'platform_private.cms_content_type_versions'::regclass and c.contype = 'u' and pg_get_constraintdef(c.oid) = 'UNIQUE (content_type_id, version_no)'),
   'a version number can never be reused within a type [P2-S09-AC-016]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 create or replace function pg_temp.p_decrease() returns text language plpgsql as $body$
 declare result text;
 begin
@@ -180,6 +187,7 @@ begin
 end;
 $body$;
 select is(pg_temp.p_decrease(), 'IMMUTABLE_RECORD', 'the CAS version of a definition can never decrease: versioning is monotonic [P2-S09-AC-016]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 create or replace function pg_temp.p_blocked_return() returns text language plpgsql as $body$
 declare result text;
 begin

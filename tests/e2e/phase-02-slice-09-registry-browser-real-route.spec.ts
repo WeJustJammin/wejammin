@@ -13,6 +13,7 @@ import {
   WORKER_ORIGIN,
   createTypeViaUi,
   decideViaUi,
+  fillCreateTypeForm,
   enrollFactorViaUi,
   expireStepUp,
   horizontalOverflow,
@@ -478,6 +479,12 @@ test('[P2-S09-AC-233] reconnect revalidates authority: a capability removed whil
   await expect(
     page.getByRole('button', { name: 'Save content type draft' }),
   ).toHaveCount(0);
+  // The gate states a typed code, never how the page had been presented.
+  const gate = page
+    .getByRole('status')
+    .filter({ hasText: 'Schema changes unavailable' });
+  await expect(gate).toContainText('Reason: SCHEMA_REGISTRY_UNAVAILABLE');
+  await expect(gate).not.toContainText('ownerFull');
 });
 
 test('[P2-S09-AC-233] reconnect revalidates version: a record created elsewhere while offline appears after reconnect', async ({
@@ -543,6 +550,218 @@ test('[P2-S09-AC-233] nothing typed is persisted or replayed across an offline s
   await page.waitForTimeout(2_000);
   // The reconnect refetch is a GET; no queued write is ever replayed.
   expect(posts.length).toBe(whileOffline);
+});
+
+test('[P2-S09-AC-233] reconnect revalidates input: an invalid draft survives the offline cycle untouched, nothing is replayed, and the server validates the explicit resubmission', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  // Valid locale configuration, but a type key the server refuses.
+  await fillCreateTypeForm(page, { typeKey: 'Bad Key' });
+  const posts: string[] = [];
+  const reads: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST') posts.push(request.url());
+    else if (request.method() === 'GET' && request.url().includes('/app/'))
+      reads.push(request.url());
+  });
+  await goOffline(page);
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  await page.waitForTimeout(1_000);
+  const postsWhileOffline = posts.length;
+  const readsWhileOffline = reads.length;
+  await page.context().setOffline(false);
+  // The online event refetches the canonical read (a GET): the revalidation.
+  await expect
+    .poll(() => reads.length, { timeout: 20_000 })
+    .toBeGreaterThan(readsWhileOffline);
+  await page.waitForTimeout(1_500);
+  // Nothing is replayed by the browser, and nothing typed is lost or altered.
+  expect(posts.length).toBe(postsWhileOffline);
+  await expect(page.getByRole('textbox', { name: 'Type key' })).toHaveValue(
+    'Bad Key',
+  );
+  await expect(
+    page.getByRole('textbox', { name: 'Display label' }),
+  ).toHaveValue('Release note');
+  await expect(
+    page
+      .getByRole('textbox', { name: 'Language tags' })
+      .or(page.getByText('fr-CA').first()),
+  ).toBeVisible();
+  // The person resubmits explicitly: the server (not the browser) validates the
+  // input and names the field, and the draft is still there to correct.
+  const refusal = page.waitForResponse(
+    (candidate) => candidate.request().method() === 'POST',
+    { timeout: 15_000 },
+  );
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  const response = await refusal;
+  expect(response.status()).toBe(422);
+  expect(await response.json()).toMatchObject({
+    code: 'VALIDATION_FAILED',
+    details: { violations: [{ path: '/typeKey' }] },
+  });
+  await expect(
+    page.getByRole('link', { name: /typeKey|Type key/u }).first(),
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('textbox', { name: 'Type key' })).toHaveAttribute(
+    'aria-invalid',
+    'true',
+  );
+  await expect(page.getByRole('textbox', { name: 'Type key' })).toHaveValue(
+    'Bad Key',
+  );
+  expect(posts.length).toBe(postsWhileOffline + 1);
+  // Correcting the field and confirming is accepted by the same server.
+  await page.getByRole('textbox', { name: 'Type key' }).fill('after_reconnect');
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  await page.waitForURL(/\/versions\//u, { timeout: 20_000 });
+});
+
+test('[P2-S09-AC-233] reconnect revalidates input against the refetched registry: a key typed offline is refused by the server once another person has taken it, and nothing is overwritten', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await fillCreateTypeForm(page, {
+    typeKey: 'shared_key',
+    label: 'My shared note',
+  });
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST') posts.push(request.url());
+  });
+  await goOffline(page);
+  // While this person is offline, another person (the same owner on a second
+  // device) creates a type with the same key.
+  const otherContext = await newLaneContext(browser, 'owner', testId, {
+    generation: 1,
+  });
+  const other = await otherContext.newPage();
+  await createTypeViaUi(other, {
+    typeKey: 'shared_key',
+    label: 'Their shared note',
+  });
+  const before = posts.length;
+  await page.context().setOffline(false);
+  // The refetched registry now lists the other person's record.
+  await expect(
+    page.getByRole('table').getByText('shared_key').first(),
+  ).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(1_000);
+  // Reconnect only revalidates by reading: the typed draft was not replayed,
+  // and it is still exactly what the person typed.
+  expect(posts.length).toBe(before);
+  await expect(page.getByRole('textbox', { name: 'Type key' })).toHaveValue(
+    'shared_key',
+  );
+  await expect(
+    page.getByRole('textbox', { name: 'Display label' }),
+  ).toHaveValue('My shared note');
+  // The person confirms explicitly; the server revalidates that input against
+  // the registry it now holds and refuses it. Nothing is overwritten.
+  const refusal = page.waitForResponse(
+    (candidate) => candidate.request().method() === 'POST',
+    { timeout: 15_000 },
+  );
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  expect((await refusal).status()).toBe(409);
+  await expect(
+    page.getByRole('heading', { name: /Review the current registry version/u }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/cms-content-modeling(?:\?|$)/u);
+  await expect(page.getByRole('textbox', { name: 'Type key' })).toHaveValue(
+    'shared_key',
+  );
+  await expect(
+    page.getByRole('textbox', { name: 'Display label' }),
+  ).toHaveValue('My shared note');
+});
+
+test('[P2-S09-AC-248] blur feedback on the real create form is inline and linked, never blocks the submit, and the server answer that follows is authoritative', async ({
+  browser,
+}) => {
+  const owner = await actor(browser, 'owner', newTestId());
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await fillCreateTypeForm(page, { typeKey: 'Bad Key' });
+  const typeKey = page.getByRole('textbox', { name: 'Type key' });
+  const label = page.getByRole('textbox', { name: 'Display label' });
+  const rule =
+    'Use 2 to 64 lowercase letters, numbers, or underscores, starting with a letter.';
+  // The value was typed programmatically (no blur yet): leaving the field now
+  // is the first blur, so the error is shown there and not before.
+  await label.focus();
+  await typeKey.focus();
+  await label.focus();
+  await expect(typeKey).toHaveAttribute('aria-invalid', 'true');
+  const error = page.locator('#content-schema-registry-type-key-blur-error');
+  await expect(error).toHaveText(rule);
+  await expect(typeKey).toHaveAttribute(
+    'aria-describedby',
+    /content-schema-registry-type-key-blur-error/u,
+  );
+  // The other fields were fine: no error appears on them.
+  await expect(label).not.toHaveAttribute('aria-invalid', 'true');
+  // The blur error never blocks: Save still sends it, and the server decides.
+  const refusal = page.waitForResponse(
+    (candidate) => candidate.request().method() === 'POST',
+    { timeout: 15_000 },
+  );
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  const response = await refusal;
+  expect(response.status()).toBe(422);
+  expect(await response.json()).toMatchObject({
+    details: { violations: [{ path: '/typeKey' }] },
+  });
+  await expect(
+    page.locator('[data-cms-validation-summary] a', { hasText: /typeKey/u }),
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(error).toHaveText(rule);
+  // Correcting the value clears the inline error as the person types.
+  await typeKey.fill('after_blur');
+  await expect(error).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  await page.waitForURL(/\/versions\//u, { timeout: 20_000 });
+});
+
+test('[P2-S09-AC-248] a value that passes blur is still refused by the server when it is already taken', async ({
+  browser,
+}) => {
+  const testId = newTestId();
+  const owner = await actor(browser, 'owner', testId);
+  const page = owner.page;
+  await enrollFactorViaUi(page, 'Owner phone');
+  await createTypeViaUi(page, { typeKey: 'taken_key' });
+  await page.goto(REGISTRY, { waitUntil: 'networkidle' });
+  await waitForWorkbench(page);
+  await fillCreateTypeForm(page, { typeKey: 'taken_key', label: 'Another' });
+  const typeKey = page.getByRole('textbox', { name: 'Type key' });
+  await typeKey.focus();
+  await page.getByRole('textbox', { name: 'Display label' }).focus();
+  await expect(typeKey).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(
+    page.locator('#content-schema-registry-type-key-blur-error'),
+  ).toHaveCount(0);
+  const refusal = page.waitForResponse(
+    (candidate) => candidate.request().method() === 'POST',
+    { timeout: 15_000 },
+  );
+  await page.getByRole('button', { name: 'Save content type draft' }).click();
+  expect((await refusal).status()).toBe(409);
+  await expect(typeKey).toHaveValue('taken_key');
 });
 
 test('[P2-S09-AC-234] the rendered registry list and version responses are no-store and noindex, with no sitemap, analytics request or browser storage', async ({

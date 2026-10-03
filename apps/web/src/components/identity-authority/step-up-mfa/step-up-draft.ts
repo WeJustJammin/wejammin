@@ -13,6 +13,26 @@ const FORBIDDEN_FIELD =
 const storageKey = (scope: string): string => `${KEY_PREFIX}${scope}`;
 
 /**
+ * True when a draft saved under a scope that starts with `scopePrefix` is
+ * waiting in this tab's storage. It reads nothing and consumes nothing, so a
+ * surface can decide cheaply whether it must load its restore code.
+ */
+export const hasStepUpDraftWithPrefix = (
+  storage: Pick<Storage, 'key' | 'length'> | null,
+  scopePrefix: string,
+): boolean => {
+  if (storage === null) return false;
+  try {
+    for (let index = 0; index < storage.length; index += 1)
+      if (storage.key(index)?.startsWith(storageKey(scopePrefix)) === true)
+        return true;
+  } catch {
+    // Blocked storage holds no draft this tab could restore.
+  }
+  return false;
+};
+
+/**
  * Persists a protected form's draft before it navigates to `/step-up`.
  * Fields that could hold a one-time code or enrollment secret are never
  * written. Returns false when storage is unavailable.

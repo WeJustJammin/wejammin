@@ -37,12 +37,9 @@ import type {
   UploadTargetPolicy,
 } from './upload-intent-types';
 
-export const authorizeUploadIntent = async (
+/** BE00 step 4: the verified principal, before any validation of the body. */
+export const resolveUploadPrincipal = async (
   options: UploadIntentHandlerOptions,
-  parsed: Readonly<{
-    policy: UploadTargetPolicy;
-    request: UploadIntentRequest;
-  }>,
   request: Request,
   signal: AbortSignal,
 ): Promise<UploadPrincipal> => {
@@ -68,6 +65,19 @@ export const authorizeUploadIntent = async (
     // signing or canonical persistence.
     throw dependencyError();
   }
+  return principal;
+};
+
+/** BE00 step 7: operator prerequisites, quota, then target authorization. */
+export const authorizeUploadIntent = async (
+  options: UploadIntentHandlerOptions,
+  parsed: Readonly<{
+    policy: UploadTargetPolicy;
+    request: UploadIntentRequest;
+  }>,
+  principal: UploadPrincipal,
+  signal: AbortSignal,
+): Promise<void> => {
   if (
     principal.kind === 'operator' &&
     (!principal.stepUpVerified ||
@@ -108,7 +118,6 @@ export const authorizeUploadIntent = async (
   if (authorization === 'forbidden' || authorization === 'step_up_required')
     throw authorityError();
   if (authorization !== 'allow') throw dependencyError();
-  return principal;
 };
 
 export const commitUploadIntent = async (

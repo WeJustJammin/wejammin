@@ -146,12 +146,14 @@ select is(
   'de43a6daa023b99c3ebc1ea7ec7a22f4045aa697c9e3e30e6014d50795ac2420',
   'CMS-03A-05 cross-runtime signature hash matches the Worker evidence'
 );
+-- FIXTURE FORGERY: no command registers a release signing principal (the release key registry is operator-provisioned trust configuration); the rows only let the signed CMS-03A-05 / CMS-03A-08 commands verify, they claim no producer path.
 insert into platform_private.cfg_release_principals(principal_id, key_id, scope, active, public_key)
 select 'a9090000-0000-4000-8000-000000000003', 'release.ci', 'registry-release', true, public_key
 from s09_release_key
 on conflict (key_id) do update
 set key_id = excluded.key_id, scope = excluded.scope, active = excluded.active,
     public_key = excluded.public_key;
+-- FIXTURE FORGERY: no command registers a release signing principal (the release key registry is operator-provisioned trust configuration); the rows only let the signed CMS-03A-05 / CMS-03A-08 commands verify, they claim no producer path.
 insert into platform_private.cfg_release_principals(principal_id, key_id, scope, active, public_key)
 values (
   'a9090000-0000-4000-8000-000000000002', 'release-key-v1', 'registry-release', true,
@@ -279,8 +281,8 @@ select throws_ok(
   $$select platform_api.cms_register_block(
     (select request || jsonb_build_object('idempotencyKey', 's09-block-auth-0001') from s09_block_request)
   )$$,
-  'P0001', 'UNAUTHENTICATED',
-  'CMS-03A-05 rejects authenticated callers before release-principal resolution'
+  'P0001', 'FORBIDDEN',
+  'CMS-03A-05 rejects authenticated callers (a human or admin session) with 403 before release-principal resolution [P2-S09-AC-034]'
 );
 select pg_temp.set_jwt_claim('role', 'service_role', true);
 -- a Worker request of its own: nothing a previous (human) command published is still set

@@ -81,15 +81,19 @@ select ok(not exists (select 1 from platform_private.cms_content_type_versions w
   'no schema-version resource, evidence record or event carries the scheduled state [P2-S09-AC-1206]');
 
 -- ------------------------------------------------ AC169: template binding persistence ----
+select pg_temp.s09d_grant_specialist('owner', 'cms.template_designer');
 select pg_temp.s09d_create_type('tb', 'evm_tmplbind');
-alter table platform_private.cms_content_type_template_bindings disable trigger user;
-insert into platform_private.cms_content_type_template_bindings(owner_id, state, version, content_type_version_id, template_version_id, position)
-select owner_id, 'draft', 1, id, extensions.gen_random_uuid(), 0 from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('tb:version');
-alter table platform_private.cms_content_type_template_bindings enable trigger user;
-create temp table s09e_binding on commit drop as select id from platform_private.cms_content_type_template_bindings limit 1;
+select pg_temp.s09d_to_active('tb');
+select pg_temp.s09d_template('tbt', 'evm-tmpl-bind', 'tb');
+select pg_temp.s09d_successor('tbs', 'tb', 'owner', 'evm-tmplbind-successor-0001', null, null,
+  pg_temp.s09d_id('tbt:templateVersion'),
+  jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.s09d_id('tbt:templateVersion'))));
+select is(pg_temp.s09d_outcome('tbs:successor'), 'OK', 'fixture: the probe base binding is written by CMS-03A-09 from a CMS-03C-01 template');
+create temp table s09e_binding on commit drop as
+  select id from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('tbs:version');
 select is(pg_temp.s09e_unique('cms_content_type_template_bindings', (select id from s09e_binding), array['content_type_version_id', 'template_version_id'],
     jsonb_build_object('template_version_id', extensions.gen_random_uuid())), 'dup:REJECTED:23505|ctl:ACCEPTED',
-  'UNIQUE(parent version, template version): one binding per parent/template pair (probe base row is a fixture row, not a producer path) [P2-S09-AC-169]');
+  'UNIQUE(parent version, template version): one binding per parent/template pair (the probe overrides a producer-made binding row) [P2-S09-AC-169]');
 select is(pg_temp.s09e_check('cms_content_type_template_bindings', 'cms_content_type_template_bindings_position_check', (select id from s09e_binding), '{"position":-1}'),
   'control:ACCEPTED|override:REJECTED:23514:cms_content_type_template_bindings_position_check', 'position is non-negative [P2-S09-AC-169]');
 select ok(pg_temp.s09d_has_columns('cms_content_type_template_bindings', array['id','owner_id','state','version','created_at','updated_at',
@@ -150,6 +154,7 @@ select is(pg_temp.s09e_pair('p:count', '"identity.revalidate"'::jsonb, '"1"'::js
 select pg_temp.s09d_create_type('ro', 'evm_undrv');
 select pg_temp.s09d_to_active('ro');
 select pg_temp.s09d_successor('rp', 'ro');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 create or replace function pg_temp.s09e_underivable() returns text language plpgsql as $body$
 declare observed text;
 begin
@@ -248,6 +253,7 @@ select ok(platform_private.cms_editorial_workflow_policy_evidence(pg_temp.s09d_i
   'control: an activated type resolves its bound policy evidence');
 select set_config('app.cms_rpc', '', true);
 
+-- NEGATIVE CONTROL: policy-row duplication inside a rolled-back probe; the evidence reader must treat an ambiguous member as unavailable.
 create or replace function pg_temp.s09e_evidence_after_ambiguity() returns text language plpgsql as $body$
 declare observed text;
 begin

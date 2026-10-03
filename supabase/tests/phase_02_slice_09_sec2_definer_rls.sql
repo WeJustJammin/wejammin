@@ -59,7 +59,7 @@ select cmp_ok((select count(*)::integer from sec2_functions), '>', 0, 'the set o
 select is((select string_agg(t.table_name, ',' order by t.table_name)
              from sec2_tables t join pg_class c on c.oid = t.table_oid
             where not (c.relrowsecurity and c.relforcerowsecurity)), null,
-  'RLS is enabled AND forced on every table of the set (N/N) [P2-S09-AC-181]');
+  'RLS is enabled AND forced on every table of the set, including cms_workflow_policies (N/N) [P2-S09-AC-181] [P2-S09-AC-686]');
 select is((select string_agg(t.schema_name || '.' || t.table_name || ':' || r.role_name || ':' || p.privilege, ',' order by t.table_name)
              from sec2_tables t
             cross join unnest(array['anon', 'authenticated', 'service_role']) r(role_name)
@@ -278,6 +278,7 @@ grant select, insert, update, delete on
   to wejammin_cms_definer;
 -- triggers other than the policy are irrelevant to the proof and would refuse
 -- the synthetic rows first
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 do $do$
 declare t record;
 begin
@@ -421,6 +422,7 @@ select ok(pg_temp.sec2_rls_refused('platform_private.cms_workflow_policies'::reg
   'a human session cannot insert a workflow policy: registry writes are system-scope only [P2-S09-AC-686]');
 select is(pg_temp.sec2_as('wejammin_cms_definer', 'delete from platform_private.cms_workflow_policies'), 'OK:0',
   'a human session''s DELETE removes no workflow policy [P2-S09-AC-686]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select is(pg_temp.sec2_as('wejammin_cms_definer', 'update platform_private.cms_workflow_policies set updated_at = updated_at'), 'OK:0',
   'a human session''s UPDATE changes no workflow policy [P2-S09-AC-686]');
 select ok(pg_temp.sec2_rls_refused('platform_private.cms_schema_transform_registry'::regclass, '{}'::jsonb),
@@ -561,9 +563,11 @@ select isnt(coalesce(current_setting('app.cms_rpc', true), ''), 'true',
 select is(pg_temp.sec2_as('wejammin_cms_definer', pg_temp.sec2_insert_sql('platform_private.cms_content_types'::regclass, '{}'::jsonb)),
   'P0001:DIRECT_CMS_TABLE_WRITE',
   'in the same transaction the definer role''s direct write to a guarded table is refused by the write guard [P2-S09-AC-181]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_content_types disable trigger user;
 select ok(pg_temp.sec2_rls_refused('platform_private.cms_content_types'::regclass, '{}'::jsonb),
   'and, with the guard trigger out of the way, by the RPC-context policy itself [P2-S09-AC-181]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 alter table platform_private.cms_content_types enable trigger user;
 select throws_ok(pg_temp.sec2_insert_sql('platform_private.cms_content_types'::regclass, '{}'::jsonb), 'P0001', 'DIRECT_CMS_TABLE_WRITE',
   'and the platform owner''s direct write to a guarded table is refused by the write guard [P2-S09-AC-181]');

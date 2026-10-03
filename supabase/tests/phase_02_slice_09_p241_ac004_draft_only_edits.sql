@@ -147,6 +147,7 @@ select ok(pg_temp.s09d_has_columns('cms_field_definition_versions', array['conte
 select ok(pg_temp.s09d_no_direct_grants('cms_field_definition_versions') and pg_temp.s09d_no_direct_grants('cms_relation_definitions'),
   'no API role holds a direct table grant on the field or relation definitions [P2-S09-AC-004]');
 select set_config('app.cms_rpc', 'false', true);
+-- NEGATIVE CONTROL: a field definition written outside the named command is refused by the write guard.
 select ok(not pg_temp.s09d_try(format($q$insert into platform_private.cms_field_definition_versions(
     owner_id, state, version, content_type_version_id, stable_field_id, field_key, kind, constraints, required,
     default_mode, localization_mode, editor_config, created_by)

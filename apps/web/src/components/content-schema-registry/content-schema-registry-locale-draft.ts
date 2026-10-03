@@ -3,7 +3,7 @@ import {
   LOCALE_CONFIG_MESSAGES,
   canonicalizeBcp47,
   isCanonicalLocale,
-} from '@wejammin/contracts';
+} from '@wejammin/contracts/client';
 
 /**
  * Pure FE03 "Locale configuration fields (OD-4)" model. BE03a owns the rules

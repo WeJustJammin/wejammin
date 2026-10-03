@@ -98,33 +98,43 @@ select pg_temp.m_user(1);
 select pg_temp.m_user(2);
 select pg_temp.m_enroll(1, 'Phone');
 select is(pg_temp.m_out('en:s'), 'OK', 'fixture: a real enrollment reaches verified');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'sms', extensions.gen_random_uuid(), 'x', 'pending', clock_timestamp() + interval '5 minutes')$$),
   'a non-totp method is refused [P2-S09-AC-898]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), repeat('x', 81), 'pending', clock_timestamp() + interval '5 minutes')$$),
   'an 81-character friendly name is refused [P2-S09-AC-898]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), '', 'pending', clock_timestamp() + interval '5 minutes')$$),
   'an empty friendly name is refused [P2-S09-AC-898]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'x', 'pending', clock_timestamp() + interval '11 minutes')$$),
   'a pending window longer than 10 minutes is refused [P2-S09-AC-898]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'x', 'pending')$$),
   'a pending row without pending_expires_at is refused [P2-S09-AC-898]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'x', 'verified')$$),
   'a verified row without verified_at is refused [P2-S09-AC-898]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'ok one', 'pending', clock_timestamp() + interval '5 minutes')$$),
   'a well-formed pending row is accepted (precondition for the uniqueness checks)');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'ok two', 'pending', clock_timestamp() + interval '5 minutes')$$),
   'a second pending row for the same user is refused [P2-S09-AC-899]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, verified_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'OK ONE', 'verified', clock_timestamp())$$),
   'a live friendly name collides case-insensitively [P2-S09-AC-736]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try(format($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, verified_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', %L, 'dup provider', 'verified', clock_timestamp())$$,
   pg_temp.m_pfid(1))),
@@ -169,10 +179,12 @@ select pg_temp.m('ch:f', 'auth_step_up_challenge_finish', jsonb_build_object(
   'p_provider_challenge_id', extensions.gen_random_uuid(),
   'p_expires_at', clock_timestamp() + interval '5 minutes'));
 select is(pg_temp.m_out('ch:f'), 'OK', 'fixture: a real challenge is created');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.step_up_challenges; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try(format($$insert into identity.step_up_challenges(auth_user_id, session_id, factor_id, provider_challenge_id, state, expires_at)
   values (%L, %L, %L, extensions.gen_random_uuid(), 'pending', clock_timestamp() + interval '5 minutes')$$,
   pg_temp.m_uid(2), pg_temp.m_sid(2), pg_temp.m_one(format($q$select id::text from identity.mfa_factor_registry where auth_user_id = %L and friendly_name = 'Laptop'$q$, pg_temp.m_uid(2)))::uuid)),
   'a second pending challenge for the same session and factor is refused [P2-S09-AC-901]');
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.step_up_challenges; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(not pg_temp.m_try(format($$insert into identity.step_up_challenges(auth_user_id, session_id, factor_id, provider_challenge_id, state, expires_at)
   values (%L, %L, %L, extensions.gen_random_uuid(), 'expired', clock_timestamp() + interval '11 minutes')$$,
   pg_temp.m_uid(2), pg_temp.m_sid(2), pg_temp.m_one(format($q$select id::text from identity.mfa_factor_registry where auth_user_id = %L and friendly_name = 'Laptop'$q$, pg_temp.m_uid(2)))::uuid)),
@@ -241,6 +253,7 @@ exception when others then
   return sqlerrm;
 end;
 $body$;
+-- NEGATIVE CONTROL: constraint / state-machine probe of identity.mfa_factor_registry; an accepted probe row is a precondition of the next refusal, never a claimed enrollment or challenge path (those come from platform_api.auth_mfa_enrollment_finish / auth_step_up_challenge_finish).
 select ok(pg_temp.m_try($$insert into identity.mfa_factor_registry(auth_user_id, method, provider_factor_id, friendly_name, state, pending_expires_at)
   values ('b1110000-0000-4000-8000-000000000002', 'totp', extensions.gen_random_uuid(), 'transition probe', 'pending', clock_timestamp() + interval '5 minutes')$$),
   'precondition: a live pending probe row exists for the transition matrix');

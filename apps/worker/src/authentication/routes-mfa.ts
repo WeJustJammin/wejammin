@@ -14,6 +14,7 @@ import {
   authError,
   quotedVersion,
   rejectUnexpectedQuery,
+  verifyReadOrigin,
 } from './boundary';
 import { responseForMfaError, withRouteDeadline } from './mfa-error-boundary';
 import { enforceRate, jsonSuccess, requireSession } from './route-support';
@@ -69,6 +70,9 @@ export const registerMfaFactorRoutes = (
     configureRoute(context, 'AUTH-API-16');
     const fail = (error: Parameters<typeof responseForMfaError>[2]) =>
       responseForMfaError(context, 'AUTH-API-16', error);
+    // BE00 step 2: a read has no body or CSRF token; the origin is the gate.
+    const foreignOrigin = verifyReadOrigin(context.req.raw);
+    if (foreignOrigin !== null) return fail(foreignOrigin);
     // BE00 steps 4 and 5: verified session; strict path and query follow (step 6).
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return fail(resolved);
@@ -133,15 +137,13 @@ export const registerMfaFactorRoutes = (
 
   app.post('/api/v1/account/mfa/factors/:factorId/verify', async (context) => {
     configureRoute(context, 'AUTH-API-18');
-    const factorId = factorPath(context);
-    if (!factorId.ok)
-      return responseForMfaError(context, 'AUTH-API-18', factorId);
     const admitted = await admitMfaMutation(
       context,
       dependencies,
       'AUTH-API-18',
       {
         schema: MfaFactorVerifyRequestSchema,
+        path: () => factorPath(context),
         idempotency: false,
         ifMatch: true,
         // BE01a: one verification bucket shared by AUTH-API-18 and -21.
@@ -156,7 +158,7 @@ export const registerMfaFactorRoutes = (
         {
           session: admitted.session,
           request: context.req.raw,
-          factorId: factorId.value,
+          factorId: admitted.path,
           code: admitted.body.code,
           ifMatch: admitted.ifMatch,
         },
@@ -176,15 +178,13 @@ export const registerMfaFactorRoutes = (
 
   app.delete('/api/v1/account/mfa/factors/:factorId', async (context) => {
     configureRoute(context, 'AUTH-API-19');
-    const factorId = factorPath(context);
-    if (!factorId.ok)
-      return responseForMfaError(context, 'AUTH-API-19', factorId);
     const admitted = await admitMfaMutation(
       context,
       dependencies,
       'AUTH-API-19',
       {
         schema: MfaFactorRemoveRequestSchema,
+        path: () => factorPath(context),
         idempotency: true,
         ifMatch: true,
       },
@@ -197,7 +197,7 @@ export const registerMfaFactorRoutes = (
         {
           session: admitted.session,
           request: context.req.raw,
-          factorId: factorId.value,
+          factorId: admitted.path,
           reason: admitted.body.reason,
           ifMatch: admitted.ifMatch,
           idempotencyKey: admitted.idempotencyKey,

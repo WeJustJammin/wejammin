@@ -1,5 +1,4 @@
-import { SchemaReviewResourceSchema } from '@wejammin/contracts';
-
+import type { CanonicalPayloadCheck } from './content-schema-registry-canonical-payload-check';
 import {
   CanonicalStateError,
   isRecord,
@@ -32,9 +31,12 @@ const DEGRADED_KEYS = new Set([
 ]);
 const DISABLED_KEYS = new Set(['status', 'reason']);
 
-const requireReview = (value: unknown, label: string): void => {
-  if (!SchemaReviewResourceSchema.safeParse(value).success)
-    throw new CanonicalStateError(label);
+const requireReview = (
+  check: CanonicalPayloadCheck,
+  value: unknown,
+  label: string,
+): void => {
+  if (!check.review(value)) throw new CanonicalStateError(label);
 };
 
 /**
@@ -44,6 +46,7 @@ const requireReview = (value: unknown, label: string): void => {
  */
 export const validateReviewState = (
   value: unknown,
+  check: CanonicalPayloadCheck,
 ): ContentSchemaRegistryReviewState | null => {
   if (value === null || value === undefined) return null;
   if (!isRecord(value)) throw new CanonicalStateError('review');
@@ -52,7 +55,7 @@ export const validateReviewState = (
     rejectUnknownKeys(value, IDLE_KEYS);
   } else if (status === 'success') {
     rejectUnknownKeys(value, SUCCESS_KEYS);
-    requireReview(value.data, 'review data');
+    requireReview(check, value.data, 'review data');
     requireString(value, 'version');
     if (typeof value.stale !== 'boolean')
       throw new CanonicalStateError('review stale');
@@ -68,7 +71,8 @@ export const validateReviewState = (
     validateRouteMeta(value);
   } else if (status === 'degraded') {
     rejectUnknownKeys(value, DEGRADED_KEYS);
-    if (value.data !== null) requireReview(value.data, 'review degraded data');
+    if (value.data !== null)
+      requireReview(check, value.data, 'review degraded data');
     if (
       value.lastVerifiedAt !== null &&
       typeof value.lastVerifiedAt !== 'string'

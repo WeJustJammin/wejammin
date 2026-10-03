@@ -289,22 +289,43 @@ $body$;
 create or replace function pg_temp.s09e_fk_probe(p_schema text, p_table text, p_insert_extra jsonb default null) returns text language plpgsql as $body$
 declare
   fk record; base uuid; bad text := ''; probed integer := 0; cols text[]; cn text; sibling text[];
+  inbound text; copy_row boolean; base_note text := '';
 begin
-  execute format('select id from %I.%I limit 1', p_schema, p_table) into base;
+  execute format('select t.id from %I.%I t order by t.id limit 1', p_schema, p_table) into base;
   if base is null then return 'EMPTY'; end if;
   for fk in select con.conname, con.conkey, con.conrelid from pg_constraint con
-             where con.conrelid = format('%I.%I', p_schema, p_table)::regclass and con.contype = 'f' loop
+             where con.conrelid = format('%I.%I', p_schema, p_table)::regclass and con.contype = 'f' order by con.conname loop
     select array_agg(a.attname::text order by a.attnum) into cols
       from pg_attribute a where a.attrelid = fk.conrelid and a.attnum = any(fk.conkey);
     -- Never move the primary key of a composite reference: change only the referencing columns.
     if cardinality(cols) > 1 then cols := array_remove(cols, 'id'); end if;
+    -- The base row must not depend on heap order or on random ids.  Moving the referencing columns of
+    -- this foreign key also moves any column that another table's foreign key references (owner_id is
+    -- cited by every composite owner reference), and that other table's constraint would fire first.
+    -- So the base is the lowest-id row that no such inbound reference cites; when every row is cited the
+    -- probe inserts a copy instead of moving a cited row.
+    select coalesce(string_agg(format('not exists (select 1 from %s r where %s)', inb.conrelid::regclass,
+             (select string_agg(format('r.%I = t.%I', a.attname, b.attname), ' and ' order by k.ord)
+                from unnest(inb.conkey, inb.confkey) with ordinality k(ck, fk, ord)
+                join pg_attribute a on a.attrelid = inb.conrelid and a.attnum = k.ck
+                join pg_attribute b on b.attrelid = inb.confrelid and b.attnum = k.fk)), ' and '), 'true')
+      into inbound
+      from pg_constraint inb
+     where inb.confrelid = format('%I.%I', p_schema, p_table)::regclass and inb.contype = 'f'
+       and exists (select 1 from unnest(inb.confkey) ck join pg_attribute b on b.attrelid = inb.confrelid and b.attnum = ck
+                    where b.attname::text = any(cols));
+    execute format('select t.id from %I.%I t where %s order by t.id limit 1', p_schema, p_table, inbound) into base;
+    copy_row := base is null;
+    if copy_row then
+      execute format('select t.id from %I.%I t order by t.id limit 1', p_schema, p_table) into base;
+    end if;
     select array_agg(con2.conname) into sibling from pg_constraint con2
      where con2.conrelid = fk.conrelid and con2.contype = 'f'
        and exists (select 1 from pg_attribute a2 where a2.attrelid = fk.conrelid and a2.attnum = any(con2.conkey) and a2.attname::text = any(cols));
     begin
       set constraints all immediate;
       execute format('alter table %I.%I disable trigger user', p_schema, p_table);
-      if p_insert_extra is null then
+      if p_insert_extra is null and not copy_row then
         execute format('update %I.%I set %s where id = $1', p_schema, p_table,
           (select string_agg(format('%I = extensions.gen_random_uuid()', c), ', ') from unnest(cols) c)) using base;
       else
@@ -312,7 +333,7 @@ begin
         execute format($f$insert into %1$I.%2$I select * from jsonb_populate_record(null::%1$I.%2$I,
             (select to_jsonb(t) from %1$I.%2$I t where t.id = $1) || jsonb_build_object('id', extensions.gen_random_uuid()) || $2
             || (select jsonb_object_agg(c, to_jsonb(extensions.gen_random_uuid())) from unnest($3) c))$f$, p_schema, p_table)
-          using base, p_insert_extra, cols;
+          using base, coalesce(p_insert_extra, '{}'::jsonb), cols;
       end if;
       raise exception using errcode = 'S9E01', message = 'S09E_ACCEPTED';
     exception when others then
@@ -321,9 +342,10 @@ begin
         probed := probed + 1;
       else
         bad := bad || fk.conname || '=' || sqlstate || '/' || coalesce(cn, '') || ' ';
+        base_note := base_note || format('(%s: base %s%s)', fk.conname, base, case when copy_row then ' copy' else '' end);
       end if;
     end;
   end loop;
-  return 'probed=' || probed || ';bad=' || bad;
+  return 'probed=' || probed || ';bad=' || bad || base_note;
 end;
 $body$;

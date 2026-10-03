@@ -1,3 +1,4 @@
+import { CAPABILITY_GATE_SURFACES } from '../infrastructure/capability-gate-surfaces';
 import type {
   ContentSchemaRegistryLocaleIssue,
   ContentSchemaRegistryMutationResult,
@@ -134,18 +135,19 @@ export const renderValidationSummary = (
 };
 
 export const renderCapabilityGate = (form: HTMLFormElement): HTMLElement => {
+  const profile = CAPABILITY_GATE_SURFACES['content-schema-registry'];
   const gate = form.ownerDocument.createElement('section');
   gate.dataset.cmsCapabilityGate = 'true';
-  gate.className = 'content-schema-registry-capability-gate';
+  gate.className = profile.className;
   gate.setAttribute('role', 'status');
   gate.setAttribute('aria-live', 'polite');
   const heading = form.ownerDocument.createElement('h3');
   heading.tabIndex = -1;
-  heading.textContent = 'Schema changes unavailable';
+  heading.textContent = profile.disabledHeading;
   const copy = form.ownerDocument.createElement('p');
-  copy.textContent = 'A server capability prerequisite is not satisfied.';
+  copy.textContent = profile.disabledCopy;
   const reason = form.ownerDocument.createElement('p');
-  reason.textContent = 'Reason: FORBIDDEN';
+  reason.textContent = `${profile.reasonLabel} FORBIDDEN`;
   gate.appendChild(heading);
   gate.appendChild(copy);
   gate.appendChild(reason);

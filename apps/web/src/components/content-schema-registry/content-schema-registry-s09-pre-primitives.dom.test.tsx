@@ -10,7 +10,7 @@ import { focusPageHeading } from '../identity-authority/step-up-mfa/focus-page-h
 import ContentSchemaRegistryActionBar, {
   OPERATION_LABELS,
 } from './ContentSchemaRegistryActionBar';
-import ContentSchemaRegistryCapabilityGate from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryConfirmationStep from './ContentSchemaRegistryConfirmationStep';
 import ContentSchemaRegistryFilterBar from './ContentSchemaRegistryFilterBar';
 import { completeContentSchemaRegistryMutation } from './content-schema-registry-runtime-dom-mutation-complete';
@@ -190,9 +190,10 @@ describe('[P2-S09-AC-236] [P2-S09-AC-263] ActionBar', () => {
 });
 
 describe('[P2-S09-AC-237] CapabilityGate', () => {
-  const markup = (
-    props: React.ComponentProps<typeof ContentSchemaRegistryCapabilityGate>,
-  ) => renderToStaticMarkup(<ContentSchemaRegistryCapabilityGate {...props} />);
+  const markup = (props: React.ComponentProps<typeof CapabilityGate>) =>
+    renderToStaticMarkup(
+      <CapabilityGate surface="content-schema-registry" {...props} />,
+    );
 
   it('emits no protected label, code or disclosure for not-rendered and nothing for full access', () => {
     expect(
@@ -219,10 +220,7 @@ describe('[P2-S09-AC-237] CapabilityGate', () => {
       'A server capability prerequisite is not satisfied.',
     );
     expect(disabled).toContain('tabindex="-1"');
-    const readOnly = markup({
-      variant: 'read-only',
-      reasonCode: 'entitledRead',
-    });
+    const readOnly = markup({ variant: 'read-only' });
     expect(readOnly).toContain('Read-only registry access');
     expect(readOnly).not.toContain('tabindex');
     expect(disabled).not.toMatch(/release_note|cms\.schema_designer|ownerId/u);

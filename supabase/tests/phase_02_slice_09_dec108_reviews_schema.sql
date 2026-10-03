@@ -100,6 +100,7 @@ select set_config('app.cms_rpc', 'true', true);
 select is(pg_temp.s09d_outcome('a:decide:rev1'), 'OK',
   'schema fixture: the review was approved through the real producers');
 
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_reviews set %s where id = %L',
     c, pg_temp.s09d_id('a:review')), 'P0001', 'IMMUTABLE_RECORD',
   'review frozen field is immutable: ' || c)
@@ -107,26 +108,34 @@ from unnest(array['definition_hash = repeat(''0'', 64)', 'context_hash = repeat(
   'submitter_person_ref = extensions.gen_random_uuid()',
   'submitted_at = submitted_at - interval ''1 hour''',
   'dry_run_report_hash = repeat(''0'', 64)', 'policy_hash = repeat(''0'', 64)']) c;
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_reviews set state = ''open'' where id = %L',
     pg_temp.s09d_id('a:review')), 'P0001', null,
   'a decided review never reopens (open -> approved|rejected|invalidated only)');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_reviews where id = %L',
     pg_temp.s09d_id('a:review')), 'P0001', 'IMMUTABLE_RECORD', 'a review cannot be deleted');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_review_decisions set decision = ''reject'' where id = %L',
     pg_temp.s09d_id('a:decision:rev1')), 'P0001', 'IMMUTABLE_RECORD',
   'decisions are append-only: UPDATE is rejected');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_review_decisions where id = %L',
     pg_temp.s09d_id('a:decision:rev1')), 'P0001', 'IMMUTABLE_RECORD',
   'decisions are append-only: DELETE is rejected');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_review_assignments set reviewer_person_ref = extensions.gen_random_uuid() where id = %L',
     pg_temp.s09d_id('a:assignment:rev1')), 'P0001', 'IMMUTABLE_RECORD',
   'an assignment can never be repointed at another human');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_review_assignments where id = %L',
     pg_temp.s09d_id('a:assignment:rev1')), 'P0001', 'IMMUTABLE_RECORD',
   'assignments are revoked by state, never deleted');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_schema_dry_run_reports set result = ''failed'' where id = %L',
     pg_temp.s09d_id('a:dryRun')), 'P0001', 'IMMUTABLE_RECORD',
   'a sealed (completed) dry-run report rejects every UPDATE');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('delete from platform_private.cms_schema_dry_run_reports where id = %L',
     pg_temp.s09d_id('a:dryRun')), 'P0001', 'IMMUTABLE_RECORD',
   'a dry-run report is never deleted');

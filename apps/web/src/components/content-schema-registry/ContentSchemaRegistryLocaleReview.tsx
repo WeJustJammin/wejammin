@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
+import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts/client';
 
 import {
   diffAgainstSource,

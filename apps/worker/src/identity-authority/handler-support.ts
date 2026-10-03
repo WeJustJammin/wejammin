@@ -4,7 +4,10 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
+import {
+  responseForAuthError,
+  verifyReadOrigin,
+} from '../authentication/boundary';
 import type {
   AuthenticationError,
   AuthenticationResult,
@@ -31,6 +34,18 @@ export type SessionInput = Readonly<{
   idempotencyKey: string;
   ifMatch: string | null;
 }>;
+
+/**
+ * BE00 step 2 for a read: a read has no body, content type or CSRF token, so
+ * the same-origin check is the whole transport gate. Returns the refusal, or
+ * null when the origin is acceptable.
+ */
+export const refuseForeignReadOrigin = (
+  context: WorkerContext,
+): Response | null => {
+  const refused = verifyReadOrigin(context.req.raw);
+  return refused === null ? null : responseForAuthError(context, refused);
+};
 
 export const pathError = (message: string): AuthenticationError =>
   identityError(400, 'INVALID_REQUEST', message, {

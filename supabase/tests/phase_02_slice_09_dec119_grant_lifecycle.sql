@@ -112,7 +112,7 @@ select ok(pg_temp.s09d_resp('rp.1') is not null and pg_temp.s09d_resp('rp.1') = 
 select is((select count(*)::integer from platform_private.cms_capability_grant_events where grant_id = pg_temp.s09d_id('gE')), 2,
   'the replay wrote no second event');
 select pg_temp.s09g_renew('rp:changed', 'owner', pg_temp.s09d_id('gE'), '1', pg_temp.s09g_day(21), '{}', 's09g-renew-fixed-key');
-select is(pg_temp.s09d_outcome('rp:changed'), 'CONFLICT', 'the same key with a changed body is 409');
+select is(pg_temp.s09d_outcome('rp:changed'), 'IDEMPOTENCY_MISMATCH', 'the same key with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-566]');
 select pg_temp.s09g_renew('cas:2', 'owner', pg_temp.s09d_id('gE'), '1', pg_temp.s09g_day(22));
 select is(pg_temp.s09d_outcome('cas:2'), 'VERSION_MISMATCH', 'a second command carrying the same expected version loses the CAS (409 VERSION_MISMATCH) [P2-S09-AC-558]');
 select ok(pg_temp.s09d_def('platform_private.cms_renew_capability_grant(jsonb)') ilike '%for update%'
@@ -134,7 +134,7 @@ select ok(pg_temp.s09g_holds('rev2', 'cms.reviewer') and (select r->>'state' = '
 
 -- Immediate revocation, refusal of renewal/revoke on a revoked aggregate, re-establishment by grant.
 select count(*) as audit_before2 from audit_private.audit_events \gset
-select pg_temp.s09g_revoke('rev', 'owner', pg_temp.s09d_id('gE'), '2', '{"reason": "Done"}');
+select pg_temp.s09g_revoke('rev', 'owner', pg_temp.s09d_id('gE'), '2', '{"reason": "Done"}', 's09g-revoke-fixed-key');
 select is(pg_temp.s09d_outcome('rev'), 'OK', 'the owner revokes an active aggregate (200) [P2-S09-AC-583]');
 select ok((select r->>'state' = 'revoked' and r->>'lastAction' = 'revoked' and r->>'version' = '3'
     from (select pg_temp.s09d_resp('rev') r) s) and not pg_temp.s09g_holds('rev1', 'cms.editor'),
@@ -147,6 +147,8 @@ select pg_temp.s09g_renew('rev:renew', 'owner', pg_temp.s09d_id('gE'), '3', pg_t
 select is(pg_temp.s09d_outcome('rev:renew'), 'CONFLICT', 'a revoked aggregate is refused for renewal (409) [P2-S09-AC-557]');
 select pg_temp.s09g_revoke('rev:again', 'owner', pg_temp.s09d_id('gE'), '3');
 select is(pg_temp.s09d_outcome('rev:again'), 'CONFLICT', 'a revoked aggregate is refused for a second revocation (409) [P2-S09-AC-594]');
+select pg_temp.s09g_revoke('rev:mismatch', 'owner', pg_temp.s09d_id('gE'), '2', '{"reason": "Changed"}', 's09g-revoke-fixed-key');
+select is(pg_temp.s09d_outcome('rev:mismatch'), 'IDEMPOTENCY_MISMATCH', 'the same revocation key with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT) [P2-S09-AC-594]');
 select pg_temp.s09g_grant('rev:regrant', 'owner', 'rev1', 'cms.editor', pg_temp.s09g_day(9));
 select ok(pg_temp.s09d_outcome('rev:regrant') = 'OK' and (select r->>'id' = pg_temp.s09d_id('gE')::text and r->>'version' = '4'
     and r->>'state' = 'active' and r->>'lastAction' = 'granted' from (select pg_temp.s09d_resp('rev:regrant') r) s)

@@ -13,7 +13,9 @@ import {
 import {
   authorizeUploadIntent,
   commitUploadIntent,
+  resolveUploadPrincipal,
 } from './upload-intent-command';
+import { verifyCsrfToken, verifySameOrigin } from '../authentication/boundary';
 import {
   dependencyError,
   invalid,
@@ -56,22 +58,36 @@ export type {
   TargetAuthorization,
 };
 
-const transportChecks = (request: Request, maxBodyBytes: number): void => {
+/**
+ * BE00 step 2 for a cookie-authenticated JSON mutation: exact method,
+ * same-origin, declared size, content type, then the session-bound CSRF token.
+ */
+const transportChecks = async (
+  request: Request,
+  maxBodyBytes: number,
+): Promise<void> => {
   if (request.method !== 'POST')
     throw invalid('The request method is invalid.');
+  const origin = verifySameOrigin(request);
+  if (origin !== null)
+    throw new UploadAdmissionError('FORBIDDEN', 403, origin.message);
+  const contentLength = request.headers.get('content-length');
+  if (contentLength !== null) {
+    if (!/^\d+$/.test(contentLength))
+      throw invalid('The request content length is invalid.');
+    const declaredBytes = Number(contentLength);
+    if (!Number.isSafeInteger(declaredBytes) || declaredBytes > maxBodyBytes)
+      throw tooLarge(maxBodyBytes);
+  }
   const contentType = request.headers.get('content-type');
   if (
     contentType === null ||
     contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json'
   )
     throw unsupportedMediaType();
-  const contentLength = request.headers.get('content-length');
-  if (contentLength === null) return;
-  if (!/^\d+$/.test(contentLength))
-    throw invalid('The request content length is invalid.');
-  const declaredBytes = Number(contentLength);
-  if (!Number.isSafeInteger(declaredBytes) || declaredBytes > maxBodyBytes)
-    throw tooLarge(maxBodyBytes);
+  const csrf = await verifyCsrfToken(request);
+  if (csrf !== null)
+    throw new UploadAdmissionError('FORBIDDEN', 403, csrf.message);
 };
 
 const parseJsonBody = (bytes: Uint8Array): unknown => {
@@ -106,15 +122,14 @@ export const createUploadIntentHandler = (
       request.headers.get('x-request-id') ?? undefined,
     );
     try {
-      transportChecks(request, maxBodyBytes);
-      let body: unknown;
+      await transportChecks(request, maxBodyBytes);
+      let bytes: Uint8Array;
       try {
-        const bytes = await withDeadline(
+        bytes = await withDeadline(
           (signal) =>
             readBoundedUploadIntentBody(request, maxBodyBytes, signal),
           deadlineMs,
         );
-        body = parseJsonBody(bytes);
       } catch (error) {
         if (error instanceof UploadBodyLimitExceededError)
           throw tooLarge(maxBodyBytes);
@@ -124,20 +139,22 @@ export const createUploadIntentHandler = (
           throw dependencyError();
         throw invalid('The request body could not be read.');
       }
-      const parsed = parseRequest(body, options.policies);
-      const idempotencyKey = parseIdempotencyKey(
-        request.headers.get('idempotency-key'),
-      );
-      const ifMatch = parseVersion(
-        request.headers.get('if-match'),
-        !parsed.policy.immutable,
-      );
       return await withDeadline(async (signal) => {
-        const principal = await authorizeUploadIntent(
+        const principal = await resolveUploadPrincipal(
           options,
-          parsed,
           request,
           signal,
+        );
+        // BE00 step 6: strict body, after the session.
+        const parsed = parseRequest(parseJsonBody(bytes), options.policies);
+        await authorizeUploadIntent(options, parsed, principal, signal);
+        // BE00 step 8: exact Idempotency-Key and If-Match follow authorization.
+        const idempotencyKey = parseIdempotencyKey(
+          request.headers.get('idempotency-key'),
+        );
+        const ifMatch = parseVersion(
+          request.headers.get('if-match'),
+          !parsed.policy.immutable,
         );
         return commitUploadIntent(
           options,

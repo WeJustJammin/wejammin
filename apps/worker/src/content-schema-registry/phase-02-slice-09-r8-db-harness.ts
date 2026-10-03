@@ -72,6 +72,14 @@ const withoutContext = (
  * The database idempotency binding: same (actor, RPC, key) and identical
  * request hash replays the committed response; a different hash is
  * IDEMPOTENCY_MISMATCH. A different actor is a different binding.
+ *
+ * The mismatch answer is exactly what the real database raises for every
+ * command that reserves a key: `cms_reserve` raises it directly, and since
+ * migration 20261003130000 `cms_reserve_conflict` (CMS-03A-04, 09..17) lets it
+ * through instead of rewriting it to a bare CONFLICT. The same wire answer is
+ * proved against the live database (Kong, PostgREST, the real RPC) by
+ * tests/postgrest/cms-idempotency-mismatch.apispec.ts, so this stand-in cannot
+ * drift from the production outcome unnoticed.
  */
 export const idempotentDb = (
   success: (call: RpcCall) => Response,

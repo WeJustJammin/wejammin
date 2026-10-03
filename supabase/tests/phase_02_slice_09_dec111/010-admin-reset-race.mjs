@@ -15,6 +15,14 @@
  *   S2  the operator's reset-capability revocation is in flight when the reset
  *       starts: the reset BLOCKS on the grant row and refuses with FORBIDDEN.
  *
+ *   S3  (AC933) the settlement of a reset reports a `failed` provider outcome while
+ *       a second copy of the same report (a Worker retry) is already in flight:
+ *       the second settle BLOCKS on the reset row, then finds the first one's
+ *       settlement receipt and emits nothing, so the reconciler is woken exactly
+ *       once for the factor version (one reservation event plus one wake-up), and
+ *       a later sequential replay emits nothing either.  Runs first, before S1 and
+ *       S2 end the memberships and the grant the other scenarios consume.
+ *
  * Run only against the disposable local Supabase database right after
  * `pnpm db:reset`, and run `pnpm db:reset` again afterwards (it commits
  * identities, a grant and a factor that the pgTAP suites expect absent).  It is
@@ -151,6 +159,7 @@ const setupScript = [
    $body$;
    select pg_temp.m_member('rev1');
    select pg_temp.m_member('rev2');
+   select pg_temp.m_member('rev3');
    -- FIXTURE FORGERY: no command in this repository grants an admin capability (CFG-11 record).
    insert into platform_private.admin_capability_grants(id, subject_person_id, capability_key, resource_type, resource_id,
      scope, actions, starts_at, ends_at, grantor_person_id, reason, purpose_grant, state, version_no)
@@ -159,13 +168,17 @@ const setupScript = [
      array['reset'], clock_timestamp() - interval '2 hours', clock_timestamp() + interval '1 day',
      pg_temp.s09d_actor_id('owner', 'person')::uuid, 'dec111 race', false, 'active', 1;
    select pg_temp.m_enroll(13, 'V1');
-   select pg_temp.m_enroll(14, 'W1');`,
+   select pg_temp.m_enroll(14, 'W1');
+   select pg_temp.m_enroll(15, 'X1');`,
   `select jsonb_build_object(
      'guc', (select jsonb_build_object('auth', auth_user_id, 'person', person_id, 'party', party_id, 'binding', binding_id)
              from s09d_actor where key = 'designer2'),
      'org', pg_temp.s09d_id('ownerOrg'),
      'target1', pg_temp.s09d_actor_id('rev1', 'person'), 'target2', pg_temp.s09d_actor_id('rev2', 'person'),
      'targetAuth1', pg_temp.s09d_actor_id('rev1', 'auth'), 'targetAuth2', pg_temp.s09d_actor_id('rev2', 'auth'),
+     'target3', pg_temp.s09d_actor_id('rev3', 'person'), 'targetAuth3', pg_temp.s09d_actor_id('rev3', 'auth'),
+     'factor3', pg_temp.m_fid(15),
+     'provider3', (select provider_factor_id from identity.mfa_factor_registry where id = pg_temp.m_fid(15)),
      'operator', pg_temp.s09d_actor_id('designer2', 'person'),
      'context', pg_temp.s09d_context('designer2', true))::text;`,
   'commit;',
@@ -187,6 +200,8 @@ const resetCall = (target, key) =>
       context: ids.context,
     }),
   )}::jsonb);`;
+// FIXTURE FORGERY: ends the forged membership of this race fixture in place, so the end lands at an exact point between
+// two committed sessions; it claims no producer path (rpc_accept_or_end_membership is the real end command).
 const endMembership = (target) =>
   `update identity_private.membership_tenure set state = 'ended', revoked_at = clock_timestamp(), version = version + 1 where organization_id = ${sql(ids.org)}::uuid and person_id = ${sql(target)}::uuid;`;
 const liveFactors = (authUser) =>
@@ -213,6 +228,80 @@ assert(
 assert(
   grantState() === 'active',
   'fixture: the operator holds an active admin.identity.mfa_reset grant',
+);
+
+// ----------------------- S3: a duplicate failed settlement report (AC933) ----
+const settleCall = (resetId, outcomes) =>
+  `select platform_api.admin_mfa_factor_reset_settle(${sql(
+    JSON.stringify({ resetId, outcomes, context: ids.context }),
+  )}::jsonb);`;
+const failedOutcome = [{ providerFactorId: ids.provider3, outcome: 'failed' }];
+const factorEvents = (factor) =>
+  Number(
+    runValue(
+      `select count(*) from platform_private.outbox_events where event_type = 'identity.mfa-factor.changed.v1' and aggregate_id = ${sql(factor)}::uuid;`,
+    ),
+  );
+const receipts = (resetId) =>
+  Number(
+    runValue(
+      `select count(*) from platform_private.admin_mfa_factor_reset_settlements where reset_id = ${sql(resetId)}::uuid and outcome = 'failed';`,
+    ),
+  );
+const eventsAfterEnrollment = factorEvents(ids.factor3);
+const reserved = JSON.parse(
+  runValue(`${gucs} ${resetCall(ids.target3, 'race-reset-key-3')}`),
+);
+const eventsAfterReservation = factorEvents(ids.factor3);
+assert(
+  reserved.state === 'reconciling' &&
+    typeof reserved.resetId === 'string' &&
+    eventsAfterReservation === eventsAfterEnrollment + 1,
+  'S3 fixture: the reservation moved the factor to reconciling and wrote its one change event',
+);
+console.log(
+  `# S3: two copies of one failed settlement report race (${SLEEP_SECONDS}s hold on the first)`,
+);
+const firstReport = runAsync(
+  'dec111race-settle-a',
+  `${gucs} begin; ${settleCall(reserved.resetId, failedOutcome)} select pg_sleep(${SLEEP_SECONDS}); commit;`,
+);
+await waitFor(
+  'the first settlement to hold the reset row (pg_sleep)',
+  () => waitEvent('dec111race-settle-a') === 'Timeout:PgSleep',
+);
+const secondReport = runAsync(
+  'dec111race-settle-b',
+  `${gucs} ${settleCall(reserved.resetId, failedOutcome)}`,
+);
+await waitFor('the duplicate settlement to block on the reset row', () =>
+  waitEvent('dec111race-settle-b').startsWith('Lock:'),
+);
+assert(
+  factorEvents(ids.factor3) === eventsAfterReservation &&
+    receipts(reserved.resetId) === 0,
+  'S3: nothing of the uncommitted first report is visible to the waiting duplicate',
+);
+const firstResult = await firstReport.done;
+const secondResult = await secondReport.done;
+assert(
+  firstResult.code === 0 && secondResult.code === 0,
+  `S3: both reports of the same outcome were accepted (${firstResult.stderr.trim()}${secondResult.stderr.trim()})`,
+);
+assert(
+  factorEvents(ids.factor3) === eventsAfterReservation + 1 &&
+    receipts(reserved.resetId) === 1,
+  '[P2-S09-AC-933] S3: the concurrent duplicate emitted no second reconciler event: one reservation event plus exactly one wake-up for the factor version, one settlement receipt',
+);
+const replay = await runAsync(
+  'dec111race-settle-c',
+  `${gucs} ${settleCall(reserved.resetId, failedOutcome)}`,
+).done;
+assert(
+  replay.code === 0 &&
+    factorEvents(ids.factor3) === eventsAfterReservation + 1 &&
+    receipts(reserved.resetId) === 1,
+  '[P2-S09-AC-933] S3: a later sequential replay of the report emits nothing either',
 );
 
 // ------------------------------------ S1: membership revocation first ----
@@ -264,6 +353,7 @@ console.log(
 );
 const grantHold = runAsync(
   'dec111race-grant2',
+  // FIXTURE FORGERY: revokes the forged admin capability grant of this race fixture (no command grants or revokes one in this repository, CFG-11 record).
   `begin; update platform_private.admin_capability_grants set state = 'revoked', revoked_at = clock_timestamp(), revoked_by = grantor_person_id, version_no = version_no + 1 where subject_person_id = ${sql(ids.operator)}::uuid and capability_key = 'admin.identity.mfa_reset'; select pg_sleep(${SLEEP_SECONDS}); commit;`,
 );
 await waitFor(

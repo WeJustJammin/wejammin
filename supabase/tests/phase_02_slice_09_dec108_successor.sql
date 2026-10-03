@@ -99,17 +99,17 @@ select is(pg_temp.s09d_outcome('b:stale'), 'VERSION_MISMATCH', 'a stale source I
 select pg_temp.s09d_rpc('b:mismatch', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', '999', 'idempotencyKey', 's09d-successor-replay-0001'));
-select is(pg_temp.s09d_outcome('b:mismatch'), 'CONFLICT', 'the same Idempotency-Key with a changed body is a 409 CONFLICT [P2-S09-AC-300]');
+select is(pg_temp.s09d_outcome('b:mismatch'), 'IDEMPOTENCY_MISMATCH', 'the same Idempotency-Key with a changed body is refused IDEMPOTENCY_MISMATCH (wire 409 CONFLICT, recoveryAction use_new_idempotency_key) [P2-S09-AC-300] [P2-S09-AC-308]');
 select pg_temp.s09d_rpc('b:pathkey', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', extensions.gen_random_uuid(),
     'expectedVersion', pg_temp.s09d_version('a'), 'idempotencyKey', 's09d-successor-replay-0001'));
-select is(pg_temp.s09d_outcome('b:pathkey'), 'CONFLICT',
-  'the same actor reusing the Idempotency-Key with a changed source version path is a 409 CONFLICT (BE00 request binding) [P2-S09-AC-300]');
+select is(pg_temp.s09d_outcome('b:pathkey'), 'IDEMPOTENCY_MISMATCH',
+  'the same actor reusing the Idempotency-Key with a changed source version path is refused IDEMPOTENCY_MISMATCH (BE00 request binding) [P2-S09-AC-300]');
 select pg_temp.s09d_rpc('b:pathtype', 'platform_api.cms_create_schema_successor', 'owner',
   jsonb_build_object('contentTypeId', extensions.gen_random_uuid(), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'idempotencyKey', 's09d-successor-replay-0001'));
-select is(pg_temp.s09d_outcome('b:pathtype'), 'CONFLICT',
-  'the same actor reusing the Idempotency-Key with a changed content type path is a 409 CONFLICT [P2-S09-AC-300]');
+select is(pg_temp.s09d_outcome('b:pathtype'), 'IDEMPOTENCY_MISMATCH',
+  'the same actor reusing the Idempotency-Key with a changed content type path is refused IDEMPOTENCY_MISMATCH [P2-S09-AC-300]');
 select pg_temp.s09d_rpc('b:actorkey', 'platform_api.cms_create_schema_successor', 'other',
   jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'),
     'expectedVersion', pg_temp.s09d_version('a'), 'idempotencyKey', 's09d-successor-replay-0001'));

@@ -102,30 +102,38 @@ select set_config('app.cms_rpc', '', true);
 
 -- ------------------------------------------------- immutability trigger ----
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set supported_locales = '["en-US","fr-FR","pt-BR","es-ES"]'::jsonb where id = %L$q$, pg_temp.s09d_id('a:version'))),
   'a draft version rejects any UPDATE of supported_locales [P2-S09-AC-1186] [P2-S09-AC-1205]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set fallback_chains = '{}'::jsonb where id = %L$q$, pg_temp.s09d_id('a:version'))),
   'a draft version rejects any UPDATE of fallback_chains [P2-S09-AC-1186] [P2-S09-AC-1205]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set locale_config_hash = repeat('a', 64) where id = %L$q$, pg_temp.s09d_id('a:version'))),
   'a draft version rejects any UPDATE of locale_config_hash [P2-S09-AC-1205]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set source_locale = 'fr-FR' where id = %L$q$, pg_temp.s09d_id('a:version'))),
   'a draft version rejects any UPDATE of source_locale [P2-S09-AC-1205]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set default_locale = 'fr-FR' where id = %L$q$, pg_temp.s09d_id('a:version'))),
   'a draft version rejects any UPDATE of default_locale [P2-S09-AC-1205]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set updated_at = clock_timestamp() where id = %L$q$, pg_temp.s09d_id('a:version'))),
   'ordinary lifecycle bookkeeping on a draft is still accepted');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set supported_locales = '["en-US","fr-FR"]'::jsonb, fallback_chains = '{"fr-FR":["en-US"]}'::jsonb,
         locale_config_hash = %L
     where id = %L$q$, platform_private.cms_locale_config_hash('en-US', 'en-US', '["en-US","fr-FR"]', '{"fr-FR":["en-US"]}'),
       pg_temp.s09d_id('b:version'))),
   'a CHECK-valid, hash-consistent locale replacement is still an UPDATE and is rejected [P2-S09-AC-1205] [P2-S09-AC-1239]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select ok(not pg_temp.s09d_try(format($q$update platform_private.cms_content_type_versions
     set supported_locales = '["fr-FR"]'::jsonb where id = %L$q$, pg_temp.s09d_id('b:version'))),
   'supported_locales must keep including the source and default locale');

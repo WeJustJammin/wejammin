@@ -301,6 +301,20 @@ export const verifySameOrigin = (
     ? null
     : authError(403, 'FORBIDDEN', 'The request origin is not allowed.');
 
+/**
+ * BE00 step 2 for a cookie-session READ: a read has no body, content type or
+ * CSRF token, and a same-origin navigation may omit `Origin`, so an absent
+ * header is accepted and a present one must be this origin.
+ */
+export const verifyReadOrigin = (
+  request: Request,
+): AuthenticationError | null => {
+  const origin = request.headers.get('origin');
+  return origin === null || origin === new URL(request.url).origin
+    ? null
+    : authError(403, 'FORBIDDEN', 'The request origin is not allowed.');
+};
+
 export const verifyCsrfToken = async (
   request: Request,
 ): Promise<AuthenticationError | null> => {

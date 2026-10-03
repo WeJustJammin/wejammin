@@ -75,16 +75,22 @@ export const parsePathId = (
     ? { ok: true, value }
     : authError(400, 'INVALID_REQUEST', 'The path identifier is invalid.');
 
-type MutationOptions<B> = Readonly<{
+type MutationOptions<B, P> = Readonly<{
   schema: SchemaLike<B>;
+  /**
+   * BE00 step 6: the strict path identifier, validated after the verified
+   * session and before the body. Absent for a route without a path member.
+   */
+  path?: () => AuthenticationResult<P>;
   idempotency: boolean;
   ifMatch: boolean;
   /** Bucket id for the rate limiter; defaults to the operation id. */
   rateOperation?: AuthOperationId;
 }>;
 
-export type AdmittedMutation<B> = Readonly<{
+export type AdmittedMutation<B, P> = Readonly<{
   body: B;
+  path: P;
   session: AuthenticationSession;
   idempotencyKey: string;
   ifMatch: string;
@@ -98,17 +104,22 @@ export type AdmittedMutation<B> = Readonly<{
  * The step-up decision of these operations depends on persisted factor state,
  * so each service makes it inside its own transaction.
  */
-export const admitMfaMutation = async <B>(
+export const admitMfaMutation = async <B, P = null>(
   context: WorkerContext,
   dependencies: AuthenticationDependencies,
   operationId: AuthOperationId,
-  options: MutationOptions<B>,
-): Promise<AdmittedMutation<B> | Response> => {
+  options: MutationOptions<B, P>,
+): Promise<AdmittedMutation<B, P> | Response> => {
   const transport = await admitJsonMutationTransport(context.req.raw);
   if (!transport.ok)
     return responseForMfaError(context, operationId, transport);
   const resolved = await requireSession(context, dependencies);
   if (!resolved.ok) return responseForMfaError(context, operationId, resolved);
+  const path =
+    options.path === undefined
+      ? ({ ok: true, value: null } as AuthenticationResult<P>)
+      : options.path();
+  if (!path.ok) return responseForMfaError(context, operationId, path);
   const decoded = transport.value.decode(options.schema);
   if (!decoded.ok)
     return responseForMfaError(
@@ -139,6 +150,7 @@ export const admitMfaMutation = async <B>(
   }
   return {
     body: decoded.value,
+    path: path.value,
     session: resolved.value,
     idempotencyKey,
     ifMatch,

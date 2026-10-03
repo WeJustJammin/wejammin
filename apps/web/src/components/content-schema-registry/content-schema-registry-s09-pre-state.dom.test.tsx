@@ -7,7 +7,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import ContentSchemaRegistryCapabilityGate from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryOfflineStatus from './ContentSchemaRegistryOfflineStatus';
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
 import ContentSchemaRegistrySyncConflict from './ContentSchemaRegistrySyncConflict';
@@ -208,7 +208,8 @@ describe('[P2-S09-AC-230] [P2-S09-AC-263] the registry represents every state ex
 
   it('shows the capability, conflict and offline states with their own named regions', () => {
     const gate = renderToStaticMarkup(
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="disabled"
         reasonCode="SCHEMA_DESIGNER_REQUIRED"
       />,
@@ -309,6 +310,8 @@ describe('[P2-S09-AC-231] URL and server state are canonical and no global clien
       'offline',
       'message',
       'focusLocator',
+      // Transient: whether the lazily loaded views have hydrated (no data).
+      'viewsReady',
     ]);
     expect(stateNames.filter((name) => !allowed.has(name))).toEqual([]);
     expect(stateNames.length).toBeGreaterThan(10);

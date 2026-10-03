@@ -32,6 +32,9 @@ import {
   LOCALE_CONFIG_MESSAGES,
   refineLocaleConfig,
 } from './locale-config.ts';
+import { TEMPLATE_BINDING_MESSAGES } from './template-binding-messages.ts';
+
+export { TEMPLATE_BINDING_MESSAGES };
 
 /**
  * DEC-123: a brand-new content type carries no template. A compatible template
@@ -143,12 +146,6 @@ export const SchemaActivationRequestSchema = z
  */
 export const WORKFLOW_MEMBER_MESSAGES = {
   pair: 'workflowKey and workflowVersion must be both null or both present',
-} as const;
-
-export const TEMPLATE_BINDING_MESSAGES = {
-  pair: 'defaultTemplateVersionId and templateBindings must be both null or both present',
-  unique: 'templateBindings must be unique',
-  incompatible: 'template version is not compatible with this content type',
 } as const;
 
 /**

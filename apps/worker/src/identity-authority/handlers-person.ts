@@ -18,7 +18,13 @@ import {
   parseIdentityCommandHeaders,
   decodeIdentityBody,
 } from './route-support';
-import { execute, pathError, rate, resolve } from './handler-support';
+import {
+  execute,
+  pathError,
+  rate,
+  refuseForeignReadOrigin,
+  resolve,
+} from './handler-support';
 import type { RecoveryState } from './recovery';
 
 export const createPerson = async (
@@ -68,6 +74,8 @@ export const readPerson = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-02');
+  const foreignOrigin = refuseForeignReadOrigin(context);
+  if (foreignOrigin !== null) return foreignOrigin;
   // BE00 steps 4 and 5: verified session, then acting context.
   const resolved = await resolve(context, dependencies);
   if (!resolved.ok) return responseForAuthError(context, resolved);

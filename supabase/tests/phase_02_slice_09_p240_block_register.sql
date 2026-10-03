@@ -181,11 +181,12 @@ select is(pg_temp.p_ok('dg:ok', 'p240digest', 1), 'ok', 'control: a lowercase 64
 select is((select release_digest::text from platform_private.cms_block_definition_versions where block_key = 'p240digest'), repeat('e', 64), 'the digest is stored as the signed release manifest binding [P2-S09-AC-118]');
 
 -- ============================ AC034 CMS-03A-05: the refusals of a caller that is not the trusted release principal ====
--- The database has one refusal for every caller that is not an active signed release principal: a human or
--- admin session, an unknown key, a revoked key and an expired key all get 401 UNAUTHENTICATED with the same
--- body and commit nothing, so the refusal never discloses which release keys exist.  (The 403 row for a human
--- is the Worker's mapping of the same refusal; the database has no per-target 404 for a registration, the
--- block pair being created by this command.)
+-- The database refuses every caller that is not an active signed release principal, by kind: a human or
+-- admin session is 403 FORBIDDEN (BE03a row 164: "human/admin ... is 403"); an unknown key, a revoked key, an
+-- expired key and an anonymous caller get 401 UNAUTHENTICATED with one body, so the refusal never discloses which
+-- release keys exist; every refusal commits nothing.  The database has no per-target 404 for a registration: the
+-- block pair is created by this command and BE03a does not say what "unregistered release target" names (see the
+-- DB3 report, needs ruling).
 create or replace function pg_temp.p_human_register(p_label text, p_request jsonb) returns text language plpgsql as $body$
 declare before_rows text := pg_temp.p_block_rows(); outcome text;
 begin
@@ -193,22 +194,32 @@ begin
   perform pg_temp.s09d_call(p_label, 'platform_api.cms_register_block', p_request);
   outcome := pg_temp.s09d_outcome(p_label);
   perform pg_temp.set_jwt_claim('role', 'service_role', true);
-  return case when outcome = 'UNAUTHENTICATED' and before_rows = pg_temp.p_block_rows() then 'ok' else 'bad:' || outcome end;
+  return case when outcome = 'FORBIDDEN' and before_rows = pg_temp.p_block_rows() then 'ok' else 'bad:' || outcome end;
 end;
 $body$;
 select is(pg_temp.p_human_register('a05:human', pg_temp.p_block_request('p240a05', 1)), 'ok',
-  'a signed registration submitted from a human or admin session is refused 401 and nothing is committed [P2-S09-AC-034]');
+  'a signed registration submitted from a human or admin session is refused 403 and nothing is committed [P2-S09-AC-034]');
+select pg_temp.s09d_session('owner', 'service_role');
+select pg_temp.s09d_call('a05:humanctx', 'platform_api.cms_register_block', (pg_temp.p_block_request('p240a05', 1) - 'context') || jsonb_build_object('context', pg_temp.s09d_context('owner')));
+select is(pg_temp.s09d_outcome('a05:humanctx'), 'FORBIDDEN', 'a registration whose request context names a verified human actor is refused 403 (a release call carries no human identity) [P2-S09-AC-034]');
+select pg_temp.set_jwt_claim('role', 'anon', true);
+select pg_temp.s09d_call('a05:anon', 'platform_api.cms_register_block', pg_temp.p_block_request('p240a05', 1));
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+select is(pg_temp.s09d_outcome('a05:anon'), 'UNAUTHENTICATED', 'an anonymous caller is still refused 401: only a human or admin session is 403 [P2-S09-AC-034]');
 select is(pg_temp.p_bad('a05:unknown', 'UNAUTHENTICATED', 'p240a05', 1, '{"releaseKeyId":"release.unknown","context":{"releasePrincipalId":"release.unknown"}}'), 'ok',
   'a registration under an unregistered release key is refused 401 and nothing is committed [P2-S09-AC-034]');
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set revoked_at = clock_timestamp() where key_id = 'release.p240';
 select is(pg_temp.p_bad('a05:revoked', 'UNAUTHENTICATED', 'p240a05', 1), 'ok',
   'a registration under a revoked release key is refused 401 and nothing is committed [P2-S09-AC-034]');
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set revoked_at = null where key_id = 'release.p240';
-select ok(pg_temp.s09d_resp('a05:human') is not distinct from pg_temp.s09d_resp('a05:unknown')
-    and pg_temp.s09d_detail('a05:human') is not distinct from pg_temp.s09d_detail('a05:unknown')
+select ok(pg_temp.s09d_resp('a05:human') is not distinct from pg_temp.s09d_resp('a05:humanctx')
+    and pg_temp.s09d_detail('a05:human') is not distinct from pg_temp.s09d_detail('a05:humanctx')
     and pg_temp.s09d_resp('a05:unknown') is not distinct from pg_temp.s09d_resp('a05:revoked')
-    and pg_temp.s09d_detail('a05:unknown') is not distinct from pg_temp.s09d_detail('a05:revoked'),
-  'the human, unknown-key and revoked-key refusals carry the same body and detail: no release key existence is disclosed [P2-S09-AC-034]');
+    and pg_temp.s09d_detail('a05:unknown') is not distinct from pg_temp.s09d_detail('a05:revoked')
+    and pg_temp.s09d_resp('a05:unknown') is not distinct from pg_temp.s09d_resp('a05:anon'),
+  'the two human refusals carry one body and the unknown-key, revoked-key and anonymous refusals carry another: no release key existence is disclosed [P2-S09-AC-034]');
 select is(pg_temp.p_ok('a05:control', 'p240a05', 1), 'ok',
   'control: after the key is reinstated the same registration commits [P2-S09-AC-034]');
 

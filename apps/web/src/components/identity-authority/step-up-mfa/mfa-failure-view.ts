@@ -1,6 +1,7 @@
 import { ONE_TIME_CODE_COPY } from './one-time-code';
 import type { MfaFailure } from './mfa-failure';
 import { DEFAULT_LOCK_SECONDS, STEP_UP_COPY } from './step-up-failure';
+import { isStepUpRequiredCode } from '../../step-up-required';
 
 export type MfaContext = 'start' | 'verify' | 'remove' | 'cancel' | 'refresh';
 
@@ -77,7 +78,7 @@ export const mfaFailureView = (
 ): MfaFailureView => {
   const { status, reason } = failure;
   if (status === 401) {
-    return failure.code === 'STEP_UP_REQUIRED'
+    return isStepUpRequiredCode(failure.code)
       ? view('step-up', '')
       : view(
           'sign-in',

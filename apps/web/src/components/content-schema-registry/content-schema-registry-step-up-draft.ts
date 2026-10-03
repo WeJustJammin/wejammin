@@ -5,6 +5,7 @@ import {
   type DraftStorage,
   type StepUpDraft,
 } from '../identity-authority/step-up-mfa/step-up-draft';
+import { stepUpDraftScope } from './content-schema-registry-step-up-scope';
 
 /**
  * FE00 error-per-class: on 401 `STEP_UP_REQUIRED` the interrupted protected
@@ -28,10 +29,7 @@ const TRANSPORT = new Set([
   'operationId',
 ]);
 
-export const stepUpDraftScope = (
-  pathname: string,
-  operationId: string,
-): string => `cms:${pathname}:${operationId}`;
+export { stepUpDraftScope };
 
 const storageOf = (windowObject: Window): DraftStorage | null => {
   try {

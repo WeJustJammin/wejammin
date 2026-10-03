@@ -2,6 +2,7 @@ import { createLogger } from '@wejammin/observability/logging';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWorkerApp, type WorkerDependencies } from '../index';
+import { COMPLETION_BROWSER_HEADERS } from './upload-intent-completion.test-support';
 import type { UploadCompletionRouteDependencies } from './upload-intent-completion';
 
 const INTENT_ID = '44444444-4444-4444-8444-444444444444';
@@ -44,6 +45,7 @@ const request = () =>
     {
       body,
       headers: {
+        ...COMPLETION_BROWSER_HEADERS,
         'content-type': 'application/json',
         'idempotency-key': 'complete-key-1',
         'if-match': '"7"',

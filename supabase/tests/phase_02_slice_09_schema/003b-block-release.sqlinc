@@ -2,6 +2,7 @@
 -- signature are all produced by the Worker vector in the preceding fragment.
 -- The private *_at seam supplies only the vector's deterministic test clock;
 -- the granted one-argument RPC always supplies clock_timestamp().
+-- FIXTURE FORGERY: no command registers a release signing principal (the release key registry is operator-provisioned trust configuration); the rows only let the signed CMS-03A-05 / CMS-03A-08 commands verify, they claim no producer path.
 insert into platform_private.cfg_release_principals(
   principal_id, key_id, scope, active, public_key
 ) values (
@@ -152,6 +153,7 @@ select ok(
     ))),
   'CMS-03A-05 locks the current release key before nested attestation verification'
 );
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals
 set valid_from = '2026-09-02T17:01:00.000Z'::timestamptz
 where key_id = 'release-key-v1';
@@ -163,9 +165,11 @@ select throws_ok(
   'P0001', 'UNAUTHENTICATED',
   'CMS-03A-05 rejects a rotated key that is not yet current at verification time'
 );
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals
 set valid_from = null
 where key_id = 'release-key-v1';
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals
 set public_key = (select public_key from s09_release_key)
 where key_id = 'release-key-v1';
@@ -177,6 +181,7 @@ select throws_ok(
   'P0001', 'UNAUTHENTICATED',
   'CMS-03A-05 verifies against the current rotated key rather than a stale key snapshot'
 );
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals
 set public_key = decode('A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=', 'base64')
 where key_id = 'release-key-v1';

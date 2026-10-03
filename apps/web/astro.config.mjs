@@ -5,7 +5,7 @@ import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import cloudflare from '@astrojs/cloudflare';
-import { clientChunkFor } from './client-chunk-boundaries.mjs';
+import { clientChunkGroups } from './client-chunk-boundaries.mjs';
 const runtimeProcess = /** @type {{
   env?: Record<string, string | undefined>;
   argv?: unknown;
@@ -80,7 +80,11 @@ export default defineConfig({
   devToolbar: { enabled: !isolateCloudflareDev },
   integrations: [react(), edgeSecurityIntegration()],
   vite: {
-    build: { rollupOptions: { output: { manualChunks: clientChunkFor } } },
+    build: {
+      rollupOptions: {
+        output: { codeSplitting: { groups: [...clientChunkGroups] } },
+      },
+    },
     optimizeDeps: {
       include: [
         'astro/assets/services/noop',

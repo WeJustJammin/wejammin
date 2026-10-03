@@ -1,7 +1,12 @@
 import {
+  createCanonicalPayloadCheck,
+  type CanonicalPayloadCheck,
+} from './content-schema-registry-canonical-payload-check';
+import {
   buildProjection,
   type ContentSchemaRegistryWorkbenchProjection,
 } from './content-schema-registry-canonical-state-validate';
+import { ContractValidatorsNotLoadedError } from './content-schema-registry-contract-validators';
 import { decodeIslandProps } from './content-schema-registry-island-props-codec';
 import { scanCanonicalWorkbenchIsland } from './content-schema-registry-island-props-scanner';
 
@@ -20,7 +25,12 @@ export type ContentSchemaRegistryCanonicalOutcome =
       readonly kind: 'projection';
       readonly projection: ContentSchemaRegistryWorkbenchProjection;
     }
-  | { readonly kind: 'disabled'; readonly reason: string };
+  | { readonly kind: 'disabled'; readonly reason: string }
+  /**
+   * A changed payload needs the lazily loaded contract validators. Load them
+   * and parse the same markup again; this is never a verdict.
+   */
+  | { readonly kind: 'contract-needed' };
 
 export type ContentSchemaRegistryCanonicalFailureReason =
   'markup' | 'props' | 'invalid';
@@ -32,6 +42,7 @@ export type ContentSchemaRegistryCanonicalFailureReason =
  */
 export const parseCanonicalWorkbenchOutcome = (
   html: string,
+  check: CanonicalPayloadCheck = createCanonicalPayloadCheck(null),
 ): ContentSchemaRegistryCanonicalOutcome => {
   const scan = scanCanonicalWorkbenchIsland(html);
   if (scan.count === 0 || scan.props === null)
@@ -45,8 +56,13 @@ export const parseCanonicalWorkbenchOutcome = (
     return { kind: 'disabled', reason: 'props' };
   }
   try {
-    return { kind: 'projection', projection: buildProjection(decoded) };
-  } catch {
+    return {
+      kind: 'projection',
+      projection: buildProjection(decoded, check),
+    };
+  } catch (error) {
+    if (error instanceof ContractValidatorsNotLoadedError)
+      return { kind: 'contract-needed' };
     return { kind: 'disabled', reason: 'invalid' };
   }
 };

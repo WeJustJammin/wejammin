@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { LOCALE_CONFIG_LIMITS } from '@wejammin/contracts';
+import { LOCALE_CONFIG_LIMITS } from '@wejammin/contracts/client';
 
 import {
   MAX_LANGUAGES_MESSAGE,

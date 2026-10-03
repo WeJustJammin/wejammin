@@ -39,7 +39,7 @@ begin
   return outcome || ' ' || (before_rows = pg_temp.p_block_rows())::text;
 end;
 $body$;
-select is(pg_temp.p_role_call('authenticated', pg_temp.p_block_request('p240trust', 2)), 'UNAUTHENTICATED true', 'an authenticated browser caller is refused before any principal lookup and nothing is committed [P2-S09-AC-119]');
+select is(pg_temp.p_role_call('authenticated', pg_temp.p_block_request('p240trust', 2)), 'FORBIDDEN true', 'an authenticated browser caller (a human or admin session) is refused 403 before any principal lookup and nothing is committed [P2-S09-AC-119] [P2-S09-AC-034]');
 select is(pg_temp.p_role_call('anon', pg_temp.p_block_request('p240trust', 2)), 'UNAUTHENTICATED true', 'an anonymous caller is refused and nothing is committed [P2-S09-AC-119]');
 select is(pg_temp.p_bad('t:noctx', 'UNAUTHENTICATED', 'p240trust', 2, '{"context":{}}'), 'ok', 'a request without the bound release principal is refused [P2-S09-AC-119]');
 select is(pg_temp.p_bad('t:mismatch', 'UNAUTHENTICATED', 'p240trust', 2, '{"context":{"releasePrincipalId":"release.other"}}'), 'ok', 'a request whose key differs from the bound principal is refused [P2-S09-AC-119]');
@@ -47,14 +47,19 @@ select is(pg_temp.p_bad('t:unknown', 'UNAUTHENTICATED', 'p240trust', 2, '{"relea
 select is(pg_temp.p_bad('t:badsig', 'UNAUTHENTICATED', 'p240trust', 2, '{}', jsonb_build_object('releaseSignature', repeat('B', 86) || '==', 'releaseSignatureHash', encode(extensions.digest(decode(repeat('B', 86) || '==', 'base64'), 'sha256'), 'hex'))), 'ok',
   'a shape-valid signature that does not verify against the trusted key is refused [P2-S09-AC-119]');
 select set_config('app.cfg_rpc', 'true', true);
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set revoked_at = clock_timestamp() - interval '1 second' where key_id = 'release.p240';
 select is(pg_temp.p_bad('t:revoked', 'UNAUTHENTICATED', 'p240trust', 2), 'ok', 'a revoked key is refused even with a valid signature [P2-S09-AC-119]');
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set revoked_at = null, active = false where key_id = 'release.p240';
 select is(pg_temp.p_bad('t:inactive', 'UNAUTHENTICATED', 'p240trust', 2), 'ok', 'an inactive key is refused [P2-S09-AC-119]');
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set active = true, valid_from = clock_timestamp() + interval '1 hour' where key_id = 'release.p240';
 select is(pg_temp.p_bad('t:notyet', 'UNAUTHENTICATED', 'p240trust', 2), 'ok', 'a key that is not yet valid is refused [P2-S09-AC-119]');
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set valid_from = null, valid_through = clock_timestamp() - interval '1 hour' where key_id = 'release.p240';
 select is(pg_temp.p_bad('t:expired', 'UNAUTHENTICATED', 'p240trust', 2), 'ok', 'an expired key is refused [P2-S09-AC-119]');
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals set valid_through = null where key_id = 'release.p240';
 select is(pg_temp.p_ok('t:again', 'p240trust', 2), 'ok', 'control: with the key restored the registration is accepted again [P2-S09-AC-119]');
 
@@ -68,6 +73,8 @@ create temp table p_replay on commit drop as select extensions.gen_random_uuid()
 select is(pg_temp.p_ok('n:first', 'p240nonce', 1, jsonb_build_object('releaseNonce', (select nonce from p_replay))), 'ok', 'control: a fresh nonce is accepted [P2-S09-AC-120]');
 select is(pg_temp.p_bad('n:replay', 'CONFLICT', 'p240nonce', 2, jsonb_build_object('releaseNonce', (select nonce from p_replay))), 'ok',
   'the same nonce under another idempotency key and another version is a typed CONFLICT and nothing is committed [P2-S09-AC-120]');
+select is(pg_temp.s09d_detail('n:replay'), 'RELEASE_NONCE_REPLAYED',
+  'the replayed nonce is a CONFLICT whose DETAIL names RELEASE_NONCE_REPLAYED, so the Worker can count it as a rejected nonce claim [P2-S09-AC-120] [P2-S09-AC-208]');
 select ok((select r.expires_at >= r.issued_at + interval '10 minutes' and r.outcome = 'consumed' and r.consumed_at is not null
     from platform_private.cms_release_nonce_receipts r where r.release_key_id = 'release.p240' and r.nonce_hash = encode(extensions.digest(convert_to((select nonce::text from p_replay), 'utf8'), 'sha256'), 'hex')),
   'the receipt is retained for at least ten minutes and records consumption [P2-S09-AC-120]');
@@ -75,6 +82,7 @@ select is(pg_temp.s09e_check('cms_release_nonce_receipts', 'cms_release_nonce_re
     jsonb_build_object('expires_at', (select (issued_at + interval '9 minutes')::text from platform_private.cms_release_nonce_receipts limit 1))),
   'control:ACCEPTED|override:REJECTED:23514:cms_release_nonce_receipts_ttl_check', 'storage refuses a receipt that would expire before ten minutes [P2-S09-AC-120]');
 select is(pg_temp.p_bad('d:conflict', 'CONFLICT', 'p240nonce', 1, jsonb_build_object('releaseDigest', repeat('d', 64))), 'ok', 'a conflicting digest for a registered pair is CONFLICT and nothing is committed [P2-S09-AC-120]');
+select is(coalesce(pg_temp.s09d_detail('d:conflict'), ''), '', 'a digest conflict carries no replay detail: only a replayed nonce is counted as a nonce rejection [P2-S09-AC-208]');
 
 -- ====================== AC121 / AC213 atomicity: failed audit or outbox leaves nothing ====
 create function public.p240_fail() returns trigger language plpgsql as $body$
@@ -150,7 +158,7 @@ select ok(pg_temp.s09d_no_direct_grants('cms_block_definition_versions') and pg_
   'the three block tables have forced RLS and no direct privilege for any browser or service role [P2-S09-AC-012]');
 select pg_temp.s09d_session('owner', 'service_role');
 select pg_temp.s09d_call('human:reg', 'platform_api.cms_register_block', (pg_temp.p_block_request('p240human', 1) - 'context') || jsonb_build_object('context', pg_temp.s09d_context('owner')));
-select is(pg_temp.s09d_outcome('human:reg'), 'UNAUTHENTICATED', 'a verified human with cms.schema_designer holds no release principal: registration is refused [P2-S09-AC-012]');
+select is(pg_temp.s09d_outcome('human:reg'), 'FORBIDDEN', 'a verified human with cms.schema_designer holds no release principal: registration is refused 403 [P2-S09-AC-012] [P2-S09-AC-034]');
 select is(pg_temp.s09e_writers('cms_block_definition_versions', 'insert[[:space:]]+into') || '|' || pg_temp.s09e_writers('cms_block_definition_versions', 'update') || '|' || pg_temp.s09e_writers('cms_block_definition_versions', 'delete[[:space:]]+from'),
   'cms_register_block_at||', 'one function inserts a block version and none updates or deletes it [P2-S09-AC-012]');
 select set_config('app.cms_rpc', 'true', true);

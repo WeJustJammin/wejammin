@@ -109,6 +109,7 @@ select is(pg_temp.p_expect('key:rename', 'a', pg_temp.p_efield('retitled', 'shor
 select is((select field_key from platform_private.cms_field_definition_versions where stable_field_id = pg_temp.p_title_id('a')), 'title', 'the stable identity still carries its original key [P2-S09-AC-059]');
 select is(pg_temp.p_expect('key:reuse', 'a', pg_temp.p_efield('freshone', 'integer'), 'CONFLICT'), 'ok',
   'a key already carried by another field of the version cannot be reused for a new one [P2-S09-AC-059]');
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(format('update platform_private.cms_field_definition_versions set field_key = %L where stable_field_id = %L', 'sneaky', pg_temp.p_title_id('a')),
   'P0001', null, 'a direct UPDATE of a field key is rejected by the identity guard [P2-S09-AC-059]');
 
@@ -168,16 +169,22 @@ from (values ('key without version', '{"validatorKey":"cms.slug"}'::jsonb), ('ve
 -- ================================================= AC064 / AC065 / AC066 ====
 select is(pg_temp.p_expect('def:' || c.n, 'a', pg_temp.p_efield('d_' || substr(md5(c.n), 1, 10), 'integer', c.o), 'OK'), 'ok', 'default ' || c.n || ' is accepted [P2-S09-AC-064]')
 from (values ('none without a value', '{}'::jsonb), ('inherited without a value', '{"defaultMode":"inherited"}'), ('literal zero', '{"defaultMode":"literal","defaultValue":0}'),
-  ('literal false', '{"defaultMode":"literal","defaultValue":false}'), ('literal empty string', '{"defaultMode":"literal","defaultValue":""}')) c(n, o);
+  ('literal false', '{"defaultMode":"literal","defaultValue":false}'), ('literal empty string', '{"defaultMode":"literal","defaultValue":""}'),
+  ('literal JSON null (an explicit null is a value; only a missing key is not)', '{"defaultMode":"literal","defaultValue":null}')) c(n, o);
 select is((select count(*)::integer from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version') and field_key like 'd\_%'
-      and ((default_mode in ('none', 'inherited') and default_value is null) or (default_mode = 'literal' and default_value is not null))), 5,
-  'none and inherited store SQL NULL while a literal stores the exact JSON value, falsy values included: missing and null stay distinct [P2-S09-AC-064]');
+      and ((default_mode in ('none', 'inherited') and default_value is null) or (default_mode = 'literal' and default_value is not null))), 6,
+  'none and inherited store SQL NULL while a literal stores the exact JSON value, falsy values and JSON null included: missing and null stay distinct [P2-S09-AC-064]');
 select is((select string_agg(default_value::text, ',' order by default_value::text) from platform_private.cms_field_definition_versions
-    where content_type_version_id = pg_temp.s09d_id('a:version') and field_key like 'd\_%' and default_mode = 'literal'), '"",0,false', 'the literals 0, false and the empty string are stored exactly [P2-S09-AC-064]');
+    where content_type_version_id = pg_temp.s09d_id('a:version') and field_key like 'd\_%' and default_mode = 'literal'), '"",0,false,null',
+  'the literals 0, false, the empty string and an explicit JSON null are stored exactly [P2-S09-AC-064]');
+select is((select count(*)::integer from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version') and field_key like 'd\_%'
+      and default_mode = 'literal' and default_value = 'null'::jsonb and default_value is not null), 1,
+  'the stored literal null is the JSON null value, not SQL NULL, so a literal null and a missing default never collide [P2-S09-AC-064]');
 select is(pg_temp.p_expect('def:bad:' || c.n, 'a', pg_temp.p_efield('db_' || substr(md5(c.n), 1, 10), 'integer', c.o), 'INVALID_REQUEST'), 'ok',
   'default ' || c.n || ' is refused and nothing changes [P2-S09-AC-064]')
-from (values ('literal without a value', '{"defaultMode":"literal"}'::jsonb), ('literal with a JSON null', '{"defaultMode":"literal","defaultValue":null}'),
+from (values ('literal without a value', '{"defaultMode":"literal"}'::jsonb),
   ('none with a value', '{"defaultMode":"none","defaultValue":1}'), ('inherited with a value', '{"defaultMode":"inherited","defaultValue":1}'),
+  ('none with an explicit JSON null (a present key is a default)', '{"defaultMode":"none","defaultValue":null}'), ('inherited with an explicit JSON null', '{"defaultMode":"inherited","defaultValue":null}'),
   ('unknown mode', '{"defaultMode":"computed"}'), ('null mode', '{"defaultMode":null}')) c(n, o);
 select is(pg_temp.p_expect('loc:' || m, 'a', pg_temp.p_efield('l_' || m, 'short_text', jsonb_build_object('localizationMode', m)), 'OK'), 'ok', 'localization mode ' || m || ' is accepted [P2-S09-AC-065]')
 from unnest(array['none', 'localized', 'no_fallback']) m;

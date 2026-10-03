@@ -94,6 +94,7 @@ select ok(
 
 -- the immutability guard is what is probed, so the write gate is satisfied first, as a hostile writer would
 select set_config('app.cms_rpc', 'true', true);
+-- NEGATIVE CONTROL: a direct statement (or trigger-bypassing tamper) against a producer-made row, proving that a guard refuses it or that a gate notices it; never a producer path, no authority or evidence is claimed.
 select throws_ok(
   format($q$update platform_private.cms_schema_migration_plans
     set dry_run_report = dry_run_report || jsonb_build_object('targetDefinitionHash', repeat('d', 64))

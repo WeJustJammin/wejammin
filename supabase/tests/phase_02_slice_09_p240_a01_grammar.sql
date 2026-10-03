@@ -178,7 +178,7 @@ from (values
   ('an unregistered validator pair', pg_temp.p_field('b4', 'short_text', '{"validatorKey":"cms.custom","validatorVersion":1}'), 'VALIDATION_FAILED'),
   ('a registered validator at an unregistered version', pg_temp.p_field('b5', 'short_text', '{"validatorKey":"cms.text","validatorVersion":9}'), 'VALIDATION_FAILED'),
   ('literal default mode without a value', pg_temp.p_field('b6', 'short_text', '{"defaultMode":"literal"}'), 'VALIDATION_FAILED'),
-  ('literal default mode with a null value', pg_temp.p_field('b7', 'short_text', '{"defaultMode":"literal","defaultValue":null}'), 'VALIDATION_FAILED'),
+  ('none default mode with an explicit null value (a present key is a default)', pg_temp.p_field('b7', 'short_text', '{"defaultMode":"none","defaultValue":null}'), 'VALIDATION_FAILED'),
   ('none default mode with a value', pg_temp.p_field('b8', 'short_text', '{"defaultMode":"none","defaultValue":"x"}'), 'VALIDATION_FAILED'),
   ('inherited default mode with a value', pg_temp.p_field('b9', 'short_text', '{"defaultMode":"inherited","defaultValue":"x"}'), 'VALIDATION_FAILED'),
   ('an unknown default mode', pg_temp.p_field('c1', 'short_text', '{"defaultMode":"computed"}'), 'VALIDATION_FAILED'),
@@ -196,6 +196,15 @@ from (values
   ('an unknown attribute on the field', pg_temp.p_field('d1', 'short_text', '{"script":"alert(1)"}'), 'VALIDATION_FAILED'),
   ('an executable expression in place of a validator', pg_temp.p_field('d2', 'short_text', '{"validatorKey":"return 1","validatorVersion":1}'), 'VALIDATION_FAILED')
 ) c(n, f, e);
+
+-- BE03a types defaultValue as Json.nullable().optional() and derives hasDefault from the key being
+-- present: an explicit JSON null is a literal default, only a missing key is not (AC064).
+select is(pg_temp.p_run('fe:literalnull', pg_temp.p_base(pg_temp.p_key('felitnull'), jsonb_build_object('fields', jsonb_build_array(
+    pg_temp.p_field('nulldef', 'short_text', '{"defaultMode":"literal","defaultValue":null}')))), 'OK'), 'ok',
+  'an initial field whose literal default is an explicit JSON null is committed [P2-S09-AC-047] [P2-S09-AC-064]');
+select ok((select f.default_mode = 'literal' and f.default_value = 'null'::jsonb
+    from platform_private.cms_field_definition_versions f where f.field_key = 'nulldef'),
+  'the literal null is stored as the JSON null value and stays distinct from a missing default [P2-S09-AC-064]');
 
 -- ====================================================== AC048 relations ====
 create or replace function pg_temp.p_relation_request(p_key text, p_relation jsonb, p_field_kind text default 'relation') returns jsonb

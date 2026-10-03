@@ -18,6 +18,7 @@ import {
   quotedVersion,
   rejectUnexpectedQuery,
   responseForAuthError,
+  verifyReadOrigin,
 } from './boundary';
 import {
   enforceRate,
@@ -102,6 +103,10 @@ export const registerAccountMergeRoutes = (
 
   app.get('/api/v1/account-merges/:mergeId', async (context) => {
     configureRoute(context, 'AUTH-API-13');
+    // BE00 step 2: a read has no body or CSRF token; the origin is the gate.
+    const foreignOrigin = verifyReadOrigin(context.req.raw);
+    if (foreignOrigin !== null)
+      return responseForAuthError(context, foreignOrigin);
     // BE00 steps 4 and 5: verified session; strict path and query follow (step 6).
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);

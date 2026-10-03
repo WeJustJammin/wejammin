@@ -9,6 +9,7 @@ import {
   setFormBusy,
 } from './content-schema-registry-runtime-dom-feedback';
 import { renderConflict } from './content-schema-registry-runtime-dom-renderers';
+import { installRegistryBlurFeedback } from './content-schema-registry-runtime-dom-blur';
 import { restoreStepUpDraft } from './content-schema-registry-step-up-draft';
 
 const RESTORED_NOTICE =
@@ -59,6 +60,7 @@ export const installContentSchemaRegistryCommandEnhancement = (
     ...document.querySelectorAll<HTMLFormElement>('[data-cms-command-form]'),
   ];
   const timers = new Set<number>();
+  const removeBlurFeedback = installRegistryBlurFeedback(document);
   for (const form of forms)
     restoreAfterStepUp(form, windowObject, options.navigate);
   const listeners = forms.map((form) => {
@@ -98,6 +100,7 @@ export const installContentSchemaRegistryCommandEnhancement = (
     return { form, listener };
   });
   return () => {
+    removeBlurFeedback();
     for (const timer of timers) {
       windowObject.clearTimeout(timer);
       windowObject.clearInterval(timer);

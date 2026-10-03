@@ -1,4 +1,5 @@
-import { CmsStepUpRequiredErrorSchema } from '@wejammin/contracts';
+import { loadContractValidators } from './content-schema-registry-contract-validators';
+import { isStepUpRequiredBody } from '../step-up-required';
 
 /** The only second factor the step-up page can verify (FE01 / FE03). */
 const SUPPORTED_METHOD = 'totp';
@@ -40,9 +41,17 @@ export const classifyStepUpResponse = async (
     return null;
   }
   if (typeof body !== 'object' || body === null) return null;
-  if ((body as { readonly code?: unknown }).code !== 'STEP_UP_REQUIRED')
-    return null;
-  const parsed = CmsStepUpRequiredErrorSchema.safeParse(body);
+  if (!isStepUpRequiredBody(body)) return null;
+  // The typed schema is loaded on this first need; a validator that cannot be
+  // loaded leaves the body unverified, which is the malformed (degraded) state.
+  let parsed;
+  try {
+    parsed = (
+      await loadContractValidators()
+    ).CmsStepUpRequiredErrorSchema.safeParse(body);
+  } catch {
+    return { kind: 'malformed', requestId: requestIdOf(body) };
+  }
   if (!parsed.success)
     return { kind: 'malformed', requestId: requestIdOf(body) };
   const usable = parsed.data.details.allowedMethods.filter(
