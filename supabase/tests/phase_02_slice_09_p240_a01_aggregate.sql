@@ -57,6 +57,31 @@ select ok((select v.version_no = 1 and v.state = 'draft' and v.workflow_key = 'e
       and v.dry_run_id is null and v.owner_id = pg_temp.s09d_id('ownerOrg')
     from platform_private.cms_content_type_versions v join platform_private.cms_content_types t on t.id = v.content_type_id where t.type_key = 'p240_agg_ok'),
   'the initial version records the workflow and locale references the request named, version 1, draft, no dry run, the acting owner [P2-S09-AC-003]');
+-- AC054: the 201 body is the strict ContentTypeVersionResource produced by the database itself (no port stub):
+-- exactly the declared members, the locale configuration, and counts that match the committed children.
+select is((select string_agg(k, ',' order by k) from jsonb_object_keys(pg_temp.s09d_resp('agg')) k),
+  'activationEvidence,capabilityBindingCount,compatibility,contentHash,contentTypeId,createdAt,defaultLocale,defaultTemplateVersionId,dryRunId,fallbackChains,fieldCount,id,label,localeConfigHash,ownerCapability,relationCount,resourceKind,schemaArtifactId,sourceLocale,state,supportedLocales,typeKey,updatedAt,version,workflowKey,workflowVersion',
+  'the create response carries exactly the declared ContentTypeVersionResource members and no ownership or release evidence [P2-S09-AC-054]');
+select ok(pg_temp.s09d_resp('agg')->>'resourceKind' = 'content_type_version' and pg_temp.s09d_resp('agg')->>'state' = 'draft'
+    and pg_temp.s09d_resp('agg')->>'version' = '1' and pg_temp.s09d_resp('agg')->>'typeKey' = 'p240_agg_ok'
+    and pg_temp.s09d_resp('agg')->>'ownerCapability' = 'cms.schema_designer' and pg_temp.s09d_resp('agg')->>'workflowKey' = 'editorial'
+    and pg_temp.s09d_resp('agg')->>'workflowVersion' = '1' and pg_temp.s09d_resp('agg')->>'compatibility' = 'additive'
+    and pg_temp.s09d_resp('agg')->'dryRunId' = 'null'::jsonb and pg_temp.s09d_resp('agg')->'activationEvidence' = 'null'::jsonb
+    and pg_temp.s09d_resp('agg')->'defaultTemplateVersionId' = 'null'::jsonb,
+  'the response states the draft identity, workflow, additive compatibility and no dry run, template or activation evidence [P2-S09-AC-054]');
+select ok(pg_temp.s09d_resp('agg')->>'sourceLocale' = 'en-US' and pg_temp.s09d_resp('agg')->>'defaultLocale' = 'en-US'
+    and pg_temp.s09d_resp('agg')->'supportedLocales' = '["en-US","fr-FR"]'::jsonb
+    and pg_temp.s09d_resp('agg')->'fallbackChains' = '{"fr-FR":["en-US"]}'::jsonb
+    and pg_temp.s09d_resp('agg')->>'localeConfigHash' ~ '^[a-f0-9]{64}$',
+  'the response carries sourceLocale, defaultLocale, the sorted supportedLocales, fallbackChains and a 64-hex localeConfigHash [P2-S09-AC-054]');
+select ok((select r.resp->>'id' = v.id::text and r.resp->>'contentTypeId' = t.id::text and r.resp->>'schemaArtifactId' = v.schema_artifact_id::text
+      and r.resp->>'contentHash' = v.definition_hash and r.resp->>'localeConfigHash' = v.locale_config_hash
+      and r.resp->>'label' = v.labels->>'label'
+      and (r.resp->>'fieldCount')::integer = 3 and (r.resp->>'relationCount')::integer = 1 and (r.resp->>'capabilityBindingCount')::integer = 2
+      and (r.resp->>'createdAt')::timestamptz = v.created_at and (r.resp->>'updatedAt')::timestamptz = v.updated_at
+    from platform_private.cms_content_type_versions v join platform_private.cms_content_types t on t.id = v.content_type_id,
+      lateral (select pg_temp.s09d_resp('agg') as resp) r where t.type_key = 'p240_agg_ok'),
+  'every projected identifier, hash, timestamp and count equals the committed rows [P2-S09-AC-054]');
 select ok((select a.id = v.schema_artifact_id and a.content_type_version_id = v.id and a.zod_contract_ref = 'cms/content-type/p240_agg_ok/v1'
       and a.artifact_hash = v.definition_hash and a.state = 'compiled' and a.owner_id = v.owner_id
     from platform_private.cms_content_type_versions v join platform_private.cms_content_types t on t.id = v.content_type_id
@@ -171,19 +196,23 @@ select is(pg_temp.p_children('p240_agg_ok'), '1|1|3|1|2|1', 'type, version and a
 -- =========================== AC183 / AC193: atomic audit and outbox, declared failure tokens ====
 create function public.p240_fail() returns trigger language plpgsql as $body$
 begin
-  if tg_table_name = current_setting('p240.fail_table', true) then raise exception 'P240_FORCED_FAILURE'; end if;
+  if tg_table_name = current_setting('p240.fail_table', true) then
+    raise exception 'P240_FORCED_FAILURE' using errcode = coalesce(nullif(current_setting('p240.fail_state', true), ''), 'P0001');
+  end if;
   return new;
 end;
 $body$;
 create trigger p240_fail_outbox before insert on platform_private.outbox_events for each row execute function public.p240_fail();
 create trigger p240_fail_audit before insert on audit_private.audit_events for each row execute function public.p240_fail();
-create or replace function pg_temp.p_forced(p_table text, p_key text) returns text language plpgsql as $body$
-declare before_rows text := pg_temp.p_rows(); outcome text; req jsonb := pg_temp.p_full(p_key, jsonb_build_object('idempotencyKey', 'p240-forced-' || p_table || '-0001'));
+create or replace function pg_temp.p_forced(p_table text, p_key text, p_state text default '') returns text language plpgsql as $body$
+declare before_rows text := pg_temp.p_rows(); outcome text; req jsonb := pg_temp.p_full(p_key, jsonb_build_object('idempotencyKey', 'p240-forced-' || p_table || '-' || p_state || '0001'));
 begin
   perform set_config('p240.fail_table', p_table, true);
-  perform pg_temp.s09d_rpc('forced:' || p_table, 'platform_api.cms_create_type_draft', 'owner', req);
-  outcome := pg_temp.s09d_outcome('forced:' || p_table);
+  perform set_config('p240.fail_state', p_state, true);
+  perform pg_temp.s09d_rpc('forced:' || p_table || p_state, 'platform_api.cms_create_type_draft', 'owner', req);
+  outcome := pg_temp.s09d_outcome('forced:' || p_table || p_state);
   perform set_config('p240.fail_table', '', true);
+  perform set_config('p240.fail_state', '', true);
   return outcome || ' ' || (before_rows = pg_temp.p_rows())::text || ' ' || pg_temp.p_children(p_key);
 end;
 $body$;
@@ -191,6 +220,19 @@ select is(pg_temp.p_forced('outbox_events', 'p240_fo'), 'P240_FORCED_FAILURE tru
   'a failed outbox write rolls back the whole aggregate: no type, version, field, relation, binding, artifact, audit row or idempotency record remains [P2-S09-AC-183]');
 select is(pg_temp.p_forced('audit_events', 'p240_fa'), 'P240_FORCED_FAILURE true 0|0|0|0|0|0',
   'a failed audit write rolls back the whole aggregate [P2-S09-AC-183]');
+-- AC193 (the 503 row): an infrastructure-class database failure inside the create (SQLSTATE class 53
+-- insufficient resources, class 08 connection exception: the classes PostgREST answers with 5xx and the
+-- Worker maps to 503 RPC unavailable) is never swallowed into a contract token or a false success, and the
+-- whole aggregate rolls back.  The failure is injected at the outbox and audit writes, after every child
+-- row of the create was written.
+select is(pg_temp.p_forced('outbox_events', 'p240_f53', '53300'), 'P240_FORCED_FAILURE true 0|0|0|0|0|0',
+  'a class 53 (insufficient resources) failure at the outbox write rolls the whole create back and surfaces unmapped [P2-S09-AC-193]');
+select is((select state from s09d_probe where label = 'forced:outbox_events53300'), '53300',
+  'the SQLSTATE of the class 53 failure reaches the caller unchanged (not rewritten to a validation or conflict token) [P2-S09-AC-193]');
+select is(pg_temp.p_forced('audit_events', 'p240_f08', '08006'), 'P240_FORCED_FAILURE true 0|0|0|0|0|0',
+  'a class 08 (connection failure) at the audit write rolls the whole create back and surfaces unmapped [P2-S09-AC-193]');
+select is((select state from s09d_probe where label = 'forced:audit_events08006'), '08006',
+  'the SQLSTATE of the class 08 failure reaches the caller unchanged [P2-S09-AC-193]');
 select pg_temp.s09d_rpc('forced:retry', 'platform_api.cms_create_type_draft', 'owner', pg_temp.p_full('p240_fo', '{"idempotencyKey":"p240-forced-outbox_events-0001"}'));
 select is(pg_temp.s09d_outcome('forced:retry'), 'OK', 'after the forced failure the same key and request commits (the failed attempt reserved nothing) [P2-S09-AC-183]');
 select ok((select count(*) = 1 from audit_private.audit_events a where a.target_id = (pg_temp.s09d_resp('forced:retry')->>'id')::uuid and a.action = 'cms.schema.draft.create' and a.decision = 'allowed')
@@ -211,10 +253,39 @@ select set_config('app.actor_auth_user_id', '', true), set_config('app.auth_user
 select pg_temp.s09d_call('f:anon', 'platform_api.cms_create_type_draft', pg_temp.p_base(pg_temp.p_key('fanon')));
 select is(pg_temp.s09d_outcome('f:anon'), 'UNAUTHENTICATED', 'a call with no verified actor is 401 UNAUTHENTICATED [P2-S09-AC-193]');
 select is(pg_temp.p_children(pg_temp.p_key('fanon')), '0|0|0|0|0|0', 'the unauthenticated create committed nothing [P2-S09-AC-193]');
+-- AC034 (CMS-03A-01, BE03a row 160): a human who belongs to the target registry scope but holds no
+-- schema_designer capability is refused 403 FORBIDDEN, while a human naming a scope he is not a member
+-- of (a foreign organization, or none at all) is refused 404 NOT_FOUND with one byte-identical body:
+-- the refusal never discloses whether the named scope exists.  Nothing is committed in either case.
+select pg_temp.s09d_grant_specialist('designer2', 'cms.schema_registry.read');
+select pg_temp.s09d_revoke_via_rpc('designer2', 'cms.schema_designer');
+select pg_temp.s09d_rpc('f:member', 'platform_api.cms_create_type_draft', 'designer2', pg_temp.p_base(pg_temp.p_key('fmember')));
+select is(pg_temp.s09d_outcome('f:member'), 'FORBIDDEN',
+  'a member of the owner organization with only registry read, no schema_designer, is 403 FORBIDDEN on CMS-03A-01 [P2-S09-AC-034] [P2-S09-AC-193]');
 select pg_temp.s09d_rpc('f:scope', 'platform_api.cms_create_type_draft', 'owner', pg_temp.p_base(pg_temp.p_key('fscope')), false,
   jsonb_build_object('actingPartyId', pg_temp.s09d_id('otherOrg')));
-select ok(pg_temp.s09d_outcome('f:scope') in ('NOT_FOUND', 'FORBIDDEN'), 'a target scope the actor cannot act for is concealed (404) or refused (403), never created (' || pg_temp.s09d_outcome('f:scope') || ') [P2-S09-AC-193]');
-select is(pg_temp.p_children(pg_temp.p_key('fscope')), '0|0|0|0|0|0', 'the out-of-scope create committed nothing [P2-S09-AC-193]');
+select pg_temp.s09d_rpc('f:scope:foreign', 'platform_api.cms_create_type_draft', 'other', pg_temp.p_base(pg_temp.p_key('fscopeforeign')), false,
+  jsonb_build_object('actingPartyId', pg_temp.s09d_id('ownerOrg')));
+select pg_temp.s09d_rpc('f:scope:absent', 'platform_api.cms_create_type_draft', 'owner', pg_temp.p_base(pg_temp.p_key('fscopeabsent')), false,
+  jsonb_build_object('actingPartyId', extensions.gen_random_uuid()));
+select is(pg_temp.s09d_outcome('f:scope'), 'NOT_FOUND',
+  'a designer naming another organization as the target scope is refused 404 NOT_FOUND and nothing is created [P2-S09-AC-034] [P2-S09-AC-193]');
+select is(pg_temp.s09d_outcome('f:scope:foreign'), 'NOT_FOUND',
+  'a designer of another organization naming the owner organization as the target scope is refused 404 NOT_FOUND [P2-S09-AC-034]');
+select is(pg_temp.s09d_outcome('f:scope:absent'), 'NOT_FOUND',
+  'a designer naming a scope that does not exist is refused with the same 404 NOT_FOUND [P2-S09-AC-034]');
+select ok(pg_temp.s09d_resp('f:scope') is not distinct from pg_temp.s09d_resp('f:scope:absent')
+    and pg_temp.s09d_detail('f:scope') is not distinct from pg_temp.s09d_detail('f:scope:absent')
+    and pg_temp.s09d_resp('f:scope:foreign') is not distinct from pg_temp.s09d_resp('f:scope:absent')
+    and pg_temp.s09d_detail('f:scope:foreign') is not distinct from pg_temp.s09d_detail('f:scope:absent'),
+  'the 404 refusal is byte-identical for a real foreign scope and an absent one: scope existence is not disclosed [P2-S09-AC-034]');
+select ok(to_regprocedure('platform_private.cms_require_scope_member(uuid,uuid)') is not null
+    and not has_function_privilege('service_role', 'platform_private.cms_require_scope_member(uuid,uuid)', 'execute')
+    and not has_function_privilege('authenticated', 'platform_private.cms_require_scope_member(uuid,uuid)', 'execute')
+    and not has_function_privilege('anon', 'platform_private.cms_require_scope_member(uuid,uuid)', 'execute'),
+  'the scope-concealment gate is private: no client or service role can execute it directly [P2-S09-AC-034]');
+select is(pg_temp.p_children(pg_temp.p_key('fscope')) || pg_temp.p_children(pg_temp.p_key('fscopeforeign')) || pg_temp.p_children(pg_temp.p_key('fscopeabsent')),
+  '0|0|0|0|0|00|0|0|0|0|00|0|0|0|0|0', 'the out-of-scope creates committed nothing [P2-S09-AC-193]');
 select pg_temp.s09d_rpc('f:idem1', 'platform_api.cms_create_type_draft', 'owner', pg_temp.p_base(pg_temp.p_key('fidem1'), '{"idempotencyKey":"p240-idem-fail-0001"}'));
 select pg_temp.s09d_rpc('f:idem2', 'platform_api.cms_create_type_draft', 'owner', pg_temp.p_base(pg_temp.p_key('fidem2'), '{"idempotencyKey":"p240-idem-fail-0001"}'));
 select is(pg_temp.s09d_outcome('f:idem2'), 'IDEMPOTENCY_MISMATCH', 'a reused key with a different request is a typed idempotency conflict, not a second aggregate [P2-S09-AC-193]');

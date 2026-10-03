@@ -147,11 +147,13 @@ select ok(pg_temp.s09d_outcome('a:submit') = 'OK'
 select pg_temp.s09d_create_type('sp', 'dec108subprotected', 'cms.disclosure.policy');
 select pg_temp.s09d_grant_specialist('rev1', 'cms.reviewer.policy');
 select pg_temp.s09d_to_active('sp', array['rev1', 'rev2']);
-select pg_temp.s09d_successor('sq', 'sp');
-select set_config('app.cms_rpc', 'true', true);
-update platform_private.cms_content_type_versions
-   set workflow_key = 'editorial', workflow_version = 1
- where id = pg_temp.s09d_id('sq:version');
+-- The ordinary key is requested through the CMS-03A-09 producer (workflowKey/workflowVersion), not written by hand.
+select pg_temp.s09d_successor('sq', 'sp', 'owner', null, null, null, null, null, 'editorial', '1');
+select ok(pg_temp.s09d_outcome('sq:successor') = 'OK'
+  and pg_temp.s09d_resp('sq:successor')->>'workflowKey' = 'editorial' and pg_temp.s09d_resp('sq:successor')->>'workflowVersion' = '1'
+  and pg_temp.s09d_read('cms_content_type_versions', 'workflow_key', pg_temp.s09d_id('sq:version')) = 'editorial'
+  and pg_temp.s09d_read('cms_content_type_versions', 'workflow_key', pg_temp.s09d_id('sp:version')) = 'cms.disclosure.policy',
+  'CMS-03A-09 produces a successor under the requested ordinary workflow key and leaves the protected source untouched [P2-S09-AC-390]');
 select pg_temp.s09d_dry_run('sq');
 select pg_temp.s09d_seal('sq');
 select pg_temp.s09d_submit('sq');

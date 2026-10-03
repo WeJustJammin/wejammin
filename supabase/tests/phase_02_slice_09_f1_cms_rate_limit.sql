@@ -16,7 +16,7 @@ select no_plan();
 -- Hono app and limiter adapter) is
 -- apps/worker/src/content-schema-registry/phase-02-slice-09-f1-429-502-rows.test.ts.
 --
---   CMS-03A-09, 10, 11  cms-definition-write  30 per user, 60 per party / 60 s
+--   CMS-03A-01, 09, 10, 11  cms-definition-write  30 per user, 60 per party / 60 s
 --   CMS-03A-12          cms-activation        30 per user, 60 per party / 60 s
 --   CMS-03A-13, 18      cms-definition-read   120 per user, 240 per party / 60 s
 --   CMS-03A-14..17      cms-activation        10 per user, 20 per party / 60 s
@@ -36,6 +36,7 @@ create or replace function pg_temp.f1_digest(p_label text) returns text language
 -- (operation, marker, per-user limit, per-party limit)
 create temp table f1_cases(op text, marker text, user_limit integer, party_limit integer) on commit drop;
 insert into f1_cases values
+  ('CMS-03A-01', '[P2-S09-AC-193]', 30, 60),
   ('CMS-03A-09', '[P2-S09-AC-311]', 30, 60),
   ('CMS-03A-10', '[P2-S09-AC-357]', 30, 60),
   ('CMS-03A-11', '[P2-S09-AC-399]', 30, 60),

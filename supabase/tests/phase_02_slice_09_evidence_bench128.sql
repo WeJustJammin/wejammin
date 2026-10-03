@@ -7,7 +7,7 @@ select no_plan();
 
 -- Slice 09 acceptance evidence (lane e1-db, AC217): the BE03a "Benchmark
 -- representative definitions and 128-field schemas at ... RPC p95 < 300ms"
--- budget measured on the protected RPCs themselves.  Fifteen 128-field
+-- budget measured on the protected RPCs themselves.  Twenty-five 128-field
 -- definitions are driven through create (CMS-03A-01), dry run (CMS-03A-10),
 -- submit (CMS-03A-11), assignment (CMS-03A-14), decision (CMS-03A-12) and
 -- activation (CMS-03A-04); each command's wall time is recorded in-database and
@@ -51,22 +51,25 @@ begin
   end loop;
 end;
 $body$;
-select pg_temp.s09e_bench(15);
-select is((select count(*)::integer from platform_private.cms_content_type_versions where state = 'active'), 15,
-  'fixture: fifteen 128-field definitions were created, reviewed and activated through the real producers [P2-S09-AC-217]');
+select pg_temp.s09e_bench(25);
+select is((select count(*)::integer from platform_private.cms_content_type_versions where state = 'active'), 25,
+  'fixture: twenty-five 128-field definitions were created, reviewed and activated through the real producers [P2-S09-AC-217]');
 select is((select count(*)::integer from platform_private.cms_field_definition_versions f
-    join platform_private.cms_content_type_versions v on v.id = f.content_type_version_id where v.state = 'active'), 15 * 128,
+    join platform_private.cms_content_type_versions v on v.id = f.content_type_version_id where v.state = 'active'), 25 * 128,
   'each activated definition carries exactly 128 fields [P2-S09-AC-217]');
 select diag(op || ' p50=' || round(percentile_cont(0.5) within group (order by ms)::numeric, 1) || 'ms p95=' || round(percentile_cont(0.95) within group (order by ms)::numeric, 1) || 'ms max=' || round(max(ms), 1) || 'ms n=' || count(*))
   from s09e_timing group by op order by op;
 select ok(percentile_cont(0.95) within group (order by ms) < 300,
   op || ' on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]')
-  from s09e_timing where op <> 'create128' group by op order by op;
--- create128 writes 128 field rows, validates each against the protected registries and compiles the
--- artifact: it sits at the 300 ms RPC budget (measured p95 ~299 ms), so it is held to the 1,200 ms
--- Tier 2 command budget here and its measured percentile is reported by the diag line above.
-select ok(percentile_cont(0.95) within group (order by ms) < 1200,
-  'create128: the 128-field create command p95 is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]')
+  from s09e_timing group by op order by op;
+-- The create command validates the whole 128-field aggregate once and writes
+-- the fields in one set-based insert; its p95 is held to the 300 ms RPC budget
+-- with a measured margin (about 70 ms on the reference stack, so 200 ms leaves
+-- headroom for a loaded runner) over at least twenty samples.
+select ok(count(*) >= 20, 'create128: the p95 is taken over at least twenty samples (n=' || count(*) || ') [P2-S09-AC-217]')
+  from s09e_timing where op = 'create128';
+select ok(percentile_cont(0.95) within group (order by ms) < 200,
+  'create128: the 128-field create RPC p95 is under 200 ms, inside the 300 ms RPC budget with margin [P2-S09-AC-217]')
   from s09e_timing where op = 'create128';
 select ok(max(ms) < 1200, op || ': the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]')
   from s09e_timing group by op order by op;

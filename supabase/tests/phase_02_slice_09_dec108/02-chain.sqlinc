@@ -47,12 +47,17 @@ $body$;
 create or replace function pg_temp.s09d_successor(
   p_tag text, p_source_tag text, p_actor text default 'owner', p_idem text default null,
   p_supported jsonb default null, p_chains jsonb default null,
-  p_default_template uuid default null, p_bindings jsonb default null
+  p_default_template uuid default null, p_bindings jsonb default null,
+  p_workflow_key text default null, p_workflow_version text default null
 ) returns jsonb language plpgsql as $body$
 declare resource jsonb;
 begin
+  -- The workflow pair is sent only when the caller names it: an absent pair is the
+  -- inherit-the-source request every earlier suite makes.
   resource := pg_temp.s09d_rpc(p_tag || ':successor', 'platform_api.cms_create_schema_successor', p_actor,
-    jsonb_build_object(
+    case when p_workflow_key is null and p_workflow_version is null then '{}'::jsonb
+         else jsonb_build_object('workflowKey', p_workflow_key, 'workflowVersion', p_workflow_version) end
+    || jsonb_build_object(
       'contentTypeId', pg_temp.s09d_id(p_source_tag || ':type'),
       'versionId', pg_temp.s09d_id(p_source_tag || ':version'),
       'expectedVersion', pg_temp.s09d_version(p_source_tag),

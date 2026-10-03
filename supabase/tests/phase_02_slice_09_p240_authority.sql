@@ -80,6 +80,34 @@ select is(pg_temp.p_call('a04:absent', 'platform_api.cms_activate_schema', 'othe
 select ok(pg_temp.s09d_resp('a04:hidden') is not distinct from pg_temp.s09d_resp('a04:absent') and pg_temp.s09d_detail('a04:hidden') is not distinct from pg_temp.s09d_detail('a04:absent'), 'the two activation 404s are indistinguishable [P2-S09-AC-034]');
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('g:version')), 'approved', 'no refusal changed the approved candidate [P2-S09-AC-034]');
 
+-- CMS-03A-07 (protected detail): 403 for a caller without registry read scope, one indistinguishable 404 for
+-- an unreadable owner or an absent version/type, and the readers are served.  Every case is read-only.
+create or replace function pg_temp.p_a07(p_over jsonb default '{}'::jsonb) returns jsonb language sql as $body$
+  select jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version')) || p_over
+$body$;
+select is(pg_temp.p_call('a07:ok', 'platform_api.cms_get_content_type_version', 'owner', pg_temp.p_a07()), 'OK',
+  'control: the owner designer reads the version detail [P2-S09-AC-034]');
+select is(pg_temp.p_call('a07:reader', 'platform_api.cms_get_content_type_version', 'designer2', pg_temp.p_a07()), 'OK',
+  'control: a member holding only cms.schema_registry.read reads the detail [P2-S09-AC-034]');
+select is(pg_temp.p_call('a07:forbid', 'platform_api.cms_get_content_type_version', 'rev1', pg_temp.p_a07()), 'FORBIDDEN',
+  'a human without registry read scope is 403 FORBIDDEN on CMS-03A-07 [P2-S09-AC-034]');
+select is(pg_temp.p_call('a07:forbid:absent', 'platform_api.cms_get_content_type_version', 'rev1', pg_temp.p_a07(jsonb_build_object('versionId', extensions.gen_random_uuid()))), 'FORBIDDEN',
+  'the same human gets the same 403 for an absent version: the capability gate never discloses existence [P2-S09-AC-034]');
+select ok(pg_temp.s09d_resp('a07:forbid') is not distinct from pg_temp.s09d_resp('a07:forbid:absent')
+    and pg_temp.s09d_detail('a07:forbid') is not distinct from pg_temp.s09d_detail('a07:forbid:absent'),
+  'the 403 for a real and an absent version is byte-identical [P2-S09-AC-034]');
+select is(pg_temp.p_call('a07:hidden', 'platform_api.cms_get_content_type_version', 'other', pg_temp.p_a07()), 'NOT_FOUND',
+  'another organization''s designer gets a 404 for the real version [P2-S09-AC-034]');
+select is(pg_temp.p_call('a07:absent', 'platform_api.cms_get_content_type_version', 'other', pg_temp.p_a07(jsonb_build_object('versionId', extensions.gen_random_uuid()))), 'NOT_FOUND',
+  'and the same 404 for an absent version [P2-S09-AC-034]');
+select is(pg_temp.p_call('a07:wrongtype', 'platform_api.cms_get_content_type_version', 'owner', pg_temp.p_a07(jsonb_build_object('contentTypeId', extensions.gen_random_uuid()))), 'NOT_FOUND',
+  'a real version under a type identifier it does not belong to is 404 even for the owner [P2-S09-AC-034]');
+select ok(pg_temp.s09d_resp('a07:hidden') is not distinct from pg_temp.s09d_resp('a07:absent')
+    and pg_temp.s09d_detail('a07:hidden') is not distinct from pg_temp.s09d_detail('a07:absent')
+    and pg_temp.s09d_resp('a07:hidden') is not distinct from pg_temp.s09d_resp('a07:wrongtype')
+    and pg_temp.s09d_detail('a07:hidden') is not distinct from pg_temp.s09d_detail('a07:wrongtype'),
+  'the concealed, the absent and the mismatched-type answers are indistinguishable [P2-S09-AC-034]');
+
 -- ================================ AC036 authority is derived server-side, caller metadata ignored ====
 select is(pg_temp.p_call('d:' || k, 'platform_api.cms_add_field_definition', 'owner', pg_temp.p_a02('a', jsonb_build_object(k, 'caller-value'))), 'INVALID_REQUEST', 'CMS-03A-02 refuses the caller member ' || k || ' as an unknown key and changes nothing [P2-S09-AC-036]')
 from unnest(array['ownerId', 'createdBy', 'actingPartyId', 'actorId', 'capability', 'roles', 'authUserId']) k;
@@ -250,6 +278,55 @@ select is(pg_temp.p_forced('audit_events', 'cms.schema.activate', '', 'f:a04a', 
 select is(pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('k:version')), 'approved', 'after both rollbacks the candidate is still approved and not active [P2-S09-AC-212]');
 select pg_temp.s09d_rpc('f:a04ok', 'platform_api.cms_activate_schema', 'owner', (select req from p_act_req), true);
 select is(pg_temp.s09d_outcome('f:a04ok'), 'OK', 'the same request then commits: the failed attempts reserved nothing [P2-S09-AC-212]');
+-- The remaining original operations: CMS-03A-01 (create), CMS-03A-02 (field), CMS-03A-05 (block registration) and
+-- CMS-03A-08 (lifecycle advance).  For each, a failed audit write and a failed outbox write leave the fingerprint of
+-- every aggregate, nonce, event, audit, outbox and idempotency row untouched, and the same request then commits.
+create temp table p_a01_req on commit drop as select pg_temp.p_base('p240_force_a01', '{"idempotencyKey":"p240-force-a01-0001"}') as req;
+select is(pg_temp.p_forced('audit_events', '', '', 'f:a01a', 'platform_api.cms_create_type_draft', 'owner', (select req from p_a01_req)), 'P240_FORCED_FAILURE true',
+  'a failed audit write rolls back CMS-03A-01: no type, version, field, artifact, audit row or idempotency record [P2-S09-AC-212]');
+select is(pg_temp.p_forced('outbox_events', '', '', 'f:a01o', 'platform_api.cms_create_type_draft', 'owner', (select req from p_a01_req)), 'P240_FORCED_FAILURE true',
+  'a failed outbox write rolls back CMS-03A-01 as well [P2-S09-AC-212]');
+select is((select count(*)::integer from platform_private.cms_content_types where type_key = 'p240_force_a01'), 0, 'after both rollbacks no part of the CMS-03A-01 aggregate exists [P2-S09-AC-212]');
+select pg_temp.s09d_rpc('f:a01ok', 'platform_api.cms_create_type_draft', 'owner', (select req from p_a01_req), true);
+select is(pg_temp.s09d_outcome('f:a01ok'), 'OK', 'the same CMS-03A-01 request then commits: the failed attempts reserved nothing [P2-S09-AC-212]');
+
+select pg_temp.s09d_create_type('m', 'p240_auth_m');
+create temp table p_a02_req on commit drop as select pg_temp.p_a02('m', jsonb_build_object('idempotencyKey', 'p240-force-a02-0001')) as req;
+select is(pg_temp.p_forced('audit_events', '', '', 'f:a02a', 'platform_api.cms_add_field_definition', 'owner', (select req from p_a02_req)), 'P240_FORCED_FAILURE true',
+  'a failed audit write rolls back CMS-03A-02: no field row, no version bump, no idempotency record [P2-S09-AC-212]');
+-- BE03a (CMS-03A-02 "no event; prior draft remains"): the field command writes an audit row and no outbox event,
+-- so only the audit write is part of its atomic boundary; the retry below proves the audit failure left nothing.
+create temp table p_a02_outbox on commit drop as select count(*) as n from platform_private.outbox_events;
+select pg_temp.s09d_rpc('f:a02ok', 'platform_api.cms_add_field_definition', 'owner', (select req from p_a02_req), true);
+select is(pg_temp.s09d_outcome('f:a02ok'), 'OK', 'the same CMS-03A-02 request then commits [P2-S09-AC-212]');
+select is((select count(*) from platform_private.outbox_events), (select n from p_a02_outbox),
+  'CMS-03A-02 emits no outbox event, so there is no outbox write whose failure could orphan the field row [P2-S09-AC-212]');
+
+create or replace function pg_temp.p_forced_block(p_table text, p_label text, p_request jsonb, p_lifecycle boolean) returns text language plpgsql as $body$
+declare before_rows text := pg_temp.p_block_rows(); outcome text;
+begin
+  perform set_config('p240.fail_table', p_table, true); perform set_config('p240.fail_action', '', true); perform set_config('p240.fail_event', '', true);
+  if p_lifecycle then perform pg_temp.p_advance(p_label, p_request); else perform pg_temp.p_register(p_label, p_request); end if;
+  outcome := pg_temp.s09d_outcome(p_label);
+  perform set_config('p240.fail_table', '', true);
+  return outcome || ' ' || (before_rows = pg_temp.p_block_rows())::text;
+end;
+$body$;
+create temp table p_a05_req on commit drop as select pg_temp.p_block_request('p240force', 1) as req;
+select is(pg_temp.p_forced_block('audit_events', 'f:a05a', (select req from p_a05_req), false), 'P240_FORCED_FAILURE true',
+  'a failed audit write rolls back CMS-03A-05: no block row, no nonce claim, no outbox row or idempotency record [P2-S09-AC-212]');
+select is(pg_temp.p_forced_block('outbox_events', 'f:a05o', (select req from p_a05_req), false), 'P240_FORCED_FAILURE true',
+  'a failed outbox write rolls back CMS-03A-05 as well [P2-S09-AC-212]');
+select is(pg_temp.p_block_expect('f:a05ok', (select req from p_a05_req), 'OK'), 'ok',
+  'the same signed CMS-03A-05 request then commits: the nonce was never consumed by the failed attempts [P2-S09-AC-212]');
+create temp table p_a08_block on commit drop as select id from platform_private.cms_block_definition_versions where block_key = 'p240force' and block_version = 1;
+create temp table p_a08_req on commit drop as select pg_temp.p_lifecycle_request((select id from p_a08_block), 'supported', 'deprecated') as req;
+select is(pg_temp.p_forced_block('audit_events', 'f:a08a', (select req from p_a08_req), true), 'P240_FORCED_FAILURE true',
+  'a failed audit write rolls back CMS-03A-08: no lifecycle event, no nonce claim, no outbox row or idempotency record [P2-S09-AC-212]');
+select is(pg_temp.p_forced_block('outbox_events', 'f:a08o', (select req from p_a08_req), true), 'P240_FORCED_FAILURE true',
+  'a failed outbox write rolls back CMS-03A-08 as well [P2-S09-AC-212]');
+select is(pg_temp.p_block_expect('f:a08ok', (select req from p_a08_req), 'OK', true), 'ok',
+  'the same signed CMS-03A-08 request then commits all four effects together [P2-S09-AC-212]');
 drop trigger p240_fail_audit on audit_private.audit_events;
 drop trigger p240_fail_outbox on platform_private.outbox_events;
 

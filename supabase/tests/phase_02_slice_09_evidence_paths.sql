@@ -177,26 +177,47 @@ select ok(pg_temp.s09d_outcome('g:forged') <> 'OK' and pg_temp.s09d_read('cms_co
   'a forged approved review with a forged decision id cannot satisfy activation [P2-S09-AC-713]');
 
 -- ---------------------------------------- AC714: test humans via CMS-03A-15 ----
+-- The guard counts every CMS capability row of the owner organization that has no
+-- CMS-03A-15 aggregate and granted event.  No person is exempt by identity: the
+-- owner's own rows are covered by the same aggregate (the owner initialization
+-- receipt trigger backfills it) or by the one receipt-derived exemption below,
+-- which names the exact (person, organization, capability) set the operator
+-- initialization wrote and nothing else.  Editor and publisher humans are
+-- provisioned through the same command before the guard is asserted clean.
 create or replace function pg_temp.s09e_unprovisioned() returns bigint language sql stable as $body$
   select count(*) from identity_private.organization_actor_grant ag
    where ag.organization_id = pg_temp.s09d_id('ownerOrg') and ag.capability_code like 'cms.%'
-     and ag.person_id <> pg_temp.s09d_actor_id('owner', 'person')::uuid
      and not exists (select 1 from platform_private.cms_capability_grants g
                        join platform_private.cms_capability_grant_events e on e.grant_id = g.id and e.aggregate_version = 1
                       where g.owner_id = ag.organization_id and g.subject_person_ref = ag.person_id
                         and g.capability_code = ag.capability_code)
+     and not exists (select 1 from platform_private.cms_owner_initialization r
+                      where r.person_id = ag.person_id and r.organization_id = ag.organization_id
+                        and ag.capability_code in ('cms.schema_registry.read', 'cms.schema_designer'))
 $body$;
+select pg_temp.s09d_grant_specialist('rev3', 'cms.editor');
+select pg_temp.s09d_grant_specialist('rev3', 'cms.publisher');
+select is((select count(*)::integer from identity_private.organization_actor_grant ag
+     where ag.organization_id = pg_temp.s09d_id('ownerOrg') and ag.person_id = pg_temp.s09d_actor_id('rev3', 'person')::uuid
+       and ag.capability_code in ('cms.editor', 'cms.publisher')), 2,
+  'an editor and a publisher test human were provisioned through CMS-03A-15 [P2-S09-AC-714]');
 select is(pg_temp.s09e_unprovisioned(), 0::bigint,
-  'every CMS capability of every non-owner test human (designer, specialist reviewer, template designer, author) has an aggregate and a granted event: it was provisioned through CMS-03A-15 [P2-S09-AC-714]');
+  'every CMS capability row of every test human (author, editor, reviewer, specialist reviewer, template designer, publisher, designer) has an aggregate and a granted event, and the owner is covered only by the receipt-derived set: provisioned through CMS-03A-15 [P2-S09-AC-714]');
 select ok(pg_temp.s09x_via_rpc('cms_schema_review_assignments') > 0 and pg_temp.s09x_direct('cms_schema_review_assignments') = 0,
   'every reviewer assignment of the paths was created through CMS-03A-14 [P2-S09-AC-714]');
 select set_config('app.cms_rpc', '', true);
 insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
-select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.editor', current_date, current_date + 5, true from s09d_actor where key = 'rev3';
+select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.reviewer', current_date, current_date + 5, true from s09d_actor where key = 'rev3';
 select is(pg_temp.s09e_unprovisioned(), 1::bigint,
-  'negative control: a hand-inserted organization_actor_grant row is detected as unprovisioned and fails the path guard [P2-S09-AC-714]');
-delete from identity_private.organization_actor_grant where person_id = pg_temp.s09d_actor_id('rev3', 'person')::uuid and capability_code = 'cms.editor';
-select is(pg_temp.s09e_unprovisioned(), 0::bigint, 'the forged row is gone and the guard is clean again');
+  'negative control: a hand-inserted organization_actor_grant row for an editor-side human is detected as unprovisioned and fails the path guard [P2-S09-AC-714]');
+delete from identity_private.organization_actor_grant where person_id = pg_temp.s09d_actor_id('rev3', 'person')::uuid and capability_code = 'cms.reviewer';
+select is(pg_temp.s09e_unprovisioned(), 0::bigint, 'the forged row is gone and the guard is clean again [P2-S09-AC-714]');
+insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
+select pg_temp.s09d_id('ownerOrg'), person_id, 'cms.reviewer.legal', current_date, current_date + 5, true from s09d_actor where key = 'owner';
+select is(pg_temp.s09e_unprovisioned(), 1::bigint,
+  'negative control: a hand-inserted capability for the owner person outside the receipt set is detected, the owner has no identity exemption [P2-S09-AC-714]');
+delete from identity_private.organization_actor_grant where person_id = pg_temp.s09d_actor_id('owner', 'person')::uuid and capability_code = 'cms.reviewer.legal';
+select is(pg_temp.s09e_unprovisioned(), 0::bigint, 'the forged owner row is gone and the guard is clean again [P2-S09-AC-714]');
 
 -- ------------------------------ AC715: the second path consumes real producers ----
 select pg_temp.s09d_grant_specialist('owner', 'cms.template_designer');

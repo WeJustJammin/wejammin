@@ -179,5 +179,37 @@ from (values ('in uppercase', repeat('E', 64)), ('of 63 characters', repeat('e',
 select is(pg_temp.p_ok('dg:ok', 'p240digest', 1), 'ok', 'control: a lowercase 64-hex release digest is accepted and binds the attestation [P2-S09-AC-118]');
 select is((select release_digest::text from platform_private.cms_block_definition_versions where block_key = 'p240digest'), repeat('e', 64), 'the digest is stored as the signed release manifest binding [P2-S09-AC-118]');
 
+-- ============================ AC034 CMS-03A-05: the refusals of a caller that is not the trusted release principal ====
+-- The database has one refusal for every caller that is not an active signed release principal: a human or
+-- admin session, an unknown key, a revoked key and an expired key all get 401 UNAUTHENTICATED with the same
+-- body and commit nothing, so the refusal never discloses which release keys exist.  (The 403 row for a human
+-- is the Worker's mapping of the same refusal; the database has no per-target 404 for a registration, the
+-- block pair being created by this command.)
+create or replace function pg_temp.p_human_register(p_label text, p_request jsonb) returns text language plpgsql as $body$
+declare before_rows text := pg_temp.p_block_rows(); outcome text;
+begin
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  perform pg_temp.s09d_call(p_label, 'platform_api.cms_register_block', p_request);
+  outcome := pg_temp.s09d_outcome(p_label);
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  return case when outcome = 'UNAUTHENTICATED' and before_rows = pg_temp.p_block_rows() then 'ok' else 'bad:' || outcome end;
+end;
+$body$;
+select is(pg_temp.p_human_register('a05:human', pg_temp.p_block_request('p240a05', 1)), 'ok',
+  'a signed registration submitted from a human or admin session is refused 401 and nothing is committed [P2-S09-AC-034]');
+select is(pg_temp.p_bad('a05:unknown', 'UNAUTHENTICATED', 'p240a05', 1, '{"releaseKeyId":"release.unknown","context":{"releasePrincipalId":"release.unknown"}}'), 'ok',
+  'a registration under an unregistered release key is refused 401 and nothing is committed [P2-S09-AC-034]');
+update platform_private.cfg_release_principals set revoked_at = clock_timestamp() where key_id = 'release.p240';
+select is(pg_temp.p_bad('a05:revoked', 'UNAUTHENTICATED', 'p240a05', 1), 'ok',
+  'a registration under a revoked release key is refused 401 and nothing is committed [P2-S09-AC-034]');
+update platform_private.cfg_release_principals set revoked_at = null where key_id = 'release.p240';
+select ok(pg_temp.s09d_resp('a05:human') is not distinct from pg_temp.s09d_resp('a05:unknown')
+    and pg_temp.s09d_detail('a05:human') is not distinct from pg_temp.s09d_detail('a05:unknown')
+    and pg_temp.s09d_resp('a05:unknown') is not distinct from pg_temp.s09d_resp('a05:revoked')
+    and pg_temp.s09d_detail('a05:unknown') is not distinct from pg_temp.s09d_detail('a05:revoked'),
+  'the human, unknown-key and revoked-key refusals carry the same body and detail: no release key existence is disclosed [P2-S09-AC-034]');
+select is(pg_temp.p_ok('a05:control', 'p240a05', 1), 'ok',
+  'control: after the key is reinstated the same registration commits [P2-S09-AC-034]');
+
 select * from finish();
 rollback;

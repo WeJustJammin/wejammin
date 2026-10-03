@@ -141,6 +141,10 @@ export const SchemaActivationRequestSchema = z
  * template (CMS-03A-01 creates a type without one). The compatibility of each
  * referenced template with the type is decided by the database resolver.
  */
+export const WORKFLOW_MEMBER_MESSAGES = {
+  pair: 'workflowKey and workflowVersion must be both null or both present',
+} as const;
+
 export const TEMPLATE_BINDING_MESSAGES = {
   pair: 'defaultTemplateVersionId and templateBindings must be both null or both present',
   unique: 'templateBindings must be unique',
@@ -171,8 +175,22 @@ export const SchemaSuccessorRequestSchema = z
       .max(32)
       .readonly()
       .nullable(),
+    // AC390: both null or absent keeps the source workflow policy member; both
+    // present replaces it with a seeded member of the code-owned registry (the
+    // database owns the membership check and the strictest-of review rule).
+    workflowKey: CmsWorkflowKeySchema.nullable().optional(),
+    workflowVersion: CmsVersionSchema.nullable().optional(),
   })
   .superRefine((value, context) => {
+    if (
+      (value.workflowKey === undefined || value.workflowKey === null) !==
+      (value.workflowVersion === undefined || value.workflowVersion === null)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['workflowVersion'],
+        message: WORKFLOW_MEMBER_MESSAGES.pair,
+      });
     const { supportedLocales, fallbackChains } = value;
     if ((supportedLocales === null) !== (fallbackChains === null))
       context.addIssue({

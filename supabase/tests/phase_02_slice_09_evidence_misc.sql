@@ -111,9 +111,67 @@ select pg_temp.s09w_redefine('rj', 'rich_text', '{}'::jsonb);
 select is(pg_temp.s09d_outcome('rj:redefine'), 'OK', 'fixture: the candidate''s title changes kind (a breaking change) under its ready plan');
 select pg_temp.s09d_dry_run('rj', 'owner', 'default.fill_literal', '1', 's09e-registry-fill-0001');
 select is(pg_temp.s09d_outcome('rj:dryRun'), 'VALIDATION_FAILED',
-  'default.fill_literal does not accept the rich_text target kind: CMS-03A-10 refuses the pair before any attempt exists [P2-S09-AC-680]');
+  'default.fill_literal does not accept the rich_text target kind: CMS-03A-10 refuses the pair before any attempt exists [P2-S09-AC-680] [P2-S09-AC-356]');
 select is(pg_temp.s09d_detail('rj:dryRun'), 'TRANSFORM_FIELD_KIND_MISMATCH',
-  'the machine detail is TRANSFORM_FIELD_KIND_MISMATCH [P2-S09-AC-680]');
+  'the machine detail is TRANSFORM_FIELD_KIND_MISMATCH [P2-S09-AC-680] [P2-S09-AC-356]');
+-- AC356: every 422 VALIDATION_FAILED row of CMS-03A-10 is produced by the real command against the candidate
+-- 'rj', which the title kind change made breaking.  Each refusal commits nothing (fingerprint unchanged).
+create or replace function pg_temp.s09e_pair(p_label text, p_key jsonb, p_version jsonb, p_extra jsonb default '{}'::jsonb) returns text
+language plpgsql as $body$
+declare before_fp text := pg_temp.s09d_fingerprint(false);
+begin
+  perform pg_temp.s09d_rpc(p_label, 'platform_api.cms_start_schema_dry_run', 'owner',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id('rj:type'), 'versionId', pg_temp.s09d_id('rj:version'),
+      'expectedVersion', pg_temp.s09d_version('rj'), 'transformKey', p_key, 'transformVersion', p_version,
+      'idempotencyKey', 's09e-356-' || p_label) || p_extra);
+  return pg_temp.s09d_outcome(p_label) || '|' || (before_fp = pg_temp.s09d_fingerprint(false))::text;
+end;
+$body$;
+select is(pg_temp.s09e_pair('p:' || c.n, c.k, c.v), 'VALIDATION_FAILED|true',
+  'CMS-03A-10 refuses a transform pair ' || c.n || ' with 422 and commits nothing [P2-S09-AC-356]')
+from (values
+  ('with a key and no version', '"identity.revalidate"'::jsonb, 'null'::jsonb),
+  ('with a version and no key', 'null'::jsonb, '"1"'::jsonb),
+  ('whose key is not a string', '7'::jsonb, '"1"'::jsonb),
+  ('whose version is not a string', '"identity.revalidate"'::jsonb, '1'::jsonb),
+  ('whose key breaks the ValidatorKey grammar', '"Identity.Revalidate"'::jsonb, '"1"'::jsonb),
+  ('whose version is not a canonical positive decimal', '"identity.revalidate"'::jsonb, '"01"'::jsonb),
+  ('whose version is zero', '"identity.revalidate"'::jsonb, '"0"'::jsonb),
+  ('absent although the derived classification is breaking', 'null'::jsonb, 'null'::jsonb),
+  ('naming a key outside the code-owned registry', '"cms.unregistered"'::jsonb, '"1"'::jsonb),
+  ('naming a registered key at an unregistered version', '"identity.revalidate"'::jsonb, '"2"'::jsonb)
+) c(n, k, v);
+select is(pg_temp.s09e_pair('p:count', '"identity.revalidate"'::jsonb, '"1"'::jsonb, '{"sourceCount":"3"}'::jsonb), 'INVALID_REQUEST|true',
+  'a caller-supplied count is refused and commits nothing: the counts are database-derived, never an input (400 at the database; BE03a row 234 text says 422) [P2-S09-AC-356]');
+-- A classification that cannot be derived: the candidate''s source version must belong to the same type and
+-- owner.  No producer can create such a candidate (CMS-03A-09 only clones a readable source of its own type),
+-- so the state below is a negative-control forgery under disabled guards, rolled back inside the function.
+select pg_temp.s09d_create_type('ro', 'evm_undrv');
+select pg_temp.s09d_to_active('ro');
+select pg_temp.s09d_successor('rp', 'ro');
+create or replace function pg_temp.s09e_underivable() returns text language plpgsql as $body$
+declare observed text;
+begin
+  begin
+    set constraints all immediate;
+    alter table platform_private.cms_content_type_versions disable trigger user;
+    perform set_config('app.cms_rpc', 'true', true);
+    update platform_private.cms_content_type_versions set supersedes_id = pg_temp.s09d_id('rk:version') where id = pg_temp.s09d_id('rp:version');
+    alter table platform_private.cms_content_type_versions enable trigger user;
+    perform pg_temp.s09d_rpc('p:underivable', 'platform_api.cms_start_schema_dry_run', 'owner',
+      jsonb_build_object('contentTypeId', pg_temp.s09d_id('rp:type'), 'versionId', pg_temp.s09d_id('rp:version'),
+        'expectedVersion', pg_temp.s09d_version('rp'), 'transformKey', null, 'transformVersion', null,
+        'idempotencyKey', 's09e-356-underivable'));
+    observed := pg_temp.s09d_outcome('p:underivable') || '|' || (select count(*) from platform_private.cms_schema_dry_run_reports where target_version_id = pg_temp.s09d_id('rp:version'));
+    raise exception 'S09E_ROLLBACK';
+  exception when others then
+    if sqlerrm <> 'S09E_ROLLBACK' then return 'ERROR:' || sqlerrm; end if;
+  end;
+  return observed;
+end;
+$body$;
+select is(pg_temp.s09e_underivable(), 'VALIDATION_FAILED|0',
+  'a candidate whose source cannot be read from its own type and owner has no derivable classification: 422 before any attempt, plan or job exists [P2-S09-AC-356]');
 select pg_temp.s09d_dry_run('rj', 'owner', 'identity.revalidate', '1', 's09e-registry-identity-0001');
 select ok(pg_temp.s09d_outcome('rj:dryRun') = 'OK'
   and (select transform_key = 'identity.revalidate' and transform_version = 1 from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('rj:plan')),

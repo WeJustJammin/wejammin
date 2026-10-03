@@ -459,6 +459,8 @@ describe('locale configuration OpenAPI projection', () => {
       'fallbackChains',
       'supportedLocales',
       'templateBindings',
+      'workflowKey',
+      'workflowVersion',
     ]);
     const resource = schemas.ContentTypeVersionResource as unknown as {
       required: string[];

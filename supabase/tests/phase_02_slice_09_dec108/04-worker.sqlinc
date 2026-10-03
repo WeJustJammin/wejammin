@@ -400,14 +400,15 @@ $body$;
 
 -- Worker rollback (cms_rollback_schema_migration) of the claimed plan.
 create or replace function pg_temp.s09w_rollback(
-  p_tag text, p_fallback_tag text, p_retryable boolean, p_label text default null
+  p_tag text, p_fallback_tag text, p_retryable boolean, p_label text default null,
+  p_reason text default 'TEST_FAILURE'
 ) returns jsonb language plpgsql as $body$
 declare base jsonb := pg_temp.s09w_base(p_tag);
 begin
   return pg_temp.s09d_call(coalesce(p_label, p_tag || ':w.rollback'), 'platform_api.cms_rollback_schema_migration',
     base || jsonb_build_object('expectedVersion', pg_temp.s09w_plan_version(p_tag),
       'cursor', pg_temp.s09w_plan_cursor(p_tag), 'leaseToken', pg_temp.s09w_lease(p_tag),
-      'reasonCode', 'TEST_FAILURE', 'retryable', p_retryable,
+      'reasonCode', p_reason, 'retryable', p_retryable,
       'fallbackVersionId', pg_temp.s09d_id(p_fallback_tag || ':version'),
       'preserveOldActive', true, 'deleteRows', false));
 end;

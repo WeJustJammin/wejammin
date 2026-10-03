@@ -220,5 +220,61 @@ select ok(pg_temp.s09d_outcome('f:successor') = 'OK'
     and pg_temp.s09t_bindings(pg_temp.s09d_id('f:version')) = '',
   'a default template with an empty binding list is a valid replacement [P2-S09-AC-045]');
 
+-- --------------------- AC169: the producer-made binding rows (named compatibility RPC) ----
+-- The bindings of the activated successor 'b' were written by CMS-03A-09 only after the BE03c
+-- compatibility RPC resolved every template against the exact candidate; here the persisted rows are
+-- read back, re-resolved through that same named RPC, and held to the table contract.
+create or replace function pg_temp.s09t_err(p_sql text) returns text language plpgsql as $body$
+begin
+  execute p_sql;
+  return 'ACCEPTED';
+exception when others then
+  return sqlerrm;
+end;
+$body$;
+create or replace function pg_temp.s09t_resolve(p_label text, p_template uuid, p_type uuid, p_version uuid) returns jsonb
+language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session('owner');
+  return pg_temp.s09d_call(p_label, 'platform_api.cms_resolve_template_compatibility', jsonb_build_object(
+    'templateVersionId', p_template, 'contentTypeId', p_type, 'contentTypeVersionId', p_version,
+    'context', pg_temp.s09d_context('owner')));
+end;
+$body$;
+select ok((select count(*) = 2
+      and bool_and(binding.owner_id = pg_temp.s09d_id('ownerOrg') and binding.content_type_version_id = pg_temp.s09d_id('b:version') and binding.version = 1)
+      and (array_agg(binding.template_version_id order by binding.position))
+        = array[pg_temp.s09d_id('t1:templateVersion'), pg_temp.s09d_id('t2:templateVersion')]
+      and (array_agg(binding.position order by binding.position)) = array[0, 1]
+    from platform_private.cms_content_type_template_bindings binding where binding.content_type_version_id = pg_temp.s09d_id('b:version')),
+  'the producer persisted each binding with its owner, parent version, template UUID and request-order position [P2-S09-AC-169]');
+select pg_temp.s09t_resolve('b:r1', pg_temp.s09d_id('t1:templateVersion'), pg_temp.s09d_id('a:type'), pg_temp.s09d_id('b:version'));
+select pg_temp.s09t_resolve('b:r2', pg_temp.s09d_id('t2:templateVersion'), pg_temp.s09d_id('a:type'), pg_temp.s09d_id('b:version'));
+select pg_temp.s09t_resolve('b:ri', pg_temp.s09d_id('ti:templateVersion'), pg_temp.s09d_id('a:type'), pg_temp.s09d_id('b:version'));
+select ok(pg_temp.s09d_outcome('b:r1') = 'OK' and pg_temp.s09d_resp('b:r1')->>'compatible' = 'true'
+    and pg_temp.s09d_outcome('b:r2') = 'OK' and pg_temp.s09d_resp('b:r2')->>'compatible' = 'true',
+  'both persisted bindings resolve as compatible for their exact parent version through the named compatibility RPC [P2-S09-AC-169]');
+select isnt(pg_temp.s09d_outcome('b:ri'), 'OK',
+  'a template that excludes the type, which no binding row names, is refused by the same named RPC [P2-S09-AC-169]');
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.s09t_err(format($q$update platform_private.cms_content_type_template_bindings set position = 5, version = version + 1
+    where content_type_version_id = %L$q$, pg_temp.s09d_id('b:version'))), 'IMMUTABLE_RECORD',
+  'UPDATE of a producer-made binding of the activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
+select is(pg_temp.s09t_err(format($q$delete from platform_private.cms_content_type_template_bindings where content_type_version_id = %L$q$, pg_temp.s09d_id('b:version'))), 'IMMUTABLE_RECORD',
+  'DELETE of a producer-made binding of the activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
+select is(pg_temp.s09t_err(format($q$insert into platform_private.cms_content_type_template_bindings(owner_id, content_type_version_id, template_version_id, position)
+    values (%L, %L, %L, 2)$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_id('b:version'), pg_temp.s09d_id('tw:templateVersion'))), 'IMMUTABLE_RECORD',
+  'INSERT of a further binding into the activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]');
+select is(pg_temp.s09t_err(format($q$insert into platform_private.cms_content_type_template_bindings(owner_id, content_type_version_id, template_version_id, position)
+    values (%L, %L, %L, 2)$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_id('d:version'), pg_temp.s09d_id('t1:templateVersion'))),
+  'duplicate key value violates unique constraint "cms_content_type_template_bindings_unique"',
+  'a second binding of one template to the draft successor d is rejected by the unique parent/template pair [P2-S09-AC-169]');
+select is(pg_temp.s09t_err(format($q$insert into platform_private.cms_content_type_template_bindings(owner_id, content_type_version_id, template_version_id, position)
+    values (%L, %L, %L, 2)$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_id('d:version'), pg_temp.s09d_id('ti:templateVersion'))),
+  'VALIDATION_FAILED', 'a direct binding of an incompatible template to the draft is refused by the compatibility guard [P2-S09-AC-169]');
+select set_config('app.cms_rpc', '', true);
+select is((select count(*)::integer from platform_private.cms_content_type_template_bindings where content_type_version_id = pg_temp.s09d_id('b:version')), 2,
+  'after every refused write the activated version still has exactly its two producer-made bindings [P2-S09-AC-169]');
+
 select * from finish();
 rollback;

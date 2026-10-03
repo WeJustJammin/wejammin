@@ -360,6 +360,33 @@ Forward-only migrations for the 2026-10-03 P240-db rulings (each has a RED-first
   the bindings are written before the candidate compiles so the definition hash, review evidence and
   activation carry them (`../tests/phase_02_slice_09_p241_dec123_successor_binding.sql`).
 
+### Slice 09 R12 holdover migrations (`20261003100000`-`20261003100300`)
+
+Forward-only migrations for the R12 database holdovers (each has a RED-first pgTAP test):
+
+- `100000` AC217: `cms_json_bounded` and `cms_jcs` become single-pass with unchanged results (the
+  512 KiB compiled-manifest CHECK of a 128-field definition cost about 50 ms per field write; both
+  stay IMMUTABLE and are held to the previous implementations by
+  `../tests/phase_02_slice_09_canonical_json_equivalence.sql`).
+- `100100` AC217: `cms_create_type_draft` validates the field array once and inserts it in one
+  statement; create128 RPC p95 about 60 ms on the reference stack (was 168 ms quiet, 299 ms loaded;
+  `../tests/phase_02_slice_09_evidence_bench128.sql`, 25 samples, p95 < 200 ms).
+- `100200` AC390: `cms_create_schema_successor` accepts the optional `workflowKey`/`workflowVersion`
+  pair (both null or absent keeps the source member, both present replaces it with a seeded registry
+  member); CMS-03A-11 keeps reviewing under the strictest of the two members
+  (`../tests/phase_02_slice_09_r12_successor_workflow.sql`).
+- `100300` AC641: `cms_rollback_schema_migration` records a terminal worker failure of a
+  `dry_running` plan: the attempt ends `failed` with the worker's code, the plan is `blocked` and a
+  new CMS-03A-10 attempt recovers it (`../tests/phase_02_slice_09_r12_scan_failure.sql`).
+
+### Slice 09 R13 migration (`20261003100400`)
+
+- `100400` AC034: `cms_create_type_draft` gates on the new private `cms_require_scope_member` before
+  the capability is read: a caller who is neither a confirmed current member of the named target
+  registry scope nor acting in their own personal scope is refused `NOT_FOUND` (one body for a foreign
+  and an absent organization), while a member lacking `cms.schema_designer` keeps `FORBIDDEN`
+  (`../tests/phase_02_slice_09_p240_a01_aggregate.sql`).
+
 ## Related links
 
 - `../tests/README.md`

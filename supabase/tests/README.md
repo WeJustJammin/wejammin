@@ -45,6 +45,14 @@ schema entrypoint. The two-session runners are
 and `phase_02_slice_09_schema/009c-independent-sessions.mjs`; run each only
 right after `pnpm db:reset` and reset again afterwards (they commit rows).
 
+The R12 holdover files are `phase_02_slice_09_canonical_json_equivalence.sql` (the
+single-pass JSON helpers against verbatim copies of the previous implementations),
+`phase_02_slice_09_r12_successor_workflow.sql` (AC390 producer path) and
+`phase_02_slice_09_r12_scan_failure.sql` (AC641 failed attempt through the worker
+failure call, no trigger disabling). The R13 AC034 scope-concealment proof (404 for a foreign or
+absent target scope, 403 for a member without schema_designer) lives in
+`phase_02_slice_09_p240_a01_aggregate.sql`.
+
 ## Extension
 
 Add tests beside the migration that introduces a behavior. Cover both allowed

@@ -9789,6 +9789,10 @@ export type Database = {
         Returns: undefined
       }
       cms_require_release_worker: { Args: never; Returns: undefined }
+      cms_require_scope_member: {
+        Args: { p_acting_party_id: string; p_actor_id: string }
+        Returns: undefined
+      }
       cms_reserve: {
         Args: { p_actor_id: string; p_operation: string; p_request: Json }
         Returns: {

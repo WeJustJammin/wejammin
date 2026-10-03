@@ -105,8 +105,8 @@ select ok(not pg_temp.s09d_try(format('update platform_private.cms_schema_dry_ru
   'running never returns to queued: states advance only forward [P2-S09-AC-672]');
 select is(pg_temp.s09e_writers('cms_schema_dry_run_reports', 'insert[[:space:]]+into'), 'cms_start_schema_dry_run',
   'only CMS-03A-10 inserts an attempt [P2-S09-AC-672]');
-select is(pg_temp.s09e_writers('cms_schema_dry_run_reports', 'update'), 'cms_claim_schema_migration_lease,cms_finalize_schema_migration_dry_run,cms_start_schema_dry_run',
-  'only the claim, the finalizer (seal) and CMS-03A-10 (supersede) advance an attempt [P2-S09-AC-672]');
+select is(pg_temp.s09e_writers('cms_schema_dry_run_reports', 'update'), 'cms_claim_schema_migration_lease,cms_finalize_schema_migration_dry_run,cms_rollback_schema_migration,cms_start_schema_dry_run',
+  'only the claim, the finalizer (seal), the worker failure call (a dry-running scan that cannot seal ends failed, AC641) and CMS-03A-10 (supersede) advance an attempt [P2-S09-AC-672]');
 
 -- ======================================= cms_schema_dry_run_row_evidence (674-676) ====
 select pg_temp.s09g_grant('e:author', 'owner', 'owner', 'cms.author', pg_temp.s09g_day(5));
@@ -187,6 +187,10 @@ select ok(not exists (select 1 from pg_constraint where conrelid = 'platform_pri
   'plan identity is the id alone: no unconditional UNIQUE over the version pair blocks retained attempts [P2-S09-AC-677]');
 
 -- ============================ cms_content_type_versions locale columns (1199-1202) ====
+select col_type_is('platform_private', 'cms_content_type_versions', 'source_locale', 'text', 'source_locale is a text column [P2-S09-AC-1199]');
+select col_type_is('platform_private', 'cms_content_type_versions', 'default_locale', 'text', 'default_locale is a text column [P2-S09-AC-1199]');
+select col_not_null('platform_private', 'cms_content_type_versions', 'source_locale', 'source_locale is declared NOT NULL in the catalog [P2-S09-AC-1199]');
+select col_not_null('platform_private', 'cms_content_type_versions', 'default_locale', 'default_locale is declared NOT NULL in the catalog [P2-S09-AC-1199]');
 select is(pg_temp.s09e_check('cms_content_type_versions', 'source_locale', (select pg_temp.s09d_id('a:version')), '{"source_locale":null}'),
   'control:ACCEPTED|override:REJECTED:23502:source_locale', 'source_locale is NOT NULL [P2-S09-AC-1199]');
 select is(pg_temp.s09e_check('cms_content_type_versions', 'default_locale', (select pg_temp.s09d_id('a:version')), '{"default_locale":null}'),

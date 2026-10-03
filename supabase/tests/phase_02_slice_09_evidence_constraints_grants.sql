@@ -221,7 +221,7 @@ select is(pg_temp.s09d_scalar('select (count(*) = 2)::text from information_sche
   'a content-type version carries a NOT NULL workflow_key and workflow_version: exactly one bound registry member [P2-S09-AC-669]');
 select pg_temp.s09d_create_type('ux', 'evc_unseeded', 'no.such.policy');
 select ok(pg_temp.s09d_outcome('ux:create') = 'VALIDATION_FAILED',
-  'CMS-03A-01 refuses a workflow key outside the seeded registry (422/409) and creates nothing [P2-S09-AC-669]');
+  'CMS-03A-01 refuses a workflow key outside the seeded registry (422/409) and creates nothing [P2-S09-AC-669] [P2-S09-AC-193]');
 select pg_temp.s09d_rpc('ux:authority', 'platform_api.cms_create_type_draft', 'owner',
   jsonb_build_object('typeKey', 'evc_authority', 'label', 'x', 'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
     'defaultLocale', 'en-US', 'supportedLocales', '["en-US"]'::jsonb, 'fallbackChains', '{}'::jsonb, 'workflowKey', 'editorial',
@@ -229,7 +229,7 @@ select pg_temp.s09d_rpc('ux:authority', 'platform_api.cms_create_type_draft', 'o
     'capabilityBindings', '[]'::jsonb, 'policyHash', repeat('a', 64), 'requiredCapabilities', '["cms.reviewer"]'::jsonb,
     'idempotencyKey', 's09e-policy-authority-0001'));
 select is(pg_temp.s09d_outcome('ux:authority'), 'INVALID_REQUEST',
-  'a caller-supplied policy hash or capability list is an unknown key, never authority [P2-S09-AC-669]');
+  'a caller-supplied policy hash or capability list is an unknown key, never authority [P2-S09-AC-669] [P2-S09-AC-193]');
 
 -- AC670: the entry's editorial evidence follows the strictest-of rule of its bound schema version.
 select pg_temp.s09d_create_type('sp', 'evc_strict', 'cms.disclosure.policy');

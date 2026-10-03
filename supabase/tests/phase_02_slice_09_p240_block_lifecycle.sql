@@ -44,13 +44,13 @@ from (values ('zero', '0'), ('negative', '-1'), ('padded', '01'), ('fractional',
 select is(pg_temp.p_lc('a:dig:' || c.n, (select b from p_blocks), 'supported', 'deprecated', '1', 'VALIDATION_FAILED', jsonb_build_object('releaseDigest', c.v)), 'ok', 'releaseDigest ' || c.n || ' is refused and nothing is committed [P2-S09-AC-154]')
 from (values ('in uppercase', repeat('E', 64)), ('of 63 characters', repeat('e', 63)), ('with a non-hex digit', repeat('e', 63) || 'z'), ('that is empty', '')) c(n, v);
 select is(pg_temp.p_lc('a:id:malformed', null, 'supported', 'deprecated', '1', 'VALIDATION_FAILED', '{"blockDefinitionVersionId":"nope"}'), 'ok', 'a malformed block identifier is refused [P2-S09-AC-150]');
-select is(pg_temp.p_lc('a:id:unknown', extensions.gen_random_uuid(), 'supported', 'deprecated', '1', 'NOT_FOUND'), 'ok', 'an unknown block identifier is NOT_FOUND and nothing is committed [P2-S09-AC-150]');
+select is(pg_temp.p_lc('a:id:unknown', extensions.gen_random_uuid(), 'supported', 'deprecated', '1', 'NOT_FOUND'), 'ok', 'an unknown block identifier is NOT_FOUND and nothing is committed [P2-S09-AC-150] [P2-S09-AC-034]');
 select is(pg_temp.p_block_expect('a:id:label', pg_temp.p_sign(pg_temp.p_lifecycle_request((select b from p_blocks), 'supported', 'deprecated', '1', '{"blockKey":"p240lc","blockVersion":"2"}') - 'blockDefinitionVersionId', 'CMS-03A-08'), 'VALIDATION_FAILED', true), 'ok',
   'a block key and version cannot stand in for the version identifier [P2-S09-AC-150]');
 select is((select count(*)::integer from platform_private.cms_block_definition_versions where block_key = 'p240lc'), 4, 'the lifecycle route created no key or version: still four registered blocks [P2-S09-AC-150]');
 
 -- ================================ AC151 / AC152 / AC157 transitions and staleness ====
-select is(pg_temp.p_lc('t:fromwrong', (select b from p_blocks), 'deprecated', 'withdrawn', '1', 'CONFLICT'), 'ok', 'fromLifecycle must equal the server-derived current lifecycle: deprecated claimed for a supported block is CONFLICT [P2-S09-AC-151]');
+select is(pg_temp.p_lc('t:fromwrong', (select b from p_blocks), 'deprecated', 'withdrawn', '1', 'CONFLICT'), 'ok', 'fromLifecycle must equal the server-derived current lifecycle: deprecated claimed for a supported block is CONFLICT [P2-S09-AC-151] [P2-S09-AC-157]');
 select is(pg_temp.p_lc('t:skip', (select b from p_blocks), 'supported', 'withdrawn', '1', 'VALIDATION_FAILED'), 'ok', 'supported to withdrawn is not an allowed transition and nothing is committed [P2-S09-AC-152]');
 select is(pg_temp.p_lc('t:same', (select b from p_blocks), 'supported', 'supported', '1', 'VALIDATION_FAILED'), 'ok', 'a transition to the same lifecycle is refused [P2-S09-AC-152]');
 select is(pg_temp.p_lc('t:dep:dep', (select a from p_blocks), 'deprecated', 'deprecated', '1', 'VALIDATION_FAILED'), 'ok', 'deprecated to deprecated is refused [P2-S09-AC-152]');
@@ -188,10 +188,16 @@ select is(pg_temp.p_events((select blk from p_replay)), 'supported>deprecated', 
 -- ===================================================== AC200 A08 failure mapping ====
 select is(pg_temp.p_lc('e:sig', (select blk from p_replay), 'deprecated', 'withdrawn', '1', 'UNAUTHENTICATED', '{}', jsonb_build_object('releaseRawBodyHash', repeat('9', 64))), 'ok', 'a signature failure is 401 UNAUTHENTICATED [P2-S09-AC-200]');
 select is(pg_temp.p_lc('e:principal', (select blk from p_replay), 'deprecated', 'withdrawn', '1', 'UNAUTHENTICATED', '{"context":{}}'), 'ok', 'a principal failure is 401 UNAUTHENTICATED [P2-S09-AC-200]');
-select is(pg_temp.p_lc('e:path', extensions.gen_random_uuid(), 'deprecated', 'withdrawn', '1', 'NOT_FOUND'), 'ok', 'an unknown path resource is 404 NOT_FOUND [P2-S09-AC-200]');
+select is(pg_temp.p_lc('e:path', extensions.gen_random_uuid(), 'deprecated', 'withdrawn', '1', 'NOT_FOUND'), 'ok', 'an unknown path resource is 404 NOT_FOUND [P2-S09-AC-200] [P2-S09-AC-034]');
+select is(pg_temp.p_lc('e:path2', extensions.gen_random_uuid(), 'supported', 'deprecated', '7', 'NOT_FOUND'), 'ok', 'a second unknown identifier with different content is 404 as well [P2-S09-AC-034]');
+select ok(pg_temp.s09d_resp('a:id:unknown') is not distinct from pg_temp.s09d_resp('e:path')
+    and pg_temp.s09d_detail('a:id:unknown') is not distinct from pg_temp.s09d_detail('e:path')
+    and pg_temp.s09d_resp('e:path') is not distinct from pg_temp.s09d_resp('e:path2')
+    and pg_temp.s09d_detail('e:path') is not distinct from pg_temp.s09d_detail('e:path2'),
+  'every absent block version answers the same 404 body and detail whatever the claimed transition, so an unreadable version is indistinguishable from an absent one [P2-S09-AC-034]');
 select is(pg_temp.p_lc('e:lifecycle', (select blk from p_replay), 'supported', 'deprecated', '1', 'CONFLICT'), 'ok', 'a lifecycle mismatch is 409 CONFLICT [P2-S09-AC-200]');
-select is(pg_temp.p_lc('e:digest', (select blk from p_replay), 'deprecated', 'withdrawn', '1', 'CONFLICT', jsonb_build_object('releaseDigest', repeat('d', 64))), 'ok', 'a digest mismatch is 409 CONFLICT [P2-S09-AC-200]');
-select is(pg_temp.p_lc('e:version', (select blk from p_replay), 'deprecated', 'withdrawn', '3', 'VERSION_MISMATCH'), 'ok', 'a stale version is 409 VERSION_MISMATCH [P2-S09-AC-200]');
+select is(pg_temp.p_lc('e:digest', (select blk from p_replay), 'deprecated', 'withdrawn', '1', 'CONFLICT', jsonb_build_object('releaseDigest', repeat('d', 64))), 'ok', 'a digest mismatch is 409 CONFLICT [P2-S09-AC-200] [P2-S09-AC-157]');
+select is(pg_temp.p_lc('e:version', (select blk from p_replay), 'deprecated', 'withdrawn', '3', 'VERSION_MISMATCH'), 'ok', 'a stale version is 409 VERSION_MISMATCH [P2-S09-AC-200] [P2-S09-AC-157]');
 select is(pg_temp.p_lc('e:nonce', (select blk from p_replay), 'deprecated', 'withdrawn'), 'ok', 'control: the valid next step is accepted [P2-S09-AC-200]');
 select is(pg_temp.p_events((select blk from p_replay)), 'supported>deprecated,deprecated>withdrawn', 'only the valid transitions were appended across every refusal [P2-S09-AC-200]');
 select pg_temp.p_advance('e:idem1', pg_temp.p_lifecycle_request((select a from p_blocks), 'withdrawn', 'withdrawn', '1', '{"idempotencyKey":"p240-lc-idem-0001"}'));

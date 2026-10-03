@@ -48,9 +48,9 @@ select pg_temp.s09d_rpc('x:missing', 'platform_api.cms_create_type_draft', 'owne
     'defaultTemplateVersionId', null, 'fields', '[]'::jsonb, 'relations', '[]'::jsonb,
     'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb, 'idempotencyKey', 's09-od4-missing-0001'));
 select is(pg_temp.s09d_outcome('x:missing'), 'INVALID_REQUEST',
-  'CMS-03A-01 requires supportedLocales and fallbackChains');
+  'CMS-03A-01 requires supportedLocales and fallbackChains: a missing member is 400 INVALID_REQUEST [P2-S09-AC-193]');
 select pg_temp.s09d_create_type('v', 'od4viol', 'editorial', 'owner', '[]', '{}');
-select is(pg_temp.s09d_outcome('v:create'), 'VALIDATION_FAILED', 'CMS-03A-01 refuses an invalid locale configuration [P2-S09-AC-1203]');
+select is(pg_temp.s09d_outcome('v:create'), 'VALIDATION_FAILED', 'CMS-03A-01 refuses an invalid locale configuration [P2-S09-AC-1203] [P2-S09-AC-193]');
 select is(pg_temp.s09d_detail('v:create')::jsonb,
   jsonb_build_object('violations', jsonb_build_array(
     jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must contain 1 to 32 locales'),
@@ -58,11 +58,11 @@ select is(pg_temp.s09d_detail('v:create')::jsonb,
     jsonb_build_object('path', '/supportedLocales', 'message', 'supportedLocales must include defaultLocale'))),
   'the 422 detail carries every violation as {path, message} with the exact strings [P2-S09-AC-1203]');
 select is((select count(*)::integer from platform_private.cms_content_types where type_key = 'od4viol'), 0,
-  'no row is inserted on a refused configuration');
+  'no row is inserted on a refused configuration [P2-S09-AC-193]');
 select pg_temp.s09d_create_type('w', 'od4shape', 'editorial', 'owner', '"en-US"', '{}');
-select is(pg_temp.s09d_outcome('w:create'), 'VALIDATION_FAILED', 'a non-array supportedLocales is a validation failure');
+select is(pg_temp.s09d_outcome('w:create'), 'VALIDATION_FAILED', 'a non-array supportedLocales is a validation failure [P2-S09-AC-193]');
 select pg_temp.s09d_create_type('w2', 'od4shape2', 'editorial', 'owner', '["en-US"]', '{"x":"y"}');
-select is(pg_temp.s09d_outcome('w2:create'), 'VALIDATION_FAILED', 'a chain whose value is not an array is a validation failure');
+select is(pg_temp.s09d_outcome('w2:create'), 'VALIDATION_FAILED', 'a chain whose value is not an array is a validation failure [P2-S09-AC-193]');
 
 -- definition_hash composes localeConfigHash.
 select ok(platform_private.cms_definition_artifact_hash(

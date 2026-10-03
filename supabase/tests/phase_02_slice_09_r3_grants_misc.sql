@@ -149,6 +149,31 @@ select is((select string_agg(p.proname, ',' order by p.proname)
        and pg_get_functiondef(p.oid) ~* 'cms_capability_grant_project\('),
   'cms_grant_capability,cms_renew_capability_grant,cms_revoke_capability_grant',
   'only the grant, renew and revoke functions call the projection writer [P2-S09-AC-658]');
+-- R12 ruling (orchestrator, pending owner ratification): the legitimate writers of the actor-grant
+-- projection are exactly the three grant RPCs (through cms_capability_grant_project), the owner
+-- initialization (initialize_cms_owner) and the organization bootstrap that seeds the owner row;
+-- the owner-initialization backfill writes the aggregate, never the projection.  The set is asserted
+-- over every non-system schema, so a new writer anywhere fails here.
+select is((select jsonb_agg(n.nspname || '.' || p.proname order by n.nspname, p.proname)
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname not in ('pg_catalog', 'information_schema', 'pg_toast') and n.nspname !~ '^pg_temp' and p.prokind in ('f', 'p')
+       and pg_get_functiondef(p.oid) ~* '(insert[[:space:]]+into|update|delete[[:space:]]+from|merge[[:space:]]+into|truncate([[:space:]]+table)?)[[:space:]]+(only[[:space:]]+)?(identity_private\.)?organization_actor_grant\y'),
+  '["identity_private.rpc_create_organization","platform_private.cms_capability_grant_project","platform_private.initialize_cms_owner"]'::jsonb,
+  'the exact writer set of the actor-grant projection over every schema is the organization bootstrap, the owner initialization and the single projection upsert [P2-S09-AC-658]');
+select is((select count(*)::integer from pg_trigger t
+     where t.tgrelid = 'identity_private.organization_actor_grant'::regclass and not t.tgisinternal
+       and pg_get_functiondef(t.tgfoid) ~* '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+(identity_private\.)?organization_actor_grant\y'), 0,
+  'no trigger on the actor-grant projection writes it back [P2-S09-AC-658]');
+select is((select count(*)::integer from pg_rewrite where ev_class = 'identity_private.organization_actor_grant'::regclass), 0,
+  'no rewrite rule redirects writes of the actor-grant projection [P2-S09-AC-658]');
+select is((select count(*)::integer from information_schema.table_privileges
+     where table_schema = 'identity_private' and table_name = 'organization_actor_grant'
+       and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+       and grantee not in ('postgres', 'supabase_admin')), 0,
+  'no role other than the table owner holds a write privilege on the actor-grant projection [P2-S09-AC-658]');
+select ok(pg_get_functiondef('platform_private.cms_backfill_owner_capability_grants(uuid)'::regprocedure) !~* '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+(identity_private\.)?organization_actor_grant\y'
+    and pg_get_functiondef('platform_private.cms_backfill_owner_capability_grants(uuid)'::regprocedure) ~* 'insert[[:space:]]+into[[:space:]]+platform_private\.cms_capability_grants',
+  'the owner-initialization backfill writes the grant aggregate and never the actor-grant projection [P2-S09-AC-658]');
 
 -- ================================================================ AC665 ========
 -- RFC 8785 known answers computed independently in Node (not by the function
