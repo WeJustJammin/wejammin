@@ -168,6 +168,17 @@ begin
 end;
 $body$;
 
+-- The factor row's own optimistic-concurrency version (the value a reconciler
+-- observes and hands back to auth_mfa_factor_reconcile).
+create or replace function pg_temp.m_fv(p_factor uuid) returns text language plpgsql stable as $body$
+declare result text;
+begin
+  execute 'select version::text from identity.mfa_factor_registry where id = $1' into result using p_factor;
+  return result;
+exception when others then
+  return null;
+end;
+$body$;
 create or replace function pg_temp.m_fstate(p_factor uuid) returns text language plpgsql stable as $body$
 declare result text;
 begin

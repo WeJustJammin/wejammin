@@ -433,6 +433,57 @@ describe('CMS-03C-04 production locale adapter', () => {
     expect(JSON.stringify(result)).not.toContain('activeFallbackChain');
   });
 
+  it('[P2-S09-AC-1166] forwards the per-variant no_fallback field set to the server RPC unchanged', async () => {
+    const withSet = {
+      ...input(),
+      body: { ...input().body, noFallbackFieldIds: [fieldId] },
+    };
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ ...resource, noFallbackFieldIds: [fieldId] }),
+    );
+    const result = await create(fetchImpl as typeof fetch).authorLocale(
+      withSet,
+      new AbortController().signal,
+    );
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(JSON.parse(String(init.body)).p_request.noFallbackFieldIds).toEqual([
+      fieldId,
+    ]);
+    expect(result).toMatchObject({
+      ok: true,
+      value: { noFallbackFieldIds: [fieldId] },
+    });
+  });
+
+  it('[P2-S09-AC-1166] maps the database refusal of a nonlocalizable field declared as no_fallback to the 422 catalog code without naming the field', async () => {
+    const withSet = {
+      ...input(),
+      body: { ...input().body, noFallbackFieldIds: [fieldId] },
+    };
+    const result = await create(
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'P0001',
+              message: 'VALIDATION_FAILED',
+              details: `field ${fieldId} is not localizable`,
+            }),
+            { status: 400, headers: { 'content-type': 'application/json' } },
+          ),
+      ) as typeof fetch,
+    ).authorLocale(withSet, new AbortController().signal);
+    expect(result).toMatchObject({
+      ok: false,
+      status: 422,
+      code: 'LOCALE_VALIDATION_FAILED',
+    });
+    expect(JSON.stringify(result)).not.toContain(fieldId);
+  });
+
   it('emits scrubbed telemetry for every outcome class', async () => {
     const dependencies = create(
       vi.fn(async () => Response.json(resource)) as typeof fetch,

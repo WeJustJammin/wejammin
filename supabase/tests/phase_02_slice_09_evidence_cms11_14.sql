@@ -111,9 +111,9 @@ select pg_temp.s09d_create_type('s', 'ev12submitter');
 select pg_temp.s09d_to_review('s');
 select pg_temp.s09d_assign('s', 'rev1');
 select pg_temp.s09d_decide('s', 'owner', 'approve', '{}'::jsonb, 's:ownerdecide');
-select ok(pg_temp.s09d_outcome('s:ownerdecide') = 'NOT_FOUND'
+select ok(pg_temp.s09d_outcome('s:ownerdecide') = 'FORBIDDEN'
   and pg_temp.s09d_outcome('s:ownerdecide') <> 'OK',
-  'the submitter holds no assignment and cannot decide their own review [P2-S09-AC-417]');
+  'the submitter holds no assignment and cannot decide their own review: the review is readable to them, so 403 FORBIDDEN [P2-S09-AC-417] [P2-S09-AC-431]');
 select set_config('app.cms_rpc', 'true', true);
 select pg_temp.s09d_try(format($q$insert into platform_private.cms_schema_review_assignments(
       owner_id, review_id, reviewer_person_ref, grantor_person_ref, capability_key, actions, state, starts_at, ends_at)

@@ -3,7 +3,10 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { S09_AMENDMENT_EVIDENCE } from './phase-02-slice-09-amendment-evidence';
+import {
+  S09_AMENDMENT_EVIDENCE,
+  S09_PRE_AMENDMENT_CHECKED,
+} from './phase-02-slice-09-amendment-evidence';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 
@@ -20,6 +23,11 @@ const authoritativeDocuments = [
   ['canonical Phase 2 plan', phasePlan],
   ['current Slice 09 tracker', slice09Tracker],
 ] as const;
+
+// Verified active = the surviving pre-amendment set plus the index entries; the
+// deferred gates are in neither. Computed, never pinned (AC1145).
+const verifiedActive =
+  S09_PRE_AMENDMENT_CHECKED.length + S09_AMENDMENT_EVIDENCE.length;
 
 const expectedAuthoredIds = Array.from(
   { length: 1239 },
@@ -47,7 +55,9 @@ describe('Phase 2 Slice 09 completion policy', () => {
       expect(source, label).toMatch(
         /\*{0,2}Slice[ -]09 implementation-completion denominator\*{0,2}\s*:\s*1235\b/iu,
       );
-      expect(source, label).toMatch(/1202\/1235\s+active/iu);
+      expect(source, label).toMatch(
+        new RegExp(`${verifiedActive}/1235\\s+active`, 'iu'),
+      );
       expect(source, label).toMatch(
         /1239 authored[^\n]*(?:AC209|AC211|AC265|AC266|production)/iu,
       );
@@ -295,7 +305,7 @@ describe('[P2-S09-AC-1144] DEC-108 amendment criteria in plan and tracker', () =
       .filter((line) => /^- \[x\] \*\*P2-S09-AC-\d{3,4}\*\*/u.test(line))
       .map((line) => /P2-S09-AC-(\d{3,4})/u.exec(line)?.[1] ?? '')
       .filter((id) => !['209', '211', '265', '266'].includes(id));
-    expect(activeVerifiedIds).toHaveLength(1202);
+    expect(activeVerifiedIds).toHaveLength(verifiedActive);
     expect(slice09Tracker).toMatch(/\*\*Spec depth floor\*\*:\s*1239\b/u);
     expect(phasePlan).toMatch(/\*\*Spec depth floor\*\*:\s*1239 criteria/u);
   });

@@ -199,5 +199,60 @@ select pg_temp.m_cfail('a:bad2', 4, pg_temp.m_id('chal1'), 'incorrect');
 select isnt(pg_temp.m_out('a:bad2'), 'OK', 'a failure for another account''s challenge is refused');
 select is(pg_temp.m_lock_of(4, 'count(*)'), '0', 'and charged nothing to this account either');
 
+-- ---- lockout while a verification is in flight (AC-778, AC-865) ---------------
+-- Both verify-prepare RPCs check the persisted lock BEFORE the Worker contacts
+-- the provider; the lock can still be set by concurrent failures after a prepare
+-- and before the matching settle.  Both settle RPCs therefore re-check the
+-- persisted lock after acquiring the account binding lock: prepare (unlocked)
+-- -> concurrent lockout -> settle is refused and commits nothing.
+select pg_temp.m_user(5);
+select pg_temp.m_enroll(5, 'Phone');
+insert into m_ids values ('chal5', pg_temp.m_chal(5)::text);
+insert into m_ids values ('pend5', pg_temp.m_pending(5, 'InFlight')::text);
+create or replace function pg_temp.m_csettle_lk(p_label text, p_n integer, p_challenge uuid)
+returns jsonb language sql as $body$
+  select pg_temp.m(p_label, 'auth_step_up_challenge_verify_settle', jsonb_build_object(
+    'p_auth_user_id', pg_temp.m_uid(p_n), 'p_session_id', pg_temp.m_sid(p_n),
+    'p_challenge_id', p_challenge, 'p_new_session_id', pg_temp.m_sid(p_n),
+    'p_issued_at', clock_timestamp())) $body$;
+select pg_temp.m_eprep('if:prep:e', 5, pg_temp.m_id('pend5'));
+select is(pg_temp.m_out('if:prep:e'), 'OK', 'in flight: the enrollment verification is prepared while unlocked [P2-S09-AC-778]');
+select pg_temp.m_cprep('if:prep:s', 5, pg_temp.m_id('chal5'));
+select is(pg_temp.m_out('if:prep:s'), 'OK', 'in flight: the step-up verification is prepared while unlocked [P2-S09-AC-865]');
+select pg_temp.m_efail('if:f' || n, 5) from generate_series(1, 10) n;
+select ok(pg_temp.m_lock_of(5, 'locked_until') is not null,
+  'concurrent failures lock the account after both prepares and before either settle [P2-S09-AC-778] [P2-S09-AC-865]');
+create temp table m_if_before on commit drop as
+  select pg_temp.m_fstate(pg_temp.m_id('pend5')) as factor_state,
+         pg_temp.m_fv(pg_temp.m_id('pend5')) as factor_version,
+         pg_temp.m_ver(5) as mfa_version,
+         pg_temp.m_one(format('select state::text from identity.step_up_challenges where id = %L', pg_temp.m_id('chal5'))) as challenge_state,
+         pg_temp.m_events(5, 'mfa.enroll.verified') as enroll_events,
+         pg_temp.m_events(5, 'step_up.verified') as step_events,
+         pg_temp.m_one(format('select last_used_at::text from identity.mfa_factor_registry where id = %L', pg_temp.m_fid(5))) as last_used;
+select pg_temp.m_settle('if:settle:e', 5, pg_temp.m_id('pend5'), pg_temp.m_ver(5));
+select ok(pg_temp.m_out('if:settle:e') ~ '^MFA_VERIFICATION_LOCKED:(89[0-9]|900)$',
+  'the enrollment settle is refused once the persisted lock is held, even though its prepare was admitted [P2-S09-AC-778]');
+select pg_temp.m_csettle_lk('if:settle:s', 5, pg_temp.m_id('chal5'));
+select ok(pg_temp.m_out('if:settle:s') ~ '^MFA_VERIFICATION_LOCKED:(89[0-9]|900)$',
+  'the step-up settle is refused once the persisted lock is held, even though its prepare was admitted [P2-S09-AC-865]');
+select is(pg_temp.m_fstate(pg_temp.m_id('pend5')), (select factor_state from m_if_before),
+  'the refused enrollment settle left the factor pending [P2-S09-AC-778]');
+select is(pg_temp.m_fv(pg_temp.m_id('pend5')), (select factor_version from m_if_before), 'and its version [P2-S09-AC-778]');
+select is(pg_temp.m_ver(5), (select mfa_version from m_if_before), 'and the account MFA version (no session rotation) [P2-S09-AC-778]');
+select is(pg_temp.m_one(format('select state::text from identity.step_up_challenges where id = %L', pg_temp.m_id('chal5'))), (select challenge_state from m_if_before),
+  'the refused step-up settle left the challenge unconsumed [P2-S09-AC-865]');
+select is(pg_temp.m_events(5, 'mfa.enroll.verified'), (select enroll_events from m_if_before), 'no enrollment verified event was written [P2-S09-AC-778]');
+select is(pg_temp.m_events(5, 'step_up.verified'), (select step_events from m_if_before), 'no step-up verified event was written [P2-S09-AC-865]');
+select is(pg_temp.m_one(format('select last_used_at::text from identity.mfa_factor_registry where id = %L', pg_temp.m_fid(5))), (select last_used from m_if_before),
+  'and the verified factor''s last_used_at did not move [P2-S09-AC-865]');
+-- positive controls: once the lock has elapsed the same settles commit
+select pg_temp.m_set_lock(5, $$locked_until = clock_timestamp() - interval '1 second'$$);
+select pg_temp.m_csettle_lk('if:ok:s', 5, pg_temp.m_id('chal5'));
+select is(pg_temp.m_out('if:ok:s'), 'OK', 'positive control: with no lock held the step-up settle commits [P2-S09-AC-865]');
+select pg_temp.m_settle('if:ok:e', 5, pg_temp.m_id('pend5'), pg_temp.m_ver(5));
+select is(pg_temp.m_out('if:ok:e'), 'OK', 'positive control: with no lock held the enrollment settle commits [P2-S09-AC-778]');
+select is(pg_temp.m_fstate(pg_temp.m_id('pend5')), 'verified', 'and the factor is verified [P2-S09-AC-778]');
+
 select * from finish();
 rollback;

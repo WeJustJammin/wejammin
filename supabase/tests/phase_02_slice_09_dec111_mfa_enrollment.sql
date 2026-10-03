@@ -230,16 +230,16 @@ select is(pg_temp.m_out('s:recon'), 'FACTOR_NOT_PENDING', 'a reconciling row can
 select pg_temp.m('rd:recon', 'auth_mfa_factors_read', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(5)));
 select is(pg_temp.m_resp('rd:recon')#>>'{factors,0,state}', 'reconciling', 'the list shows the reconciling factor');
 select pg_temp.m('rc:bad', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_outcome', 'bogus'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5)), 'p_outcome', 'bogus'));
 select is(pg_temp.m_out('rc:bad'), 'INVALID_REQUEST', 'an unknown reconcile outcome is INVALID_REQUEST');
 select pg_temp.m('rc:pending', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_outcome', 'pending'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5)), 'p_outcome', 'pending'));
 select is(pg_temp.m_fstate((select id from m_pending_user5)), 'pending', 'the reconciler returns the row to pending while the window is open [P2-S09-AC-904]');
 select pg_temp.m('mr:again2', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5)));
 select pg_temp.m_warp('mfa_factor_registry', $$pending_expires_at = clock_timestamp() - interval '1 second'$$, format('id = %L', (select id from m_pending_user5)));
 select pg_temp.m('rc:expired', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_outcome', 'pending'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5)), 'p_outcome', 'pending'));
 select is(pg_temp.m_fstate((select id from m_pending_user5)), 'pending',
   'a pending outcome after the window closed still settles to pending: reconciling never goes to expired [P2-S09-AC-904]');
 select is(pg_temp.m_one(format('select (pending_expires_at < clock_timestamp())::text from identity.mfa_factor_registry where id = %L', (select id from m_pending_user5))), 'true',
@@ -248,7 +248,7 @@ select pg_temp.m('rc:sweep', 'auth_mfa_registry_sweep', jsonb_build_object('p_ba
 select is(pg_temp.m_fstate((select id from m_pending_user5)), 'expired',
   'the registry sweep writes pending -> expired for the elapsed window [P2-S09-AC-904]');
 select pg_temp.m('rc:term', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_outcome', 'verified'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5)), 'p_outcome', 'verified'));
 select is(pg_temp.m_out('rc:term'), 'FACTOR_STATE_CONFLICT', 'reconciling a terminal row is FACTOR_STATE_CONFLICT [P2-S09-AC-904]');
 select pg_temp.m_pending(5, 'Recon2');
 create temp table m_pending_user5b on commit drop as
@@ -256,7 +256,7 @@ create temp table m_pending_user5b on commit drop as
 select pg_temp.m('mr:b', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b)));
 select pg_temp.m('rc:verified', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b), 'p_outcome', 'verified'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5b)), 'p_outcome', 'verified'));
 select is(pg_temp.m_fstate((select id from m_pending_user5b)), 'verified', 'the reconciler settles a provider-verified factor to verified [P2-S09-AC-904]');
 select ok(pg_temp.m_one(format('select (verified_at is not null)::text from identity.mfa_factor_registry where id = %L', (select id from m_pending_user5b))) = 'true',
   'and sets verified_at');
@@ -273,7 +273,7 @@ select pg_temp.m('mr:c', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5c)));
 select pg_temp.m_pending(5, 'Recon4');
 select pg_temp.m('rc:superseded', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5c), 'p_outcome', 'pending'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5c), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5c)), 'p_outcome', 'pending'));
 select is(pg_temp.m_fstate((select id from m_pending_user5c)), 'removed',
   'a superseded reconciling row settles to removed, never expired [P2-S09-AC-904]');
 select is((select count(*)::integer from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(5) and state = 'pending'), 1,
@@ -283,10 +283,70 @@ select pg_temp.m('mr:v', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
   'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b)));
 select is(pg_temp.m_fstate((select id from m_pending_user5b)), 'reconciling', 'a verified factor can be marked reconciling [P2-S09-AC-904]');
 select pg_temp.m('rc:vpending', 'auth_mfa_factor_reconcile', jsonb_build_object(
-  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b), 'p_outcome', 'pending'));
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_pending_user5b), 'p_expected_version', pg_temp.m_fv((select id from m_pending_user5b)), 'p_outcome', 'pending'));
 select is(pg_temp.m_out('rc:vpending'), 'FACTOR_STATE_CONFLICT',
   'a previously verified factor cannot settle reconciling -> pending [P2-S09-AC-904]');
 select is(pg_temp.m_fstate((select id from m_pending_user5b)), 'reconciling', 'the refused settlement left the row reconciling [P2-S09-AC-904]');
+
+-- AC-913 delayed-poll race: a reconciler that read the factor at version V and
+-- polled the provider slowly must not settle a NEWER reconciliation.  The CAS on
+-- the observed version makes the stale delivery a no-op: state, version, account
+-- MFA version, security events and outbox rows are all unchanged.
+create temp table m_race_f on commit drop as select id from m_pending_user5b;
+create temp table m_race_obs on commit drop as
+  select pg_temp.m_fv((select id from m_race_f))::bigint as observed;
+select pg_temp.m('race:first', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_f),
+  'p_expected_version', (select observed from m_race_obs), 'p_outcome', 'verified'));
+select is(pg_temp.m_fstate((select id from m_race_f)), 'verified',
+  'the first reconciler (observed version V) settles the factor [P2-S09-AC-913]');
+select is(pg_temp.m_resp('race:first')::text, '{"state": "verified"}',
+  'a settlement that applies answers { state } only [P2-S09-AC-913]');
+select pg_temp.m('race:remark', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_f)));
+select is(pg_temp.m_fstate((select id from m_race_f)), 'reconciling',
+  'the factor re-enters reconciling at a newer version while the older poll is in flight [P2-S09-AC-913]');
+create temp table m_race_before on commit drop as
+  select pg_temp.m_fv((select id from m_race_f))::bigint as factor_version,
+         pg_temp.m_ver(5)::bigint as mfa_version,
+         (select count(*)::integer from identity.security_events where action = 'mfa.factor.reconciled') as events,
+         pg_temp.m_outbox('identity.mfa-factor.changed.v1', (select id from m_race_f))::integer as outbox;
+select pg_temp.m('race:stale', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_f),
+  'p_expected_version', (select observed from m_race_obs), 'p_outcome', 'removed'));
+select is(pg_temp.m_resp('race:stale')::text, '{"stale": true}',
+  'the delayed delivery that observed the older version answers { stale: true } [P2-S09-AC-913]');
+select is(pg_temp.m_fstate((select id from m_race_f)), 'reconciling',
+  'and leaves the newer reconciliation''s state untouched [P2-S09-AC-913]');
+select is(pg_temp.m_fv((select id from m_race_f))::bigint, (select factor_version from m_race_before),
+  'and the factor version [P2-S09-AC-913]');
+select is(pg_temp.m_ver(5)::bigint, (select mfa_version from m_race_before),
+  'and the account MFA version (no session invalidation) [P2-S09-AC-913]');
+select is((select count(*)::integer from identity.security_events where action = 'mfa.factor.reconciled'), (select events from m_race_before),
+  'and writes no security event [P2-S09-AC-913]');
+select is(pg_temp.m_outbox('identity.mfa-factor.changed.v1', (select id from m_race_f))::integer, (select outbox from m_race_before),
+  'and no outbox row [P2-S09-AC-913]');
+select pg_temp.m('race:fresh', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_f),
+  'p_expected_version', pg_temp.m_fv((select id from m_race_f)), 'p_outcome', 'removed'));
+select is(pg_temp.m_fstate((select id from m_race_f)), 'removed',
+  'positive control: a delivery carrying the current version settles the newer reconciliation [P2-S09-AC-913]');
+select is((select count(*)::integer from identity.security_events where action = 'mfa.factor.reconciled'), (select events + 1 from m_race_before),
+  'and writes exactly one security event [P2-S09-AC-913]');
+select pg_temp.m_pending(5, 'RaceNull');
+create temp table m_race_g on commit drop as
+  select id from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(5) and state = 'pending';
+select pg_temp.m('mr:race:g', 'auth_mfa_factor_mark_reconciling', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_g)));
+select pg_temp.m('race:null', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_g),
+  'p_expected_version', null, 'p_outcome', 'verified'));
+select is(pg_temp.m_out('race:null'), 'INVALID_REQUEST', 'an absent observed version is INVALID_REQUEST [P2-S09-AC-913]');
+select pg_temp.m('race:zero', 'auth_mfa_factor_reconcile', jsonb_build_object(
+  'p_auth_user_id', pg_temp.m_uid(5), 'p_factor_id', (select id from m_race_g),
+  'p_expected_version', 0, 'p_outcome', 'verified'));
+select is(pg_temp.m_out('race:zero'), 'INVALID_REQUEST', 'a non-positive observed version is INVALID_REQUEST [P2-S09-AC-913]');
+select is(pg_temp.m_fstate((select id from m_race_g)), 'reconciling', 'and neither settles the factor [P2-S09-AC-913]');
 
 select * from finish();
 

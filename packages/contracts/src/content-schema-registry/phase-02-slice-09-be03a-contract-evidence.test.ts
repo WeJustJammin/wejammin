@@ -14,6 +14,8 @@ import {
   ContentTypeDraftRequestSchema,
   WorkflowPolicyEvidenceSchema,
   ContentTypeVersionResourceSchema,
+  FieldDefinitionVersionResourceSchema,
+  FieldSchemaChangeRequestSchema,
   SchemaActivationPreparationSchema,
   SchemaSuccessorRequestSchema,
 } from './index';
@@ -86,6 +88,87 @@ describe('BE03a CMS-03A-09 request object', () => {
     expect(
       SchemaSuccessorRequestSchema.safeParse({ expectedVersion: '1' }).success,
     ).toBe(false);
+  });
+
+  it('[P2-S09-AC-285] SchemaSuccessorRequest parses to exactly the three declared keys and nothing else', () => {
+    const parsed = SchemaSuccessorRequestSchema.parse({
+      expectedVersion: '1',
+      supportedLocales: null,
+      fallbackChains: null,
+    });
+    expect(Object.keys(parsed).sort()).toEqual([
+      'expectedVersion',
+      'fallbackChains',
+      'supportedLocales',
+    ]);
+  });
+
+  it('[P2-S09-AC-285] both locale fields null is accepted as the clone of the source locale configuration', () => {
+    const parsed = SchemaSuccessorRequestSchema.safeParse({
+      expectedVersion: '1',
+      supportedLocales: null,
+      fallbackChains: null,
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('[P2-S09-AC-285] both locale fields present is accepted as the replacement locale configuration and parses unchanged', () => {
+    const request = {
+      expectedVersion: '1',
+      supportedLocales: ['en-US', 'fr-FR'],
+      fallbackChains: { 'fr-FR': ['en-US'] },
+    };
+    const parsed = SchemaSuccessorRequestSchema.safeParse(request);
+    expect(parsed.success && parsed.data).toEqual(request);
+  });
+
+  it('[P2-S09-AC-285] supportedLocales without fallbackChains is refused at /fallbackChains with the pair message', () => {
+    const parsed = SchemaSuccessorRequestSchema.safeParse({
+      expectedVersion: '1',
+      supportedLocales: ['en-US'],
+      fallbackChains: null,
+    });
+    expect(parsed.success).toBe(false);
+    expect(
+      !parsed.success &&
+        parsed.error.issues.map((issue) => [issue.path, issue.message]),
+    ).toEqual([
+      [
+        ['fallbackChains'],
+        'supportedLocales and fallbackChains must be both null or both present',
+      ],
+    ]);
+  });
+
+  it('[P2-S09-AC-285] fallbackChains without supportedLocales is refused at /fallbackChains with the pair message', () => {
+    const parsed = SchemaSuccessorRequestSchema.safeParse({
+      expectedVersion: '1',
+      supportedLocales: null,
+      fallbackChains: {},
+    });
+    expect(parsed.success).toBe(false);
+    expect(
+      !parsed.success &&
+        parsed.error.issues.map((issue) => [issue.path, issue.message]),
+    ).toEqual([
+      [
+        ['fallbackChains'],
+        'supportedLocales and fallbackChains must be both null or both present',
+      ],
+    ]);
+  });
+
+  it('[P2-S09-AC-285] a supplied sourceLocale or defaultLocale is refused because both are inherited from the source', () => {
+    for (const key of ['sourceLocale', 'defaultLocale'])
+      expect(
+        SchemaSuccessorRequestSchema.safeParse({
+          expectedVersion: '1',
+          supportedLocales: null,
+          fallbackChains: null,
+          [key]: 'en-US',
+        }).success,
+        key,
+      ).toBe(false);
   });
 });
 
@@ -456,5 +539,77 @@ describe('BE03a CMS-03A-01 request and CMS-03A-04 evidence shapes', () => {
       ).toBe(true);
     expect(parses({ ...evidence, riskClass: 'critical' })).toBe(false);
     expect(parses({ ...evidence, policyHash: 'A'.repeat(64) })).toBe(false);
+  });
+});
+
+describe('BE03a CMS-03A-02 no_fallback declaration (OD-4)', () => {
+  const field = {
+    stableFieldId: uuid,
+    key: 'display_name',
+    kind: 'short_text',
+    constraints: { minLength: 2, maxLength: 120 },
+    required: true,
+    validatorKey: null,
+    validatorVersion: null,
+    defaultMode: 'none',
+    localizationMode: 'no_fallback',
+    editorConfig: { label: 'Display name', order: 10 },
+    lifecycle: 'active',
+    migrationPlanId: null,
+  } as const;
+
+  it('[P2-S09-AC-1166] a field change declares localizationMode no_fallback and the request parses it unchanged', () => {
+    expect(FieldSchemaChangeRequestSchema.parse(field)).toEqual(field);
+  });
+
+  it('[P2-S09-AC-1166] the three localization modes none, localized and no_fallback are all declarable', () => {
+    for (const localizationMode of ['none', 'localized', 'no_fallback'])
+      expect(
+        FieldSchemaChangeRequestSchema.safeParse({ ...field, localizationMode })
+          .success,
+        localizationMode,
+      ).toBe(true);
+  });
+
+  it('[P2-S09-AC-1166] a localization mode outside the closed set is refused at declaration', () => {
+    for (const localizationMode of [
+      'fallback',
+      'NO_FALLBACK',
+      'no-fallback',
+      '',
+    ])
+      expect(
+        FieldSchemaChangeRequestSchema.safeParse({ ...field, localizationMode })
+          .success,
+        localizationMode,
+      ).toBe(false);
+  });
+
+  it('[P2-S09-AC-1166] a declaration without a localization mode is refused rather than defaulted', () => {
+    const withoutMode = Object.fromEntries(
+      Object.entries(field).filter(([key]) => key !== 'localizationMode'),
+    );
+    expect(FieldSchemaChangeRequestSchema.safeParse(withoutMode).success).toBe(
+      false,
+    );
+  });
+
+  it('[P2-S09-AC-1166] the stored field definition resource reports no_fallback exactly', () => {
+    const resource = FieldDefinitionVersionResourceSchema.parse({
+      ...meta,
+      resourceKind: 'field_definition_version',
+      contentTypeVersionId: uuid2,
+      stableFieldId: uuid,
+      key: 'display_name',
+      kind: 'short_text',
+      required: true,
+      validatorKey: null,
+      validatorVersion: null,
+      defaultMode: 'none',
+      localizationMode: 'no_fallback',
+      lifecycle: 'active',
+      migrationPlanId: null,
+    });
+    expect(resource.localizationMode).toBe('no_fallback');
   });
 });

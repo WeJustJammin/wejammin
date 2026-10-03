@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -8,10 +8,23 @@ import {
   S09_AMENDMENT_OPEN,
   S09_PRE_AMENDMENT_CHECKED,
 } from './phase-02-slice-09-amendment-evidence';
-
-const ROOT = resolve(import.meta.dirname, '../..');
-const read = (relativePath: string): string =>
-  readFileSync(resolve(ROOT, relativePath), 'utf8');
+import {
+  COMPOSITION,
+  ENVIRONMENTAL,
+  FAILURE_COUNT,
+  MAPPING_ONLY_FILES,
+  MAPPING_ONLY_TABLES,
+  ROOT,
+  hasParameterizedTitle,
+  idsIn,
+  kindOfFile,
+  normalise,
+  pgtapIncludes,
+  read,
+  rowsOf,
+  statusOfRow,
+  validateGate,
+} from './phase-02-slice-09-amendment-evidence.test-support';
 
 const TRACKER = '.memory/pipeline/progress/slices/phase-02-slice-09.md';
 const PLAN = '.memory/wiki/specs/phases/phase-2.md';
@@ -21,26 +34,9 @@ const DEFERRED_GATES: readonly number[] = [209, 211, 265, 266];
 const numberOf = (criterion: string): number =>
   Number(/P2-S09-AC-(\d{3,4})$/u.exec(criterion)?.[1] ?? Number.NaN);
 
-type Rows = Readonly<{
-  all: ReadonlySet<number>;
-  checked: ReadonlySet<number>;
-}>;
-
-const rowsOf = (path: string): Rows => {
-  const all = new Set<number>();
-  const checked = new Set<number>();
-  for (const line of read(path).split(/\r?\n/u)) {
-    const match = /^- \[([ x])\] \*\*P2-S09-AC-(\d{3,4})\*\*/u.exec(line);
-    if (match === null) continue;
-    const id = Number(match[2]);
-    all.add(id);
-    if (match[1] === 'x') checked.add(id);
-  }
-  return { all, checked };
-};
-
 const tracker = rowsOf(TRACKER);
 const plan = rowsOf(PLAN);
+const includes = pgtapIncludes();
 const sourceCache = new Map<string, string | null>();
 const sourceOf = (path: string): string | null => {
   if (!sourceCache.has(path)) {
@@ -48,7 +44,6 @@ const sourceOf = (path: string): string | null => {
   }
   return sourceCache.get(path) ?? null;
 };
-const PARAMETERIZED_TITLE = /P2-S09-AC-(?:\$\{|%[sid])/u;
 
 const verifiedIds = new Set(
   S09_AMENDMENT_EVIDENCE.map(({ criterion }) => numberOf(criterion)),
@@ -76,7 +71,7 @@ describe('Slice 09 amendment evidence index', () => {
     }
   });
 
-  it('checks a criterion only when the index verifies it or it belongs to the frozen pre-amendment set', () => {
+  it('checks a criterion only when the index verifies it or it belongs to the pre-amendment set that no lane reopened', () => {
     for (const [label, rows] of [
       ['tracker', tracker],
       ['plan', plan],
@@ -113,8 +108,7 @@ describe('Slice 09 amendment evidence index', () => {
         );
       }
     }
-    // The canonical plan mirrors the index-verified checks (and the earlier AC250
-    // check) but not the rest of the frozen pre-amendment set, so it can only be a
+    // The canonical plan mirrors the index-verified checks, so it can only be a
     // subset of the tracker.
     for (const id of plan.checked) {
       expect(
@@ -124,7 +118,7 @@ describe('Slice 09 amendment evidence index', () => {
     }
   });
 
-  it('requires every checked criterion from AC087 up to have verified evidence or the frozen baseline', () => {
+  it('requires every checked criterion from AC087 up to have verified evidence or the surviving pre-amendment set', () => {
     for (const id of tracker.checked) {
       if (id < 87) continue;
       expect(
@@ -137,51 +131,7 @@ describe('Slice 09 amendment evidence index', () => {
     );
   });
 
-  it('names a runnable command, existing test files and markers that exist in them for every verified entry', () => {
-    for (const entry of S09_AMENDMENT_EVIDENCE) {
-      const { criterion, command, testFiles, testMarkers } = entry;
-      expect(entry.status, criterion).toBe('verified');
-      expect(command.length, `${criterion} command`).toBeGreaterThan(10);
-      expect(entry.observed.length, `${criterion} observed`).toBeGreaterThan(
-        10,
-      );
-      expect(testFiles.length, `${criterion} files`).toBeGreaterThan(0);
-      expect(testMarkers.length, `${criterion} markers`).toBeGreaterThan(0);
-      // Markers are unique per criterion; the same marker may recur across
-      // other criteria and across files.
-      expect(new Set(testMarkers).size, `${criterion} markers unique`).toBe(
-        testMarkers.length,
-      );
-      expect(new Set(testFiles).size, `${criterion} files unique`).toBe(
-        testFiles.length,
-      );
-      const parameterized = new Set(entry.parameterizedMarkers ?? []);
-      for (const file of testFiles) {
-        expect(sourceOf(file), `${criterion} file ${file}`).not.toBeNull();
-      }
-      for (const marker of testMarkers) {
-        const sources = testFiles.map((file) => sourceOf(file) ?? '');
-        if (parameterized.has(marker)) {
-          expect(
-            sources.some((source) => PARAMETERIZED_TITLE.test(source)),
-            `${criterion} parameterised marker ${marker} needs a title template`,
-          ).toBe(true);
-        } else {
-          expect(
-            sources.some((source) => source.includes(marker)),
-            `${criterion} marker ${marker} exists in a listed file`,
-          ).toBe(true);
-        }
-      }
-      for (const marker of parameterized) {
-        expect(testMarkers, `${criterion} parameterised ${marker}`).toContain(
-          marker,
-        );
-      }
-    }
-  });
-
-  it('gives every open criterion a status other than verified and a reason', () => {
+  it('gives every open criterion a status other than verified and a reason, and leaves it unchecked', () => {
     const seen = new Set<number>();
     for (const { criterion, status, reason } of S09_AMENDMENT_OPEN) {
       const id = numberOf(criterion);
@@ -198,7 +148,7 @@ describe('Slice 09 amendment evidence index', () => {
     }
   });
 
-  it('accounts for every authored criterion as baseline-checked, indexed verified, or listed open', () => {
+  it('accounts for every authored criterion as surviving pre-amendment, indexed verified, or listed open', () => {
     const open = new Set(
       S09_AMENDMENT_OPEN.map(({ criterion }) => numberOf(criterion)),
     );
@@ -209,5 +159,144 @@ describe('Slice 09 amendment evidence index', () => {
       }
     }
     expect(unaccounted).toEqual([]);
+  });
+});
+
+describe('Slice 09 amendment evidence gates and receipts', () => {
+  it('cites only files that pnpm validate actually executes, and each one carries the criterion marker', () => {
+    for (const entry of S09_AMENDMENT_EVIDENCE) {
+      const { criterion, testFiles, command } = entry;
+      const id = numberOf(criterion);
+      expect(command.length, `${criterion} command`).toBeGreaterThan(10);
+      expect(testFiles.length, `${criterion} files`).toBeGreaterThan(0);
+      expect(new Set(testFiles).size, `${criterion} files unique`).toBe(
+        testFiles.length,
+      );
+      expect(entry.testMarkers, criterion).toEqual([`[${criterion}]`]);
+      for (const file of testFiles) {
+        const source = sourceOf(file);
+        expect(source, `${criterion} file ${file} exists`).not.toBeNull();
+        expect(
+          validateGate(file, includes),
+          `${criterion} cites ${file}, which no pnpm validate command executes`,
+        ).not.toBeNull();
+        expect(
+          idsIn(source ?? '').has(id) ||
+            hasParameterizedTitle(source ?? '', id),
+          `${criterion} marker exists in ${file}`,
+        ).toBe(true);
+      }
+      for (const file of entry.supplementary ?? []) {
+        expect(
+          sourceOf(file),
+          `${criterion} supplementary ${file} exists`,
+        ).not.toBeNull();
+        expect(
+          validateGate(file, includes),
+          `${criterion} supplementary ${file} must be outside the validate gate`,
+        ).toBeNull();
+      }
+    }
+  });
+
+  it('records a zero-failure receipt for every cited file and names the marked test titles in observed', () => {
+    for (const entry of S09_AMENDMENT_EVIDENCE) {
+      const { criterion, testFiles, receipts, observed } = entry;
+      expect(
+        receipts.map(({ file }) => file).sort(),
+        `${criterion} one receipt per cited file`,
+      ).toEqual([...testFiles].sort());
+      for (const receipt of receipts) {
+        expect(receipt.failed, `${criterion} ${receipt.file} failed`).toBe(0);
+        expect(
+          receipt.passed,
+          `${criterion} ${receipt.file} passed`,
+        ).toBeGreaterThan(0);
+        expect(
+          receipt.source.length,
+          `${criterion} receipt source`,
+        ).toBeGreaterThan(10);
+        const kind = kindOfFile(receipt.file);
+        expect(
+          kind === 'pgtap' ? 'pgtap' : kind,
+          `${criterion} ${receipt.file} receipt kind`,
+        ).toBe(receipt.kind);
+        expect(
+          observed,
+          `${criterion} observed names ${receipt.file}`,
+        ).toContain(receipt.file);
+      }
+      expect(
+        FAILURE_COUNT.test(observed.replace(/«[^»]*»/gu, '')),
+        `${criterion} observed records a failure: ${observed.slice(0, 160)}`,
+      ).toBe(false);
+      const titles = [...observed.matchAll(/«([^»]+)»/gu)].map(
+        ([, t]) => t ?? '',
+      );
+      expect(
+        titles.length,
+        `${criterion} observed names a title`,
+      ).toBeGreaterThan(0);
+      const parameterized = testFiles.some((file) =>
+        hasParameterizedTitle(sourceOf(file) ?? '', numberOf(criterion)),
+      );
+      for (const title of titles) {
+        const found = testFiles.some((file) =>
+          normalise(sourceOf(file) ?? '').includes(normalise(title)),
+        );
+        expect(
+          found || parameterized,
+          `${criterion} title «${title}» exists in a cited file`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('keeps a non-empty limitation where the criterion depends on a real browser but no Playwright run is cited', () => {
+    for (const entry of S09_AMENDMENT_EVIDENCE) {
+      const id = numberOf(entry.criterion);
+      const text = tracker.text.get(id) ?? '';
+      const browser = entry.testFiles.some(
+        (file) => kindOfFile(file) === 'playwright',
+      );
+      if (ENVIRONMENTAL.test(text) && !browser) {
+        expect(
+          entry.limitation.trim().length,
+          `${entry.criterion} is partly environmental and needs a limitation`,
+        ).toBeGreaterThan(20);
+      }
+    }
+  });
+
+  it('proves an error row whose condition the mapping table is told only together with a condition-producing proof', () => {
+    for (const entry of S09_AMENDMENT_EVIDENCE) {
+      const status = statusOfRow(
+        tracker.text.get(numberOf(entry.criterion)) ?? '',
+      );
+      const told = entry.testFiles.some(
+        (file) => MAPPING_ONLY_TABLES[file]?.includes(status ?? -1) === true,
+      );
+      if (!told) continue;
+      const produces = entry.testFiles.some(
+        (file) =>
+          kindOfFile(file) === 'pgtap' ||
+          (kindOfFile(file) === 'vitest' &&
+            !MAPPING_ONLY_FILES.includes(file) &&
+            COMPOSITION.test(sourceOf(file) ?? '')),
+      );
+      expect(
+        produces,
+        `${entry.criterion} cites only the told-the-answer mapping table for a ${String(status)} row`,
+      ).toBe(true);
+    }
+  });
+
+  it('never verifies a criterion whose only proof sits outside the validate gate', () => {
+    for (const entry of S09_AMENDMENT_EVIDENCE) {
+      const inGate = entry.testFiles.filter(
+        (file) => validateGate(file, includes) !== null,
+      );
+      expect(inGate.length, entry.criterion).toBe(entry.testFiles.length);
+    }
   });
 });

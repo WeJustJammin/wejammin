@@ -580,6 +580,58 @@ describe('CMS-03C-04 locale authoring route', () => {
     }
   });
 
+  it('[P2-S09-AC-1166] hands the per-variant no_fallback set to the authoring port and returns the stored set', async () => {
+    const requested = { ...body, noFallbackFieldIds: [fieldId] };
+    const stored = { ...resource, noFallbackFieldIds: [fieldId] };
+    const authorLocale = vi.fn(async () => ({
+      ok: true as const,
+      value: stored,
+    }));
+    const response = await createCmsLocaleApp(deps({ authorLocale })).request(
+      request({ body: requested }),
+    );
+    expect(response.status).toBe(201);
+    const calls = authorLocale.mock.calls as unknown as Array<
+      [{ body: { noFallbackFieldIds: string[] } }]
+    >;
+    expect(calls[0]?.[0].body.noFallbackFieldIds).toEqual([fieldId]);
+    expect(
+      ((await response.json()) as { noFallbackFieldIds: string[] })
+        .noFallbackFieldIds,
+    ).toEqual([fieldId]);
+  });
+
+  it('[P2-S09-AC-1166] refuses a success whose stored no_fallback set differs from the requested one in either direction', async () => {
+    const cases = [
+      { requested: [fieldId], stored: [] },
+      { requested: [], stored: [fieldId] },
+    ];
+    for (const { requested, stored } of cases) {
+      const response = await createCmsLocaleApp(
+        deps({
+          authorLocale: async () => ({
+            ok: true,
+            value: { ...resource, noFallbackFieldIds: stored },
+          }),
+        }),
+      ).request(request({ body: { ...body, noFallbackFieldIds: requested } }));
+      expect(response.status).toBe(502);
+    }
+  });
+
+  it('[P2-S09-AC-1166] refuses a duplicated or non-UUID no_fallback member with 422 before persistence', async () => {
+    const statuses: number[] = [];
+    for (const noFallbackFieldIds of [[fieldId, fieldId], ['not-a-uuid']]) {
+      const authorLocale = vi.fn();
+      const response = await createCmsLocaleApp(
+        deps({ authorLocale: authorLocale as never }),
+      ).request(request({ body: { ...body, noFallbackFieldIds } }));
+      statuses.push(response.status);
+      expect(authorLocale).not.toHaveBeenCalled();
+    }
+    expect(statuses).toEqual([422, 422]);
+  });
+
   it('fences rejected ports, thrown ports, and a deadline without provider prose', async () => {
     for (const authorLocale of [
       async () => {

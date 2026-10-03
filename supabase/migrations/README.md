@@ -253,6 +253,44 @@ tick (`../tests/phase_02_slice_09_r3_expiry_sweep.sql`). The R3 suites
 `phase_02_slice_09_r3_*.sql` also hold the activation-gate, grant, rate-limit, error-row
 and IA edge-case assertions.
 
+Slice 09 review remediation adds three forward-only migrations. `20261002194000` makes
+the reviewer branch of `cms_session_scope_ok` require the effective assignment (state
+`active`, `starts_at <= now < ends_at`, the same predicate the decision RPC uses) and
+owner consistency between the assignment, the review and the row, in every restrictive
+session policy's USING and WITH CHECK
+(`../tests/phase_02_slice_09_r3_rls_session_scope.sql`). `20261002195000` replaces
+`auth_mfa_factor_reconcile` with a six-argument form that takes the factor `version`
+the reconciler observed (`p_expected_version`) and compares it atomically under the
+binding and factor row locks: a mismatch answers `{ "stale": true }` and applies
+nothing, an absent or non-positive version is `INVALID_REQUEST`
+(`../tests/phase_02_slice_09_dec111_mfa_enrollment.sql`, AC-913). `20261002196000`
+makes both settle RPCs (`auth_mfa_enrollment_verify_settle`,
+`auth_step_up_challenge_verify_settle`) re-check the persisted MFA verification lockout
+after they acquire the binding lock, so a verification prepared while unlocked cannot
+commit after concurrent failures lock the account
+(`../tests/phase_02_slice_09_dec111_mfa_verification_lock.sql`; the committed-session
+race runner is `../tests/phase_02_slice_09_dec111/012-settle-race.mjs`).
+
+Slice 09 closure adds one forward-only migration. `20261002197000` changes only the
+denial branch of the CMS-03A-12 assignment lookup in `cms_decide_schema_review`: a
+caller to whom the review is readable (the owning party's schema designer or owner,
+per `cms_review_scope`) but who holds no effective assignment is 403 `FORBIDDEN`
+(AC-431); a review not readable to the caller (another organization, an expired or
+revoked assignment, an unrelated human) stays an indistinguishable 404
+(`../tests/phase_02_slice_09_r3_cms_error_rows.sql`). The independent-session
+`.mjs` race runners are executed by `pnpm db:races`
+(`../../infra/run-database-race-runners.mjs`), which `pnpm db:verify` (and therefore
+`pnpm db:ci`) runs after `pnpm db:test`: it resets before each runner and once at
+the end, and fails on any nonzero exit or a runner that asserted nothing
+(AC-424, AC-586).
+
+Constraint tightening: `20261002179000` replaces the 8..256 idempotency-key CHECK on
+`platform_private.admin_mfa_factor_resets` directly because that table is created by
+`20261002159000` in the same unreleased change set (neither migration is on `main` or
+any remote), so no deployed row can violate it. Future constraint tightening on a
+table that has been deployed uses `ADD CONSTRAINT ... NOT VALID`, a preflight query
+that finds and remediates violating rows, then `VALIDATE CONSTRAINT`.
+
 ## Related links
 
 - `../tests/README.md`

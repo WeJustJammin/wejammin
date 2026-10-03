@@ -167,6 +167,14 @@ export default function ContentSchemaRegistryActivationPreparation({
             <dd>{job}</dd>
           </>
         )}
+        {preparation.jobRef === null ? null : (
+          <>
+            <dt>Job reference</dt>
+            <dd>
+              <code>{preparation.jobRef.id}</code>
+            </dd>
+          </>
+        )}
         {reviewRef === null ? null : (
           <>
             <dt>Review</dt>

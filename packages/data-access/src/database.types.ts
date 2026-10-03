@@ -501,6 +501,7 @@ export type Database = {
         Args: {
           p_auth_user_id: string
           p_correlation_id: string
+          p_expected_version: number
           p_factor_id: string
           p_outcome: string
           p_request_id: string

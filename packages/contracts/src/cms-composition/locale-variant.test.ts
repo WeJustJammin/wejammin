@@ -223,3 +223,88 @@ describe('CMS-03C-04 fallback-chain equality conflict (OD-4)', () => {
     ).toBe(false);
   });
 });
+
+describe('[P2-S09-AC-1166] no_fallback is stored per locale variant', () => {
+  const OTHER_FIELD_ID = '30000000-0000-4000-8000-000000000033';
+
+  it('[P2-S09-AC-1166] the variant request carries the explicit per-variant no_fallback field set', () => {
+    expect(
+      LocaleVariantRequestSchema.parse(request).noFallbackFieldIds,
+    ).toEqual([FIELD_ID]);
+  });
+
+  it('[P2-S09-AC-1166] the stored variant resource reports the per-variant no_fallback field set', () => {
+    expect(
+      LocaleVariantResourceSchema.parse(resource).noFallbackFieldIds,
+    ).toEqual([FIELD_ID]);
+  });
+
+  it('[P2-S09-AC-1166] the set is required on the request and on the resource, never implied', () => {
+    const without = (value: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(value).filter(([key]) => key !== 'noFallbackFieldIds'),
+      );
+    const withoutOnRequest = without(request);
+    const withoutOnResource = without(resource);
+    expect(LocaleVariantRequestSchema.safeParse(withoutOnRequest).success).toBe(
+      false,
+    );
+    expect(
+      LocaleVariantResourceSchema.safeParse(withoutOnResource).success,
+    ).toBe(false);
+  });
+
+  it('[P2-S09-AC-1166] two variants of one entry store their own different sets', () => {
+    const fr = LocaleVariantResourceSchema.parse(resource);
+    const de = LocaleVariantResourceSchema.parse({
+      ...resource,
+      locale: 'de-DE',
+      noFallbackFieldIds: [OTHER_FIELD_ID],
+    });
+    expect([fr.noFallbackFieldIds, de.noFallbackFieldIds]).toEqual([
+      [FIELD_ID],
+      [OTHER_FIELD_ID],
+    ]);
+  });
+
+  it('[P2-S09-AC-1166] a duplicated field id in the set is refused on the request and on the resource', () => {
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: [FIELD_ID, FIELD_ID],
+      }).success,
+    ).toBe(false);
+    expect(
+      LocaleVariantResourceSchema.safeParse({
+        ...resource,
+        noFallbackFieldIds: [FIELD_ID, FIELD_ID],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('[P2-S09-AC-1166] the set is bounded at 128 field ids and every member is a UUID', () => {
+    const ids = Array.from(
+      { length: 129 },
+      (_, index) =>
+        `30000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    );
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: ids.slice(0, 128),
+      }).success,
+    ).toBe(true);
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: ids,
+      }).success,
+    ).toBe(false);
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: ['not-a-uuid'],
+      }).success,
+    ).toBe(false);
+  });
+});

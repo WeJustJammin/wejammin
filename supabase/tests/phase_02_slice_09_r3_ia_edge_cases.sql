@@ -86,7 +86,7 @@ select pg_temp.s09d_rpc('e:self', 'platform_api.cms_assign_schema_review', 'owne
 select is(pg_temp.s09d_outcome('e:self'), 'CONFLICT', 'the submitter can never be assigned as a reviewer: 409 CONFLICT [P2-S09-AC-1129]');
 select is((select count(*) from platform_private.cms_schema_review_assignments where review_id = pg_temp.s09d_id('e:review')), 0::bigint, 'no assignment row exists for the submitter [P2-S09-AC-1129]');
 select pg_temp.s09d_decide('e', 'designer2', 'approve', '{}'::jsonb, 'e:submitter');
-select is(pg_temp.s09d_outcome('e:submitter'), 'NOT_FOUND', 'a decision by the submitter is refused (it holds no assignment): NOT_FOUND [P2-S09-AC-1129]');
+select is(pg_temp.s09d_outcome('e:submitter'), 'FORBIDDEN', 'a decision by the submitter is refused (it holds no assignment, the review is readable to them): FORBIDDEN [P2-S09-AC-1129]');
 select is((select count(*) from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('e:review')), 0::bigint, 'the submitter never counts: no decision row exists [P2-S09-AC-1129]');
 select pg_temp.s09d_create_type('f', 'r3ia_f', 'cms.disclosure.policy');
 select pg_temp.s09d_to_review('f');
@@ -287,7 +287,7 @@ select pg_temp.s09d_rpc('u:selfassign', 'platform_api.cms_assign_schema_review',
     'expiresAt', to_char((clock_timestamp() + interval '1 day') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), 'idempotencyKey', 'r3ia-u-selfassign-0001'), true);
 select is(pg_temp.s09d_outcome('u:selfassign'), 'CONFLICT', 'holding the self-granted reviewer capability does not let the submitter review its own submission: assignment is 409 CONFLICT [P2-S09-AC-1138]');
 select pg_temp.s09d_decide('u', 'owner', 'approve', '{}'::jsonb, 'u:selfdecide');
-select is(pg_temp.s09d_outcome('u:selfdecide'), 'NOT_FOUND', 'and a direct decision by the self-granted submitter is refused at decision time (no assignment): NOT_FOUND [P2-S09-AC-1138]');
+select is(pg_temp.s09d_outcome('u:selfdecide'), 'FORBIDDEN', 'and a direct decision by the self-granted submitter is refused at decision time (no assignment, review readable): FORBIDDEN [P2-S09-AC-1138]');
 select is((select count(*) from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('u:review')), 0::bigint, 'the separation of duties recorded no decision [P2-S09-AC-1138]');
 -- When another designer submitted, the self-granted owner may be assigned and decide.
 select pg_temp.s09d_create_type('v', 'r3ia_v');

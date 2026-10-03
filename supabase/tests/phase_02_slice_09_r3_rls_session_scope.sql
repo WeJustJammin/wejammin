@@ -279,6 +279,177 @@ select throws_ok(format($q$select platform_private.s09_forged_factor(%L)$q$, (se
   '42501', 'new row violates row-level security policy for table "mfa_factor_registry"', 'a factor row for a different account than the published subject is refused by WITH CHECK [P2-S09-AC-181]');
 select pg_temp.r3rls_clear();
 
+-- ------------------------------------ reviewer authority lifecycle (AC181) ----
+-- The reviewer branch of the scope helper must demand the EFFECTIVE assignment
+-- (state active, starts_at <= now < ends_at) on a review of the same owner, in
+-- the policy USING (reads, update targets) and WITH CHECK (every write).  A
+-- revoked, expired or future assignment, and an assignment stamped with another
+-- organization's owner_id, grant no scope.  The assignments are real CMS-03A-14
+-- rows; only their stored instants/state are warped afterwards on real rows.
+create function platform_private.s09_forged_decision(p_owner uuid, p_review uuid, p_assignment uuid, p_person uuid)
+returns integer language plpgsql security definer set search_path = '' as $body$
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_schema_review_decisions(
+    owner_id, review_id, assignment_id, assignment_version, reviewer_person_ref, binding_context_hash,
+    capability_key, capability_version, decision, reviewed_hash, mfa_verified_at)
+  values (p_owner, p_review, p_assignment, 1, p_person, pg_catalog.repeat('a', 64),
+          'cms.schema_review', 1, 'approve', pg_catalog.repeat('b', 64), pg_catalog.clock_timestamp());
+  return 1;
+end;
+$body$;
+alter function platform_private.s09_forged_decision(uuid, uuid, uuid, uuid) owner to s09_rls_probe;
+grant execute on function platform_private.s09_forged_decision(uuid, uuid, uuid, uuid) to s09_rls_probe;
+
+select pg_temp.s09d_assign('x', 'rev2');
+select pg_temp.s09d_assign('x', 'rev3');
+select pg_temp.s09d_assign('x', 'designer2');
+select pg_temp.s09d_assign('x', 'other');
+select pg_temp.r3rls_clear();
+select ok((select count(*) = 4 from platform_private.cms_schema_review_assignments assignment
+            where assignment.review_id = (select review_id from r3rls_ctx)
+              and assignment.reviewer_person_ref in (
+                (select pg_temp.s09d_actor_id('rev2', 'person')::uuid), (select pg_temp.s09d_actor_id('rev3', 'person')::uuid),
+                (select pg_temp.s09d_actor_id('designer2', 'person')::uuid), (select pg_temp.s09d_actor_id('other', 'person')::uuid))),
+  'fixture: the producer assigned four more reviewers to the frozen review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+
+create temp table r3rls_results(k text primary key, v text) on commit drop;
+create temp table r3rls_life(label text primary key, auth uuid, person uuid, assignment_id uuid) on commit drop;
+insert into r3rls_life
+select k.label, pg_temp.s09d_actor_id(k.actor, 'auth')::uuid, pg_temp.s09d_actor_id(k.actor, 'person')::uuid,
+       pg_temp.s09d_id('x:assignment:' || k.actor)
+  from (values ('revoked', 'rev2'), ('expired', 'rev3'), ('future', 'designer2'), ('cross-owner', 'other')) k(label, actor);
+
+select ok(pg_temp.s09d_timewarp('cms_schema_review_assignments', format(
+  $q$update platform_private.cms_schema_review_assignments set state = 'revoked' where id = %L$q$,
+  (select assignment_id from r3rls_life where label = 'revoked'))),
+  'fixture: one real assignment is revoked [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select ok(pg_temp.s09d_timewarp('cms_schema_review_assignments', format(
+  $q$update platform_private.cms_schema_review_assignments
+        set starts_at = clock_timestamp() - interval '2 hours', ends_at = clock_timestamp() - interval '1 hour'
+      where id = %L$q$, (select assignment_id from r3rls_life where label = 'expired'))),
+  'fixture: one real assignment has expired [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select ok(pg_temp.s09d_timewarp('cms_schema_review_assignments', format(
+  $q$update platform_private.cms_schema_review_assignments
+        set starts_at = clock_timestamp() + interval '1 hour', ends_at = clock_timestamp() + interval '2 hours'
+      where id = %L$q$, (select assignment_id from r3rls_life where label = 'future'))),
+  'fixture: one real assignment starts in the future [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select ok(pg_temp.s09d_timewarp('cms_schema_review_assignments', format(
+  $q$update platform_private.cms_schema_review_assignments set owner_id = %L where id = %L$q$,
+  (select other_org from r3rls_ctx), (select assignment_id from r3rls_life where label = 'cross-owner'))),
+  'fixture: one real assignment is stamped with another organization''s owner_id [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+
+-- the helper itself: only the effective, owner-consistent assignment grants scope
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select auth from r3rls_life where label = 'revoked'), (select person from r3rls_life where label = 'revoked'));
+select ok(not platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), (select review_id from r3rls_ctx)),
+  'a revoked assignment grants no scope [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select auth from r3rls_life where label = 'expired'), (select person from r3rls_life where label = 'expired'));
+select ok(not platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), (select review_id from r3rls_ctx)),
+  'an expired assignment grants no scope [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select auth from r3rls_life where label = 'future'), (select person from r3rls_life where label = 'future'));
+select ok(not platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), (select review_id from r3rls_ctx)),
+  'a not-yet-started assignment grants no scope [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select auth from r3rls_life where label = 'cross-owner'), (select person from r3rls_life where label = 'cross-owner'));
+select ok(not platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), (select review_id from r3rls_ctx))
+  and not platform_private.cms_session_scope_ok((select other_org from r3rls_ctx), (select review_id from r3rls_ctx)),
+  'an assignment whose owner differs from the review''s owner grants no scope for either owner [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select rev1_auth from r3rls_ctx), (select rev1_person from r3rls_ctx));
+select ok(platform_private.cms_session_scope_ok((select owner_org from r3rls_ctx), (select review_id from r3rls_ctx))
+  and not platform_private.cms_session_scope_ok((select other_org from r3rls_ctx), (select review_id from r3rls_ctx)),
+  'positive control: the effective, owner-consistent assignment grants the review''s owner scope and no other owner''s [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+
+-- USING: reads and update targets
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select rev1_auth from r3rls_ctx), (select rev1_person from r3rls_ctx));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.r3rls_as_probe('select count(*)::integer from platform_private.cms_schema_reviews'), 1,
+  'positive control (USING): the effective reviewer reads the review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is(pg_temp.r3rls_as_probe('select count(*)::integer from platform_private.cms_schema_review_assignments'),
+  (select count(*)::integer from platform_private.cms_schema_review_assignments assignment
+    where assignment.review_id = (select review_id from r3rls_ctx) and assignment.owner_id = (select owner_org from r3rls_ctx)),
+  'and exactly the owner-consistent assignments of that review, never the cross-owner row [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select ok((select count(*) from platform_private.cms_schema_review_assignments assignment
+            where assignment.review_id = (select review_id from r3rls_ctx) and assignment.owner_id <> (select owner_org from r3rls_ctx)) = 1,
+  'fixture: exactly one cross-owner assignment row exists to be hidden [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is(platform_private.s09_forged_review_touch((select review_id from r3rls_ctx)), 1,
+  'and updates the review it is assigned to [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+do $body$
+declare
+  life record;
+  review uuid := (select review_id from r3rls_ctx);
+  owner_org uuid := (select r.owner_org from r3rls_ctx r);
+  reviews integer;
+  assignments integer;
+  touched integer;
+  verdict text;
+begin
+  for life in select * from r3rls_life order by label loop
+    perform pg_temp.r3rls_clear();
+    perform platform_private.cms_publish_session(life.auth, life.person);
+    perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+    reviews := pg_temp.r3rls_as_probe('select count(*)::integer from platform_private.cms_schema_reviews');
+    assignments := pg_temp.r3rls_as_probe('select count(*)::integer from platform_private.cms_schema_review_assignments');
+    touched := platform_private.s09_forged_review_touch(review);
+    insert into r3rls_results values ('using:' || life.label, reviews::text || '/' || assignments::text || '/' || touched::text);
+    begin
+      perform platform_private.s09_forged_assignment(owner_org, review, life.person, life.person);
+      verdict := 'accepted';
+    exception when others then
+      verdict := sqlstate || ' ' || sqlerrm;
+    end;
+    insert into r3rls_results values ('check-assignment:' || life.label, verdict);
+    begin
+      perform platform_private.s09_forged_decision(owner_org, review, life.assignment_id, life.person);
+      verdict := 'accepted';
+    exception when others then
+      verdict := sqlstate || ' ' || sqlerrm;
+    end;
+    insert into r3rls_results values ('check-decision:' || life.label, verdict);
+  end loop;
+  perform pg_temp.r3rls_clear();
+end;
+$body$;
+
+select is((select v from r3rls_results where k = 'using:revoked'), '0/0/0',
+  'USING: a revoked assignment reads no review, no assignment and updates no review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is((select v from r3rls_results where k = 'using:expired'), '0/0/0',
+  'USING: an expired assignment reads no review, no assignment and updates no review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is((select v from r3rls_results where k = 'using:future'), '0/0/0',
+  'USING: a future assignment reads no review, no assignment and updates no review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is((select v from r3rls_results where k = 'using:cross-owner'), '0/0/0',
+  'USING: a cross-owner assignment reads no review, no assignment and updates no review [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is((select string_agg(k || '=' || v, '; ' order by k) from r3rls_results
+            where k like 'check-assignment:%' and v !~ '^42501 new row violates row-level security policy "cms_schema_review_assignments_session_scope"'),
+  null,
+  'WITH CHECK: a revoked, expired, future or cross-owner assignment cannot write an assignment row [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is((select string_agg(k || '=' || v, '; ' order by k) from r3rls_results
+            where k like 'check-decision:%' and v !~ '^(42501 new row violates row-level security policy "cms_schema_review_decisions_session_scope"|P0001 CONFLICT)'),
+  null,
+  'a revoked, expired, future or cross-owner assignment cannot write a decision row (the policy refuses it, or the append guard, which reads the review as the same restricted role, no longer sees it) [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select is((select count(*)::integer from platform_private.cms_schema_review_decisions decision
+            where decision.reviewer_person_ref in (select person from r3rls_life)), 0,
+  'and no decision row was written for any of them [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+
+-- WITH CHECK owner consistency: an effective reviewer cannot stamp another owner
+select pg_temp.r3rls_clear();
+select platform_private.cms_publish_session((select rev1_auth from r3rls_ctx), (select rev1_person from r3rls_ctx));
+select throws_ok(format($q$select platform_private.s09_forged_assignment(%L, %L, %L, %L)$q$,
+    (select other_org from r3rls_ctx), (select review_id from r3rls_ctx), (select rev1_person from r3rls_ctx), (select rev1_person from r3rls_ctx)),
+  '42501', 'new row violates row-level security policy "cms_schema_review_assignments_session_scope" for table "cms_schema_review_assignments"',
+  'WITH CHECK: an effective reviewer of the owner''s review cannot write a row stamped with another organization''s owner_id [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+-- positive control through the real producer: the effective reviewer's decision
+-- passes the policies' WITH CHECK (CMS-03A-12).
+select pg_temp.s09d_decide('x', 'rev1');
+select is(pg_temp.s09d_outcome('x:decide:rev1'), 'OK',
+  'positive control (WITH CHECK): the effective, owner-consistent reviewer decides through CMS-03A-12 [P2-S09-AC-181] [P2-S09-AC-414] [P2-S09-AC-416]');
+select pg_temp.r3rls_clear();
+
+
 -- ------------------------------------------- every writer is covered, exactly --
 -- A function that writes one of these tables either publishes the verified
 -- session itself (cms_acting_party / cms_publish_session / mfa_lock_binding) or

@@ -128,7 +128,7 @@ select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('plat
 
 -- ---- request validation and authority ------------------------------------------
 select pg_temp.m_reset('r:key', 'designer2', 'rev1', 'reset-key-ac945-0001', 'x', '{}', jsonb_build_object('unknown', true));
-select is(pg_temp.m_out('r:key'), 'INVALID_REQUEST', 'an unknown request key is INVALID_REQUEST [P2-S09-AC-935]');
+select is(pg_temp.m_out('r:key'), 'INVALID_REQUEST', 'an unknown request key is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
 -- CFG-05B-06 without any verified actor session is 401 UNAUTHENTICATED (no session GUC, no envelope).
 select set_config(k, '', true) from unnest(array['app.auth_user_id', 'app.actor_auth_user_id', 'app.actor_person_id', 'app.acting_party_id', 'app.acting_context_id', 'request.jwt.claim.sub']) k;
 select pg_temp.s09d_call('r:unauth', 'platform_api.admin_mfa_factor_reset',
@@ -137,13 +137,13 @@ select pg_temp.s09d_call('r:unauth', 'platform_api.admin_mfa_factor_reset',
 select pg_temp.m_sync('r:unauth');
 select is(pg_temp.m_out('r:unauth'), 'UNAUTHENTICATED', 'a request without a verified actor session is 401 UNAUTHENTICATED [P2-S09-AC-936]');
 select pg_temp.m_reset('r:reason0', 'designer2', 'rev1', 'reset-key-ac945-0002', '   ');
-select is(pg_temp.m_out('r:reason0'), 'INVALID_REQUEST', 'a blank reason is INVALID_REQUEST [P2-S09-AC-935]');
+select is(pg_temp.m_out('r:reason0'), 'INVALID_REQUEST', 'a blank reason is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
 select pg_temp.m_reset('r:reason513', 'designer2', 'rev1', 'reset-key-ac945-0003', repeat('x', 513));
-select is(pg_temp.m_out('r:reason513'), 'INVALID_REQUEST', 'a 513-character reason is INVALID_REQUEST [P2-S09-AC-935]');
+select is(pg_temp.m_out('r:reason513'), 'INVALID_REQUEST', 'a 513-character reason is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
 select pg_temp.m_reset('r:uuid', 'designer2', 'not-a-uuid', 'reset-key-ac945-0004');
-select is(pg_temp.m_out('r:uuid'), 'INVALID_REQUEST', 'a malformed target is INVALID_REQUEST [P2-S09-AC-935]');
+select is(pg_temp.m_out('r:uuid'), 'INVALID_REQUEST', 'a malformed target is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
 select pg_temp.m_reset('r:idem', 'designer2', 'rev1', 'short');
-select is(pg_temp.m_out('r:idem'), 'INVALID_REQUEST', 'a short idempotency key is INVALID_REQUEST [P2-S09-AC-935]');
+select is(pg_temp.m_out('r:idem'), 'INVALID_REQUEST', 'a short idempotency key is INVALID_REQUEST [P2-S09-AC-935] [P2-S09-AC-942]');
 select pg_temp.m_reset('r:stepup', 'designer2', 'rev1', 'reset-key-ac945-0005', 'lost', jsonb_build_object('stepUpAt', clock_timestamp() - interval '11 minutes'));
 select is(pg_temp.m_out('r:stepup'), 'STEP_UP_REQUIRED', 'a stale step-up is 401 STEP_UP_REQUIRED [P2-S09-AC-937]');
 select pg_temp.m_reset('r:nostepup', 'designer2', 'rev1', 'reset-key-ac945-0006', 'lost', jsonb_build_object('stepUpVerified', false));

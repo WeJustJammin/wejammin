@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   NOW,
   PERSON_ID,
+  SHAPES,
   createWorld,
   expectApiError,
   json,
@@ -134,6 +135,35 @@ describe('CFG-05B-06 error rows (AC-942, AC-944)', () => {
       shape: { exact: {} },
     });
     expect(names(world.calls)).not.toContain('admin_mfa_factor_reset');
+  });
+
+  it('[P2-S09-AC-942] a schema violation is 400 INVALID_REQUEST with the BE00 envelope and at most the violations detail before any database call', async () => {
+    for (const body of [
+      { ...BODY, unknownKey: true },
+      { ...BODY, targetPersonId: 'someone' },
+      { targetPersonId: BODY.targetPersonId },
+      { ...BODY, reason: '' },
+      { ...BODY, reason: 'r'.repeat(513) },
+    ]) {
+      const { world, response } = await post({}, { body });
+      await expectApiError(response, {
+        status: 400,
+        code: 'INVALID_REQUEST',
+        shape: SHAPES.invalidRequest,
+      });
+      expect(names(world.calls)).not.toContain('admin_mfa_factor_reset');
+    }
+  });
+
+  it('[P2-S09-AC-942] a schema violation and a self-target are distinguished: the self-target stays 422 and the malformed body stays 400', async () => {
+    const self = await post(
+      {},
+      { body: { ...BODY, targetPersonId: PERSON_ID } },
+    );
+    const malformed = await post({}, { body: { ...BODY, reason: '' } });
+    expect([self.response.status, malformed.response.status]).toStrictEqual([
+      422, 400,
+    ]);
   });
 
   it('[P2-S09-AC-944] an unavailable identity RPC is 503 IDENTITY_UNAVAILABLE with the BE00 envelope and no provider call', async () => {

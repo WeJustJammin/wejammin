@@ -6,7 +6,9 @@
 **Depends on**: Slice 10  
 **Spec depth floor**: 45  
 **Acceptance criteria**: 45  
-**Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)
+**Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)  
+
+**Receiving scope (2026-10-02, DEC-122)**: Slice 09 AC1031 was reworded to the Slice 09 step-up routes (CMS-03A-04 by the activator, CMS-03A-12, CMS-03A-14, CMS-03A-15 through CMS-03A-17, AUTH-API-17, AUTH-API-19, AUTH-API-20, AUTH-API-21 and CFG-05B-06). The DEC-111 step-up recovery for CMS-03B-06, CMS-03B-07 and CMS-03B-09 (a 401 STEP_UP_REQUIRED sends the person to `/step-up?returnTo=`, the interrupted command is not replayed automatically, the scoped draft is restored and the resubmission carries the original Idempotency-Key) is carried by this slice's own criteria P2-S11-AC-011 through AC-016 (CMS-03B-06), AC-017 through AC-022 (CMS-03B-07) and AC-029 through AC-034 (CMS-03B-09); no Slice 09 criterion verifies it, and it is not counted in Slice 09 evidence.  
 
 ## Tasks
 

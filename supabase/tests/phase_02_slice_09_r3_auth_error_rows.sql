@@ -165,7 +165,7 @@ select is(pg_temp.r3_last_event_version((select id from r3_f)), (select version 
 select pg_temp.m('mr:906', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from r3_f)));
 select is(pg_temp.r3_last_event_version((select id from r3_f)), (select version from identity.mfa_factor_registry where id = (select id from r3_f)),
   'the mark-reconciling producer emitted an event at the new factor version [P2-S09-AC-906]');
-select pg_temp.m('rc:906:verified', 'auth_mfa_factor_reconcile', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from r3_f), 'p_outcome', 'verified'));
+select pg_temp.m('rc:906:verified', 'auth_mfa_factor_reconcile', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from r3_f), 'p_expected_version', pg_temp.m_fv((select id from r3_f)), 'p_outcome', 'verified'));
 select is(pg_temp.r3_last_event_version((select id from r3_f)), (select version from identity.mfa_factor_registry where id = (select id from r3_f)),
   'the reconcile producer (outcome verified) emitted an event at the new factor version [P2-S09-AC-906]');
 select is((select payload from platform_private.outbox_events where event_type = 'identity.mfa-factor.changed.v1' and aggregate_id = (select id from r3_f)
@@ -173,7 +173,7 @@ select is((select payload from platform_private.outbox_events where event_type =
   jsonb_build_object('mfaFactorId', (select id from r3_f), 'authBindingId', (select id from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(1))),
   'the reconcile (verified) payload is exactly { mfaFactorId, authBindingId } with those values [P2-S09-AC-906]');
 select pg_temp.m('mr:906b', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from r3_f)));
-select pg_temp.m('rc:906:removed', 'auth_mfa_factor_reconcile', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from r3_f), 'p_outcome', 'removed'));
+select pg_temp.m('rc:906:removed', 'auth_mfa_factor_reconcile', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(1), 'p_factor_id', (select id from r3_f), 'p_expected_version', pg_temp.m_fv((select id from r3_f)), 'p_outcome', 'removed'));
 select is((select payload from platform_private.outbox_events where event_type = 'identity.mfa-factor.changed.v1' and aggregate_id = (select id from r3_f)
             and aggregate_version = (select version from identity.mfa_factor_registry where id = (select id from r3_f))),
   jsonb_build_object('mfaFactorId', (select id from r3_f), 'authBindingId', (select id from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(1))),
@@ -182,7 +182,7 @@ select is((select state::text from identity.mfa_factor_registry where id = (sele
 select pg_temp.m_pending(3, 'ReconPending');
 create temp table r3_p3 on commit drop as select id from identity.mfa_factor_registry where auth_user_id = pg_temp.m_uid(3) and state = 'pending';
 select pg_temp.m('mr:906c', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(3), 'p_factor_id', (select id from r3_p3)));
-select pg_temp.m('rc:906:pending', 'auth_mfa_factor_reconcile', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(3), 'p_factor_id', (select id from r3_p3), 'p_outcome', 'pending'));
+select pg_temp.m('rc:906:pending', 'auth_mfa_factor_reconcile', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(3), 'p_factor_id', (select id from r3_p3), 'p_expected_version', pg_temp.m_fv((select id from r3_p3)), 'p_outcome', 'pending'));
 select is((select payload from platform_private.outbox_events where event_type = 'identity.mfa-factor.changed.v1' and aggregate_id = (select id from r3_p3)
             and aggregate_version = (select version from identity.mfa_factor_registry where id = (select id from r3_p3))),
   jsonb_build_object('mfaFactorId', (select id from r3_p3), 'authBindingId', (select id from identity.auth_user_bindings where auth_user_id = pg_temp.m_uid(3))),

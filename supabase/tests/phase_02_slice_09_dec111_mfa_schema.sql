@@ -201,7 +201,7 @@ from unnest(array[
   'platform_api.auth_mfa_enrollment_verify_prepare(uuid, uuid, text, uuid, uuid)',
   'platform_api.auth_mfa_enrollment_verify_settle(uuid, uuid, text, uuid, uuid, timestamptz, uuid, uuid)',
   'platform_api.auth_mfa_factor_mark_reconciling(uuid, uuid, uuid, uuid)',
-  'platform_api.auth_mfa_factor_reconcile(uuid, uuid, text, uuid, uuid)',
+  'platform_api.auth_mfa_factor_reconcile(uuid, uuid, text, bigint, uuid, uuid)',
   'platform_api.auth_mfa_removal_begin(uuid, uuid, text, text, uuid, bytea, bytea, uuid, uuid)',
   'platform_api.auth_mfa_removal_finish(uuid, uuid, text, uuid, bytea, uuid, uuid)',
   'platform_api.auth_step_up_challenge_begin(uuid, uuid, text, uuid, uuid, uuid)',

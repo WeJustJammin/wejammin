@@ -151,6 +151,12 @@ select pg_temp.s09d_rpc('s12:403', 'platform_api.cms_decide_schema_review', 'rev
   jsonb_build_object('reviewId', pg_temp.s09d_id('y3:review'), 'expectedVersion', pg_temp.s09d_review_version('y3'), 'decision', 'approve',
     'idempotencyKey', 'r3err-dec-ended-1'), true);
 select pg_temp.r3_dec('s12:404', 'other');
+select pg_temp.s09d_rpc('s12:403b', 'platform_api.cms_decide_schema_review', 'designer2',
+  jsonb_build_object('reviewId', pg_temp.s09d_id('y3:review'), 'expectedVersion', pg_temp.s09d_review_version('y3'), 'decision', 'approve',
+    'idempotencyKey', 'r3err-dec-designer-1'), true);
+select pg_temp.s09d_rpc('s12:403c', 'platform_api.cms_decide_schema_review', 'owner',
+  jsonb_build_object('reviewId', pg_temp.s09d_id('y3:review'), 'expectedVersion', pg_temp.s09d_review_version('y3'), 'decision', 'reject',
+    'idempotencyKey', 'r3err-dec-owner-1'), true);
 select pg_temp.r3_dec('s12:409', 'rev1', '{"expectedVersion": "999"}');
 select pg_temp.r3_dec('s12:422', 'rev1', '{"decision": "maybe"}');
 select is(pg_temp.s09d_outcome('s12:400'), 'INVALID_REQUEST', 'CMS-03A-12: a caller-supplied reviewer is an unknown key: INVALID_REQUEST (400) [P2-S09-AC-429]');
@@ -158,6 +164,10 @@ select is(pg_temp.s09d_outcome('s12:401'), 'UNAUTHENTICATED', 'CMS-03A-12: a req
 select is(pg_temp.s09d_outcome('s12:stepup'), 'STEP_UP_REQUIRED', 'CMS-03A-12: a step-up proof 11 minutes old raises STEP_UP_REQUIRED (401) [P2-S09-AC-441]');
 select is(pg_temp.s09d_outcome('s12:403'), 'NOT_FOUND', 'CMS-03A-12: a reviewer whose assignment window ended is indistinguishable from an unassigned human: NOT_FOUND (404), never FORBIDDEN [P2-S09-AC-432]');
 select is(pg_temp.s09d_outcome('s12:404'), 'NOT_FOUND', 'CMS-03A-12: another organization sees the review as absent: NOT_FOUND (404) [P2-S09-AC-432]');
+select is(pg_temp.s09d_outcome('s12:403b'), 'FORBIDDEN', 'CMS-03A-12: a schema designer of the owning party who can read the review but holds no effective assignment raises FORBIDDEN (403) [P2-S09-AC-431]');
+select is(pg_temp.s09d_outcome('s12:403c'), 'FORBIDDEN', 'CMS-03A-12: the owner, who can read the review but holds no effective assignment, raises FORBIDDEN (403) [P2-S09-AC-431]');
+select is((select count(*)::integer from platform_private.cms_schema_review_decisions where review_id = pg_temp.s09d_id('y3:review')), 0,
+  'CMS-03A-12: the forbidden callers recorded no decision [P2-S09-AC-431]');
 select is(pg_temp.s09d_outcome('s12:409'), 'CONFLICT', 'CMS-03A-12: a stale review CAS version raises CONFLICT (409) [P2-S09-AC-433]');
 select is(pg_temp.s09d_outcome('s12:422'), 'VALIDATION_FAILED', 'CMS-03A-12: a decision other than approve or reject raises VALIDATION_FAILED (422) [P2-S09-AC-435]');
 

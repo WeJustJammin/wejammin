@@ -63,6 +63,14 @@ select is(
   1,
   'one immutable locale variant is committed'
 );
+select is(
+  (select no_fallback_field_ids
+   from platform_private.cms_locale_variants
+   where entry_id = (select value::uuid from s10_ids where key = 'entryId')
+     and locale = 'fr-FR'),
+  '[]'::jsonb,
+  'the variant stores its own per-variant no_fallback field set (empty here: the source version declares no no_fallback field) [P2-S09-AC-1166]'
+);
 select ok(
   (select count(*) = 1
      and bool_and(revision.locale = 'fr-FR'
@@ -156,7 +164,7 @@ select throws_ok(
       )
     )$$,
   'P0001', 'VALIDATION_FAILED',
-  'nonlocalizable source-schema field cannot be translated'
+  'nonlocalizable source-schema field cannot be translated [P2-S09-AC-1166]'
 );
 select throws_ok(
   $$select platform_api.cms_author_locale_variant(
@@ -180,7 +188,7 @@ select throws_ok(
       )
     )$$,
   'P0001', 'VALIDATION_FAILED',
-  'nonlocalizable field cannot be misdeclared as no-fallback'
+  'nonlocalizable field cannot be misdeclared as no-fallback [P2-S09-AC-1166]'
 );
 
 -- The active source schema already declares localized date and datetime

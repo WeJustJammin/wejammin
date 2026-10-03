@@ -122,6 +122,33 @@ export const parseQuery = async (
     : invalid('The query parameters are invalid.');
 };
 
+const CONSTRAINT_CODE = /^[a-z][a-z0-9_]{0,63}$/u;
+export const GENERIC_VIOLATION_CODE = 'invalid_value';
+
+/**
+ * BE00 `FieldViolation.code` is a stable lowercase constraint code of 1..64
+ * characters. A contract refinement token is kept; library text (which can echo
+ * a caller-supplied key or value) is replaced by the generic code.
+ */
+export const constraintViolations = (
+  details: ApiError['details'] | undefined,
+): ApiError['details'] | undefined => {
+  const violations = details?.violations;
+  if (details === undefined || !Array.isArray(violations)) return details;
+  return {
+    ...details,
+    violations: violations.map((violation) => {
+      const row = violation as Record<string, unknown>;
+      return {
+        ...(violation as object),
+        code: CONSTRAINT_CODE.test(String(row.code))
+          ? String(row.code)
+          : GENERIC_VIOLATION_CODE,
+      };
+    }),
+  } as ApiError['details'];
+};
+
 export const parseBody = async <T>(
   request: Request,
   schema: SchemaLike<T>,
@@ -138,7 +165,7 @@ export const parseBody = async <T>(
         ? 'UNSUPPORTED_MEDIA_TYPE'
         : 'INVALID_REQUEST',
     parsed.message,
-    parsed.details,
+    constraintViolations(parsed.details),
   );
 };
 
