@@ -35,7 +35,11 @@ export const readBytes = async (
       if (next.done) break;
       total += next.value.byteLength;
       if (total > MAX_BODY_BYTES) {
-        await reader.cancel();
+        // `request.clone()` tees the stream, and a tee branch's cancel promise
+        // settles only when its sibling is cancelled too. The original branch
+        // is never read here, so awaiting the cancel would hold an oversized
+        // chunked body open forever instead of answering 413.
+        void reader.cancel().catch(() => undefined);
         return invalid('The request body is too large.', {}, 413);
       }
       chunks.push(next.value);

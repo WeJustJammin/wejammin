@@ -316,6 +316,24 @@ every Slice 09 `FORBIDDEN` carries DETAIL `{reasonCode}` (`OWNER_REQUIRED` or
 `CAPABILITY_REQUIRED`), and OD-4 locale violations are `{path, message}` rather than
 `{pointer, message}` (`../tests/phase_02_slice_09_r8_error_details.sql`).
 
+### Slice 09 pre-amendment evidence migrations (`20261002203000`-`20261002211000`)
+
+Forward-only fixes found while proving the 240 pre-amendment criteria (lane p240-db; each has a
+RED-first pgTAP test in `../tests/phase_02_slice_09_p240_*.sql`):
+
+- `203000` A01 typed 422 for repeated field id/key, relation, template and capability refs, and an
+  advisory lock on the type key so a concurrent loser is a typed 409.
+- `204000` and `205000` null-safe field and relation input validation; a second relation for one
+  field is a typed 409.
+- `206000` identity guards: no DELETE on definition tables, CAS versions never decrease, leaving
+  `blocked` needs the audited-transition setting.
+- `207000` and `208000` A05 typed pair conflict; A08 only supported to deprecated and deprecated to
+  withdrawn, one event timestamp, and an outbox payload of exactly the nine spec members.
+- `209000` A06 accepts `context` and `correlationId` and validates per-kind unions; A06 and A07
+  list blocks to authorized readers; A07 has exact keys.
+- `210000` reserved-concept keys are refused for blocks and template manifests.
+- `211000` `cms_create_entry` refuses a locale outside the active version's `supportedLocales`.
+
 ## Related links
 
 - `../tests/README.md`

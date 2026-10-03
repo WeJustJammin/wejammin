@@ -128,6 +128,14 @@ export const productionMigrationTelemetry =
           'cms.migration.requests.total': 1,
           'cms.migration.retries.total': event.retryable ? 1 : 0,
           'cms.migration.dlq.total': event.outcome === 'dead_letter' ? 1 : 0,
+          // BE03a Observability names (the dotted names above feed the alert
+          // evaluator): migration progress, blocked, queue retry and DLQ.
+          ...(event.progress === null
+            ? {}
+            : { cms_migration_progress: Math.max(0, event.progress) }),
+          cms_migration_blocked_total: event.outcome === 'blocked' ? 1 : 0,
+          cms_queue_retry_total: event.retryable ? 1 : 0,
+          cms_queue_dlq_total: event.outcome === 'dead_letter' ? 1 : 0,
         },
         attributes: {
           'slo.tier': 2,

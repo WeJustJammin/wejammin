@@ -19,7 +19,23 @@ export const productionTelemetry =
       requestId: event.requestId,
       ...(event.correlationId === undefined
         ? {}
-        : { correlationId: event.correlationId }),
+        : { correlationId: event.correlationId, traceId: event.correlationId }),
+      actorClass: event.actorClass,
+      ...(event.actingContextClass === undefined
+        ? {}
+        : { actingContextClass: event.actingContextClass }),
+      ...(event.entityType === undefined
+        ? {}
+        : { entityType: event.entityType }),
+      ...(event.entityIdHash === undefined
+        ? {}
+        : { entityIdHash: event.entityIdHash }),
+      ...(event.entityVersion === undefined
+        ? {}
+        : { entityVersion: event.entityVersion }),
+      ...(event.dependency === undefined
+        ? {}
+        : { dependency: event.dependency }),
       ...(event.errorCode === undefined ? {} : { errorCode: event.errorCode }),
       attributes: {
         rate_class: event.rateClass ?? 'unknown',

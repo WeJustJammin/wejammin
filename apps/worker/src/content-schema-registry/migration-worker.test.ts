@@ -158,7 +158,7 @@ describe('S09 schema migration worker contract', () => {
     expect(port.calls).toHaveLength(2);
   });
 
-  it('preserves the old active version and never deletes rows when a transform fails', async () => {
+  it('[P2-S09-AC-188] preserves the old active version and never deletes rows when a transform fails', async () => {
     const port = makePort({
       [SCHEMA_MIGRATION_RPC.readPlan]: () => basePlan(),
       [SCHEMA_MIGRATION_RPC.claimLease]: () => ({

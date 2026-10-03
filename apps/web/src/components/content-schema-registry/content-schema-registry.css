@@ -5,9 +5,14 @@
   --registry-surface: #f7f9fb;
   --registry-accent: #0b5cad;
   color: var(--registry-ink);
-  max-width: 82rem;
+  /* FE03 Responsive Behavior: 4 columns, 16 px gutter and margins (mobile). */
+  --registry-columns: 4;
+  --registry-gutter: 1rem;
+  --registry-margin: 1rem;
+  max-width: 90rem;
   margin: 0 auto;
-  padding: 1rem;
+  min-inline-size: 0;
+  padding: var(--registry-margin);
 }
 
 .content-schema-registry a,
@@ -272,8 +277,16 @@
 }
 
 .content-schema-registry-grid {
+  column-gap: var(--registry-gutter);
   display: grid;
-  gap: 1.25rem;
+  grid-template-columns: repeat(var(--registry-columns), minmax(0, 1fr));
+  row-gap: var(--registry-gutter);
+}
+
+/* Mobile: list, then detail, then inspector and commands, one column. */
+.content-schema-registry-grid > * {
+  grid-column: 1 / -1;
+  min-inline-size: 0;
 }
 
 .content-schema-registry-list,
@@ -338,6 +351,22 @@
 
 .content-schema-registry th {
   background: var(--registry-surface);
+}
+
+.content-schema-registry-sort-form {
+  margin: 0;
+}
+
+.content-schema-registry-sort-form button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  padding-inline: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .content-schema-registry td small {
@@ -426,14 +455,20 @@
   white-space: nowrap;
 }
 
-/* Keep the two-column layout off at the 768px stacked-layout boundary. */
+/* Tablet 769 to 1024 px: 8 columns, 20 px gutter, 24 px margins. */
 @media (min-width: 48.0625rem) {
   .content-schema-registry {
-    padding: 1.5rem;
+    --registry-columns: 8;
+    --registry-gutter: 1.25rem;
+    --registry-margin: 1.5rem;
   }
 
-  .content-schema-registry-grid {
-    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+  .content-schema-registry-grid > * {
+    grid-column: span 4;
+  }
+
+  .content-schema-registry-detail-heading > a {
+    order: 2;
   }
 }
 
@@ -447,9 +482,24 @@
   }
 }
 
-@media (min-width: 64rem) {
-  .content-schema-registry-grid {
-    grid-template-columns: minmax(0, 1.25fr) minmax(24rem, 0.75fr);
+/* Desktop 1025 px and up: 12 columns, 24 px gutter, 1440 px maximum. */
+@media (min-width: 64.0625rem) {
+  .content-schema-registry {
+    --registry-columns: 12;
+    --registry-gutter: 1.5rem;
+    --registry-margin: 1.5rem;
+  }
+
+  .content-schema-registry-grid > :nth-child(1) {
+    grid-column: span 7;
+  }
+
+  .content-schema-registry-grid > :nth-child(2) {
+    grid-column: span 5;
+  }
+
+  .content-schema-registry-grid > :nth-child(n + 3) {
+    grid-column: span 6;
   }
 }
 

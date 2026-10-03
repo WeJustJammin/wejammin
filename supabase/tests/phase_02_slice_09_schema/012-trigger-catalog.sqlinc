@@ -23,7 +23,7 @@ select is((select count(*)::integer from (select table_name, trigger_name, funct
   'every proved trigger still exists with its function, timing, row level and events [P2-S09-AC-215]');
 select is((select count(*)::integer from s09t_catalog where enabled <> 'O'), 0,
   'every cms_ trigger fires in the origin session role, none is disabled or replica-only [P2-S09-AC-215]');
-select is((select count(*)::integer from s09t_inventory), 96, 'the inventory holds exactly 96 triggers [P2-S09-AC-215]');
+select is((select count(*)::integer from s09t_inventory), 109, 'the inventory holds exactly 109 triggers [P2-S09-AC-215]');
 
 -- Every cms_ table has INSERT, UPDATE and DELETE each covered by a BEFORE row trigger, except the two
 -- named exceptions: the alert delivery log has no trigger (its RLS policy admits only RPC context) and
@@ -66,7 +66,19 @@ insert into s09t_named values
   ('cms_schema_review_decisions', 'cms_schema_review_decisions_z_append_guard', 'update platform_private.cms_schema_review_decisions set decision = decision'),
   ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_z_state_guard', 'update platform_private.cms_schema_dry_run_reports set source_count = coalesce(source_count, 0) + 1 where state = ''completed'''),
   ('cms_capability_grants', 'cms_capability_grants_z_state_guard', 'update platform_private.cms_capability_grants set subject_person_ref = grantor_person_ref'),
-  ('cms_capability_grant_events', 'cms_capability_grant_events_z_append_guard', 'update platform_private.cms_capability_grant_events set action = action');
+  ('cms_capability_grant_events', 'cms_capability_grant_events_z_append_guard', 'update platform_private.cms_capability_grant_events set action = action'),
+  ('cms_content_types', 'cms_content_types_no_delete', 'delete from platform_private.cms_content_types'),
+  ('cms_content_type_versions', 'cms_content_type_versions_no_delete', 'delete from platform_private.cms_content_type_versions'),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_no_delete', 'delete from platform_private.cms_field_definition_versions'),
+  ('cms_relation_definitions', 'cms_relation_definitions_no_delete', 'delete from platform_private.cms_relation_definitions'),
+  ('cms_content_type_template_bindings', 'cms_content_type_template_bindings_no_delete', 'delete from platform_private.cms_content_type_template_bindings'),
+  ('cms_content_types', 'cms_content_types_version_monotonic', 'update platform_private.cms_content_types set version = version - 1'),
+  ('cms_content_type_versions', 'cms_content_type_versions_version_monotonic', 'update platform_private.cms_content_type_versions set version = version - 1'),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_version_monotonic', 'update platform_private.cms_field_definition_versions set version = version - 1'),
+  ('cms_relation_definitions', 'cms_relation_definitions_version_monotonic', 'update platform_private.cms_relation_definitions set version = version - 1'),
+  ('cms_schema_migration_plans', 'cms_schema_migration_plans_version_monotonic', 'update platform_private.cms_schema_migration_plans set version = version - 1'),
+  ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_version_monotonic', 'update platform_private.cms_schema_dry_run_reports set version = version - 1'),
+  ('cms_content_type_versions', 'cms_content_type_versions_blocked_guard', 'do $blocked$ declare v uuid; begin select id into v from platform_private.cms_content_type_versions limit 1; update platform_private.cms_content_type_versions set state = ''blocked'' where id = v; update platform_private.cms_content_type_versions set state = ''draft'' where id = v; end $blocked$');
 create temp table s09t_named_results on commit drop as
 select n.table_name, n.trigger_name, pg_temp.s09t_probe_stmt(n.table_name, n.trigger_name, true, n.statement) as outcome
   from s09t_named n;

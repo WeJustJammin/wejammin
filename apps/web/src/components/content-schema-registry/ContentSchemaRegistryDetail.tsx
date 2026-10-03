@@ -95,11 +95,11 @@ export default function ContentSchemaRegistryDetail({
       aria-labelledby="content-schema-registry-detail-heading"
     >
       <div className="content-schema-registry-detail-heading">
+        <a href={backUrl}>Back to registry</a>
         <div>
           <p className="content-schema-registry-eyebrow">Selected version</p>
           <h3 id="content-schema-registry-detail-heading">{resource.label}</h3>
         </div>
-        <a href={backUrl}>Back to registry</a>
       </div>
       <ContentSchemaRegistryDetailFacts resource={resource} />
       <ContentSchemaRegistryLocaleSummaryView resource={resource} />

@@ -1,0 +1,89 @@
+-- Signed block-release fixtures for the p240 suites.  Requires the DEC-108 fragments
+-- 00-helpers and 01-actors.  The release key is a deterministic pgsodium keypair, its
+-- principal row is a configuration row (never a producer row), and every request is
+-- signed in SQL exactly as the schema entrypoint's 003 fragment does: first the
+-- nested props attestation, then the outer release envelope over the production
+-- signing payload helpers.  Registration and lifecycle rows come only from the named
+-- CMS-03A-05 and CMS-03A-08 RPCs.
+
+create temp table p_release_key on commit drop as
+select (keypair).public as public_key, (keypair).secret as secret_key
+from lateral (select pgsodium.crypto_sign_seed_new_keypair(decode(repeat('2a', 32), 'hex')) as keypair) generated;
+insert into platform_private.cfg_release_principals(principal_id, key_id, scope, active, public_key)
+select 'a9d10000-0000-4000-8000-000000000005'::uuid, 'release.p240', 'registry-release', true, public_key from p_release_key
+on conflict (key_id) do update set active = excluded.active, public_key = excluded.public_key, revoked_at = null, valid_from = null, valid_through = null;
+
+create or replace function pg_temp.p_sign(p_request jsonb, p_operation text) returns jsonb language plpgsql as $body$
+declare request_value jsonb; signature_value bytea; secret bytea;
+begin
+  select secret_key into secret from p_release_key;
+  request_value := p_request || jsonb_build_object('releaseSignature', repeat('A', 86) || '==', 'releaseSignatureHash', repeat('0', 64));
+  signature_value := pgsodium.crypto_sign_detached(convert_to(platform_private.cms_release_signing_payload(request_value, p_operation), 'utf8'), secret);
+  return request_value || jsonb_build_object('releaseSignature', replace(encode(signature_value, 'base64'), E'\n', ''),
+    'releaseSignatureHash', encode(extensions.digest(signature_value, 'sha256'), 'hex'));
+end;
+$body$;
+-- A valid CMS-03A-05 request for p_key at p_version (the protected schema and renderer references are the
+-- code-owned registry members cms/blocks/hero/1 and cms/renderers/hero/1); p_over is applied BEFORE the nested attestation and the
+-- outer envelope are signed, so the signature binds it.  Use p_post to tamper after signing.
+create or replace function pg_temp.p_block_request(p_key text, p_version integer, p_over jsonb default '{}'::jsonb,
+  p_post jsonb default '{}'::jsonb, p_nonce uuid default extensions.gen_random_uuid()) returns jsonb language plpgsql as $body$
+declare base jsonb; snapshot jsonb; secret bytea; issued text := clock_timestamp()::text; signed jsonb;
+begin
+  select secret_key into secret from p_release_key;
+  snapshot := jsonb_build_object('schemaVersion', '1', 'fields', jsonb_build_array(jsonb_build_object('name', 'title', 'kind', 'string', 'required', true, 'constraints', '{}'::jsonb)),
+    'additionalProperties', false);
+  base := jsonb_build_object('blockKey', p_key, 'blockVersion', p_version::text, 'propsSchemaRef', 'cms/blocks/hero/1',
+    'propsSchemaHash', repeat('a', 64), 'propsSchemaSnapshot', snapshot, 'propsSnapshotHash', platform_private.cms_jcs_sha256(snapshot),
+    'rendererRef', 'cms/renderers/hero/1', 'allowedChildren', '[]'::jsonb, 'slotRules', jsonb_build_object('maxDepth', 1, 'maxNodes', 1),
+    'dataSourcePermissions', '[]'::jsonb,
+    'accessibility', jsonb_build_object('nameRequired', true, 'keyboard', true, 'focusOrder', 'document', 'statusAnnouncement', true),
+    'compatibility', jsonb_build_object('minSchemaCompiler', '1', 'maxSchemaCompiler', '1'), 'lifecycle', 'supported', 'releaseDigest', repeat('e', 64),
+    'releaseKeyId', 'release.p240', 'releaseNonce', p_nonce, 'releaseIssuedAt', issued, 'releaseRawBodyHash', repeat('0', 64),
+    'releaseVerifiedAt', issued, 'idempotencyKey', 'p240-blk-' || substr(extensions.gen_random_uuid()::text, 1, 24),
+    'context', jsonb_build_object('releasePrincipalId', 'release.p240')) || p_over;
+  base := base || jsonb_build_object('propsSnapshotAttestation', jsonb_build_object('algorithm', 'Ed25519', 'keyId', 'release.p240',
+    'signature', replace(encode(pgsodium.crypto_sign_detached(convert_to(platform_private.cms_props_attestation_payload(base), 'utf8'), secret), 'base64'), E'\n', '')));
+  signed := pg_temp.p_sign(base, 'CMS-03A-05');
+  return signed || p_post;
+end;
+$body$;
+create or replace function pg_temp.p_register(p_label text, p_request jsonb) returns jsonb language plpgsql as $body$
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  return pg_temp.s09d_call(p_label, 'platform_api.cms_register_block', p_request);
+end;
+$body$;
+-- CMS-03A-08 request for a registered block; p_over is applied before signing, p_post after.
+create or replace function pg_temp.p_lifecycle_request(p_block uuid, p_from text, p_to text, p_expected text default '1',
+  p_over jsonb default '{}'::jsonb, p_post jsonb default '{}'::jsonb, p_nonce uuid default extensions.gen_random_uuid()) returns jsonb language plpgsql as $body$
+declare issued text := clock_timestamp()::text; base jsonb;
+begin
+  base := jsonb_build_object('blockDefinitionVersionId', p_block, 'fromLifecycle', p_from, 'toLifecycle', p_to, 'expectedVersion', p_expected,
+    'releaseDigest', repeat('e', 64), 'releaseKeyId', 'release.p240', 'releaseNonce', p_nonce, 'releaseIssuedAt', issued,
+    'releaseRawBodyHash', encode(extensions.digest(convert_to(p_nonce::text, 'utf8'), 'sha256'), 'hex'), 'releaseVerifiedAt', issued,
+    'idempotencyKey', 'p240-lc-' || substr(extensions.gen_random_uuid()::text, 1, 24), 'context', jsonb_build_object('releasePrincipalId', 'release.p240')) || p_over;
+  return pg_temp.p_sign(base, 'CMS-03A-08') || p_post;
+end;
+$body$;
+create or replace function pg_temp.p_advance(p_label text, p_request jsonb) returns jsonb language plpgsql as $body$
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  return pg_temp.s09d_call(p_label, 'platform_api.cms_advance_block_lifecycle', p_request);
+end;
+$body$;
+create or replace function pg_temp.p_block_rows() returns text language sql stable as $body$
+  select concat_ws('|', (select count(*) from platform_private.cms_block_definition_versions), (select count(*) from platform_private.cms_release_nonce_receipts),
+    (select count(*) from platform_private.cms_block_definition_lifecycle_events), (select count(*) from platform_private.outbox_events),
+    (select count(*) from audit_private.audit_events), (select count(*) from platform_private.idempotency_records))
+$body$;
+-- 'ok' when the call returned the expected token and (for a refusal) committed nothing at all.
+create or replace function pg_temp.p_block_expect(p_label text, p_request jsonb, p_expected text, p_lifecycle boolean default false) returns text language plpgsql as $body$
+declare before_rows text := pg_temp.p_block_rows(); outcome text;
+begin
+  if p_lifecycle then perform pg_temp.p_advance(p_label, p_request); else perform pg_temp.p_register(p_label, p_request); end if;
+  outcome := pg_temp.s09d_outcome(p_label);
+  return case when outcome = p_expected and (p_expected = 'OK' or before_rows = pg_temp.p_block_rows()) then 'ok'
+    else 'bad:' || outcome || case when p_expected <> 'OK' and before_rows <> pg_temp.p_block_rows() then ' (state changed)' else '' end end;
+end;
+$body$;

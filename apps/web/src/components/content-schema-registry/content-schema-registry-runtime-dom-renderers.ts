@@ -136,6 +136,15 @@ export const renderCapabilityGate = (form: HTMLFormElement): HTMLElement => {
   gate.appendChild(heading);
   gate.appendChild(copy);
   gate.appendChild(reason);
+  // FE03: a refused mutation names its recovery, which is a canonical re-read
+  // of the same protected page (never a broader disclosure).
+  const recovery = sameOriginLocation(form, form.action);
+  if (recovery !== null) {
+    const link = form.ownerDocument.createElement('a');
+    link.href = recovery;
+    link.textContent = 'Review access';
+    gate.appendChild(link);
+  }
   form.insertBefore(gate, form.firstChild);
   return gate;
 };
@@ -158,7 +167,13 @@ export const renderConflict = (
   const heading = form.ownerDocument.createElement('h3');
   heading.id = `${form.id}-conflict-heading`;
   heading.tabIndex = -1;
-  heading.textContent = 'Review the current registry version';
+  const icon = form.ownerDocument.createElement('span');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '⚠';
+  heading.appendChild(icon);
+  heading.appendChild(
+    form.ownerDocument.createTextNode(' Review the current registry version'),
+  );
   const localeForm = form.querySelector('[data-locale-fields]') !== null;
   const copy = form.ownerDocument.createElement('p');
   copy.textContent = localeForm

@@ -3,6 +3,8 @@ import { join, relative, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { BlockLifecycleAdvanceRequestSchema } from '@wejammin/contracts';
+
 const ROOT = resolve(import.meta.dirname, '../..');
 
 type SourceFile = Readonly<{ path: string; source: string }>;
@@ -40,10 +42,13 @@ const walk = (relativeDirectory: string): SourceFile[] => {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 };
 
+// Comments carry prose about status codes; only executable code can reserve a code.
+const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/(^|[^:])\/\/.*$/gmu, '$1');
+
 const workerFiles = walk('apps/worker/src');
 const webFiles = walk('apps/web/src');
 const migrationFiles = walk('supabase/migrations');
-const workerSource = workerFiles.map(({ source }) => source).join('\n');
 const webCmsFiles = webFiles.filter(({ source }) =>
   /CMS-03A|ContentSchemaRegistry|cms\/content-types|schema-registry/iu.test(
     source,
@@ -58,6 +63,21 @@ const releaseWorkerSource = workerFiles
   )
   .map(({ source }) => source)
   .join('\n');
+const contractsLifecycleSource = readFileSync(
+  resolve(
+    ROOT,
+    'packages/contracts/src/content-schema-registry/resources-blocks.ts',
+  ),
+  'utf8',
+);
+const admissionSchemasSource =
+  workerFiles.find(({ path }) =>
+    path.endsWith('/content-schema-registry/admission-schemas.ts'),
+  )?.source ?? '';
+const releaseHandlerSource =
+  workerFiles.find(({ path }) =>
+    path.endsWith('/content-schema-registry/route-release-handler.ts'),
+  )?.source ?? '';
 const releaseAdmissionSource =
   workerFiles.find(({ path }) =>
     path.endsWith('/content-schema-registry/admission-release.ts'),
@@ -68,7 +88,7 @@ const signedContractSource = [...workerFiles]
       source,
     ),
   )
-  .map(({ source }) => source)
+  .map(({ source }) => stripComments(source))
   .join('\n');
 const s09MigrationSource = migrationFiles
   .filter(({ source }) =>
@@ -160,9 +180,30 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     expect(s09MigrationSource).toMatch(
       /(?:append.only|immutable|rejects?\s+(?:update|delete)|trigger)/iu,
     );
-    expect(workerSource).toMatch(/cms\.block\.lifecycle\.changed\.v1/iu);
-    expect(workerSource).toMatch(
-      /supported[\s\S]{0,180}deprecated[\s\S]{0,180}withdrawn/iu,
+    // The Worker no longer spells the event type or the lifecycle order; it
+    // enforces both by parsing the generated contracts (route-release-handler.ts
+    // parses through schemaForReleaseOperation -> BlockLifecycleAdvanceRequestSchema). Assert the contract itself.
+    expect(releaseHandlerSource).toContain('schemaForReleaseOperation');
+    expect(admissionSchemasSource).toMatch(
+      /BlockLifecycleAdvanceRequestSchema/u,
+    );
+    const base = {
+      expectedVersion: '1',
+      releaseDigest: 'a'.repeat(64),
+    };
+    const accepted = (fromLifecycle: string, toLifecycle: string): boolean =>
+      BlockLifecycleAdvanceRequestSchema.safeParse({
+        ...base,
+        fromLifecycle,
+        toLifecycle,
+      }).success;
+    expect(accepted('supported', 'deprecated')).toBe(true);
+    expect(accepted('deprecated', 'withdrawn')).toBe(true);
+    expect(accepted('supported', 'withdrawn')).toBe(false);
+    expect(accepted('withdrawn', 'deprecated')).toBe(false);
+    expect(accepted('deprecated', 'supported')).toBe(false);
+    expect(contractsLifecycleSource).toContain(
+      "eventType: z.literal('cms.block.lifecycle.changed.v1')",
     );
   });
 

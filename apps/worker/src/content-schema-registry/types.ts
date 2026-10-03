@@ -26,6 +26,15 @@ export type TelemetryEvent = Readonly<{
   errorCode?: string;
   durationMs: number;
   actorClass: 'human' | 'release-worker' | 'anonymous';
+  /** Whether the verified session carries an acting party; never the party itself. */
+  actingContextClass?: 'party' | 'none';
+  /** Registered dependency class of a 502, 503 or 504; never a provider name. */
+  dependency?: string;
+  /** Closed resource class and the hash of its identifier (never the id). */
+  entityType?: string;
+  entityIdHash?: string;
+  /** Expected version (If-Match) or, for a read, the authorized current version. */
+  entityVersion?: string;
   rateClass?: string;
   rateLimit?: number;
   rateWindowSeconds?: number;

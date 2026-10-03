@@ -53,6 +53,12 @@ export default function ContentSchemaRegistryVersionCommands(
   };
   const dryRunId = submitReviewDryRunId(preparation);
   const activation = activationInputs(preparation, review);
+  // FE03 / R8 ruling: a control is gated solely on `permittedNextActions`. A
+  // listed action whose prefill data is missing renders as unavailable, never
+  // as nothing, so the reader learns what is missing; an unlisted action
+  // renders no control and no notice.
+  const submitReviewListed = hasNextAction(preparation, 'submit_review');
+  const activateListed = hasNextAction(preparation, 'activate');
   return (
     <div className="content-schema-registry-command-stack">
       <ContentSchemaRegistryFieldForm
@@ -97,14 +103,32 @@ export default function ContentSchemaRegistryVersionCommands(
           permit it for this version.
         </p>
       )}
-      {dryRunId === null ? null : (
+      {dryRunId !== null ? (
         <ContentSchemaRegistrySubmitReviewForm
           {...path}
           dryRunId={dryRunId}
           idempotencyKey={idempotencyKey('CMS-03A-11')}
         />
-      )}
-      {activation === null ? null : (
+      ) : submitReviewListed ? (
+        <p
+          className="content-schema-registry-help"
+          data-submit-review-unavailable="true"
+        >
+          Submitting for review is unavailable: the sealed, passed dry run it
+          needs is not available for this version.
+        </p>
+      ) : null}
+      {activation === null ? (
+        activateListed ? (
+          <p
+            className="content-schema-registry-help"
+            data-activation-unavailable="true"
+          >
+            Activation is unavailable: the approved review and its approval
+            decisions could not be read for this version.
+          </p>
+        ) : null
+      ) : (
         <ContentSchemaRegistryActivationForm
           {...path}
           idempotencyKey={idempotencyKey('CMS-03A-04')}

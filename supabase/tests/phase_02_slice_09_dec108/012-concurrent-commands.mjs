@@ -10,6 +10,10 @@
  * key conflict, VERSION_MISMATCH for a stale If-Match) and that
  * exactly one effect exists:
  *
+ *   [P2-S09-AC-052] CMS-03A-01  two creates of one type key: the key lock serializes them,
+ *                               the loser is refused with the typed 409 CONFLICT, one type
+ *   [P2-S09-AC-153] [P2-S09-AC-157] CMS-03A-08  two signed lifecycle advances of one block: the
+ *                               loser is refused with the typed 409 CONFLICT, one event
  *   [P2-S09-AC-301] CMS-03A-09  two successor commands for one source: one draft
  *   [P2-S09-AC-424] [P2-S09-AC-1130] CMS-03A-12  two reviewers decide one review version: one
  *                               approval, the approved review holds exactly the
@@ -131,6 +135,9 @@ const setupScript = [
   fragment('phase_02_slice_09_dec108/02-chain.sqlinc'),
   fragment('phase_02_slice_09_dec108/03-support.sqlinc'),
   fragment('phase_02_slice_09_dec119/00-support.sqlinc'),
+  fragment('phase_02_slice_09_p240/00-a01.sqlinc'),
+  fragment('phase_02_slice_09_p240/01-block.sqlinc'),
+  `select pg_temp.p_register('race157', pg_temp.p_block_request('race157', 1));`,
   // AC301: an active source that two commands will both try to clone.
   `select pg_temp.s09d_create_type('a', 'race301');`,
   `select pg_temp.s09d_to_active('a');`,
@@ -158,6 +165,11 @@ const setupScript = [
      'typeA', pg_temp.s09d_id('a:type'), 'versionA', pg_temp.s09d_id('a:version'), 'typeB', pg_temp.s09d_id('b:type'),
      'reviewB', pg_temp.s09d_id('b:review'), 'rev3Person', pg_temp.s09d_actor_id('rev3', 'person'),
      'grant558', pg_temp.s09g_grant_id(pg_temp.s09d_resp('g558')), 'grant586', pg_temp.s09g_grant_id(pg_temp.s09d_resp('g586')),
+     'blockRace', (pg_temp.s09d_resp('race157')->>'id'),
+     'adv1', pg_temp.p_lifecycle_request((pg_temp.s09d_resp('race157')->>'id')::uuid, 'supported', 'deprecated'),
+     'adv2', pg_temp.p_lifecycle_request((pg_temp.s09d_resp('race157')->>'id')::uuid, 'supported', 'deprecated'),
+     'create1', ${request('owner', `pg_temp.p_base('race052', '{"idempotencyKey":"s09conc-create-0001"}'::jsonb)`)},
+     'create2', ${request('owner', `pg_temp.p_base('race052', '{"idempotencyKey":"s09conc-create-0002"}'::jsonb)`)},
      'succ1', ${request('owner', `jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'), 'expectedVersion', pg_temp.s09d_version('a'), 'supportedLocales', null, 'fallbackChains', null, 'idempotencyKey', 's09conc-succ-0001')`)},
      'succ2', ${request('owner', `jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type'), 'versionId', pg_temp.s09d_id('a:version'), 'expectedVersion', pg_temp.s09d_version('a'), 'supportedLocales', null, 'fallbackChains', null, 'idempotencyKey', 's09conc-succ-0002')`)},
      'dec1', ${request('rev1', `jsonb_build_object('reviewId', pg_temp.s09d_id('b:review'), 'expectedVersion', pg_temp.s09d_review_version('b'), 'decision', 'approve', 'idempotencyKey', 's09conc-dec-0001')`, true)},
@@ -174,6 +186,7 @@ const setupScript = [
 const ids = JSON.parse(runScript(setupScript));
 
 const gucs = (actor) => {
+  if (actor === null) return `select set_config('request.jwt.claim.role','service_role',false);`;
   const a = ids.actors[actor];
   return `select set_config('request.jwt.claim.role','service_role',false),
   set_config('request.jwt.claim.sub',${sql(a.auth)},false),
@@ -221,6 +234,34 @@ const race = async (name, fn, first, second, refusal = 'CONFLICT') => {
   );
   return { r1, r2 };
 };
+
+// --------------------------------------------------------------- AC052 ----
+await race(
+  'create',
+  'cms_create_type_draft',
+  { actor: 'owner', request: ids.create1 },
+  { actor: 'owner', request: ids.create2 },
+);
+assert(
+  runValue(
+    `select (select count(*) from platform_private.cms_content_types where type_key = 'race052') || ':' || (select count(*) from platform_private.cms_content_type_versions v join platform_private.cms_content_types t on t.id = v.content_type_id where t.type_key = 'race052') || ':' || (select count(*) from platform_private.cms_schema_artifacts a join platform_private.cms_content_type_versions v on v.id = a.content_type_version_id join platform_private.cms_content_types t on t.id = v.content_type_id where t.type_key = 'race052');`,
+  ) === '1:1:1',
+  '[P2-S09-AC-052] two concurrent creates of one type key: the unique key lock serialized them, the loser got the typed 409 and exactly one type, version and artifact exist',
+);
+
+// ------------------------------------------------------- AC153 / AC157 ----
+await race(
+  'advance',
+  'cms_advance_block_lifecycle',
+  { actor: null, request: ids.adv1 },
+  { actor: null, request: ids.adv2 },
+);
+assert(
+  runValue(
+    `select (select count(*) from platform_private.cms_block_definition_lifecycle_events where block_definition_version_id = ${sql(ids.blockRace)}::uuid) || ':' || (select count(*) from platform_private.cms_release_nonce_receipts where operation_id = 'CMS-03A-08' and outcome = 'consumed');`,
+  ) === '1:1',
+  '[P2-S09-AC-153] [P2-S09-AC-157] two concurrent lifecycle advances of one block: the loser got the typed 409 and exactly one event and one consumed receipt exist',
+);
 
 // --------------------------------------------------------------- AC301 ----
 await race(

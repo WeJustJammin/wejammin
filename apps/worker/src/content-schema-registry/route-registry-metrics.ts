@@ -26,6 +26,46 @@ export const REGISTRY_OPERATIONS: ReadonlySet<string> = new Set([
 
 const ERROR_CODE = /^[A-Z][A-Z_]{2,39}$/u;
 
+/**
+ * A 422 whose violation names one of these members was refused by a protected
+ * registry allowlist (capability, workflow, validator, projection, target,
+ * renderer, props schema, data source, child or template reference), not by
+ * grammar: `cms_registry_allowlist_reject_total` counts exactly those.
+ */
+const ALLOWLISTED_MEMBERS: ReadonlySet<string> = new Set([
+  'ownerCapability',
+  'workflowKey',
+  'workflowVersion',
+  'validatorKey',
+  'validatorVersion',
+  'projectionKey',
+  'targetType',
+  'propsSchemaRef',
+  'rendererRef',
+  'dataSourcePermissions',
+  'allowedChildren',
+  'defaultTemplateVersionId',
+  'templateBindings',
+  'capabilityBindings',
+  'compatibility',
+  'propsSnapshotAttestation',
+]);
+
+const allowlistRejected = (
+  details: Readonly<Record<string, unknown>> | undefined,
+): boolean => {
+  const violations = details?.violations;
+  return (
+    Array.isArray(violations) &&
+    violations.some((violation) => {
+      const path = (violation as { path?: unknown } | null)?.path;
+      if (typeof path !== 'string') return false;
+      const member = path.split('/')[1] ?? '';
+      return ALLOWLISTED_MEMBERS.has(member);
+    })
+  );
+};
+
 const outcomeFor = (result: ContentSchemaRegistryResult<unknown>): string => {
   if (result.ok) return 'success';
   if (result.status === 429) return 'rate_limited';
@@ -69,6 +109,12 @@ export const registryMetrics = (
     })
   ] = 1;
   if (result.status === 429) metrics.cms_definition_rate_limited_total = 1;
+  if (result.status === 422 && allowlistRejected(result.details))
+    metrics[
+      metricKey('cms_registry_allowlist_reject_total', {
+        operation: operationId,
+      })
+    ] = 1;
   if (result.status === 409)
     metrics[
       metricKey('cms_definition_conflict_total', {

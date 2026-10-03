@@ -112,6 +112,30 @@ const denialCount = (
     return typeof status === 'number' && DENIAL_STATUSES.has(status);
   });
 
+/**
+ * BE03a Observability gauges produced where the data lives (the protected
+ * database snapshot): the age of the oldest blocked activation, the oldest
+ * undispatched outbox event, the oldest open schema review and the DLQ depth.
+ * All are non-negative milliseconds (or a message count) and are logged as
+ * metrics each time the snapshot is loaded.
+ */
+export const operationalGaugeMetrics = (
+  snapshot: ContentSchemaRegistryOperationalSnapshot,
+): Readonly<Record<string, number>> => ({
+  ...(snapshot.activationBlockedMs === undefined
+    ? {}
+    : { cms_activation_age: snapshot.activationBlockedMs }),
+  ...(snapshot.outboxAgeMs === undefined
+    ? {}
+    : { cms_outbox_lag: snapshot.outboxAgeMs }),
+  ...(snapshot.reviewOpenAgeMs === undefined
+    ? {}
+    : { cms_schema_review_age: snapshot.reviewOpenAgeMs }),
+  ...(snapshot.dlqDepth === undefined
+    ? {}
+    : { cms_queue_dlq_total: snapshot.dlqDepth }),
+});
+
 export const buildContentSchemaRegistryOperationalSnapshot = (
   input: SnapshotInput,
 ): ContentSchemaRegistryOperationalSnapshot => {

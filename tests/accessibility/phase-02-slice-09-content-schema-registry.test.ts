@@ -349,8 +349,12 @@ describe('P2-S09 content schema registry accessibility contract', () => {
     expect(css).toContain('overflow-x: auto');
     expect(css).toContain('@media (min-width: 48.0625rem)');
     expect(css).toContain('@media (max-width: 48rem)');
-    expect(css).toContain('@media (min-width: 64rem)');
-    expect(css).toMatch(/grid-template-columns:\s*minmax\(0,\s*1\.1fr\)/u);
-    expect(css).toMatch(/grid-template-columns:\s*minmax\(0,\s*1\.25fr\)/u);
+    expect(css).toContain('@media (min-width: 64.0625rem)');
+    expect(css).toContain('--registry-columns: 4');
+    expect(css).toContain('--registry-columns: 8');
+    expect(css).toContain('--registry-columns: 12');
+    expect(css).toMatch(
+      /grid-template-columns:\s*repeat\(var\(--registry-columns\),\s*minmax\(0,\s*1fr\)\)/u,
+    );
   });
 });

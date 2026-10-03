@@ -173,6 +173,29 @@ export const presentationVariantForSession = (
   return undefined;
 };
 
+/**
+ * WEBHOOK_REJECTED is reserved for the exact 401 outcome of the signed release
+ * boundary (CMS-03A-05 and CMS-03A-08). Any other status, or any other
+ * operation, that reports it is a defect upstream: the wire shows the code
+ * the status itself declares, never the reserved release outcome.
+ */
+const RELEASE_BOUNDARY_OPERATIONS: ReadonlySet<string> = new Set([
+  'CMS-03A-05',
+  'CMS-03A-08',
+]);
+const STATUS_DECLARED_CODE: Readonly<Record<number, string>> = {
+  400: 'INVALID_REQUEST',
+  401: 'UNAUTHENTICATED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  413: 'PAYLOAD_TOO_LARGE',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
+  422: 'VALIDATION_FAILED',
+  429: 'RATE_LIMITED',
+};
+
+const NOT_FOUND_MESSAGE = 'The requested CMS registry resource was not found.';
+
 export const errorResponse = (
   context: FeatureContext,
   result: ContentSchemaRegistryError,
@@ -183,23 +206,35 @@ export const errorResponse = (
   const dependencyFailure =
     result.status === 502 || result.status === 503 || result.status === 504;
   // BE00 has one 409 code, CONFLICT; `details.conflict` names the kind.
+  const reservedMisuse =
+    result.code === 'WEBHOOK_REJECTED' &&
+    !(
+      result.status === 401 &&
+      RELEASE_BOUNDARY_OPERATIONS.has(context.get('operationId') ?? '')
+    );
   const code = dependencyFailure
     ? 'DEPENDENCY_UNAVAILABLE'
     : result.status === 409
       ? 'CONFLICT'
-      : /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
-        ? result.code
-        : 'INTERNAL_ERROR';
+      : reservedMisuse
+        ? (STATUS_DECLARED_CODE[result.status] ?? 'INTERNAL_ERROR')
+        : /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
+          ? result.code
+          : 'INTERNAL_ERROR';
+  // A concealed resource must be indistinguishable from an absent one, so a 404
+  // never carries port-authored text (BE03a 403-versus-404 rule).
   const safeMessage =
-    result.status >= 500
-      ? code === 'INTERNAL_ERROR'
-        ? 'An unexpected error occurred.'
-        : result.status === 504
-          ? 'The CMS registry dependency exceeded its deadline.'
-          : result.status === 502
-            ? 'The CMS registry dependency returned an invalid response.'
-            : 'The CMS registry dependency is temporarily unavailable.'
-      : result.message;
+    result.status === 404
+      ? NOT_FOUND_MESSAGE
+      : result.status >= 500
+        ? code === 'INTERNAL_ERROR'
+          ? 'An unexpected error occurred.'
+          : result.status === 504
+            ? 'The CMS registry dependency exceeded its deadline.'
+            : result.status === 502
+              ? 'The CMS registry dependency returned an invalid response.'
+              : 'The CMS registry dependency is temporarily unavailable.'
+        : result.message;
   const body = {
     code,
     message: safeMessage,

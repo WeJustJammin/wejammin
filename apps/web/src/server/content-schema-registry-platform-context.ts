@@ -126,7 +126,8 @@ export const forwardedQuery = (url: URL): string => {
   const query = new URLSearchParams();
   for (const key of QUERY_KEYS) {
     const value = url.searchParams.get(key);
-    if (value !== null) query.set(key, value);
+    // A blank control of the native filter form is no filter, never a value.
+    if (value !== null && value !== '') query.set(key, value);
   }
   const serialized = query.toString();
   return serialized.length > 0 ? `?${serialized}` : '';

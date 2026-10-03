@@ -32,8 +32,21 @@ const LogAttributeValueSchema = z.union([
 ]);
 
 const LogAttributesSchema = z.record(SafeCodeSchema, LogAttributeValueSchema);
+/**
+ * A metric key is a safe code, optionally followed by one closed label set in
+ * the Prometheus exposition form `name{label="value",...}`: lowercase label
+ * names and values restricted to the safe-code alphabet (no quotes, braces,
+ * commas or whitespace inside a value), at most eight labels. The absolute end
+ * assertion keeps a trailing newline from becoming a log-field injection.
+ */
+const MetricKeySchema = z
+  .string()
+  .max(240)
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}(?:\{[a-z][a-z0-9_]{0,31}="[A-Za-z0-9_.:/-]{1,96}"(?:,[a-z][a-z0-9_]{0,31}="[A-Za-z0-9_.:/-]{1,96}"){0,7}\})?(?![\s\S])/,
+  );
 const LogMetricsSchema = z.record(
-  SafeCodeSchema,
+  MetricKeySchema,
   z.number().finite().nonnegative(),
 );
 

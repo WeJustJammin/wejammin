@@ -171,7 +171,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
     return { form, navigate, kept, fetchStub };
   };
 
-  it('400 and 422 render a linked validation summary and keep the input', async () => {
+  it('[P2-S09-AC-254] 400 and 422 render a linked validation summary and keep the input', async () => {
     for (const status of [400, 422]) {
       const { form, kept } = await run(
         () =>
@@ -192,7 +192,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
     }
   });
 
-  it('401 sends a plain session to sign-in and a step-up recovery to /step-up', async () => {
+  it('[P2-S09-AC-254] 401 sends a plain session to sign-in and a step-up recovery to /step-up', async () => {
     const plain = await run(
       () =>
         respond(
@@ -222,7 +222,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
     expect(document.body.textContent).not.toContain(UPSTREAM_TEXT);
   });
 
-  it('403 renders the capability gate and 404 the not-found line', async () => {
+  it('[P2-S09-AC-254] 403 renders the capability gate and 404 the not-found line', async () => {
     const forbidden = await run(
       () => respond(403, body('FORBIDDEN')),
       () => document.querySelector('[data-cms-capability-gate]') !== null,
@@ -239,7 +239,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
     expect(document.body.textContent).not.toContain(UPSTREAM_TEXT);
   });
 
-  it('409 opens the sync-conflict recovery with the server and local versions', async () => {
+  it('[P2-S09-AC-254] 409 opens the sync-conflict recovery with the server and local versions', async () => {
     const { form } = await run(
       () =>
         respond(
@@ -252,7 +252,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
     expect(document.body.textContent).not.toContain(UPSTREAM_TEXT);
   });
 
-  it('429 renders the Retry-After countdown copy', async () => {
+  it('[P2-S09-AC-254] 429 renders the Retry-After countdown copy', async () => {
     const { form } = await run(
       () => respond(429, body('RATE_LIMITED'), { 'retry-after': '30' }),
       () => document.body.textContent?.includes('Retry in 30 seconds') ?? false,
@@ -262,7 +262,7 @@ describe.each(CASES)('$title status classes', (testCase) => {
   });
 
   it.each([415, 500, 502, 503, 504])(
-    '%i never claims success and offers a retry that does not leak upstream text',
+    '[P2-S09-AC-254] [P2-S09-AC-201] %i never claims success and offers a retry that does not leak upstream text',
     async (status) => {
       const { form, fetchStub } = await run(
         () => respond(status, body('DEPENDENCY_UNAVAILABLE')),

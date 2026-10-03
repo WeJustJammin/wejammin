@@ -151,6 +151,7 @@ export default function ContentSchemaRegistryWorkbench({
                 canonicalUrl={canonicalUrl}
                 listUrl={listUrl}
                 sort={{ sort: query.sort, direction: query.direction }}
+                query={query}
               />
             ) : null}
             {access === 'full' && initialDetail === null ? (

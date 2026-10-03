@@ -1,3 +1,4 @@
+import { holders, replayExecuteAcl } from './phase-02-slice-09-pre-acl-replay';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
@@ -422,25 +423,17 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       ),
     ).toEqual([]);
 
-    const authenticatedGrantSource = [
-      ...s09MigrationSource.matchAll(
-        /grant\s+execute\s+on\s+function([\s\S]*?)to\s+authenticated\s*,\s*service_role\s*;/giu,
-      ),
-    ]
-      .map(([, functions]) => functions)
-      .join('\n');
-    const authenticatedRpcNames = distinctSorted(
-      [
-        ...authenticatedGrantSource.matchAll(
-          /platform_api\.["']?(cms_[a-z0-9_]+)["']?\s*\(/giu,
-        ),
-      ].map(([, name]) => name),
-    );
-    expect(
-      authenticatedRpcNames.filter(
-        (name) => !(expectedAmendmentRpcs as readonly string[]).includes(name),
-      ),
-    ).toEqual(distinctSorted([...expectedRpcs]));
+    // Effective grants come from replaying every GRANT and REVOKE in migration
+    // order (see phase-02-slice-09-pre-acl-replay.ts): a grant that a later
+    // statement revokes is never counted, which a text match over one
+    // migration cannot tell.
+    expect(holders(replayExecuteAcl(), 'authenticated')).toEqual([
+      'cms_add_field_definition',
+      'cms_bind_relation',
+      'cms_create_type_draft',
+      'cms_get_content_type_version',
+      'cms_list_content_types',
+    ]);
   });
 
   it('[P2-S09-AC-267, P2-S09-AC-269, P2-S09-AC-273, P2-S09-AC-275] keeps the phase plan, tracker, runbook, and source anchors traceable', () => {

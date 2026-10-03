@@ -25,7 +25,7 @@ export function ContentSchemaRegistrySyncConflict({
       aria-labelledby="content-schema-registry-conflict-heading"
     >
       <h3 id="content-schema-registry-conflict-heading" tabIndex={-1}>
-        Review the current registry version
+        <span aria-hidden="true">⚠</span> Review the current registry version
       </h3>
       <p>
         No registry draft was overwritten. Review before reapplying any retained

@@ -219,4 +219,43 @@ describe('structured logger', () => {
 
     expect(logger.error(validDetails)).toBe('sink_failed');
   });
+
+  it('[P2-S09-AC-206] accepts a closed labelled metric key and refuses a key that could carry free text', () => {
+    const lines: string[] = [];
+    const logger = createLogger(
+      { environment: 'staging', release: 'a2ec4803', service: 'wejammin-api' },
+      {
+        now: () => fixedTime,
+        random: () => 0,
+        sink: (line) => lines.push(line),
+      },
+    );
+    const labelled =
+      'cms_definition_request_total{operation="CMS-03A-01",outcome="success"}';
+    expect(
+      logger.info({
+        ...validDetails,
+        metrics: { [labelled]: 1, duration_ms: 3 },
+      }),
+    ).toBe('written');
+    expect(JSON.parse(lines[0] ?? '').metrics[labelled]).toBe(1);
+    for (const key of [
+      'name{operation="a b"}',
+      'name{operation="a"b"}',
+      'name{Operation="a"}',
+      'name{operation=a}',
+      'name{operation="a",}',
+      'name{operation=""}',
+      'name{operation="a"}\n',
+      'name{operation="a{}"}',
+      'name{}',
+      'name{operation="a"}{x="y"}',
+      '{operation="a"}',
+      `name{${Array.from({ length: 9 }, (_, i) => `l${i}="v"`).join(',')}}`,
+    ])
+      expect(
+        logger.info({ ...validDetails, metrics: { [key]: 1 } }),
+        JSON.stringify(key),
+      ).toBe('rejected');
+  });
 });

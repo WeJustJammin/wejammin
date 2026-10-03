@@ -10,7 +10,67 @@ interface Props {
   readonly listUrl: string;
   /** The applied server sort; the matching visible column carries `aria-sort`. */
   readonly sort?: Pick<ContentSchemaRegistryQuery, 'sort' | 'direction'>;
+  /**
+   * The applied query. When present, each sortable column header carries a
+   * native submit button that commits the sort (and the toggled direction) as
+   * URL state while keeping every other filter.
+   */
+  readonly query?: ContentSchemaRegistryQuery;
 }
+
+const SORT_KEYS = {
+  Key: 'key',
+  Version: 'version',
+  Updated: 'updatedAt',
+} as const;
+const FILTER_FIELDS = [
+  'resourceKind',
+  'keyPrefix',
+  'lifecycle',
+  'state',
+  'limit',
+] as const;
+
+/** Header sort control: a one-button GET form so it works before hydration. */
+const SortButton = ({
+  props,
+  column,
+}: {
+  readonly props: Props;
+  readonly column: keyof typeof SORT_KEYS;
+}) => {
+  const query = props.query;
+  if (query === undefined) return <>{column}</>;
+  const key = SORT_KEYS[column];
+  const current = query.sort === key;
+  const direction = current && query.direction === 'asc' ? 'desc' : 'asc';
+  const label = current
+    ? `Sort by ${column}, currently ${query.direction === 'asc' ? 'ascending' : 'descending'}; activate to sort ${direction === 'asc' ? 'ascending' : 'descending'}`
+    : `Sort by ${column}, ascending`;
+  return (
+    <form
+      method="get"
+      action={props.canonicalUrl}
+      className="content-schema-registry-sort-form"
+    >
+      {FILTER_FIELDS.map((field) =>
+        query[field] === undefined ? null : (
+          <input
+            key={field}
+            type="hidden"
+            name={field}
+            value={String(query[field])}
+          />
+        ),
+      )}
+      <input type="hidden" name="sort" value={key} />
+      <input type="hidden" name="direction" value={direction} />
+      <button type="submit" aria-label={label}>
+        {column}
+      </button>
+    </form>
+  );
+};
 
 /** The visible column each server sort key orders (created is not a column). */
 const SORT_COLUMNS = {
@@ -119,14 +179,14 @@ export default function ContentSchemaRegistryList(props: Props) {
             <tr>
               <th scope="col">Resource kind</th>
               <th scope="col" {...sortAttribute(props, 'Key')}>
-                Key
+                <SortButton props={props} column="Key" />
               </th>
               <th scope="col" {...sortAttribute(props, 'Version')}>
-                Version
+                <SortButton props={props} column="Version" />
               </th>
               <th scope="col">Lifecycle or state</th>
               <th scope="col" {...sortAttribute(props, 'Updated')}>
-                Updated
+                <SortButton props={props} column="Updated" />
               </th>
               <th scope="col">
                 <span className="visually-hidden">Inspect</span>

@@ -80,6 +80,21 @@ select ok(
   ),
   'AC095 exact artifact and persisted graph pass before an extra child appears'
 );
+create or replace function pg_temp.s09_forged_graph_invalid(p_sql text) returns boolean language plpgsql as $forge$
+declare result boolean;
+begin
+  begin
+    execute p_sql;
+    result := not platform_private.cms_activation_references_valid('a9090000-0000-4000-8000-000000000150');
+    raise exception 'S09_ROLLBACK';
+  exception when others then
+    if sqlerrm = 'S09_ROLLBACK' then return result; end if;
+    raise;
+  end;
+end;
+$forge$;
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_field_definition_versions(
   id, owner_id, state, version, content_type_version_id, stable_field_id,
   field_key, kind, constraints, required, default_mode, localization_mode,
@@ -93,14 +108,11 @@ insert into platform_private.cms_field_definition_versions(
   false, 'none', 'none', '{"label":"Subtitle","order":1}'::jsonb,
   'a9090000-0000-4000-8000-000000000001'
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
+  $forge$),
   'AC095 rejects an extra persisted field outside the artifact manifest [P2-S09-AC-095]'
 );
-delete from platform_private.cms_field_definition_versions
-where id = 'a9090000-0000-4000-8000-000000000153';
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_content_type_capability_bindings(
   id, owner_id, state, version, content_type_version_id,
   capability_key, capability_version
@@ -111,14 +123,11 @@ insert into platform_private.cms_content_type_capability_bindings(
   'active', 1, 'a9090000-0000-4000-8000-000000000150',
   'cms.schema_designer', 1
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
+  $forge$),
   'AC095 rejects an extra persisted capability binding outside the manifest'
 );
-delete from platform_private.cms_content_type_capability_bindings
-where id = 'a9090000-0000-4000-8000-000000000154';
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_relation_definitions(
   id, owner_id, state, version, field_definition_id, target_kind, target_type,
   projection_key, cardinality, min_count, max_count, ordered, on_unavailable,
@@ -131,14 +140,11 @@ insert into platform_private.cms_relation_definitions(
   'profile.summary', 'one', 0, 1, false, 'omit',
   'a9090000-0000-4000-8000-000000000001'
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
+  $forge$),
   'AC095 rejects an extra persisted relation outside the artifact manifest [P2-S09-AC-095]'
 );
-delete from platform_private.cms_relation_definitions
-where id = 'a9090000-0000-4000-8000-000000000157';
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_content_type_template_bindings(
   id, owner_id, state, version, content_type_version_id,
   template_version_id, position
@@ -149,14 +155,9 @@ insert into platform_private.cms_content_type_template_bindings(
   'active', 1, 'a9090000-0000-4000-8000-000000000150',
   'a9090000-0000-4000-8000-000000000159', 0
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
+  $forge$),
   'AC095 rejects an extra persisted template binding outside the manifest [P2-S09-AC-095]'
 );
-delete from platform_private.cms_content_type_template_bindings
-where id = 'a9090000-0000-4000-8000-000000000158';
 
 select ok(
   platform_private.cms_block_reference_valid(

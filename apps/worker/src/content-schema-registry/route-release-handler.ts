@@ -12,6 +12,7 @@ import {
   schemaForReleaseOperation,
   validReleasePrincipal,
 } from './admission';
+import { invalid } from './admission-common';
 import type { ContentSchemaRegistryDependencies } from './types';
 import type { FeatureContext } from './route-types';
 import { rateLimitedError } from './route-rate-refusal';
@@ -60,6 +61,21 @@ export const createReleaseMutation =
       BlockRegistrationRequest | BlockLifecycleAdvanceRequest
     >(context.req.raw, schemaForReleaseOperation(operationId));
     if (!body.ok) return errorResponse(context, body, context.get('requestId'));
+    // The body expectedVersion and the strong If-Match name one version; a
+    // disagreement is a malformed request, never silently resolved (the same
+    // rule the human mutations apply).
+    const bodyVersion = (body.value as { expectedVersion?: unknown })
+      .expectedVersion;
+    if (
+      typeof bodyVersion === 'string' &&
+      headers.value.ifMatch !== undefined &&
+      bodyVersion !== headers.value.ifMatch
+    )
+      return errorResponse(
+        context,
+        invalid('expectedVersion must equal the If-Match version.'),
+        context.get('requestId'),
+      );
     const rate = await dependencyDeadline(
       (signal) =>
         dependencies.rateLimit(

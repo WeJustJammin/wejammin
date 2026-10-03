@@ -107,6 +107,9 @@ export const sameOriginMutationRequest = (request: Request): boolean => {
   const origin = request.headers.get('origin');
   if (origin !== null && origin !== requestOrigin) return false;
   const referer = request.headers.get('referer');
+  // Strict: a cookie mutation must name where it came from. A request with
+  // neither header cannot be shown to be same-origin and is refused.
+  if (origin === null && referer === null) return false;
   if (origin === null && referer !== null) {
     try {
       if (new URL(referer).origin !== requestOrigin) return false;

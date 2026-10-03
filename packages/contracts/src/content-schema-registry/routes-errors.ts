@@ -30,9 +30,20 @@ export const humanListErrors = {
   INTERNAL_ERROR: 500,
 } as const;
 
+/**
+ * CMS-03A-07: a path-only read (a query string or body is a 400), so no 422 is
+ * emitted (BE03a error matrix). The declared set equals `HumanDetailErrors`.
+ */
 export const humanDetailErrors = {
-  ...humanListErrors,
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
   NOT_FOUND: 404,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
 } as const;
 
 /** CMS-03A-13: path-only read, so no 422 is emitted (BE03a error matrix). */

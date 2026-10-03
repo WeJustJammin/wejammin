@@ -257,7 +257,7 @@ describe('content schema registry command feedback', () => {
     cleanup();
   });
 
-  it('fails closed when the same-key replay remains pending', async () => {
+  it('[P2-S09-AC-202] fails closed when the same-key replay remains pending', async () => {
     formMarkup();
     const methods: string[] = [];
     vi.stubGlobal(

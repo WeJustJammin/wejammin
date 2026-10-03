@@ -74,7 +74,7 @@ const portFor = (
 };
 
 describe('schema migration recovery paths', () => {
-  it('claims an expired dry-run lease, resumes its cursor, and continues through backfill', async () => {
+  it('[P2-S09-AC-188] claims an expired dry-run lease, resumes its cursor, and continues through backfill', async () => {
     const port = portFor({
       [SCHEMA_MIGRATION_RPC.readPlan]: () =>
         plan({ state: 'dry_running', cursor: '42', version: '3' }),

@@ -10,6 +10,7 @@ import { lifecycleMetrics } from './route-lifecycle-metrics';
 import { registryMetrics } from './route-registry-metrics';
 import type { FeatureContext } from './route-types';
 import { readOperationIds } from './route-types';
+import { registeredDependencyClass } from './error-detail-values';
 import {
   errorResponse,
   etagFor,
@@ -53,6 +54,58 @@ const locationFor = (
       return `/api/v1/cms/content-types/${contentTypeId}/versions/${id}`;
   }
   return requestPath;
+};
+
+const ENTITY_BY_PATH_KEY = [
+  ['versionId', 'content_type_version'],
+  ['blockDefinitionVersionId', 'block_definition_version'],
+  ['reviewId', 'schema_review'],
+  ['grantId', 'capability_grant'],
+  ['contentTypeId', 'content_type'],
+] as const;
+
+const sha256Id = async (value: string): Promise<string> =>
+  `sha256:${Array.from(
+    new Uint8Array(
+      await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)),
+    ),
+    (byte) => byte.toString(16).padStart(2, '0'),
+  ).join('')}`;
+
+/**
+ * BE03a Observability: a log names the aggregate only by its closed class and
+ * the SHA-256 of its identifier, and carries the expected version (or, for a
+ * read, the version the caller was authorized to see). Identifiers themselves
+ * never reach a log.
+ */
+const entityFields = async (
+  input: ContentSchemaRegistryPortInput,
+  result: ContentSchemaRegistryResult<unknown>,
+): Promise<
+  Readonly<{
+    entityType?: string;
+    entityIdHash?: string;
+    entityVersion?: string;
+  }>
+> => {
+  const hit = ENTITY_BY_PATH_KEY.find(
+    ([key]) => input.path?.[key] !== undefined,
+  );
+  const version =
+    input.ifMatch ??
+    (result.ok &&
+    typeof (result.value as { version?: unknown })?.version === 'string'
+      ? (result.value as { version: string }).version
+      : undefined);
+  return {
+    ...(hit === undefined
+      ? {}
+      : {
+          entityType: hit[1],
+          entityIdHash: await sha256Id(input.path?.[hit[0]] as string),
+        }),
+    ...(version === undefined ? {} : { entityVersion: version }),
+  };
 };
 
 export type ContentSchemaRegistryDomain = Readonly<{
@@ -109,6 +162,18 @@ export const createExecutor =
       ...(result.ok ? {} : { errorCode: result.code }),
       durationMs,
       actorClass,
+      actingContextClass:
+        actorClass === 'human' && input.session?.actingPartyId
+          ? 'party'
+          : 'none',
+      ...(!result.ok && result.status >= 502 && result.status <= 504
+        ? {
+            dependency:
+              registeredDependencyClass(result.details?.dependencyClass) ??
+              'cms_registry',
+          }
+        : {}),
+      ...(await entityFields(input, result)),
       rateClass: policy.rateClass,
       rateLimit: policy.rateLimit,
       rateWindowSeconds: policy.rateWindowSeconds,

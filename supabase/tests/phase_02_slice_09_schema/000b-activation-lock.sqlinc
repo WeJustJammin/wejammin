@@ -29,6 +29,11 @@ begin
   cleanup_sql := format($cleanup$
     do $body$
     begin
+      -- The committed probe rows are removed outside any command: user triggers
+      -- (the definition delete guard among them) stay out of this fixture
+      -- cleanup, as for the artifact guard below.
+      execute 'alter table platform_private.cms_content_type_versions disable trigger cms_content_type_versions_no_delete';
+      execute 'alter table platform_private.cms_content_types disable trigger cms_content_types_no_delete';
       -- Artifacts are immutable in normal operation.  Temporarily remove the
       -- cleanup-only guard so this committed probe leaves no registry rows;
       -- the exception path recreates it before returning the error.
@@ -46,7 +51,11 @@ begin
       delete from platform_private.party where id in (%L::uuid, %L::uuid);
       delete from auth.users where id = %L::uuid;
       execute 'create trigger cms_schema_artifacts_z_compile_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_schema_artifact_guard()';
+      execute 'alter table platform_private.cms_content_type_versions enable trigger cms_content_type_versions_no_delete';
+      execute 'alter table platform_private.cms_content_types enable trigger cms_content_types_no_delete';
     exception when others then
+      begin execute 'alter table platform_private.cms_content_type_versions enable trigger cms_content_type_versions_no_delete'; exception when others then null; end;
+      begin execute 'alter table platform_private.cms_content_types enable trigger cms_content_types_no_delete'; exception when others then null; end;
       begin
         execute 'create trigger cms_schema_artifacts_z_compile_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_schema_artifact_guard()';
       exception when duplicate_object then null;

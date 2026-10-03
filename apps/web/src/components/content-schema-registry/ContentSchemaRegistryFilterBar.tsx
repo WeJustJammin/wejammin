@@ -34,6 +34,7 @@ const stateValues = [
   'superseded',
   'retired',
   'blocked',
+  'compiled',
 ] as const;
 
 export const contentSchemaRegistryFilterSummary = (
