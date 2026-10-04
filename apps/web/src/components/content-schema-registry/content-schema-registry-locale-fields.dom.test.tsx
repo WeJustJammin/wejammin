@@ -270,6 +270,81 @@ describe('source, default and fallback groups', () => {
     expect(config(view).chains).toEqual({ 'fr-CA': ['en-US'] });
   });
 
+  it('[P2-S09-AC-1217] renders 15 intermediates in order with their named controls and a fixed final default, and refuses a further add', () => {
+    const view = render();
+    const target = 'fr-CA';
+    // 16 candidates so that after 15 intermediates are added the picker still
+    // offers the 16th: the Add control, not the empty option list, refuses it.
+    const candidates = Array.from(
+      { length: 16 },
+      (_unused, index) =>
+        `${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`,
+    );
+    addTags(view, 'en', target, ...candidates);
+    choose(select(view, 'Source language'), 'en');
+    choose(select(view, 'Default language'), 'en');
+    const addFirstAvailable = (): void => {
+      const group = fieldsetFor(view, target);
+      const picker = group.querySelector('select') as HTMLSelectElement;
+      const next = [...picker.querySelectorAll('option')]
+        .map((option) => option.value)
+        .find((value) => value !== '');
+      expect(next, 'an available intermediate').toBeDefined();
+      choose(picker, next as string);
+      click(buttonNamed(group, `Add to the fallback order for ${target}`));
+    };
+    const expected = candidates.slice(0, 15);
+    for (let index = 0; index < expected.length; index += 1) addFirstAvailable();
+    expect(config(view).chains[target]).toEqual([...expected, 'en']);
+    const group = fieldsetFor(view, target);
+    const items = group.querySelectorAll('ol > li');
+    expect(items).toHaveLength(16);
+    expected.forEach((tag, position) => {
+      const item = items[position] as HTMLLIElement;
+      expect(item.textContent).toContain(tag);
+      expect(
+        (
+          buttonNamed(
+            item,
+            `Move ${tag} earlier in the fallback order for ${target}`,
+          ) as HTMLButtonElement
+        ).disabled,
+      ).toBe(position === 0);
+      expect(
+        (
+          buttonNamed(
+            item,
+            `Move ${tag} later in the fallback order for ${target}`,
+          ) as HTMLButtonElement
+        ).disabled,
+      ).toBe(position === expected.length - 1);
+      buttonNamed(
+        item,
+        `Remove ${tag} from the fallback order for ${target}`,
+      );
+    });
+    const last = items[15] as HTMLLIElement;
+    expect(last.textContent).toBe('en (always last)');
+    expect(last.querySelector('button')).toBeNull();
+    const picker = group.querySelector('select') as HTMLSelectElement;
+    expect(
+      [...picker.querySelectorAll('option')]
+        .map((option) => option.value)
+        .filter((value) => value !== ''),
+    ).toEqual([candidates[15]]);
+    choose(picker, candidates[15] as string);
+    expect(
+      (
+        buttonNamed(
+          group,
+          `Add to the fallback order for ${target}`,
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    click(buttonNamed(group, `Add to the fallback order for ${target}`));
+    expect(config(view).chains[target]).toEqual([...expected, 'en']);
+  });
+
   it('[P2-S09-AC-1216] re-renders the groups when the default changes and keeps valid entries', () => {
     const view = populated();
     choose(select(view, 'Default language'), 'fr');

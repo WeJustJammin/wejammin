@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { LOCALE_CONFIG_LIMITS } from '@wejammin/contracts/client';
+
 import {
   availableIntermediates,
   localeControlId,
@@ -61,6 +63,11 @@ const AddEntry = ({
   const options = availableIntermediates(controller.draft, target);
   const id = `${localeControlId(controller.formId, { control: 'chain', target })}-add`;
   if (options.length === 0) return null;
+  // The submitted chain is the intermediates plus the fixed final default, so
+  // the 1-16 bound allows at most `maxChainLength - 1` intermediate entries.
+  const atIntermediateLimit =
+    (controller.draft.intermediates[target] ?? []).length >=
+    LOCALE_CONFIG_LIMITS.maxChainLength - 1;
   return (
     <div className="content-schema-registry-locale-add">
       <label htmlFor={id}>Add a fallback language</label>
@@ -79,7 +86,7 @@ const AddEntry = ({
       </select>
       <button
         type="button"
-        disabled={pending || choice === ''}
+        disabled={pending || choice === '' || atIntermediateLimit}
         onClick={() => {
           controller.insertIntermediate(target, choice);
           setChoice('');
