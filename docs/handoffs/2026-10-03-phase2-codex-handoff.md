@@ -89,11 +89,15 @@
 - **Codex reviews:**
   - R14 (`context/reports/codex-review-r14.md`): 5/5 findings verified and fixed in R14c and R14c2.
   - R14c2 (`context/reports/codex-review-r14c2.md`): findings 1–4 verified and fixed in R14e (report `context/reports/r14e.md`). Finding 5 was a timing artifact, closed by the R14d errata and DEC-131.
-  - The R14d and R14e commits have **not** had an adversarial review yet.
+  - R14d/R14e (`context/reports/codex-review-r14e.md`, base `e89c2e1d`). Claude checked these against the code on 2026-10-04. **Not fixed yet; this is the first job:**
+    1. **(high, CONFIRMED)** The runtime HTML strings in `apps/web/src/pages/app/cms-content-modeling/entries/[entryId]/revisions.astro` (~50) and in the entry-detail and entry-create response strings emit `<script src=".../lib/auth-scope-sync.ts">` (and `route-heading-focus.ts`). Astro never bundles these, so production serves no script and cross-tab invalidation is missing on those pages. Fix: render them through Astro-processed markup or a generated asset URL, then test on the built route.
+    2. **(high, CONFIRMED)** `apps/web/src/pages/auth/start.ts` (~23-40): a missing Content-Length counts as 0, and `request.formData()` then buffers a chunked body of any size on an unauthenticated route. Fix: a bounded stream read that cancels at 8,193 bytes, plus a test with an oversized body and no Content-Length header.
+    3. **(high, PLAUSIBLE)** `apps/web/src/server/proxy-request-body.ts` forwards unknown-length streams, and Worker auth routes check size only after `request.text()`. Fix: a shared bounded streaming reader in the Worker that cancels at `MAX_BODY_BYTES + 1`.
+    4. **(high, CONFIRMED)** In `scripts/evidence/receipts-lib.mjs` (~324-359), the skip-merge key is `tool + file + title`, with no Playwright project/config or environment identity. A run elsewhere can therefore hide a required skip. Fix: key on invocation identity, and allow skip replacement only through an explicit allowlist of ordinary-run to dedicated-gate pairs.
 
 ## Next steps, in order
 
-1. Run an adversarial review of the commits after `e89c2e1d`, which cover R14d and R14e: the cross-tab scope sync, the proxy body streaming, the claim-gate fixtures and the receipt skip rule. Verify each finding against the code before fixing it, and fix confirmed findings RED-first.
+1. Fix the 4 R14d/R14e review findings listed above, RED-first. Then run a fresh adversarial review of the fixes.
 2. **Independent verification of Slice 09.** Use a fresh population that did none of the work:
    - First an audit #4 sample, like audit #3: about 200 criteria across sets a/b/c plus security probes.
    - Then a full re-verification of all 1235 active criteria (PROVEN / WEAK(C) / WEAK(S) / NOT-PROVEN, with the deciding file:line, written to disk).
