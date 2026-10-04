@@ -467,7 +467,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
     }
   });
 
-  it('[P2-S09-AC-267] separates the 1239 authored IDs from the 1235-item active completion policy after the 2026-09-30 activation, AC250 and 2026-10-02 DEC-108 reopens', () => {
+  it('[P2-S09-AC-267] separates the 1239 authored IDs from the 1235-item active completion policy after the 2026-10-04 DEC-132 AC261 ratification', () => {
     expect(distinctSorted(acceptanceIds(sliceTracker))).toHaveLength(1239);
     expect(sliceTracker).toMatch(
       /\*\*Acceptance criteria \(authored\)\*\*:\s*1239\b/iu,
@@ -486,7 +486,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
         String.raw`\*\*Current active verification\*\*:\s*${String(
           (sliceTracker.match(/^- \[x\] \*\*P2-S09-AC-\d{3,4}\*\*/gmu) ?? [])
             .length,
-        )}\/1235\s+verified;\s*17\s+CMS-03A-04 activation-chain criteria reopened 2026-09-30,\s*plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01`,
+        )}\/1235\s+verified;\s*DEC-132 owner-ratifies AC261, whose 51 fresh passing receipts across ten cited marker files provide local technical proof only and no hosted claim`,
         'iu',
       ),
     );
@@ -499,7 +499,7 @@ describe('Phase 2 Slice 09 cross-surface traceability', () => {
       /AC266[\s\S]{0,500}owner-deferred[\s\S]{0,500}remains unchecked and excluded from active Phase 2/iu,
     );
     expect(sliceTracker).toMatch(
-      /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened under the DEC-108 accounting,\s*and every DEC-108\/109\/110\/111\/119\/120 criterion AC284-AC1239 that the open-criteria block of the Slice 09 tracker lists as open;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
+      /Slice 10 implementation prerequisites\*\*:\s*Slice 10 implementation is unblocked by Slice 09 active completion at 1235\/1235 under DEC-132\.\s*AC209, AC211, AC265, and AC266 remain separate authored gates on their declared timelines and do not gate Slice 10 implementation/iu,
     );
     expect(sliceTracker).toMatch(
       /AC266[\s\S]{0,300}mandatory[\s\S]{0,100}pre-release[\s\S]{0,100}production-readiness\/release/iu,

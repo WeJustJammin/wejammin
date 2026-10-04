@@ -121,13 +121,13 @@ describe('Phase 2 Slice 09 completion policy', () => {
     );
   });
 
-  it('[P2-S09-AC-265] keeps hosted acceptance pre-release while the amended Slice 09 criteria gate Slice 10', () => {
+  it('[P2-S09-AC-265] keeps hosted acceptance pre-release under DEC-132 while Slice 09 completion unblocks Slice 10', () => {
     for (const [label, source] of authoritativeDocuments) {
       expect(source, `${label} AC265 release timing`).toMatch(
         /AC265[^\n]*mandatory pre-release|AC265[^\n]*pre-release[^\n]*mandatory/iu,
       );
       expect(source, `${label} Slice 10 dependency`).toMatch(
-        /Slice 10 implementation prerequisites\*\*:\s*completion of the amended Slice 09 activation criteria:\s*the 17 reopened activation-chain criteria,\s*AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened under the DEC-108 accounting,\s*and every DEC-108\/109\/110\/111\/119\/120 criterion AC284-AC1239 that the open-criteria block of the Slice 09 tracker lists as open;\s*AC250 is separately verified and no longer blocking;\s*AC265 remains a separate pre-release gate/iu,
+        /Slice 10 implementation prerequisites\*\*:\s*Slice 10 implementation is unblocked by Slice 09 active completion at 1235\/1235 under DEC-132\.\s*AC209, AC211, AC265, and AC266 remain separate authored gates on their declared timelines and do not gate Slice 10 implementation/iu,
       );
       expect(source, `${label} AC265 row remains unchecked`).toMatch(
         /^\s*-\s*\[ \].*P2-S09-AC-265/mu,
