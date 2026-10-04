@@ -321,6 +321,44 @@ export const markStale = (results, root, reportMtimeMs) =>
       : result;
   });
 
+const EXECUTED = new Set(['passed', 'failed', 'flaky']);
+const MERGEABLE_TOOLS = new Set(['vitest', 'playwright']);
+
+/**
+ * Combine the results of several reports (one per invocation). A test that one
+ * invocation skipped but ANOTHER invocation executed (the dedicated gate a
+ * test belongs to, or a `-t` filtered run's non-matching siblings) is counted
+ * once, as its executed result. A skip is dropped only against an executed
+ * result from a different report: two same-titled tests inside one report keep
+ * their own statuses, and a test no report executed stays skipped (which the
+ * guard rejects). pgTAP and race results are never merged: a SKIP there is
+ * never evidence, whatever else passed.
+ */
+export const mergeReports = (reports) => {
+  const key = (result) =>
+    [result.tool, result.file, result.title].join('\u0000');
+  const executedIn = new Map();
+  reports.forEach((report, index) => {
+    for (const result of report) {
+      if (!EXECUTED.has(result.status)) continue;
+      const set = executedIn.get(key(result)) ?? new Set();
+      set.add(index);
+      executedIn.set(key(result), set);
+    }
+  });
+  return reports.flatMap((report, index) =>
+    report.filter((result) => {
+      if (result.status !== 'skipped' || !MERGEABLE_TOOLS.has(result.tool)) {
+        return true;
+      }
+      const elsewhere = [...(executedIn.get(key(result)) ?? [])].some(
+        (other) => other !== index,
+      );
+      return !elsewhere;
+    }),
+  );
+};
+
 /** One receipt per (marker x test) with the SHA-256 of the test file. */
 export const buildReceipts = (results, root) => {
   const receipts = [];
@@ -401,12 +439,10 @@ export const evaluateReceipts = ({ entries, receipts, shaOf }) => {
         );
         continue;
       }
-      const skippedSql = rows.filter(
-        (row) => row.tool === 'pgtap' && row.status === 'skipped',
-      );
-      if (skippedSql.length > 0) {
+      const skipped = rows.filter((row) => row.status === 'skipped');
+      if (skipped.length > 0) {
         problems.push(
-          `${entry.criterion} ${file}: ${skippedSql.length} skipped pgTAP receipt(s) (SKIP or TODO is never evidence)`,
+          `${entry.criterion} ${file}: ${skipped.length} skipped ${skipped[0].tool === 'pgtap' ? 'pgTAP' : skipped[0].tool} receipt(s) (skipped, pending, todo or fixme is never evidence; every marker-bearing test in a cited file must execute and pass)`,
         );
         continue;
       }

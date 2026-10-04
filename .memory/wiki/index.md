@@ -1576,6 +1576,9 @@
 
 ## Structured Memory
 
+- pattern: PAT-019: Never message a running Workflow agent (2026-10-03) — 2026-10-04T06:09:14.695Z
+- pattern: PAT-020: Self-hosted CI shares the local Supabase stack (2026-10-03) — 2026-10-04T06:09:14.695Z
+- pattern: PAT-018: Prove database authority through real PostgREST, never hand-set GUCs (2026-10-03) — 2026-10-04T06:09:14.694Z
 - decision: DEC-131: Erratum to DEC-130 — AC1122 schema-invalid input is 400 INVALID_REQUEST (2026-10-03) — 2026-10-04T03:54:56.585Z
 - decision: DEC-130: AC1122 admin MFA reset errors are proven per branch (2026-10-03) — 2026-10-03T21:56:49.084Z
 - decision: DEC-129: Delete the CMS-03A-05 'unknown release target is 404' clause (2026-10-03) — 2026-10-03T21:45:03.750Z

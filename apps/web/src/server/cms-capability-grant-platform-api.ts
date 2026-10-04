@@ -15,6 +15,7 @@ import {
   SESSION_TTL_MS,
 } from './content-schema-registry-platform-shared';
 import type { ContentSchemaRegistryPresentationVariant } from './content-schema-registry-platform-shared';
+import { sameOriginMutationRequest } from './content-schema-registry-platform-mutation-support';
 
 /** One CMS-03A-18 read with the private context projection that came with it. */
 export interface CmsCapabilityGrantRead {
@@ -207,6 +208,8 @@ export const probeCmsCapabilityGrantOwner = async (
 export const cmsCapabilityGrantIdFromRequest = async (
   request: Request,
 ): Promise<string | undefined> => {
+  // BE00 step 2: no body read for a request that is not provably same-origin.
+  if (!sameOriginMutationRequest(request)) return undefined;
   try {
     const value = (await request.clone().formData()).get('grantId');
     return typeof value === 'string' ? value : undefined;

@@ -16,6 +16,12 @@ second domain-policy or persistence layer.
   `PLATFORM_API` Worker binding.
 - `service-binding-cookies.ts` — runtime-aware, fail-closed forwarding for
   repeated allowlisted authentication cookies.
+- `proxy-request-body.ts` — hands a proxied browser request's body stream to the
+  upstream request unread. Every first-party forwarder uses it, so BE00 step 2
+  (same-origin, size ceiling, session-bound CSRF) runs in the Worker before any
+  byte is read; `proxy-body-untouched.test.ts` drives every non-GET route with a
+  body that counts pulls. A route that must read its own body (a form whose CSRF
+  token travels in the body) checks same-origin first.
 
 ## Content schema registry map
 

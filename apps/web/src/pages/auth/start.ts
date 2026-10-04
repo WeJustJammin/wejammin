@@ -20,7 +20,21 @@ const redirect = (location: string, source?: Response): Response => {
   return new Response(null, { status: 303, headers });
 };
 
+/** A sign-in start form is a handful of short fields; anything larger is refused unread. */
+const MAX_START_FORM_BYTES = 8192;
+
+const declaredBytes = (request: Request): number =>
+  Number(request.headers.get('content-length') ?? 0);
+
 export const POST: APIRoute = async ({ request }) => {
+  // BE00 step 2 ahead of the body: a cross-origin post, or one that declares
+  // more than the form can hold, is refused without being parsed.
+  const origin = request.headers.get('origin');
+  if (
+    (origin !== null && origin !== new URL(request.url).origin) ||
+    !(declaredBytes(request) <= MAX_START_FORM_BYTES)
+  )
+    return redirect('/auth/sign-in?outcome=invalid');
   let form: FormData;
   try {
     form = await request.formData();

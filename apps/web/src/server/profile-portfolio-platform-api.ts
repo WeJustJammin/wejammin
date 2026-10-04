@@ -2,6 +2,7 @@ import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 
 import { PROFILE_PORTFOLIO_ROUTE_CONTRACTS } from './profile-portfolio-route-contracts';
 import { createProfilePortfolioHttpBinding } from './profile-portfolio-local-binding.ts';
+import { untouchedBodyInit } from './proxy-request-body';
 import { appendAllowedServiceBindingCookies } from './service-binding-cookies';
 
 export { PROFILE_PORTFOLIO_ROUTE_CONTRACTS } from './profile-portfolio-route-contracts';
@@ -244,8 +245,11 @@ export const forwardProfilePortfolioRequest = async (
   }
 
   headers.set('origin', 'https://profile-portfolio.internal');
-  const init: RequestInit = { method, headers };
-  if (method !== 'GET') init.body = await request.clone().arrayBuffer();
+  const init: RequestInit = {
+    method,
+    headers,
+    ...untouchedBodyInit(request, method),
+  };
 
   let upstream: Response;
   try {

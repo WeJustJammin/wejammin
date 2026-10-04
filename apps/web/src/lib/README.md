@@ -13,6 +13,12 @@ do not own API policy, persistence, or provider credentials.
   realtime hints; canonical job data remains server-owned.
 - `infrastructure-accessibility.ts` — shared accessibility metadata for the
   infrastructure workbench.
+- `auth-scope-sync.ts` — loaded by every served document: when another tab signs
+  out or signs in as someone else (the shared `wj_step_up_scope` cookie changes or
+  disappears), this tab clears its step-up storage, freezes and reloads, and
+  swallows any interaction that arrives first so a retained command cannot be
+  submitted under the new session. A values-free BroadcastChannel signal and the
+  cookie re-read on focus, pageshow, visibility and interaction drive it.
 
 ## Ownership
 

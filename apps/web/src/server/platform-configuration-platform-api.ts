@@ -15,6 +15,7 @@ import {
   appendEffectiveConfigurationQuery,
 } from './platform-configuration-query';
 import { isSameOriginPlatformConfigurationRequest } from './platform-configuration-request';
+import { untouchedBodyInit } from './proxy-request-body';
 import { appendAllowedServiceBindingCookies } from './service-binding-cookies';
 
 export {
@@ -330,14 +331,11 @@ export const forwardPlatformConfigurationRequest = async (
   }
 
   headers.set('origin', 'https://platform-configuration.internal');
-  const init: RequestInit = { method, headers };
-  if (method !== 'GET') {
-    try {
-      init.body = await request.clone().arrayBuffer();
-    } catch {
-      return unavailable(request);
-    }
-  }
+  const init: RequestInit = {
+    method,
+    headers,
+    ...untouchedBodyInit(request, method),
+  };
 
   let upstream: Response;
   try {

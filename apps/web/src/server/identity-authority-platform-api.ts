@@ -1,5 +1,6 @@
 import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 
+import { untouchedBodyInit } from './proxy-request-body';
 import { appendAllowedServiceBindingCookies } from './service-binding-cookies';
 
 /** The service binding surface used by the Astro identity-authority façade. */
@@ -214,7 +215,7 @@ export const forwardIdentityAuthorityRequest = async (
       new Request(target, {
         method,
         headers,
-        ...(method === 'GET' ? {} : { body: await request.arrayBuffer() }),
+        ...untouchedBodyInit(request, method),
       }),
     );
   } catch {

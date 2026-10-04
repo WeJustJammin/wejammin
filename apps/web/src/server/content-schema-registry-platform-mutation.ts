@@ -208,6 +208,9 @@ export const forwardContentSchemaRegistryRequest =
 export const contentSchemaRegistryMutationOperationFromRequest = async (
   request: Request,
 ): Promise<ContentSchemaRegistryMutationOperationId | null> => {
+  // BE00 step 2: a request that cannot be shown to be same-origin is refused
+  // before its body is read, so a cross-site POST is never buffered here.
+  if (!sameOriginMutationRequest(request)) return null;
   try {
     const contentType = request.headers.get('content-type') ?? '';
     let value: unknown;

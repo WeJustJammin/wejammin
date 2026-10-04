@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 22
-- **Unique pattern titles**: 19
+- **Total patterns**: 25
+- **Unique pattern titles**: 22
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -295,6 +295,48 @@
 - **Context**: closing hundreds of criteria by tagging test titles with criterion markers and merging lane evidence files.
 - **Pattern**: an independent refutation audit of 164 of 953 newly checked Slice 09 criteria found about 38% with an unproven clause and about 5% contradicted (failing marked tests, stubbed error conditions, per-file pass counts copied onto every criterion, merge dropping other layers files, rewording criteria to fit tests). Require: proofs that produce the condition through the real path, one assertion per clause, per-criterion observed text, a guard that checks results not just marker presence, and a separate-population audit before any criterion is marked done.
 - **Source**: Slice 09 acceptance audit reports/s09-acceptance-audit.md.
+
+## PAT-018: Prove database authority through real PostgREST, never hand-set GUCs (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-04T06:09:14.694Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Database authority checks, RLS, any pgTAP proof of an actor or role gate
+- **Pattern**: Exercise every authority gate through the real Kong->PostgREST path with real JWTs and the real function-owner role (pnpm db:api-test), using an explicit manifest with exact catalog equality and mutation tests. Hand-set request.jwt.claim.* GUCs and superuser/BYPASSRLS execution hid SEC-1 (forgeable actors, dead service-role RPCs) and SEC-2 (RLS never applied) for a month.
+- **Source**: Slice 09 audit #3 and R14, 2026-10-03
+
+## PAT-019: Never message a running Workflow agent (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-04T06:09:14.695Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Orchestrating Workflow lanes
+- **Pattern**: SendMessage to a running workflow agent resumes a second copy; two integrators collided in one worktree. Put mid-run facts in a scratchpad file the prompt says to read, or let the agent finish and run a follow-up.
+- **Source**: Integrator v5, 2026-10-03
+
+## PAT-020: Self-hosted CI shares the local Supabase stack (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-04T06:09:14.695Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Local DB work on the machine hosting runners wejammin-2/-3
+- **Pattern**: A push triggers pnpm db:ci, which resets and then stops supabase_db_wejammin. Wrap local DB work in flock /tmp/wejammin-supabase-ci.lock and restart with pnpm db:start && pnpm db:reset afterwards.
+- **Source**: R14e, 2026-10-04
 
 ## Full Log
 
@@ -608,3 +650,42 @@
 - **Context**: closing hundreds of criteria by tagging test titles with criterion markers and merging lane evidence files.
 - **Pattern**: an independent refutation audit of 164 of 953 newly checked Slice 09 criteria found about 38% with an unproven clause and about 5% contradicted (failing marked tests, stubbed error conditions, per-file pass counts copied onto every criterion, merge dropping other layers files, rewording criteria to fit tests). Require: proofs that produce the condition through the real path, one assertion per clause, per-criterion observed text, a guard that checks results not just marker presence, and a separate-population audit before any criterion is marked done.
 - **Source**: Slice 09 acceptance audit reports/s09-acceptance-audit.md.
+
+### PAT-018: Prove database authority through real PostgREST, never hand-set GUCs (2026-10-03)
+
+- **Timestamp**: 2026-10-04T06:09:14.694Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14
+- **Tags**: pattern
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Database authority checks, RLS, any pgTAP proof of an actor or role gate
+- **Pattern**: Exercise every authority gate through the real Kong->PostgREST path with real JWTs and the real function-owner role (pnpm db:api-test), using an explicit manifest with exact catalog equality and mutation tests. Hand-set request.jwt.claim.* GUCs and superuser/BYPASSRLS execution hid SEC-1 (forgeable actors, dead service-role RPCs) and SEC-2 (RLS never applied) for a month.
+- **Source**: Slice 09 audit #3 and R14, 2026-10-03
+
+### PAT-019: Never message a running Workflow agent (2026-10-03)
+
+- **Timestamp**: 2026-10-04T06:09:14.695Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14
+- **Tags**: pattern
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Orchestrating Workflow lanes
+- **Pattern**: SendMessage to a running workflow agent resumes a second copy; two integrators collided in one worktree. Put mid-run facts in a scratchpad file the prompt says to read, or let the agent finish and run a follow-up.
+- **Source**: Integrator v5, 2026-10-03
+
+### PAT-020: Self-hosted CI shares the local Supabase stack (2026-10-03)
+
+- **Timestamp**: 2026-10-04T06:09:14.695Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14
+- **Tags**: pattern
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Local DB work on the machine hosting runners wejammin-2/-3
+- **Pattern**: A push triggers pnpm db:ci, which resets and then stops supabase_db_wejammin. Wrap local DB work in flock /tmp/wejammin-supabase-ci.lock and restart with pnpm db:start && pnpm db:reset afterwards.
+- **Source**: R14e, 2026-10-04

@@ -1,15 +1,18 @@
 /**
  * SEC-1 manifest suite: the checked-in list of claim-gated `platform_api`
  * functions equals the catalog exactly, and every listed function is exercised
- * through the real Kong -> PostgREST path whatever its current body says.
+ * through the real Kong -> PostgREST path whatever its current body says, with a
+ * VALID request that reaches the identity gate (support/claim-gate-fixtures*.ts):
+ * exact UNAUTHENTICATED for ghost and forged subjects, exact permission errors for
+ * roles that are not granted, and the function's own next outcome (or a success)
+ * for a real caller. A request-validation refusal is never accepted as a gate
+ * refusal.
  *
  * Replaces the earlier oracle that derived its targets from the function bodies,
  * which let a function drop out of the test set by losing its gate (Codex R14).
  * Reset requirements are those of authority-gate.apispec.ts: run right after
  * `pnpm db:reset` (it commits two auth users and a release principal).
  */
-import { randomUUID } from 'node:crypto';
-
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -18,38 +21,30 @@ import {
   gateBehaviourFailures,
   gateFromGrants,
   manifestDrift,
-  type GateContext,
+  probesFor,
 } from './support/claim-gate-check';
 import {
+  CLAIM_GATE_FIXTURES,
+  duplicateFixtureNames,
+} from './support/claim-gate-fixtures';
+import {
+  CLAIM_ACTOR_FAMILY,
   CLAIM_GATED_API_FUNCTIONS,
   type ClaimGate,
 } from './support/claim-gate-manifest';
-import {
-  type ApiFunction,
-  bodyFor,
-  callRpc,
-  createAuthUser,
-  listApiFunctions,
-  psql,
-  userToken,
-} from './support/stack';
+import { SUCCESS_CONTROLS } from './support/claim-gate-success';
+import { type GateWorld, prepareGateWorld } from './support/claim-gate-world';
+import { type ApiFunction, listApiFunctions } from './support/stack';
 
-const RELEASE_KEY = 'apigate-release-key';
 let functions: readonly ApiFunction[] = [];
-let context: GateContext;
+let world: GateWorld;
 
 beforeAll(() => {
-  const releasePrincipal = createAuthUser(randomUUID());
-  psql(`insert into platform_private.cfg_release_principals(principal_id, key_id)
-        values ('${releasePrincipal}', '${RELEASE_KEY}') on conflict do nothing`);
   functions = listApiFunctions();
-  context = {
-    attacker: createAuthUser(randomUUID()),
-    victim: createAuthUser(randomUUID()),
-    ghost: '00000000-0000-4000-8000-0000000000ff',
-    releaseKey: RELEASE_KEY,
-  };
+  world = prepareGateWorld();
 });
+
+const manifestNames = (): string[] => Object.keys(CLAIM_GATED_API_FUNCTIONS);
 
 describe('SEC-1 claim-gate manifest equals the catalog', () => {
   it('lists every claim-reading platform_api function and no other', () => {
@@ -77,7 +72,7 @@ describe('SEC-1 claim-gate manifest equals the catalog', () => {
   });
 
   it('keeps the manifest large enough that a mass deletion cannot pass as equality', () => {
-    const names = Object.keys(CLAIM_GATED_API_FUNCTIONS);
+    const names = manifestNames();
     expect(names.length).toBeGreaterThanOrEqual(90);
     expect(
       names.filter(
@@ -104,32 +99,85 @@ describe('SEC-1 claim-gate manifest equals the catalog', () => {
   });
 });
 
+describe('SEC-1 every manifest entry has a family and a valid request', () => {
+  it('has exactly one family and one fixture for every manifest entry, and none for any other name', () => {
+    const names = manifestNames().sort();
+    expect(Object.keys(CLAIM_ACTOR_FAMILY).sort()).toEqual(names);
+    expect(Object.keys(CLAIM_GATE_FIXTURES).sort()).toEqual(names);
+    expect(duplicateFixtureNames()).toEqual([]);
+  });
+
+  it('lists a success control only for a manifest entry', () => {
+    expect(
+      Object.keys(SUCCESS_CONTROLS).filter(
+        (name) => !manifestNames().includes(name),
+      ),
+    ).toEqual([]);
+    expect(Object.keys(SUCCESS_CONTROLS).length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('states a gate refusal (exact UNAUTHENTICATED) for a ghost subject on every entry that resolves a caller, never a validation refusal', () => {
+    const missing: string[] = [];
+    for (const name of manifestNames()) {
+      const fn = functions.find((candidate) => candidate.name === name);
+      const family = CLAIM_ACTOR_FAMILY[name];
+      const fixture = CLAIM_GATE_FIXTURES[name];
+      const gate = CLAIM_GATED_API_FUNCTIONS[name];
+      if (
+        fn === undefined ||
+        family === undefined ||
+        fixture === undefined ||
+        gate === undefined ||
+        gate === 'ungranted' ||
+        family === 'release-worker'
+      )
+        continue;
+      const refusals = probesFor(name, fn, gate, family, fixture, world).filter(
+        (probe) => probe.expected === '400:UNAUTHENTICATED',
+      );
+      if (refusals.length === 0) missing.push(name);
+      expect(
+        probesFor(name, fn, gate, family, fixture, world).filter(
+          (probe) =>
+            probe.expected.endsWith(':INVALID_REQUEST') &&
+            probe.label.includes('ghost'),
+        ),
+      ).toEqual([]);
+    }
+    expect(missing).toEqual([]);
+  });
+});
+
 describe('SEC-1 every manifest entry is exercised through the real API', () => {
-  it('each listed function enforces its gate (independent of its current body)', async () => {
-    const failures = await gateBehaviourFailures(functions, context);
+  it('each listed function enforces its gate with its valid request (independent of its current body)', async () => {
+    const failures = await gateBehaviourFailures(functions, world);
     expect(failures).toEqual([]);
   });
 
-  it('refuses a ghost subject with UNAUTHENTICATED on at least 25 authenticated entries', async () => {
-    const authenticated = Object.entries(CLAIM_GATED_API_FUNCTIONS)
-      .filter(
-        ([, gate]) =>
-          gate === 'authenticated-subject' || gate === 'subject-or-service',
-      )
-      .map(([name]) => name);
-    expect(authenticated.length).toBeGreaterThanOrEqual(25);
-    let refused = 0;
-    for (const name of authenticated) {
+  it('counts the exact refusals, controls and successes it asserted', async () => {
+    let refusals = 0;
+    let controls = 0;
+    let successes = 0;
+    for (const name of manifestNames()) {
       const fn = functions.find((candidate) => candidate.name === name);
-      if (fn === undefined) throw new Error(`${name} is not exposed`);
-      const outcome = await callRpc(
-        name,
-        userToken(context.ghost),
-        bodyFor(fn, { authUserId: context.victim }),
-      );
-      if (outcome.status === 400 && outcome.message === 'UNAUTHENTICATED')
-        refused += 1;
+      const family = CLAIM_ACTOR_FAMILY[name];
+      const fixture = CLAIM_GATE_FIXTURES[name];
+      const gate = CLAIM_GATED_API_FUNCTIONS[name];
+      if (
+        fn === undefined ||
+        family === undefined ||
+        fixture === undefined ||
+        gate === undefined
+      )
+        continue;
+      for (const probe of probesFor(name, fn, gate, family, fixture, world)) {
+        if (probe.expected === '400:UNAUTHENTICATED') refusals += 1;
+        else if (probe.expected === '200:') successes += 1;
+        else controls += 1;
+      }
     }
-    expect(refused).toBeGreaterThanOrEqual(25);
+    expect(refusals).toBeGreaterThanOrEqual(85);
+    expect(controls).toBeGreaterThanOrEqual(270);
+    expect(successes).toBeGreaterThanOrEqual(8);
   });
 });

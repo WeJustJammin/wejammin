@@ -8,7 +8,9 @@
 //     --races db-races.out \
 //     [--root DIR] [--out tests/contracts/phase-02-slice-09-receipts.generated.jsonl]
 //
-// vitest: `vitest run --reporter=json --outputFile=report.json <files>`.
+// vitest: `vitest run --reporter=json --outputFile=report.json <files>`; also pass the dedicated
+//   gate report test-results/vitest-evidence-s09.json (`pnpm test:evidence:s09`): the AC-269
+//   live execution is skipped in every other run and is receipted only from that one.
 // pgtap: verbose pg_prove TAP (`pnpm db:test:tap`) gives one receipt per assertion.
 //   The non-verbose `supabase test db` output carries only a file verdict, which is
 //   not criterion evidence: it yields no receipt and the run exits 3 (see
@@ -27,6 +29,7 @@ import { resolve } from 'node:path';
 import {
   buildReceipts,
   markStale,
+  mergeReports,
   parsePgtapTap,
   parsePlaywrightJson,
   parseRaceOutput,
@@ -53,11 +56,11 @@ export const collect = ({
   races,
   testDir,
 }) => {
-  const results = [];
+  const reports = [];
   const notes = [];
   const errors = [];
   const addResults = (path, parsed) =>
-    results.push(...markStale(parsed, root, statSync(path).mtimeMs));
+    reports.push(markStale(parsed, root, statSync(path).mtimeMs));
   for (const path of vitest) {
     addResults(
       path,
@@ -82,7 +85,11 @@ export const collect = ({
   for (const path of races) {
     addResults(path, parseRaceOutput(readFileSync(path, 'utf8')));
   }
-  return { receipts: buildReceipts(results, root), notes, errors };
+  return {
+    receipts: buildReceipts(mergeReports(reports), root),
+    notes,
+    errors,
+  };
 };
 
 const main = () => {

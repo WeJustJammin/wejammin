@@ -311,3 +311,36 @@ export const ensureCmsOwner = (): CmsOwner => {
       now() + interval '3 days', gen_random_uuid(), false) ->> 'organizationId'`);
   return { authUserId, personId, organizationId };
 };
+
+export type DirectOutcome = Readonly<{ ok: boolean; message: string }>;
+
+/**
+ * Calls `platform_api.<name>(p_request)` as the database owner inside a rolled
+ * back transaction whose `request.jwt.claims` is the given claims object, which
+ * is the one setting PostgREST derives from a bearer token. It exists only for
+ * the negative the API cannot produce: a function whose GRANT admits the caller
+ * but whose claim gate must still refuse (a caller whose claims are not
+ * service_role cannot reach a service-role-only function by any real path, so
+ * the claim read is otherwise unobservable). The message is the P0001 token.
+ */
+export const callWithClaims = (
+  name: string,
+  claims: Readonly<Record<string, unknown>>,
+  request: Readonly<Record<string, unknown>>,
+): DirectOutcome => {
+  const quote = (value: unknown): string =>
+    `$gate$${JSON.stringify(value)}$gate$`;
+  try {
+    psql(`begin;
+      select set_config('request.jwt.claims', ${quote(claims)}, true);
+      select platform_api.${name}(${quote(request)}::jsonb)::text;
+      rollback;`);
+    return { ok: true, message: '' };
+  } catch (error) {
+    const stderr = String((error as { stderr?: unknown }).stderr ?? '');
+    return {
+      ok: false,
+      message: /ERROR:\s+([^\n]+)/u.exec(stderr)?.[1]?.trim() ?? stderr,
+    };
+  }
+};

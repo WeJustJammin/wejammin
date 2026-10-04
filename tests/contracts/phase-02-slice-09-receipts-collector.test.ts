@@ -540,7 +540,7 @@ describe('Slice 09 receipts guard logic', () => {
       receipts: [receipt({ status: 'skipped' })],
       shaOf,
     });
-    expect(skipped[0]).toContain('no passing receipt');
+    expect(skipped[0]).toContain('skipped vitest receipt');
   });
 
   it('rejects a file-level pgTAP receipt and any skipped pgTAP receipt, even beside a passing assertion', () => {

@@ -1,13 +1,13 @@
 # Phase 2 — Codex continuation handoff (from Claude)
 
-**Status:** live document, refreshed at every Claude checkpoint. Last refresh: 2026-10-03 22:20 EDT.
+**Status:** live document, refreshed at every Claude checkpoint. Last refresh: 2026-10-04 02:10 EDT (final Claude refresh; Claude weekly usage exhausted).
 **Why this exists:** the owner asked Claude to hand Phase 2 to Codex when Claude's usage reaches its limit.
 **Goal (owner, verbatim intent):** finish Phase 2 Slices 09–17 through `/implement-slice`. Do not stop until Phase 2 is complete. Clean up every completed worktree and branch as you go, and leave no stale worktrees, branches or temp files.
 
 | Item | Value |
 |---|---|
 | Repository | `WeJustJammin/wejammin` |
-| PR | https://github.com/WeJustJammin/wejammin/pull/124 (draft; **local commits after `073496db` are not pushed**) |
+| PR | https://github.com/WeJustJammin/wejammin/pull/124 (draft; all Claude commits pushed) |
 | Branch | `codex/phase2-claude-handoff-20261002` |
 | Local worktree | `/home/rob/.codex/worktrees/ac265-hosted-evidence-producer/WeJammin` (the main checkout `/home/rob/Projects/WeJammin` must not be touched) |
 | Base | `f0bde9f1` (`origin/main` at the 2026-10-02 checkpoint) |
@@ -60,16 +60,18 @@
   - Errata applied in R14d, recorded as ledger notes: AC1122 reads 400 INVALID_REQUEST, not VALIDATION_FAILED; AC034 drops the deleted 404 clause; AC233 drops a stale "stays open" phrase; AC282 and AC1147 now say "ratified by DEC-125".
 - **Orchestrator rulings** (`context/decisions/s09-resolutions.md`): AC527's 409 carries `recoveryAction: 'renew'`; AC1108 uses `tab=mfa-reset`; the R14-web rulings.
 - **Tracker:** S09 shows 1234/1235, with AC261 still held. Re-check AC261 now that the bundle budget is met: 89,922 B gzip against 92,160.
-- **Last full verification** (R14c2, commit `e89c2e1d`):
+- **Last full verification** (R14e, final Claude commit — see `git log -1`):
   - `pnpm validate` exits 0 with 100% coverage.
   - `pnpm db:verify` exits 0.
-  - Verbose pgTAP: 201 files, 8233 ok.
-  - `db:api-test`: 9 files, 58 tests through real Kong→PostgREST.
+  - `pnpm progress:check` exits 0.
+  - Verbose pgTAP (`pnpm db:test:tap`): 201 files, 8233 ok.
+  - `db:api-test`: 9 files, 70 tests through real Kong→PostgREST.
+    - Claim gate: 90/90 manifest entries, each with a valid per-signature fixture, 379 exact probes, and mutation 90/90.
   - Races 6/6.
-  - Root vitest: 13542.
-  - Chrome: functional 105/105, s09-real 109/109, both single invocations.
-  - Generated receipts: `tests/contracts/phase-02-slice-09-receipts.generated.jsonl`, 9961 assertion-level rows, 0 stale, 0 file-level.
-  - R14d then reran the affected subset and the gates; see `context/reports/r14d.md`.
+  - Root vitest: 1231 files, 13765 passed.
+  - Chrome, single invocations: functional 105/105 and s09-real 112/112.
+  - Generated receipts `tests/contracts/phase-02-slice-09-receipts.generated.jsonl`: 9961 rows, all passed. None are stale, skipped, failed or file-level; a skip is rejected for every tool.
+  - PR #124 CI was 3/3 green at `356a5dec`.
 - **Real production defects found and fixed this session.** Every one was invisible to the old tests:
   - SEC-1: legacy JWT GUCs made actors forgeable and service-role RPCs dead.
   - SEC-2: RLS never applied to definer functions.
@@ -86,11 +88,12 @@
   - Step-up drafts leaked across accounts.
 - **Codex reviews:**
   - R14 (`context/reports/codex-review-r14.md`): 5/5 findings verified and fixed in R14c and R14c2.
-  - R14c2 (`context/reports/codex-review-r14c2.md`): if present, verify each finding before fixing it.
+  - R14c2 (`context/reports/codex-review-r14c2.md`): findings 1–4 verified and fixed in R14e (report `context/reports/r14e.md`). Finding 5 was a timing artifact, closed by the R14d errata and DEC-131.
+  - The R14d and R14e commits have **not** had an adversarial review yet.
 
 ## Next steps, in order
 
-1. Read `context/reports/r14d.md`, and `context/reports/codex-review-r14c2.md` if it exists. Verify every Codex finding against the code before fixing it, and fix confirmed ones RED-first.
+1. Run an adversarial review of the commits after `e89c2e1d`, which cover R14d and R14e: the cross-tab scope sync, the proxy body streaming, the claim-gate fixtures and the receipt skip rule. Verify each finding against the code before fixing it, and fix confirmed findings RED-first.
 2. **Independent verification of Slice 09.** Use a fresh population that did none of the work:
    - First an audit #4 sample, like audit #3: about 200 criteria across sets a/b/c plus security probes.
    - Then a full re-verification of all 1235 active criteria (PROVEN / WEAK(C) / WEAK(S) / NOT-PROVEN, with the deciding file:line, written to disk).
@@ -125,4 +128,6 @@
 - Test authority through the real path: a real PostgREST, the real Worker adapters, and the real role that owns the functions. SEC-1 and SEC-2 survived months because tests set GUCs by hand and ran as roles that bypass RLS.
 - Subagents' cwd resets to the main checkout. Every command must start with `cd <worktree> &&`, and the worktree path and HEAD must be checked first.
 - Run at most about 4 concurrent heavy agents. Commit a WIP checkpoint before each wave, because account limits kill lanes mid-edit.
+- Self-hosted CI runners (wejammin-2/-3) run on THIS host and share the local Supabase stack (project_id `wejammin`). Pushing to the PR triggers `pnpm db:ci`, which resets the local DB and then stops it. Wrap all local DB work in `flock --wait N 9 ... 9>/tmp/wejammin-supabase-ci.lock` (the lock CI's `infra/verify-database.sh` uses), and restart with `pnpm db:start && pnpm db:reset` after CI stops it.
+- Never SendMessage a running Workflow agent: it starts a second copy, and the two collide in the same tree.
 - Wrangler-backed s09-real Playwright runs crash under one long invocation ("Network connection lost") until WEB2's stability fix lands.

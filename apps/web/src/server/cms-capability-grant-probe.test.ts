@@ -74,6 +74,9 @@ describe('[DEC-119] native grant id transport', () => {
   const form = (fields: Record<string, string>): Request =>
     new Request('https://app.test/app/cms-content-modeling/capability-grants', {
       method: 'POST',
+      // A native form post names its origin; a request that cannot be shown to
+      // be same-origin is refused before its body is read (BE00 step 2).
+      headers: { origin: 'https://app.test' },
       body: new URLSearchParams(fields),
     });
 

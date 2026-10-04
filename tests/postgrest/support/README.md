@@ -11,14 +11,31 @@
 - `cms-release.ts`: a real Ed25519 release-worker principal that signs CMS-03A-05
   and CMS-03A-08 requests.
 
+- `claim-gate-manifest.ts`: the checked-in list of claim-gated `platform_api`
+  functions (name, grant class, and the helper family that resolves the caller).
+- `claim-gate-fixtures*.ts`: one VALID request per manifest entry, split by family
+  (CMS actor, admin and configuration, identity, profile, workers), plus the exact
+  outcome a real caller gets once the gate has passed.
+- `claim-gate-success.ts`: the entries where a real person (the CMS owner) gets a
+  success through the same gate.
+- `claim-gate-check.ts`: the drift check and the behaviour probes (exact outcomes
+  for ghost, forged, ungranted and real callers) the claim-gate suites assert.
+- `claim-gate-mutants.ts`: the shared-gate mutations, with the entries that must
+  fail for each.
+- `claim-gate-world.ts`: the committed fixtures the claim-gate suites share.
+
 ## Ownership
 
-The database owner maintains these modules. They contain no assertions; suites in
-the parent directory own every assertion.
+The database owner maintains these modules. Apart from the exact expectations the
+claim-gate fixtures state (one per entry), they contain no assertions; suites in the
+parent directory own every assertion.
 
 ## Extension
 
-Add a module only when two or more suites need the same production composition. Build
+Adding a claim-gated `platform_api` function means one manifest entry, one family,
+one fixture (a request that passes every check before the identity gate) and, when
+a real person can succeed without domain rows, a success control; the manifest suite
+fails until all four exist. Add a module only when two or more suites need the same production composition. Build
 it from production functions, never from a stand-in, and never set a GUC (claims
 travel only inside a minted JWT).
 
