@@ -22,6 +22,10 @@ second domain-policy or persistence layer.
   byte is read; `proxy-body-untouched.test.ts` drives every non-GET route with a
   body that counts pulls. A route that must read its own body (a form whose CSRF
   token travels in the body) checks same-origin first.
+- `bounded-request-body.ts` — bounded read for a public route that must parse
+  its own form body (`/auth/start`): a malformed or oversize `Content-Length`
+  is refused unread, and an undeclared (chunked) stream is cancelled once it
+  crosses the ceiling instead of being buffered by `request.formData()`.
 
 ## Content schema registry map
 

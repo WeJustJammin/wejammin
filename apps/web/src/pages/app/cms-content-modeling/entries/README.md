@@ -39,6 +39,14 @@ worker/API contracts.
   renders draft field values or a restore mutation. Visible-but-unassigned reads
   retain `403`; concealed/absent entries retain `404`. A missing Vault signing
   key leaves the page degraded.
+- `../../../../components/cms-editorial/CmsEditorialDocument.astro` - the one
+  document shell all three routes render through. It is processed Astro markup
+  so its `route-heading-focus` and `auth-scope-sync` `<script src>` tags are
+  bundled; a page that rebuilt the shell as a runtime HTML string would ship
+  unbuilt `.ts` URLs. Pages compute a view model and set
+  `Astro.response.status`; they never write `<script>` or `new Response(html)`.
+  `apps/web/built-route-scripts.mjs` (tested by `tests/web-built-route-scripts.test.ts`) re-checks this against every production
+  build.
 - `entries-route.test.ts` and `revision-history-route.test.ts` - read the
   `.astro` files as text and assert the
   no-store, non-prerendered shell, the accessible heading and skip link, the
@@ -48,7 +56,7 @@ worker/API contracts.
 
 ## Extension rules
 
-Keep each page's denied and degraded states on its shared document shell so
+Keep each page's denied and degraded states on `CmsEditorialDocument` so
 `403`, `404`, and `503` cannot drift apart, and keep blocker copy sourced from the owning component
 module. Do not add a create form or an id echo until a protected
 `workflowPolicy` evidence source is defined; the served route alone cannot

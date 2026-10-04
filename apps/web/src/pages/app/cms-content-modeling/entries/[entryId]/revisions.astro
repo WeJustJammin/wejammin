@@ -6,6 +6,7 @@ import {
   type RevisionHistoryPage,
 } from '@wejammin/contracts';
 
+import CmsEditorialDocument from '../../../../../components/cms-editorial/CmsEditorialDocument.astro';
 import { forwardCmsEditorialRevisionHistoryRead } from '../../../../../server/cms-editorial-platform-reads';
 
 export const prerender = false;
@@ -23,49 +24,19 @@ const escapeHtml = (value: string): string =>
 const entryId = Astro.params.entryId ?? '';
 const routePath = `/app/cms-content-modeling/entries/${encodeURIComponent(entryId)}/revisions`;
 
-const document = (input: {
-  readonly title: string;
-  readonly heading: string;
-  readonly message: string;
-  readonly content?: string;
-}): string => `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="robots" content="noindex" />
-    <title>${escapeHtml(input.title)} | WeJammin</title>
-  </head>
-  <body>
-    <nav aria-label="Skip navigation"><a href="#cms-editorial-main">Skip to main content</a></nav>
-    <header aria-label="Application navigation">
-      <a href="/">WeJammin</a>
-      <nav aria-label="Primary navigation"><a href="/app/cms-content-modeling">Content modeling</a></nav>
-    </header>
-    <main id="cms-editorial-main" tabindex="-1">
-      <h1 id="page-title" tabindex="-1">${escapeHtml(input.heading)}</h1>
-      <p>${escapeHtml(input.message)}</p>
-      ${input.content ?? ''}
-    </main>
-    <script src="../../../../../lib/route-heading-focus.ts"></script>
-    <script src="../../../../../lib/auth-scope-sync.ts"></script>
-  </body>
-</html>`;
-
-const html = (input: {
+/*
+ * One shared view shape feeds one shared document (CmsEditorialDocument), so
+ * every state loads the bundled heading-focus and auth-scope scripts. Astro
+ * escapes title, heading and message; `content` is built below from values that
+ * all pass through escapeHtml, and renders as trusted markup.
+ */
+type HistoryView = {
   readonly status: number;
   readonly title: string;
   readonly heading: string;
   readonly message: string;
   readonly content?: string;
-}): Response =>
-  new Response(document(input), {
-    status: input.status,
-    headers: {
-      'cache-control': 'no-store',
-      'content-type': 'text/html; charset=utf-8',
-    },
-  });
+};
 
 const renderHistory = (page: RevisionHistoryPage): string => {
   const current = new URL(Astro.request.url).searchParams;
@@ -127,71 +98,83 @@ const renderHistory = (page: RevisionHistoryPage): string => {
   return `${filters}<section aria-labelledby="history-list-title"><h2 id="history-list-title" tabindex="-1">Revisions</h2>${items}</section>${compare}${continuation}`;
 };
 
-if (!CmsUuidSchema.safeParse(entryId).success)
-  return html({
-    status: 404,
-    title: 'Not found',
-    heading: 'Not found',
-    message: 'This entry is not available.',
-  });
+const view = async (): Promise<HistoryView | Response> => {
+  if (!CmsUuidSchema.safeParse(entryId).success)
+    return {
+      status: 404,
+      title: 'Not found',
+      heading: 'Not found',
+      message: 'This entry is not available.',
+    };
 
-const upstream = await forwardCmsEditorialRevisionHistoryRead(
-  Astro.request,
-  env.PLATFORM_API,
-  entryId,
-);
-
-if (upstream.status === 401)
-  return Astro.redirect(
-    `/auth/sign-in?returnTo=${encodeURIComponent(`${routePath}${new URL(Astro.request.url).search}`)}`,
-    303,
+  const upstream = await forwardCmsEditorialRevisionHistoryRead(
+    Astro.request,
+    env.PLATFORM_API,
+    entryId,
   );
 
-if (upstream.status === 403)
-  return html({
-    status: 403,
-    title: 'Access denied',
-    heading: 'Access denied',
-    message: 'This entry is not available.',
-  });
+  if (upstream.status === 401)
+    return Astro.redirect(
+      `/auth/sign-in?returnTo=${encodeURIComponent(`${routePath}${new URL(Astro.request.url).search}`)}`,
+      303,
+    );
 
-if (upstream.status === 404)
-  return html({
-    status: 404,
-    title: 'Not found',
-    heading: 'Not found',
-    message: 'This entry is not available.',
-  });
+  if (upstream.status === 403)
+    return {
+      status: 403,
+      title: 'Access denied',
+      heading: 'Access denied',
+      message: 'This entry is not available.',
+    };
 
-if (upstream.status === 200) {
-  const parsed = RevisionHistoryPageSchema.safeParse(await upstream.json());
-  if (parsed.success)
-    return html({
-      status: 200,
+  if (upstream.status === 404)
+    return {
+      status: 404,
+      title: 'Not found',
+      heading: 'Not found',
+      message: 'This entry is not available.',
+    };
+
+  if (upstream.status === 200) {
+    const parsed = RevisionHistoryPageSchema.safeParse(await upstream.json());
+    if (parsed.success)
+      return {
+        status: 200,
+        title: 'Revision history',
+        heading: 'Revision history',
+        message:
+          'Authorized revision summaries and changes, without draft values.',
+        content: renderHistory(parsed.data),
+      };
+    return {
+      status: 502,
       title: 'Revision history',
-      heading: 'Revision history',
+      heading: 'Revision history unavailable',
       message:
-        'Authorized revision summaries and changes, without draft values.',
-      content: renderHistory(parsed.data),
-    });
-  return html({
-    status: 502,
+        'The history response could not be verified. Nothing was loaded.',
+    };
+  }
+
+  return {
+    status: upstream.status,
     title: 'Revision history',
     heading: 'Revision history unavailable',
-    message: 'The history response could not be verified. Nothing was loaded.',
-  });
-}
+    message:
+      upstream.status === 400 || upstream.status === 422
+        ? 'The history query is invalid. Clear the filters and try again.'
+        : upstream.status === 409
+          ? 'This history cursor is no longer valid. Start from the first page.'
+          : 'The protected history read could not be completed. Nothing was loaded.',
+    content: `<a href="${routePath}">Start from the first page</a>`,
+  };
+};
 
-return html({
-  status: upstream.status,
-  title: 'Revision history',
-  heading: 'Revision history unavailable',
-  message:
-    upstream.status === 400 || upstream.status === 422
-      ? 'The history query is invalid. Clear the filters and try again.'
-      : upstream.status === 409
-        ? 'This history cursor is no longer valid. Start from the first page.'
-        : 'The protected history read could not be completed. Nothing was loaded.',
-  content: `<a href="${routePath}">Start from the first page</a>`,
-});
+const resolved = await view();
+if (resolved instanceof Response) return resolved;
+Astro.response.status = resolved.status;
 ---
+
+<CmsEditorialDocument title={resolved.title} heading={resolved.heading}>
+  <p>{resolved.message}</p>
+  <Fragment set:html={resolved.content ?? ''} />
+</CmsEditorialDocument>

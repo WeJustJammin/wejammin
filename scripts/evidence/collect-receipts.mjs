@@ -10,7 +10,10 @@
 //
 // vitest: `vitest run --reporter=json --outputFile=report.json <files>`; also pass the dedicated
 //   gate report test-results/vitest-evidence-s09.json (`pnpm test:evidence:s09`): the AC-269
-//   live execution is skipped in every other run and is receipted only from that one.
+//   live execution is skipped in every other run and is receipted only from that one. The
+//   merge recognises that gate by its report file NAME (vitest-evidence-s09.json, the
+//   SKIP_REPLACEMENTS allowlist in receipts-lib.mjs); a skip is never dropped against any
+//   other report, and Playwright skips (any project or config) are never merged away.
 // pgtap: verbose pg_prove TAP (`pnpm db:test:tap`) gives one receipt per assertion.
 //   The non-verbose `supabase test db` output carries only a file verdict, which is
 //   not criterion evidence: it yields no receipt and the run exits 3 (see
@@ -24,7 +27,7 @@
 // pgTAP file has no assertion-level TAP.
 
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 import {
   buildReceipts,
@@ -64,7 +67,11 @@ export const collect = ({
   for (const path of vitest) {
     addResults(
       path,
-      parseVitestJson(JSON.parse(readFileSync(path, 'utf8')), root),
+      parseVitestJson(
+        JSON.parse(readFileSync(path, 'utf8')),
+        root,
+        basename(path),
+      ),
     );
   }
   for (const path of pgtap) {
@@ -79,7 +86,11 @@ export const collect = ({
   for (const path of playwright) {
     addResults(
       path,
-      parsePlaywrightJson(JSON.parse(readFileSync(path, 'utf8')), testDir),
+      parsePlaywrightJson(
+        JSON.parse(readFileSync(path, 'utf8')),
+        testDir,
+        basename(path),
+      ),
     );
   }
   for (const path of races) {

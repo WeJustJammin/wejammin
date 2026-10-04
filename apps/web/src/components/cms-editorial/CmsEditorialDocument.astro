@@ -1,0 +1,51 @@
+---
+/*
+ * The one document shell for the CMS editorial entry routes (new, draft detail,
+ * revision history). It lives in processed Astro markup on purpose: Astro only
+ * bundles a `<script src>` it compiles, so the heading-focus and cross-tab
+ * auth-scope scripts below become emitted client assets. The same tags inside a
+ * runtime HTML string would ship as unbuilt relative `.ts` URLs and run
+ * nothing. Every value is interpolated by Astro, which escapes it.
+ */
+interface Props {
+  readonly title: string;
+  readonly heading: string;
+  readonly description?: string;
+  readonly systemStatusLink?: boolean;
+}
+
+const { title, heading, description, systemStatusLink = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    {
+      description !== undefined && (
+        <meta name="description" content={description} />
+      )
+    }
+    <meta name="robots" content="noindex" />
+    <title>{title} | WeJammin</title>
+  </head>
+  <body>
+    <nav aria-label="Skip navigation">
+      <a href="#cms-editorial-main">Skip to main content</a>
+    </nav>
+    <header aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/cms-content-modeling">Content modeling</a>
+        {systemStatusLink && <a href="/system/degraded">System status</a>}
+      </nav>
+    </header>
+    <main id="cms-editorial-main" tabindex="-1">
+      <h1 id="page-title" tabindex="-1">{heading}</h1>
+      <slot />
+    </main>
+    <script src="../../lib/route-heading-focus.ts"></script>
+    <script src="../../lib/auth-scope-sync.ts"></script>
+  </body>
+</html>

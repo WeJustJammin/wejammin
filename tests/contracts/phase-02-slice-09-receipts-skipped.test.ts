@@ -157,43 +157,64 @@ describe('Slice 09 receipts fail closed on skipped tests for every tool', () => 
   });
 });
 
+const EVIDENCE_MAP = 'tests/contracts/phase-02-slice-09-evidence-map.test.ts';
+const GATE_REPORT = 'vitest-evidence-s09.json';
+const LIVE = `evidence map ${mk('269')} executes every declared nonbrowser command`;
+const liveEntry: Entry[] = [
+  { criterion: id('269'), testFiles: [EVIDENCE_MAP] },
+];
+const evidenceReport = (
+  tests: ReadonlyArray<readonly [string, string]>,
+): unknown => ({
+  testResults: [
+    {
+      name: join(root, EVIDENCE_MAP),
+      assertionResults: tests.map(([fullName, status]) => ({
+        fullName,
+        status,
+      })),
+    },
+  ],
+});
+
 describe('Slice 09 receipts merge a test executed in its own gate across reports', () => {
   const skippedRun = (): string =>
     writeReport(
       'root.json',
-      vitestReport([
-        [`gate ${mk('001')} live run`, 'skipped'],
+      evidenceReport([
+        [LIVE, 'skipped'],
         [`gate ${mk('001')} sibling`, 'passed'],
+      ]),
+    );
+  const gateRun = (status: string): string =>
+    writeReport(
+      GATE_REPORT,
+      evidenceReport([
+        [LIVE, status],
+        [`gate ${mk('001')} sibling`, 'skipped'],
       ]),
     );
 
   it('keeps the skipped receipt when no report ever executed the test', () => {
     const { receipts } = collect([skippedRun()]);
     const skipped = receipts.filter((r) => r.status === 'skipped');
-    expect(skipped.map((r) => r.title)).toEqual([`gate ${mk('001')} live run`]);
+    expect(skipped.map((r) => r.title)).toEqual([LIVE]);
     const problems = lib.evaluateReceipts({
-      entries: entryFor('apps/x/a.test.ts'),
+      entries: liveEntry,
       receipts: receipts.map((r) => ({ ...r, fileSha256: sha })),
       shaOf,
     });
     expect(problems[0]).toContain('skipped');
   });
 
-  it('drops the skipped receipt when another report executed and passed that same test', () => {
-    const dedicated = writeReport(
-      'gate.json',
-      vitestReport([
-        [`gate ${mk('001')} live run`, 'passed'],
-        [`gate ${mk('001')} sibling`, 'skipped'],
-      ]),
-    );
-    const { receipts } = collect([skippedRun(), dedicated]);
+  it('drops the skipped receipt when the designated gate report executed and passed that same test', () => {
+    const { receipts } = collect([skippedRun(), gateRun('passed')]);
     expect(receipts.map((r) => [r.title, r.status])).toEqual([
-      [`gate ${mk('001')} live run`, 'passed'],
       [`gate ${mk('001')} sibling`, 'passed'],
+      [LIVE, 'passed'],
     ]);
     const problems = lib.evaluateReceipts({
-      entries: entryFor('apps/x/a.test.ts'),
+      entries: liveEntry,
       receipts: receipts.map((r) => ({ ...r, fileSha256: sha })),
       shaOf,
     });
@@ -201,14 +222,8 @@ describe('Slice 09 receipts merge a test executed in its own gate across reports
   });
 
   it('still reports a failure when the dedicated gate ran the test and it failed', () => {
-    const dedicated = writeReport(
-      'gate-failed.json',
-      vitestReport([[`gate ${mk('001')} live run`, 'failed']]),
-    );
-    const { receipts } = collect([skippedRun(), dedicated]);
-    expect(
-      receipts.find((r) => r.title === `gate ${mk('001')} live run`)?.status,
-    ).toBe('failed');
+    const { receipts } = collect([skippedRun(), gateRun('failed')]);
+    expect(receipts.find((r) => r.title === LIVE)?.status).toBe('failed');
   });
 
   it('does not let a passing duplicate title hide a skipped test inside one report', () => {

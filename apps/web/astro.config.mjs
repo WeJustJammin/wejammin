@@ -6,6 +6,7 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import cloudflare from '@astrojs/cloudflare';
 import { clientChunkOutput } from './client-chunk-boundaries.mjs';
+import { verifyBuiltRouteScripts } from './built-route-scripts.mjs';
 const runtimeProcess = /** @type {{
   env?: Record<string, string | undefined>;
   argv?: unknown;
@@ -72,11 +73,39 @@ worker_entry_default.fetch = __wejamminCreateEdgeFetchHandler(worker_entry_defau
   },
 });
 
+/**
+ * Fails the build when a route would serve a script no build emitted: a raw
+ * `<script src="...ts">` inside a runtime HTML string, a processed script with
+ * no emitted file, or a document route that never loads the cross-tab
+ * auth-scope-sync asset.
+ */
+const builtRouteScriptsIntegration = () => ({
+  name: 'wejammin-built-route-scripts',
+  hooks: {
+    'astro:build:done': (
+      /** @type {{ dir: URL }} */
+      { dir },
+    ) => {
+      const { failures } = verifyBuiltRouteScripts(
+        decodeURIComponent(new URL('..', dir).pathname),
+      );
+      if (failures.length > 0)
+        throw new Error(
+          `Built routes reference scripts the build did not emit:\n${failures.join('\n')}`,
+        );
+    },
+  },
+});
+
 export default defineConfig({
   output: 'server',
   session: false,
   devToolbar: { enabled: !isolateCloudflareDev },
-  integrations: [react(), edgeSecurityIntegration()],
+  integrations: [
+    react(),
+    edgeSecurityIntegration(),
+    builtRouteScriptsIntegration(),
+  ],
   vite: {
     build: {
       rollupOptions: { output: clientChunkOutput },

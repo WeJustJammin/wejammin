@@ -9,19 +9,41 @@ const source = (): string =>
     'utf8',
   );
 
+const documentShell = (): string =>
+  readFileSync(
+    fileURLToPath(
+      new URL(
+        '../../../../components/cms-editorial/CmsEditorialDocument.astro',
+        import.meta.url,
+      ),
+    ),
+    'utf8',
+  );
+
 describe('CMS-07 protected revision-history SSR page', () => {
   it('uses the first-party history read and a no-store accessible document', () => {
     const page = source();
     expect(page).toContain('export const prerender = false');
-    expect(page).toContain("'cache-control': 'no-store'");
+    expect(page).toContain(
+      "Astro.response.headers.set('Cache-Control', 'no-store')",
+    );
+    expect(page).toContain('<CmsEditorialDocument');
+    // The shell is processed markup, so its scripts are bundled; the page never
+    // rebuilds a document as a runtime string that would ship unbuilt .ts URLs.
+    expect(page).not.toContain('<script');
+    expect(page).not.toContain('<!doctype');
+    expect(page).not.toContain('new Response(');
     expect(page).toContain('forwardCmsEditorialRevisionHistoryRead');
     expect(page).toContain('env.PLATFORM_API');
     expect(page).toContain('RevisionHistoryPageSchema.safeParse');
-    expect(page).toContain('aria-label="Skip navigation"');
-    expect(page).toContain('id="cms-editorial-main"');
-    expect(page).toContain('id="page-title"');
-    expect(page).toContain('tabindex="-1"');
-    expect(page).toContain('lang="en"');
+    const shell = documentShell();
+    expect(shell).toContain('aria-label="Skip navigation"');
+    expect(shell).toContain('id="cms-editorial-main"');
+    expect(shell).toContain('id="page-title"');
+    expect(shell).toContain('tabindex="-1"');
+    expect(shell).toContain('lang="en"');
+    expect(shell).toContain('src="../../lib/route-heading-focus.ts"');
+    expect(shell).toContain('src="../../lib/auth-scope-sync.ts"');
   });
 
   it('keeps history read-only, separates visible denial from concealment, and handles expired sessions', () => {

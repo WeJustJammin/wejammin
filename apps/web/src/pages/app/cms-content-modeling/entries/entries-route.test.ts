@@ -13,23 +13,45 @@ const fromHere = (relative: string): string =>
  * asserting on the source keeps the test free of a Cloudflare runtime while
  * still failing if a route is weakened or starts fabricating data.
  */
+const documentShell = readFileSync(
+  fromHere('../../../../components/cms-editorial/CmsEditorialDocument.astro'),
+  'utf8',
+);
+
+/*
+ * The document shell is processed Astro markup, so its `<script src>` tags are
+ * bundled. A page that rebuilt the shell as a runtime HTML string would ship
+ * unbuilt `.ts` URLs, so no entry route may carry a script tag or an HTML
+ * string of its own.
+ */
+const expectSharedBundledShell = (source: string): void => {
+  expect(source).toContain('export const prerender = false');
+  expect(source).toContain(
+    "Astro.response.headers.set('Cache-Control', 'no-store')",
+  );
+  expect(source).toContain('<CmsEditorialDocument');
+  expect(source).not.toContain('<script');
+  expect(source).not.toContain('<!doctype');
+  expect(source).not.toContain('new Response(');
+  expect(documentShell).toContain('lang="en"');
+  expect(documentShell).toContain('id="page-title"');
+  expect(documentShell).toContain('tabindex="-1"');
+  expect(documentShell).toContain('id="cms-editorial-main"');
+  expect(documentShell).toContain('aria-label="Skip navigation"');
+  expect(documentShell).toContain('src="../../lib/route-heading-focus.ts"');
+  expect(documentShell).toContain('src="../../lib/auth-scope-sync.ts"');
+};
+
 describe('cms editorial entries routes', () => {
   describe('new.astro (CMS-03B-10 create surface)', () => {
     const source = readFileSync(fromHere('./new.astro'), 'utf8');
 
     it('serves a no-store, non-prerendered shell with one accessible heading', () => {
-      expect(source).toContain('export const prerender = false');
-      expect(source).toContain("'cache-control': 'no-store'");
-      expect(source).toContain('lang="en"');
-      expect(source).toContain('id="page-title"');
-      expect(source).toContain('tabindex="-1"');
-      expect(source).toContain('id="cms-editorial-main"');
-      expect(source).toContain('aria-label="Skip navigation"');
-      expect(source).toContain('src="../../../../lib/route-heading-focus.ts"');
+      expectSharedBundledShell(source);
     });
 
     it('stays fail-closed and fabricates no write path', () => {
-      expect(source).toContain('status: 503');
+      expect(source).toContain('Astro.response.status = 503');
       expect(source).not.toContain('<form');
       expect(source).not.toContain('<input');
       expect(source.toLowerCase()).not.toContain('idempotency');
@@ -41,7 +63,8 @@ describe('cms editorial entries routes', () => {
       expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY');
       expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY.blocker');
       expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON');
-      expect(source).toContain('escapeHtml');
+      // Astro escapes the interpolated strings; no raw-HTML path is used.
+      expect(source).not.toContain('set:html');
     });
   });
 
@@ -49,14 +72,7 @@ describe('cms editorial entries routes', () => {
     const source = readFileSync(fromHere('./[entryId].astro'), 'utf8');
 
     it('serves a no-store, non-prerendered shell with one accessible heading', () => {
-      expect(source).toContain('export const prerender = false');
-      expect(source).toContain("'cache-control': 'no-store'");
-      expect(source).toContain('lang="en"');
-      expect(source).toContain('id="page-title"');
-      expect(source).toContain('tabindex="-1"');
-      expect(source).toContain('id="cms-editorial-main"');
-      expect(source).toContain('aria-label="Skip navigation"');
-      expect(source).toContain('src="../../../../lib/route-heading-focus.ts"');
+      expectSharedBundledShell(source);
     });
 
     it('performs the real protected read through the first-party proxy', () => {

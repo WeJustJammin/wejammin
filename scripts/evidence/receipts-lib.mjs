@@ -56,16 +56,26 @@ export const relativise = (root, path) => {
   return value.split(sep).join('/');
 };
 
-const row = (tool, granularity, file, title, status) => ({
+/**
+ * `invocation` is the stable identity of the run that produced the result (a
+ * vitest report or gate id; a Playwright config file and project). It is kept
+ * on the in-memory result only, so merging can tell two runs of one test apart,
+ * and is never written into a receipt.
+ */
+const row = (tool, granularity, file, title, status, invocation = '') => ({
   tool,
   granularity,
   file,
   title,
   status,
+  ...(invocation === '' ? {} : { invocation }),
 });
 
-/** vitest --reporter=json output: one result per executed test. */
-export const parseVitestJson = (json, root) => {
+/**
+ * vitest --reporter=json output: one result per executed test. `invocation` is
+ * the report or gate id (the collector passes the report file name).
+ */
+export const parseVitestJson = (json, root, invocation = '') => {
   const results = [];
   for (const suite of json.testResults ?? []) {
     const file = relativise(root, suite.name ?? '');
@@ -74,7 +84,7 @@ export const parseVitestJson = (json, root) => {
       const raw = test.status;
       const status =
         raw === 'passed' ? 'passed' : raw === 'failed' ? 'failed' : 'skipped';
-      results.push(row('vitest', 'test', file, title, status));
+      results.push(row('vitest', 'test', file, title, status, invocation));
     }
   }
   return results;
@@ -87,16 +97,42 @@ const playwrightStatus = (test) => {
   return 'failed';
 };
 
-/** Playwright JSON report; spec.file is relative to the config testDir. */
-export const parsePlaywrightJson = (json, testDir = 'tests/e2e') => {
+/**
+ * Playwright JSON report; spec.file is relative to the config testDir. A
+ * result's invocation is the config file name plus the Playwright project that
+ * ran it (`config` names the report when the JSON carries no config file).
+ */
+export const parsePlaywrightJson = (
+  json,
+  testDir = 'tests/e2e',
+  config = '',
+) => {
   const results = [];
+  const configName =
+    typeof json.config?.configFile === 'string' && json.config.configFile !== ''
+      ? posix.basename(json.config.configFile.split(sep).join('/'))
+      : config;
+  const invocationOf = (test) => {
+    const project =
+      typeof test.projectName === 'string' ? test.projectName : '';
+    return configName === '' && project === ''
+      ? ''
+      : `${configName}#${project}`;
+  };
   const visit = (suite, titles) => {
     for (const spec of suite.specs ?? []) {
       const file = posix.join(testDir, spec.file ?? suite.file ?? '');
       const full = [...titles, spec.title].filter(Boolean).join(' > ');
       for (const test of spec.tests ?? []) {
         results.push(
-          row('playwright', 'test', file, full, playwrightStatus(test)),
+          row(
+            'playwright',
+            'test',
+            file,
+            full,
+            playwrightStatus(test),
+            invocationOf(test),
+          ),
         );
       }
     }
@@ -322,17 +358,56 @@ export const markStale = (results, root, reportMtimeMs) =>
   });
 
 const EXECUTED = new Set(['passed', 'failed', 'flaky']);
-const MERGEABLE_TOOLS = new Set(['vitest', 'playwright']);
 
 /**
- * Combine the results of several reports (one per invocation). A test that one
- * invocation skipped but ANOTHER invocation executed (the dedicated gate a
- * test belongs to, or a `-t` filtered run's non-matching siblings) is counted
- * once, as its executed result. A skip is dropped only against an executed
- * result from a different report: two same-titled tests inside one report keep
- * their own statuses, and a test no report executed stays skipped (which the
- * guard rejects). pgTAP and race results are never merged: a SKIP there is
- * never evidence, whatever else passed.
+ * The only cross-invocation skip replacements the merge allows. Each entry
+ * pairs an ordinary run with the dedicated gate that executes what the ordinary
+ * run skips:
+ *
+ * - `executedByGate`: a test whose title matches `executedTitle` is skipped in
+ *   every ordinary run (it is gated on its own npm lifecycle) and executed in
+ *   `gate`'s report, so the ordinary skip is dropped against the gate's result;
+ * - `filteredByGate`: `gate` runs `file` with a `-t` filter, so every other test
+ *   in that file is skipped there; those filter skips are dropped against the
+ *   ordinary run that executed them.
+ *
+ * `gate` is the report file name (the collector's vitest invocation id). Any
+ * other pairing, any other file or tool, and any Playwright project or config
+ * stays a skip, which the guard rejects.
+ */
+export const SKIP_REPLACEMENTS = Object.freeze([
+  Object.freeze({
+    tool: 'vitest',
+    gate: 'vitest-evidence-s09.json',
+    file: 'tests/contracts/phase-02-slice-09-evidence-map.test.ts',
+    executedTitle:
+      /\[P2-S09-AC-269\] executes every declared nonbrowser command$/u,
+  }),
+]);
+
+const replaceableSkip = (skipped, executed) =>
+  SKIP_REPLACEMENTS.some(
+    (entry) =>
+      entry.tool === skipped.tool &&
+      entry.file === skipped.file &&
+      ((skipped.invocation !== undefined &&
+        skipped.invocation !== entry.gate &&
+        executed.invocation === entry.gate &&
+        entry.executedTitle.test(skipped.title)) ||
+        (skipped.invocation === entry.gate &&
+          executed.invocation !== undefined &&
+          executed.invocation !== entry.gate)),
+  );
+
+/**
+ * Combine the results of several reports (one per invocation). A skipped result
+ * is dropped only when a DIFFERENT report executed the same test (tool, file and
+ * title) AND the skipped and executing invocations form an allowlisted
+ * ordinary-run / dedicated-gate pair (`SKIP_REPLACEMENTS`). A result with no
+ * invocation identity, a different Playwright project or config, a gate other
+ * than the designated one, or a second run of a test inside one report never
+ * hides a skip. pgTAP and race results are never merged: a SKIP there is never
+ * evidence, whatever else passed.
  */
 export const mergeReports = (reports) => {
   const key = (result) =>
@@ -341,20 +416,18 @@ export const mergeReports = (reports) => {
   reports.forEach((report, index) => {
     for (const result of report) {
       if (!EXECUTED.has(result.status)) continue;
-      const set = executedIn.get(key(result)) ?? new Set();
-      set.add(index);
-      executedIn.set(key(result), set);
+      const list = executedIn.get(key(result)) ?? [];
+      list.push({ index, result });
+      executedIn.set(key(result), list);
     }
   });
   return reports.flatMap((report, index) =>
     report.filter((result) => {
-      if (result.status !== 'skipped' || !MERGEABLE_TOOLS.has(result.tool)) {
-        return true;
-      }
-      const elsewhere = [...(executedIn.get(key(result)) ?? [])].some(
-        (other) => other !== index,
+      if (result.status !== 'skipped') return true;
+      return !(executedIn.get(key(result)) ?? []).some(
+        (other) =>
+          other.index !== index && replaceableSkip(result, other.result),
       );
-      return !elsewhere;
     }),
   );
 };

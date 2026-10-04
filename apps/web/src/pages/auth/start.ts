@@ -11,6 +11,7 @@ import {
   forwardAuthRequest,
 } from '../../server/auth-platform-api.ts';
 import { publicStartHeaders } from '../../server/auth-public-start.ts';
+import { readBoundedRequestBody } from '../../server/bounded-request-body.ts';
 
 export const prerender = false;
 
@@ -23,21 +24,21 @@ const redirect = (location: string, source?: Response): Response => {
 /** A sign-in start form is a handful of short fields; anything larger is refused unread. */
 const MAX_START_FORM_BYTES = 8192;
 
-const declaredBytes = (request: Request): number =>
-  Number(request.headers.get('content-length') ?? 0);
-
 export const POST: APIRoute = async ({ request }) => {
-  // BE00 step 2 ahead of the body: a cross-origin post, or one that declares
-  // more than the form can hold, is refused without being parsed.
+  // BE00 step 2 ahead of the body: a cross-origin post is refused unread.
   const origin = request.headers.get('origin');
-  if (
-    (origin !== null && origin !== new URL(request.url).origin) ||
-    !(declaredBytes(request) <= MAX_START_FORM_BYTES)
-  )
+  if (origin !== null && origin !== new URL(request.url).origin)
     return redirect('/auth/sign-in?outcome=invalid');
+  // The ceiling holds with or without a Content-Length: a malformed or oversize
+  // declaration is refused unread, and an undeclared (chunked) body is cut off
+  // once it crosses the ceiling instead of being buffered by `formData()`.
+  const bounded = await readBoundedRequestBody(request, MAX_START_FORM_BYTES);
+  if (!bounded.ok) return redirect('/auth/sign-in?outcome=invalid');
   let form: FormData;
   try {
-    form = await request.formData();
+    form = await new Response(bounded.bytes, {
+      headers: { 'content-type': request.headers.get('content-type') ?? '' },
+    }).formData();
   } catch {
     return redirect('/auth/sign-in?outcome=invalid');
   }
