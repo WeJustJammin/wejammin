@@ -102,7 +102,12 @@
 
 ## Next steps, in order
 
-1. All 4 R14d/R14e findings are fixed (R14f and R14g, targeted tests only). Run full `pnpm validate` and `pnpm db:verify` with fresh receipts (`pnpm db:test:tap`, then `pnpm evidence:collect`), plus a fresh adversarial review of the commits after `e89c2e1d`.
+1. **First job:** a final adversarial review of R14f/R14g (`context/reports/codex-review-r14g.md`, base `289af349`) raised 4 findings. Claude did not verify them because its usage was exhausted, so verify each against the code before fixing it RED-first:
+   - (a) Native CMS POST routes (e.g. `apps/web/src/pages/app/cms-content-modeling/index.astro` ~38-52) parse cloned bodies twice, unbounded, before CSRF.
+   - (b) The second skip-replacement branch in `receipts-lib.mjs` (~388-400) can erase a skipped designated gate.
+   - (c) `apps/web/built-route-scripts.mjs` (~79-86) marks a missing auth-scope chunk as reachable.
+   - (d) `bounded-request-body.ts` has no error, stall or abort handling and awaits cancel.
+   The R14d/R14e findings themselves were fixed in R14f and R14g, with targeted tests only. Run full `pnpm validate` and `pnpm db:verify` with fresh receipts (`pnpm db:test:tap`, then `pnpm evidence:collect`), plus a fresh adversarial review of the commits after `e89c2e1d`.
 2. **Independent verification of Slice 09.** Use a fresh population that did none of the work:
    - First an audit #4 sample, like audit #3: about 200 criteria across sets a/b/c plus security probes.
    - Then a full re-verification of all 1235 active criteria (PROVEN / WEAK(C) / WEAK(S) / NOT-PROVEN, with the deciding file:line, written to disk).
