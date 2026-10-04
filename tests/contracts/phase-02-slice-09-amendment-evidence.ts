@@ -2666,16 +2666,17 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
   },
   {
     criterion: 'P2-S09-AC-196',
-    layer: 'worker',
+    layer: 'worker+db',
     command:
-      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-activation-evidence.test.ts',
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-activation-evidence.test.ts; pnpm db:test',
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-activation-evidence.test.ts',
+      'supabase/tests/phase_02_slice_09_r8_active_version_unmutated.sql',
     ],
     testMarkers: ['[P2-S09-AC-196]'],
     status: 'verified',
     limitation:
-      'Wire mapping of every A04 failure class proven; old-active preservation on failure (AC098) is an RPC property.',
+      'Complete local proof: the Worker half maps every A04 failure class to its declared error with the four-field BE00 envelope; the DB half (r8_active_version_unmutated) proves old-active preservation across both refused switches (unapproved candidate and stale CAS), the previously active row byte-identical in every column including version and updated_at, readable as active through CMS-03A-08 before the commit, and moved only by its supersession after it.',
   },
   {
     criterion: 'P2-S09-AC-197',

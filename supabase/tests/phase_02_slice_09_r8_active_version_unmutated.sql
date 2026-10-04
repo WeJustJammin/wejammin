@@ -45,7 +45,7 @@ select pg_temp.s09d_activate('b', 'owner', '{}'::jsonb, 'b:activate-draft', json
 select is(pg_temp.s09d_outcome('b:activate-draft'), 'CONFLICT',
   'an unapproved candidate (a well-formed request naming no review, dry run or plan of it) cannot be switched in [P2-S09-AC-098]');
 select is(pg_temp.r8u_row('a'), (select whole from r8u_old),
-  'the refused switch left the previously active row byte-identical: every column, including version and updated_at [P2-S09-AC-098]');
+  'the refused switch left the previously active row byte-identical: every column, including version and updated_at [P2-S09-AC-098] [P2-S09-AC-196]');
 
 select pg_temp.s09d_to_review('b');
 select pg_temp.s09d_assign('b', 'rev1');
@@ -54,7 +54,7 @@ select pg_temp.s09d_decide('b', 'rev1');
 select pg_temp.s09d_activate('b', 'owner', '{}'::jsonb, 'b:activate-stale', jsonb_build_object('expectedVersion', '999'));
 select is(pg_temp.s09d_outcome('b:activate-stale'), 'VERSION_MISMATCH', 'a stale candidate CAS version is refused with VERSION_MISMATCH [P2-S09-AC-098]');
 select is(pg_temp.r8u_row('a'), (select whole from r8u_old),
-  'the second refused switch also left the previously active row byte-identical [P2-S09-AC-098]');
+  'the second refused switch also left the previously active row byte-identical [P2-S09-AC-098] [P2-S09-AC-196]');
 
 -- the old version is readable, as active, until the switch commits
 select pg_temp.r8u_read('a:read:before', 'a');
