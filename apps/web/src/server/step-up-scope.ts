@@ -12,16 +12,15 @@ import { STEP_UP_SCOPE_COOKIE } from '../components/identity-authority/step-up-m
  * `wj_step_up_scope`, holds only a RANDOM opaque nonce: nothing in it is derived
  * from the subject, and two sign-ins of the same person get different nonces.
  * Which subject a nonce belongs to is remembered in a separate HttpOnly cookie,
- * `wj_step_up_subject`, holding HMAC-SHA-256 under a server secret
- * (`STEP_UP_SCOPE_SECRET`, a Worker secret) of the access-token subject. Only the
- * edge reads it, to notice a subject change (a different user on the same
- * browser) and rotate the nonce. The nonce follows the subject, not the session
- * id, because the step-up proof rotates the session id mid-detour.
- *
- * Without the secret the edge cannot recognise a subject, so it fails closed: a
- * fresh nonce on every page load and no binding cookie, which means no draft
- * survives a load. Both cookies are expired when the page no longer carries a
- * session.
+ * `wj_step_up_subject`, holding an UNKEYED SHA-256 digest of a fixed domain
+ * string plus the access-token subject. There is no secret and so nothing to
+ * deploy or rotate. The cookie is HttpOnly (never script-readable) and the
+ * server already receives the subject in the HttpOnly `wj_access` token, so the
+ * digest adds no exposure. Only the edge reads it, to notice a subject change (a
+ * different user on the same browser) and rotate the nonce. The nonce follows
+ * the subject, not the session id, because the step-up proof rotates the
+ * session id mid-detour. Both cookies are expired when the page no longer
+ * carries a session.
  *
  * The token is decoded, not verified: the scope is a hygiene key for storage the
  * same browser already owns, never an authorization input, and every protected
@@ -30,10 +29,10 @@ import { STEP_UP_SCOPE_COOKIE } from '../components/identity-authority/step-up-m
 
 export { STEP_UP_SCOPE_COOKIE };
 
-/** The HttpOnly cookie that binds the nonce to the subject (HMAC under the server secret). */
+/** The HttpOnly cookie that binds the nonce to the subject (unkeyed SHA-256 of the subject). */
 export const STEP_UP_SUBJECT_COOKIE = 'wj_step_up_subject';
 
-const SCOPE_DOMAIN = 'wj-step-up-subject-v2';
+const SCOPE_DOMAIN = 'wj-step-up-subject-v3';
 const NONCE_BYTES = 24;
 const SESSION_COOKIES = ['wj_access', 'wj_refresh', 'wj_session_ref'] as const;
 
@@ -42,8 +41,8 @@ export type StepUpScopeDecision =
       kind: 'issue';
       /** The random script-readable nonce to hold. */
       nonce: string;
-      /** The HttpOnly binding to hold, or null when no server secret is configured. */
-      subjectMac: string | null;
+      /** The HttpOnly binding to hold: the unkeyed SHA-256 digest of the subject. */
+      subjectDigest: string;
     }>
   | Readonly<{ kind: 'clear' }>
   | Readonly<{ kind: 'keep' }>;
@@ -94,29 +93,20 @@ const subjectOf = (accessToken: string): string | null => {
 };
 
 const NONCE_PATTERN = /^[A-Za-z0-9_-]{32}$/u;
-const MAC_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+const DIGEST_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 
 const freshNonce = (): string =>
   bytesToBase64Url(crypto.getRandomValues(new Uint8Array(NONCE_BYTES)));
 
-const subjectMacOf = async (
-  secret: string,
-  subject: string,
-): Promise<string> => {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
+const subjectDigestOf = async (subject: string): Promise<string> =>
+  bytesToBase64Url(
+    new Uint8Array(
+      await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(`${SCOPE_DOMAIN}\u0000${subject}`),
+      ),
+    ),
   );
-  const mac = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(`${SCOPE_DOMAIN}\u0000${subject}`),
-  );
-  return bytesToBase64Url(new Uint8Array(mac));
-};
 
 const sameValue = (left: string, right: string): boolean => {
   if (left.length !== right.length) return false;
@@ -128,7 +118,6 @@ const sameValue = (left: string, right: string): boolean => {
 
 export const decideStepUpScope = async (
   request: Request,
-  secret: string | null | undefined,
 ): Promise<StepUpScopeDecision> => {
   const signedIn = SESSION_COOKIES.some(
     (name) => cookieValue(request, name) !== null,
@@ -137,16 +126,16 @@ export const decideStepUpScope = async (
   const accessToken = cookieValue(request, 'wj_access');
   const subject = accessToken === null ? null : subjectOf(accessToken);
   if (subject === null) return { kind: 'keep' };
-  if (secret === null || secret === undefined || secret === '')
-    return { kind: 'issue', nonce: freshNonce(), subjectMac: null };
-  const mac = await subjectMacOf(secret, subject);
-  const heldMac = cookieValue(request, STEP_UP_SUBJECT_COOKIE);
+  const digest = await subjectDigestOf(subject);
+  const heldDigest = cookieValue(request, STEP_UP_SUBJECT_COOKIE);
   const heldNonce = cookieValue(request, STEP_UP_SCOPE_COOKIE);
   const sameSubject =
-    heldMac !== null && MAC_PATTERN.test(heldMac) && sameValue(heldMac, mac);
+    heldDigest !== null &&
+    DIGEST_PATTERN.test(heldDigest) &&
+    sameValue(heldDigest, digest);
   if (sameSubject && heldNonce !== null && NONCE_PATTERN.test(heldNonce))
     return { kind: 'keep' };
-  return { kind: 'issue', nonce: freshNonce(), subjectMac: mac };
+  return { kind: 'issue', nonce: freshNonce(), subjectDigest: digest };
 };
 
 const isDocument = (response: Response): boolean =>
@@ -163,28 +152,22 @@ const attributes = (secure: boolean, httpOnly: boolean): string =>
 export const withStepUpScope = async (
   request: Request,
   response: Response,
-  secret: string | null | undefined,
 ): Promise<Response> => {
   if (
     (request.method !== 'GET' && request.method !== 'HEAD') ||
     !isDocument(response)
   )
     return response;
-  const decision = await decideStepUpScope(request, secret);
+  const decision = await decideStepUpScope(request);
   const secure = new URL(request.url).protocol === 'https:';
   const setCookies: string[] = [];
   if (decision.kind === 'issue') {
     setCookies.push(
       `${STEP_UP_SCOPE_COOKIE}=${decision.nonce}; ${attributes(secure, false)}`,
     );
-    if (decision.subjectMac !== null)
-      setCookies.push(
-        `${STEP_UP_SUBJECT_COOKIE}=${decision.subjectMac}; ${attributes(secure, true)}`,
-      );
-    else if (cookieValue(request, STEP_UP_SUBJECT_COOKIE) !== null)
-      setCookies.push(
-        `${STEP_UP_SUBJECT_COOKIE}=; Max-Age=0; ${attributes(secure, true)}`,
-      );
+    setCookies.push(
+      `${STEP_UP_SUBJECT_COOKIE}=${decision.subjectDigest}; ${attributes(secure, true)}`,
+    );
   } else if (
     decision.kind === 'clear' &&
     (cookieValue(request, STEP_UP_SCOPE_COOKIE) !== null ||

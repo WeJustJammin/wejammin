@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 131
-- **Unique decision titles**: 131
+- **Total decisions**: 132
+- **Unique decision titles**: 132
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -1917,6 +1917,20 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: AC1122 text; admin MFA reset form tests.
 - **Reversibility**: High
 
+## DEC-131: Erratum to DEC-130 — AC1122 schema-invalid input is 400 INVALID_REQUEST (2026-10-03)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-04T03:54:56.585Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-09 R14d erratum
+- **Index**: [[index]]
+
+- **Problem**: The DEC-130 wording offered to the owner said schema-invalid admin MFA reset input returns 422 VALIDATION_FAILED; production, BE00 and BE05b return 400 INVALID_REQUEST (boundary Zod validation), shown as field errors.
+- **Options considered**: correct the text to 400 INVALID_REQUEST; change the route to 422 against the BE00 error model.
+- **Decision**: Owner confirmed the correction: AC1122 reads that self-target gives 422 MFA_RESET_INVALID shown with the self-target copy and schema-invalid input gives 400 INVALID_REQUEST shown as field errors from the schema. DEC-130's per-branch decision stands.
+- **Downstream**: AC1122 text in plan, tracker and ledger (erratum 2026-10-03).
+- **Reversibility**: High
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -3698,4 +3712,17 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: reword to each branch; make the API send both (new envelope variant outside BE00); leave open.
 - **Decision**: Owner chose rewording: self-target gives 422 MFA_RESET_INVALID shown with the self-target copy; schema-invalid input gives VALIDATION_FAILED shown as field errors from the schema.
 - **Downstream**: AC1122 text; admin MFA reset form tests.
+- **Reversibility**: High
+
+### DEC-131: Erratum to DEC-130 — AC1122 schema-invalid input is 400 INVALID_REQUEST (2026-10-03)
+
+- **Timestamp**: 2026-10-04T03:54:56.585Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-09 R14d erratum
+- **Tags**: decision, owner
+
+- **Problem**: The DEC-130 wording offered to the owner said schema-invalid admin MFA reset input returns 422 VALIDATION_FAILED; production, BE00 and BE05b return 400 INVALID_REQUEST (boundary Zod validation), shown as field errors.
+- **Options considered**: correct the text to 400 INVALID_REQUEST; change the route to 422 against the BE00 error model.
+- **Decision**: Owner confirmed the correction: AC1122 reads that self-target gives 422 MFA_RESET_INVALID shown with the self-target copy and schema-invalid input gives 400 INVALID_REQUEST shown as field errors from the schema. DEC-130's per-branch decision stands.
+- **Downstream**: AC1122 text in plan, tracker and ledger (erratum 2026-10-03).
 - **Reversibility**: High

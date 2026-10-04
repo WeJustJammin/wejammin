@@ -38,11 +38,11 @@ in `../../platform-configuration/admin-mfa-reset/` is the reference consumer.
   cleared. The scope is the `wj_step_up_scope` cookie `src/server/step-up-scope.ts`
   issues at the edge: a RANDOM nonce with nothing derived from the subject
   (two sign-ins of one person get different nonces). A separate HttpOnly cookie
-  `wj_step_up_subject` holds an HMAC of the subject under the server secret
-  `STEP_UP_SCOPE_SECRET` so the edge can notice a different user and rotate the
+  `wj_step_up_subject` holds an unkeyed SHA-256 digest of a fixed domain string
+  plus the subject (no secret; the server already receives the subject in the
+  HttpOnly access token) so the edge can notice a different user and rotate the
   nonce; both are cleared on sign-out. The nonce follows the subject, not the
-  session id, because step-up rotates the session. Without the secret the edge
-  fails closed (a fresh nonce on every load, so no draft survives). All of it is cleared on
+  session id, because step-up rotates the session. All of it is cleared on
   an acting-context change and when the tab reaches `/auth/sign-in`. A new
   persisted step-up record must use `stampFor`/`isStampLive` and add its key to
   `clearAllStepUpState`.

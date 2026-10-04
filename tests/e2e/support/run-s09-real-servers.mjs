@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { readFileSync, rmSync } from 'node:fs';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -33,10 +32,6 @@ const startupTimeoutMs = 120_000;
 const children = [];
 const detachedChildren = new Set();
 const runToken = `${Date.now()}-${process.pid}`;
-// The web edge binds the step-up scope nonce to the subject with an HMAC under
-// STEP_UP_SCOPE_SECRET (a Worker secret in production). Each run gets its own
-// random value, passed to `wrangler dev` as a local var and never written down.
-const stepUpScopeSecret = randomBytes(32).toString('hex');
 const apiName = `wejammin-s09-real-api-${runToken}`;
 const webName = `wejammin-s09-real-web-${runToken}`;
 const runtimeConfigDirectory = await mkdtemp(
@@ -236,8 +231,6 @@ try {
         '127.0.0.1',
         '--port',
         String(innerWebPort),
-        '--var',
-        `STEP_UP_SCOPE_SECRET:${stepUpScopeSecret}`,
         '--show-interactive-dev-session=false',
       ],
       false,

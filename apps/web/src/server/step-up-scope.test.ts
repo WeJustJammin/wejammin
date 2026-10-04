@@ -18,8 +18,6 @@ const jwt = (claims: Record<string, unknown>): string =>
 
 const USER_A = '11111111-1111-4111-8111-111111111111';
 const USER_B = '22222222-2222-4222-8222-222222222222';
-const SECRET = 'test-only-step-up-scope-secret-0001';
-const OTHER_SECRET = 'test-only-step-up-scope-secret-0002';
 const NONCE = /^[A-Za-z0-9_-]{32}$/u;
 
 /** The derivation the previous scheme exposed to page scripts: unsalted SHA-256, base64url. */
@@ -50,16 +48,13 @@ const html = (): Response =>
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
 
-type Issued = Readonly<{ nonce: string; subjectMac: string | null }>;
+type Issued = Readonly<{ nonce: string; subjectDigest: string }>;
 
-const issue = async (
-  cookie: string | null,
-  secret: string | null = SECRET,
-): Promise<Issued> => {
-  const decision = await decideStepUpScope(requestWith(cookie), secret);
+const issue = async (cookie: string | null): Promise<Issued> => {
+  const decision = await decideStepUpScope(requestWith(cookie));
   if (decision.kind !== 'issue')
     throw new Error(`expected issue, got ${decision.kind}`);
-  return { nonce: decision.nonce, subjectMac: decision.subjectMac };
+  return { nonce: decision.nonce, subjectDigest: decision.subjectDigest };
 };
 
 /** The two cookies a browser holds after one signed-in page load. */
@@ -70,21 +65,19 @@ const signIn = async (
   const issued = await issue(accessCookie(sub, sessionId));
   return {
     ...issued,
-    jar: `${accessCookie(sub, sessionId)}; ${STEP_UP_SCOPE_COOKIE}=${issued.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${issued.subjectMac ?? ''}`,
+    jar: `${accessCookie(sub, sessionId)}; ${STEP_UP_SCOPE_COOKIE}=${issued.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${issued.subjectDigest}`,
   };
 };
 
-const setCookies = async (
-  request: Request,
-  secret: string | null = SECRET,
-): Promise<readonly string[]> =>
-  (await withStepUpScope(request, html(), secret)).headers.getSetCookie();
+const setCookies = async (request: Request): Promise<readonly string[]> =>
+  (await withStepUpScope(request, html())).headers.getSetCookie();
 
 /**
  * Review r14 finding 2 and the F5 hardening: the cookie a page script can read
  * holds a RANDOM nonce with no derivation of the subject. The subject binding
- * lives in a separate HttpOnly cookie (an HMAC under a server secret) that only
- * the edge reads, to notice a subject change and rotate the nonce.
+ * lives in a separate HttpOnly cookie (an unkeyed SHA-256 digest of a fixed
+ * domain string plus the access-token subject, no secret) that only the edge
+ * reads, to notice a subject change and rotate the nonce.
  */
 describe('step-up scope nonce', () => {
   it('is random: two sign-ins of the same user get different nonces', async () => {
@@ -106,7 +99,7 @@ describe('step-up scope nonce', () => {
     const derivations = [
       (await unsaltedHash(`wj-step-up-scope-v1\u0000${USER_A}`)).slice(0, 32),
       (await unsaltedHash(USER_A)).slice(0, 32),
-      (await issue(accessCookie(USER_A))).subjectMac ?? '',
+      (await issue(accessCookie(USER_A))).subjectDigest ?? '',
     ];
     for (const nonce of nonces) {
       for (const derived of derivations) {
@@ -122,9 +115,8 @@ describe('step-up scope nonce', () => {
     const before = await signIn(USER_A, 's-1');
     const after = await decideStepUpScope(
       requestWith(
-        `${accessCookie(USER_A, 's-2')}; ${STEP_UP_SCOPE_COOKIE}=${before.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${before.subjectMac}`,
+        `${accessCookie(USER_A, 's-2')}; ${STEP_UP_SCOPE_COOKIE}=${before.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${before.subjectDigest}`,
       ),
-      SECRET,
     );
     expect(after).toEqual({ kind: 'keep' });
   });
@@ -133,14 +125,13 @@ describe('step-up scope nonce', () => {
     const previous = await signIn(USER_A);
     const decision = await decideStepUpScope(
       requestWith(
-        `${accessCookie(USER_B)}; ${STEP_UP_SCOPE_COOKIE}=${previous.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${previous.subjectMac}`,
+        `${accessCookie(USER_B)}; ${STEP_UP_SCOPE_COOKIE}=${previous.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${previous.subjectDigest}`,
       ),
-      SECRET,
     );
     if (decision.kind !== 'issue') throw new Error('expected a rotation');
     expect(decision.nonce).toMatch(NONCE);
     expect(decision.nonce).not.toBe(previous.nonce);
-    expect(decision.subjectMac).not.toBe(previous.subjectMac);
+    expect(decision.subjectDigest).not.toBe(previous.subjectDigest);
   });
 
   it('rotates when the browser holds a nonce but no subject binding (a binding it cannot vouch for)', async () => {
@@ -148,63 +139,65 @@ describe('step-up scope nonce', () => {
       requestWith(
         `${accessCookie(USER_A)}; ${STEP_UP_SCOPE_COOKIE}=${'a'.repeat(32)}`,
       ),
-      SECRET,
     );
     if (decision.kind !== 'issue') throw new Error('expected a rotation');
     expect(decision.nonce).not.toBe('a'.repeat(32));
   });
 
-  it('rotates when the binding was made under another secret', async () => {
-    const held = await signIn(USER_A);
-    const decision = await decideStepUpScope(
-      requestWith(held.jar),
-      OTHER_SECRET,
-    );
-    if (decision.kind !== 'issue') throw new Error('expected a rotation');
-    expect(decision.nonce).not.toBe(held.nonce);
+  it('rotates when the held binding is not the digest of this subject (forged, truncated or another user)', async () => {
+    const other = await signIn(USER_B);
+    for (const forged of [other.subjectDigest, 'A'.repeat(43), 'short']) {
+      const decision = await decideStepUpScope(
+        requestWith(
+          `${accessCookie(USER_A)}; ${STEP_UP_SCOPE_COOKIE}=${other.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${forged}`,
+        ),
+      );
+      if (decision.kind !== 'issue') throw new Error('expected a rotation');
+      expect(decision.nonce).not.toBe(other.nonce);
+    }
   });
 
   it('re-issues only the nonce, keeping the binding, when the script-readable cookie is gone', async () => {
     const held = await signIn(USER_A);
     const decision = await decideStepUpScope(
       requestWith(
-        `${accessCookie(USER_A)}; ${STEP_UP_SUBJECT_COOKIE}=${held.subjectMac}`,
+        `${accessCookie(USER_A)}; ${STEP_UP_SUBJECT_COOKIE}=${held.subjectDigest}`,
       ),
-      SECRET,
     );
     if (decision.kind !== 'issue') throw new Error('expected an issue');
-    expect(decision.subjectMac).toBe(held.subjectMac);
+    expect(decision.subjectDigest).toBe(held.subjectDigest);
     expect(decision.nonce).toMatch(NONCE);
   });
 
-  it('binds by HMAC under the secret: the binding is neither the old unsalted hash nor the same for another secret', async () => {
-    const mine = (await issue(accessCookie(USER_A), SECRET)).subjectMac;
-    const theirs = (await issue(accessCookie(USER_A), OTHER_SECRET)).subjectMac;
-    expect(mine).not.toBeNull();
-    expect(mine).not.toBe(theirs);
-    const unsalted = await unsaltedHash(`wj-step-up-scope-v1\u0000${USER_A}`);
-    expect(mine).not.toBe(unsalted);
-    expect(mine).not.toBe(unsalted.slice(0, 32));
+  it('binds by an unkeyed SHA-256 of the domain string and the subject: deterministic, subject-specific and never the script-readable value', async () => {
+    const mine = (await issue(accessCookie(USER_A))).subjectDigest;
+    const again = (await issue(accessCookie(USER_A, 's-2'))).subjectDigest;
+    const theirs = (await issue(accessCookie(USER_B))).subjectDigest;
+    expect(mine).toBe(
+      await unsaltedHash(`wj-step-up-subject-v3\u0000${USER_A}`),
+    );
+    expect(again).toBe(mine);
+    expect(theirs).not.toBe(mine);
+    expect(mine).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    const nonce = (await issue(accessCookie(USER_A))).nonce;
+    expect(nonce).not.toBe(mine.slice(0, 32));
   });
 
-  it('fails closed without a server secret: a fresh nonce on every load and no subject binding, so no draft survives a load', async () => {
-    for (const secret of [null, '']) {
-      const first = await issue(accessCookie(USER_A), secret);
-      const second = await issue(accessCookie(USER_A), secret);
-      expect(first.subjectMac).toBeNull();
-      expect(first.nonce).not.toBe(second.nonce);
-    }
+  it('needs no server secret: every signed-in page gets a subject binding and a nonce that survives later loads', async () => {
+    const held = await signIn(USER_A);
+    expect(held.subjectDigest).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    for (let load = 0; load < 3; load += 1)
+      expect(await decideStepUpScope(requestWith(held.jar))).toEqual({
+        kind: 'keep',
+      });
   });
 
   it('clears the scope when no session cookie is present', async () => {
-    expect(await decideStepUpScope(requestWith(null), SECRET)).toEqual({
+    expect(await decideStepUpScope(requestWith(null))).toEqual({
       kind: 'clear',
     });
     expect(
-      await decideStepUpScope(
-        requestWith(`${STEP_UP_SCOPE_COOKIE}=abc`),
-        SECRET,
-      ),
+      await decideStepUpScope(requestWith(`${STEP_UP_SCOPE_COOKIE}=abc`)),
     ).toEqual({ kind: 'clear' });
   });
 
@@ -216,7 +209,7 @@ describe('step-up scope nonce', () => {
       `wj_access=${jwt({ session_id: 's' })}; wj_session_ref=ref`,
     ],
   ])('leaves the scope unchanged for %s', async (_name, cookie) => {
-    expect(await decideStepUpScope(requestWith(cookie), SECRET)).toEqual({
+    expect(await decideStepUpScope(requestWith(cookie))).toEqual({
       kind: 'keep',
     });
   });
@@ -277,7 +270,7 @@ describe('step-up scope response headers', () => {
     const previous = await signIn(USER_B);
     const cookies = await setCookies(
       requestWith(
-        `${accessCookie(USER_A)}; ${STEP_UP_SCOPE_COOKIE}=${previous.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${previous.subjectMac}`,
+        `${accessCookie(USER_A)}; ${STEP_UP_SCOPE_COOKIE}=${previous.nonce}; ${STEP_UP_SUBJECT_COOKIE}=${previous.subjectDigest}`,
       ),
     );
     expect(cookies).toHaveLength(2);
@@ -318,7 +311,7 @@ describe('step-up scope response headers', () => {
     });
     expect(
       (
-        await withStepUpScope(requestWith(accessCookie(USER_A)), json, SECRET)
+        await withStepUpScope(requestWith(accessCookie(USER_A)), json)
       ).headers.get('set-cookie'),
     ).toBeNull();
     expect(
@@ -326,12 +319,11 @@ describe('step-up scope response headers', () => {
         await withStepUpScope(
           requestWith(accessCookie(USER_A), { method: 'POST' }),
           html(),
-          SECRET,
         )
       ).headers.get('set-cookie'),
     ).toBeNull();
     expect(
-      (await withStepUpScope(requestWith(null), html(), SECRET)).headers.get(
+      (await withStepUpScope(requestWith(null), html())).headers.get(
         'set-cookie',
       ),
     ).toBeNull();
@@ -348,7 +340,6 @@ describe('step-up scope response headers', () => {
           'set-cookie': 'a=1',
         },
       }),
-      SECRET,
     );
     expect(response.status).toBe(202);
     expect(await response.text()).toBe('body');

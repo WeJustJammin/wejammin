@@ -198,6 +198,16 @@ Criteria whose first-pass wording the implementation evidence disproved; the pla
 | AC685 | The eighteen named RPCs cms_create_type_draft through cms_list_capability_grants are members of the SQL API set that AC180 enumerates exactly, and anon and authenticated hold no direct INSERT, UPDATE or DELETE on the tables. | Authority: owner-ratified DEC-124 (2026-10-03); the criterion carries the ratified text verbatim; checked on its index evidence |
 | AC1122 | AdminMfaFactorResetForm: self-target gives 422 MFA_RESET_INVALID shown with the self-target copy; schema-invalid input gives VALIDATION_FAILED shown as field errors from the schema. | Authority: owner-ratified DEC-130 (2026-10-03); the criterion carries the ratified text verbatim (each branch is proven with real responses in Chrome); checked on its index evidence |
 
+## Errata (2026-10-03)
+
+Consequential criterion-text errata applied by the orchestrator after the owner decisions above; the plan and the tracker carry the same text, and the earlier rows stay as the historical record.
+
+- erratum 2026-10-03 AC1122 (DEC-130): the schema-invalid branch reads "400 INVALID_REQUEST shown as field errors from the schema" instead of VALIDATION_FAILED, which matches BE05b, the Worker and the Chrome proof.
+- erratum 2026-10-03 AC034: the clause about the CMS-03A-05 unknown-target 404 is removed because DEC-129 deleted that behavior; the rest of the criterion is unchanged.
+- erratum 2026-10-03 AC233: the sentence saying the reconnect clause stays open until a test sends the replay through the real Worker is removed because that test now exists; the rest of the criterion is unchanged.
+- erratum 2026-10-03 AC282: Slice 16 AC029 reads "ratified by DEC-125" instead of "pending ratification".
+- erratum 2026-10-03 AC1147: the Slice 16 receiving criterion reads "ratified by DEC-125" instead of "pending AC185 ruling".
+
 ## Corrections after the independent audit
 
 Criterion numbers below are the first-pass numbers (P2-S09-AC-284 to AC-1200 before this pass); the current rows are renumbered contiguously.

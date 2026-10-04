@@ -191,3 +191,4 @@ General: say only what the sources say (placeholder replacement over-specifies).
 - DEC-129 (OWNER): delete BE03a 'unknown release target is 404' clause for CMS-03A-05 (rows ~164/1825/2219) with changelog row; A05 creates its resource; A08 keeps its 404.
 - DEC-130 (OWNER): AC1122 reworded to each branch: "self-target gives 422 MFA_RESET_INVALID shown with the self-target copy; schema-invalid input gives VALIDATION_FAILED shown as field errors from the schema."
 - Orchestrator (R14b web): AC248 blur copy derived mechanically from request schemas accepted (error-message formatting = implementation). AC1108: conform to spec `tab=mfa-reset` (spec governs). AC261 budget scope = registry list route initial (as criterion says); detail total reported only. CmsEditorialCapabilityGate stays separate (different denial-surface contract; S10 scope).
+- DEC-131 (OWNER): erratum to DEC-130, AC1122 = 400 INVALID_REQUEST. R14d done.

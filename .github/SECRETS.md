@@ -164,20 +164,6 @@ neither tag identifier is retained in the artifact. Editing or setting this
 variable requires owner authorization, as with every other environment variable
 above.
 
-## Web Worker runtime secret
-
-`STEP_UP_SCOPE_SECRET` is the HMAC key the web edge uses to bind the step-up
-scope nonce to the signed-in subject (`apps/web/src/server/step-up-scope.ts`).
-It is a Cloudflare **Worker secret** on `wejammin-web` and
-`wejammin-web-staging`, set out of band by the hosting owner with
-`wrangler secret put STEP_UP_SCOPE_SECRET` (any random value of at least 32
-characters, distinct per environment). It is not a GitHub environment secret, no
-workflow reads it and nothing in this repository stores a live value; local runs
-read it from the gitignored `apps/web/.dev.vars` (`.dev.vars.example` lists the
-name). When it is absent the edge fails closed: a fresh nonce on every page load
-and no subject binding, so no tab-held step-up draft survives a load. Rotating it
-only starts new nonces for signed-in browsers.
-
 ## Cost control
 
 Workers Paid runs under DEC-103's soft $10/month operational budget. Cloudflare's enabled account-level `Billing Budget Alert` is set to exactly `$10` and delivers to the owner email. Both Worker environments retain a 50 ms per-invocation CPU cap; any expected increase above the budget requires a new owner decision before configuration changes.

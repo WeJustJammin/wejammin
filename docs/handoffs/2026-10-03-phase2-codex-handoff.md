@@ -1,6 +1,6 @@
 # Phase 2 — Codex continuation handoff (from Claude)
 
-**Status:** live document, refreshed at every Claude checkpoint. Last refresh: 2026-10-03 16:55 EDT.
+**Status:** live document, refreshed at every Claude checkpoint. Last refresh: 2026-10-03 22:20 EDT.
 **Why this exists:** the owner asked Claude to hand Phase 2 to Codex when Claude's usage reaches its limit.
 **Goal (owner, verbatim intent):** finish Phase 2 Slices 09–17 through `/implement-slice`. Do not stop until Phase 2 is complete. Clean up every completed worktree and branch as you go, and leave no stale worktrees, branches or temp files.
 
@@ -48,86 +48,74 @@
 
 ## Slice 09 state
 
-- **The 1235/1235 claim (commit `073496db`) was false.** Independent audit #3 (`context/s09-audit3.md`, verdict table `context/audit3-table.md`) estimated about 1.3% hard-false, 27% soft-false and 57% fully proven. Do not trust any `[x]` until the full re-verification below has run.
-- **Owner ratified, 2026-10-03:**
-  - DEC-124: 16 rewordings — use the proposed texts in `context/decisions/r14-ratification-bundle.md` verbatim.
+- **Do not trust the `[x]` marks yet.** The 1235/1235 claim at `073496db` was false. Independent audit #3 (`context/s09-audit3.md`, verdicts in `context/audit3-table.md`) estimated about 1.3% hard-false, 27% soft-false and 57% fully proven. Since then, R14 through R14d have fixed every systemic class it named and every listed reopen item. No new independent audit has run since R14 (see Next steps).
+- **Owner decisions this session**, all recorded as raw records and compiled into `.memory/wiki/decisions.md`:
+  - DEC-124: 16 rewordings, applied verbatim from `context/decisions/r14-ratification-bundle.md`.
   - DEC-125: AC185 enforcement moves to Slice 16 (S16-AC029).
-  - DEC-126: keep the optional workflowKey/workflowVersion pair on CMS-03A-09.
+  - DEC-126: CMS-03A-09 keeps the optional workflowKey/workflowVersion pair.
   - DEC-127: the rollback RPC may fail a dry_running plan.
-  - DEC-128: AC906 uses the pull model, proven by a no-cache guard and a real multi-tab test.
-  - The ratified texts are **not yet applied** to the plan, tracker or ledger. The 19 held criteria are unchecked, each with a "held: …" note.
-- **Later owner decisions (2026-10-03):**
-  - DEC-129: delete the CMS-03A-05 "unknown release target is 404" clause.
-  - DEC-130: AC1122 is reworded to cover each branch.
-  - Orchestrator rulings:
-    - AC527: the 409 carries `recoveryAction: 'renew'`.
-    - AC1108: the admin MFA reset surface follows the spec's `tab=mfa-reset`.
-- **R14 and R14b completed** (WIP `e1e53a74`):
-  - Database: `db:test` 198 files / 8191 tests, `db:api-test` 53 tests, races 6/6 (with the `test-results/db-races.jsonl` gate).
-  - Worker and contracts: 7017 tests.
-  - Web and contracts: 3907 tests.
-  - Bundle: 89,922 B gzip against the 92,160 B budget.
-  - Chrome: s09-real passes in a single invocation, 107/0/0; functional is 105/0/0.
-  - The new real-stack tests exposed two more production defects, both fixed:
-    - CMS-03A-02 could never succeed: the Worker sent a flat body.
-    - Every committed CMS-03A-05 returned 502.
-- **Integrator v5 steps 1–3 are done** (WIP `76664abb`):
-  - The DEC-124..130 texts are applied, along with the AC527 `renew` change, the AC1108 `tab=mfa-reset` change and the citations.
-  - Results: `db:test` 200 files / 8200 tests; root vitest 13500 passing, with only the 3 receipts-guard tests failing, as expected.
-  - The tracker shows S09 at 1234/1235 (AC261 held). That tracker figure is not verified acceptance.
-  - Steps 4–5 (receipts and full validate) were interrupted.
-- **Then running: R14c2** (`context/reports/r14c2-fix.md`, then `context/reports/integrator-v5b.md`):
-  - Codex findings 1–3.
-  - The F5 cookie hardening: a random nonce, plus an HttpOnly HMAC that detects a subject change.
-  - The F4 residual.
-  - Then receipts and full validation.
-- **Integrator v5 brief (for reference):**
-  - Green the ~15 failing root vitest tests.
-  - Apply the DEC-124..130 texts and the AC527, DEC-129 and AC1108 changes.
-  - Fix the citations.
-  - Produce real outputs and generated receipts.
-  - Its report is `context/reports/integrator-v5.md`.
-  - A Codex adversarial review of the R14 commits is saved to `context/reports/codex-review-r14.md`. Verify each finding before fixing it.
-- **Codex review of R14 (`context/reports/codex-review-r14.md`):** Claude verified all 5 findings against the code and the catalog. Details are in the `context/orchestration.md` entry "Codex review R14".
-  - Findings 4 and 5 were being fixed by lane R14c-app (report `context/reports/r14c-app.md`):
-    - (4) AUTH-API-03 decodes the body before the origin and CSRF checks.
-    - (5) Step-up drafts are not bound to the account or session.
-  - Still to fix after integrator v5, since all three need the DB or the receipts tooling:
-    - (1) `platform_api.admin_mfa_factor_reset` and `identity.rpc_admin_reset_mfa_factors` are still owned by postgres (BYPASSRLS) and write forced tables. The guard scanned too narrowly; sweep every SECURITY DEFINER function that touches a forced table.
-    - (2) The real-PostgREST test derives its own target set from function bodies. Use an explicit manifest with exact equality, plus a mutation test.
-    - (3) Receipts promote file-level pgTAP verdicts to every marker. Require assertion-level verbose TAP, reject SKIP/TODO, and drop the file-level fallback.
-- **R14 remediation history** (lane reports in `context/reports/`):
-  - Done:
-    - SEC-1 (DB1).
-    - Worker class sweeps (WK): BE00 middleware order on every cookie route family, 503/expired-session/step-up/415 variants, and AC1031/AC1142.
-    - Evidence tooling (EVID): receipts generated by `pnpm evidence:collect`, a bidirectional marker-citation guard, holds, the ratification bundle and tracking fixes.
-    - Web lane 1.
-  - Running at the last refresh (workflow `wf_7194570c-35c`): DB2 finishing SEC-2, then DB3, then WEB2. Check the lane reports for their final state.
-    - DB3 covers: the `cms_json_bounded` type-safety fix, the MFA settlement receipt, D-IDEM (`IDEMPOTENCY_MISMATCH` instead of `CONFLICT`), AC064 literal null, SEC-5 release-route 403/404, SEC-3 nonce/denial telemetry, SEC-8 owner-without-grants tests, disjunctive pgTAP assertions, and race-runner JSON output.
-    - WEB2 covers: AC1127 draft persistence and consolidation, the "ownerFull" label defect, the AC261 bundle reduction (the real build is ~141.7 KB gzipped against a 90 KB budget), AC233 input, AC1122, AC248, the persona fixture, the AC1108 marker, and the stability problem where the Wrangler "Network connection lost" crash forced s09-real to be split into 4 runs.
-  - Latest WIP checkpoint: `d8f9de1f` (not pushed). DB2 (SEC-2) finished: `pnpm db:verify` green, 197 files / 8076 tests, db:api-test 22, races 6/6. Every lane's later output is uncommitted until the next checkpoint commit.
+  - DEC-128: AC906 uses the pull model, proven.
+  - DEC-129: the CMS-03A-05 unknown-target 404 clause is deleted.
+  - DEC-130: AC1122 is proven per branch.
+  - Errata applied in R14d, recorded as ledger notes: AC1122 reads 400 INVALID_REQUEST, not VALIDATION_FAILED; AC034 drops the deleted 404 clause; AC233 drops a stale "stays open" phrase; AC282 and AC1147 now say "ratified by DEC-125".
+- **Orchestrator rulings** (`context/decisions/s09-resolutions.md`): AC527's 409 carries `recoveryAction: 'renew'`; AC1108 uses `tab=mfa-reset`; the R14-web rulings.
+- **Tracker:** S09 shows 1234/1235, with AC261 still held. Re-check AC261 now that the bundle budget is met: 89,922 B gzip against 92,160.
+- **Last full verification** (R14c2, commit `e89c2e1d`):
+  - `pnpm validate` exits 0 with 100% coverage.
+  - `pnpm db:verify` exits 0.
+  - Verbose pgTAP: 201 files, 8233 ok.
+  - `db:api-test`: 9 files, 58 tests through real Kong→PostgREST.
+  - Races 6/6.
+  - Root vitest: 13542.
+  - Chrome: functional 105/105, s09-real 109/109, both single invocations.
+  - Generated receipts: `tests/contracts/phase-02-slice-09-receipts.generated.jsonl`, 9961 assertion-level rows, 0 stale, 0 file-level.
+  - R14d then reran the affected subset and the gates; see `context/reports/r14d.md`.
+- **Real production defects found and fixed this session.** Every one was invisible to the old tests:
+  - SEC-1: legacy JWT GUCs made actors forgeable and service-role RPCs dead.
+  - SEC-2: RLS never applied to definer functions.
+  - The step-up check was fail-open (`NULL NOT IN`).
+  - CMS-03A-02 never succeeded.
+  - CMS-03A-05 always returned 502.
+  - The 409 details allowlist dropped `recoveryAction`.
+  - The MFA last-factor guard was blind to CMS authority.
+  - The owner-grant backfill wrote 0 rows.
+  - Cookie reads skipped the Origin check.
+  - Upload routes had no CSRF.
+  - Blocked migration plans emitted no telemetry.
+  - The grant console lost its idempotency key across step-up.
+  - Step-up drafts leaked across accounts.
+- **Codex reviews:**
+  - R14 (`context/reports/codex-review-r14.md`): 5/5 findings verified and fixed in R14c and R14c2.
+  - R14c2 (`context/reports/codex-review-r14c2.md`): if present, verify each finding before fixing it.
 
 ## Next steps, in order
 
-1. If any R14 lane is unfinished, read its report (`context/reports/r14-*.md`, `r14b-web.md`) and finish it. Database work is single-owner and sequential.
-2. **Integrator v5:**
-   - Apply the DEC-124..128 texts and un-hold those criteria.
-   - Fix the AC090 and AC1142 citations.
-   - Produce real outputs: `pnpm db:test` verbose TAP, db:races JSON, `pnpm db:api-test`, full vitest JSON, and Playwright JSON from single invocations of the functional and s09-real configs.
-   - Run `pnpm evidence:collect` to write the receipts, get all guards green, and pass `pnpm progress:check`.
-   - Do not rerun `s09v4/merge-v4.mjs`; it undoes the receipt work.
-3. Commit a checkpoint, then run an adversarial review of the R14 commits (base `073496db`). Verify every finding before fixing it; earlier reviews produced false positives.
-4. **Full re-verification of all active S09 criteria** by a fresh verifier population: PROVEN / WEAK(C) / WEAK(S) / NOT-PROVEN, each with the deciding file:line, written to disk. Then fix lanes for everything not PROVEN, a separate re-verification of the fixed set, and an independent sample audit. Audit, refute, fix and verify must be separate populations.
-5. Run full `pnpm validate` plus `pnpm db:verify` and all Chrome configs in this worktree. Push PR #124, watch CI on the self-hosted runners, and merge when green. The merge triggers the staging deploy, which closes the SEC-1 exposure.
-6. **Clean up after the merge:** remove this worktree and branch, and any branches or worktrees you created. `/home/rob/Projects/WeJammin/.claude/worktrees/agent-*` (~100, pre-existing) and the untracked `apps/worker/src/cms-editorial/` in the main checkout are pre-existing; ask the owner before deleting them.
+1. Read `context/reports/r14d.md`, and `context/reports/codex-review-r14c2.md` if it exists. Verify every Codex finding against the code before fixing it, and fix confirmed ones RED-first.
+2. **Independent verification of Slice 09.** Use a fresh population that did none of the work:
+   - First an audit #4 sample, like audit #3: about 200 criteria across sets a/b/c plus security probes.
+   - Then a full re-verification of all 1235 active criteria (PROVEN / WEAK(C) / WEAK(S) / NOT-PROVEN, with the deciding file:line, written to disk).
+   - Then fix lanes for everything not PROVEN, then a separate re-verification of the fixed set.
+   - Audit, refute, fix and verify are separate agent populations.
+   - Close a criterion only on a generated receipt plus a verifier PROVEN.
+3. Run `pnpm validate`, `pnpm db:verify`, `pnpm db:test:tap`, `pnpm evidence:collect` (0 stale) and both Chrome configs in single invocations.
+4. Push PR #124, watch CI on the self-hosted runners, and merge when green. The merge triggers the staging deploy, which also closes the SEC-1 staging exposure.
+5. Clean up after the merge:
+   - Remove this worktree and branch, plus any branches or worktrees you created.
+   - Ask the owner about the pre-existing `/home/rob/Projects/WeJammin/.claude/worktrees/agent-*` (~100) and the untracked `apps/worker/src/cms-editorial/` in the main checkout.
+6. **Security follow-up (pre-existing, outside S09):**
+   - 154 earlier-slice SECURITY DEFINER functions are still owned by BYPASSRLS `postgres` while touching FORCE-RLS tables. The list is in `context/reports/r14c2-fix.md` and the evidence JSON.
+   - This includes nested legacy helpers on the MFA reset path.
+   - Plan a sweep with the same pattern: non-bypass definer roles and behavioural RLS tests.
 7. **Slices 10–17:**
-   - Inputs: `context/s10-s17-survey.md`, `context/s10-s11-breakdown.md`, `context/s12-breakdown.md`, and the decisions in `context/decisions/s10-s17-resolutions.md` (DEC-109..DEC-121 owner; D2–D25, G3, G6, G9, OD-1..OD-6, and the A2/A3 follow-ups).
-   - Per slice: spec cascade, depth-floor ledger, RED, GREEN, evidence markers, an independent audit, validate, and a PR.
+   - Inputs: `context/s10-s17-survey.md`, `context/s10-s11-breakdown.md`, `context/s12-breakdown.md`, and `context/decisions/s10-s17-resolutions.md` (DEC-109..DEC-121 owner decisions; D2–D25, G3, G6, G9, OD-1..OD-6, and the A2/A3 follow-ups).
+   - Per slice: spec cascade, depth-floor ledger, RED, GREEN, evidence markers plus generated receipts, an independent audit, validate, and a PR.
    - Earlier Slice 10/12 code exists on this branch but is unaccepted.
-   - Known carry-overs:
+   - Carry-overs:
      - Upload intents and completion are unwired in production (503) — media slices 13/14.
      - DEC-114 builds CMS-15/16 and CFG-05C-01 in Phase 2.
-     - The S12 live bugs listed under OD-6.
+     - The S12 live bugs under OD-6.
+     - No producer exists for ungoverned membership acceptance (the largest remaining labelled-forgery class in pgTAP).
+     - No cross-organization CMS grant producer exists (AC593).
 8. **Final close:** S17, then verify-infrastructure, then validate-phase.
 
 ## Lessons that cost real time (apply them)
