@@ -294,7 +294,8 @@ describe('source, default and fallback groups', () => {
       click(buttonNamed(group, `Add to the fallback order for ${target}`));
     };
     const expected = candidates.slice(0, 15);
-    for (let index = 0; index < expected.length; index += 1) addFirstAvailable();
+    for (let index = 0; index < expected.length; index += 1)
+      addFirstAvailable();
     expect(config(view).chains[target]).toEqual([...expected, 'en']);
     const group = fieldsetFor(view, target);
     const items = group.querySelectorAll('ol > li');
@@ -318,10 +319,7 @@ describe('source, default and fallback groups', () => {
           ) as HTMLButtonElement
         ).disabled,
       ).toBe(position === expected.length - 1);
-      buttonNamed(
-        item,
-        `Remove ${tag} from the fallback order for ${target}`,
-      );
+      buttonNamed(item, `Remove ${tag} from the fallback order for ${target}`);
     });
     const last = items[15] as HTMLLIElement;
     expect(last.textContent).toBe('en (always last)');
