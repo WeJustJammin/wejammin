@@ -51,6 +51,56 @@ const requestOf = (
     duplex: 'half',
   } as RequestInit);
 
+/** A body whose reader is supplied directly, bypassing a real stream. */
+const fakeBody = (reader: unknown): ReadableStream<Uint8Array> =>
+  ({ getReader: () => reader }) as unknown as ReadableStream<Uint8Array>;
+
+/** A body whose `getReader` always throws. */
+const unopenableBody = (): ReadableStream<Uint8Array> =>
+  ({
+    getReader: () => {
+      throw new Error('locked');
+    },
+  }) as unknown as ReadableStream<Uint8Array>;
+
+/** A reader that resolves each read with `value`, recording a cancel. */
+const readerYielding = (value: unknown, onCancel?: () => void): unknown => ({
+  cancel: async () => {
+    onCancel?.();
+  },
+  read: async () => ({ done: false, value }),
+  releaseLock: () => undefined,
+});
+
+/** A reader whose read rejects, standing in for a reset stream. */
+const readerErroring = (): unknown => ({
+  cancel: async () => undefined,
+  read: async () => {
+    throw new Error('reset');
+  },
+  releaseLock: () => undefined,
+});
+
+/** Build a request whose `body` is whatever object is supplied. */
+const requestWithBody = (body: unknown): Request => {
+  const request = requestOf('{}');
+  Object.defineProperty(request, 'body', { configurable: true, value: body });
+  return request;
+};
+
+/** A signal whose `aborted` flips to true on the Nth read. */
+const abortsAtRead = (nth: number): AbortSignal => {
+  let reads = 0;
+  return {
+    get aborted() {
+      reads += 1;
+      return reads >= nth;
+    },
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  } as unknown as AbortSignal;
+};
+
 const kindOf = (outcome: BoundedBodyOutcome): string => outcome.kind;
 
 describe('readBoundedRequestBytes', () => {
@@ -107,6 +157,152 @@ describe('readBoundedRequestBytes', () => {
       expect(source.pulled()).toBe(0);
     },
   );
+
+  it('refuses a declared length beyond the safe integer range unread', async () => {
+    const source = probe(16);
+    const request = requestOf(source.stream);
+    Object.defineProperty(request, 'headers', {
+      value: new Headers({ 'content-length': '10000000000000000' }),
+    });
+    const outcome = await readBoundedRequestBytes(request, { maxBytes: MAX });
+    expect(kindOf(outcome)).toBe('malformed-length');
+    expect(source.pulled()).toBe(0);
+  });
+
+  it('answers aborted when the signal fires during a failing body access', async () => {
+    const request = requestOf('{}');
+    Object.defineProperty(request, 'body', {
+      configurable: true,
+      get: () => {
+        throw new Error('body locked');
+      },
+    });
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(request, {
+          maxBytes: MAX,
+          signal: abortsAtRead(2),
+        }),
+      ),
+    ).toBe('aborted');
+  });
+
+  it('answers unreadable when a body access fails without an abort', async () => {
+    const request = requestOf('{}');
+    Object.defineProperty(request, 'body', {
+      configurable: true,
+      get: () => {
+        throw new Error('body locked');
+      },
+    });
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(request, {
+          maxBytes: MAX,
+          signal: abortsAtRead(3),
+        }),
+      ),
+    ).toBe('unreadable');
+  });
+
+  it('answers aborted when the signal fires during a failing clone access', async () => {
+    const request = requestOf('{}');
+    Object.defineProperty(request, 'clone', {
+      value: () => {
+        throw new Error('clone locked');
+      },
+    });
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(request, {
+          fromClone: true,
+          maxBytes: MAX,
+          signal: abortsAtRead(2),
+        }),
+      ),
+    ).toBe('aborted');
+  });
+
+  it('answers aborted when the signal fires after the body resolves', async () => {
+    const source = probe(16);
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(requestOf(source.stream), {
+          maxBytes: MAX,
+          signal: abortsAtRead(2),
+        }),
+      ),
+    ).toBe('aborted');
+    expect(source.pulled()).toBe(0);
+  });
+
+  it('answers aborted when the signal fires as getReader throws', async () => {
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(requestWithBody(unopenableBody()), {
+          maxBytes: MAX,
+          signal: abortsAtRead(3),
+        }),
+      ),
+    ).toBe('aborted');
+  });
+
+  it('answers unreadable when getReader throws without an abort', async () => {
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(requestWithBody(unopenableBody()), {
+          maxBytes: MAX,
+          signal: abortsAtRead(4),
+        }),
+      ),
+    ).toBe('unreadable');
+  });
+
+  it('answers unreadable for a non-byte stream value', async () => {
+    let cancellations = 0;
+    const outcome = await readBoundedRequestBytes(
+      requestWithBody(
+        fakeBody(
+          readerYielding('not-bytes', () => {
+            cancellations += 1;
+          }),
+        ),
+      ),
+      { maxBytes: MAX, signal: abortsAtRead(5) },
+    );
+    expect(kindOf(outcome)).toBe('unreadable');
+    expect(cancellations).toBe(1);
+  });
+
+  it('answers aborted for a racing abort during non-byte value access', async () => {
+    let cancellations = 0;
+    const outcome = await readBoundedRequestBytes(
+      requestWithBody(
+        fakeBody(
+          readerYielding('not-bytes', () => {
+            cancellations += 1;
+          }),
+        ),
+      ),
+      { maxBytes: MAX, signal: abortsAtRead(4) },
+    );
+    expect(kindOf(outcome)).toBe('aborted');
+    expect(cancellations).toBe(1);
+  });
+
+  it('answers aborted when the signal fires as a reader rejects', async () => {
+    expect(
+      kindOf(
+        await readBoundedRequestBytes(
+          requestWithBody(fakeBody(readerErroring())),
+          {
+            maxBytes: MAX,
+            signal: abortsAtRead(3),
+          },
+        ),
+      ),
+    ).toBe('aborted');
+  });
 
   it('enforces the ceiling on actual bytes when the declaration lies low', async () => {
     const source = probe(10 * 1024 * 1024);

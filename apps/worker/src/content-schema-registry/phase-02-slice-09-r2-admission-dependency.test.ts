@@ -173,13 +173,21 @@ describe('504 DEPENDENCY_UNAVAILABLE is produced by an exceeded deadline', () =>
       let aborted = false;
       const { send } = composeProduction(op, {
         deadlineMs: 25,
-        cms: (_rpc, _body, signal) =>
-          new Promise<Response>((_resolve, reject) => {
+        cms: (_rpc, _body, signal) => {
+          // Emulate `fetch`: a signal already aborted at call time rejects at
+          // once. A listener attached after the abort never fires, so without
+          // this the double would hang whenever the deadline beats the call.
+          if (signal.aborted) {
+            aborted = true;
+            return Promise.reject(new DOMException('aborted', 'AbortError'));
+          }
+          return new Promise<Response>((_resolve, reject) => {
             signal.addEventListener('abort', () => {
               aborted = true;
               reject(new DOMException('aborted', 'AbortError'));
             });
-          }),
+          });
+        },
       });
       const response = await send();
       expect(response.status).toBe(504);

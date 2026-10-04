@@ -16,6 +16,10 @@ import {
 } from './content-schema-registry-platform-shared';
 import type { ContentSchemaRegistryPresentationVariant } from './content-schema-registry-platform-shared';
 import { sameOriginMutationRequest } from './content-schema-registry-platform-mutation-support';
+import {
+  boundedFormData,
+  boundedMutationInput,
+} from './content-schema-registry-platform-bounded-input';
 
 /** One CMS-03A-18 read with the private context projection that came with it. */
 export interface CmsCapabilityGrantRead {
@@ -211,7 +215,12 @@ export const cmsCapabilityGrantIdFromRequest = async (
   // BE00 step 2: no body read for a request that is not provably same-origin.
   if (!sameOriginMutationRequest(request)) return undefined;
   try {
-    const value = (await request.clone().formData()).get('grantId');
+    // The same memoized bounded read and form parse the facade uses, so the
+    // cookie-bearing body is read and parsed at most once per request.
+    const bounded = await boundedMutationInput(request);
+    const form = await boundedFormData(bounded);
+    if (form === null) return undefined;
+    const value = form.get('grantId');
     return typeof value === 'string' ? value : undefined;
   } catch {
     return undefined;

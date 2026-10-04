@@ -58,7 +58,7 @@ const put = (file: string, text: string): void => {
 };
 const EVIDENCE_MAP = 'tests/contracts/phase-02-slice-09-evidence-map.test.ts';
 const GATE = 'vitest-evidence-s09.json';
-const AC269 = `phase 02 slice 09 evidence map ${mk('269')} executes every declared nonbrowser command`;
+const AC269 = `${mk('269')} executable S09 evidence map ${mk('269')} executes every declared nonbrowser command`;
 put(EVIDENCE_MAP, 'export {};\n');
 put('apps/x/a.test.ts', 'export {};\n');
 put('tests/e2e/a.spec.ts', 'export {};\n');
@@ -288,5 +288,36 @@ describe('the allowlisted ordinary run and dedicated gate still merge', () => {
   it('keeps a skipped test no report executed, gate or not', () => {
     const gate = write(GATE, vitestReport(EVIDENCE_MAP, [[AC269, 'skipped']]));
     expect(statuses(collect([gate]).receipts)).toEqual([`${AC269}|skipped`]);
+  });
+
+  it("keeps the designated gate's own skip when an ordinary run passed the same test", () => {
+    const ordinary = write(
+      'ordinary-5.json',
+      vitestReport(EVIDENCE_MAP, [[AC269, 'passed']]),
+    );
+    const gate = write(GATE, vitestReport(EVIDENCE_MAP, [[AC269, 'skipped']]));
+    const { receipts } = collect([ordinary, gate]);
+    expect(statuses(receipts)).toEqual([`${AC269}|passed`, `${AC269}|skipped`]);
+  });
+
+  it('does not replace a skip whose title only contains the designated title', () => {
+    const contained = `${AC269} for a flagged payload`;
+    const ordinary = write(
+      'ordinary-6.json',
+      vitestReport(EVIDENCE_MAP, [[contained, 'skipped']]),
+    );
+    const gate = write(
+      GATE,
+      vitestReport(EVIDENCE_MAP, [
+        [contained, 'passed'],
+        [AC269, 'passed'],
+      ]),
+    );
+    const { receipts } = collect([ordinary, gate]);
+    expect(statuses(receipts)).toEqual([
+      `${contained}|passed`,
+      `${contained}|skipped`,
+      `${AC269}|passed`,
+    ]);
   });
 });

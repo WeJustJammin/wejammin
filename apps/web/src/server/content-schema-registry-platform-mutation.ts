@@ -19,6 +19,11 @@ import {
 } from './content-schema-registry-platform-input';
 import type { ParsedMutationInput } from './content-schema-registry-platform-input';
 import {
+  boundedMutationInput,
+  contentSchemaRegistryMutationOperationFromBoundedInput,
+  isJsonMutationContentType,
+} from './content-schema-registry-platform-bounded-input';
+import {
   copyMutationResponseHeaders,
   csrfCookie,
   forwardedMutationCookies,
@@ -51,12 +56,14 @@ export const forwardContentSchemaRegistryMutation = async (
   const path = mutationPath(target);
   if (path === null) return localMutationError(request, 400);
 
-  const contentType = request.headers.get('content-type') ?? '';
+  // One bounded read of this request, shared with the operation probe below.
+  const bounded = await boundedMutationInput(request);
+  if (!bounded.read.ok) return localMutationError(request, 400);
   let parsed: ParsedMutationInput;
   try {
-    parsed = /^application\/json(?:\s*;|$)/iu.test(contentType)
-      ? await parseJsonInput(request, target)
-      : await parseFormDataInput(request, target);
+    parsed = isJsonMutationContentType(bounded.contentType)
+      ? await parseJsonInput(bounded, target)
+      : await parseFormDataInput(bounded, target);
   } catch (error) {
     if (error instanceof MutationInputError)
       return localMutationError(request, 400);
@@ -211,22 +218,13 @@ export const contentSchemaRegistryMutationOperationFromRequest = async (
   // BE00 step 2: a request that cannot be shown to be same-origin is refused
   // before its body is read, so a cross-site POST is never buffered here.
   if (!sameOriginMutationRequest(request)) return null;
+  // The same bounded read (and, for a form, the same parsed form) the facade
+  // uses, so a cookie-bearing request is never read twice.
+  const bounded = await boundedMutationInput(request);
   try {
-    const contentType = request.headers.get('content-type') ?? '';
-    let value: unknown;
-    if (/^application\/json(?:\s*;|$)/iu.test(contentType)) {
-      value = await request.clone().json();
-    } else {
-      value = (await request.clone().formData()).get('operationId');
-    }
-    const operationId =
-      typeof value === 'object' && value !== null
-        ? (value as { readonly operationId?: unknown }).operationId
-        : value;
-    return typeof operationId === 'string' &&
-      Object.hasOwn(CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS, operationId)
-      ? (operationId as ContentSchemaRegistryMutationOperationId)
-      : null;
+    return await contentSchemaRegistryMutationOperationFromBoundedInput(
+      bounded,
+    );
   } catch {
     return null;
   }

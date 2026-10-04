@@ -370,7 +370,7 @@ Forward-only migrations for the R12 database holdovers (each has a RED-first pgT
   `../tests/phase_02_slice_09_canonical_json_equivalence.sql`).
 - `100100` AC217: `cms_create_type_draft` validates the field array once and inserts it in one
   statement; create128 RPC p95 about 60 ms on the reference stack (was 168 ms quiet, 299 ms loaded;
-  `../tests/phase_02_slice_09_evidence_bench128.sql`, 25 samples, p95 < 200 ms).
+  `../tests/phase_02_slice_09_evidence_bench128.sql`, 25 samples (n >= 20): every-op p95 < 300 ms binding, max < 1,200 ms; create128 p95 < 200 ms stays diagnostic only).
 - `100200` AC390: `cms_create_schema_successor` accepts the optional `workflowKey`/`workflowVersion`
   pair (both null or absent keeps the source member, both present replaces it with a seeded registry
   member); CMS-03A-11 keeps reviewing under the strictest of the two members

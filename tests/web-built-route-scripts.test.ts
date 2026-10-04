@@ -63,6 +63,7 @@ const build = (fixture: Fixture): string => {
 const KEY = '/abs/src/pages/x.astro?astro&type=script&index=0&lang.ts';
 const PROCESSED = `<html lang="en">\${renderScript($$result, "${KEY}")}</html>`;
 const SYNC_ASSET = 'auth-scope-sync.Abc123.js';
+const MISSING_CLIENT = 'missing-client-chunk.js';
 const GOOD: Fixture = {
   pages: [{ route: '/x', component: 'src/pages/x.astro', body: PROCESSED }],
   emitted: { [KEY]: '_astro/x.astro_astro_type_script_index_0_lang.H1.js' },
@@ -138,6 +139,57 @@ describe('verifyBuiltRouteScripts', () => {
     expect(report.failures).toEqual([
       'route /x (src/pages/x.astro) serves a document but loads no emitted auth-scope-sync asset',
     ]);
+  });
+
+  it('fails when an inlined script imports an auth-scope asset the build never emitted', () => {
+    const report = verifyBuiltRouteScripts(
+      build({
+        ...GOOD,
+        emitted: {},
+        inlined: { [KEY]: `import"./${SYNC_ASSET}";` },
+        client: {},
+      }),
+    );
+    expect(report.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(SYNC_ASSET),
+        'route /x (src/pages/x.astro) serves a document but loads no emitted auth-scope-sync asset',
+      ]),
+    );
+  });
+
+  it('fails when an emitted script imports an auth-scope asset the build never emitted', () => {
+    const report = verifyBuiltRouteScripts(
+      build({
+        ...GOOD,
+        client: {
+          'x.astro_astro_type_script_index_0_lang.H1.js': `import"./${SYNC_ASSET}";`,
+        },
+      }),
+    );
+    expect(report.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(SYNC_ASSET),
+        'route /x (src/pages/x.astro) serves a document but loads no emitted auth-scope-sync asset',
+      ]),
+    );
+  });
+
+  it('fails and reports once when a script imports a client file the build never emitted', () => {
+    const report = verifyBuiltRouteScripts(
+      build({
+        ...GOOD,
+        client: {
+          'x.astro_astro_type_script_index_0_lang.H1.js': `import"./${SYNC_ASSET}";import"./${MISSING_CLIENT}";import"./${MISSING_CLIENT}";`,
+          [SYNC_ASSET]: 'export {};',
+        },
+      }),
+    );
+    const missing = report.failures.filter((failure) =>
+      failure.includes(MISSING_CLIENT),
+    );
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toContain('missing from dist');
   });
 
   it('fails a script whose emitted file is absent from dist/client', () => {

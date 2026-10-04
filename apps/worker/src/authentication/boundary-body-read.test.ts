@@ -50,6 +50,20 @@ const abortsOnRead = (nth: number): AbortSignal => {
   } as unknown as AbortSignal;
 };
 
+/** A signal that only reports aborted once the reader releases it. */
+const abortsOnRelease = (): AbortSignal => {
+  let aborted = false;
+  return {
+    get aborted() {
+      return aborted;
+    },
+    addEventListener: () => undefined,
+    removeEventListener: () => {
+      aborted = true;
+    },
+  } as unknown as AbortSignal;
+};
+
 const timeout = {
   ok: false,
   status: 504,
@@ -104,6 +118,28 @@ describe('readJsonBodyText with a deadline signal', () => {
     });
   });
 
+  it('answers 400 for a malformed Content-Length before reading a byte', async () => {
+    const request = new Request('https://api.wejammin.test/x', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    Object.defineProperty(request, 'headers', {
+      value: new Headers({
+        'content-length': '-1',
+        'content-type': 'application/json',
+      }),
+    });
+    expect(
+      await readJsonBodyText(request, new AbortController().signal),
+    ).toMatchObject({
+      ok: false,
+      status: 400,
+      code: 'INVALID_REQUEST',
+      message: 'The Content-Length header is invalid.',
+    });
+  });
+
   it('answers 504 when the deadline passes between the read and the size check', async () => {
     expect(
       await readJsonBodyText(
@@ -118,6 +154,15 @@ describe('readJsonBodyText with a deadline signal', () => {
       await readJsonBodyText(
         JSON_REQUEST(() => bytesStream('{}')),
         abortsOnRead(4),
+      ),
+    ).toMatchObject(timeout);
+  });
+
+  it('answers 504 when the deadline fires after the body resolves ok', async () => {
+    expect(
+      await readJsonBodyText(
+        JSON_REQUEST(() => bytesStream('{}')),
+        abortsOnRelease(),
       ),
     ).toMatchObject(timeout);
   });

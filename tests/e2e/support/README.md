@@ -58,10 +58,13 @@ or a deployed Worker.
 - `wrangler.s09-api.jsonc` — Wrangler configuration for that API Worker.
 - `run-s09-real-servers.mjs` — ordered production web build, API/web startup,
   readiness polling, explicit port handling, and process-group teardown.
-- `run-s09-real-suite.mjs` — runs all ten production-built Chrome checks and
-  permits one complete-suite restart only when the failed Wrangler log contains
-  the known local ProxyWorker `Network connection lost` signature. An assertion
-  failure, missing log, unrelated Wrangler error, or second failure stays red.
+- `run-s09-real-suite.mjs` — runs all production-built Chrome checks with a
+  bounded whole-suite retry (three attempts total) that is armed only by a
+  recognized local infrastructure disconnect: either the known ProxyWorker
+  `Network connection lost` signature in that attempt's own Wrangler log, or
+  the launcher's explicit `S09 web server exited before teardown` line. Any
+  assertion failure, missing log, unrelated Wrangler error, or exhaustion of the
+  attempt budget stays red; each retry is accounted on stderr.
 - `profile-portfolio-api.mjs` — legacy HTTP fixture for profile-portfolio E2E;
   it is independent of the Slice 09 Worker binding harness.
 

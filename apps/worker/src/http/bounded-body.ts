@@ -67,15 +67,16 @@ export const readBoundedRequestBytes = async (
   try {
     body = options.fromClone ? request.clone().body : request.body;
   } catch {
-    return { kind: 'unreadable' };
+    return signal?.aborted ? { kind: 'aborted' } : { kind: 'unreadable' };
   }
+  if (signal?.aborted) return { kind: 'aborted' };
   if (body === null) return { kind: 'ok', bytes: new Uint8Array() };
 
   let reader: ReadableStreamDefaultReader<Uint8Array>;
   try {
     reader = body.getReader();
   } catch {
-    return { kind: 'unreadable' };
+    return signal?.aborted ? { kind: 'aborted' } : { kind: 'unreadable' };
   }
   const cancel = (): void => {
     void reader.cancel().catch(() => undefined);
@@ -108,7 +109,7 @@ export const readBoundedRequestBytes = async (
       if (next.done) break;
       if (!(next.value instanceof Uint8Array)) {
         cancel();
-        return { kind: 'unreadable' };
+        return signal?.aborted ? { kind: 'aborted' } : { kind: 'unreadable' };
       }
       total += next.value.byteLength;
       if (total > maxBytes) {
@@ -119,7 +120,9 @@ export const readBoundedRequestBytes = async (
     }
   } catch {
     cancel();
-    return wasAborted ? { kind: 'aborted' } : { kind: 'unreadable' };
+    return wasAborted || signal?.aborted
+      ? { kind: 'aborted' }
+      : { kind: 'unreadable' };
   } finally {
     signal?.removeEventListener('abort', onAbort);
   }

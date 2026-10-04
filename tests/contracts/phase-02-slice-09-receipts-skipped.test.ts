@@ -159,7 +159,7 @@ describe('Slice 09 receipts fail closed on skipped tests for every tool', () => 
 
 const EVIDENCE_MAP = 'tests/contracts/phase-02-slice-09-evidence-map.test.ts';
 const GATE_REPORT = 'vitest-evidence-s09.json';
-const LIVE = `evidence map ${mk('269')} executes every declared nonbrowser command`;
+const LIVE = `${mk('269')} executable S09 evidence map ${mk('269')} executes every declared nonbrowser command`;
 const liveEntry: Entry[] = [
   { criterion: id('269'), testFiles: [EVIDENCE_MAP] },
 ];

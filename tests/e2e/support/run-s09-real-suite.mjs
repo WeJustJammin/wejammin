@@ -50,9 +50,9 @@ const runOnce = () =>
 const exitCode = await retryBoundary.runRealRouteWithRetry({
   runOnce,
   readWranglerLog: (path) => readFile(path, 'utf8'),
-  onRetry: () => {
+  onRetry: ({ attempt, maxAttempts }) => {
     process.stderr.write(
-      'Local Wrangler ProxyWorker disconnected; retrying the complete ten-test real-route suite once.\n',
+      `Local Wrangler infrastructure disconnected; rerunning the complete real-route suite (retry ${attempt} of ${maxAttempts - 1}).\n`,
     );
   },
 });

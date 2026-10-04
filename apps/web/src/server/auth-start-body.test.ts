@@ -185,3 +185,106 @@ describe('POST /auth/start body ceiling', () => {
     expect(state.binding.requests()).toHaveLength(0);
   });
 });
+
+/** Resolves to pending if work has not settled within ms. */
+const settledWithin = async <T>(
+  work: Promise<T>,
+  ms: number,
+): Promise<T | 'pending'> =>
+  Promise.race([
+    work,
+    new Promise<'pending'>((resolve) => {
+      setTimeout(() => resolve('pending'), ms);
+    }),
+  ]);
+
+const postStream = (
+  stream: ReadableStream<Uint8Array>,
+  headers: Record<string, string> = {},
+) =>
+  POST({
+    request: new Request(`${ORIGIN}/auth/start`, {
+      method: 'POST',
+      headers: { origin: ORIGIN, 'content-type': FORM, ...headers },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit),
+  } as never);
+
+describe('POST /auth/start body failure paths', () => {
+  beforeEach(() => {
+    state.binding = bindingStub(jsonResponse(202, {}));
+  });
+
+  it('refuses a body whose stream errors instead of escaping as a route error', async () => {
+    const failing = new ReadableStream<Uint8Array>(
+      { pull: (controller) => controller.error(new Error('reset')) },
+      { highWaterMark: 0 },
+    );
+    const response = await postStream(failing);
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      '/auth/sign-in?outcome=invalid',
+    );
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(state.binding.requests()).toHaveLength(0);
+  });
+
+  it('refuses a stalled body when the request aborts', async () => {
+    const controller = new AbortController();
+    const stalled = new ReadableStream<Uint8Array>({
+      pull: () => new Promise<void>(() => undefined),
+    });
+    const pending = Promise.resolve(
+      POST({
+        request: new Request(`${ORIGIN}/auth/start`, {
+          method: 'POST',
+          headers: { origin: ORIGIN, 'content-type': FORM },
+          body: stalled,
+          duplex: 'half',
+          signal: controller.signal,
+        } as RequestInit),
+      } as never),
+    );
+    controller.abort();
+    const response = await settledWithin(pending, 1_000);
+    expect(response).not.toBe('pending');
+    if (response === 'pending') return;
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      '/auth/sign-in?outcome=invalid',
+    );
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(state.binding.requests()).toHaveLength(0);
+  });
+
+  it('does not hang when a tee-backed body cannot settle its cancel', async () => {
+    let sent = 0;
+    const finite = new ReadableStream<Uint8Array>(
+      {
+        pull: (controller) => {
+          sent += 1024;
+          if (sent > 16 * 1024) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new Uint8Array(1024).fill(0x61));
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const branch = finite.tee()[0]!;
+    const response = await settledWithin(
+      Promise.resolve(postStream(branch)),
+      1_000,
+    );
+    expect(response).not.toBe('pending');
+    if (response === 'pending') return;
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      '/auth/sign-in?outcome=invalid',
+    );
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(state.binding.requests()).toHaveLength(0);
+  });
+});

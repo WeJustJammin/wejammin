@@ -1,4 +1,9 @@
 import type { ContentSchemaRegistryMutationTarget } from './content-schema-registry-platform-shared';
+import {
+  boundedFormData,
+  boundedJsonText,
+  type BoundedMutationInput,
+} from './content-schema-registry-platform-bounded-input';
 
 const FORM_JSON_FIELDS = new Set([
   'fields',
@@ -98,15 +103,11 @@ const parseJsonText = (value: string, field: string): unknown => {
 };
 
 export const parseFormDataInput = async (
-  request: Request,
+  bounded: BoundedMutationInput,
   target: ContentSchemaRegistryMutationTarget,
 ): Promise<ParsedMutationInput> => {
-  let form: FormData;
-  try {
-    form = await request.clone().formData();
-  } catch {
-    throw new MutationInputError('form_invalid');
-  }
+  const form = await boundedFormData(bounded);
+  if (form === null) throw new MutationInputError('form_invalid');
   const values = new Map<string, string>();
   for (const [name, raw] of form.entries()) {
     if (typeof raw !== 'string') throw new MutationInputError('file_invalid');
@@ -184,12 +185,14 @@ export const parseFormDataInput = async (
 };
 
 export const parseJsonInput = async (
-  request: Request,
+  bounded: BoundedMutationInput,
   target: ContentSchemaRegistryMutationTarget,
 ): Promise<ParsedMutationInput> => {
   let value: unknown;
   try {
-    value = await request.clone().json();
+    const text = boundedJsonText(bounded);
+    if (text === null) throw new Error('bounded read refused');
+    value = JSON.parse(text) as unknown;
   } catch {
     throw new MutationInputError('json_invalid');
   }

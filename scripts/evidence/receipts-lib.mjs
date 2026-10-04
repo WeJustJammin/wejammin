@@ -364,12 +364,15 @@ const EXECUTED = new Set(['passed', 'failed', 'flaky']);
  * pairs an ordinary run with the dedicated gate that executes what the ordinary
  * run skips:
  *
- * - `executedByGate`: a test whose title matches `executedTitle` is skipped in
+ * - `executedByGate`: a test whose title `executedTitle` identifies exactly
+ *   (the complete full test name, not a suffix or substring of one) is skipped in
  *   every ordinary run (it is gated on its own npm lifecycle) and executed in
  *   `gate`'s report, so the ordinary skip is dropped against the gate's result;
  * - `filteredByGate`: `gate` runs `file` with a `-t` filter, so every other test
  *   in that file is skipped there; those filter skips are dropped against the
- *   ordinary run that executed them.
+ *   ordinary run that executed them. The designated test (`executedTitle`) is
+ *   the one the filter selects, so a skip of it inside the gate's own report is
+ *   never a filter skip: it is retained.
  *
  * `gate` is the report file name (the collector's vitest invocation id). Any
  * other pairing, any other file or tool, and any Playwright project or config
@@ -380,8 +383,9 @@ export const SKIP_REPLACEMENTS = Object.freeze([
     tool: 'vitest',
     gate: 'vitest-evidence-s09.json',
     file: 'tests/contracts/phase-02-slice-09-evidence-map.test.ts',
-    executedTitle:
-      /\[P2-S09-AC-269\] executes every declared nonbrowser command$/u,
+    executedTitle: (title) =>
+      title ===
+      '[P2-S09-AC-269] executable S09 evidence map [P2-S09-AC-269] executes every declared nonbrowser command',
   }),
 ]);
 
@@ -393,10 +397,11 @@ const replaceableSkip = (skipped, executed) =>
       ((skipped.invocation !== undefined &&
         skipped.invocation !== entry.gate &&
         executed.invocation === entry.gate &&
-        entry.executedTitle.test(skipped.title)) ||
+        entry.executedTitle(skipped.title)) ||
         (skipped.invocation === entry.gate &&
           executed.invocation !== undefined &&
-          executed.invocation !== entry.gate)),
+          executed.invocation !== entry.gate &&
+          !entry.executedTitle(skipped.title))),
   );
 
 /**

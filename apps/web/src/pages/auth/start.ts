@@ -24,6 +24,13 @@ const redirect = (location: string, source?: Response): Response => {
 /** A sign-in start form is a handful of short fields; anything larger is refused unread. */
 const MAX_START_FORM_BYTES = 8192;
 
+/**
+ * A bounded read deadline for the public form body. A stalled or slow-loris
+ * form post is refused rather than occupying the handler; the abort signal from
+ * the incoming request (disconnect, timeout) also ends the read.
+ */
+const START_FORM_READ_DEADLINE_MS = 5000;
+
 export const POST: APIRoute = async ({ request }) => {
   // BE00 step 2 ahead of the body: a cross-origin post is refused unread.
   const origin = request.headers.get('origin');
@@ -32,7 +39,11 @@ export const POST: APIRoute = async ({ request }) => {
   // The ceiling holds with or without a Content-Length: a malformed or oversize
   // declaration is refused unread, and an undeclared (chunked) body is cut off
   // once it crosses the ceiling instead of being buffered by `formData()`.
-  const bounded = await readBoundedRequestBody(request, MAX_START_FORM_BYTES);
+  const bounded = await readBoundedRequestBody(request, {
+    maxBytes: MAX_START_FORM_BYTES,
+    signal: request.signal,
+    deadlineMs: START_FORM_READ_DEADLINE_MS,
+  });
   if (!bounded.ok) return redirect('/auth/sign-in?outcome=invalid');
   let form: FormData;
   try {

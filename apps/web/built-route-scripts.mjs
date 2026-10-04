@@ -76,13 +76,27 @@ const serverModules = (distDirectory) => {
 const isProjectModule = (source) =>
   /\/\/#region src\//u.test(source) || /\/apps\/web\/src\//u.test(source);
 
-const clientClosure = (clientDirectory, start, seen = new Set()) => {
-  if (seen.has(start)) return seen;
-  seen.add(start);
+/**
+ * Collects the client files reachable from `start`. A filename is only marked
+ * reachable once its file exists, so a script that imports an asset the build
+ * never emitted cannot satisfy the reachability checks below; each absent
+ * import is recorded in `missing` (once per closure) instead.
+ */
+const clientClosure = (
+  clientDirectory,
+  start,
+  seen = new Set(),
+  missing = new Set(),
+) => {
+  if (seen.has(start) || missing.has(start)) return seen;
   const path = join(clientDirectory, '_astro', start);
-  if (!existsSync(path)) return seen;
+  if (!existsSync(path)) {
+    missing.add(start);
+    return seen;
+  }
+  seen.add(start);
   for (const match of readText(path).matchAll(CLIENT_IMPORT))
-    clientClosure(clientDirectory, match[1].slice(2), seen);
+    clientClosure(clientDirectory, match[1].slice(2), seen, missing);
   return seen;
 };
 
@@ -168,18 +182,28 @@ export const verifyBuiltRouteScripts = (distDirectory) => {
     if (!servesDocument) continue;
     documentRoutes.push(route);
     const reached = new Set();
+    const missing = new Set();
     for (const source of closure.values())
       for (const key of keysOf(source)) {
         const code = inlined.get(key);
         if (code !== undefined) {
           for (const start of importsOf(code))
-            clientClosure(clientDirectory, start, reached);
+            clientClosure(clientDirectory, start, reached, missing);
           continue;
         }
         const file = emitted.get(key);
         if (file === undefined) continue;
-        clientClosure(clientDirectory, file.slice('_astro/'.length), reached);
+        clientClosure(
+          clientDirectory,
+          file.slice('_astro/'.length),
+          reached,
+          missing,
+        );
       }
+    for (const name of missing)
+      failures.push(
+        `client script imports ${name}, which is missing from dist`,
+      );
     if (![...reached].some((file) => AUTH_SCOPE_ASSET.test(file)))
       failures.push(
         `route ${route} (${component}) serves a document but loads no emitted auth-scope-sync asset`,

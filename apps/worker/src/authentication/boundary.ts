@@ -132,11 +132,15 @@ export const readJsonBodyText = async (
         'The Content-Length header is invalid.',
       );
     case 'unreadable':
-      return authError(
-        400,
-        'INVALID_REQUEST',
-        'The request body could not be read.',
-      );
+      // A racing abort is rechecked at this classification handoff: an
+      // already-fired signal wins over an unreadable body.
+      return signal?.aborted
+        ? requestBodyTimeout()
+        : authError(
+            400,
+            'INVALID_REQUEST',
+            'The request body could not be read.',
+          );
     case 'ok':
       return signal?.aborted
         ? requestBodyTimeout()

@@ -2962,7 +2962,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testMarkers: ['[P2-S09-AC-217]'],
     status: 'verified',
     limitation:
-      'create128 RPC p95 is asserted under 200 ms inside the 300 ms BE03a RPC budget with the worst sample under the 1,200 ms Tier 2 command budget (evidence_bench128, n=25, over twenty-five 128-field definitions created through the real producers), after migrations 20261003100000 (single-pass canonical JSON, equivalence-tested against the previous implementations over a document corpus) and 20261003100100 (batched field insert); the Worker adds a small fraction of the budget; old-active fallback, rollback, worker resume, DLQ replay and exactly-once switch are the 005d, 006, 009 and 009b pgTAP include files.',
+      'create128 RPC p95 <300 ms is the binding BE03a gate, over at least twenty samples (n>=20), with the worst sample under the 1,200 ms Tier 2 command budget; p95 <200 ms stays diagnostic only (evidence_bench128, n=25, over twenty-five 128-field definitions created through the real producers), after migrations 20261003100000 (single-pass canonical JSON, equivalence-tested against the previous implementations over a document corpus) and 20261003100100 (batched field insert); the Worker adds a small fraction of the budget; old-active fallback, rollback, worker resume, DLQ replay and exactly-once switch are the 005d, 006, 009 and 009b pgTAP include files.',
     supplementary: [
       'supabase/tests/phase_02_slice_09_scan/010-entry-lock-race.mjs',
       'supabase/tests/phase_02_slice_09_schema/009c-independent-sessions.mjs',
