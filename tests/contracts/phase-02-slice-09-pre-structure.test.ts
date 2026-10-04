@@ -197,7 +197,7 @@ describe('registry boundary guards for A01-A08', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('[P2-S09-AC-015] gives every browser resource the closed, ownerless IA envelope: id, decimal version, contentHash and timestamps, with the documented per-model exceptions and closed state enums', () => {
+  it('[P2-S09-AC-015] [P2-S09-AC-278] gives every browser resource the closed, ownerless IA envelope: id, decimal version, contentHash and timestamps, with the documented per-model exceptions and closed state enums', () => {
     type Row = Readonly<{
       name: string;
       schema: { safeParse: (value: unknown) => { success: boolean } };

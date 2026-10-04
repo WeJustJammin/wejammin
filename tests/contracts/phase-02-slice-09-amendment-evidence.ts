@@ -3776,13 +3776,15 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-278',
     layer: 'repo',
     command:
-      'pnpm exec vitest run tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
+      'pnpm exec vitest run tests/contracts/phase-02-slice-09-pre-structure.test.ts tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
     testFiles: [
+      'tests/contracts/phase-02-slice-09-pre-structure.test.ts',
       'tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
     ],
     testMarkers: ['[P2-S09-AC-278]'],
     status: 'verified',
-    limitation: '',
+    limitation:
+      'Real exported schema proof: the pre-structure suite rejects ownerId, owner_id, createdBy and authUserId plus unknown fields on every browser resource and closed state enums; the cross-surface suite confirms states stay closed and aligned with worker contracts.',
   },
   {
     criterion: 'P2-S09-AC-279',
