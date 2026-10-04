@@ -10,6 +10,7 @@ import {
   copyAuthCookies,
   forwardAuthRequest,
 } from '../../server/auth-platform-api.ts';
+import { publicStartHeaders } from '../../server/auth-public-start.ts';
 
 export const prerender = false;
 
@@ -39,8 +40,7 @@ export const POST: APIRoute = async ({ request }) => {
   const targetPath = isEmail
     ? '/api/v1/auth/email/start'
     : '/api/v1/auth/oauth/start';
-  const headers = new Headers(request.headers);
-  headers.set('content-type', 'application/json');
+  const headers = publicStartHeaders(request.headers, intent);
   const upstream = await forwardAuthRequest(
     new Request(request.url, {
       method: 'POST',

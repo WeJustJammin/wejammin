@@ -11,13 +11,18 @@ import { createApp } from './phase-02-slice-02.test-support';
 /*
  * BE00 "Hono Middleware Order" puts same-origin, size, content type and the
  * session-bound CSRF check (step 2) before body validation (step 6). AUTH-API-03
- * names its mode in the body, so a request is treated as cookie-authenticated
- * when it carries the session cookie together with a credential only the
- * link/prove_merge modes send (X-CSRF-Token, Idempotency-Key or If-Match), and
- * any session-cookie request is origin-checked first. These tests prove a
- * refused request never makes the body reader pull a single chunk, and that the
- * public sign-in start keeps the documented order (shape before anything
- * else, no origin or CSRF gate).
+ * names its mode in the body, so the body cannot decide whether the gate runs:
+ * a request that carries ANY session cookie (wj_session_ref, wj_access or
+ * wj_refresh) is a cookie-authenticated mutation and is origin-checked and
+ * CSRF-checked before the body is read, whatever its headers claim. These tests
+ * prove a refused request never makes the body reader pull a single chunk, and
+ * that a request with no session cookie at all (the public sign-in start) keeps
+ * the documented order (shape before anything else, no origin or CSRF gate).
+ *
+ * Needs ruling (BE01a is silent): a public sign_in start that still carries a
+ * stale session cookie must therefore also send the CSRF header. The web
+ * `/auth/start` form route drops the browser's cookies for a sign_in intent
+ * before forwarding, so the form flow is unaffected.
  */
 
 const SESSION_COOKIE = `wj_session_ref=slice02-session-ref; wj_csrf=${CSRF}`;
@@ -144,6 +149,43 @@ describe('AUTH-API-03 refuses at the transport boundary before the body is read'
         expect(probe.chunksPulled).toBe(0);
       });
 
+      it('refuses a same-origin session-cookie request with none of X-CSRF-Token, Idempotency-Key or If-Match before the body is read', async () => {
+        const probe = await send(
+          {
+            accept: 'application/json',
+            origin: ORIGIN,
+            cookie: SESSION_COOKIE,
+            'content-type': 'application/json',
+          },
+          body,
+        );
+        expect(await outcome(probe)).toEqual({
+          status: 403,
+          code: 'FORBIDDEN',
+        });
+        expect(probe.chunksPulled).toBe(0);
+      });
+
+      it.each([['wj_access'], ['wj_refresh']])(
+        'treats a bare %s cookie as a session cookie: CSRF is checked, the body is not read',
+        async (name) => {
+          const probe = await send(
+            {
+              accept: 'application/json',
+              origin: ORIGIN,
+              cookie: `${name}=token`,
+              'content-type': 'application/json',
+            },
+            body,
+          );
+          expect(await outcome(probe)).toEqual({
+            status: 403,
+            code: 'FORBIDDEN',
+          });
+          expect(probe.chunksPulled).toBe(0);
+        },
+      );
+
       it('refuses a foreign origin on a bare session-cookie request before the body is read', async () => {
         const probe = await send(
           {
@@ -181,9 +223,23 @@ describe('AUTH-API-03 refuses at the transport boundary before the body is read'
       expect(probe.chunksPulled).toBeGreaterThan(0);
     });
 
-    it('starts sign-in for a browser that still holds a session cookie but sends no CSRF header', async () => {
+    it('refuses a sign_in that carries a session cookie but no CSRF header before the body is read', async () => {
       const probe = await send(
         { ...publicHeaders, origin: ORIGIN, cookie: SESSION_COOKIE },
+        SIGN_IN_BODY,
+      );
+      expect(await outcome(probe)).toEqual({ status: 403, code: 'FORBIDDEN' });
+      expect(probe.chunksPulled).toBe(0);
+    });
+
+    it('starts sign-in for a browser that holds a session cookie when it sends the CSRF header', async () => {
+      const probe = await send(
+        {
+          ...publicHeaders,
+          origin: ORIGIN,
+          cookie: SESSION_COOKIE,
+          'x-csrf-token': CSRF,
+        },
         SIGN_IN_BODY,
       );
       expect(probe.response.status).toBe(201);

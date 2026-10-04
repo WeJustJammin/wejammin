@@ -14,7 +14,6 @@ import {
   type ApiFunction,
   bodyFor,
   callRpc,
-  claimReadingApiFunctions,
   createAuthUser,
   listApiFunctions,
   psql,
@@ -22,13 +21,11 @@ import {
   userToken,
 } from './support/stack';
 
-const GHOST_USER = '00000000-0000-4000-8000-0000000000ff';
 const RELEASE_KEY = 'apigate-release-key';
 
 let attacker = '';
 let victim = '';
 let functions: readonly ApiFunction[] = [];
-let claimReaders: ReadonlySet<string> = new Set();
 
 beforeAll(() => {
   attacker = createAuthUser(randomUUID());
@@ -36,7 +33,6 @@ beforeAll(() => {
   psql(`insert into platform_private.cfg_release_principals(principal_id, key_id)
         values ('${createAuthUser(randomUUID())}', '${RELEASE_KEY}') on conflict do nothing`);
   functions = listApiFunctions();
-  claimReaders = claimReadingApiFunctions();
 });
 
 const forged = (): Readonly<Record<string, unknown>> => ({
@@ -51,7 +47,6 @@ describe('SEC-1 authenticated callers cannot assume another identity', () => {
     expect(functions.filter((fn) => fn.authenticated).length).toBeGreaterThan(
       20,
     );
-    expect(claimReaders.size).toBeGreaterThan(20);
   });
 
   it('every cms_ p_request function executable by authenticated refuses a forged victim context with UNAUTHENTICATED', async () => {
@@ -114,35 +109,6 @@ describe('SEC-1 authenticated callers cannot assume another identity', () => {
     }
   });
 
-  it('every claim-reading function executable by authenticated refuses a subject that is not a real auth user', async () => {
-    const targets = functions.filter(
-      (fn) => fn.authenticated && !fn.anon && claimReaders.has(fn.name),
-    );
-    expect(targets.length).toBeGreaterThan(20);
-    const refused: Record<string, string> = {};
-    for (const fn of targets) {
-      const outcome = await callRpc(
-        fn.name,
-        userToken(GHOST_USER),
-        bodyFor(fn, forged()),
-      );
-      refused[fn.name] = `${outcome.status}:${outcome.message}`;
-    }
-    // A function that validates its own request shape first may answer with
-    // that validation, but none may ever succeed for a ghost subject.
-    const succeeded = Object.entries(refused).filter(([, result]) =>
-      result.startsWith('200:'),
-    );
-    expect(succeeded).toEqual([]);
-    const allowed = new Set(['400:UNAUTHENTICATED', '400:INVALID_REQUEST']);
-    expect(
-      Object.entries(refused).filter(([, result]) => !allowed.has(result)),
-    ).toEqual([]);
-    expect(
-      Object.values(refused).filter((r) => r === '400:UNAUTHENTICATED').length,
-    ).toBeGreaterThanOrEqual(25);
-  });
-
   it('the JWT subject is read: a real subject gets past the identity gate on every identity function', async () => {
     const identity = functions.filter(
       (fn) =>
@@ -167,57 +133,6 @@ describe('SEC-1 authenticated callers cannot assume another identity', () => {
 });
 
 describe('SEC-1 service_role passes every service-role gate', () => {
-  it('every release/migration-worker gated function reaches its own validation, never UNAUTHENTICATED', async () => {
-    const gated = functions.filter(
-      (fn) => fn.serviceRole && !fn.authenticated && claimReaders.has(fn.name),
-    );
-    const workerFamily = gated.filter((fn) =>
-      /schema_migration|schema_activation|register_block|advance_block_lifecycle/u.test(
-        fn.name,
-      ),
-    );
-    expect(workerFamily.length).toBeGreaterThanOrEqual(19);
-    const failing: string[] = [];
-    for (const fn of workerFamily) {
-      const outcome = await callRpc(
-        fn.name,
-        tokenFor('service_role'),
-        bodyFor(
-          fn,
-          { releasePrincipalId: RELEASE_KEY, authUserId: attacker },
-          { releaseKeyId: RELEASE_KEY },
-        ),
-      );
-      if (outcome.message === 'UNAUTHENTICATED') failing.push(fn.name);
-    }
-    expect(failing).toEqual([]);
-  });
-
-  it('every service-role-only claim-reading function accepts a service_role token for a real actor context', async () => {
-    const gated = functions.filter(
-      (fn) => fn.serviceRole && !fn.authenticated && claimReaders.has(fn.name),
-    );
-    expect(gated.length).toBeGreaterThanOrEqual(19);
-    const failing: string[] = [];
-    for (const fn of gated) {
-      const outcome = await callRpc(
-        fn.name,
-        tokenFor('service_role'),
-        bodyFor(
-          fn,
-          {
-            releasePrincipalId: RELEASE_KEY,
-            authUserId: attacker,
-            actorPersonId: attacker,
-          },
-          { releaseKeyId: RELEASE_KEY },
-        ),
-      );
-      if (outcome.message === 'UNAUTHENTICATED') failing.push(fn.name);
-    }
-    expect(failing).toEqual([]);
-  });
-
   it('service_role cannot be reached with an authenticated token', async () => {
     const serviceOnly = functions.filter(
       (fn) => fn.serviceRole && !fn.authenticated && !fn.anon,

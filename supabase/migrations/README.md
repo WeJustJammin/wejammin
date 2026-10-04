@@ -436,6 +436,29 @@ Forward-only migrations for the R12 database holdovers (each has a RED-first pgT
   (AC527), so the Worker answers 409 with `details.recoveryAction: 'renew'`; idempotency and version conflicts stay
   detail-free. The function body is regenerated from the live definition with that one statement changed.
 
+### Slice 09 SEC-2 second sweep (`20261003150000`-`20261003150200`)
+
+Codex R14 finding 1: the administrative MFA reset stayed under the BYPASSRLS owner because the first
+catalog guard scanned two schemas and a CMS table set. The sweep covers every schema and every forced
+table; 33 more definer functions created or redefined by Slice 09 migrations were moved.
+
+- `150000` creates `wejammin_platform_definer` (NOLOGIN, NOSUPERUSER, NOBYPASSRLS, no memberships) for the
+  five functions that are neither CMS nor MFA work (rate limiter, consumer dead letters, outbox lease claim,
+  configuration value resolver, profile claim conversion).
+- `150010` `platform_private.auth_user_usable(uuid, boolean)`: the two functions that join `auth.users` read it
+  through one boolean lookup that stays with the platform owner, because no migration can grant a dedicated role
+  USAGE on the Auth-owned `auth` schema.
+- `150100` privileges, policies and EXECUTE grants for the three roles. The binding version, session rows and
+  security events are admitted by `identity_session_scope_ok` (system scope or the verified subject); the
+  administrative reset record is system-scope only; the actor-grant projection is writable only inside a CMS
+  command; other slices' tables get a policy for the one NOLOGIN owner that mirrors the grant verb for verb.
+- `150200` hands ownership of the 33 functions to `wejammin_cms_definer` (the MFA commands, including
+  `admin_mfa_factor_reset` and `identity.rpc_admin_reset_mfa_factors`), `wejammin_cms_authority_reader` (the
+  read-only authority and identity lookups) and `wejammin_platform_definer`.
+  Proof: `../tests/phase_02_slice_09_sec2_all_schema_definer_rls.sql` (catalog guard over every schema with the
+  explicit legacy list `../tests/support/sec2-legacy-bypass-definers.sqlinc`, and behaviour of both reset
+  functions under forged and foreign sessions).
+
 ## Related links
 
 - `../tests/README.md`

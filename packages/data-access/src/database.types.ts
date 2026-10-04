@@ -9028,6 +9028,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      auth_user_usable: {
+        Args: { p_auth_user_id: string; p_require_undeleted: boolean }
+        Returns: boolean
+      }
       begin_restore_fence: {
         Args: { p_reason: string; p_restore_epoch: number }
         Returns: boolean

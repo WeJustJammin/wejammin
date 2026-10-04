@@ -53,6 +53,34 @@ failure call, no trigger disabling). The R13 AC034 scope-concealment proof (404 
 absent target scope, 403 for a member without schema_designer) lives in
 `phase_02_slice_09_p240_a01_aggregate.sql`.
 
+### Verbose TAP and evidence receipts
+
+`pnpm db:test` (`supabase test db`) prints one verdict per file, which is not
+evidence for any single criterion. `pnpm db:test:tap [--out file]`
+(`infra/run-pgtap-verbose.mjs`) runs the same suites through the same pg_prove
+image with `-v`, so every assertion prints its own `ok N - description` line and
+each file prints its plan. `pnpm evidence:collect --pgtap <that file>` turns each
+assertion into one receipt per marker; a file that ran fewer assertions than it
+planned, has no plan, or numbers its assertions out of order fails every
+assertion it printed, SKIP and TODO assertions are `skipped` and never prove
+anything, and a file with no assertion lines yields no receipt (the collector
+exits 3). Run it right after `pnpm db:reset`, like `pnpm db:test`.
+
+### SEC-2 definer-role guards
+
+`phase_02_slice_09_sec2_definer_rls.sql` proves the CMS tables and
+`phase_02_slice_09_sec2_all_schema_definer_rls.sql` proves the same class over
+every schema and every forced table: a SECURITY DEFINER function that names a
+forced table is owned by one of three NOLOGIN, non-BYPASSRLS roles
+(`wejammin_cms_definer`, `wejammin_cms_authority_reader`,
+`wejammin_platform_definer`) unless it is on the explicit legacy list
+`support/sec2-legacy-bypass-definers.sqlinc` (equality both ways; converting a
+legacy function means deleting its row), the exact set of forced tables those
+roles touch is pinned, every table privilege has a permissive policy for that
+verb, and the administrative MFA reset is refused by row-level security under a
+forged or foreign session. `support/sec2-helpers.sqlinc` holds the shared
+`SET ROLE` harness.
+
 ### JWT claims in pgTAP
 
 PostgREST publishes the verified token only as the JSON setting

@@ -1,17 +1,27 @@
 import { STEP_UP_SCOPE_COOKIE } from '../components/identity-authority/step-up-mfa/step-up-binding';
 
 /**
- * The step-up scope cookie (review r14 finding 2). Tab-held step-up drafts and
- * pending-command envelopes are bound to the signed-in subject so a later user
- * in the same tab can never restore the previous person's interrupted command.
+ * The step-up scope (review r14 finding 2, hardened by the F5 review). Tab-held
+ * step-up drafts and pending-command envelopes are bound to a scope so a later
+ * user in the same tab can never restore the previous person's interrupted
+ * command.
  *
  * The browser cannot read its HttpOnly session cookies, and the FE03 island
  * invariant keeps actor, party and binding identifiers (raw, hashed or
- * truncated) out of island props, URLs and logs. The edge therefore derives
- * the scope from the access token it already receives and hands it to the tab
- * as one opaque, script-readable cookie, the same way the session-bound CSRF
- * cookie reaches it. The scope follows the subject, not the session id,
- * because the step-up proof rotates the session id mid-detour.
+ * truncated) away from page scripts. So the cookie a script CAN read,
+ * `wj_step_up_scope`, holds only a RANDOM opaque nonce: nothing in it is derived
+ * from the subject, and two sign-ins of the same person get different nonces.
+ * Which subject a nonce belongs to is remembered in a separate HttpOnly cookie,
+ * `wj_step_up_subject`, holding HMAC-SHA-256 under a server secret
+ * (`STEP_UP_SCOPE_SECRET`, a Worker secret) of the access-token subject. Only the
+ * edge reads it, to notice a subject change (a different user on the same
+ * browser) and rotate the nonce. The nonce follows the subject, not the session
+ * id, because the step-up proof rotates the session id mid-detour.
+ *
+ * Without the secret the edge cannot recognise a subject, so it fails closed: a
+ * fresh nonce on every page load and no binding cookie, which means no draft
+ * survives a load. Both cookies are expired when the page no longer carries a
+ * session.
  *
  * The token is decoded, not verified: the scope is a hygiene key for storage the
  * same browser already owns, never an authorization input, and every protected
@@ -20,12 +30,21 @@ import { STEP_UP_SCOPE_COOKIE } from '../components/identity-authority/step-up-m
 
 export { STEP_UP_SCOPE_COOKIE };
 
-const SCOPE_DOMAIN = 'wj-step-up-scope-v1';
-const SCOPE_LENGTH = 32;
+/** The HttpOnly cookie that binds the nonce to the subject (HMAC under the server secret). */
+export const STEP_UP_SUBJECT_COOKIE = 'wj_step_up_subject';
+
+const SCOPE_DOMAIN = 'wj-step-up-subject-v2';
+const NONCE_BYTES = 24;
 const SESSION_COOKIES = ['wj_access', 'wj_refresh', 'wj_session_ref'] as const;
 
 export type StepUpScopeDecision =
-  | Readonly<{ kind: 'set'; value: string }>
+  | Readonly<{
+      kind: 'issue';
+      /** The random script-readable nonce to hold. */
+      nonce: string;
+      /** The HttpOnly binding to hold, or null when no server secret is configured. */
+      subjectMac: string | null;
+    }>
   | Readonly<{ kind: 'clear' }>
   | Readonly<{ kind: 'keep' }>;
 
@@ -74,8 +93,42 @@ const subjectOf = (accessToken: string): string | null => {
   }
 };
 
+const NONCE_PATTERN = /^[A-Za-z0-9_-]{32}$/u;
+const MAC_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+
+const freshNonce = (): string =>
+  bytesToBase64Url(crypto.getRandomValues(new Uint8Array(NONCE_BYTES)));
+
+const subjectMacOf = async (
+  secret: string,
+  subject: string,
+): Promise<string> => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${SCOPE_DOMAIN}\u0000${subject}`),
+  );
+  return bytesToBase64Url(new Uint8Array(mac));
+};
+
+const sameValue = (left: string, right: string): boolean => {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1)
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return difference === 0;
+};
+
 export const decideStepUpScope = async (
   request: Request,
+  secret: string | null | undefined,
 ): Promise<StepUpScopeDecision> => {
   const signedIn = SESSION_COOKIES.some(
     (name) => cookieValue(request, name) !== null,
@@ -84,45 +137,67 @@ export const decideStepUpScope = async (
   const accessToken = cookieValue(request, 'wj_access');
   const subject = accessToken === null ? null : subjectOf(accessToken);
   if (subject === null) return { kind: 'keep' };
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(`${SCOPE_DOMAIN}\u0000${subject}`),
-  );
-  return {
-    kind: 'set',
-    value: bytesToBase64Url(new Uint8Array(digest)).slice(0, SCOPE_LENGTH),
-  };
+  if (secret === null || secret === undefined || secret === '')
+    return { kind: 'issue', nonce: freshNonce(), subjectMac: null };
+  const mac = await subjectMacOf(secret, subject);
+  const heldMac = cookieValue(request, STEP_UP_SUBJECT_COOKIE);
+  const heldNonce = cookieValue(request, STEP_UP_SCOPE_COOKIE);
+  const sameSubject =
+    heldMac !== null && MAC_PATTERN.test(heldMac) && sameValue(heldMac, mac);
+  if (sameSubject && heldNonce !== null && NONCE_PATTERN.test(heldNonce))
+    return { kind: 'keep' };
+  return { kind: 'issue', nonce: freshNonce(), subjectMac: mac };
 };
 
 const isDocument = (response: Response): boolean =>
   response.headers.get('content-type')?.toLowerCase().includes('text/html') ===
   true;
 
+const attributes = (secure: boolean, httpOnly: boolean): string =>
+  `Path=/${httpOnly ? '; HttpOnly' : ''}; SameSite=Lax${secure ? '; Secure' : ''}`;
+
 /**
- * Adds the scope cookie to a signed-in HTML page response, or expires it on a
+ * Adds the scope cookies to a signed-in HTML page response, or expires both on a
  * page that no longer carries a session. Other responses pass through.
  */
 export const withStepUpScope = async (
   request: Request,
   response: Response,
+  secret: string | null | undefined,
 ): Promise<Response> => {
   if (
     (request.method !== 'GET' && request.method !== 'HEAD') ||
     !isDocument(response)
   )
     return response;
-  const decision = await decideStepUpScope(request);
-  const held = cookieValue(request, STEP_UP_SCOPE_COOKIE);
-  let setCookie: string | null = null;
-  if (decision.kind === 'set' && decision.value !== held) {
-    const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
-    setCookie = `${STEP_UP_SCOPE_COOKIE}=${decision.value}; Path=/; SameSite=Lax${secure}`;
-  } else if (decision.kind === 'clear' && held !== null) {
-    setCookie = `${STEP_UP_SCOPE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  const decision = await decideStepUpScope(request, secret);
+  const secure = new URL(request.url).protocol === 'https:';
+  const setCookies: string[] = [];
+  if (decision.kind === 'issue') {
+    setCookies.push(
+      `${STEP_UP_SCOPE_COOKIE}=${decision.nonce}; ${attributes(secure, false)}`,
+    );
+    if (decision.subjectMac !== null)
+      setCookies.push(
+        `${STEP_UP_SUBJECT_COOKIE}=${decision.subjectMac}; ${attributes(secure, true)}`,
+      );
+    else if (cookieValue(request, STEP_UP_SUBJECT_COOKIE) !== null)
+      setCookies.push(
+        `${STEP_UP_SUBJECT_COOKIE}=; Max-Age=0; ${attributes(secure, true)}`,
+      );
+  } else if (
+    decision.kind === 'clear' &&
+    (cookieValue(request, STEP_UP_SCOPE_COOKIE) !== null ||
+      cookieValue(request, STEP_UP_SUBJECT_COOKIE) !== null)
+  ) {
+    setCookies.push(
+      `${STEP_UP_SCOPE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`,
+      `${STEP_UP_SUBJECT_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`,
+    );
   }
-  if (setCookie === null) return response;
+  if (setCookies.length === 0) return response;
   const headers = new Headers(response.headers);
-  headers.append('set-cookie', setCookie);
+  for (const cookie of setCookies) headers.append('set-cookie', cookie);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

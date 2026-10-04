@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+import { ensureWebDevVars } from './tests/e2e/support/ensure-web-dev-vars.mjs';
 
 // Playwright forces color in worker and web-server children. Remove NO_COLOR
 // before those processes inherit both variables and make Node emit warnings.
@@ -19,6 +22,8 @@ const webOrigin = `http://127.0.0.1:${webPort}`;
 const docsOrigin = `http://127.0.0.1:${docsPort}`;
 const profilePortfolioApiOrigin = 'http://127.0.0.1:8787';
 const cloudflareWebServerTimeout = 300_000;
+// The web dev server reads its step-up scope secret from apps/web/.dev.vars.
+ensureWebDevVars(fileURLToPath(new URL('.', import.meta.url)));
 const inheritedEnvironment = Object.fromEntries(
   Object.entries(process.env).filter(
     (entry): entry is [string, string] => entry[1] !== undefined,

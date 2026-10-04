@@ -65,22 +65,16 @@ const callbackCandidate = (request: Request): unknown => {
   return Object.fromEntries(entries);
 };
 
-/** True when the request carries the session reference cookie. */
+const SESSION_COOKIE_NAMES = ['wj_session_ref', 'wj_access', 'wj_refresh'];
+
+/** True when the request carries any session cookie (reference, access or refresh). */
 const carriesSessionCookie = (request: Request): boolean =>
   request.headers
     .get('cookie')
     ?.split(';')
-    .some((item) => item.trim().startsWith('wj_session_ref=')) === true;
-
-/**
- * Credentials only the link and prove_merge modes send. A request holding
- * them cannot be the public sign-in start, so BE00 step 2 CSRF applies before
- * its body is read.
- */
-const carriesLinkCredentials = (request: Request): boolean =>
-  request.headers.has('x-csrf-token') ||
-  request.headers.has('idempotency-key') ||
-  request.headers.has('if-match');
+    .some((item) =>
+      SESSION_COOKIE_NAMES.some((name) => item.trim().startsWith(`${name}=`)),
+    ) === true;
 
 export const registerProviderAccessRoutes = (
   app: WorkerApp,
@@ -145,8 +139,14 @@ export const registerProviderAccessRoutes = (
     // AUTH-API-03 is a public sign-in start or a cookie-authenticated link or
     // re-auth start, and the body names which. BE00 step 2 (same-origin, size
     // ceiling, content type, session-bound CSRF) precedes step 6 (body
-    // validation), so a request that carries session credentials is gated
-    // before its body is read. Public sign-in keeps its documented order.
+    // validation), so the body cannot decide whether the gate runs: a request
+    // that carries ANY session cookie is a cookie-authenticated mutation and is
+    // origin- and CSRF-checked before its body is read, whatever headers it
+    // sends. A request with no session cookie keeps the documented public
+    // order. (A sign_in that still carries a stale session cookie must send the
+    // CSRF header; BE01a does not say otherwise: see the ruling note in
+    // be00-oauth-start-body-order.test.ts. The web /auth/start form route drops
+    // its cookies for a sign_in intent.)
     const credentialed = carriesSessionCookie(context.req.raw);
     if (credentialed) {
       const origin = verifySameOrigin(context.req.raw);
@@ -155,7 +155,7 @@ export const registerProviderAccessRoutes = (
     const preflight = jsonBodyPreflight(context.req.raw);
     if (preflight !== null) return responseForAuthError(context, preflight);
     let csrfVerified = false;
-    if (credentialed && carriesLinkCredentials(context.req.raw)) {
+    if (credentialed) {
       const csrfError = await verifyCsrfToken(context.req.raw);
       if (csrfError !== null) return responseForAuthError(context, csrfError);
       csrfVerified = true;
@@ -170,9 +170,14 @@ export const registerProviderAccessRoutes = (
       // until the body was read; the same gate runs now.
       const origin = verifySameOrigin(context.req.raw);
       if (origin !== null) return responseForAuthError(context, origin);
+      // The CSRF token is bound to wj_session_ref, itself a session cookie,
+      // so a request that carries none cannot present a valid token: the
+      // check is a refusal here, by construction.
       if (!csrfVerified) {
-        const csrfError = await verifyCsrfToken(context.req.raw);
-        if (csrfError !== null) return responseForAuthError(context, csrfError);
+        return responseForAuthError(
+          context,
+          authError(403, 'FORBIDDEN', 'The CSRF token is invalid.'),
+        );
       }
       const resolved = await requireSession(context, dependencies);
       if (!resolved.ok) return responseForAuthError(context, resolved);

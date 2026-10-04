@@ -34,7 +34,7 @@ const lib = (await import('../../scripts/evidence/receipts-lib.mjs')) as Lib;
 
 const RECEIPTS = 'tests/contracts/phase-02-slice-09-receipts.generated.jsonl';
 const REGENERATE =
-  'regenerate with: node scripts/evidence/collect-receipts.mjs --vitest <report.json> --pgtap <db-test.tap> --playwright <report.json> --races <db-races.out>';
+  'regenerate with: node scripts/evidence/collect-receipts.mjs --vitest <report.json> --pgtap <verbose TAP from pnpm db:test:tap> --playwright <report.json> --races <db-races.out>';
 
 const shaCache = new Map<string, string | null>();
 const shaOf = (file: string): string | null => {

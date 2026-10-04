@@ -2480,6 +2480,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'supabase/tests/phase_02_slice_09_schema/001-contract.sqlinc',
       'tests/contracts/phase-02-slice-09-cross-surface-traceability.test.ts',
       'supabase/tests/phase_02_slice_09_sec2_definer_rls.sql',
+      'supabase/tests/phase_02_slice_09_sec2_all_schema_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-181]'],
     status: 'verified',
@@ -8588,6 +8589,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testFiles: [
       'supabase/tests/phase_02_slice_09_evidence_constraints_grants.sql',
       'supabase/tests/phase_02_slice_09_r3_grants_misc.sql',
+      'supabase/tests/phase_02_slice_09_sec2_all_schema_definer_rls.sql',
     ],
     testMarkers: ['[P2-S09-AC-658]'],
     status: 'verified',
@@ -12273,7 +12275,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-946',
     layer: 'db+b',
     command: 'pnpm db:test',
-    testFiles: ['supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql'],
+    testFiles: [
+      'supabase/tests/phase_02_slice_09_dec111_admin_mfa_reset.sql',
+      'supabase/tests/phase_02_slice_09_sec2_all_schema_definer_rls.sql',
+    ],
     testMarkers: ['[P2-S09-AC-946]'],
     status: 'verified',
     limitation: '',

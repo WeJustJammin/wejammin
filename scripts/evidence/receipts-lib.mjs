@@ -135,46 +135,77 @@ export const pgtapClosure = (root, entrypoint) => {
 };
 
 const FILE_HEADER = /^(?:psql:)?(\S+\.sql) \.\.+ ?(.*)$/u;
-const TAP_LINE = /^(not ok|ok) (\d+)(?: - (.*?))?(?: # (SKIP|TODO)\b.*)?$/u;
+const PLAN_LINE = /^1\.\.(\d+)\b/u;
+const TAP_LINE = /^(not ok|ok) (\d+)(?: - (.*?))?(?: # (SKIP|TODO)\b.*)?$/iu;
+
+/** Marker-bearing descriptions in an entrypoint's source closure (for unattributable SKIP/TODO). */
+const closureMarkerDescriptions = (root, entrypoint) => {
+  const found = [];
+  for (const file of pgtapClosure(root, entrypoint)) {
+    const source = readFileSync(resolve(root, file), 'utf8');
+    for (const [, description] of source.matchAll(
+      /'((?:[^']|'')*\[P2-S09-AC-[^\]\n]{0,300}\](?:[^']|'')*)'/gu,
+    )) {
+      found.push({ file, title: compact(description ?? '') });
+    }
+  }
+  return found;
+};
 
 /**
- * pg_prove output. Verbose output carries one `ok N - description` per assertion
- * and gives assertion-level receipts. Non-verbose output (what `supabase test db`
- * prints) only has a `<file> ..... ok` verdict per entrypoint; its receipts are
- * file-level: every marker description in the entrypoint's source closure takes
- * the file verdict.
+ * pg_prove -v output: one `ok N - description` per assertion. Receipts are
+ * assertion-level only; a file verdict (what non-verbose `supabase test db`
+ * prints) is not criterion evidence, so a file with a header and no assertion
+ * lines produces no receipt and is listed in `unverified`.
+ *
+ * A file is COMPLETE only when its plan line (`1..N`) is present, N assertion
+ * lines ran, and they are numbered 1..N. An incomplete file (died before
+ * finish, fewer assertions than planned, gaps or repeats) fails every assertion
+ * it did print: the assertions that never ran may be the ones a criterion
+ * needs. SKIP and TODO assertions, whatever the harness verdict, are `skipped`:
+ * never a passed receipt. A SKIP or TODO with no marker-bearing description
+ * cannot be attributed to a criterion, so every marker description the file's
+ * source holds gets a `skipped` file-level row, which the guard rejects.
  */
 export const parsePgtapTap = (text, root) => {
   const results = [];
+  const unverified = [];
   let current = null;
   let sawAssertions = false;
   const finishFile = () => {
     if (current === null) return;
-    if (current.assertions.length === 0 && current.verdict !== null) {
-      for (const file of pgtapClosure(root, current.file)) {
-        const source = readFileSync(resolve(root, file), 'utf8');
-        for (const [, description] of source.matchAll(
-          /'((?:[^']|'')*\[P2-S09-AC-[^\]\n]{0,300}\](?:[^']|'')*)'/gu,
-        )) {
-          const title = compact(description ?? '');
-          results.push(
-            row(
-              'pgtap',
-              'file',
-              file,
-              title,
-              current.verdict === 'ok' ? 'passed' : 'failed',
-            ),
-          );
-        }
+    const { assertions } = current;
+    if (assertions.length === 0) {
+      unverified.push(current.file);
+      current = null;
+      return;
+    }
+    const complete =
+      current.plan === assertions.length &&
+      assertions.every((assertion, index) => assertion.number === index + 1);
+    let unattributed = false;
+    for (const assertion of assertions) {
+      const status = complete
+        ? assertion.status
+        : assertion.status === 'passed'
+          ? 'failed'
+          : assertion.status;
+      if (
+        assertion.directive !== null &&
+        markersIn(assertion.title).length === 0
+      ) {
+        unattributed = true;
+      }
+      for (const owner of pgtapOwners(root, current.file, assertion.title)) {
+        results.push(row('pgtap', 'assertion', owner, assertion.title, status));
       }
     }
-    for (const assertion of current.assertions) {
-      const owners = pgtapOwners(root, current.file, assertion.title);
-      for (const owner of owners) {
-        results.push(
-          row('pgtap', 'assertion', owner, assertion.title, assertion.status),
-        );
+    if (unattributed) {
+      for (const { file, title } of closureMarkerDescriptions(
+        root,
+        current.file,
+      )) {
+        results.push(row('pgtap', 'file', file, title, 'skipped'));
       }
     }
     current = null;
@@ -183,39 +214,35 @@ export const parsePgtapTap = (text, root) => {
     const header = FILE_HEADER.exec(line);
     if (header !== null) {
       finishFile();
-      const rest = (header[2] ?? '').trim();
       current = {
         file: relativise(root, header[1] ?? ''),
         assertions: [],
-        verdict:
-          rest === 'ok'
-            ? 'ok'
-            : rest === '' || /^\d+\/\d+/u.test(rest)
-              ? null
-              : rest,
+        plan: null,
       };
       continue;
     }
     if (current === null) continue;
+    const plan = PLAN_LINE.exec(line);
+    if (plan !== null) {
+      current.plan = Number(plan[1]);
+      continue;
+    }
     const tap = TAP_LINE.exec(line);
     if (tap !== null) {
       sawAssertions = true;
+      const directive = tap[4] === undefined ? null : tap[4].toUpperCase();
       const status =
-        tap[4] !== undefined
-          ? 'skipped'
-          : tap[1] === 'ok'
-            ? 'passed'
-            : 'failed';
-      current.assertions.push({ title: compact(tap[3] ?? ''), status });
-      continue;
-    }
-    if (line.trim() === 'ok') current.verdict = 'ok';
-    else if (/^Result: /u.test(line) || /^(Failed|Dubious)/u.test(line)) {
-      current.verdict = current.verdict ?? line.trim();
+        directive !== null ? 'skipped' : tap[1] === 'ok' ? 'passed' : 'failed';
+      current.assertions.push({
+        number: Number(tap[2]),
+        title: compact(tap[3] ?? ''),
+        status,
+        directive,
+      });
     }
   }
   finishFile();
-  return { results, verbose: sawAssertions };
+  return { results, verbose: sawAssertions, unverified };
 };
 
 /** The closure file(s) whose source holds the assertion text; the entrypoint when none does. */
@@ -362,6 +389,24 @@ export const evaluateReceipts = ({ entries, receipts, shaOf }) => {
       if (stale.length > 0) {
         problems.push(
           `${entry.criterion} ${file}: ${stale.length} stale receipt(s), the file changed after the run`,
+        );
+        continue;
+      }
+      const coarse = rows.filter(
+        (row) => row.tool === 'pgtap' && row.granularity !== 'assertion',
+      );
+      if (coarse.length > 0) {
+        problems.push(
+          `${entry.criterion} ${file}: ${coarse.length} file-level pgTAP receipt(s); a file verdict is not assertion-level evidence`,
+        );
+        continue;
+      }
+      const skippedSql = rows.filter(
+        (row) => row.tool === 'pgtap' && row.status === 'skipped',
+      );
+      if (skippedSql.length > 0) {
+        problems.push(
+          `${entry.criterion} ${file}: ${skippedSql.length} skipped pgTAP receipt(s) (SKIP or TODO is never evidence)`,
         );
         continue;
       }

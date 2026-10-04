@@ -71,7 +71,17 @@
   - The new real-stack tests exposed two more production defects, both fixed:
     - CMS-03A-02 could never succeed: the Worker sent a flat body.
     - Every committed CMS-03A-05 returned 502.
-- **Integrator v5 was running at the last refresh:**
+- **Integrator v5 steps 1–3 are done** (WIP `76664abb`):
+  - The DEC-124..130 texts are applied, along with the AC527 `renew` change, the AC1108 `tab=mfa-reset` change and the citations.
+  - Results: `db:test` 200 files / 8200 tests; root vitest 13500 passing, with only the 3 receipts-guard tests failing, as expected.
+  - The tracker shows S09 at 1234/1235 (AC261 held). That tracker figure is not verified acceptance.
+  - Steps 4–5 (receipts and full validate) were interrupted.
+- **Then running: R14c2** (`context/reports/r14c2-fix.md`, then `context/reports/integrator-v5b.md`):
+  - Codex findings 1–3.
+  - The F5 cookie hardening: a random nonce, plus an HttpOnly HMAC that detects a subject change.
+  - The F4 residual.
+  - Then receipts and full validation.
+- **Integrator v5 brief (for reference):**
   - Green the ~15 failing root vitest tests.
   - Apply the DEC-124..130 texts and the AC527, DEC-129 and AC1108 changes.
   - Fix the citations.

@@ -172,8 +172,8 @@ select is((select count(*)::integer from pg_rewrite where ev_class = 'identity_p
 select is((select count(*)::integer from information_schema.table_privileges
      where table_schema = 'identity_private' and table_name = 'organization_actor_grant'
        and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
-       and grantee not in ('postgres', 'supabase_admin')), 0,
-  'no role other than the table owner holds a write privilege on the actor-grant projection [P2-S09-AC-658]');
+       and grantee not in ('postgres', 'supabase_admin', 'wejammin_cms_definer')), 0,
+  'no role other than the table owner and the NOLOGIN CMS definer that owns the single projection upsert holds a write privilege on the actor-grant projection [P2-S09-AC-658]');
 select ok(pg_get_functiondef('platform_private.cms_backfill_owner_capability_grants(uuid)'::regprocedure) !~* '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+(identity_private\.)?organization_actor_grant\y'
     and pg_get_functiondef('platform_private.cms_backfill_owner_capability_grants(uuid)'::regprocedure) ~* 'insert[[:space:]]+into[[:space:]]+platform_private\.cms_capability_grants',
   'the owner-initialization backfill writes the grant aggregate and never the actor-grant projection [P2-S09-AC-658]');

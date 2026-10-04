@@ -4,7 +4,9 @@ Versioned Cloudflare and Supabase policy plus bounded setup, verification, and r
 
 ## Contents
 
-Scripts cover database type synchronization, local database verification,
+Scripts cover database type synchronization, local database verification
+(including `run-pgtap-verbose.mjs`, the verbose-TAP pgTAP run behind
+`pnpm db:test:tap` that the evidence collector requires),
 staging health checks, production Cloudflare observability permission
 verification, and OpenAPI generation from the contract registry.
 Provider manifests and workflow policy remain in their respective top-level

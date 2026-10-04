@@ -1,0 +1,9 @@
+# Local-only runtime secrets for `astro dev` and `wrangler dev`: copy this file to
+# `.dev.vars` (gitignored) and replace the value. Production and staging hold the
+# same names as Cloudflare Worker secrets set out of band on the web Workers
+# (`wrangler secret put STEP_UP_SCOPE_SECRET`); see .github/SECRETS.md.
+#
+# HMAC key the web edge uses to notice a different user on the same browser and
+# rotate the step-up scope nonce. Any random string of at least 32 characters;
+# without it the edge fails closed (no step-up draft survives a page load).
+STEP_UP_SCOPE_SECRET=replace_locally_only

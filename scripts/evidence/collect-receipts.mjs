@@ -9,14 +9,17 @@
 //     [--root DIR] [--out tests/contracts/phase-02-slice-09-receipts.generated.jsonl]
 //
 // vitest: `vitest run --reporter=json --outputFile=report.json <files>`.
-// pgtap: verbose pg_prove TAP gives one receipt per assertion; the non-verbose
-//   `supabase test db` output gives file-level receipts (see receipts-lib.mjs).
+// pgtap: verbose pg_prove TAP (`pnpm db:test:tap`) gives one receipt per assertion.
+//   The non-verbose `supabase test db` output carries only a file verdict, which is
+//   not criterion evidence: it yields no receipt and the run exits 3 (see
+//   receipts-lib.mjs for the plan, SKIP and TODO rules).
 // playwright: the JSON reporter output of each config.
 // races: `pnpm db:races` output (or its --jsonl lines).
 // A result whose test file was modified after its report was written is written
 // with status `stale` (it fails the guard) instead of a hash that would vouch for
 // a run that never saw the file.
-// Exit 1 when no input yields a receipt; exit 2 on unreadable input.
+// Exit 1 when no input yields a receipt; exit 2 on unreadable input; exit 3 when a
+// pgTAP file has no assertion-level TAP.
 
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -52,6 +55,7 @@ export const collect = ({
 }) => {
   const results = [];
   const notes = [];
+  const errors = [];
   const addResults = (path, parsed) =>
     results.push(...markStale(parsed, root, statSync(path).mtimeMs));
   for (const path of vitest) {
@@ -63,8 +67,10 @@ export const collect = ({
   for (const path of pgtap) {
     const parsed = parsePgtapTap(readFileSync(path, 'utf8'), root);
     addResults(path, parsed.results);
-    if (!parsed.verbose) {
-      notes.push(`${path}: non-verbose pgTAP output, receipts are file-level`);
+    for (const file of parsed.unverified) {
+      errors.push(
+        `${path}: ${file} has no assertion-level TAP, so it yields no receipt; capture verbose TAP with \`pnpm db:test:tap\``,
+      );
     }
   }
   for (const path of playwright) {
@@ -76,7 +82,7 @@ export const collect = ({
   for (const path of races) {
     addResults(path, parseRaceOutput(readFileSync(path, 'utf8')));
   }
-  return { receipts: buildReceipts(results, root), notes };
+  return { receipts: buildReceipts(results, root), notes, errors };
 };
 
 const main = () => {
@@ -96,6 +102,13 @@ const main = () => {
   } catch (error) {
     console.error(`cannot read evidence input: ${error.message}`);
     process.exit(2);
+  }
+  if (collected.errors.length > 0) {
+    for (const error of collected.errors) console.error(`error: ${error}`);
+    console.error(
+      'no receipt file written: pgTAP input without assertion-level TAP is not criterion evidence',
+    );
+    process.exit(3);
   }
   if (collected.receipts.length === 0) {
     console.error('no receipt: the inputs carry no [P2-S09-AC-NNN] test');

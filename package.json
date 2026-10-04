@@ -31,6 +31,7 @@
     "db:reset": "supabase db reset --local",
     "db:lint": "supabase db lint --local --level warning --schema platform_private,audit_private,platform_api,public_api",
     "db:test": "supabase test db --local",
+    "db:test:tap": "node infra/run-pgtap-verbose.mjs",
     "db:types": "node infra/sync-database-types.mjs",
     "db:types:check": "node infra/sync-database-types.mjs --check",
     "db:races": "node infra/run-database-race-runners.mjs",

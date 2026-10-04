@@ -39,6 +39,14 @@ This surface owns public and authenticated web composition, SSR output, and
 bounded browser islands. API transport, domain rules, and persistence belong to
 the Worker and package boundaries.
 
+## Runtime secret
+
+`STEP_UP_SCOPE_SECRET` (a Worker secret in staging and production, the
+gitignored `.dev.vars` locally; `.dev.vars.example` lists the name) keys the HMAC
+that binds the step-up scope nonce to the signed-in subject
+(`src/server/step-up-scope.ts`). Without it the edge fails closed. See
+`.github/SECRETS.md`.
+
 ## Extension
 
 Add a focused route or component under `src/` and keep interactive behavior in

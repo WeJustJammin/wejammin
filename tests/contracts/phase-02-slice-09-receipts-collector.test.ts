@@ -31,7 +31,7 @@ type Lib = {
   parsePgtapTap: (
     text: string,
     root: string,
-  ) => { results: Result[]; verbose: boolean };
+  ) => { results: Result[]; verbose: boolean; unverified: string[] };
   parseRaceOutput: (text: string) => Result[];
   buildReceipts: (results: Result[], root: string) => Receipt[];
   markStale: (
@@ -57,7 +57,7 @@ const collector =
       playwright: string[];
       races: string[];
       testDir: string;
-    }) => { receipts: Receipt[]; notes: string[] };
+    }) => { receipts: Receipt[]; notes: string[]; errors: string[] };
   };
 
 // Markers are assembled at run time so this fixture file is not itself a
@@ -176,23 +176,112 @@ describe('Slice 09 receipts collector', () => {
     ]);
   });
 
-  it('reads non-verbose pgTAP output as file-level receipts that take the file verdict, and flags it non-verbose', () => {
+  it('reads NO receipt from non-verbose pgTAP output: a file verdict is not criterion evidence', () => {
     const passed = lib.parsePgtapTap(
       `${join(root, 'supabase/tests/entry.sql')} ....... ok\n`,
       root,
     );
     expect(passed.verbose).toBe(false);
-    expect(
-      passed.results.map((r) => [r.granularity, r.file, r.status]).sort(),
-    ).toEqual([
-      ['file', 'supabase/tests/entry.sql', 'passed'],
-      ['file', 'supabase/tests/entry/001.sqlinc', 'passed'],
-    ]);
+    expect(passed.results).toEqual([]);
+    expect(passed.unverified).toEqual(['supabase/tests/entry.sql']);
     const failed = lib.parsePgtapTap(
       `${join(root, 'supabase/tests/entry.sql')} ....... Dubious, test returned 3\n`,
       root,
     );
-    expect(failed.results.every((r) => r.status === 'failed')).toBe(true);
+    expect(failed.results).toEqual([]);
+    expect(failed.unverified).toEqual(['supabase/tests/entry.sql']);
+  });
+
+  describe('assertion-level pgTAP: plan, SKIP and TODO', () => {
+    const file = join(root, 'supabase/tests/entry.sql');
+    const run = (lines: string[]) =>
+      lib.parsePgtapTap([`${file} .. `, ...lines].join('\n'), root);
+    const statuses = (lines: string[]) =>
+      run(lines).results.map((r) => [r.granularity, r.title, r.status]);
+
+    it('marks a complete file by its plan and gives each assertion its own status', () => {
+      expect(
+        statuses([
+          '1..2',
+          `ok 1 - entry assertion ${mk('010')}`,
+          `not ok 2 - it's an included assertion ${mk('011')}`,
+          'Result: FAIL',
+        ]),
+      ).toEqual([
+        ['assertion', `entry assertion ${mk('010')}`, 'passed'],
+        ['assertion', `it's an included assertion ${mk('011')}`, 'failed'],
+      ]);
+    });
+
+    it('never gives a SKIP or TODO assertion a passed receipt, whatever the harness verdict says', () => {
+      expect(
+        statuses([
+          '1..4',
+          `ok 1 - entry assertion ${mk('010')}`,
+          `ok 2 - skipped by description ${mk('012')} # SKIP not today`,
+          `not ok 3 - expected failure ${mk('013')} # TODO later`,
+          `ok 4 - todo that now passes ${mk('014')} # TODO later`,
+        ]),
+      ).toEqual([
+        ['assertion', `entry assertion ${mk('010')}`, 'passed'],
+        ['assertion', `skipped by description ${mk('012')}`, 'skipped'],
+        ['assertion', `expected failure ${mk('013')}`, 'skipped'],
+        ['assertion', `todo that now passes ${mk('014')}`, 'skipped'],
+      ]);
+    });
+
+    it('turns a SKIP with no description into skipped receipts for every marker the file source holds', () => {
+      const rows = statuses([
+        '1..2',
+        `ok 1 - entry assertion ${mk('010')}`,
+        'ok 2 # SKIP no database role',
+      ]);
+      expect(rows).toContainEqual([
+        'assertion',
+        `entry assertion ${mk('010')}`,
+        'passed',
+      ]);
+      const fileLevel = rows.filter(([granularity]) => granularity === 'file');
+      expect(fileLevel.length).toBeGreaterThan(0);
+      expect(fileLevel.every(([, , status]) => status === 'skipped')).toBe(
+        true,
+      );
+    });
+
+    it('fails every assertion of a file that ran fewer assertions than it planned', () => {
+      expect(
+        statuses([
+          '1..3',
+          `ok 1 - entry assertion ${mk('010')}`,
+          `ok 2 - it's an included assertion ${mk('011')}`,
+          'Dubious, test returned 3',
+        ]).map(([, , status]) => status),
+      ).toEqual(['failed', 'failed']);
+    });
+
+    it('fails every assertion of a file with no plan line (it died before finish)', () => {
+      expect(
+        statuses([`ok 1 - entry assertion ${mk('010')}`]).map(
+          ([, , status]) => status,
+        ),
+      ).toEqual(['failed']);
+    });
+
+    it('fails every assertion of a file whose assertion numbers skip or repeat', () => {
+      expect(
+        statuses([
+          '1..2',
+          `ok 1 - entry assertion ${mk('010')}`,
+          `ok 3 - it's an included assertion ${mk('011')}`,
+        ]).map(([, , status]) => status),
+      ).toEqual(['failed', 'failed']);
+    });
+
+    it('lists a file with a header and no assertion lines as unverified', () => {
+      const parsed = run(['ok']);
+      expect(parsed.results).toEqual([]);
+      expect(parsed.unverified).toEqual(['supabase/tests/entry.sql']);
+    });
   });
 
   it('reads race-runner JSON lines and plain db:races output with the runner verdict', () => {
@@ -292,7 +381,7 @@ describe('Slice 09 receipts collector', () => {
     ).toBe('passed');
   });
 
-  it('collects every tool end to end from files and reports non-verbose pgTAP', () => {
+  it('collects every tool end to end from files', () => {
     writeFileSync(
       join(root, 'v.json'),
       JSON.stringify({
@@ -326,13 +415,23 @@ describe('Slice 09 receipts collector', () => {
     );
     writeFileSync(
       join(root, 'db.log'),
+      [
+        `${join(root, 'supabase/tests/entry.sql')} .. `,
+        '1..2',
+        `ok 1 - entry assertion ${mk('010')}`,
+        `ok 2 - it's an included assertion ${mk('011')}`,
+        'ok',
+      ].join('\n'),
+    );
+    writeFileSync(
+      join(root, 'coarse.log'),
       `${join(root, 'supabase/tests/entry.sql')} ... ok\n`,
     );
     writeFileSync(
       join(root, 'race.out'),
       `ok - ${mk('031')} s\nPASS supabase/tests/race/010.mjs exit=0 ok=1\n`,
     );
-    const { receipts, notes } = collector.collect({
+    const { receipts, notes, errors } = collector.collect({
       root,
       vitest: [join(root, 'v.json')],
       pgtap: [join(root, 'db.log')],
@@ -354,8 +453,26 @@ describe('Slice 09 receipts collector', () => {
       receipts.find((r) => r.file === 'supabase/tests/entry/001.sqlinc')
         ?.fileSha256,
     ).toBe(sqlInc);
-    expect(notes).toHaveLength(1);
-    expect(notes[0]).toContain('non-verbose');
+    expect(notes).toEqual([]);
+    expect(errors).toEqual([]);
+    expect(
+      receipts.filter((r) => r.tool === 'pgtap').map((r) => r.granularity),
+    ).toEqual(['assertion', 'assertion']);
+  });
+
+  it('refuses non-verbose pgTAP input: it writes no receipt for it and reports an error naming the file', () => {
+    const { receipts, errors } = collector.collect({
+      root,
+      vitest: [],
+      pgtap: [join(root, 'coarse.log')],
+      playwright: [],
+      races: [],
+      testDir: 'tests/e2e',
+    });
+    expect(receipts).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('supabase/tests/entry.sql');
+    expect(errors[0]).toContain('db:test:tap');
   });
 });
 
@@ -424,6 +541,38 @@ describe('Slice 09 receipts guard logic', () => {
       shaOf,
     });
     expect(skipped[0]).toContain('no passing receipt');
+  });
+
+  it('rejects a file-level pgTAP receipt and any skipped pgTAP receipt, even beside a passing assertion', () => {
+    const pgtap = (over: Partial<Receipt>): Receipt =>
+      receipt({
+        tool: 'pgtap',
+        granularity: 'assertion',
+        file: 'supabase/tests/entry.sql',
+        ...over,
+      });
+    const sqlEntries: Entry[] = [
+      { criterion: id('001'), testFiles: ['supabase/tests/entry.sql'] },
+    ];
+    expect(
+      lib.evaluateReceipts({
+        entries: sqlEntries,
+        receipts: [pgtap({})],
+        shaOf,
+      }),
+    ).toEqual([]);
+    const coarse = lib.evaluateReceipts({
+      entries: sqlEntries,
+      receipts: [pgtap({ granularity: 'file' })],
+      shaOf,
+    });
+    expect(coarse[0]).toContain('file-level pgTAP');
+    const skipped = lib.evaluateReceipts({
+      entries: sqlEntries,
+      receipts: [pgtap({}), pgtap({ status: 'skipped', title: 'other' })],
+      shaOf,
+    });
+    expect(skipped[0]).toContain('skipped pgTAP');
   });
 
   it('requires a receipt for a supplementary race runner but not for a database spec', () => {
