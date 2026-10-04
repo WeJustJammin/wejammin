@@ -10368,16 +10368,18 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
   },
   {
     criterion: 'P2-S09-AC-803',
-    layer: 'db+b',
-    command: 'pnpm db:test',
+    layer: 'auth+db',
+    command:
+      'pnpm exec vitest run apps/worker/src/authentication/phase-02-slice-09-dec111-factor-remove.test.ts; pnpm db:test',
     testFiles: [
+      'apps/worker/src/authentication/phase-02-slice-09-dec111-factor-remove.test.ts',
       'supabase/tests/phase_02_slice_09_dec111_mfa_last_factor.sql',
       'supabase/tests/phase_02_slice_09_dec111_mfa_removal.sql',
     ],
     testMarkers: ['[P2-S09-AC-803]'],
     status: 'verified',
     limitation:
-      'Re-audit lift (r8-auth): recent-step-up family sweep: tests re-run green against the aal2-plus-amr proof model (boundaries, constant, registry, own UUID, mfa_version, primaryAuthAt, no recovery codes, console and reset-form prerequisite states)',
+      'Complete proof: the auth layer (AUTH-API-19 factor-remove Worker test) answers 409 last_factor_required with recoveryAction enroll_factor and never reaches the provider; the db layer reads the capability registry against currently effective grants only (a lapsed grant no longer counts) and fails closed with 409 when that read is unavailable while mutating nothing',
   },
   {
     criterion: 'P2-S09-AC-804',

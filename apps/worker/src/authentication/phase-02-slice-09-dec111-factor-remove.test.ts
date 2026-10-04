@@ -217,7 +217,7 @@ describe('AUTH-API-19 factor removal (production composition)', () => {
     expect(cancelled.status).toBe(200);
   });
 
-  it('[P2-S09-AC-802] answers 409 last_factor_required with recoveryAction enroll_factor and never reaches the provider', async () => {
+  it('[P2-S09-AC-802][P2-S09-AC-803] answers 409 last_factor_required with recoveryAction enroll_factor and never reaches the provider', async () => {
     const world = createWorld({
       handlers: {
         auth_mfa_removal_begin: () => rpcRefusal('LAST_FACTOR_REQUIRED', 409),
