@@ -2668,7 +2668,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-196',
     layer: 'worker+db',
     command:
-      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-activation-evidence.test.ts; pnpm db:test',
+      'pnpm exec vitest run apps/worker/src/content-schema-registry/phase-02-slice-09-activation-evidence.test.ts && pnpm db:test',
     testFiles: [
       'apps/worker/src/content-schema-registry/phase-02-slice-09-activation-evidence.test.ts',
       'supabase/tests/phase_02_slice_09_r8_active_version_unmutated.sql',
@@ -2676,7 +2676,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     testMarkers: ['[P2-S09-AC-196]'],
     status: 'verified',
     limitation:
-      'Complete local proof: the Worker half maps every A04 failure class to its declared error with the four-field BE00 envelope; the DB half (r8_active_version_unmutated) proves old-active preservation across both refused switches (unapproved candidate and stale CAS), the previously active row byte-identical in every column including version and updated_at, readable as active through CMS-03A-08 before the commit, and moved only by its supersession after it.',
+      'Complete local proof: the Worker half maps every A04 failure class to its declared error with the four-field BE00 envelope; the DB half (r8_active_version_unmutated) proves both refused switches (unapproved candidate and stale CAS) leave the previously active row byte-identical in every column, including version and updated_at.',
   },
   {
     criterion: 'P2-S09-AC-197',
@@ -10370,7 +10370,7 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-803',
     layer: 'auth+db',
     command:
-      'pnpm exec vitest run apps/worker/src/authentication/phase-02-slice-09-dec111-factor-remove.test.ts; pnpm db:test',
+      'pnpm exec vitest run apps/worker/src/authentication/phase-02-slice-09-dec111-factor-remove.test.ts && pnpm db:test',
     testFiles: [
       'apps/worker/src/authentication/phase-02-slice-09-dec111-factor-remove.test.ts',
       'supabase/tests/phase_02_slice_09_dec111_mfa_last_factor.sql',
