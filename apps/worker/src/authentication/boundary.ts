@@ -6,6 +6,10 @@ import {
   type RequestId,
 } from '@wejammin/contracts';
 import type { Context, Env } from 'hono';
+import {
+  decodeBoundedText,
+  readBoundedRequestBytes,
+} from '../http/bounded-body';
 import type {
   AuthenticationError,
   AuthenticationResult,
@@ -69,60 +73,6 @@ export const authError = (
 const requestBodyTimeout = (): AuthenticationError =>
   authError(504, 'UPSTREAM_TIMEOUT', 'The request body timed out.');
 
-const readRequestText = async (
-  request: Request,
-  signal?: AbortSignal,
-): Promise<AuthenticationResult<string>> => {
-  if (signal === undefined) {
-    try {
-      return { ok: true, value: await request.text() };
-    } catch {
-      return authError(
-        400,
-        'INVALID_REQUEST',
-        'The request body could not be read.',
-      );
-    }
-  }
-  if (signal.aborted) return requestBodyTimeout();
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (result: AuthenticationResult<string>): void => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener('abort', onAbort);
-      resolve(result);
-    };
-    const onAbort = (): void => finish(requestBodyTimeout());
-    signal.addEventListener('abort', onAbort, { once: true });
-    let bodyText: Promise<string>;
-    try {
-      bodyText = request.text();
-    } catch {
-      finish(
-        authError(
-          400,
-          'INVALID_REQUEST',
-          'The request body could not be read.',
-        ),
-      );
-      return;
-    }
-    void bodyText.then(
-      (value) =>
-        finish(signal.aborted ? requestBodyTimeout() : { ok: true, value }),
-      () =>
-        finish(
-          authError(
-            400,
-            'INVALID_REQUEST',
-            'The request body could not be read.',
-          ),
-        ),
-    );
-  });
-};
-
 export const ALLOWED_MEDIA_TYPES: readonly string[] = ['application/json'];
 
 /**
@@ -152,25 +102,46 @@ export const jsonBodyPreflight = (
       });
 };
 
-/** Raw body text, bounded by the same ceiling after the read. */
+/**
+ * Raw body text, bounded while it streams: the read stops and the stream is
+ * cancelled at `MAX_BODY_BYTES + 1`, so a chunked body cannot force allocation
+ * beyond the ceiling before the 413. A declared length is only an early
+ * rejection; a malformed one is refused unread.
+ */
 export const readJsonBodyText = async (
   request: Request,
   signal?: AbortSignal,
 ): Promise<AuthenticationResult<string>> => {
-  const bodyTextResult = await readRequestText(request, signal);
-  if (!bodyTextResult.ok) return bodyTextResult;
-  if (signal?.aborted) return requestBodyTimeout();
-  if (
-    new TextEncoder().encode(bodyTextResult.value).byteLength > MAX_BODY_BYTES
-  ) {
-    return authError(
-      413,
-      'PAYLOAD_TOO_LARGE',
-      'The request body is too large.',
-    );
+  const outcome = await readBoundedRequestBytes(request, {
+    maxBytes: MAX_BODY_BYTES,
+    signal,
+  });
+  switch (outcome.kind) {
+    case 'aborted':
+      return requestBodyTimeout();
+    case 'too-large':
+      return authError(
+        413,
+        'PAYLOAD_TOO_LARGE',
+        'The request body is too large.',
+      );
+    case 'malformed-length':
+      return authError(
+        400,
+        'INVALID_REQUEST',
+        'The Content-Length header is invalid.',
+      );
+    case 'unreadable':
+      return authError(
+        400,
+        'INVALID_REQUEST',
+        'The request body could not be read.',
+      );
+    case 'ok':
+      return signal?.aborted
+        ? requestBodyTimeout()
+        : { ok: true, value: decodeBoundedText(outcome.bytes) };
   }
-  if (signal?.aborted) return requestBodyTimeout();
-  return bodyTextResult;
 };
 
 /** BE00 step 6: JSON syntax and strict Zod on text read at step 2. */

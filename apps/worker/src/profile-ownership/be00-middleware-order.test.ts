@@ -397,7 +397,7 @@ describe('BE00 middleware order on the profile ownership read (PRF-API-05)', () 
 
 describe('BE00 step 2 body read on the profile ownership commands', () => {
   const claim = { targetPartyId: PARTY_ID, claimKind: 'self' };
-  const post = (body: BodyInit, text?: () => Promise<string>) => {
+  const post = (body: BodyInit, failedBody?: ReadableStream<Uint8Array>) => {
     const request = new Request(`${ORIGIN}/api/v1/party-claims`, {
       method: 'POST',
       headers: {
@@ -412,8 +412,8 @@ describe('BE00 step 2 body read on the profile ownership commands', () => {
       },
       body,
     });
-    if (text !== undefined)
-      Object.defineProperty(request, 'text', { value: text });
+    if (failedBody !== undefined)
+      Object.defineProperty(request, 'body', { value: failedBody });
     return createProfileApp().app.fetch(request, bindings);
   };
 
@@ -428,8 +428,13 @@ describe('BE00 step 2 body read on the profile ownership commands', () => {
   });
 
   it('refuses a body that cannot be read as an invalid request', async () => {
-    const response = await post(JSON.stringify(claim), () =>
-      Promise.reject(new Error('stream failed')),
+    const response = await post(
+      JSON.stringify(claim),
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error('stream failed'));
+        },
+      }),
     );
     expect(response.status).toBe(400);
     expect(((await response.json()) as { code: string }).code).toBe(

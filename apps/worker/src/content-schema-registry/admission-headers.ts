@@ -13,6 +13,7 @@ import type {
   ContentSchemaRegistryResult,
 } from './types';
 import { IDEMPOTENCY_PATTERN, invalid, issues } from './admission-common';
+import { readBoundedRequestBytes } from '../http/bounded-body';
 
 export const parseMutationHeaders = (
   request: Request,
@@ -130,14 +131,15 @@ export const rejectReadMutationHeadersOrBody = async (
   const declaredLength = Number(request.headers.get('content-length'));
   if (Number.isFinite(declaredLength) && declaredLength > 0)
     return invalid('Protected reads do not accept a request body.');
-  try {
-    const bytes = new Uint8Array(await request.clone().arrayBuffer());
-    return bytes.byteLength === 0
-      ? null
-      : invalid('Protected reads do not accept a request body.');
-  } catch {
-    return invalid('Protected reads do not accept a request body.');
-  }
+  // Any byte at all refuses the read, so the ceiling is zero: the stream is
+  // cancelled at its first byte rather than buffered to measure it.
+  const outcome = await readBoundedRequestBytes(request, {
+    maxBytes: 0,
+    fromClone: true,
+  });
+  return outcome.kind === 'ok'
+    ? null
+    : invalid('Protected reads do not accept a request body.');
 };
 
 export const rejectDetailQuery = (

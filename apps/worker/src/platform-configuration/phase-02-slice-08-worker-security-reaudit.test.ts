@@ -211,13 +211,25 @@ describe('Phase 2 Slice 08 Worker security re-audit RED', () => {
 
   it('does not call authentication or admin dependencies after the route deadline', async () => {
     vi.useFakeTimers();
-    let releaseBody: ((value: string) => void) | undefined;
+    let releaseBody: ((value: Uint8Array) => void) | undefined;
     const request = auditRequest();
-    Object.defineProperty(request, 'text', {
-      value: () =>
-        new Promise<string>((resolve) => {
-          releaseBody = resolve;
-        }),
+    Object.defineProperty(request, 'body', {
+      value: new ReadableStream<Uint8Array>({
+        pull: (controller) =>
+          new Promise<void>((resolve) => {
+            releaseBody = (value) => {
+              // The deadline already cancelled the stream, so the late
+              // delivery has nowhere to land; that refusal is expected.
+              try {
+                controller.enqueue(value);
+                controller.close();
+              } catch {
+                // cancelled by the deadline
+              }
+              resolve();
+            };
+          }),
+      }),
     });
     const harness = makeHarness();
     const pending = harness.app.fetch(request, bindings);
@@ -230,7 +242,7 @@ describe('Phase 2 Slice 08 Worker security re-audit RED', () => {
     expect(harness.auth.rateLimit).not.toHaveBeenCalled();
     expect(harness.ports.auditDiagnostic).not.toHaveBeenCalled();
 
-    releaseBody?.(JSON.stringify(auditReadRequest));
+    releaseBody?.(new TextEncoder().encode(JSON.stringify(auditReadRequest)));
     await Promise.resolve();
     await Promise.resolve();
     expect(harness.auth.resolveSession).not.toHaveBeenCalled();

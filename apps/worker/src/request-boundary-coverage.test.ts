@@ -210,9 +210,9 @@ describe('Worker request boundary coverage branches', () => {
     ).toMatchObject({ ok: false, error: { code: 'PAYLOAD_TOO_LARGE' } });
 
     const unreadable = commandRequest();
-    Object.defineProperty(unreadable, 'text', {
+    Object.defineProperty(unreadable, 'body', {
       configurable: true,
-      value: () => {
+      get: () => {
         throw new Error('body read failed');
       },
     });

@@ -9,15 +9,33 @@ import { parseJsonBody, readJsonBodyText } from './boundary';
 
 const MAX_BODY_BYTES = 256 * 1024;
 
-const JSON_REQUEST = (text: () => Promise<string>): Request => {
+const JSON_REQUEST = (
+  body: () => ReadableStream<Uint8Array> | null,
+): Request => {
   const request = new Request('https://api.wejammin.test/x', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: '{}',
   });
-  Object.defineProperty(request, 'text', { value: text });
+  Object.defineProperty(request, 'body', { get: body });
   return request;
 };
+
+const bytesStream = (text: string): ReadableStream<Uint8Array> =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(text));
+      controller.close();
+    },
+  });
+const stalledStream = (): ReadableStream<Uint8Array> =>
+  new ReadableStream<Uint8Array>({ pull: () => new Promise(() => undefined) });
+const failingStream = (): ReadableStream<Uint8Array> =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.error(new Error('reset'));
+    },
+  });
 
 /** A signal whose `aborted` flips to true on the Nth read. */
 const abortsOnRead = (nth: number): AbortSignal => {
@@ -44,7 +62,7 @@ describe('readJsonBodyText with a deadline signal', () => {
     controller.abort();
     expect(
       await readJsonBodyText(
-        JSON_REQUEST(() => Promise.resolve('{}')),
+        JSON_REQUEST(() => bytesStream('{}')),
         controller.signal,
       ),
     ).toMatchObject(timeout);
@@ -53,7 +71,7 @@ describe('readJsonBodyText with a deadline signal', () => {
   it('answers 504 when the deadline passes while the body is still arriving', async () => {
     const controller = new AbortController();
     const pending = readJsonBodyText(
-      JSON_REQUEST(() => new Promise<string>(() => undefined)),
+      JSON_REQUEST(stalledStream),
       controller.signal,
     );
     controller.abort();
@@ -76,7 +94,7 @@ describe('readJsonBodyText with a deadline signal', () => {
 
   it('answers 400 when the body stream fails mid-read', async () => {
     const result = await readJsonBodyText(
-      JSON_REQUEST(() => Promise.reject(new Error('reset'))),
+      JSON_REQUEST(failingStream),
       new AbortController().signal,
     );
     expect(result).toMatchObject({
@@ -89,7 +107,7 @@ describe('readJsonBodyText with a deadline signal', () => {
   it('answers 504 when the deadline passes between the read and the size check', async () => {
     expect(
       await readJsonBodyText(
-        JSON_REQUEST(() => Promise.resolve('{}')),
+        JSON_REQUEST(() => bytesStream('{}')),
         abortsOnRead(3),
       ),
     ).toMatchObject(timeout);
@@ -98,7 +116,7 @@ describe('readJsonBodyText with a deadline signal', () => {
   it('answers 504 when the deadline passes after the size check', async () => {
     expect(
       await readJsonBodyText(
-        JSON_REQUEST(() => Promise.resolve('{}')),
+        JSON_REQUEST(() => bytesStream('{}')),
         abortsOnRead(4),
       ),
     ).toMatchObject(timeout);
@@ -107,7 +125,7 @@ describe('readJsonBodyText with a deadline signal', () => {
   it('answers 413 for a streamed body over the ceiling', async () => {
     expect(
       await readJsonBodyText(
-        JSON_REQUEST(() => Promise.resolve('x'.repeat(MAX_BODY_BYTES + 1))),
+        JSON_REQUEST(() => bytesStream('x'.repeat(MAX_BODY_BYTES + 1))),
         new AbortController().signal,
       ),
     ).toMatchObject({ ok: false, status: 413, code: 'PAYLOAD_TOO_LARGE' });
@@ -120,7 +138,7 @@ describe('parseJsonBody with a deadline signal', () => {
     controller.abort();
     expect(
       await parseJsonBody(
-        JSON_REQUEST(() => Promise.resolve('{}')),
+        JSON_REQUEST(() => bytesStream('{}')),
         { safeParse: (value) => ({ success: true, data: value }) },
         controller.signal,
       ),

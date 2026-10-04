@@ -431,8 +431,12 @@ describe('BE00 middleware order on AUTH-API-03 (the public or cookie-authenticat
       },
       body: '{}',
     });
-    Object.defineProperty(request, 'text', {
-      value: () => Promise.reject(new Error('stream failed')),
+    Object.defineProperty(request, 'body', {
+      value: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error('stream failed'));
+        },
+      }),
     });
     const response = await app.fetch(request, bindings);
     expect(response.status).toBe(400);

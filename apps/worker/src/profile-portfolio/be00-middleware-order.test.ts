@@ -430,7 +430,7 @@ describe('BE00 middleware order on the profile portfolio reads', () => {
 });
 
 describe('BE00 step 2 body read on the profile portfolio commands', () => {
-  const post = (body: BodyInit, text?: () => Promise<string>) => {
+  const post = (body: BodyInit, failedBody?: ReadableStream<Uint8Array>) => {
     const request = new Request(
       `${ORIGIN}/api/v1/profiles/${PARTY_ID}/reel-items`,
       {
@@ -448,8 +448,8 @@ describe('BE00 step 2 body read on the profile portfolio commands', () => {
         body,
       },
     );
-    if (text !== undefined)
-      Object.defineProperty(request, 'text', { value: text });
+    if (failedBody !== undefined)
+      Object.defineProperty(request, 'body', { value: failedBody });
     return createProfilePortfolioApp().app.fetch(request, bindings);
   };
 
@@ -464,8 +464,13 @@ describe('BE00 step 2 body read on the profile portfolio commands', () => {
   });
 
   it('refuses a body that cannot be read as an invalid request', async () => {
-    const response = await post(JSON.stringify(reelBody), () =>
-      Promise.reject(new Error('stream failed')),
+    const response = await post(
+      JSON.stringify(reelBody),
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error('stream failed'));
+        },
+      }),
     );
     expect(response.status).toBe(400);
     expect(((await response.json()) as { code: string }).code).toBe(
