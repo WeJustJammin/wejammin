@@ -4,8 +4,7 @@
   "sourceTree": "ee8f7d32daf34c787123d9315870afaa4fce363a",
   "receiptCount": 9927,
   "counts": {
-    "PROVEN": 1234,
-    "OWNER-PENDING": 1
+    "PROVEN": 1235
   },
   "verdicts": [
     {
@@ -7119,8 +7118,8 @@
     },
     {
       "criterion": "P2-S09-AC-261",
-      "verdict": "OWNER-PENDING",
-      "reason": "Technical bundle, split-module, no-barrel, 100-row cursor-page and no-client-windowing proof passes, but the exact reworded criterion remains unchecked pending owner ratification.",
+      "verdict": "PROVEN",
+      "reason": "Owner-ratified DEC-132 plus plan/tracker agreement and 51 passed receipts prove the local technical clauses.",
       "decidingFile": "tests/e2e/phase-02-slice-09-registry-layout-real-route.spec.ts",
       "decidingLine": 398,
       "receiptEvidence": [
@@ -7132,7 +7131,7 @@
           ]
         }
       ],
-      "notes": "Do not convert technical proof into owner acceptance."
+      "notes": "Local technical proof only; no hosted claim."
     },
     {
       "criterion": "P2-S09-AC-262",

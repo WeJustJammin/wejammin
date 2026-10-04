@@ -118,9 +118,9 @@ describe('Slice 09 evidence cascade guards', () => {
     }
   });
 
-  it('[P2-S09-AC-1149] states one Slice 10 prerequisite note across plan, tracker, phase tracker, progress index and spec pipeline, naming the open-criteria block that really exists', () => {
+  it('[P2-S09-AC-1149] states one Slice 10 prerequisite note across plan, tracker, phase tracker, progress index and spec pipeline after active closure', () => {
     const prerequisite =
-      'Slice 10 stays blocked until every criterion listed in the open-criteria block of the Slice 09 tracker is verified.';
+      'Slice 10 implementation is unblocked by Slice 09 active completion at 1235/1235 under DEC-132.';
     for (const path of PUBLISHERS)
       expect(
         read(path).split(prerequisite).length - 1,

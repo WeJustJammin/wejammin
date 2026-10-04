@@ -53,7 +53,7 @@ Survey: research/s10-s17-survey.md (D-numbers below are the survey's numbering, 
 - Plan/tracker AC150 DLV-MEDIA-API-01 drift and S13 additions handled in the S13 plan cascade.
 
 ## S10/S11/S12 breakdown resolutions (orchestrator unless marked owner, 2026-10-02)
-- O1 (S10): `object` field kind gets a nested `properties` schema in 03a field definitions (named sub-fields with kinds/constraints, bounded depth within BE03b JSON caps); work attributed to S10.
+- DEC-133 (OWNER, 2026-10-04; O1 Option A, S10): `object` field kind gets typed depth-1 `properties[]` with at most 32 properties. Every property has a stable key, a `scalar`/`enum`/`rich_text` kind, a required flag, and constraints; the definition is compiled into the artifact and validated by BE03b. Work is attributed to S10.
 - rich_text.v1 is also registered as a protected validator key/version in the 03a validator registry.
 - D5 relation comparison keyed by stable field ID (relation-definition IDs change across schema versions).
 - OD-1 (S12): taxonomy-version activation is reviewer-gated through the generalized review machinery (consistent with DEC-113/115).

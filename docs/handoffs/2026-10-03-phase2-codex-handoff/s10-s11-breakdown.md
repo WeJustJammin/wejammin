@@ -848,9 +848,11 @@ Common settings:
 
 ---
 
-## 5. Remaining genuine owner decision
+## 5. Resolved owner decision
 
 ### O1: Is the `object` field kind authorable in Phase 2, and with what structure?
+
+**Resolved by owner DEC-133 (2026-10-04): Option A.** The `object` field kind uses typed depth-1 `properties[]` with at most 32 properties; every property has a stable key, a `scalar`/`enum`/`rich_text` kind, a required flag, and constraints. The structure is compiled into the artifact and validated by BE03b.
 
 **Why it is genuine:**
 - 03a lets a schema designer declare `kind: 'object'`, but defines no properties schema (Constraints `BE03a:305-322`). IA03 is also silent.
@@ -863,7 +865,7 @@ Common settings:
 | B. Keep `object` declarable but **refuse non-null object values** at write (typed 422 `object_kind_unspecified`) until a later approved contract. Amend IA03/BE03b to say so. | No S09 reopen. Truthful fail-closed. Small. | A declared kind cannot hold data. Schema designers can create unusable fields. |
 | C. Remove `object` from Phase 2 FieldKind at activation (refuse activation of a schema with an object field). Structured content goes through governed blocks (S12) instead. | Clean model with no dead kind. Matches the "media via governed blocks" stance in DEC-112. | Narrows a locked enum. Needs an 03a amendment and S09 test updates. |
 
-**Recommendation: A.**
+**Owner decision: A.**
 - The owner default is more work now, and typed nested fields are what `object` implies.
 - If the owner prefers not to reopen S09, use C over B, because C avoids an unusable kind.
 

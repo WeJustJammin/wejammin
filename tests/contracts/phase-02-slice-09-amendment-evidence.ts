@@ -3582,6 +3582,27 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'Re-audit lift (r8-web): block-projection: the real parser accepts the safe record and refuses a full registration resource, a record carrying worker evidence, a lifecycle event and a WEBHOOK_REJECTED state',
   },
   {
+    criterion: 'P2-S09-AC-261',
+    layer: 'repo',
+    command: 'pnpm validate',
+    testFiles: [
+      'apps/web/src/client-chunk-boundaries.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14-workbench-count.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-initial-closure.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-lazy-enhancement.dom.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-lazy-hydration.dom.test.tsx',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r14b-lazy-validation.dom.test.ts',
+      'apps/web/src/components/content-schema-registry/content-schema-registry-s09-r8-page-cap.test.ts',
+      'packages/contracts/src/client-entry.test.ts',
+      'tests/e2e/phase-02-slice-09-registry-layout-real-route.spec.ts',
+      'tests/performance/phase-02-slice-09-content-schema-registry.test.ts',
+    ],
+    testMarkers: ['[P2-S09-AC-261]'],
+    status: 'verified',
+    limitation:
+      'Owner-ratified DEC-132 plus local technical proof only; no hosted claim.',
+  },
+  {
     criterion: 'P2-S09-AC-262',
     layer: 'repo',
     command:
@@ -16159,11 +16180,6 @@ export const S09_AMENDMENT_OPEN: readonly S09AmendmentOpenEntry[] = [
     status: 'deferred-gate',
     reason:
       'Deferred pre-release or post-launch gate (DEC-101, DEC-104, DEC-105); stays authored and unchecked outside the active denominator.',
-  },
-  {
-    criterion: 'P2-S09-AC-261',
-    status: 'held-pending-ratification',
-    reason: 'held: reworded text pending owner ratification (ledger row AC261)',
   },
 ];
 

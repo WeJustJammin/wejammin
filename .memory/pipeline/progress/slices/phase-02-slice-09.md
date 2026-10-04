@@ -1,17 +1,17 @@
 # Phase 2 / Slice 09: Content schemas, relations, activation, and block registry
 
-**Status**: in-progress  
+**Status**: complete  
 **Complexity**: L  
 **Surface scope**: web  
 **Depends on**: Slices 07 and 08  
 **Spec depth floor**: 1239  
 **Acceptance criteria (authored)**: 1239  
 **Active release denominator**: 1235 (the 279 pre-amendment active criteria plus 956 DEC-108/109/110/111/119/120 criteria; AC266 owner-deferred under DEC-101; AC209 and AC211 deferred under DEC-104; AC265 deferred to pre-release under DEC-105)  
-**Current active verification**: 1234/1235 verified; 17 CMS-03A-04 activation-chain criteria reopened 2026-09-30, plus AC250 separately reopened 2026-09-30 and Chrome-reverified and closed 2026-10-01; AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened 2026-10-02 under the DEC-108 accounting; the 956 new criteria AC284-AC1239 were added open on 2026-10-02, and the 2026-10-03 evidence index has since verified all of them; 1 criterion (AC261) is held unchecked pending owner ratification of its reworded text (the open-criteria block below lists it, and 1234 of 1235 are verified)
+**Current active verification**: 1235/1235 verified; DEC-132 owner-ratifies AC261, whose 51 fresh passing receipts across ten cited marker files provide local technical proof only and no hosted claim.
 **Slice 09 implementation-completion denominator**: 1235  
 **Phase 2 implementation-completion denominator**: 2974  
-**Slice 10 implementation prerequisites**: completion of the amended Slice 09 activation criteria: the 17 reopened activation-chain criteria, AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273 reopened under the DEC-108 accounting, and every DEC-108/109/110/111/119/120 criterion AC284-AC1239 that the open-criteria block of the Slice 09 tracker lists as open; AC250 is separately verified and no longer blocking; AC265 remains a separate pre-release gate. Slice 10 stays blocked until every criterion listed in the open-criteria block of the Slice 09 tracker is verified.
-**Authored criterion policy**: Slice 09 is **1234/1235 active**; 1239 authored Slice 09 IDs remain, with AC209, AC211, AC265, and AC266 authored and unchecked outside the active implementation denominator. The 17 reopened activation-chain criteria, AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264, AC273 and the 956 new amendment criteria are inside it, and AC250 - separately reopened 2026-09-30 - is Chrome-verified and closed 2026-10-01 outside that set.
+**Slice 10 implementation prerequisites**: Slice 10 implementation is unblocked by Slice 09 active completion at 1235/1235 under DEC-132. AC209, AC211, AC265, and AC266 remain separate authored gates on their declared timelines and do not gate Slice 10 implementation.
+**Authored criterion policy**: Slice 09 is **1235/1235 active**; 1239 authored Slice 09 IDs remain, with AC209, AC211, AC265, and AC266 authored and unchecked outside the active implementation denominator.
 **AC209 evidence status**: production-rollout/post-deployment evidence gate; remains authored and unchecked. Does not gate Slice 10 implementation or the initial controlled production deployment, and must pass before alerting is declared ready. The delivered 2026-09-22 alert is digest-correlated to Cloudflare's Email Routing event, but Email Sending still reports zero rows. Cloudflare case 02343626 was reopened on 2026-10-01 with a redacted configuration follow-up and awaits provider diagnosis; [provider follow-up evidence](../verification/2026-10-01-ac209-cloudflare-support-follow-up.md).  
 **AC211 evidence status**: post-launch operational SLO acceptance; remains authored and unchecked. Does not gate the initial launch and is mandatory after initial launch.  
 **AC265 evidence status**: mandatory pre-release hosted acceptance; remains authored and unchecked. AC265 is a mandatory pre-release gate and does not block Slice 10 implementation. Nine real staging role cases, ten hosted scenarios, signed exact artifact provenance, and the authenticated receipt are still required before release.  
@@ -90,17 +90,11 @@ No new criterion is checked; each stays open until its real implementation path 
 verified. DEC-120 (standing CMS grants up to 90 UTC days; assignments stay at seven
 days) is included in the delta sources.
 
-**Evidence closure (2026-10-03, integrator v4)**: the generated [amendment evidence index](../../../../tests/contracts/phase-02-slice-09-amendment-evidence.ts) merges the database, Worker, authentication, web and consumer evidence lanes through the 2026-10-03 lanes (r8, p240, r9, r10, r11, r12, r13) and the production-built Chrome receipts of the validation run (Playwright JSON reports of the functional and s09-real suites). For each verified criterion it cites the union of every layer's test files that carry the marker (vitest, pgTAP, and Playwright only when a passing JSON report exists), only files that `pnpm validate` or the CI database job executes, with receipts that record zero failures and the marked test titles. The bare pre-amendment baseline is retired: every one of the 240 earlier criteria now has its own index entry or is listed open. Plan and tracker mark exactly the verified criteria [x]; the guards `tests/contracts/phase-02-slice-09-amendment-evidence.test.ts` and `tests/contracts/phase-02-slice-09-evidence-cascade.test.ts` keep both in step, and `tests/contracts/phase-02-slice-09-ledger-guard.test.ts` closes AC273 and AC1148 against the depth-floor ledger. Every criterion the 2026-10-02 re-audit flagged NOT-PROVEN or WEAK (S) stays open unless a newer lane proves every clause it named (decision per criterion in the integrator v4 report); a criterion that needs a production-built Chrome run stays open as awaiting-e2e until a passing Playwright report names every marked test. AC300, AC678, AC774, AC1031, AC1166, AC285, AC431, AC942 and AC1049 were reworded by DEC-122 (owner-ratified), AC003, AC045 and AC049 by DEC-123 (owner), AC220 under the DEC-108 amendment, and AC005, AC007, AC025 (note), AC037, AC180, AC185, AC233, AC246, AC261, AC282, AC356, AC431 (refinement), AC658, AC708, AC906 and AC1147 by orchestrator rulings pending owner ratification, all recorded in the ledger rewording table. The scope DEC-122 moved out of Slice 09 is carried by seven explicit open receiving criteria (Slice 11 AC046 through AC048, Slice 12 AC051 through AC053, Slice 16 AC029). Verified active is now **1234/1235**.
+**Evidence closure (2026-10-04, DEC-132)**: the generated [amendment evidence index](../../../../tests/contracts/phase-02-slice-09-amendment-evidence.ts) closes all 1235 active criteria. DEC-132 owner-ratifies AC261 exactly; its 51 fresh passing receipts across ten cited marker files prove the local bundle, split-module, no-barrel, 100-row cursor-page, and no-client-windowing clauses. This is local technical proof only and creates no hosted claim. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator.
 
 <!-- s09-open:start -->
 
-**Open after the 2026-10-03 evidence closure** (generated by the merge script; the executable index
-`tests/contracts/phase-02-slice-09-amendment-evidence.ts` carries the same list as `S09_AMENDMENT_OPEN`).
-AC209, AC211, AC265 and AC266 are the deferred gates and stay outside the active denominator.
-
-The 1 criterion below is held: AC261's reworded text is pending owner ratification, so it is unchecked in both the plan and this tracker (1 of the 1235 active criteria; the denominator is unchanged). The other 18 criteria held on 2026-10-03 were ratified by the owner on 2026-10-03 (DEC-124, DEC-125, DEC-126, DEC-127, DEC-128), carry the ratified text verbatim and are checked again on their index evidence.
-
-- AC261 (held-pending-ratification): held: reworded text pending owner ratification (ledger row AC261); stays unchecked until the owner ratifies the rewording or the original text is proven.
+**Open active criteria after the 2026-10-04 DEC-132 closure**: none. The executable index is authoritative. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator on their declared timelines.
 
 <!-- s09-open:end -->
 
@@ -780,7 +774,7 @@ validate` passed **572 files** with **4,543 passed + 1 skipped / 4,544** and
 - [x] **P2-S09-AC-258** — Tokens, evidence bodies, contact data, media URLs, drafts, release headers, raw bodies, signatures, and private IDs stay out of URL, logs, analytics, Realtime, and client persistence. Scope: the original A01-A08 operations (CMS-03A-01 through CMS-03A-08); CMS-03A-09 through CMS-03A-18 carry their own per-operation criteria. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [x] **P2-S09-AC-259** — FE maps every browser-visible BE03a request/response/error field to the owning form/state/component, explicitly omits ownerId from browser response envelopes, and excludes DB-only release evidence fields. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [x] **P2-S09-AC-260** — The browser accepts only safe BlockDefinitionRegistryRecord projection and never parses full block registration/lifecycle resources or WEBHOOK_REJECTED. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
-- [ ] **P2-S09-AC-261** — The registry route starts at ≤90 KB initial app JS, workbench hydrated entry ≤35 KB, detail/editor modules split, and no barrel import; registry lists render at most 100 rows per page through cursor pagination (BE03a page cap), so no client virtualization is required. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations — held: reworded text pending owner ratification (ledger row AC261)
+- [x] **P2-S09-AC-261** — The registry route starts at ≤90 KB initial app JS, workbench hydrated entry ≤35 KB, detail/editor modules split, and no barrel import; registry lists render at most 100 rows per page through cursor pagination (BE03a page cap), so no client virtualization is required. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations — owner-ratified DEC-132; verified by local technical receipts only, with no hosted claim
 - [x] **P2-S09-AC-262** — The app meets LCP <2.5 s, INP <200 ms, CLS <0.1, and no input task >50 ms under the FE03 performance contract. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [x] **P2-S09-AC-263** — Vitest covers AsyncState/access variants, exact error copy, timing, rollback/focus, and absence of unauthorized props. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
 - [x] **P2-S09-AC-264** — Integration tests prove generated Zod fixtures, all eight original operation field/error mappings (A01-A08, including the DEC-108 activationPreparation member and the OD-4 locale fields), ETag/idempotency/rate UI behavior, and invalidation-only realtime. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §§ContentSchemaRegistryWorkbench, Protected registry state contract, Page and Route Definitions, Server/URL/client state, Protected schema-registry operation metadata, Responsive, Accessibility, Performance, Form/auth security, Data Mapping, Error class ownership, Testing Obligations
@@ -2088,15 +2082,18 @@ response`; Workers Observability passed. Cloudflare's documented successful
 
 ## Depth Ratio
 
-- Authored acceptance items: 1234/1239 verified; authored depth ratio: 0.996
-- Active implementation completion: **1234/1235** after the 2026-09-30 activation
-  reopen (17 criteria, re-verified 2026-10-02), the 2026-10-02 reopen of AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273, the
-  956 new amendment criteria and the separately reopened AC250, which was
-  Chrome-verified and closed 2026-10-01; active depth ratio: **0.999** (1 held criterion, AC261, is unchecked pending owner ratification). AC209,
+- Authored acceptance items: 1235/1239 verified; authored depth ratio: 0.997
+- Active implementation completion: **1235/1235** after DEC-132 owner-ratified AC261; active depth ratio: **1.000**. AC209,
   AC211, AC265, and AC266 are excluded from the active implementation denominator
   while remaining authored, unchecked, and mandatory on their own timelines.
 
 ## Completion Signature
+
+- Completed: 2026-10-04
+- Runtime: codex
+- Verifier: `check-progress-consistency.mjs` exit 0 (`consistent`, Phase 2 9/17)
+- Depth ratio: 1.000 (>= 1.0 required)
+- Boundary: implementation completion only; AC209, AC211, AC265, and AC266 remain unchecked on their declared external timelines.
 
 - Date: 2026-09-26 (historical); runtime entrypoint: Node 22.23.1 / pnpm 11.24.0.
 - Historical checkpoint: Slice 09 implementation was complete at 279/279 active;

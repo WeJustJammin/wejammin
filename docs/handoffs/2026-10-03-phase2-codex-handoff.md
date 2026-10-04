@@ -59,7 +59,7 @@
   - DEC-130: AC1122 is proven per branch.
   - Errata applied in R14d, recorded as ledger notes: AC1122 reads 400 INVALID_REQUEST, not VALIDATION_FAILED; AC034 drops the deleted 404 clause; AC233 drops a stale "stays open" phrase; AC282 and AC1147 now say "ratified by DEC-125".
 - **Orchestrator rulings** (`context/decisions/s09-resolutions.md`): AC527's 409 carries `recoveryAction: 'renew'`; AC1108 uses `tab=mfa-reset`; the R14-web rulings.
-- **Tracker:** S09 shows 1234/1235, with AC261 still held. Re-check AC261 now that the bundle budget is met: 89,922 B gzip against 92,160.
+- **Tracker:** S09 is 1235/1235 active under owner-ratified DEC-132. AC261's 51 fresh passing receipts across ten cited marker files are local technical proof only; no hosted claim. AC209, AC211, AC265, and AC266 remain unchecked on their declared timelines.
 - **Last full verification** (R14e, final Claude commit — see `git log -1`):
   - `pnpm validate` exits 0 with 100% coverage.
   - `pnpm db:verify` exits 0.

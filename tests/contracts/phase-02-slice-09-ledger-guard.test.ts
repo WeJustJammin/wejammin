@@ -258,7 +258,6 @@ describe('Slice 09 depth-floor ledger guard', () => {
     const pending = rows.filter((cells) =>
       /orchestrator ruling/iu.test(cells[2] ?? ''),
     );
-    expect(pending.length).toBeGreaterThan(0);
     for (const cells of pending)
       expect(cells[2], `${cells[0]} marks owner ratification`).toMatch(
         /pending owner ratification/u,
@@ -287,7 +286,6 @@ describe('Slice 09 depth-floor ledger guard', () => {
     const held = S09_AMENDMENT_OPEN.filter(
       ({ status }) => status === 'held-pending-ratification',
     ).map(({ criterion }) => Number(/(\d{3,4})$/u.exec(criterion)?.[1]));
-    expect(held.length).toBeGreaterThan(0);
     expect([...pending].sort((a, b) => a - b)).toEqual(
       [...held].sort((a, b) => a - b),
     );
