@@ -22,13 +22,50 @@ export const RevisionSummarySchema = z
   })
   .readonly();
 
+/**
+ * BE03b `ComparisonDomain`: the closed surface a changed path belongs to.  A
+ * reader uses it to group a diff without re-deriving the path grammar.
+ */
+export const RevisionHistoryComparisonDomainSchema = z.enum([
+  'field',
+  'block',
+  'relation',
+]);
+
 /** One safe, path-scoped entry of a schema-aware revision comparison. */
 export const RevisionHistoryChangeSchema = z
   .strictObject({
     path: JsonPointerSchema,
     kind: z.enum(['added', 'removed', 'changed', 'unchanged']),
+    domain: RevisionHistoryComparisonDomainSchema,
     leftHash: CmsHashSchema.nullable(),
     rightHash: CmsHashSchema.nullable(),
+  })
+  .readonly();
+
+/**
+ * BE03b `RevisionRestoreAvailability`: the closed verdict on whether the two
+ * compared sides can be reconciled.  `available` carries a resolved chain;
+ * `chain_unavailable` and `transform_missing` name the two server-side misses
+ * a reader may see without learning the chain internals.
+ */
+export const RevisionRestoreAvailabilitySchema = z.enum([
+  'available',
+  'chain_unavailable',
+  'transform_missing',
+]);
+
+/**
+ * BE03b `RevisionHistoryRestore`: the bounded migration chain a reader may act
+ * on.  The edge count is capped at 64, matching the registry's chain bound, and
+ * the chain hash binds the verdict to the exact resolved chain.
+ */
+export const RevisionHistoryRestoreSchema = z
+  .strictObject({
+    migrationChainId: CmsUuidSchema,
+    edgeCount: z.number().int().min(0).max(64),
+    chainHash: CmsHashSchema,
+    availability: RevisionRestoreAvailabilitySchema,
   })
   .readonly();
 
@@ -38,6 +75,7 @@ export const RevisionHistoryCompareSchema = z
     leftRevisionId: CmsUuidSchema,
     rightRevisionId: CmsUuidSchema,
     changes: z.array(RevisionHistoryChangeSchema).max(512).readonly(),
+    restore: RevisionHistoryRestoreSchema.nullable(),
   })
   .readonly();
 
@@ -92,7 +130,16 @@ export const RevisionHistoryApiRequestSchema = z.strictObject({
 });
 
 export type RevisionSummary = z.infer<typeof RevisionSummarySchema>;
+export type RevisionHistoryComparisonDomain = z.infer<
+  typeof RevisionHistoryComparisonDomainSchema
+>;
 export type RevisionHistoryChange = z.infer<typeof RevisionHistoryChangeSchema>;
+export type RevisionRestoreAvailability = z.infer<
+  typeof RevisionRestoreAvailabilitySchema
+>;
+export type RevisionHistoryRestore = z.infer<
+  typeof RevisionHistoryRestoreSchema
+>;
 export type RevisionHistoryCompare = z.infer<
   typeof RevisionHistoryCompareSchema
 >;

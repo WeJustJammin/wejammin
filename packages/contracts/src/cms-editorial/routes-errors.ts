@@ -99,3 +99,51 @@ export const editorialDraftDetailErrors = {
   GATEWAY_TIMEOUT: 504,
   INTERNAL_ERROR: 500,
 } as const;
+
+/**
+ * CMS-03B-12 conflict-detail envelope: a hidden entry or conflict is 404, so
+ * the bounded read keeps the same safe shape as 03b-11 with no CONFLICT.
+ */
+export const editorialConflictDetailErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;
+
+/** CMS-03B-13 entry-list envelope: bounded read, no CONFLICT, 415 kept. */
+export const editorialEntryListErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;
+
+/** CMS-03B-14 authoring-context envelope: bounded read, no CONFLICT, 415 kept. */
+export const editorialAuthoringContextErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;

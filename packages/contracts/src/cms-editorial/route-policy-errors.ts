@@ -75,3 +75,38 @@ export type EditorialDraftDetailErrors = CmsEditorialErrorMap<
   | 'GATEWAY_TIMEOUT'
   | 'INTERNAL_ERROR'
 >;
+
+/** The eleven bounded safe read codes: no CONFLICT and 415 retained. */
+type EditorialBoundedReadErrorCodes =
+  | 'INVALID_REQUEST'
+  | 'UNAUTHENTICATED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'VALIDATION_FAILED'
+  | 'RATE_LIMITED'
+  | 'BAD_GATEWAY'
+  | 'DEPENDENCY_UNAVAILABLE'
+  | 'GATEWAY_TIMEOUT'
+  | 'INTERNAL_ERROR';
+
+/**
+ * CMS-03B-12 conflict-detail envelope.  A hidden entry or conflict is 404 and
+ * a bounded read has no divergent-state 409, so CONFLICT is absent.
+ */
+export type EditorialConflictDetailErrors =
+  CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;
+
+/**
+ * CMS-03B-13 entry-list envelope.  An opaque signed cursor carries no
+ * mutating state, so CONFLICT is absent while 415 stays.
+ */
+export type EditorialEntryListErrors =
+  CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;
+
+/**
+ * CMS-03B-14 authoring-context envelope.  The read never grants a registry
+ * write and cannot conflict, so CONFLICT is absent while 415 stays.
+ */
+export type EditorialAuthoringContextErrors =
+  CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;

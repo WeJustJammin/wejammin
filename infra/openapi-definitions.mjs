@@ -2073,6 +2073,90 @@ export const routeDefinitions = {
       'entity',
     ),
   },
+  'CMS-03B-12': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized open conflict detail',
+      [
+        { status: 400, description: 'Conflict-detail request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Conflict-detail read capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Entry or conflict is absent or concealed',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Conflict-detail fields fail validation' },
+        { status: 429, description: 'Conflict-detail rate limit exceeded' },
+        { status: 500, description: 'Conflict-detail read failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03B-13': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized entry list page',
+      [
+        { status: 400, description: 'Entry-list request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Entry-list read capability is forbidden' },
+        { status: 404, description: 'Entry scope is absent or concealed' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Entry-list query bounds fail validation' },
+        { status: 429, description: 'Entry-list rate limit exceeded' },
+        { status: 500, description: 'Entry-list read failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03B-14': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized authoring context',
+      [
+        { status: 400, description: 'Authoring-context request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Authoring-context capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Content type version is absent or concealed',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Authoring-context selector fails validation',
+        },
+        { status: 429, description: 'Authoring-context rate limit exceeded' },
+        { status: 500, description: 'Authoring-context read failed safely' },
+        {
+          status: 502,
+          description: 'Authoring dependency returned invalid data',
+        },
+        { status: 503, description: 'Authoring dependency unavailable' },
+        { status: 504, description: 'Authoring dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
   'CMS-03C-01': {
     responses: contentSchemaRegistryResponses(
       [201],

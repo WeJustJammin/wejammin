@@ -21301,6 +21301,279 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "CMS-03B-13",
+        "deprecated": false,
+        "x-auth-class": "editorial_reader",
+        "x-capabilities": [
+          "cms.author",
+          "cms.editor"
+        ],
+        "x-capability-mode": "any_of",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "cms-entry-read",
+        "x-rate-limit": {
+          "class": "cms-entry-read",
+          "limit": 300,
+          "partyLimit": 600,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Editorial",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "EntryListApiRequestSchema",
+        "x-success-schema": "EntryListPageSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller lists only entries it is assigned or owns in the acting context; cursor is context-bound",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "submitted",
+                "approved",
+                "rejected",
+                "scheduled",
+                "published"
+              ]
+            }
+          },
+          {
+            "name": "contentTypeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized entry list page",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entry-list request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Entry-list read capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entry scope is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Entry-list query bounds fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Entry-list rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Entry-list read failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Editorial dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Editorial dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Editorial dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/cms/entries/{entryId}": {
@@ -21533,6 +21806,480 @@
           },
           "504": {
             "description": "Editorial dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/entries/{entryId}/conflicts/{conflictId}": {
+      "get": {
+        "operationId": "CMS-03B-12",
+        "deprecated": false,
+        "x-auth-class": "editorial_reader",
+        "x-capabilities": [
+          "cms.author",
+          "cms.editor"
+        ],
+        "x-capability-mode": "any_of",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "cms-entry-read",
+        "x-rate-limit": {
+          "class": "cms-entry-read",
+          "limit": 300,
+          "partyLimit": 600,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Editorial",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "ConflictDetailApiRequestSchema",
+        "x-success-schema": "ConflictDetailResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller reads only the open conflict on its assigned or editable entry; hidden entry/conflict is 404",
+        "parameters": [
+          {
+            "name": "entryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "conflictId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized open conflict detail",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictDetailResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Conflict-detail request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conflict-detail read capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entry or conflict is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Conflict-detail fields fail validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Conflict-detail rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Conflict-detail read failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Editorial dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Editorial dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Editorial dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cms/entries/authoring-context": {
+      "get": {
+        "operationId": "CMS-03B-14",
+        "deprecated": false,
+        "x-auth-class": "editorial_reader",
+        "x-capabilities": [
+          "cms.author",
+          "cms.editor"
+        ],
+        "x-capability-mode": "any_of",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "cms-entry-read",
+        "x-rate-limit": {
+          "class": "cms-entry-read",
+          "limit": 300,
+          "partyLimit": 600,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Editorial",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "AuthoringContextApiRequestSchema",
+        "x-success-schema": "AuthoringContextResourceSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller receives only author-safe creatable types and fields for its acting context; never grants schema-registry read",
+        "parameters": [
+          {
+            "name": "contentTypeVersionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized authoring context",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthoringContextResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authoring-context request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authoring-context capability is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Content type version is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authoring-context selector fails validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authoring-context rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Authoring-context read failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Authoring dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authoring dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Authoring dependency timed out",
             "content": {
               "application/json": {
                 "schema": {
@@ -26357,6 +27104,10 @@
             ],
             "additionalProperties": false
           },
+          "revisionNumber": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
           "lifecycle": {
             "type": "string",
             "enum": [
@@ -26385,12 +27136,49 @@
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
           },
+          "schemaVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
           "validationState": {
             "type": "string",
             "enum": [
               "valid",
               "invalid",
               "unknown"
+            ]
+          },
+          "openConflict": {
+            "anyOf": [
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "conflictId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "version": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  },
+                  "conflictHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "conflictId",
+                  "version",
+                  "conflictHash"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "fields": {
@@ -26591,11 +27379,14 @@
         "required": [
           "entry",
           "revision",
+          "revisionNumber",
           "lifecycle",
           "state",
           "locale",
           "contentHash",
+          "schemaVersionId",
           "validationState",
+          "openConflict",
           "fields",
           "relations"
         ],
@@ -26628,6 +27419,1236 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/EntryDraftDetailResource/definitions/__schema0"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ConflictDetailApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "conflictId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "query": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "entryId",
+          "conflictId",
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "ConflictDetailResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "conflict": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "resolved",
+                  "superseded"
+                ]
+              },
+              "changedPaths": {
+                "readOnly": true,
+                "minItems": 1,
+                "maxItems": 128,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "conflictHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "createdAt",
+              "updatedAt",
+              "state",
+              "changedPaths",
+              "conflictHash"
+            ],
+            "additionalProperties": false
+          },
+          "entry": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          },
+          "base": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "revisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "revisionNumber": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "schemaVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "revisionId",
+              "revisionNumber",
+              "schemaVersionId",
+              "contentHash"
+            ],
+            "additionalProperties": false
+          },
+          "theirs": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "revisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "revisionNumber": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$"
+              },
+              "schemaVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "revisionId",
+              "revisionNumber",
+              "schemaVersionId",
+              "contentHash"
+            ],
+            "additionalProperties": false
+          },
+          "yours": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "revision",
+                  "proposed"
+                ]
+              },
+              "revisionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "source",
+              "revisionId",
+              "contentHash"
+            ],
+            "additionalProperties": false
+          },
+          "paths": {
+            "readOnly": true,
+            "maxItems": 128,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "base": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "anyOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/ConflictDetailResource/definitions/__schema0"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": [
+                        "authored",
+                        "default",
+                        "inherited",
+                        "localized_fallback",
+                        "explicit_null",
+                        "missing"
+                      ]
+                    },
+                    "valueHash": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "provenance",
+                    "valueHash"
+                  ],
+                  "additionalProperties": false
+                },
+                "theirs": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "anyOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/ConflictDetailResource/definitions/__schema0"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": [
+                        "authored",
+                        "default",
+                        "inherited",
+                        "localized_fallback",
+                        "explicit_null",
+                        "missing"
+                      ]
+                    },
+                    "valueHash": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "provenance",
+                    "valueHash"
+                  ],
+                  "additionalProperties": false
+                },
+                "yours": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "anyOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/ConflictDetailResource/definitions/__schema0"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": [
+                        "authored",
+                        "default",
+                        "inherited",
+                        "localized_fallback",
+                        "explicit_null",
+                        "missing"
+                      ]
+                    },
+                    "valueHash": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "provenance",
+                    "valueHash"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "path",
+                "base",
+                "theirs",
+                "yours"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "resolvedRevisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "conflict",
+          "entry",
+          "base",
+          "theirs",
+          "yours",
+          "paths",
+          "resolvedRevisionId"
+        ],
+        "additionalProperties": false,
+        "definitions": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConflictDetailResource/definitions/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ConflictDetailResource/definitions/__schema0"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "EntryListApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "properties": {
+              "cursor": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "limit": {
+                "default": 25,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "approved",
+                  "rejected",
+                  "scheduled",
+                  "published"
+                ]
+              },
+              "contentTypeId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "EntryListPage": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "items": {
+            "readOnly": true,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "revisionNumber": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "locale": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved",
+                    "rejected",
+                    "scheduled",
+                    "published"
+                  ]
+                },
+                "contentHash": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "authorClass": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              },
+              "required": [
+                "id",
+                "revisionNumber",
+                "locale",
+                "state",
+                "contentHash",
+                "createdAt",
+                "authorClass"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pageVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "pageVersion"
+        ],
+        "additionalProperties": false
+      },
+      "AuthoringContextApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "properties": {
+              "contentTypeVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "AuthoringContextResource": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "creatableTypes": {
+            "readOnly": true,
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "contentTypeId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "contentTypeVersionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "sourceLocale": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "defaultLocale": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "supportedLocales": {
+                  "readOnly": true,
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  }
+                },
+                "schemaArtifact": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "contentTypeVersionId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "artifactHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "compilerVersion": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32
+                    },
+                    "zodContractRef": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "contentTypeVersionId",
+                    "artifactHash",
+                    "compilerVersion",
+                    "zodContractRef"
+                  ],
+                  "additionalProperties": false
+                },
+                "validatorRefs": {
+                  "readOnly": true,
+                  "maxItems": 128,
+                  "type": "array",
+                  "items": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "workflowPolicy": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    "policyHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "riskClass": {
+                      "type": "string",
+                      "enum": [
+                        "ordinary",
+                        "protected"
+                      ]
+                    },
+                    "requiredDecisionCount": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 8
+                    },
+                    "requiredCapabilities": {
+                      "readOnly": true,
+                      "maxItems": 16,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                      }
+                    },
+                    "approvalEvidenceHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "version",
+                    "policyHash",
+                    "riskClass",
+                    "requiredDecisionCount",
+                    "requiredCapabilities",
+                    "approvalEvidenceHash"
+                  ],
+                  "additionalProperties": false
+                },
+                "activationEvidence": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$"
+                    },
+                    "policyHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "riskClass": {
+                      "type": "string",
+                      "enum": [
+                        "ordinary",
+                        "protected"
+                      ]
+                    },
+                    "requiredDecisionCount": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 8
+                    },
+                    "requiredCapabilities": {
+                      "readOnly": true,
+                      "maxItems": 16,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                      }
+                    },
+                    "approvalEvidenceHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "version",
+                    "policyHash",
+                    "riskClass",
+                    "requiredDecisionCount",
+                    "requiredCapabilities",
+                    "approvalEvidenceHash"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "contentTypeId",
+                "contentTypeVersionId",
+                "label",
+                "sourceLocale",
+                "defaultLocale",
+                "supportedLocales",
+                "schemaArtifact",
+                "validatorRefs",
+                "workflowPolicy",
+                "activationEvidence"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "selectedType": {
+            "anyOf": [
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "contentTypeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "contentTypeVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "sourceLocale": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  },
+                  "defaultLocale": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  },
+                  "supportedLocales": {
+                    "readOnly": true,
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                    }
+                  },
+                  "schemaArtifact": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "contentTypeVersionId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "artifactHash": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "compilerVersion": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
+                      },
+                      "zodContractRef": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "contentTypeVersionId",
+                      "artifactHash",
+                      "compilerVersion",
+                      "zodContractRef"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "validatorRefs": {
+                    "readOnly": true,
+                    "maxItems": 128,
+                    "type": "array",
+                    "items": {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                        },
+                        "version": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "workflowPolicy": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      },
+                      "policyHash": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "riskClass": {
+                        "type": "string",
+                        "enum": [
+                          "ordinary",
+                          "protected"
+                        ]
+                      },
+                      "requiredDecisionCount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 8
+                      },
+                      "requiredCapabilities": {
+                        "readOnly": true,
+                        "maxItems": 16,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                        }
+                      },
+                      "approvalEvidenceHash": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "version",
+                      "policyHash",
+                      "riskClass",
+                      "requiredDecisionCount",
+                      "requiredCapabilities",
+                      "approvalEvidenceHash"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "activationEvidence": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]{0,18}$"
+                      },
+                      "policyHash": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "riskClass": {
+                        "type": "string",
+                        "enum": [
+                          "ordinary",
+                          "protected"
+                        ]
+                      },
+                      "requiredDecisionCount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 8
+                      },
+                      "requiredCapabilities": {
+                        "readOnly": true,
+                        "maxItems": 16,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+                        }
+                      },
+                      "approvalEvidenceHash": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "version",
+                      "policyHash",
+                      "riskClass",
+                      "requiredDecisionCount",
+                      "requiredCapabilities",
+                      "approvalEvidenceHash"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "contentTypeId",
+                  "contentTypeVersionId",
+                  "label",
+                  "sourceLocale",
+                  "defaultLocale",
+                  "supportedLocales",
+                  "schemaArtifact",
+                  "validatorRefs",
+                  "workflowPolicy",
+                  "activationEvidence"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "readOnly": true,
+            "maxItems": 128,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "stableFieldId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "key": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "short_text",
+                    "long_text",
+                    "rich_text",
+                    "boolean",
+                    "integer",
+                    "decimal",
+                    "date",
+                    "datetime",
+                    "enum",
+                    "taxonomy",
+                    "relation",
+                    "media",
+                    "object",
+                    "list"
+                  ]
+                },
+                "constraints": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/AuthoringContextResource/definitions/__schema0"
+                      }
+                    ]
+                  }
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "defaultMode": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "literal",
+                    "inherited"
+                  ]
+                },
+                "defaultValue": {
+                  "anyOf": [
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/AuthoringContextResource/definitions/__schema0"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "localizationMode": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "localized",
+                    "no_fallback"
+                  ]
+                },
+                "editorConfig": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "helpText": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "order": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "order"
+                  ],
+                  "additionalProperties": false
+                },
+                "relationDefinition": {
+                  "anyOf": [
+                    {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/AuthoringContextResource/definitions/__schema0"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "stableFieldId",
+                "key",
+                "kind",
+                "constraints",
+                "required",
+                "defaultMode",
+                "localizationMode",
+                "editorConfig",
+                "relationDefinition"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "creatableTypes",
+          "selectedType",
+          "fields"
+        ],
+        "additionalProperties": false,
+        "definitions": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AuthoringContextResource/definitions/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/AuthoringContextResource/definitions/__schema0"
                 }
               }
             ]
@@ -31032,6 +33053,14 @@
                             "unchanged"
                           ]
                         },
+                        "domain": {
+                          "type": "string",
+                          "enum": [
+                            "field",
+                            "block",
+                            "relation"
+                          ]
+                        },
                         "leftHash": {
                           "anyOf": [
                             {
@@ -31058,17 +33087,61 @@
                       "required": [
                         "path",
                         "kind",
+                        "domain",
                         "leftHash",
                         "rightHash"
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "restore": {
+                    "anyOf": [
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "migrationChainId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "edgeCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 64
+                          },
+                          "chainHash": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "availability": {
+                            "type": "string",
+                            "enum": [
+                              "available",
+                              "chain_unavailable",
+                              "transform_missing"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "migrationChainId",
+                          "edgeCount",
+                          "chainHash",
+                          "availability"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "leftRevisionId",
                   "rightRevisionId",
-                  "changes"
+                  "changes",
+                  "restore"
                 ],
                 "additionalProperties": false
               },
@@ -33762,9 +35835,95 @@
               "object",
               "list"
             ]
+          },
+          "objectStructure": {
+            "type": "object",
+            "properties": {
+              "properties": {
+                "maxItems": 32,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "scalar",
+                        "enum",
+                        "rich_text"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "constraints": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/FieldConstraints/definitions/__schema0"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "kind",
+                    "required",
+                    "constraints"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "properties"
+            ],
+            "additionalProperties": false
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "definitions": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FieldConstraints/definitions/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/FieldConstraints/definitions/__schema0"
+                }
+              }
+            ]
+          }
+        }
       },
       "FieldDefinitionInput": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -33845,6 +36004,59 @@
                   "object",
                   "list"
                 ]
+              },
+              "objectStructure": {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "maxItems": 32,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "scalar",
+                            "enum",
+                            "rich_text"
+                          ]
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "constraints": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/FieldDefinitionInput/definitions/__schema0"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "kind",
+                        "required",
+                        "constraints"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "properties"
+                ],
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -35191,6 +37403,59 @@
                         "object",
                         "list"
                       ]
+                    },
+                    "objectStructure": {
+                      "type": "object",
+                      "properties": {
+                        "properties": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scalar",
+                                  "enum",
+                                  "rich_text"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "constraints": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "allOf": [
+                                    {
+                                      "$ref": "#/components/schemas/ContentTypeDraftRequest/definitions/__schema0"
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "kind",
+                              "required",
+                              "constraints"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "properties"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false
@@ -35546,6 +37811,59 @@
                   "object",
                   "list"
                 ]
+              },
+              "objectStructure": {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "maxItems": 32,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "scalar",
+                            "enum",
+                            "rich_text"
+                          ]
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "constraints": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/FieldSchemaChangeRequest/definitions/__schema0"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "kind",
+                        "required",
+                        "constraints"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "properties"
+                ],
+                "additionalProperties": false
               }
             },
             "additionalProperties": false

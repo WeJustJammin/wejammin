@@ -37,8 +37,24 @@ const validCompare = {
   leftRevisionId: uuid,
   rightRevisionId: uuid2,
   changes: [
-    { path: pointer, kind: 'changed', leftHash: hash, rightHash: hash },
+    {
+      path: pointer,
+      kind: 'changed',
+      domain: 'field',
+      leftHash: hash,
+      rightHash: hash,
+    },
   ],
+  restore: null,
+} as const;
+
+// BE03b `restore`: the migration chain that would reconcile the two sides,
+// plus the closed availability verdict a reader may act on.
+const validRestore = {
+  migrationChainId: uuid3,
+  edgeCount: 2,
+  chainHash: hash,
+  availability: 'available',
 } as const;
 
 describe('CMS-03B-03 revision summary and page', () => {
@@ -94,6 +110,7 @@ describe('CMS-03B-03 revision summary and page', () => {
         RevisionHistoryChangeSchema.safeParse({
           path: pointer,
           kind,
+          domain: 'field',
           leftHash: null,
           rightHash: null,
         }).success,
@@ -109,9 +126,142 @@ describe('CMS-03B-03 revision summary and page', () => {
         changes: Array.from({ length: 513 }, (_, index) => ({
           path: '/p/' + String(index),
           kind: 'unchanged',
+          domain: 'field',
         })),
       }).success,
     ).toBe(false);
+  });
+
+  it('requires a closed comparison domain on every change and rejects the unknown one', () => {
+    for (const domain of ['field', 'block', 'relation'] as const) {
+      expect(
+        RevisionHistoryChangeSchema.safeParse({
+          path: pointer,
+          kind: 'changed',
+          domain,
+          leftHash: hash,
+          rightHash: hash,
+        }).success,
+      ).toBe(true);
+    }
+    for (const domain of ['value', 'entry', 'taxonomy', '']) {
+      expect(
+        RevisionHistoryChangeSchema.safeParse({
+          path: pointer,
+          kind: 'changed',
+          domain,
+          leftHash: hash,
+          rightHash: hash,
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      RevisionHistoryChangeSchema.safeParse({
+        path: pointer,
+        kind: 'changed',
+        leftHash: hash,
+        rightHash: hash,
+      }).success,
+    ).toBe(false);
+    expect(
+      RevisionHistoryChangeSchema.safeParse({
+        path: pointer,
+        kind: 'changed',
+        domain: 'field',
+        leftHash: hash,
+        rightHash: hash,
+        extra: 1,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('keeps the 512-change bound while accepting the exact boundary', () => {
+    const changes = Array.from({ length: 512 }, (_, index) => ({
+      path: '/p/' + String(index),
+      kind: 'unchanged' as const,
+      domain: 'field' as const,
+      leftHash: hash,
+      rightHash: hash,
+    }));
+    expect(
+      RevisionHistoryCompareSchema.safeParse({ ...validCompare, changes })
+        .success,
+    ).toBe(true);
+    expect(
+      RevisionHistoryCompareSchema.safeParse({
+        ...validCompare,
+        changes: [...changes, changes[0]!],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('requires a strict nullable restore block with bounded edges and a closed availability verdict', () => {
+    expect(validCompare.restore).toBeNull();
+    expect(
+      RevisionHistoryCompareSchema.safeParse({
+        ...validCompare,
+        restore: validRestore,
+      }).success,
+    ).toBe(true);
+    expect(
+      Object.keys(
+        RevisionHistoryCompareSchema.parse({
+          ...validCompare,
+          restore: validRestore,
+        }).restore as object,
+      ).sort(),
+    ).toEqual([
+      'availability',
+      'chainHash',
+      'edgeCount',
+      'migrationChainId',
+    ]);
+
+    expect(
+      RevisionHistoryCompareSchema.safeParse({
+        ...validCompare,
+        restore: undefined,
+      }).success,
+    ).toBe(false);
+
+    for (const availability of [
+      'available',
+      'chain_unavailable',
+      'transform_missing',
+    ] as const) {
+      expect(
+        RevisionHistoryCompareSchema.safeParse({
+          ...validCompare,
+          restore: { ...validRestore, availability },
+        }).success,
+      ).toBe(true);
+    }
+
+    for (const edgeCount of [0, 64]) {
+      expect(
+        RevisionHistoryCompareSchema.safeParse({
+          ...validCompare,
+          restore: { ...validRestore, edgeCount },
+        }).success,
+      ).toBe(true);
+    }
+    for (const restore of [
+      { ...validRestore, edgeCount: -1 },
+      { ...validRestore, edgeCount: 65 },
+      { ...validRestore, edgeCount: 1.5 },
+      { ...validRestore, availability: 'pending' },
+      { ...validRestore, migrationChainId: 'not-a-uuid' },
+      { ...validRestore, chainHash: 'short' },
+      { migrationChainId: uuid3, edgeCount: 1, chainHash: hash },
+      { ...validRestore, extra: 1 },
+      {},
+    ])
+      expect(
+        RevisionHistoryCompareSchema.safeParse({
+          ...validCompare,
+          restore,
+        }).success,
+      ).toBe(false);
   });
 });
 

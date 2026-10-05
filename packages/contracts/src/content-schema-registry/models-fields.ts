@@ -13,6 +13,12 @@ import {
   CmsFieldLifecycleSchema,
   CmsLocalizationModeSchema,
 } from './models-enums.ts';
+import {
+  type ObjectStructure,
+  ObjectStructureSchema,
+  isObjectValueForStructure,
+  isRichTextV1,
+} from './structured-values.ts';
 
 /**
  * BE03a CMS-03A-02: constraints are capped at 8 KiB. The key set is the closed
@@ -33,6 +39,7 @@ export const FieldConstraintsSchema = z
     maximum: z.number().finite().optional(),
     enumValues: z.array(z.string().max(160)).max(256).optional(),
     itemKind: CmsFieldKindSchema.optional(),
+    objectStructure: ObjectStructureSchema.optional(),
   })
   .superRefine((value, context) => {
     if (utf8Length(value) > FIELD_CONSTRAINTS_MAX_BYTES)
@@ -89,6 +96,11 @@ const fieldShape = {
 
 const refineField = (
   value: {
+    kind: string;
+    constraints: {
+      objectStructure?: ObjectStructure | undefined;
+      itemKind?: string | undefined;
+    };
     validatorKey: string | null;
     validatorVersion: string | null;
     defaultMode: 'none' | 'literal' | 'inherited';
@@ -101,6 +113,19 @@ const refineField = (
       code: 'custom',
       path: ['validatorKey'],
       message: 'validator_key_version_pair_required',
+    });
+  // DEC-133 kind/structure agreement for the object field kind.
+  if (value.kind === 'object' && value.constraints.objectStructure === undefined)
+    context.addIssue({
+      code: 'custom',
+      path: ['constraints', 'objectStructure'],
+      message: 'object_field_requires_object_structure',
+    });
+  if (value.kind !== 'object' && value.constraints.objectStructure !== undefined)
+    context.addIssue({
+      code: 'custom',
+      path: ['constraints', 'objectStructure'],
+      message: 'object_structure_only_for_object_field',
     });
   const hasDefault = Object.hasOwn(value, 'defaultValue');
   if (
@@ -118,6 +143,28 @@ const refineField = (
       path: ['defaultValue'],
       message: 'default_value_must_be_omitted',
     });
+  // DEC-112 / DEC-133: a literal default must satisfy the value grammar of its
+  // structured kind: rich_text holds a rich_text.v1 document; object holds a
+  // depth-1 value matching its declared structure.
+  if (value.defaultMode === 'literal' && hasDefault) {
+    if (value.kind === 'rich_text' && !isRichTextV1(value.defaultValue))
+      context.addIssue({
+        code: 'custom',
+        path: ['defaultValue'],
+        message: 'rich_text_default_must_be_rich_text_v1',
+      });
+    const structure = value.constraints.objectStructure;
+    if (
+      value.kind === 'object' &&
+      structure !== undefined &&
+      !isObjectValueForStructure(structure, value.defaultValue)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['defaultValue'],
+        message: 'object_default_must_match_object_structure',
+      });
+  }
 };
 
 export const FieldDefinitionInputSchema = z
