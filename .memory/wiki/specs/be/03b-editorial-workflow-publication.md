@@ -87,20 +87,23 @@ This is the editorial and publication member of the three-way Shard 03 backend s
 
 ## Endpoint Completeness Reconciliation
 
-The IA flows owned here reconcile to eleven concrete operation IDs. CMS-05 is owned by two operations: CMS-03B-01 appends a revision to an existing active entry, and CMS-03B-10 bootstraps a new active entry together with its first draft. CMS-07, CMS-08, and CMS-13 are intentionally split into read/restore, submission/decision, and preview/publication operations. There are no unregistered background HTTP endpoints; schedule, projection, review invalidation, and migration effects use BE00 jobs/outbox consumers.
+The IA flows owned here reconcile to fourteen concrete operation IDs. CMS-05 is owned by four operations: CMS-03B-01 appends a revision to an existing active entry, CMS-03B-10 bootstraps a new active entry together with its first draft, CMS-03B-13 lists the caller's assigned entries, and CMS-03B-14 serves the authoring-context preparation read. CMS-06 adds CMS-03B-12, the protected three-way conflict-detail read. CMS-07, CMS-08, and CMS-13 are intentionally split into read/restore, submission/decision, and preview/publication operations. The Slice 10 contract phase locks the Slice 11 request contracts that Slice 10 criteria CMS-03B-05…09 validate; the Slice 11 preparation reads (entry workflow, review detail, reviewer queue) are owned by Slice 11 and are not operation rows of this Slice 10 cascade. There are no unregistered background HTTP endpoints; schedule, projection, review invalidation, and migration effects use BE00 jobs/outbox consumers.
 
 | IA interaction                  | Operation ID(s)        | Concrete route(s)                                                                                              | Reconciliation                                                                  |
 | ------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | CMS-05 Create/edit entry        | CMS-03B-01             | POST /api/v1/cms/entries/{entryId}/revisions                                                                   | Creates an immutable revision/autosave; it never publishes.                     |
 | CMS-05 Create/edit entry        | CMS-03B-10             | POST /api/v1/cms/entries                                                                                       | Creates the active entry and its first draft revision; never publishes.         |
 | CMS-05 Create/edit entry        | CMS-03B-11             | GET /api/v1/cms/entries/{entryId}                                                                              | Safe authorized draft detail for the editor; read-only, bounded.                |
+| CMS-05 Create/edit entry        | CMS-03B-13             | GET /api/v1/cms/entries                                                                                        | Safe authorized entry list for the caller's assignments; read-only, bounded.    |
+| CMS-05 Create/edit entry        | CMS-03B-14             | GET /api/v1/cms/entries/authoring-context                                                                      | Author-safe creatable types and field-definition projection; no schema-registry read. |
 | CMS-06 Resolve concurrent edit  | CMS-03B-02             | POST /api/v1/cms/entries/{entryId}/conflicts/{conflictId}/resolve                                              | Explicitly chooses same-field values and creates a two-parent revision.         |
+| CMS-06 Resolve concurrent edit  | CMS-03B-12             | GET /api/v1/cms/entries/{entryId}/conflicts/{conflictId}                                                       | Protected three-way conflict detail; no-store, bounded preimages.               |
 | CMS-07 Compare/restore revision | CMS-03B-03, CMS-03B-04 | GET /api/v1/cms/entries/{entryId}/revisions; POST /api/v1/cms/entries/{entryId}/revisions/{revisionId}/restore | Safe history/compare query is separate from edit-authorized restore.            |
 | CMS-08 Submit/review/approve    | CMS-03B-05, CMS-03B-06 | POST /api/v1/cms/entries/{entryId}/reviews; POST /api/v1/cms/reviews/{reviewId}/decision                       | Submission freezes the candidate; decisions are append-only and distinct.       |
 | CMS-09 Schedule publish/expire  | CMS-03B-07             | POST /api/v1/cms/publication-schedules                                                                         | Stores local and resolved times; worker executes exact version once.            |
 | CMS-13 Preview/diff/publish     | CMS-03B-08, CMS-03B-09 | POST /api/v1/cms/previews; POST /api/v1/cms/publications                                                       | Preview is revocable/read-only; publication is publisher-authorized and atomic. |
 
-BE00 GET /api/v1/jobs/{jobId} remains the only job-status route and is inherited. The 03a schema/block-definition routes are CMS-03A-01 through CMS-03A-14. Shard 04 owns delivery reads and never receives a draft through a public route. CMS-03B-10 POST /api/v1/cms/entries and CMS-03B-11 GET /api/v1/cms/entries/{entryId} are the only entry-aggregate routes; the detail read returns only authorized, schema-typed draft values and never untyped or private content.
+BE00 GET /api/v1/jobs/{jobId} remains the only job-status route and is inherited. The 03a schema/block-definition routes are CMS-03A-01 through CMS-03A-14. Shard 04 owns delivery reads and never receives a draft through a public route. CMS-03B-10 POST /api/v1/cms/entries creates the entry aggregate; CMS-03B-11 GET /api/v1/cms/entries/{entryId} returns its authorized draft detail, CMS-03B-13 GET /api/v1/cms/entries lists the caller's assigned entries, and CMS-03B-14 GET /api/v1/cms/entries/authoring-context serves the author-safe preparation read. Each read returns only authorized, schema-typed values and never untyped or private content. The Slice 11 preparation reads (entry workflow, review detail, reviewer queue) are owned and specified by Slice 11 and are not Slice 10 acceptance.
 
 ## Shared Contract Inheritance
 
@@ -157,12 +160,16 @@ This is the single authoritative 03b route registry. Generated OpenAPI and disco
 | CMS-03B-09   | CMS-13 | POST /api/v1/cms/publications                                     | PublicationRequest → 202 PublicationResource                 | CMS publisher plus frozen approval/dependency set; hidden target is 404; visible target without publisher is 403  | BE00 order; CORS cms-console; CSRF; step-up MFA where required; strict JSON | key + If-Match; CAS expected version set; exact publication unique                                                                                                                                                                                                          | 20/min/user, 40/min/party; 15,000ms acceptance; no-store; Tier 2                 | BE00 ApiError { code, message, requestId, details } | cms.publication.changed.v1                      |
 | CMS-03B-10   | CMS-05 | POST /api/v1/cms/entries                                          | EntryCreateRequest → 201 EntryCreateResource                 | cms.author/cms.editor capability; hidden target is 404; visible target without create capability is 403           | BE00 order; CORS cms-console; CSRF; JSON 256 KiB; schema registry read      | key required; no If-Match because no prior version exists; server-derived entry version 1; unique owner/contentType/idempotency binding prevents a duplicate entry or revision; takes a `FOR SHARE` lock on the content-type version row (03a Activation transaction rules) | 120/min/user, 240/min/party; 15,000ms, target <2s; no-store; Tier 2 p95 <1,200ms | BE00 ApiError { code, message, requestId, details } | cms.entry.revision-created.v1                   |
 | CMS-03B-11   | CMS-05 | GET /api/v1/cms/entries/{entryId}                                 | EntryDraftDetailQuery → 200 EntryDraftDetailResource         | assignment/read capability; hidden/absent entry is 404; visible entry without read scope is 403                   | BE00 order; CORS cms-console; no CSRF mutation; no-store detail read        | safe read; no Idempotency-Key or If-Match; ETag binds entry plus draft revision versions; no fallback to untyped or cross-tenant values                                                                                                                                     | 300/min/user, 600/min/party; 8,000ms; no-store; Tier 1 p95 <750ms                | BE00 ApiError { code, message, requestId, details } | none                                            |
+| CMS-03B-12   | CMS-06 | GET /api/v1/cms/entries/{entryId}/conflicts/{conflictId}          | ConflictDetailQuery → 200 ConflictDetailResource             | assigned author/editor with entry read; hidden/absent entry or conflict is 404; visible entry without read is 403 | BE00 order; CORS cms-console; no CSRF mutation; no-store detail read        | safe read; no Idempotency-Key or If-Match; strong authenticated ETag binds conflict version plus entry version; no path preimages unless the conflict is `open`                                                                                                               | 300/min/user, 600/min/party; 8,000ms; no-store; Tier 1 p95 <750ms                | BE00 ApiError { code, message, requestId, details } | none                                            |
+| CMS-03B-13   | CMS-05 | GET /api/v1/cms/entries                                          | EntryListQuery → 200 EntryListPage                           | cms.author/editor read scope; only entries the caller is assigned or owns in the acting context are listed        | BE00 order; CORS cms-console; no CSRF mutation; cursor/context binding      | safe read; no Idempotency-Key or If-Match; signed keyset cursor over `(updatedAt DESC, entryId DESC)`; default limit 25, max 50; filter allowlist `state`, `contentTypeId`; ETag on page version                                                                              | 300/min/user, 600/min/party; 8,000ms; no-store; Tier 1 p95 <750ms                | BE00 ApiError { code, message, requestId, details } | none                                            |
+| CMS-03B-14   | CMS-05 | GET /api/v1/cms/entries/authoring-context                         | AuthoringContextQuery → 200 AuthoringContextResource        | cms.author/editor scope; never grants cms.schema_registry.read; scoped to the acting context                    | BE00 order; CORS cms-console; no CSRF mutation; no-store preparation read   | safe read; no Idempotency-Key or If-Match; ETag binds the resolved active schema versions; no caller-chosen schema                                                                                                                                                           | 300/min/user, 600/min/party; 8,000ms; no-store; Tier 1 p95 <750ms                | BE00 ApiError { code, message, requestId, details } | none                                            |
 
 ### Registry invariants
 
 - Route path IDs are UUIDs. A route never accepts owner, reviewer, publisher, acting party, or current version as an authority assertion.
-- CMS-03B-01, CMS-03B-02, CMS-03B-04, CMS-03B-05, CMS-03B-06, CMS-03B-07, and CMS-03B-09 return strong ETag and Location where a new resource is created. CMS-03B-03 returns an authenticated page ETag. CMS-03B-08 returns a short-lived token and no public ETag. CMS-03B-10 returns a strong ETag with a Location header for the created entry. CMS-03B-11 returns a strong no-store ETag binding the entry and current draft revision versions.
-- CMS-03B-10 is the only route that creates the entry aggregate, so it is the single documented exception to the mutation precondition: it requires Idempotency-Key and derives the initial entry version server-side instead of requiring If-Match. Every other mutation route keeps the exact strong If-Match requirement. CMS-03B-11 is a safe read and accepts neither Idempotency-Key nor If-Match.
+- CMS-03B-01, CMS-03B-02, CMS-03B-04, CMS-03B-05, CMS-03B-06, CMS-03B-07, and CMS-03B-09 return strong ETag and Location where a new resource is created. CMS-03B-03 returns an authenticated page ETag. CMS-03B-08 returns a short-lived token and no public ETag. CMS-03B-10 returns a strong ETag with a Location header for the created entry. CMS-03B-11 returns a strong no-store ETag binding the entry and current draft revision versions. CMS-03B-12 returns a strong no-store ETag binding the conflict and entry versions. CMS-03B-13 and CMS-03B-14 return an authenticated no-store page/preparation ETag.
+- CMS-03B-10 is the only route that creates the entry aggregate, so it is the single documented exception to the mutation precondition: it requires Idempotency-Key and derives the initial entry version server-side instead of requiring If-Match. Every other mutation route keeps the exact strong If-Match requirement. CMS-03B-11, CMS-03B-12, CMS-03B-13, and CMS-03B-14 are safe reads and accept neither Idempotency-Key nor If-Match.
+- The literal authoring-context segment `/api/v1/cms/entries/authoring-context` (CMS-03B-14) is matched before the UUID path parameter of CMS-03B-11, so it is never resolved as an entry ID; any other non-UUID segment under `/api/v1/cms/entries/{entryId}` is a structural 400 before an existence check.
 - Every row returns BE00 ApiError { code, message, requestId, details } for failures. No row exposes draft existence, private field values, review comments, token material, or capability graphs to an unauthorized caller.
 - CMS-03B-07 schedule acceptance does not claim publication success. CMS-03B-09 returns pending/queued when downstream projection has not converged; canonical publication state is authoritative.
 - CMS-03B-08 preview tokens are audience-bound and revocable. They cannot be exchanged for a publication command or reused after expiry.
@@ -246,6 +253,12 @@ authority under 03a, not this shard's editorial review (`editorial_review` /
 | CMS-03B-10            | owner/assignee/authority               | rejected: caller must not supply owner, assignee, author, acting party, capability, or authority; the server derives every one of them                                                                                                                                                                                           | 422                           |
 | CMS-03B-10            | headers                                | Idempotency-Key 8–128 printable ASCII; no If-Match for initial create; Content-Type application/json                                                                                                                                                                                                                             | 400 INVALID_REQUEST           |
 | CMS-03B-11            | entryId                                | UUID path; must resolve to a readable active ContentEntry and its current readable immutable draft revision                                                                                                                                                                                                                      | 400 or policy-safe 404        |
+| CMS-03B-12            | entryId/conflictId                     | UUID paths; the conflict must belong to the resolved readable entry and both must be readable                                                                                                                                                                                                                                    | 400/policy-safe 404           |
+| CMS-03B-12            | query                                  | strict: no keys accepted (the resource is addressed entirely by path)                                                                                                                                                                                                                                                           | 400 INVALID_REQUEST           |
+| CMS-03B-12            | paths / preimages                      | at most 128 `ConflictDetailPath` entries; each side value bounded to 256 KiB total and schema-typed against its side's `schemaVersionId`; `paths` is `[]` unless the conflict state is `open`; no ownership identifier is serialized                                                                                              | 422 response-contract failure |
+| CMS-03B-13            | state/contentTypeId                    | `state` closed `EntryRevisionState` optional; `contentTypeId` UUID optional; only the caller's assigned/owned entries are ever listed                                                                                                                                                                                            | 400/422                       |
+| CMS-03B-13            | cursor/limit                           | signed context-bound cursor ≤512 chars; limit integer 1–50 default 25; cursor bound to the complete query and acting read scope                                                                                                                                                                                                  | 400                           |
+| CMS-03B-14            | contentTypeVersionId                   | optional UUID; when present it must resolve to an active compiled version the caller may author; absent returns the caller's creatable active types                                                                                                                                                                             | 400/policy-safe 404           |
 | All mutation routes   | headers                                | Idempotency-Key 8–128 printable ASCII; exact strong If-Match; Content-Type application/json; CMS-03B-10 is the exception and requires Idempotency-Key without If-Match                                                                                                                                                           | 400 INVALID_REQUEST           |
 | All browser responses | state/ownership envelope               | ResourceMeta contains only id, version, and timestamps; EntryRevision, EditorialReview, PublicationSchedule, Publication, and RevisionSummary use their exact closed state enums; ownership and approval authority evidence is absent                                                                                            | 422 response-contract failure |
 
@@ -449,9 +462,7 @@ const EditorialDecisionRequest = z.strictObject({
   reviewId: UUID,
   decision: z.enum(['approve', 'reject']),
   reason: SafeText.min(1),
-  capability: z.string().min(1).max(128),
   expectedVersion: Version,
-  stepUpAt: z.string().datetime({ offset: true }).nullable(),
 });
 const PublicationScheduleRequest = z.strictObject({
   revisionId: UUID,
@@ -465,6 +476,7 @@ const PublicationScheduleRequest = z.strictObject({
   resolvedUtc: z.string().datetime({ offset: true }),
   tzdbVersion: z.string().min(1).max(32),
   disambiguation: z.enum(['none', 'earlier', 'later']),
+  audience: z.string().trim().regex(/^[a-z0-9_-]{1,48}$/),
   expectedVersion: Version,
 });
 const PreviewRequest = z.strictObject({
@@ -480,7 +492,18 @@ const PublicationRequest = z.strictObject({
   revisionId: UUID,
   frozenHash: Hash,
   expectedVersionSet: VersionSet,
+  audience: z.string().trim().regex(/^[a-z0-9_-]{1,48}$/),
   expectedVersion: Version,
+});
+const ConflictDetailQuery = z.strictObject({});
+const EntryListQuery = z.strictObject({
+  cursor: z.string().max(512).nullable().optional(),
+  limit: z.number().int().min(1).max(50).default(25),
+  state: EntryRevisionState.optional(),
+  contentTypeId: UUID.optional(),
+});
+const AuthoringContextQuery = z.strictObject({
+  contentTypeVersionId: UUID.optional(),
 });
 ```
 
@@ -652,7 +675,6 @@ const ConflictRecordResource = ResourceMeta.extend({
   yoursHash: Hash,
   conflictHash: Hash,
   resolvedRevisionId: UUID.nullable(),
-  resolvedByPersonId: UUID.nullable(),
   resolvedAt: z.string().datetime({ offset: true }).nullable(),
 }).superRefine((value, ctx) => {
   const revisionBound =
@@ -674,19 +696,15 @@ const ConflictRecordResource = ResourceMeta.extend({
     });
   }
   const resolvedNull =
-    value.resolvedRevisionId === null &&
-    value.resolvedByPersonId === null &&
-    value.resolvedAt === null;
+    value.resolvedRevisionId === null && value.resolvedAt === null;
   const resolvedBound =
-    value.resolvedRevisionId !== null &&
-    value.resolvedByPersonId !== null &&
-    value.resolvedAt !== null;
+    value.resolvedRevisionId !== null && value.resolvedAt !== null;
   if (value.state === 'resolved' ? !resolvedBound : !resolvedNull) {
     ctx.addIssue({
       code: 'custom',
       path: ['state'],
       message:
-        'resolved requires resolvedRevisionId/resolvedByPersonId/resolvedAt; open/superseded require all null',
+        'resolved requires resolvedRevisionId/resolvedAt; open/superseded require both null',
     });
   }
 });
@@ -805,9 +823,22 @@ const RevisionHistoryPage = z.strictObject({
     .strictObject({
       leftRevisionId: UUID,
       rightRevisionId: UUID,
+      restore: z
+        .strictObject({
+          migrationChainId: UUID,
+          edgeCount: z.number().int().min(0).max(64),
+          chainHash: Hash,
+          availability: z.enum([
+            'available',
+            'chain_unavailable',
+            'transform_missing',
+          ]),
+        })
+        .nullable(),
       changes: z
         .array(
           z.strictObject({
+            domain: z.enum(['field', 'block', 'relation']),
             path: JsonPointer,
             kind: z.enum(['added', 'removed', 'changed', 'unchanged']),
             leftHash: Hash.nullable(),
@@ -889,15 +920,250 @@ const EntryDraftRelation = z.union([
 const EntryDraftDetailResource = z.strictObject({
   entry: ResourceMeta,
   revision: ResourceMeta,
+  revisionNumber: Version,
+  schemaVersionId: UUID,
   lifecycle: z.enum(['active', 'archived', 'deletion_pending', 'held']),
   state: EntryRevisionState,
   locale: Bcp47,
   contentHash: Hash,
   validationState: z.enum(['valid', 'invalid', 'unknown']),
+  openConflict: z
+    .strictObject({
+      conflictId: UUID,
+      version: Version,
+      conflictHash: Hash,
+    })
+    .nullable(),
   fields: z.array(EntryDraftFieldValue).max(128),
   relations: z.array(EntryDraftRelation).max(512),
 });
+const ConflictDetailSide = z.strictObject({
+  value: Json.nullable(),
+  provenance: z.enum([
+    'authored',
+    'default',
+    'inherited',
+    'localized_fallback',
+    'explicit_null',
+    'missing',
+  ]),
+  valueHash: Hash.nullable(),
+});
+const ConflictDetailPath = z.strictObject({
+  path: JsonPointer,
+  base: ConflictDetailSide,
+  theirs: ConflictDetailSide,
+  yours: ConflictDetailSide,
+});
+const ConflictDetailResource = z.strictObject({
+  conflict: ResourceMeta.extend({
+    state: ConflictRecordState,
+    changedPaths: z.array(JsonPointer).min(1).max(128),
+    conflictHash: Hash,
+  }),
+  entry: ResourceMeta,
+  base: z.strictObject({
+    revisionId: UUID,
+    revisionNumber: Version,
+    schemaVersionId: UUID,
+    contentHash: Hash,
+  }),
+  theirs: z.strictObject({
+    revisionId: UUID,
+    revisionNumber: Version,
+    schemaVersionId: UUID,
+    contentHash: Hash,
+  }),
+  yours: z.strictObject({
+    source: ConflictYoursSource,
+    revisionId: UUID.nullable(),
+    contentHash: Hash,
+  }),
+  paths: z.array(ConflictDetailPath).max(128),
+  resolvedRevisionId: UUID.nullable(),
+});
+const EntryListPage = z.strictObject({
+  items: z.array(RevisionSummary).max(50),
+  nextCursor: z.string().max(512).nullable(),
+  pageVersion: Version,
+});
+const AuthoringContextType = z.strictObject({
+  contentTypeId: UUID,
+  contentTypeVersionId: UUID,
+  label: z.string().min(1).max(120),
+  sourceLocale: Bcp47,
+  defaultLocale: Bcp47,
+  supportedLocales: z.array(Bcp47).min(1).max(32),
+  schemaArtifact: SchemaArtifactEvidence,
+  validatorRefs: z.array(ValidatorEvidence).max(128),
+  workflowPolicy: WorkflowPolicyEvidence,
+  activationEvidence: WorkflowPolicyEvidence,
+});
+const AuthoringContextField = z.strictObject({
+  stableFieldId: UUID,
+  key: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/),
+  kind: z.enum([
+    'short_text',
+    'long_text',
+    'rich_text',
+    'boolean',
+    'integer',
+    'decimal',
+    'date',
+    'datetime',
+    'enum',
+    'taxonomy',
+    'relation',
+    'media',
+    'object',
+    'list',
+  ]),
+  constraints: z.record(z.string(), Json),
+  required: z.boolean(),
+  defaultMode: z.enum(['none', 'literal', 'inherited']),
+  defaultValue: Json.nullable().optional(),
+  localizationMode: z.enum(['none', 'localized', 'no_fallback']),
+  editorConfig: z.strictObject({
+    label: z.string().min(1).max(120),
+    helpText: z.string().max(500).optional(),
+    order: z.number().int().nonnegative().max(10000),
+  }),
+  relationDefinition: Json.nullable(),
+});
+const AuthoringContextResource = z.strictObject({
+  creatableTypes: z.array(AuthoringContextType).max(32),
+  selectedType: AuthoringContextType.nullable(),
+  fields: z.array(AuthoringContextField).max(128),
+});
 ```
+
+### Draft base and schema identity (D3)
+
+`EntryDraftDetailResource` carries the server-derived `revisionNumber` (from `cms_entry_revisions.revision_number`) and `schemaVersionId` (the verified current draft schema), plus `openConflict` (the single durable open conflict, or null) so the editor survives a 409 and a reload. For CMS-03B-01 the request `baseRevision` is this `revisionNumber` and `expectedVersion` is `entry.version`; the composite GET `ETag` is a representation validator only and is never used as the numeric `If-Match`. The editor builds field definitions from the authoring-context read, never from a caller-chosen schema.
+
+### Value encodings by field kind
+
+Values are parsed against the active schema from 03a and are never untyped pass-through. A field whose kind has no available producer refuses at write with a typed reason instead of storing an unvalidated value.
+
+- **rich_text**: a `rich_text.v1` AST (below). The AST is the canonical value; `valueHash` is the JCS SHA-256 of the canonical value.
+- **relation**: `{ targets: [{ targetId: UUID, expectedTargetVersion: Version | null }] }`, ordered, with `position` = index. `targetKind`, `projectionKey`, and `onUnavailable` come only from the immutable 03a `RelationDefinition`. The count is bounded by the definition `min`/`max` and by 512. Content targets resolve now; a domain-kind target with no registered projection fails closed with typed 422 reason `relation_target_unavailable`.
+- **list**: an array of `itemKind` values with count ≤ 128. `itemKind` must be a scalar kind or `enum`; a nested `list`/`object`/`relation`/`media`/`rich_text` item is refused at activation by 03a.
+- **taxonomy**: `{ termIds: UUID[] ≤ 128 }` persisted as 03c `TermAssignment` rows bound to the active `TaxonomyVersion`. A non-empty value fails closed with typed reason `taxonomy_source_unavailable` until the taxonomy-version authority exists.
+- **media**: `{ assetId: UUID, assetVersion: Version }` (or an array per list). A non-empty value fails closed with typed reason `media_source_unavailable` until the media provider exists.
+- **object**: the DEC-133 typed depth-1 `properties[]` structure below. A field declared `object` without that structure, or an object value that does not satisfy it, is refused with typed 422 reason `object_kind_unspecified` or `object_property_invalid`; there is no untyped pass-through.
+- **Pointers**: `/fields/{stableFieldId}` for every field kind. `/blocks/…` is refused by CMS-03B-01 until a composition write path exists (03c owns composition writes); the CMS-07 comparison may still report block-domain changes from stored composition instances (below).
+
+### `object` field structure (DEC-133 / O1 Option A)
+
+The `object` kind declares a typed depth-1 `properties[]` with at most 32 properties. Each property has a stable key, a `scalar`/`enum`/`rich_text` kind, a required flag, and constraints. The structure is compiled into the artifact (03a) and every value is validated against it by this shard at write, restore, preview, and publication.
+
+```ts
+const ObjectPropertyKind = z.enum(['scalar', 'enum', 'rich_text']);
+const ObjectProperty = z.strictObject({
+  key: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/),
+  kind: ObjectPropertyKind,
+  required: z.boolean(),
+  constraints: z.record(z.string(), Json),
+});
+const ObjectStructure = z
+  .strictObject({ properties: z.array(ObjectProperty).max(32) })
+  .superRefine((value, ctx) => {
+    const keys = value.properties.map((property) => property.key);
+    if (new Set(keys).size !== keys.length) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['properties'],
+        message: 'object properties must have unique stable keys',
+      });
+    }
+    for (const [index, property] of value.properties.entries()) {
+      if (property.kind === 'enum') {
+        const choices = property.constraints.enumValues;
+        if (!Array.isArray(choices) || choices.length === 0) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['properties', index, 'constraints', 'enumValues'],
+            message: 'enum property requires a nonempty enumValues set',
+          });
+        }
+      }
+    }
+  });
+```
+
+The `object` value is a strict object keyed by the declared property keys. Depth is exactly 1 (a property value is a scalar, an enum member, or a `rich_text.v1` AST, never a nested object or array); an unknown key, a missing required key, or a kind mismatch is 422. The `ObjectStructure` is stored inside the 03a `constraints` for the field and is included in the frozen definition hash and compiled artifact.
+
+### `rich_text.v1` value grammar (DEC-112)
+
+```ts
+const RichTextMark = z.enum(['bold', 'italic', 'code']);
+const RichTextLink = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('https'),
+    href: z
+      .string()
+      .max(2048)
+      .regex(/^https:\/\/[^\s@/]+(\/[^\s]*)?$/),
+  }),
+  z.strictObject({
+    kind: z.literal('mailto'),
+    address: z.string().min(3).max(254).regex(/^[^\s@]+@[^\s@]+$/),
+  }),
+  z.strictObject({
+    kind: z.literal('internal'),
+    route: z.string().regex(/^\/(?!\/)[^\u0000-\u001f?#]{0,2047}$/),
+  }),
+]);
+const RichTextSpan = z.strictObject({
+  text: z
+    .string()
+    .min(1)
+    .refine((value) => value === value.normalize('NFC'), 'text must be NFC')
+    .refine(
+      (value) => !/[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/.test(value),
+      'text must not contain control characters',
+    ),
+  marks: z.array(RichTextMark).max(3),
+  link: RichTextLink.optional(),
+});
+const RichTextBlock = z.discriminatedUnion('type', [
+  z.strictObject({
+    type: z.literal('paragraph'),
+    spans: z.array(RichTextSpan).max(128),
+  }),
+  z.strictObject({
+    type: z.literal('heading'),
+    level: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+    spans: z.array(RichTextSpan).min(1).max(128),
+  }),
+  z.strictObject({
+    type: z.literal('list_item'),
+    list: z.enum(['bulleted', 'numbered']),
+    depth: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    spans: z.array(RichTextSpan).max(128),
+  }),
+  z.strictObject({
+    type: z.literal('quote'),
+    spans: z.array(RichTextSpan).min(1).max(128),
+  }),
+]);
+const RichTextV1 = z.strictObject({
+  format: z.literal('rich_text.v1'),
+  blocks: z.array(RichTextBlock).min(1).max(128),
+});
+```
+
+Normative rules. The representation is flat (a list is a maximal run of consecutive `list_item` blocks with the same `list`; `depth` increases by at most 1 from the previous item and the first item is depth 1; a multi-paragraph quote is consecutive `quote` blocks), so the stored container depth is ≤ 7. Only canonical form is accepted: text is NFC, no empty spans, adjacent spans with equal marks and link are merged, `marks` are unique and in enum order, and `link` is absent rather than null. Non-canonical input is refused with 422 reason `rich_text_not_canonical` rather than canonicalized server-side, so client and server `valueHash` stay equal. Bounds use the existing caps (128 blocks, 128 spans per block, 256 KiB per request) plus 03a `minLength`/`maxLength` over the total NFC text length. No inline embeds, images, HTML, CSS, attributes, or unknown keys are admitted; media goes through governed blocks. Link targets are not resolved at save; unsafe schemes (`javascript:`, `data:`, protocol-relative) are refused by the grammar. The validator is code-owned (`CMS_RICH_TEXT_FORMATS = ['rich_text.v1']`, mirrored by `platform_private.cms_rich_text_v1_valid(jsonb)`) and `rich_text.v1` is registered as a protected validator key/version in the 03a validator registry; a field-level 03a `validatorKey` stays optional and additive. The typed React/Astro renderer is `<p>`, `<h2-4>`, grouped `<ul>/<ol><li>`, `<blockquote>`, `<strong>/<em>/<code>`, and `<a rel="noopener noreferrer">` for https links, with no `dangerouslySetInnerHTML`.
+
+### Revision comparison domains (D5) and restore chain (D6)
+
+`RevisionHistoryPage.compare.changes` covers the field, block, and relation domains. Pointer grammar is normative: field `/fields/{stableFieldId}`; block `/blocks/{compositionInstancePath}` (the stored `cms_composition_instances.path`); relation `/relations/{stableFieldId}/{targetToken}`, where `targetToken` is the lowercase hex HMAC-SHA-256 over JCS `{entryId, fieldId, targetKind, targetId}` keyed by a server key with domain separator `cms.compare.relation.v1` (the Vault-held history-signing key; no new secret). A keyed token, not a bare hash, stops a reader confirming a guessed hidden target UUID. Relation comparison is keyed by the stable field ID, never by a relation-definition ID (definition IDs change across schema versions); the definition version is recorded inside the side hash. Side hashes are `valueHash` for fields, the JCS hash of `{blockKey, blockVersion, blockRegistryDigest, mode, patternRef, props, bindings}` for blocks, and the JCS hash of `{relationDefinitionVersion, position, expectedTargetVersion}` for relations; hashes never include target IDs. Ordering is by domain (`field`, `block`, `relation`) then path (bytewise UTF-8). More than 512 combined changes is 422 reason `comparison_too_large` (never a truncated 200); an unresolvable recorded schema/template/taxonomy version or block registry digest is a non-disclosing 422 reason `comparison_unavailable`. The right side is the newest readable revision at the requested locale at read time and the response names both IDs; the FE uses `leftRevisionId` for restore.
+
+`compare.restore` carries the deterministic restore chain for `leftRevisionId`: `migrationChainId` (UUID derived from the manifest hash), `edgeCount` (0 for a same-schema restore, up to 64), `chainHash`, and `availability` (`available`, `chain_unavailable`, or `transform_missing`). The chain is composed lazily from the completed 03a migration-plan edges bound to the activation of each successive version: consecutive, `from[i+1] = to[i]`, with the final `to` equal to the version active at restore time. `platform_private.cms_restore_chain_manifests` is a private immutable table keyed by `content_type_id` + `source_schema_version_id` + `target_schema_version_id` holding the ordered `plan_ids` (0..64), `edge_count`, and a `manifest_hash` (JCS SHA-256 of `{contentTypeId, sourceSchemaVersionId, targetSchemaVersionId, planIds}`), with forced RLS and no grants. The restore read derives the path and ID and writes nothing; `cms_restore_revision` re-derives the path and ID and requires equality with the request (409 `migration_chain_mismatch`), inserts the manifest when absent, then translates source content to the current active schema, revalidating every value including `rich_text.v1` and `object` structures. Any field without a registered transform, or a required field without a literal default, is 409 `migration_chain_incomplete`; an incompatible template resolution is 409 `template_incompatible`; nothing is fabricated. The result is a new draft revision with `parentRevisionIds = [currentDraftRevisionId, sourceRevisionId]`; the source is unchanged and one `cms.entry.revision-created.v1` event and an audit record are written.
+
+### Conflict detail privacy (D2)
+
+`ConflictDetailResource` omits fields the caller cannot read rather than placeholdering them with data, and it carries no `resolvedByPersonId` or other ownership identifier. For the same reason the browser projection of `ConflictRecordResource` drops `resolvedByPersonId`: resolution authority evidence stays server-side and is represented only by `resolvedRevisionId` and `resolvedAt`. `paths` is populated only while the conflict is `open`; after resolution or supersession the read returns metadata only and no preimages.
 
 ### Contract and error matrix
 
@@ -914,6 +1180,9 @@ const EntryDraftDetailResource = z.strictObject({
 | CMS-03B-09   | malformed IDs/header/body       | missing/expired or step-up MFA | publisher/review gate      | hidden/absent target         | stale set/hash, invalid state, idempotency                  | non-JSON                  | publication contract           | publish limit        | projection/RPC deadline  | scrubbed internal |
 | CMS-03B-10   | malformed header/body           | missing/expired session        | no create capability       | hidden/absent target         | duplicate key, off-registry schema, idempotency             | non-JSON                  | field/schema/value failure     | author-write limit   | schema/RPC deadline      | scrubbed internal |
 | CMS-03B-11   | malformed path/query            | missing/expired session        | read scope/assignment      | hidden/absent entry          | not applicable to bounded read                              | unsupported media if sent | response/field bounds          | read limit           | read dependency/deadline | scrubbed internal |
+| CMS-03B-12   | malformed path/query            | missing/expired session        | entry read scope           | hidden/absent entry/conflict | not applicable to bounded read                              | unsupported media if sent | response/path bounds           | read limit           | read dependency/deadline | scrubbed internal |
+| CMS-03B-13   | malformed path/query/cursor     | missing/expired session        | read scope                 | not applicable to a scoped list | cursor/context mismatch                                 | unsupported media if sent | query bounds                   | read limit           | read dependency/deadline | scrubbed internal |
+| CMS-03B-14   | malformed path/query            | missing/expired session        | author/editor scope        | concealed/absent target schema | not applicable to bounded read                            | unsupported media if sent | response/field bounds          | read limit           | read dependency/deadline | scrubbed internal |
 
 Error details use BE00 allowlists: 400/422 may carry at most 50 JSON-pointer violations; 401 carries only recoveryAction; 403 reasonCode without policy predicates; 404 is empty; 409 may include authorized expected/current version and safe conflict hashes; 429 carries retryAfterSeconds, limit, resetAt; 502/503/504 carries dependencyClass, retryable, and optional retryAfterSeconds; 500 is empty. A denied entry/review/revision cannot be distinguished from absence when the caller lacks read authority.
 
@@ -968,7 +1237,7 @@ Canonical editorial records live in private Supabase PostgreSQL schemas. Every t
 | EntryFieldValue / cms_entry_field_values        | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state IN ('active'); version bigint NOT NULL DEFAULT 1 CHECK version > 0; revision_id uuid NOT NULL REFERENCES cms_entry_revisions(id); field_id uuid NOT NULL; field_definition_id uuid NOT NULL REFERENCES cms_field_definition_versions(id); locale text NOT NULL CHECK locale ~ '^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$'; value jsonb NULL; provenance text NOT NULL CHECK provenance IN ('authored','default','inherited','localized_fallback','explicit_null','missing'); value_hash char(64) NULL CHECK value_hash IS NULL OR value_hash ~ '^[a-f0-9]{64}$'; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK(updated_at = created_at); UNIQUE(revision_id,field_id,locale); UNIQUE(revision_id,field_definition_id,locale).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | INDEX(owner_id,updated_at DESC); INDEX(revision_id,locale); INDEX(field_id,locale); owner_id is copied from the revision/entry; field_id is the stable UUID and field_definition_id is the versioned FK; immutable normalized snapshot, `updated_at = created_at`, UPDATE/DELETE rejected; value is validated by schema version and may be null only with explicit_null/missing provenance.                                                                                                                                                                               |
 | EntryRelation / cms_entry_relations             | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state IN ('active'); version bigint NOT NULL DEFAULT 1 CHECK version > 0; revision_id uuid NOT NULL REFERENCES cms_entry_revisions(id); field_id uuid NOT NULL; field_definition_id uuid NOT NULL REFERENCES cms_field_definition_versions(id); target_kind text NOT NULL CHECK target_kind ~ '^[a-z][a-z0-9._-]{0,95}$'; target_id uuid NOT NULL; expected_target_version bigint NULL CHECK expected_target_version > 0; position integer NOT NULL CHECK position >= 0 AND position < 512; on_unavailable text NOT NULL CHECK on_unavailable IN ('omit','block','placeholder'); created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK(updated_at = created_at);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | UNIQUE(revision_id,field_id,target_kind,target_id); INDEX(owner_id,updated_at DESC); INDEX(revision_id,field_id,position); INDEX(target_kind,target_id); owner_id is copied from the revision/entry; immutable relation evidence, `updated_at = created_at`, UPDATE/DELETE rejected; target_id has no cross-domain FK by design; immutable 03a RelationDefinition resolves target type/projection, cardinality, min/max, ordered, and unavailable behavior (including placeholder) before this row is accepted or projected; caller relation metadata cannot override it. |
 | EditorialReview / cms_editorial_reviews         | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; revision_id uuid NOT NULL REFERENCES cms_entry_revisions(id); state text NOT NULL CHECK state IN ('open','approved','rejected','invalidated'); version bigint NOT NULL CHECK version > 0; risk_class text NOT NULL CHECK risk_class IN ('ordinary','protected'); frozen_hash char(64) NOT NULL CHECK frozen_hash ~ '^[a-f0-9]{64}$'; dependency_manifest jsonb NOT NULL CHECK jsonb_typeof(dependency_manifest)='object'; dependency_hash char(64) NOT NULL CHECK dependency_hash ~ '^[a-f0-9]{64}$'; activation_evidence jsonb NOT NULL CHECK jsonb_typeof(activation_evidence)='object'; workflow_policy_key text NOT NULL CHECK workflow_policy_key ~ '^[a-z][a-z0-9._-]{0,127}$'; workflow_policy_version bigint NOT NULL CHECK workflow_policy_version > 0; workflow_policy_hash char(64) NOT NULL CHECK workflow_policy_hash ~ '^[a-f0-9]{64}$'; required_capabilities jsonb NOT NULL CHECK jsonb_typeof(required_capabilities)='array' AND jsonb_array_length(required_capabilities) BETWEEN 1 AND 16; required_decision_count smallint NOT NULL CHECK required_decision_count BETWEEN 1 AND 8; recorded_decision_count smallint NOT NULL DEFAULT 0 CHECK recorded_decision_count BETWEEN 0 AND 8 AND recorded_decision_count <= required_decision_count; approval_evidence_hash char(64) NOT NULL CHECK approval_evidence_hash ~ '^[a-f0-9]{64}$'; submitted_by uuid NOT NULL REFERENCES platform_private.person_party(party_id); submitted_at timestamptz NOT NULL DEFAULT now(); invalidated_reason text NULL; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK((risk_class <> 'protected') OR required_decision_count >= 2); CHECK((risk_class <> 'protected') OR jsonb_array_length(required_capabilities) >= 1); | UNIQUE(revision_id) WHERE state IN ('open','approved'); INDEX(owner_id,state,updated_at DESC); INDEX(revision_id,state); Frozen revision, dependency, activation, and workflow-policy evidence is immutable; only named review CAS RPC may advance state/count/version and updated_at; server resolves policy/capabilities/distinct humans/MFA and rejects caller authority.                                                                                                                                                                                              |
-| EditorialDecision / cms_editorial_decisions     | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state IN ('recorded'); version bigint NOT NULL DEFAULT 1 CHECK version > 0; review_id uuid NOT NULL REFERENCES cms_editorial_reviews(id); reviewer_person_id uuid NOT NULL REFERENCES platform_private.person_party(party_id); acting_party_id uuid NULL REFERENCES platform_private.party(id); capability text NOT NULL CHECK octet_length(capability) BETWEEN 1 AND 128; decision text NOT NULL CHECK decision IN ('approve','reject'); reason text NOT NULL CHECK octet_length(reason) BETWEEN 1 AND 2000; comment_hash char(64) NULL CHECK comment_hash IS NULL OR comment_hash ~ '^[a-f0-9]{64}$'; reviewed_hash char(64) NOT NULL CHECK reviewed_hash ~ '^[a-f0-9]{64}$'; step_up_at timestamptz NULL; decided_at timestamptz NOT NULL DEFAULT now(); created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK(updated_at = created_at);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | UNIQUE(review_id,reviewer_person_id); INDEX(owner_id,updated_at DESC); INDEX(review_id,decided_at); INDEX(reviewer_person_id,decided_at DESC). Append-only decision evidence; `updated_at = created_at`; UPDATE/DELETE rejected; server verifies reviewer distinctness, capability, acting context, MFA freshness, and binding to the review's exact policy/approval evidence.                                                                                                                                                                                            |
+| EditorialDecision / cms_editorial_decisions     | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state IN ('recorded'); version bigint NOT NULL DEFAULT 1 CHECK version > 0; review_id uuid NOT NULL REFERENCES cms_editorial_reviews(id); reviewer_person_id uuid NOT NULL REFERENCES platform_private.person_party(party_id); acting_party_id uuid NULL REFERENCES platform_private.party(id); capability text NOT NULL CHECK octet_length(capability) BETWEEN 1 AND 128; decision text NOT NULL CHECK decision IN ('approve','reject'); reason text NOT NULL CHECK octet_length(reason) BETWEEN 1 AND 2000; comment_hash char(64) NULL CHECK comment_hash IS NULL OR comment_hash ~ '^[a-f0-9]{64}$'; reviewed_hash char(64) NOT NULL CHECK reviewed_hash ~ '^[a-f0-9]{64}$'; step_up_at timestamptz NOT NULL; decided_at timestamptz NOT NULL DEFAULT now(); created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK(updated_at = created_at);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | UNIQUE(review_id,reviewer_person_id); INDEX(owner_id,updated_at DESC); INDEX(review_id,decided_at); INDEX(reviewer_person_id,decided_at DESC). Append-only decision evidence; `updated_at = created_at`; UPDATE/DELETE rejected; the server derives the reviewer, the satisfied specialist slot capability, and the binding MFA instant (`step_up_at` NOT NULL); caller `capability`/`stepUpAt` are unknown keys and are never trusted; binding to the review's exact policy/approval evidence is rechecked. The forward migration sets `step_up_at NOT NULL`; no rows exist before it. |
 | PublicationSchedule / cms_publication_schedules | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; entry_id uuid NOT NULL REFERENCES cms_content_entries(id); revision_id uuid NOT NULL REFERENCES cms_entry_revisions(id); dependency_hash char(64) NOT NULL CHECK dependency_hash ~ '^[a-f0-9]{64}$'; activation_evidence_hash char(64) NOT NULL CHECK activation_evidence_hash ~ '^[a-f0-9]{64}$'; action text NOT NULL CHECK action IN ('publish','unpublish','expire','archive'); local_datetime timestamp NOT NULL; timezone text NOT NULL CHECK octet_length(timezone) BETWEEN 1 AND 64; resolved_at_utc timestamptz NOT NULL; tzdb_version text NOT NULL CHECK octet_length(tzdb_version) BETWEEN 1 AND 32; disambiguation text NOT NULL CHECK disambiguation IN ('none','earlier','later'); state text NOT NULL CHECK state IN ('pending','executing','completed','failed_retryable','blocked','cancelled'); job_id uuid NULL; expected_version bigint NOT NULL CHECK expected_version > 0; actual_at_utc timestamptz NULL; deviation_seconds bigint NULL; version bigint NOT NULL CHECK version > 0; created_by uuid NOT NULL REFERENCES platform_private.person_party(party_id); created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | UNIQUE(entry_id,revision_id,action,local_datetime,timezone); INDEX(owner_id,state,updated_at DESC); INDEX(state,resolved_at_utc); INDEX(entry_id,state,resolved_at_utc); worker/command CAS on state/version; owner_id/created_by are server-derived; exact approved revision, activation/dependency evidence, and relation visibility rechecked at execution.                                                                                                                                                                                                            |
 
 ### Support records required by the IA algorithms
@@ -980,10 +1249,11 @@ Canonical editorial records live in private Supabase PostgreSQL schemas. Every t
 | EditPresence / cms_edit_presence              | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state IN ('active','expired','revoked'); version bigint NOT NULL CHECK version > 0; entry_id uuid NOT NULL REFERENCES cms_content_entries(id); person_id uuid NOT NULL REFERENCES platform_private.person_party(party_id); acting_party_id uuid NULL REFERENCES platform_private.party(id); lease_until timestamptz NOT NULL; last_seen_at timestamptz NOT NULL; current_field_id uuid NULL; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); UNIQUE(entry_id,person_id).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | INDEX(owner_id,state,updated_at DESC); INDEX(entry_id,lease_until); INDEX(person_id,lease_until); current_field_id is a stable field UUID revalidated against the active schema; owner_id is copied from the entry; advisory only; lease is 2 minutes, renewed every 30 seconds, expires without blocking another editor, and never grants write authority. Renewal is the sole permitted timestamp/version update exception and is CAS-guarded.                                                                                                                                                                                                                                                     |
 | EntryAssignment / cms_entry_assignments       | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; entry_id uuid NOT NULL REFERENCES cms_content_entries(id); assignee_person_id uuid NOT NULL REFERENCES platform_private.person_party(party_id); capability_key text NOT NULL CHECK capability_key ~ '^[a-z][a-z0-9._-]{0,127}$'; state text NOT NULL CHECK state IN ('active','revoked'); version bigint NOT NULL DEFAULT 1 CHECK version > 0; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); UNIQUE(entry_id,assignee_person_id,capability_key).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | INDEX(entry_id,state); INDEX(assignee_person_id,state); DEC-106 foundation: CMS-03B-10 persists the creator scoped assignment atomically with the entry and first revision. assignee_person_id is the canonical derived person platform_private.person_party(party_id) and assignment is person-scoped, never keyed by an acting-party/org alias platform_private.party(id) that instead supplies acting context. Assignment authority stays BE01-owned and server-derived; the capability_key must resolve to a registry-backed cms.author or cms.editor key, and caller-supplied owner/assignee/authority is never trusted. State/version advance only through the named assignment RPC under CAS. |
 | ConflictRecord / cms_conflict_records         | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; entry_id uuid NOT NULL REFERENCES cms_content_entries(id); base_revision_id uuid NOT NULL REFERENCES cms_entry_revisions(id); theirs_revision_id uuid NOT NULL REFERENCES cms_entry_revisions(id); yours_revision_id uuid NULL REFERENCES cms_entry_revisions(id); yours_source text NOT NULL CHECK yours_source IN ('revision','proposed'); proposed_values jsonb NULL; proposed_values_hash char(64) NULL CHECK proposed_values_hash IS NULL OR proposed_values_hash ~ '^[a-f0-9]{64}$'; changed_paths jsonb NOT NULL CHECK jsonb_typeof(changed_paths)='array' AND jsonb_array_length(changed_paths) BETWEEN 1 AND 128; base_hash char(64) NOT NULL CHECK base_hash ~ '^[a-f0-9]{64}$'; theirs_hash char(64) NOT NULL CHECK theirs_hash ~ '^[a-f0-9]{64}$'; yours_hash char(64) NOT NULL CHECK yours_hash ~ '^[a-f0-9]{64}$'; conflict_hash char(64) NOT NULL UNIQUE CHECK conflict_hash ~ '^[a-f0-9]{64}$'; state text NOT NULL CHECK state IN ('open','resolved','superseded'); version bigint NOT NULL DEFAULT 1 CHECK version > 0; resolved_revision_id uuid NULL REFERENCES cms_entry_revisions(id); resolved_by_person_id uuid NULL REFERENCES platform_private.person_party(party_id); resolved_acting_party_id uuid NULL REFERENCES platform_private.party(id); resolved_at timestamptz NULL; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK yours_source='revision' AND yours_revision_id IS NOT NULL AND proposed_values IS NULL AND proposed_values_hash IS NULL OR yours_source='proposed' AND yours_revision_id IS NULL AND proposed_values IS NOT NULL AND proposed_values_hash IS NOT NULL; CHECK proposed_values IS NULL OR jsonb_typeof(proposed_values)='object' AND platform_private.cms_json_bounded(proposed_values,262144,8,128,128); CHECK (state IN ('open','superseded') AND resolved_revision_id IS NULL AND resolved_by_person_id IS NULL AND resolved_acting_party_id IS NULL AND resolved_at IS NULL) OR (state='resolved' AND resolved_revision_id IS NOT NULL AND resolved_by_person_id IS NOT NULL AND resolved_at IS NOT NULL); | UNIQUE(conflict_hash); UNIQUE INDEX cms_conflict_records_one_open_per_entry ON (entry_id) WHERE state='open'; INDEX(owner_id,state,updated_at DESC); INDEX(entry_id,state,updated_at DESC); INDEX(entry_id,conflict_hash); INDEX(base_revision_id); INDEX(theirs_revision_id); INDEX(yours_revision_id); private platform_private schema, RLS ENABLED+FORCED, revoke all from public/anon/authenticated/service_role, single cms_conflict_records_rpc_policy gated by platform_private.cms_rpc_context_valid(); cms_conflict_records_write_guard BEFORE INSERT/UPDATE/DELETE calls platform_private.cms_write_guard().                                                                               |
+| RestoreChainManifest / cms_restore_chain_manifests | id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY; owner_id uuid NOT NULL; state text NOT NULL CHECK state = 'active'; version bigint NOT NULL DEFAULT 1 CHECK version = 1; content_type_id uuid NOT NULL REFERENCES cms_content_types(id); source_schema_version_id uuid NOT NULL REFERENCES cms_content_type_versions(id); target_schema_version_id uuid NOT NULL REFERENCES cms_content_type_versions(id); plan_ids jsonb NOT NULL CHECK jsonb_typeof(plan_ids)='array' AND jsonb_array_length(plan_ids) <= 64; edge_count smallint NOT NULL CHECK edge_count BETWEEN 0 AND 64; manifest_hash char(64) NOT NULL UNIQUE CHECK manifest_hash ~ '^[a-f0-9]{64}$'; created_at timestamptz NOT NULL DEFAULT now(); updated_at timestamptz NOT NULL DEFAULT now(); CHECK(updated_at = created_at); CHECK(edge_count = jsonb_array_length(plan_ids)); | UNIQUE(manifest_hash); INDEX(content_type_id,source_schema_version_id,target_schema_version_id); private platform_private schema, RLS ENABLED+FORCED, no grants; immutable (UPDATE/DELETE rejected), `updated_at = created_at`; each edge is a completed 03a migration-plan bound to the activation of its `to` version, consecutive (`from[i+1] = to[i]`), with the final `to` equal to the version active at restore time; `manifest_hash` is the JCS SHA-256 of `{contentTypeId, sourceSchemaVersionId, targetSchemaVersionId, planIds}` and `migrationChainId` is the UUID derived from it. |
 
 ### Permission, RLS and grants
 
-- All twelve tables are in private CMS schemas with RLS enabled and forced. authenticated and anon have no direct INSERT/UPDATE/DELETE grants. Named RPCs are cms_create_revision, cms_resolve_conflict, cms_list_revisions, cms_restore_revision, cms_submit_review, cms_record_review_decision, cms_schedule_publication, cms_mint_preview, cms_publish_revision, cms_create_entry, cms_get_entry_draft. cms_conflict_records is written only through those named RPCs: cms_create_revision records exactly one open conflict on same-field divergence, and cms_resolve_conflict CAS-closes it; there is no browser or direct-insert write path.
+- All thirteen tables (the twelve canonical/support records plus `cms_restore_chain_manifests`) are in private CMS schemas with RLS enabled and forced. authenticated and anon have no direct INSERT/UPDATE/DELETE grants. Named RPCs are cms_create_revision, cms_resolve_conflict, cms_list_revisions, cms_restore_revision, cms_submit_review, cms_record_review_decision, cms_schedule_publication, cms_mint_preview, cms_publish_revision, cms_create_entry, cms_get_entry_draft, and the read RPCs cms_get_conflict_detail, cms_list_entries and cms_get_entry_authoring_context. cms_conflict_records is written only through those named RPCs: cms_create_revision records exactly one open conflict on same-field divergence, and cms_resolve_conflict CAS-closes it; there is no browser or direct-insert write path. cms_restore_chain_manifests is written only by cms_restore_revision (insert-if-absent then hash verify) and is never updated or deleted.
 - ContentEntry SELECT requires derived person/acting-party assignment or an approved public-control projection; owner_party_id is resolved server-side. EntryRevision/EntryFieldValue/EntryRelation inherit the parent entry predicate and additionally require locale/audience disclosure.
 - EditorialReview SELECT requires reviewer/submitter assignment and risk capability; EditorialDecision SELECT returns only safe decision metadata to eligible participants and never exposes another reviewer's private comment.
 - PublicationSchedule SELECT/write requires publisher scope on the entry. PublicationVersion is public only through Shard 04's authorized projection; control-plane reads are no-store. PreviewToken is never directly selectable; open is a SECURITY INVOKER RPC that hashes the token and rechecks all bindings.
@@ -999,29 +1269,35 @@ Canonical editorial records live in private Supabase PostgreSQL schemas. Every t
 | ------------ | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------- |
 | CMS-03B-01   | verified human with cms.author or cms.editor                    | assigned active entry; active schema; draft/autosave allowed                                  | visible entry, no assignment/edit             | entry hidden/absent          | schema and target relation recheck at save                                        |
 | CMS-03B-02   | assigned author/editor with conflict.resolve                    | exactly one durable open conflict record per entry on the assigned entry; base still readable | visible conflict, no resolve capability       | hidden/absent entry/conflict | every same-field choice explicit; cms_resolve_conflict CAS-closes the open record |
-| CMS-03B-03   | cms.author/editor/reviewer read scope                           | entry/revisions readable; cursor context matches actor/party                                  | visible entry, no read capability             | hidden/absent entry/revision | safe field diff only                                                              |
+| CMS-03B-03   | cms.author/editor/reviewer read scope                           | entry/revisions readable; cursor context matches actor/party                                  | visible entry, no read capability             | hidden/absent entry/revision | safe field, block and relation diff; no target identity in the relation token     |
 | CMS-03B-04   | cms.author/editor edit                                          | source revision readable; migration chain registered; current schema compatible               | source readable, no edit                      | hidden/absent entry/revision | restore creates new draft only                                                    |
 | CMS-03B-05   | cms.editor or assigned submit capability                        | revision draft; dependency manifest resolves; submitter assigned                              | visible target, no submit                     | hidden/absent target         | frozen hash and risk class                                                        |
-| CMS-03B-06   | eligible reviewer/editor; legal/security reviewer for protected | review open; reviewer distinct; review hash current                                           | visible review, capability/assignment missing | hidden/absent review         | protected requires two humans, specialist capability, recent MFA                  |
+| CMS-03B-06   | eligible reviewer/editor; legal/security reviewer for protected | review open; reviewer distinct; review hash current                                           | visible review, capability/assignment missing | hidden/absent review         | every decision requires recent binding MFA; protected adds two humans + specialist  |
 | CMS-03B-07   | cms.publisher                                                   | approved revision/frozen set; schedule action allowed                                         | visible target, no publish                    | hidden/absent target         | step-up MFA; local/UTC/DST consistency                                            |
 | CMS-03B-08   | preview capability on target                                    | revision/version set readable; token scope bounded                                            | visible target, no preview                    | hidden/absent target         | 15-minute token, noindex/no-store/no public cache                                 |
 | CMS-03B-09   | cms.publisher and approved candidate                            | frozen hash/dependencies current; no revocation/blocker                                       | visible target, no publisher                  | hidden/absent target         | preflight rerun and atomic publication/outbox                                     |
 | CMS-03B-10   | verified human with registry cms.author or cms.editor           | active compiled schema; no prior entry or base revision required                              | visible target, no create capability          | target hidden/absent         | server-derived owner, assignee, and first revision                                |
 | CMS-03B-11   | verified human with cms.author/editor read scope on entry       | readable active entry and current readable draft revision                                     | visible entry, no read capability/assignment  | entry hidden/absent          | no draft fabrication; bounded values only                                         |
+| CMS-03B-12   | assigned author/editor with entry read scope                    | conflict belongs to the readable entry; preimages only while the conflict is `open`           | visible entry, no read scope                  | hidden/absent entry/conflict | no ownership identifier; no-store bounded preimages                               |
+| CMS-03B-13   | cms.author/editor read scope                                    | only the caller's assigned/owned entries in the acting context are returned                   | not applicable to a scoped list               | not applicable to a scoped list | signed cursor bound to query and read scope; bounded rows                        |
+| CMS-03B-14   | cms.author/editor scope                                         | creatable active types and author-safe field projection; never a registry-wide read           | visible type outside the caller's scope       | concealed/absent target schema | no caller-chosen schema; no ownership identifier                                  |
 
 Known readable resources with insufficient capability return 403. Resources outside the caller's disclosure scope, absent UUIDs after structural validation, expired/revoked preview tokens, and hidden reviews return indistinguishable 404 or the preview-safe denial. Structural malformed input is always 400 before an existence check.
 
 ### Security and abuse controls
 
-- Raw body max 256 KiB; JSON nesting max 8, keys 128, arrays 128; rich text is an approved structured AST. Reject scripts, CSS, HTML event handlers, template expressions, SQL, executable URLs, arbitrary projection names, and hidden field injection.
+- Raw body max 256 KiB; JSON nesting max 8, keys 128, arrays 128; `rich_text` is the canonical `rich_text.v1` AST and `object` is the DEC-133 typed depth-1 `properties[]` structure; non-canonical rich text and non-structural object values are refused, never canonicalized server-side. Reject scripts, CSS, HTML event handlers, template expressions, SQL, executable URLs and unsafe link schemes, arbitrary projection names, and hidden field injection.
 - CMS-03B-10 create is idempotent and atomic: a duplicate Idempotency-Key with the same body and actor replays the original entry/revision, a key reused with a different body/actor returns 409, and a unique owner/content-type/idempotency binding prevents a duplicate entry or aggregate revision. No caller-supplied owner, assignee, author, acting party, capability, or version is accepted.
 - CMS-03B-11 is a bounded no-store read that returns authorized schema-typed draft values only. It never returns untyped or private content, never falls back to a cross-tenant value, and cannot be reached without read capability/assignment.
+- CMS-03B-12 returns only the three-way preimages of the named conflict while it is `open`, bounded to 256 KiB and schema-typed against each side; field values the caller cannot read are omitted, never placeholdered, and no ownership identifier is serialized. CMS-03B-13 returns only the caller's assigned/owned entries. CMS-03B-14 returns only author-safe creatable types and field definitions and never grants `cms.schema_registry.read`.
+- CMS-03B-03 relation comparison emits only a keyed stable `targetToken` (HMAC-SHA-256 with the `cms.compare.relation.v1` domain separator), so a hidden target UUID cannot be confirmed by probing; a request over 512 combined changes is a typed 422 `comparison_too_large` and an unresolvable recorded version is a non-disclosing 422 `comparison_unavailable`, never a truncated success.
+- Restore is fail-closed: `cms_restore_revision` re-derives the immutable chain manifest from the completed activation-plan edges and requires the request's `migrationChainId` to equal it (409 `migration_chain_mismatch`); an ambiguous or over-64-edge chain, a missing transform, a required field without a literal default, and a template-incompatible target each refuse 409 with nothing fabricated and the source revision unchanged.
 - Autosave is advisory and bounded: default 3 seconds idle, hard maximum 30 seconds while dirty. Presence is a 2-minute lease renewed every 30 seconds and cannot block another editor. Local unsent values remain client-side when server authority changes.
 - Every revision stores normalized hash, schema/template/taxonomy versions, author/acting context, parent IDs, validation result, and timestamp. A changed dependency, authority, or revision invalidates approval.
 - Ordinary review requires author not equal to publisher where workflow says review. Protected policy/legal/security/financial disclosure requires two distinct humans, named specialist capability, and recent MFA. Reviewer identity is derived, never submitted as authority.
 - Preview token plaintext is returned once, persisted only as a hash, bound to user, acting context, revision, full version set, locale, audience, route, expiry, nonce, and capability snapshot. Public caches/search/sitemaps never admit preview.
 - Publication rechecks relation target visibility, privacy, rights/media, route/SEO, locale, migration, accessibility, settings, schema, template, block, pattern, and current revocation state. Last-known-good remains public only when no takedown/privacy/security fail-closed rule applies.
-- Rate buckets are keyed by actor and acting party, with separate author/review/schedule/preview/publish classes. Concurrent revision writes cap at three per actor; duplicate exact commands are replayed, not multiplied.
+- Rate buckets are keyed by actor and acting party, with separate author/review/schedule/preview/publish classes. Concurrent revision writes cap at three per actor, enforced in the database transaction (a per-actor advisory lock count taken by `cms_create_revision` before insert) so the cap holds across Worker isolates; a fourth concurrent write is refused with 429 before any insert, and duplicate exact commands are replayed, not multiplied.
 
 ## Data Flow
 
@@ -1033,9 +1309,15 @@ CMS-03B-10: parse request → authenticate/resolve acting context → require a 
 
 CMS-03B-11: parse request → authenticate/resolve acting context → require read capability/assignment on the readable active entry → load the current readable immutable draft revision under RLS → return authorized, schema-typed field values and bounded relations with provenance and safe hashes. It writes nothing, emits no event, and never discloses a value the caller cannot read.
 
+CMS-03B-12: parse request → authenticate/resolve acting context → require entry read scope → load the durable conflict record (open, resolved, or superseded) and its base/theirs/yours snapshots under RLS → return the bounded three-way preimages only while the conflict is `open`, with each side schema-typed against its own `schemaVersionId`; after resolution or supersession return metadata only with `paths: []`. It writes nothing, emits no event, and never discloses an unreadable value or an ownership identifier.
+
+CMS-03B-13: parse request → authenticate/resolve acting context → require cms.author/cms.editor read scope → resolve the signed cursor against the complete query and acting read scope → return only the caller's assigned/owned entries as bounded summaries with a page ETag. It writes nothing and emits no event.
+
+CMS-03B-14: parse request → authenticate/resolve acting context → require cms.author/cms.editor scope → with `contentTypeVersionId` return the author-safe field-definition projection for that active compiled version, otherwise return the caller's creatable active types with their `schemaArtifact`, `validatorRefs`, `workflowPolicy`, and `activationEvidence`; it never grants `cms.schema_registry.read` and never accepts a caller-chosen schema. It writes nothing and emits no event.
+
 CMS-03B-02: load the single durable open conflict record and common base under RLS → validate explicit choices against current schema → lock entry/base → insert revision with both parent IDs → CAS-close the open conflict atomically (state='resolved' with resolved_revision_id/by_person/at) → audit/outbox. Both competing revisions and the common base remain readable. If base moved, return 409 with safe base/theirs/yours hashes/values and preserve both revisions and the open conflict record. On same-field divergence a candidate committed as a revision is stored with yours_source='revision' plus yours_revision_id, while a rejected or late autosave that never became a revision is stored with yours_source='proposed' plus bounded proposed_values (≤128 keys/≤8 levels/≤256 KiB, enforced by both the table CHECK via platform_private.cms_json_bounded and the RPC boundary) and its 64-hex hash, leaving yours_revision_id NULL; a non-null yours_revision_id is never required. At most one open conflict exists per entry; resolution never last-writes-wins.
 
-CMS-03B-03 reads only authorized revision summaries and safe schema-aware hashes. CMS-03B-04 resolves a registered 03a migration chain, translates source content into current schema, validates non-fabricating defaults/relations, and inserts a new draft; it never edits or activates the source revision.
+CMS-03B-03 reads only authorized revision summaries and safe schema-aware hashes, and its comparison reports field, block, and relation domains using only side hashes and keyed relation tokens. CMS-03B-04 re-derives the immutable restore chain manifest from completed 03a activation-plan edges, requires the request's `migrationChainId` to equal the derived ID, translates source content into the current active schema (revalidating `rich_text.v1`, `object` structures, and relations), validates non-fabricating defaults, and inserts a new draft with `parentRevisionIds = [currentDraftRevisionId, sourceRevisionId]`; it never edits or activates the source revision and fabricates nothing.
 
 CMS-03B-05 revalidates author/assignment, refetches and freezes the active schema's exact activationEvidence plus artifact/compiler/validator and editorial workflow-policy evidence, freezes normalized content hash and dependency manifest, runs contract/relation/privacy/security/accessibility/rights/media/route/SEO/locale/migration/domain-binding preflights, creates EditorialReview, and writes cms.entry.review-changed.v1. CMS-03B-06 appends EditorialDecision, computes the policy-required count, and invalidates on any hash/dependency/authority change.
 

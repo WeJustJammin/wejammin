@@ -9,7 +9,7 @@
 **Active release denominator**: 1235 (the 279 pre-amendment active criteria plus 956 DEC-108/109/110/111/119/120 criteria; AC266 owner-deferred under DEC-101; AC209 and AC211 deferred under DEC-104; AC265 deferred to pre-release under DEC-105)  
 **Current active verification**: 1235/1235 verified; DEC-132 owner-ratifies AC261, whose 51 fresh passing receipts across ten cited marker files provide local technical proof only and no hosted claim.
 **Slice 09 implementation-completion denominator**: 1235  
-**Phase 2 implementation-completion denominator**: 2974  
+**Phase 2 implementation-completion denominator**: 3004  
 **Slice 10 implementation prerequisites**: Slice 10 implementation is unblocked by Slice 09 active completion at 1235/1235 under DEC-132. AC209, AC211, AC265, and AC266 remain separate authored gates on their declared timelines and do not gate Slice 10 implementation.
 **Authored criterion policy**: Slice 09 is **1235/1235 active**; 1239 authored Slice 09 IDs remain, with AC209, AC211, AC265, and AC266 authored and unchecked outside the active implementation denominator.
 **AC209 evidence status**: production-rollout/post-deployment evidence gate; remains authored and unchecked. Does not gate Slice 10 implementation or the initial controlled production deployment, and must pass before alerting is declared ready. The delivered 2026-09-22 alert is digest-correlated to Cloudflare's Email Routing event, but Email Sending still reports zero rows. Cloudflare case 02343626 was reopened on 2026-10-01 with a redacted configuration follow-up and awaits provider diagnosis; [provider follow-up evidence](../verification/2026-10-01-ac209-cloudflare-support-follow-up.md).  
