@@ -7,7 +7,7 @@ import {
 } from './AdminWorkspaceActionViews';
 import AdminWorkspaceInbox from './AdminWorkspaceInbox';
 import AdminWorkspaceStatus from './AdminWorkspaceStatus';
-import CapabilityGate from './CapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import type { AdminWorkspaceActiveProps } from './admin-workspace-types';
 import {
   invokeRefetch,
@@ -74,6 +74,7 @@ export const renderAdminWorkspaceActive = (
           renderGrantForm(props)
         ) : (
           <CapabilityGate
+            surface="platform-configuration"
             variant={props.access}
             reasonCode={
               props.initial.error?.code ??

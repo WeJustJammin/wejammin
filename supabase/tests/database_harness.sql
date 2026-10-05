@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -135,8 +136,7 @@ select is(
 );
 
 set local role authenticated;
-select set_config(
-  'request.jwt.claim.sub',
+select pg_temp.set_jwt_claim('sub',
   '00000000-0000-0000-0000-000000000101',
   true
 );
@@ -151,8 +151,7 @@ select results_eq(
   'the invoker RPC preserves the authenticated owner identity'
 );
 
-select set_config(
-  'request.jwt.claim.sub',
+select pg_temp.set_jwt_claim('sub',
   '00000000-0000-0000-0000-000000000202',
   true
 );

@@ -5,9 +5,12 @@ select set_config('app.cfg_rpc', 'true', true);
 
 -- Build a review candidate whose artifact contains one exact field.  The
 -- persisted graph is intentionally changed after the artifact is compiled.
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_content_type_versions(
   id, owner_id, state, version, content_type_id, version_no, labels,
   workflow_key, workflow_version, source_locale, default_locale,
+  supported_locales, fallback_chains, locale_config_hash,
   schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
 ) values (
   'a9090000-0000-4000-8000-000000000150',
@@ -15,10 +18,14 @@ insert into platform_private.cms_content_type_versions(
    where id = (select version_id from s09_type_ids)),
   'review', 1, (select content_type_id from s09_type_ids), 5,
   '{"label":"Article X exact"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
+  '["en-US"]'::jsonb, '{}'::jsonb, '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
   'a9090000-0000-4000-8000-000000000151', repeat('9', 64), 'conditional',
   'a9090000-0000-4000-8000-000000000405',
   'a9090000-0000-4000-8000-000000000001'
 );
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_field_definition_versions(
   id, owner_id, state, version, content_type_version_id, stable_field_id,
   field_key, kind, constraints, required, default_mode, localization_mode,
@@ -32,6 +39,9 @@ insert into platform_private.cms_field_definition_versions(
   false, 'none', 'none', '{"label":"Title","order":0}'::jsonb,
   'a9090000-0000-4000-8000-000000000001'
 );
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_schema_artifacts(
   id, owner_id, state, version, content_type_version_id, compiler_version,
   zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
@@ -72,12 +82,33 @@ insert into platform_private.cms_schema_artifacts(
     'capabilityBindings', '[]'::jsonb
   ), repeat('9', 64), clock_timestamp()
 );
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_activation_references_valid(
     'a9090000-0000-4000-8000-000000000150'
   ),
   'AC095 exact artifact and persisted graph pass before an extra child appears'
 );
+create or replace function pg_temp.s09_forged_graph_invalid(p_sql text) returns boolean language plpgsql as $forge$
+declare result boolean;
+begin
+  begin
+    -- negative-control forgery under the RPC flag a hostile writer would set itself, probed by the
+    -- definer reference check under the same context; the sub-transaction rollback undoes both
+    perform set_config('app.cms_rpc', 'true', true);
+    execute p_sql;
+    result := not platform_private.cms_activation_references_valid('a9090000-0000-4000-8000-000000000150');
+    raise exception 'S09_ROLLBACK';
+  exception when others then
+    if sqlerrm = 'S09_ROLLBACK' then return result; end if;
+    raise;
+  end;
+end;
+$forge$;
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_field_definition_versions(
   id, owner_id, state, version, content_type_version_id, stable_field_id,
   field_key, kind, constraints, required, default_mode, localization_mode,
@@ -91,14 +122,11 @@ insert into platform_private.cms_field_definition_versions(
   false, 'none', 'none', '{"label":"Subtitle","order":1}'::jsonb,
   'a9090000-0000-4000-8000-000000000001'
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
-  'AC095 rejects an extra persisted field outside the artifact manifest'
+  $forge$),
+  'AC095 rejects an extra persisted field outside the artifact manifest [P2-S09-AC-095]'
 );
-delete from platform_private.cms_field_definition_versions
-where id = 'a9090000-0000-4000-8000-000000000153';
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_content_type_capability_bindings(
   id, owner_id, state, version, content_type_version_id,
   capability_key, capability_version
@@ -109,14 +137,11 @@ insert into platform_private.cms_content_type_capability_bindings(
   'active', 1, 'a9090000-0000-4000-8000-000000000150',
   'cms.schema_designer', 1
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
+  $forge$),
   'AC095 rejects an extra persisted capability binding outside the manifest'
 );
-delete from platform_private.cms_content_type_capability_bindings
-where id = 'a9090000-0000-4000-8000-000000000154';
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_relation_definitions(
   id, owner_id, state, version, field_definition_id, target_kind, target_type,
   projection_key, cardinality, min_count, max_count, ordered, on_unavailable,
@@ -129,14 +154,11 @@ insert into platform_private.cms_relation_definitions(
   'profile.summary', 'one', 0, 1, false, 'omit',
   'a9090000-0000-4000-8000-000000000001'
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
-  'AC095 rejects an extra persisted relation outside the artifact manifest'
+  $forge$),
+  'AC095 rejects an extra persisted relation outside the artifact manifest [P2-S09-AC-095]'
 );
-delete from platform_private.cms_relation_definitions
-where id = 'a9090000-0000-4000-8000-000000000157';
+select ok(
+  pg_temp.s09_forged_graph_invalid($forge$
 insert into platform_private.cms_content_type_template_bindings(
   id, owner_id, state, version, content_type_version_id,
   template_version_id, position
@@ -147,14 +169,9 @@ insert into platform_private.cms_content_type_template_bindings(
   'active', 1, 'a9090000-0000-4000-8000-000000000150',
   'a9090000-0000-4000-8000-000000000159', 0
 );
-select ok(
-  not platform_private.cms_activation_references_valid(
-    'a9090000-0000-4000-8000-000000000150'
-  ),
-  'AC095 rejects an extra persisted template binding outside the manifest'
+  $forge$),
+  'AC095 rejects an extra persisted template binding outside the manifest [P2-S09-AC-095]'
 );
-delete from platform_private.cms_content_type_template_bindings
-where id = 'a9090000-0000-4000-8000-000000000158';
 
 select ok(
   platform_private.cms_block_reference_valid(
@@ -169,220 +186,107 @@ select ok(
   and not platform_private.cms_block_reference_valid(
     jsonb_build_object('blockKey', 'hero', 'blockVersion', 1, 'lifecycle', 'withdrawn')
   ),
-  'AC095 rejects an unregistered block version and a withdrawn lifecycle'
+  'AC095 rejects an unregistered block version and a withdrawn lifecycle [P2-S09-AC-095]'
 );
 
--- A conditional plan can be created only with an independently validated
--- report.  Missing evidence and candidate-ID stand-ins are denied.
+-- A conditional plan exists only because CMS-03A-10 produced it, and activation
+-- only advances it.  A missing or stand-in dry-run report is refused.
 select throws_ok(
-  $$select platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000150',
-    'a9090000-0000-4000-8000-000000000103', null,
-    'a9090000-0000-4000-8000-000000000405', 'cms.schema.migrate', 1, null
-  )$$,
+  format($q$select platform_private.cms_advance_activation_plan(
+    %1$L::uuid, %2$L::uuid, null, 'a9090000-0000-4000-8000-000000000405'::uuid)$q$,
+    'a9090000-0000-4000-8000-000000000150', :'y_version'),
   'P0001', 'VALIDATION_FAILED',
-  'AC099 conditional plan creation requires a supplied dry-run report'
+  'AC099 conditional plan advance requires a persisted independent dry-run report [P2-S09-AC-099]'
 );
 select throws_ok(
-  $$select platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000150',
-    'a9090000-0000-4000-8000-000000000103', null,
-    'a9090000-0000-4000-8000-000000000150'
-  )$$,
+  format($q$select platform_private.cms_advance_activation_plan(
+    %1$L::uuid, %2$L::uuid, null, %1$L::uuid)$q$,
+    'a9090000-0000-4000-8000-000000000150', :'y_version'),
   'P0001', 'VALIDATION_FAILED',
-  'AC096 rejects a candidate UUID used as its own dry-run evidence ID'
+  'AC096 rejects a candidate UUID used as its own dry-run evidence ID [P2-S09-AC-096]'
 );
 
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000155',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000103'),
-  'approved', 1, (select content_type_id from s09_type_ids), 6,
-  '{"label":"Article X conditional"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
-  'a9090000-0000-4000-8000-000000000156', repeat('f', 64), 'conditional',
-  'a9090000-0000-4000-8000-000000000406',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000156',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000155'),
-  'compiled', 1, 'a9090000-0000-4000-8000-000000000155', '1',
-  'cms/content-type/articlex/v1',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey', 'articlex', 'label', 'Article X conditional',
-    'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
-    'defaultTemplateVersionId', null, 'fields', '[]'::jsonb,
-    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb
-  ), 'fields', '[]'::jsonb),
-  jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb), repeat('f', 64), clock_timestamp()
-);
+-- A real conditional successor with no affected rows: the clone is sealed
+-- additively, its title constraint is tightened under that ready plan, and the
+-- conditional attempt names the registered transform.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('cn0', 'articlecn0');
+select pg_temp.s09d_to_active('cn0');
+select pg_temp.s09d_successor('cnd', 'cn0');
+select pg_temp.s09d_dry_run('cnd');
+select pg_temp.s09d_seal('cnd');
+select pg_temp.s09w_tighten('cnd', 100);
+select pg_temp.s09d_dry_run('cnd', 'owner', 'identity.revalidate', '1');
+select pg_temp.s09w_dry_run('cnd');
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
 select is(
-  platform_private.cms_prepare_activation_migration(
-    'a9090000-0000-4000-8000-000000000155',
-    'a9090000-0000-4000-8000-000000000103', null,
-    'a9090000-0000-4000-8000-000000000406', 'cms.schema.migrate', 1,
-    jsonb_build_object(
-      'dryRunId', 'a9090000-0000-4000-8000-000000000406', 'result', 'pass',
-      'sourceHash', (select definition_hash from platform_private.cms_content_type_versions
-                    where id = 'a9090000-0000-4000-8000-000000000103'),
-      'targetHash', repeat('f', 64),
-      'transformHash', platform_private.cms_migration_transform_hash(
-        'conditional', 'cms.schema.migrate', 1,
-        (select definition_hash from platform_private.cms_content_type_versions
-         where id = 'a9090000-0000-4000-8000-000000000103'),
-        repeat('f', 64), repeat('f', 64), '1'
-      ),
-      'transformKey', 'cms.schema.migrate', 'transformVersion', '1',
-      'compilerHash', repeat('f', 64), 'compilerVersion', '1',
-      'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0',
-      'migratedCount', '0', 'failedCount', '0',
-      'lease', jsonb_build_object(
-        'state', 'completed', 'expiresAt', (clock_timestamp() + interval '10 minutes')::text
-      )
-    )
-  ),
-  'a9090000-0000-4000-8000-000000000406'::uuid,
-  'AC099 creates and advances a conditional plan only after exact report evidence'
+  platform_private.cms_advance_activation_plan(
+    pg_temp.s09d_id('cnd:version'), pg_temp.s09d_id('cn0:version'),
+    pg_temp.s09d_id('cnd:plan'), pg_temp.s09d_id('cnd:dryRun')),
+  pg_temp.s09d_id('cnd:plan'),
+  'AC099 advances a conditional plan only after exact sealed report evidence [P2-S09-AC-099]'
 );
 select ok(
   (select classification = 'conditional'
-      and transform_key = 'cms.schema.migrate'
+      and transform_key = 'identity.revalidate'
       and transform_version = 1
       and state = 'completed'
    from platform_private.cms_schema_migration_plans
-   where id = 'a9090000-0000-4000-8000-000000000406'),
+   where id = pg_temp.s09d_id('cnd:plan')),
   'AC099 persists the conditional plan and advances its zero-row state'
 );
 
--- Worker evidence must remain fresh and bound to the current review version
--- and an active recent context binding.
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, dry_run_id, created_by
-) values (
-  'a9090000-0000-4000-8000-000000000160',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000103'),
-  'approved', 1, (select content_type_id from s09_type_ids), 7,
-  '{"label":"Article X worker evidence"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
-  'a9090000-0000-4000-8000-000000000161', repeat('a', 64), 'additive',
-  'a9090000-0000-4000-8000-000000000408',
-  'a9090000-0000-4000-8000-000000000001'
-);
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-) values (
-  'a9090000-0000-4000-8000-000000000161',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = 'a9090000-0000-4000-8000-000000000160'),
-  'compiled', 1, 'a9090000-0000-4000-8000-000000000160', '1',
-  'cms/content-type/articlex/v1',
-  jsonb_build_object('schema', jsonb_build_object(
-    'typeKey', 'articlex', 'label', 'Article X worker evidence',
-    'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
-    'defaultTemplateVersionId', null, 'fields', '[]'::jsonb,
-    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb
-  ), 'fields', '[]'::jsonb),
-  jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
-    'capabilityBindings', '[]'::jsonb), repeat('a', 64), clock_timestamp()
-);
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, effective_context_hash,
-  risk_class, required_approvals, state, submitted_by, submitted_at, version_no
-) values (
-  'a9090000-0000-4000-8000-000000000409', 'setting_value',
-  'a9090000-0000-4000-8000-000000000160', 1, repeat('a', 64), '{}'::jsonb,
-  platform_private.cfg_hash_json('{}'::jsonb),
-  platform_private.cfg_hash_json(jsonb_build_object(
-    'actingContextId', 'a9090000-0000-4000-8000-000000000090'
-  )), 'high', 1, 'review',
-  'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1
-);
-insert into platform_private.cfg_config_approvals(
-  review_id, reviewer_person_id, acting_party_id, capability, decision,
-  reason, reviewed_hash, decided_at, review_version
-) values (
-  'a9090000-0000-4000-8000-000000000409',
-  'a9090000-0000-4000-8000-000000000002',
-  (select organization_id from s09_fixture_org), 'cms.schema_designer',
-  'approve', 'worker freshness', repeat('a', 64), clock_timestamp(), 1
-);
-with approval_digest as (
-  select encode(extensions.digest(convert_to(
-    coalesce(jsonb_agg(jsonb_build_object(
-      'reviewId', approval.review_id, 'reviewerAuthUserId', approval.reviewer_person_id,
-      'capability', approval.capability, 'reviewedHash', approval.reviewed_hash,
-      'reviewVersion', approval.review_version, 'decidedAt', approval.decided_at
-    ) order by approval.review_id, approval.reviewer_person_id)::text, '[]'),
-    'utf8'), 'sha256'), 'hex') as hash
-  from platform_private.cfg_config_approvals approval
-  where approval.review_id = 'a9090000-0000-4000-8000-000000000409'
-)
-update platform_private.cms_content_type_versions candidate
-set activation_workflow_policy_key = 'cms.schema.activate',
-    activation_workflow_policy_version = 1,
-    activation_workflow_policy_hash = encode(extensions.digest(convert_to(
-      'cms.schema.activate:1:1:["cms.schema_designer"]', 'utf8'), 'sha256'), 'hex'),
-    activation_required_decision_count = 1,
-    activation_required_capabilities = jsonb_build_array('cms.schema_designer'),
-    activation_approval_evidence_hash = encode(extensions.digest(convert_to(
-  jsonb_build_object(
-    'key', 'cms.schema.activate', 'version', '1',
-    'policyHash', encode(extensions.digest(convert_to(
-      'cms.schema.activate:1:1:["cms.schema_designer"]', 'utf8'), 'sha256'), 'hex'),
-    'riskClass', 'ordinary',
-    'requiredDecisionCount', 1,
-    'requiredCapabilities', jsonb_build_array('cms.schema_designer'),
-    'approvalEvidenceHash', approval_digest.hash
-  )::text, 'utf8'), 'sha256'), 'hex')
-from approval_digest
-where candidate.id = 'a9090000-0000-4000-8000-000000000160';
-update platform_private.cfg_config_change_reviews
-set state = 'approved', updated_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000409';
+-- Worker evidence is the real CMS review chain: a candidate approved through
+-- the named producers is valid for the worker hand-off until the evidence
+-- drifts.  An earlier decision's MFA age is NOT re-required (DEC-108 G10), so a
+-- stale binding never invalidates a recorded approval.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('wk', 'articlewk');
+select pg_temp.s09d_to_approved('wk', array['rev1']);
+select pg_temp.s09d_guc_restore();
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
-  platform_private.cms_worker_human_approval_valid(
-    'a9090000-0000-4000-8000-000000000160'
-  ),
-  'AC102 worker accepts fresh approval, review version, and active MFA context'
+  platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
+  'AC102 worker accepts a real approved CMS review with current assignment authority'
 );
-update platform_private.cfg_config_change_reviews
-set version_no = version_no + 1, updated_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000409';
-select ok(
-  not platform_private.cms_worker_human_approval_valid(
-    'a9090000-0000-4000-8000-000000000160'
-  ),
-  'AC102 worker rejects an approval tied to a stale review version'
-);
-update platform_private.cfg_config_change_reviews
-set version_no = version_no - 1, updated_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000409';
+select set_config('app.cms_rpc', '', true);
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp() - interval '11 minutes'
-where id = 'a9090000-0000-4000-8000-000000000090';
+where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid
+   or id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
-  not platform_private.cms_worker_human_approval_valid(
-    'a9090000-0000-4000-8000-000000000160'
-  ),
-  'AC102 worker rejects a stale MFA/context binding'
+  platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
+  'AC102 worker does not re-require MFA freshness for a recorded decision'
 );
+select set_config('app.cms_rpc', '', true);
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp()
-where id = 'a9090000-0000-4000-8000-000000000090';
+where id = pg_temp.s09d_actor_id('rev1', 'binding')::uuid
+   or id = pg_temp.s09d_actor_id('owner', 'binding')::uuid;
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_types
+set owner_capability = 'cms.schema_registry.read'
+where id = pg_temp.s09d_id('wk:type');
+select set_config('app.cms_rpc', '', true);
+-- negative-control / state forgery: no command produces this write, so it is made under the RPC flag a hostile writer would set itself (a producer no longer leaves it behind)
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_types
+set owner_capability = 'cms.schema_designer'
+where id = pg_temp.s09d_id('wk:type');
+select set_config('app.cms_rpc', '', true);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
+select ok(
+  not platform_private.cms_worker_human_approval_valid(pg_temp.s09d_id('wk:version')),
+  'AC102 worker rejects an approval whose review evidence drifted and was invalidated [P2-S09-AC-102]'
+);
+select set_config('app.cms_rpc', '', true);

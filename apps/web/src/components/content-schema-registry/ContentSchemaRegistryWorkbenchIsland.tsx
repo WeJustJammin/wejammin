@@ -1,124 +1,123 @@
 import * as React from 'react';
 
 import {
-  installContentSchemaRegistryCanonicalRefetch,
-  installContentSchemaRegistryCommandEnhancement,
-  refetchContentSchemaRegistryCanonical,
-} from './content-schema-registry-runtime-dom';
-import { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
+  HydrationFenceContext,
+  createHydrationFence,
+} from './content-schema-registry-hydration-fence';
+import { initialFailureOf } from './content-schema-registry-initial-failure';
+import { useContentSchemaRegistryIslandRuntime } from './use-content-schema-registry-island-runtime';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryInitialFailureBoundary from './ContentSchemaRegistryInitialFailureBoundary';
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
 
+/**
+ * Serializable island props (FE03 island invariant): safe display context
+ * only. No actor, person, party or binding identifier, and no session or
+ * correlation value, in any spelling, ever crosses into the island.
+ */
 export type ContentSchemaRegistryWorkbenchIslandProps = Omit<
   ContentSchemaRegistryWorkbenchProps,
-  'onCanonicalRefetch' | 'actorId' | 'actingPartyId'
+  'onCanonicalRefetch' | 'contextEpoch'
 > & {
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
   readonly canonicalRefetchUrl: string;
 };
 
-type ContentSchemaRegistryRefetchReason = Parameters<
-  ContentSchemaRegistryWorkbenchProps['onCanonicalRefetch']
->[0];
-
 /**
- * Serializable Astro island boundary. The server still renders the exact
- * Workbench HTML; the browser constructs the canonical callback after load so
- * no server function or authority state is serialized into the page.
+ * Serializable Astro island boundary. The server renders the exact Workbench
+ * HTML; the browser owns canonical refresh and its presentation through React
+ * state. No server function or authority state is serialized.
  */
 export default function ContentSchemaRegistryWorkbenchIsland(
   props: ContentSchemaRegistryWorkbenchIslandProps,
 ): React.ReactElement {
-  const hasAuthorityIds =
-    props.actorId !== null && props.actingPartyId !== null;
-  const initialFailure =
-    props.initialList.status === 'error' ||
-    props.initialList.status === 'degraded'
-      ? props.initialList
-      : props.initialDetail?.status === 'error' ||
-          props.initialDetail?.status === 'degraded'
-        ? props.initialDetail
-        : null;
-  const commandCleanupRef = React.useRef<() => void>(() => undefined);
-  const onCanonicalRefetch = React.useCallback(
-    async (reason: ContentSchemaRegistryRefetchReason): Promise<void> => {
-      if (typeof document === 'undefined' || reason === 'mutation') return;
-      await refetchContentSchemaRegistryCanonical({
-        document,
-        canonicalUrl: props.canonicalRefetchUrl,
-        reason,
-        onAfterReplace: () => {
-          commandCleanupRef.current();
-          commandCleanupRef.current =
-            installContentSchemaRegistryCommandEnhancement(document);
-        },
-      });
-    },
-    [props.canonicalRefetchUrl],
-  );
-
-  React.useEffect(() => {
-    if (typeof document === 'undefined' || !hasAuthorityIds) return undefined;
-    commandCleanupRef.current =
-      installContentSchemaRegistryCommandEnhancement(document);
-    const canonicalCleanup = installContentSchemaRegistryCanonicalRefetch(
-      document,
-      props.canonicalRefetchUrl,
-      (reason) => onCanonicalRefetch(reason),
-    );
-    document
-      .querySelector<HTMLElement>('[data-workbench="content-schema-registry"]')
-      ?.setAttribute('data-content-schema-registry-hydrated', 'true');
-    return () => {
-      commandCleanupRef.current();
-      commandCleanupRef.current = () => undefined;
-      canonicalCleanup();
-    };
-  }, [hasAuthorityIds, onCanonicalRefetch, props.canonicalRefetchUrl]);
+  // The server withholds protected access from a page that carries no
+  // verified authority, so a usable access level is the only signal needed.
+  const ssrHasAuthority =
+    props.access === 'full' || props.access === 'read-only';
+  const [fence] = React.useState(createHydrationFence);
+  const {
+    projectionState,
+    contextEpoch,
+    loading,
+    offline,
+    message,
+    onCanonicalRefetch,
+  } = useContentSchemaRegistryIslandRuntime(props, ssrHasAuthority, fence);
 
   if (props.access === 'not-rendered') {
     return (
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="not-rendered"
-        reasonCode={props.variant}
       />
     );
   }
 
+  const initialFailure = initialFailureOf(projectionState);
+
   if (
-    props.access === 'disabled' &&
+    projectionState.access === 'disabled' &&
     initialFailure !== null &&
-    !hasAuthorityIds
+    !ssrHasAuthority
   ) {
     return (
       <ContentSchemaRegistryInitialFailureBoundary
         failure={initialFailure}
         access="disabled"
-        variant={props.variant}
-        requestId={props.requestId}
+        variant={projectionState.variant}
+        supportReference={props.supportReference}
         retryUrl={props.canonicalRefetchUrl}
       />
     );
   }
 
-  if (props.access === 'disabled' || !hasAuthorityIds) {
+  if (projectionState.access === 'disabled' || !ssrHasAuthority) {
     return (
-      <ContentSchemaRegistryCapabilityGate
+      <CapabilityGate
+        surface="content-schema-registry"
         variant="disabled"
-        reasonCode={props.variant}
+        reasonCode="SCHEMA_REGISTRY_UNAVAILABLE"
         recoveryHref={props.canonicalRefetchUrl}
       />
     );
   }
 
   return (
-    <ContentSchemaRegistryWorkbench
-      {...props}
-      actorId={props.actorId}
-      actingPartyId={props.actingPartyId}
-      onCanonicalRefetch={onCanonicalRefetch}
-    />
+    <HydrationFenceContext.Provider value={fence}>
+      <ContentSchemaRegistryWorkbench
+        query={props.query}
+        contractFields={props.contractFields}
+        contentTypeId={props.contentTypeId}
+        versionId={props.versionId}
+        cursor={props.cursor}
+        expectedVersion={props.expectedVersion}
+        supportReference={props.supportReference}
+        canonicalUrl={props.canonicalUrl}
+        listUrl={props.listUrl}
+        retryUrl={props.retryUrl}
+        csrfToken={props.csrfToken}
+        access={projectionState.access}
+        variant={projectionState.variant}
+        initialList={projectionState.initialList}
+        initialDetail={projectionState.initialDetail}
+        {...(projectionState.actingContextLabel === undefined
+          ? {}
+          : { actingContextLabel: projectionState.actingContextLabel })}
+        {...(projectionState.stepUpState === undefined
+          ? {}
+          : { stepUpState: projectionState.stepUpState })}
+        {...(projectionState.stepUpFreshUntil === undefined
+          ? {}
+          : { stepUpFreshUntil: projectionState.stepUpFreshUntil })}
+        reviewId={props.reviewId ?? null}
+        initialReview={projectionState.initialReview}
+        contextEpoch={contextEpoch}
+        onCanonicalRefetch={onCanonicalRefetch}
+        loading={loading}
+        offline={offline}
+        message={message}
+      />
+    </HydrationFenceContext.Provider>
   );
 }

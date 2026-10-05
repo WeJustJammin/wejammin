@@ -15,6 +15,10 @@ export const CONTENT_SCHEMA_REGISTRY_ALERT_CONDITIONS = [
   'acceptance_p99_exceeded',
   'queue_first_attempt_p95_exceeded',
   'daily_dlq_rate_exceeded',
+  'review_open_past_window',
+  'decision_denial_spike',
+  'assignment_denial_spike',
+  'capability_grant_denial_spike',
 ] as const;
 
 export const CONTENT_SCHEMA_REGISTRY_HOSTED_ROLES = [

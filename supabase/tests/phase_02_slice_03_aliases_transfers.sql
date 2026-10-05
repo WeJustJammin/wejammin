@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -273,7 +274,7 @@ select lives_ok($$insert into platform_private.person_party(party_id, auth_user_
     ('93222222-2222-4222-8222-222222222223', '93222222-2222-4222-8222-222222222222', 'active'),
     ('93222222-2222-4222-8222-222222222224', null, 'claimed')$$,
   'the alias RED fixture has one active actor and one recipient person');
-select set_config('request.jwt.claim.sub', '93222222-2222-4222-8222-222222222222', true);
+select pg_temp.set_jwt_claim('sub', '93222222-2222-4222-8222-222222222222', true);
 select set_config('app.auth_user_id', '93222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_auth_user_id', '93222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_person_id', '93222222-2222-4222-8222-222222222223', true);

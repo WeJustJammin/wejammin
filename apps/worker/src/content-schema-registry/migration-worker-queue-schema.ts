@@ -1,6 +1,7 @@
 import {
   failure,
   hasExactKeys,
+  isHash,
   isInstant,
   isRecord,
   isSafeToken,
@@ -16,12 +17,15 @@ import {
   type SchemaActivationEvidence,
 } from './migration-worker-activation-evidence';
 
+/** `platform_private.outbox_event_producers`: prefix `cms.schema.`. */
+const SCHEMA_EVENT_PRODUCER = 'cms.schema_registry';
+
 export type SchemaMigrationQueueEnvelope = Readonly<{
   eventId: string;
   eventType: 'cms.schema.activated.v1';
   schemaVersion: 1;
   occurredAt: string;
-  producer: string;
+  producer: typeof SCHEMA_EVENT_PRODUCER;
   correlationId: string;
   causationId: string | null;
   aggregateType: string;
@@ -31,6 +35,7 @@ export type SchemaMigrationQueueEnvelope = Readonly<{
     contentTypeId: string;
     schemaVersionId: string;
     migrationPlanId: string | null;
+    localeConfigHash: string;
     activationEvidence: SchemaActivationEvidence;
   }>;
 }>;
@@ -64,7 +69,8 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
       return failure(['schemaVersion'], 'schemaVersion is unsupported');
     if (!isInstant(value.occurredAt))
       return failure(['occurredAt'], 'occurredAt is invalid');
-    if (!isSafeToken(value.producer))
+    // The registered owner of the cms.schema. event-type prefix (AC190).
+    if (value.producer !== SCHEMA_EVENT_PRODUCER)
       return failure(['producer'], 'producer is invalid');
     if (!isUuid(value.correlationId))
       return failure(['correlationId'], 'correlationId is invalid');
@@ -83,6 +89,7 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
         'contentTypeId',
         'schemaVersionId',
         'migrationPlanId',
+        'localeConfigHash',
         'activationEvidence',
       ])
     )
@@ -98,6 +105,11 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
       return failure(
         ['payload', 'migrationPlanId'],
         'migrationPlanId is invalid',
+      );
+    if (!isHash(value.payload.localeConfigHash))
+      return failure(
+        ['payload', 'localeConfigHash'],
+        'localeConfigHash is invalid',
       );
     const evidence = parseSchemaActivationEvidence(
       value.payload.activationEvidence,
@@ -120,6 +132,7 @@ export const SchemaMigrationQueueEnvelopeSchema: RuntimeSchema<SchemaMigrationQu
           contentTypeId: value.payload.contentTypeId,
           schemaVersionId: value.payload.schemaVersionId,
           migrationPlanId: value.payload.migrationPlanId,
+          localeConfigHash: value.payload.localeConfigHash,
           activationEvidence: evidence.data,
         },
       },

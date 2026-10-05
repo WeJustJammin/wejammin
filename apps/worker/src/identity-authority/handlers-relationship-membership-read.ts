@@ -12,6 +12,7 @@ import {
   resolveRelationshipSession,
 } from './relationship-handler-support';
 import { executeRelationship } from './relationship-handler-runtime';
+import { refuseForeignReadOrigin } from './handler-support';
 import type { RecoveryState } from './recovery';
 
 export const readMemberships = async (
@@ -20,6 +21,12 @@ export const readMemberships = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'MEM-06');
+  const foreignOrigin = refuseForeignReadOrigin(context);
+  if (foreignOrigin !== null) return foreignOrigin;
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolveRelationshipSession(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 6: strict path and query.
   const path = OrganizationMembershipsPathSchema.safeParse({
     organizationId: context.req.param('organizationId'),
   });
@@ -41,8 +48,6 @@ export const readMemberships = async (
     });
   const query = rejectRelationshipQuery(context.req.raw, true);
   if (!query.ok) return responseForAuthError(context, query);
-  const resolved = await resolveRelationshipSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
   const limited = await enforceRelationshipRate(
     context,
     dependencies,

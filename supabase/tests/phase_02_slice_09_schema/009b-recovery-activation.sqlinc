@@ -1,110 +1,54 @@
--- Seed the same persisted human approval boundary consumed by the worker
--- activation RPC.  The candidate is moved through review while its final
--- approval-evidence hash is written, so the invalidation trigger cannot turn
--- an already-approved review into stale evidence during fixture setup.
-update platform_private.cms_content_type_versions target
-set state = 'review',
-    activation_workflow_policy_key = 'cms.schema.activate',
-    activation_workflow_policy_version = 1,
-    activation_workflow_policy_hash = encode(extensions.digest(convert_to(
-      'cms.schema.activate:1:1:' || jsonb_build_array('cms.schema_designer')::text,
-      'utf8'
-    ), 'sha256'), 'hex'),
-    activation_required_decision_count = 1,
-    activation_required_capabilities = jsonb_build_array('cms.schema_designer'),
-    activation_approval_evidence_hash = repeat('c', 64)
-from s09_ac217_ids ids
-where target.id = ids.target_version_id;
-
-create temp table s09_ac217_review on commit drop as
-select extensions.gen_random_uuid() as review_id,
+-- AC217 recovery activation over REAL producers.  The recovery target is a
+-- successor of a real active schema; its dry-run attempt, plan, review,
+-- assignment and independent decision are produced by the named commands, the
+-- worker seals/backfills/verifies the plan, and only then does the worker
+-- switch it.  No review, decision, dry-run, approved-state or completed-plan
+-- row is inserted by hand, and no evidence column is written by hand.
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('rs', 'articlerecover');
+select pg_temp.s09d_to_active('rs', array['rev1']);
+select pg_temp.s09d_successor('rt', 'rs');
+select pg_temp.s09d_dry_run('rt');
+select pg_temp.s09d_seal('rt');
+select pg_temp.s09d_submit('rt');
+select pg_temp.s09d_assign('rt', 'rev1');
+select pg_temp.s09d_decide('rt', 'rev1');
+select pg_temp.s09d_complete_plan('rt');
+select pg_temp.s09d_guc_restore();
+-- Fragment 009 drilled a hand-built 128-field plan with the worker; the
+-- activation/DLQ drill below runs on the real producer-built target instead.
+drop table if exists s09_ac217_artifact, s09_ac217_ids;
+create temp table s09_ac217_ids on commit drop as
+select pg_temp.s09d_id('rs:version') as source_version_id,
+       pg_temp.s09d_id('rt:type') as content_type_id,
+       (select owner_id from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('rt:version')) as owner_id,
+       pg_temp.s09d_id('rt:version') as target_version_id,
+       pg_temp.s09d_id('rt:plan') as plan_id,
+       pg_temp.s09d_id('rt:dryRun') as dry_run_id;
+select ok(
+  (select state = 'approved' from platform_private.cms_content_type_versions
+   where id = (select target_version_id from s09_ac217_ids))
+  and (select state = 'approved' from platform_private.cms_schema_reviews
+       where id = pg_temp.s09d_id('rt:review'))
+  and (select state = 'completed' from platform_private.cms_schema_migration_plans
+       where id = (select plan_id from s09_ac217_ids)),
+  'AC217 fixture: the recovery target holds a real approved review and a worker-completed plan'
+);
+create temp table s09_ac217_artifact on commit drop as
+select (select schema_artifact_id from platform_private.cms_content_type_versions
+        where id = ids.target_version_id) as artifact_id,
        ids.target_version_id,
-       ids.owner_id,
-       (select auth_user_id
-        from identity.auth_user_bindings binding
-        where binding.auth_user_id <> 'a9090000-0000-4000-8000-000000000001'
-          and exists (
-            select 1
-            from identity_private.membership_tenure tenure
-            join identity_private.organization_actor_grant actor_grant
-              on actor_grant.organization_id = tenure.organization_id
-             and actor_grant.person_id = tenure.person_id
-            where tenure.organization_id = ids.owner_id
-              and tenure.person_id = binding.person_id
-              and tenure.state = 'confirmed'
-              and (tenure.ends_on is null or tenure.ends_on >= current_date)
-              and actor_grant.capability_code = 'cms.schema_designer'
-              and actor_grant.active
-              and actor_grant.valid_from <= current_date
-              and (actor_grant.valid_through is null or actor_grant.valid_through >= current_date)
-          )
-        order by binding.auth_user_id
-        limit 1) as reviewer_auth_user_id
+       (select artifact_hash from platform_private.cms_schema_artifacts
+        where content_type_version_id = ids.target_version_id) as artifact_hash
 from s09_ac217_ids ids;
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+-- a Worker request of its own: nothing a previous (human) command published is still set
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true), set_config('app.mfa_session_subject', '', true);
+select set_config('app.cms_rpc', 'true', true);
+select set_config('app.cfg_rpc', 'true', true);
 
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, effective_context_hash,
-  risk_class, required_approvals, state, submitted_by, submitted_at, version_no
-)
-select review.review_id, 'setting_value', target.id, target.version,
-       target.definition_hash, '{}'::jsonb, platform_private.cfg_hash_json('{}'::jsonb),
-       platform_private.cfg_hash_json(jsonb_build_object(
-         'actingContextId', (select context_id from s09_activation_context)
-       )), 'high', 1, 'review', target.created_by, clock_timestamp(), 1
-from s09_ac217_review review
-join platform_private.cms_content_type_versions target
-  on target.id = review.target_version_id;
-
-insert into platform_private.cfg_config_approvals(
-  review_id, reviewer_person_id, acting_party_id, capability, decision,
-  reason, reviewed_hash, decided_at, review_version
-)
-select review.review_id, review.reviewer_auth_user_id, review.owner_id,
-       'cms.schema_designer', 'approve', 'AC217 recovery activation',
-       target.definition_hash, clock_timestamp(), 1
-from s09_ac217_review review
-join platform_private.cms_content_type_versions target
-  on target.id = review.target_version_id;
-
-update platform_private.cms_content_type_versions target
-set activation_approval_evidence_hash = (
-  select encode(extensions.digest(convert_to(jsonb_build_object(
-    'key', 'cms.schema.activate', 'version', '1',
-    'policyHash', target.activation_workflow_policy_hash,
-    'riskClass', 'ordinary',
-    'requiredDecisionCount', 1,
-    'requiredCapabilities', jsonb_build_array('cms.schema_designer'),
-    'approvalEvidenceHash', (
-      select encode(extensions.digest(convert_to(
-        coalesce(jsonb_agg(jsonb_build_object(
-          'reviewId', approval.review_id,
-          'reviewerAuthUserId', approval.reviewer_person_id,
-          'capability', approval.capability,
-          'reviewedHash', approval.reviewed_hash,
-          'reviewVersion', approval.review_version,
-          'decidedAt', approval.decided_at
-        ) order by approval.review_id, approval.reviewer_person_id)::text, '[]'),
-        'utf8'
-      ), 'sha256'), 'hex')
-      from platform_private.cfg_config_approvals approval
-      where approval.review_id = review.review_id
-    )
-  )::text, 'utf8'), 'sha256'), 'hex')
-  from s09_ac217_review review
-  where review.target_version_id = target.id
-)
-where target.id = (select target_version_id from s09_ac217_ids);
-
--- Move the candidate first while its configuration review is still in review;
--- the invalidation trigger only reopens approved/scheduled reviews.
-update platform_private.cms_content_type_versions target
-set state = 'approved'
-where target.id = (select target_version_id from s09_ac217_ids);
-update platform_private.cfg_config_change_reviews review
-set state = 'approved', updated_at = clock_timestamp()
-where review.id = (select review_id from s09_ac217_review);
-
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_activation_references_valid(
     (select target_version_id from s09_ac217_ids)
@@ -113,9 +57,10 @@ select ok(
   ),
   'AC217 recovery candidate passes the persisted artifact and approval boundary'
 );
+select set_config('app.cms_rpc', '', true);
 
 create temp table s09_ac217_activation on commit drop as
-select platform_api.cms_activate_schema_migration(jsonb_build_object(
+select pg_temp.s09d_call('ac217:activation', 'platform_api.cms_activate_schema_migration', jsonb_build_object(
   'migrationPlanId', ids.plan_id, 'contentTypeId', ids.content_type_id,
   'schemaVersionId', ids.target_version_id, 'expectedVersion', plan.version::text,
   'expectedActiveVersionId', ids.source_version_id, 'transformKey', null,
@@ -140,7 +85,7 @@ select ok(
            where content_type_id = (select content_type_id from s09_ac217_ids)
              and state = 'active') = 1
    from s09_ac217_activation),
-  'AC217 switches the recovered schema once through the production worker RPC'
+  'AC217 switches the recovered schema once through the production worker RPC [P2-S09-AC-217]'
 );
 
 select is(
@@ -158,7 +103,7 @@ select is(
    join platform_private.cms_content_type_versions target on target.id = ids.target_version_id
    join s09_ac217_artifact artifact on artifact.target_version_id = target.id),
   (select response from s09_ac217_activation),
-  'AC217 activation replay returns the exact original response without a second switch'
+  'AC217 activation replay returns the exact original response without a second switch [P2-S09-AC-217]'
 );
 
 select is(
@@ -166,7 +111,7 @@ select is(
    where event_type = 'cms.schema.activated.v1'
      and payload->>'migrationPlanId' = (select plan_id::text from s09_ac217_ids)),
   1,
-  'AC217 exactly-once activation persists one durable event for the plan'
+  'AC217 exactly-once activation persists one durable event for the plan [P2-S09-AC-217]'
 );
 
 create temp table s09_ac217_event on commit drop as
@@ -198,14 +143,15 @@ select is(
     'reasonCode', 'SIMULATED_WORKER_LOSS'
   ))->>'accepted' from s09_ac217_event),
   'true',
-  'AC217 records a real activation event in the durable DLQ'
+  'AC217 records a real activation event in the durable DLQ [P2-S09-AC-217]'
 );
 
 select ok(
   (select event_type = 'cms.schema.activated.v1'
       and schema_version = 1
       and aggregate_id = (select target_version_id from s09_ac217_ids)
-      and aggregate_version = 2
+      and aggregate_version = (select version from platform_private.cms_content_type_versions
+                               where id = (select target_version_id from s09_ac217_ids))
       and dispatched_at is not null
       and dead_lettered_at is not null
       and dispatch_lease_token is null
@@ -225,7 +171,7 @@ select is(
     'claimToken', 'a9090000-0000-4000-8000-000000000727', 'replay', true
   ))->>'status' from s09_ac217_event),
   'replayable',
-  'AC217 exposes the dead-lettered activation for explicit replay after repair'
+  'AC217 exposes the dead-lettered activation for explicit replay after repair [P2-S09-AC-217]'
 );
 
 select is(
@@ -284,5 +230,5 @@ select ok(
   and (select count(*) = 1 from platform_private.outbox_events
        where event_type = 'cms.schema.activated.v1'
          and payload->>'migrationPlanId' = (select plan_id::text from s09_ac217_ids)),
-  'AC217 final recovery state has one active schema and one activation event'
+  'AC217 final recovery state has one active schema and one activation event [P2-S09-AC-217]'
 );

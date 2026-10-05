@@ -1,0 +1,100 @@
+-- Admin MFA factor reset fixture shared by the three phase_02_slice_09_dec111_admin_mfa_reset*.sql
+-- suites (table surface and authority, reservation, settlement).  Each suite runs it in its own
+-- transaction so a suite's refusals, grants and warps never leak into another suite.
+-- Requires 00-support.sqlinc, dec108/00-helpers.sqlinc and dec108/01-actors.sqlinc to be included first.
+
+-- Aliases: 11 owner, 12 designer2 (operator), 13 rev1 (target), 14 rev2
+-- (second target), 15 rev3 (non-member), 16 other.
+insert into m_alias values
+  (11, pg_temp.s09d_actor_id('owner', 'auth')::uuid), (12, pg_temp.s09d_actor_id('designer2', 'auth')::uuid),
+  (13, pg_temp.s09d_actor_id('rev1', 'auth')::uuid), (14, pg_temp.s09d_actor_id('rev2', 'auth')::uuid),
+  (15, pg_temp.s09d_actor_id('rev3', 'auth')::uuid), (16, pg_temp.s09d_actor_id('other', 'auth')::uuid);
+select pg_temp.m_session(n) from generate_series(11, 16) n;
+
+create or replace function pg_temp.m_member(p_actor text) returns void language plpgsql as $body$
+begin
+  -- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
+  insert into identity_private.membership_tenure(organization_id, person_id, state, provenance, governance_mode,
+    starts_on, accepted_at, actor_id, version)
+  select pg_temp.s09d_id('ownerOrg'), member.person_id, 'confirmed', 'invitation', 'ungoverned', current_date,
+         clock_timestamp(), owner.person_id, 1
+  from s09d_actor member, s09d_actor owner where member.key = p_actor and owner.key = 'owner';
+end;
+$body$;
+select pg_temp.m_member('rev1');
+select pg_temp.m_member('rev2');
+
+-- The operator's CFG-11 grant: named capability, action reset, on the organization.
+create or replace function pg_temp.m_grant(p_actor text, p_org uuid, p_actions text[] default array['reset'],
+  p_state text default 'active', p_ends interval default interval '1 day') returns uuid language plpgsql as $body$
+declare gid uuid := extensions.gen_random_uuid();
+begin
+  -- FIXTURE FORGERY: no command in this repository grants an admin capability (CFG-11 record).
+  insert into platform_private.admin_capability_grants(id, subject_person_id, capability_key, resource_type, resource_id,
+    scope, actions, starts_at, ends_at, grantor_person_id, reason, purpose_grant, state, version_no)
+  values (gid, pg_temp.s09d_actor_id(p_actor, 'person')::uuid, 'admin.identity.mfa_reset', 'organization', p_org,
+    jsonb_build_object('actingPartyId', p_org), p_actions, clock_timestamp() - interval '2 hours',
+    clock_timestamp() + p_ends, pg_temp.s09d_actor_id('owner', 'person')::uuid, 'dec111 test', false, p_state, 1);
+  return gid;
+end;
+$body$;
+select pg_temp.s09d_remember('opGrant', pg_temp.m_grant('designer2', pg_temp.s09d_id('ownerOrg')));
+
+-- Calls through the DEC-108 service-role envelope, then mirrors the probe row
+-- into m_probe so the m_out/m_resp assertions read it.
+create or replace function pg_temp.m_sync(p_label text) returns void language sql as $body$
+  insert into m_probe select label, state, message, response from s09d_probe where label = p_label
+  on conflict (label) do update
+    set state = excluded.state, message = excluded.message, response = excluded.response $body$;
+create or replace function pg_temp.m_reset(p_label text, p_actor text, p_target text, p_key text default 'reset-key-ac945-0001',
+  p_reason text default 'lost every factor', p_override jsonb default '{}'::jsonb, p_extra jsonb default '{}'::jsonb)
+returns jsonb language plpgsql as $body$
+declare result jsonb;
+begin
+  result := pg_temp.s09d_rpc(p_label, 'platform_api.admin_mfa_factor_reset', p_actor,
+    jsonb_build_object('targetPersonId', coalesce(pg_temp.s09d_actor_id(p_target, 'person'), p_target),
+      'reason', p_reason, 'idempotencyKey', p_key) || p_extra, true, p_override);
+  perform pg_temp.m_sync(p_label);
+  return result;
+end;
+$body$;
+create or replace function pg_temp.m_settle_reset(p_label text, p_actor text, p_reset text, p_outcomes jsonb,
+  p_override jsonb default '{}'::jsonb) returns jsonb language plpgsql as $body$
+declare result jsonb;
+begin
+  result := pg_temp.s09d_rpc(p_label, 'platform_api.admin_mfa_factor_reset_settle', p_actor,
+    jsonb_build_object('resetId', p_reset, 'outcomes', p_outcomes), true, p_override);
+  perform pg_temp.m_sync(p_label);
+  return result;
+end;
+$body$;
+create or replace function pg_temp.m_fid_named(p_n integer, p_name text) returns uuid language sql as $body$
+  select pg_temp.m_one(format('select id::text from identity.mfa_factor_registry where auth_user_id = %L and friendly_name = %L', pg_temp.m_uid(p_n), p_name))::uuid $body$;
+create or replace function pg_temp.m_pid_named(p_n integer, p_name text) returns uuid language sql as $body$
+  select pg_temp.m_one(format('select provider_factor_id::text from identity.mfa_factor_registry where auth_user_id = %L and friendly_name = %L', pg_temp.m_uid(p_n), p_name))::uuid $body$;
+
+-- Target fixture (rev1): two verified, one reconciling, one pending, plus an
+-- expired and a removed factor that must stay untouched.
+select pg_temp.m_enroll(13, 'V1');
+select pg_temp.m_enroll(13, 'V2');
+select pg_temp.m_enroll(13, 'Old');
+select pg_temp.m('fx:rmb', 'auth_mfa_removal_begin', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(13),
+  'p_factor_id', pg_temp.m_fid_named(13, 'Old'), 'p_reason', 'user_request', 'p_expected_version', pg_temp.m_ver(13),
+  'p_session_id', pg_temp.m_sid(13), 'p_key_hash', '\x' || repeat('c1', 32), 'p_request_hash', '\x' || repeat('c2', 32)));
+select pg_temp.m('fx:rmf', 'auth_mfa_removal_finish', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(13),
+  'p_factor_id', pg_temp.m_fid_named(13, 'Old'), 'p_reason', 'user_request', 'p_session_id', pg_temp.m_sid(13),
+  'p_key_hash', '\x' || repeat('c1', 32)));
+select pg_temp.m_pending(13, 'Gone');
+select pg_temp.m('fx:gone', 'auth_mfa_factor_mark_reconciling', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(13),
+  'p_factor_id', pg_temp.m_fid_named(13, 'Gone')));
+select pg_temp.m_pending(13, 'Stale');
+select pg_temp.m_begin('fx:supersede', 13, 'Pend');
+select pg_temp.m_finish('fx:pend', 13, 'Pend', pg_temp.m_resp('fx:supersede')->>'version');
+select pg_temp.m('fx:cb', 'auth_step_up_challenge_begin', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(13),
+  'p_session_id', pg_temp.m_sid(13), 'p_method', 'totp', 'p_factor_id', pg_temp.m_fid_named(13, 'V1')));
+select pg_temp.m('fx:cf', 'auth_step_up_challenge_finish', jsonb_build_object('p_auth_user_id', pg_temp.m_uid(13),
+  'p_session_id', pg_temp.m_sid(13), 'p_factor_id', pg_temp.m_fid_named(13, 'V1'),
+  'p_provider_challenge_id', extensions.gen_random_uuid(), 'p_expires_at', clock_timestamp() + interval '5 minutes'));
+select is(pg_temp.m_out('fx:cf'), 'OK', 'fixture: a live step-up challenge exists for the target');
+select pg_temp.m_enroll(14, 'Z1');
+create temp table m_pre on commit drop as select pg_temp.m_ver(13)::bigint v13, pg_temp.m_ver(14)::bigint v14;

@@ -1,6 +1,9 @@
 import {
+  ConsumerQueueEnvelopeSchema,
+  CONSUMER_EVENT_TYPE,
   PositiveBigintDecimalSchema,
   QueueEnvelopeSchema,
+  type ConsumerQueueEnvelope,
   type QueueEnvelope,
 } from '@wejammin/contracts';
 import {
@@ -16,8 +19,16 @@ import type { AsyncRpcClient } from './async-runtime-rpc-types';
 export type ClaimedOutbox = Readonly<{
   outboxId: string;
   leaseToken: string;
-  envelope: QueueEnvelope;
+  envelope: QueueEnvelope | ConsumerQueueEnvelope;
 }>;
+
+/** The outbox event types the relay places on the queue, with their aggregate. */
+const RELAYED_AGGREGATE: Readonly<Record<string, string>> = {
+  'job.requested': 'job',
+  [CONSUMER_EVENT_TYPE.mfaFactorChanged]: 'mfa_factor',
+  [CONSUMER_EVENT_TYPE.securityNotificationRequested]: 'security_event',
+  [CONSUMER_EVENT_TYPE.capabilityGrantChanged]: 'cms_capability_grant',
+};
 
 const UuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -123,14 +134,16 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
   const aggregateVersion = value.aggregateVersion ?? value.aggregate_version;
   const correlationId = value.correlationId ?? value.correlation_id;
   const causationId = value.causationId ?? value.causation_id ?? null;
+  const occurredAt = value.occurredAt ?? value.occurred_at;
+  const producer = value.producer;
   const version = toVersion(aggregateVersion);
   if (
     !isUuid(outboxId) ||
     !isUuid(eventId) ||
     !isUuid(leaseToken) ||
-    eventType !== 'job.requested' ||
+    typeof eventType !== 'string' ||
+    RELAYED_AGGREGATE[eventType] !== aggregateType ||
     schemaVersion !== 1 ||
-    aggregateType !== 'job' ||
     !isUuid(aggregateId) ||
     version === null ||
     !isUuid(correlationId) ||
@@ -138,7 +151,7 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
   ) {
     return null;
   }
-  const envelope = QueueEnvelopeSchema.parse({
+  const fields = {
     aggregateId,
     aggregateType,
     aggregateVersion: version,
@@ -147,8 +160,25 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
     eventId,
     eventType,
     schemaVersion,
+  };
+  if (eventType === 'job.requested') {
+    return {
+      envelope: QueueEnvelopeSchema.parse(fields),
+      leaseToken,
+      outboxId,
+    };
+  }
+  // BE00 envelope members that the outbox row does not store: the instant is the
+  // row's own occurred_at and the producer is the registered owner of the
+  // event-type prefix, both resolved by the claim. The consumer schema pins the
+  // producer per event type, so a claim naming another producer is refused.
+  const consumerEnvelope = ConsumerQueueEnvelopeSchema.safeParse({
+    ...fields,
+    occurredAt,
+    producer,
   });
-  return { envelope, leaseToken, outboxId };
+  if (!consumerEnvelope.success) return null;
+  return { envelope: consumerEnvelope.data, leaseToken, outboxId };
 };
 
 export const parseBoolean = (value: unknown, message: string): boolean => {

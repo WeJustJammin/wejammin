@@ -1,9 +1,10 @@
 import { constants, lstatSync, readdirSync, realpathSync } from 'node:fs';
 import { lstat, mkdir, open, rename, unlink } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { resolveAc265HostedVerificationRunProvenance } from './ac265-hosted-verification-run-provenance.ts';
+import { decodeAc265ContextBundleBase64 } from './ac265-hosted-verification-context-bundle.ts';
 import {
   AC265_HOSTED_SCOPE_FAILURE,
   verifyAc265HostedStagingEvidence,
@@ -13,7 +14,6 @@ import {
 const OUTPUT_RELATIVE_PATH = 'ac265-hosted-staging-evidence/manifest.json';
 
 interface Ac265HostedStagingCliInputs {
-  readonly workspaceRoot: string;
   readonly runId: string;
   readonly runAttempt: string;
   readonly reportArchivePath: string;
@@ -43,6 +43,35 @@ const requireAbsolutePath = (value: unknown): string => {
   )
     return fail();
   return value;
+};
+
+/**
+ * Resolve the caller-supplied workspace root.
+ *
+ * The root is the only directory the manifest may be written to, so it must be
+ * a real, canonical directory: the final component is never a symlink, and
+ * every existing component between the filesystem root and the target is a
+ * real directory. A symlinked root or ancestor is how the manifest write would
+ * silently land outside the approved tree, and a missing or non-directory root
+ * would otherwise surface as a raw errno, so both fail closed here — before any
+ * network call and before the evidence directory is created.
+ */
+const resolveWorkspaceRoot = (value: unknown): string => {
+  const resolved = requireAbsolutePath(value);
+  if (resolved === resolve('/')) return fail();
+  let current = resolved;
+  for (;;) {
+    let entry: ReturnType<typeof lstatSync>;
+    try {
+      entry = lstatSync(current);
+    } catch {
+      return fail();
+    }
+    if (entry.isSymbolicLink() || !entry.isDirectory()) return fail();
+    const parent = dirname(current);
+    if (parent === current) return resolved;
+    current = parent;
+  }
 };
 
 /**
@@ -83,7 +112,6 @@ export const parseAc265HostedStagingEnvironment = (
     requireEnv(env, 'AC265_HOSTED_REPORT_ARCHIVE_DIR'),
   );
   return {
-    workspaceRoot: requireAbsolutePath(process.cwd()),
     runId,
     runAttempt,
     reportArchivePath: singleArchivePath(reportArchiveDirectory),
@@ -136,7 +164,14 @@ export const verifyAc265HostedStagingEvidenceCli = async (options: {
   readonly workspaceRoot: string;
   readonly fetchImpl?: typeof fetch;
 }): Promise<Ac265HostedStagingScopeManifest> => {
+  // The caller supplies the workspace root and it is the only directory the
+  // manifest may be written to, so it is validated exactly once here — before
+  // any network call and before the evidence directory is created.
+  const workspaceRoot = resolveWorkspaceRoot(options.workspaceRoot);
   const inputs = parseAc265HostedStagingEnvironment(options.env);
+  const bundleBytes = decodeAc265ContextBundleBase64(
+    options.env['AC265_HOSTED_VERIFICATION_CONTEXT_BUNDLE_B64'],
+  );
   const provenance = await resolveAc265HostedVerificationRunProvenance(
     {
       repository: requireEnv(options.env, 'GITHUB_REPOSITORY'),
@@ -147,12 +182,6 @@ export const verifyAc265HostedStagingEvidenceCli = async (options: {
     },
     options.fetchImpl ?? fetch,
   );
-  const bundleBase64 =
-    options.env['AC265_HOSTED_VERIFICATION_CONTEXT_BUNDLE_B64'];
-  const bundleBytes =
-    bundleBase64 === undefined
-      ? undefined
-      : Buffer.from(bundleBase64, 'base64');
   const manifest = verifyAc265HostedStagingEvidence({
     bundleBytes,
     reportArchivePath: inputs.reportArchivePath,
@@ -163,10 +192,12 @@ export const verifyAc265HostedStagingEvidenceCli = async (options: {
     // The GitHub-reported byte length, not a local measurement, so the archive
     // must match what the artifact API reported for this exact run attempt.
     authenticatedReportArchiveBytes: provenance.reportArchiveBytes,
+    authenticatedStagingRunId: provenance.runId,
+    authenticatedStagingRunAttempt: Number(provenance.runAttempt),
     authenticatedSourceRevision: provenance.sourceRevision,
     authenticatedDeploymentId: provenance.deploymentId,
   });
-  await writeManifest(options.workspaceRoot, manifest);
+  await writeManifest(workspaceRoot, manifest);
   return manifest;
 };
 

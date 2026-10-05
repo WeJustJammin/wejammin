@@ -236,8 +236,32 @@ export const createSchemaMigrationWorker = (
       signal,
       attempt,
       replay,
-    ).then((result) =>
-      normalized.event === null
+    ).then(async (result) => {
+      // BE03a Observability `cms_migration_blocked_total`: a blocked plan is a
+      // terminal-for-now state, so it is counted once here, before a claim
+      // release can rewrite the queue outcome to a retry.
+      if (result.outcome === 'blocked')
+        await baseRuntime.emit({
+          operation: 'migration.consume',
+          outcome: 'blocked',
+          migrationPlanId: result.migrationPlanId,
+          schemaVersionId: result.schemaVersionId,
+          eventId: result.eventId,
+          correlationId: normalized.event?.correlationId ?? null,
+          cursor: result.cursor,
+          progress: result.progress,
+          attempt,
+          retryable: false,
+          reasonCode: result.reasonCode,
+          durationMs:
+            normalized.event === null
+              ? 0
+              : Math.max(
+                  0,
+                  baseRuntime.now() - Date.parse(normalized.event.occurredAt),
+                ),
+        });
+      return normalized.event === null
         ? result
         : releaseClaimForRetry(
             runtime,
@@ -245,8 +269,8 @@ export const createSchemaMigrationWorker = (
             result,
             signal,
             attempt,
-          ),
-    );
+          );
+    });
     inFlight.set(identity, promise);
     try {
       return await promise;

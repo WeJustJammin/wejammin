@@ -1,0 +1,73 @@
+# Step-up and MFA components
+
+## Contents
+
+The FE01 browser surface for AUTH-API-16 to AUTH-API-21: the `/step-up`
+challenge form (`StepUpChallengeForm`), the `/settings/security/mfa`
+enrollment wizard (`MfaEnrollmentWizard`), their hooks, API client, failure
+mapping, return-target rules and the client-side QR encoder under `qr/`.
+
+## Ownership
+
+These components own presentation and island-local interaction state for the
+step-up challenge and MFA enrollment. The worker/API and database contracts stay
+authoritative for factor lifecycle, step-up proof, lockout and return-target
+safety; the browser holds no Supabase token and only calls the same-origin
+proxies.
+
+## Extension
+
+Add a call to `mfa-api.ts` (every call goes through `mfaApiCall`, parses the
+contract schema and returns an `ApiOutcome`). Map its failures in
+`mfa-failure-view.ts` or `step-up-failure.ts` with the exact FE01 copy, keep
+state transitions in the `use-*` hook or `*-state.ts`, and keep components to
+rendering. Other protected forms reuse `stepUpHref` from `step-up-return.ts`
+to send a 401 `STEP_UP_REQUIRED` to `/step-up?returnTo=`; the admin reset form
+in `../../platform-configuration/admin-mfa-reset/` is the reference consumer.
+
+## Conventions
+
+- The browser holds no Supabase token; calls are same-origin proxies under
+  `src/pages/api/v1/account/mfa/**` and `src/pages/api/v1/auth/step-up/**`.
+- A one-time code, the otpauth URI and the manual key live only in island
+  memory; `step-up-draft.ts` refuses to persist fields that could hold them.
+- Everything a step-up detour persists (protected-form drafts, the capability
+  grant pending-command envelope, the admin reset marker) is stamped by
+  `step-up-binding.ts` with the session scope and the write time. It restores
+  only for the same scope inside the DEC-111 600 s window and is otherwise
+  cleared. The scope is the `wj_step_up_scope` cookie `src/server/step-up-scope.ts`
+  issues at the edge: a RANDOM nonce with nothing derived from the subject
+  (two sign-ins of one person get different nonces). A separate HttpOnly cookie
+  `wj_step_up_subject` holds an unkeyed SHA-256 digest of a fixed domain string
+  plus the subject (no secret; the server already receives the subject in the
+  HttpOnly access token) so the edge can notice a different user and rotate the
+  nonce; both are cleared on sign-out. The nonce follows the subject, not the
+  session id, because step-up rotates the session. All of it is cleared on
+  an acting-context change and when the tab reaches `/auth/sign-in`. A new
+  persisted step-up record must use `stampFor`/`isStampLive` and add its key to
+  `clearAllStepUpState`.
+- The QR code is rendered client-side from the one-time payload; no service
+  receives the secret.
+- Tests sit next to their source; `*.test-support.*` files are shared fixtures.
+- Components stay at or under 200 lines and hooks at or under 300.
+
+## Related links
+
+- Pages: `src/pages/step-up.astro`, `src/pages/settings/security/mfa.astro`
+- Server projections: `src/server/step-up-page-context.ts`,
+  `src/server/mfa-settings-page-context.ts`
+- Spec: `.memory/wiki/specs/fe/01-identity-authority.md`
+
+`StepUpRecoveryLink` is the shared 401 `STEP_UP_REQUIRED` recovery anchor for
+legacy surfaces (login-method manager, provider evidence): it links to
+`/step-up?returnTo=<current relative path>` and never renders a gate.
+
+## Page headings, recovery entry and multi-tab refresh
+
+- `StepUpPageHeading` and `step-up-page-headings.ts` own the one h1, eyebrow,
+  description and document title of `/step-up` and `/settings/security/mfa`;
+  both pages return `authPageRedirect` (`server/auth-page-redirect.ts`, status 303) for a missing or expired session.
+- `recoverySignInHref` opens `/auth/sign-in?intent=recovery`; the sign-in page
+  then offers only the recovery intent (`SignInEmailForm`).
+- `MfaEnrollmentWizard` posts the empty invalidation signal after a factor is
+  added or removed and re-reads AUTH-API-16 when another tab posts it.

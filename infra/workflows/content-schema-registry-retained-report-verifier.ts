@@ -48,7 +48,7 @@ const retainedReports = (
 const sha256Bytes = (value: Uint8Array): string =>
   createHash('sha256').update(value).digest('hex');
 
-const verifyReportTree = (
+export const verifyReportTree = (
   approvedRoot: string,
   allowedPaths: ReadonlySet<string>,
 ): void => {
@@ -120,7 +120,7 @@ const validateRetainedReportStat = (stat: Stats, label: string): void => {
     throw new Error(`Retained report exceeds the 10 MiB limit: ${label}.`);
 };
 
-const readStableReport = (
+export const readStableReport = (
   candidate: string,
   retainedPath: string,
   label: string,

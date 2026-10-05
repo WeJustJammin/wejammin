@@ -1,0 +1,91 @@
+-- Trigger-catalog enumeration (AC215).  Every user trigger on every platform_private.cms_ table is
+-- listed below with its function and exact tgtype (timing, row level and events).  The catalog must
+-- equal this inventory, so a trigger can neither disappear nor appear without an updated proof.  The two
+-- generic guards are then proved BEHAVIORALLY on every table that holds a producer row at this point, by
+-- isolating the guard (every other user trigger of the table disabled for that one statement, the
+-- statement rolled back): the write gate refuses every INSERT, UPDATE and DELETE outside an RPC context
+-- with DIRECT_CMS_TABLE_WRITE, and the immutable guard refuses every UPDATE and DELETE even inside an RPC
+-- context with IMMUTABLE_RECORD.  Tables with no row at this point are listed explicitly, never skipped.
+
+\ir ../phase_02_slice_09_dec108/06-trigger-probes.sqlinc
+
+create temp table s09t_catalog on commit drop as
+select c.relname::text as table_name, t.tgname::text as trigger_name, p.proname::text as function_name,
+       t.tgtype::integer as trigger_type, t.tgenabled::text as enabled
+  from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_proc p on p.oid = t.tgfoid
+ where c.relnamespace = 'platform_private'::regnamespace and c.relname like 'cms\_%' and not t.tgisinternal;
+
+select is((select count(*)::integer from (select table_name, trigger_name, function_name, trigger_type from s09t_catalog
+    except select table_name, trigger_name, function_name, trigger_type from s09t_inventory) unlisted), 0,
+  'no cms_ trigger exists outside the proved inventory [P2-S09-AC-215]');
+select is((select count(*)::integer from (select table_name, trigger_name, function_name, trigger_type from s09t_inventory
+    except select table_name, trigger_name, function_name, trigger_type from s09t_catalog) missing), 0,
+  'every proved trigger still exists with its function, timing, row level and events [P2-S09-AC-215]');
+select is((select count(*)::integer from s09t_catalog where enabled <> 'O'), 0,
+  'every cms_ trigger fires in the origin session role, none is disabled or replica-only [P2-S09-AC-215]');
+select is((select count(*)::integer from s09t_inventory), 109, 'the inventory holds exactly 109 triggers [P2-S09-AC-215]');
+
+-- Every cms_ table has INSERT, UPDATE and DELETE each covered by a BEFORE row trigger, except the two
+-- named exceptions: the alert delivery log has no trigger (its RLS policy admits only RPC context) and
+-- the operator-only owner receipt is guarded by revoked grants and the singleton key.
+create temp table s09t_coverage on commit drop as
+select c.relname::text as table_name,
+       coalesce(bit_or(i.trigger_type) filter (where i.trigger_type & 3 = 3), 0) as mask
+  from pg_class c left join s09t_catalog i on i.table_name = c.relname::text
+ where c.relnamespace = 'platform_private'::regnamespace and c.relkind = 'r' and c.relname like 'cms\_%'
+ group by c.relname;
+select is((select string_agg(table_name, ',' order by table_name) from s09t_coverage where mask & 28 <> 28),
+  'cms_operational_alert_deliveries,cms_owner_initialization',
+  'every cms_ table has its INSERT, UPDATE and DELETE each covered by a BEFORE row guard, but the two named tables [P2-S09-AC-215]');
+
+select pg_temp.s09t_run_generic();
+select diag(table_name || ' ' || trigger_name || ' ' || event || ' => ' || outcome) from s09t_generic
+ where outcome <> 'EMPTY' and outcome <> expected order by 1;
+select ok(outcome = expected, trigger_name || ' refuses ' || upper(event) || ' with ' || expected || ' (' || outcome || ') [P2-S09-AC-215]')
+  from s09t_generic where outcome <> 'EMPTY' order by table_name, trigger_name, event;
+select is((select string_agg(distinct table_name, ',' order by table_name) from s09t_generic where outcome = 'EMPTY'),
+  'cms_composition_instances,cms_conflict_records,cms_content_type_capability_bindings,cms_edit_presence,cms_editorial_decisions,cms_editorial_reviews,cms_entry_relations,cms_locale_variants,cms_pattern_versions,cms_preview_tokens,cms_publication_schedules,cms_publication_versions,cms_related_content_rules,cms_taxonomy_versions,cms_term_assignments,cms_term_labels,cms_terms',
+  'the tables with no row in this fixture are exactly the listed ones; the entry/locale/relation tables are proved on the second fixture and the rest are Slice 10-16 producers [P2-S09-AC-215]');
+
+-- The state, identity, parent and lifecycle guards of the original BE03a tables and of the new review,
+-- grant and report tables, each isolated and shown to refuse one violating statement on a real row.
+create temp table s09t_named(table_name text, trigger_name text, statement text) on commit drop;
+-- NEGATIVE CONTROL: every statement in this table is run once against a real row to show that exactly its named guard refuses it; none is a producer path.
+insert into s09t_named values
+  ('cms_content_types', 'cms_content_types_identity_guard', 'update platform_private.cms_content_types set type_key = type_key || ''_x'''),
+  ('cms_content_type_versions', 'cms_content_type_versions_guard', 'update platform_private.cms_content_type_versions set definition_hash = repeat(''c'', 64) where state = ''active'''),
+  ('cms_content_type_versions', 'cms_content_type_versions_locale_immutable_guard', 'update platform_private.cms_content_type_versions set supported_locales = ''["en-US","fr-FR"]''::jsonb where state = ''active'''),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_identity_guard', 'update platform_private.cms_field_definition_versions set stable_field_id = extensions.gen_random_uuid()'),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_parent_state_guard', 'update platform_private.cms_field_definition_versions set required = not required where content_type_version_id in (select id from platform_private.cms_content_type_versions where state = ''active'')'),
+  ('cms_relation_definitions', 'cms_relation_definitions_parent_state_guard', 'update platform_private.cms_relation_definitions set ordered = not ordered'),
+  ('cms_content_type_template_bindings', 'cms_content_type_template_bindings_parent_state_guard', 'update platform_private.cms_content_type_template_bindings set content_type_version_id = (select id from platform_private.cms_content_type_versions where state = ''active'' limit 1)'),
+  ('cms_schema_artifacts', 'cms_schema_artifacts_z_compile_guard', 'update platform_private.cms_schema_artifacts set artifact_hash = repeat(''d'', 64) where state::text = ''compiled'''),
+  ('cms_schema_migration_plans', 'cms_schema_migration_plans_z_completed_guard', 'update platform_private.cms_schema_migration_plans set row_error_count = row_error_count + 1 where state = ''completed'''),
+  ('cms_release_nonce_receipts', 'cms_release_nonce_receipts_identity_guard', 'update platform_private.cms_release_nonce_receipts set nonce_hash = repeat(''e'', 64)'),
+  ('cms_schema_reviews', 'cms_schema_reviews_z_state_guard', 'update platform_private.cms_schema_reviews set state = ''open'' where state <> ''open'''),
+  ('cms_schema_review_assignments', 'cms_schema_review_assignments_z_state_guard', 'update platform_private.cms_schema_review_assignments set reviewer_person_ref = grantor_person_ref'),
+  ('cms_schema_review_decisions', 'cms_schema_review_decisions_z_append_guard', 'update platform_private.cms_schema_review_decisions set decision = decision'),
+  ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_z_state_guard', 'update platform_private.cms_schema_dry_run_reports set source_count = coalesce(source_count, 0) + 1 where state = ''completed'''),
+  ('cms_capability_grants', 'cms_capability_grants_z_state_guard', 'update platform_private.cms_capability_grants set subject_person_ref = grantor_person_ref'),
+  ('cms_capability_grant_events', 'cms_capability_grant_events_z_append_guard', 'update platform_private.cms_capability_grant_events set action = action'),
+  ('cms_content_types', 'cms_content_types_no_delete', 'delete from platform_private.cms_content_types'),
+  ('cms_content_type_versions', 'cms_content_type_versions_no_delete', 'delete from platform_private.cms_content_type_versions'),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_no_delete', 'delete from platform_private.cms_field_definition_versions'),
+  ('cms_relation_definitions', 'cms_relation_definitions_no_delete', 'delete from platform_private.cms_relation_definitions'),
+  ('cms_content_type_template_bindings', 'cms_content_type_template_bindings_no_delete', 'delete from platform_private.cms_content_type_template_bindings'),
+  ('cms_content_types', 'cms_content_types_version_monotonic', 'update platform_private.cms_content_types set version = version - 1'),
+  ('cms_content_type_versions', 'cms_content_type_versions_version_monotonic', 'update platform_private.cms_content_type_versions set version = version - 1'),
+  ('cms_field_definition_versions', 'cms_field_definition_versions_version_monotonic', 'update platform_private.cms_field_definition_versions set version = version - 1'),
+  ('cms_relation_definitions', 'cms_relation_definitions_version_monotonic', 'update platform_private.cms_relation_definitions set version = version - 1'),
+  -- NEGATIVE CONTROL (continued): each statement still refuses exactly its named guard; none is a producer path.
+  ('cms_schema_migration_plans', 'cms_schema_migration_plans_version_monotonic', 'update platform_private.cms_schema_migration_plans set version = version - 1'),
+  ('cms_schema_dry_run_reports', 'cms_schema_dry_run_reports_version_monotonic', 'update platform_private.cms_schema_dry_run_reports set version = version - 1'),
+  ('cms_content_type_versions', 'cms_content_type_versions_blocked_guard', 'do $blocked$ declare v uuid; begin select id into v from platform_private.cms_content_type_versions limit 1; update platform_private.cms_content_type_versions set state = ''blocked'' where id = v; update platform_private.cms_content_type_versions set state = ''draft'' where id = v; end $blocked$');
+create temp table s09t_named_results on commit drop as
+select n.table_name, n.trigger_name, pg_temp.s09t_probe_stmt(n.table_name, n.trigger_name, true, n.statement) as outcome
+  from s09t_named n;
+select diag(table_name || ' ' || trigger_name || ' => ' || outcome) from s09t_named_results where outcome <> 'IMMUTABLE_RECORD' order by 1;
+select is(outcome, 'IMMUTABLE_RECORD', trigger_name || ' alone refuses its violating statement on a real ' || table_name || ' row [P2-S09-AC-215]')
+  from s09t_named_results order by table_name, trigger_name;
+select is((select count(*)::integer from s09t_named n join s09t_inventory i using (table_name, trigger_name)), (select count(*)::integer from s09t_named),
+  'every named guard probed is in the proved inventory [P2-S09-AC-215]');

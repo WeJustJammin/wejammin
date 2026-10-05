@@ -8,8 +8,8 @@ select platform_api.auth_bootstrap(
   decode(repeat('23', 32), 'hex'), 'a9090000-0000-4000-8000-000000000031',
   'a9090000-0000-4000-8000-000000000032'
 );
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a9090000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a9090000-0000-4000-8000-000000000001', true);
 select set_config('app.auth_user_id', 'a9090000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_auth_user_id', 'a9090000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id', (
@@ -23,6 +23,7 @@ create temp table s09_fixture_org on commit drop as
 select (result->>'organizationId')::uuid as organization_id
 from lateral (select platform_api.rpc_create_organization('self_member', '{}'::text[]) as result) created;
 select set_config('app.acting_party_id', (select organization_id::text from s09_fixture_org), true);
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(
   organization_id, person_id, capability_code, valid_from, valid_through, active
 )
@@ -34,6 +35,7 @@ from s09_fixture_org
 cross join (values ('cms.schema_designer'), ('cms.schema_registry.read')) capabilities(capability_code)
 on conflict (organization_id, person_id, capability_code) do update
 set active = excluded.active, valid_through = excluded.valid_through;
+-- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
 insert into identity_private.membership_tenure(
   id, organization_id, person_id, state, provenance, governance_mode,
   starts_on, accepted_at, actor_id, version
@@ -45,6 +47,7 @@ select 'a9090000-0000-4000-8000-000000000201', organization_id,
        (select person_id from identity.auth_user_bindings
         where auth_user_id = 'a9090000-0000-4000-8000-000000000001'), 1
 from s09_fixture_org;
+-- FIXTURE FORGERY: no command confirms an ungoverned membership (rpc_accept_or_end_membership accepts governed tenures only).
 insert into identity_private.membership_tenure(
   id, organization_id, person_id, state, provenance, governance_mode,
   starts_on, accepted_at, actor_id, version
@@ -56,6 +59,7 @@ select 'a9090000-0000-4000-8000-000000000202', organization_id,
        (select person_id from identity.auth_user_bindings
         where auth_user_id = 'a9090000-0000-4000-8000-000000000001'), 1
 from s09_fixture_org;
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(
   organization_id, person_id, capability_code, valid_from, valid_through, active
 )
@@ -75,7 +79,7 @@ set active = excluded.active, valid_through = excluded.valid_through;
 create temp table s09_type_request on commit drop as
 select jsonb_build_object(
   'typeKey', 'articlex', 'label', 'Article X', 'ownerCapability', 'cms.schema_designer',
-  'sourceLocale', 'en-US', 'defaultLocale', 'en-US', 'workflowKey', 'editorial',
+  'sourceLocale', 'en-US', 'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb, 'workflowKey', 'editorial',
   'workflowVersion', '1', 'defaultTemplateVersionId', null,
   'fields', jsonb_build_array(jsonb_build_object(
     'stableFieldId', 'a9090000-0000-4000-8000-000000000101',
@@ -95,7 +99,7 @@ select ok(
    and response->>'resourceKind' = 'content_type_version'
    and response->>'typeKey' = 'articlex'
    and response->>'version' = '1'
-   and response->>'dryRunId' is not null
+   and response->'dryRunId' = 'null'::jsonb
    and (response->>'fieldCount')::integer = 1 from s09_type_created),
   'CMS-03A-01 executes the atomic draft aggregate and returns the full resource'
 );
@@ -193,8 +197,8 @@ select throws_ok(
   $$select platform_api.cms_add_field_definition(
     (select request || jsonb_build_object('expectedVersion', '1', 'idempotencyKey', 's09-field-stale-0001') from s09_field_request)
   )$$,
-  'P0001', 'CONFLICT',
-  'CMS-03A-02 rejects a stale CAS version without inserting a second field'
+  'P0001', 'VERSION_MISMATCH',
+  'CMS-03A-02 rejects a stale CAS version (VERSION_MISMATCH) without inserting a second field'
 );
 select is(
   (select count(*)::integer from platform_private.cms_field_definition_versions
@@ -206,8 +210,8 @@ select is(
 -- A second tenant proves the target locks are owner-scoped for every
 -- mutation.  The acting user retains a valid capability in tenant one, but
 -- cannot discover or mutate tenant-two targets.
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a9090000-0000-4000-8000-000000000002', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a9090000-0000-4000-8000-000000000002', true);
 select set_config('app.auth_user_id', 'a9090000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_auth_user_id', 'a9090000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_person_id', (
@@ -222,6 +226,7 @@ create temp table s09_fixture_org_two on commit drop as
 select (result->>'organizationId')::uuid as organization_id
 from lateral (select platform_api.rpc_create_organization('self_member', '{}'::text[]) as result) created;
 select set_config('app.acting_party_id', (select organization_id::text from s09_fixture_org_two), true);
+-- FIXTURE FORGERY: no command grants a CMS/admin capability of a non-initialized organization (CMS-03A-15 is the owner-receipt command).
 insert into identity_private.organization_actor_grant(
   organization_id, person_id, capability_code, valid_from, valid_through, active
 )

@@ -1,6 +1,7 @@
 import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 
 import { copyIdentityAuthorityCookies } from './identity-authority-platform-api';
+import { untouchedBodyInit } from './proxy-request-body';
 
 export type AuthPlatformApiBinding = Readonly<{
   fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -80,7 +81,7 @@ export const forwardAuthRequest = async (
         method,
         headers,
         redirect: 'manual',
-        ...(method === 'GET' ? {} : { body: await request.arrayBuffer() }),
+        ...untouchedBodyInit(request, method),
       }),
     );
   } catch {

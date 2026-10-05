@@ -2,10 +2,11 @@ import * as React from 'react';
 
 import {
   bodyFor,
-  newIdempotencyKey,
   readCommandResult,
   type ProfileOwnershipOperation,
 } from './profile-ownership-command-transport';
+import { useProfileOwnershipStepUpDraft } from './use-profile-ownership-step-up-draft';
+import { navigateToStepUp } from '../step-up-required';
 
 export type { ProfileOwnershipOperation } from './profile-ownership-command-transport';
 
@@ -34,6 +35,14 @@ export const CommandForm = ({
   onStatus,
   onSuccess,
 }: CommandFormProps): React.ReactElement => {
+  const formRef = React.useRef<HTMLFormElement | null>(null);
+  const draft = useProfileOwnershipStepUpDraft({
+    formRef,
+    operation,
+    action,
+    expectedVersion,
+    onStatus,
+  });
   const submit = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
@@ -45,10 +54,11 @@ export const CommandForm = ({
       return;
     }
     onStatus('Submitting request…');
+    const idempotencyKey = draft.keyForSubmit();
     const headers = new Headers({
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      'Idempotency-Key': newIdempotencyKey(operation),
+      'Idempotency-Key': idempotencyKey,
     });
     if (!anonymous) {
       headers.set('X-CSRF-Token', csrfToken);
@@ -63,6 +73,13 @@ export const CommandForm = ({
       });
       const outcome = await readCommandResult(response, operation);
       onStatus(outcome.message);
+      if (outcome.stepUp === true) {
+        // FE00: persist the scoped draft first, then navigate.
+        draft.persist(form, idempotencyKey);
+        navigateToStepUp();
+      } else {
+        draft.settle();
+      }
       if (outcome.payload !== undefined)
         onSuccess?.(operation, outcome.payload);
     } catch {
@@ -74,6 +91,7 @@ export const CommandForm = ({
 
   return (
     <form
+      ref={formRef}
       method="post"
       action={action}
       data-operation={operation}

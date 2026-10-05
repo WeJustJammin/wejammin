@@ -54,6 +54,8 @@
 - [[specs/audits/propagation-ac265-2026-09-09|Approved AC265 propagation]] — audit — spec-vault
 - [[specs/audits/propagation-ac265-pre-release-2026-09-26|Approved AC265 pre-release propagation]] — audit — spec-vault
 - [[specs/audits/propagation-ac266-2026-09-21|Approved AC266 Phase 2 completion-policy propagation]] — audit — spec-vault
+- [[specs/audits/propagation-cms-conflict-record-2026-09-26|Approved CMS conflict-record propagation]] — audit — spec-vault
+- [[specs/audits/propagation-cms-entry-bootstrap-2026-09-26|Approved CMS entry bootstrap and draft-read propagation]] — audit — spec-vault
 - [[specs/audits/propagation-github-repository-identity-2026-09-22|Approved AC265 GitHub repository identity propagation]] — audit — spec-vault
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]] — audit — spec-vault
 - [[specs/audits/propagation-option-a-2026-09-02|Slice 09 Option A propagation record]] — audit — spec-vault
@@ -65,6 +67,20 @@
 - [[specs/audits/propagation-scan-2026-09-22-repository-identity|GitHub repository identity propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-25|AC209/AC211 prelaunch production-evidence propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-26-ac265-pre-release|AC265 pre-release gate propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-26-cms-conflict-record|CMS conflict-record propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-26-cms-entry-bootstrap|CMS entry bootstrap and draft-read propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number|Propagation scan — CMS-03B-11 draft authoring base]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-27-cms-template-latest-read|CMS-11 protected latest-template read — propagation scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-28-cms-editorial-policy-source|Propagation scan — editorial workflow-policy authority]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-28-cms-pattern-source|Propagation scan — reusable-pattern authority source]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-28-cms-related-content-source|CMS-16 related-content eligibility and derived-rule source scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-28-cms-restore-chain|Propagation scan — CMS-03B-04 restore-chain identity]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-28-cms-taxonomy-source|CMS-14 canonical taxonomy source and version-authoring scan]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-28-cms-template-activation|Propagation scan — governed template activation]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-30-cms-conflict-detail-read|Propagation scan — protected CMS conflict-detail read]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-30-cms-revision-comparison|Propagation scan — complete CMS-07 revision comparison]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-09-30-cms-rich-text-ast|Propagation scan — approved CMS rich-text AST]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-10-02|Propagation scan — Slice 09 activation amendment]] — audit — spec-vault
 - [[specs/audits/remediation-state|Pipeline remediation state]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1255|Infrastructure Verification Report]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1353|Infrastructure Verification Report]] — audit — spec-vault
@@ -1560,6 +1576,38 @@
 
 ## Structured Memory
 
+- pattern: PAT-019: Never message a running Workflow agent (2026-10-03) — 2026-10-04T06:09:14.695Z
+- pattern: PAT-020: Self-hosted CI shares the local Supabase stack (2026-10-03) — 2026-10-04T06:09:14.695Z
+- pattern: PAT-018: Prove database authority through real PostgREST, never hand-set GUCs (2026-10-03) — 2026-10-04T06:09:14.694Z
+- decision: DEC-131: Erratum to DEC-130 — AC1122 schema-invalid input is 400 INVALID_REQUEST (2026-10-03) — 2026-10-04T03:54:56.585Z
+- decision: DEC-130: AC1122 admin MFA reset errors are proven per branch (2026-10-03) — 2026-10-03T21:56:49.084Z
+- decision: DEC-129: Delete the CMS-03A-05 'unknown release target is 404' clause (2026-10-03) — 2026-10-03T21:45:03.750Z
+- decision: DEC-126: CMS-03A-09 keeps the optional workflowKey/workflowVersion pair (2026-10-03) — 2026-10-03T17:11:54.904Z
+- decision: DEC-127: Rollback RPC may fail a dry_running schema migration plan (2026-10-03) — 2026-10-03T17:11:54.904Z
+- decision: DEC-128: AC906 projections refetch AUTH-API-16 under the pull model (2026-10-03) — 2026-10-03T17:11:54.904Z
+- decision: DEC-124: Owner ratifies 16 Slice 09 criterion rewordings (2026-10-03) — 2026-10-03T17:11:54.903Z
+- decision: DEC-125: AC185 legal-hold and incident-fence enforcement over CMS records belongs to Slice 16 (2026-10-03) — 2026-10-03T17:11:54.903Z
+- decision: DEC-123: New content types bind a default template through their first successor, not at creation (2026-10-03) — 2026-10-03T06:14:38.884Z
+- decision: DEC-122 (ratified): Owner ratifies nine Slice 09 criterion rewordings (2026-10-02) — 2026-10-03T03:11:22.121Z
+- pattern: PAT: Marker-presence evidence over-claims acceptance (2026-10-02) — 2026-10-02T22:05:55.967Z
+- decision: DEC-122: Orchestrator criterion rulings for Slice 09 evidence gaps (AC300, AC678, AC774, AC1031, AC1166) (2026-10-02) — 2026-10-02T22:05:55.966Z
+- decision: DEC-121: Stale fallback-permitted locale fields keep serving the last approved translation (2026-10-02) — 2026-10-02T14:05:32.572Z
+- decision: DEC-120: Standing CMS capability grants last up to 90 days; schema-review assignments stay at most 7 days (2026-10-02) — 2026-10-02T13:01:11.147Z
+- decision: DEC-119: A protected owner CMS grant operation grants, renews and revokes bounded CMS capabilities (2026-10-02) — 2026-10-02T04:05:36.213Z
+- decision: DEC-118: Slice 17 observability and backup gates use the scoped staging/configuration reading (2026-10-02) — 2026-10-02T04:04:03.280Z
+- decision: DEC-117: Slice 13 AC171 screen-reader smoke is automated, and AC266 real-device scope extends to S13 delivery surfaces (2026-10-02) — 2026-10-02T04:03:34.994Z
+- decision: DEC-116: Media scanning and renditions are $0 self-operated; Phase 2 hosted per-file cap is 50 MiB (2026-10-02) — 2026-10-02T04:02:56.243Z
+- decision: DEC-115: Navigation, route/slug and discovery-metadata candidates are approved through generalized CMS review (2026-10-02) — 2026-10-02T04:01:55.869Z
+- decision: DEC-114: Build the scope-locked CMS-15/16 and CFG-05C-01 flows in Phase 2 instead of moving their criteria (2026-10-02) — 2026-10-02T04:01:35.112Z
+- decision: DEC-113: Template and pattern activation is reviewer-gated through generalized CMS review machinery (2026-10-02) — 2026-10-02T04:01:00.277Z
+- decision: DEC-112: CMS rich text uses an owned versioned rich_text.v1 AST (2026-10-02) — 2026-10-02T04:00:41.858Z
+- decision: DEC-111: Step-up MFA is delivered by server-mediated Worker operations and a protected step-up page (2026-10-02) — 2026-10-02T03:59:51.269Z
+- decision: DEC-110: Protected workflow policies are four disclosure classes with their own specialist reviewer capabilities (2026-10-02) — 2026-10-02T03:58:16.474Z
+- decision: DEC-109: Editorial workflow policies come from a code-owned versioned registry (2026-10-02) — 2026-10-02T03:58:16.473Z
+- decision: DEC-108: Complete CMS schema activation with private review and real prerequisite producers (2026-10-02) — 2026-10-02T02:06:54Z
+- pattern: PAT-018: Consumer fixtures cannot prove that required authority producers exist — 2026-10-01T20:56:13Z
+- decision: DEC-107: CMS-06 conflict resolution requires a private durable conflict record (2026-09-26) — 2026-09-26T20:35:12Z
+- decision: DEC-106: CMS authors need protected entry bootstrap and draft-detail reads (2026-09-26) — 2026-09-26T19:16:50Z
 - decision: DEC-105: AC265 hosted acceptance is a mandatory pre-release gate, not a Slice 10 implementation prerequisite (2026-09-26) — 2026-09-26T18:02:36.994Z
 - decision: DEC-104: AC209 and AC211 move to post-implementation production-evidence gates without being passed or waived (2026-09-25) — 2026-09-25T20:30:00-04:00
 - decision: DEC-103: AC265 staging identities come from Cloud Identity Free, with exactly one narrow expiring CMS read grant (2026-09-25) — 2026-09-25T15:52:00-04:00

@@ -1,0 +1,156 @@
+---
+import { env } from 'cloudflare:workers';
+import { createRequestId } from '@wejammin/contracts';
+
+import ContentSchemaRegistryWorkbenchIsland from '../../../../components/content-schema-registry/ContentSchemaRegistryWorkbenchIsland';
+import '../../../../components/content-schema-registry/content-schema-registry.css';
+import { safeContentSchemaRegistryReturnPath } from '../../../../server/content-schema-registry-contracts';
+import { applyContentSchemaRegistryRecoveryHeaders } from '../../../../server/content-schema-registry-context-presentation';
+import {
+  contentSchemaRegistryMutationOperationFromRequest,
+  forwardContentSchemaRegistryMutation,
+} from '../../../../server/content-schema-registry-platform-api';
+import {
+  jsonContinuation,
+  mutationFailureCode,
+  wantsJsonResponse,
+} from '../../../../server/content-schema-registry-mutation-outcome';
+import { resolveContentSchemaReviewPage } from '../../../../server/content-schema-review-context';
+import {
+  createContentSchemaReviewPlatformPorts,
+  type ContentSchemaReviewPorts,
+} from '../../../../server/content-schema-review-platform-api';
+import {
+  isStepUpRequiredCode,
+  stepUpTargetForLocation,
+} from '../../../../components/step-up-required';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const requestId = createRequestId(
+  Astro.request.headers.get('x-request-id') ?? undefined,
+);
+const reviewId = Astro.params.reviewId ?? '';
+if (Astro.request.method === 'POST') {
+  const operationId = await contentSchemaRegistryMutationOperationFromRequest(
+    Astro.request,
+  );
+  if (operationId !== 'CMS-03A-12' && operationId !== 'CMS-03A-14') {
+    return new Response('Bad request', {
+      status: 400,
+      headers: { 'cache-control': 'no-store' },
+    });
+  }
+  const mutation = await forwardContentSchemaRegistryMutation(
+    Astro.request,
+    env.PLATFORM_API,
+    { operationId, reviewId },
+  );
+  const json = wantsJsonResponse(Astro.request);
+  if (!mutation.ok) {
+    // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
+    // itself; only a native form post is redirected from the server.
+    if (!json && isStepUpRequiredCode(await mutationFailureCode(mutation)))
+      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
+    return mutation;
+  }
+  const continueTo = `/app/cms-content-modeling/schema-reviews/${encodeURIComponent(reviewId)}`;
+  return json
+    ? jsonContinuation(mutation, continueTo)
+    : Astro.redirect(continueTo, 303);
+}
+let ports: ContentSchemaReviewPorts | null;
+try {
+  ports = createContentSchemaReviewPlatformPorts(env.PLATFORM_API);
+} catch {
+  ports = null;
+}
+const result = await resolveContentSchemaReviewPage({
+  request: Astro.request,
+  reviewId: Astro.params.reviewId,
+  ports,
+  requestId,
+});
+if (result.kind === 'unauthenticated') {
+  return Astro.redirect(
+    `/auth/sign-in?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
+    303,
+  );
+}
+if (result.kind === 'invalid_record' || result.kind === 'invalid_query') {
+  return new Response('Bad request', {
+    status: 400,
+    headers: { 'cache-control': 'no-store' },
+  });
+}
+if (result.kind === 'not_found') {
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'cache-control': 'no-store' },
+  });
+}
+if (result.kind === 'forbidden') {
+  return new Response('Forbidden', {
+    status: 403,
+    headers: { 'cache-control': 'no-store' },
+  });
+}
+if (result.kind === 'degraded' || result.kind === 'error') {
+  Astro.response.status = result.status;
+}
+const page = result.page;
+applyContentSchemaRegistryRecoveryHeaders(Astro.response.headers, page);
+const reviewTitle = 'Schema review | WeJammin';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta
+      name="description"
+      content="Review the frozen evidence of one content schema candidate."
+    />
+    <meta name="robots" content="noindex" />
+    <title>{reviewTitle}</title>
+  </head>
+  <body class="content-schema-registry-page">
+    <nav aria-label="Skip navigation">
+      <a
+        class="content-schema-registry-skip-link"
+        href="#content-schema-registry-main"
+      >
+        Skip to main content
+      </a>
+    </nav>
+    <header
+      class="content-schema-registry-shell-header"
+      aria-label="Application navigation"
+    >
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/system/degraded">System status</a>
+      </nav>
+    </header>
+    <main id="content-schema-registry-main" tabindex="-1">
+      <header class="content-schema-registry-page-heading">
+        <p class="content-schema-registry-eyebrow">Authenticated workspace</p>
+        <h1 id="page-title" tabindex="-1">Schema review</h1>
+        <p>
+          Inspect the frozen evidence of one candidate and record the action the
+          server permits.
+        </p>
+      </header>
+      <ContentSchemaRegistryWorkbenchIsland
+        {...page}
+        canonicalRefetchUrl={page.retryUrl}
+        client:load
+      />
+    </main>
+    <script src="../../../../lib/route-heading-focus.ts"></script>
+    <script src="../../../../lib/auth-scope-sync.ts"></script>
+  </body>
+</html>

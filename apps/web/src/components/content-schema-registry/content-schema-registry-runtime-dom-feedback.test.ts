@@ -122,14 +122,14 @@ describe('content schema registry command feedback', () => {
     cleanup();
   });
 
-  it('links 422 pointers to invalid fields and focuses the summary', async () => {
+  it('[P2-S09-AC-248] links 422 pointers to invalid fields and focuses the summary', async () => {
     formMarkup();
     vi.stubGlobal(
       'fetch',
       vi.fn(
         async () =>
           new Response(
-            JSON.stringify({ details: { violations: [{ pointer: '/key' }] } }),
+            JSON.stringify({ details: { violations: [{ path: '/key' }] } }),
             { status: 422, headers: { 'content-type': 'application/json' } },
           ),
       ),
@@ -146,6 +146,88 @@ describe('content schema registry command feedback', () => {
     expect(summary).not.toBeNull();
     expect(
       document.querySelector('[name="key"]')?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(document.activeElement).toBe(summary);
+    cleanup();
+  });
+
+  it('[P2-S09-AC-248] [P2-S09-AC-1230] shows the exact OD-4 locale messages in the summary and links each to its control', async () => {
+    window.history.replaceState({}, '', '/app/cms-content-modeling');
+    document.body.innerHTML = `
+      <main>
+        <section data-workbench="content-schema-registry" data-canonical-refetch-url="/app/cms-content-modeling">
+          <form id="content-schema-registry-create-form" data-cms-command-form="true" data-operation-id="CMS-03A-01" action="/app/cms-content-modeling" method="post">
+            <input type="hidden" name="idempotency-key" value="stable-key-123" />
+            <input id="content-schema-registry-create-form-locale-tags" />
+            <fieldset id="content-schema-registry-create-form-locale-chain-fr-CA" tabindex="-1"><legend>Fallback order for fr-CA</legend></fieldset>
+            <input id="field-key" name="typeKey" value="release_note" />
+            <fieldset><button type="submit">Save</button></fieldset>
+          </form>
+        </section>
+      </main>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'VALIDATION_FAILED',
+              details: {
+                violations: [
+                  {
+                    path: '/supportedLocales/1',
+                    message: 'supportedLocales must be unique',
+                  },
+                  {
+                    path: '/fallbackChains/fr-CA/0',
+                    message: 'fallback chain locale must be a supported locale',
+                  },
+                  { path: '/typeKey', message: 'The value is invalid.' },
+                ],
+              },
+            }),
+            { status: 422, headers: { 'content-type': 'application/json' } },
+          ),
+      ),
+    );
+    const cleanup = installContentSchemaRegistryCommandEnhancement(document);
+
+    await submit(
+      () => document.querySelector('[data-cms-validation-summary]') !== null,
+    );
+
+    const summary = document.querySelector<HTMLElement>(
+      '[data-cms-validation-summary]',
+    ) as HTMLElement;
+    const items = [...summary.querySelectorAll('li')].map(
+      (item) => item.textContent,
+    );
+    expect(items).toContain(
+      'supportedLocales / 1: supportedLocales must be unique',
+    );
+    expect(items).toContain(
+      'fallbackChains / fr-CA / 0: fallback chain locale must be a supported locale',
+    );
+    expect(items).toContain('Review typeKey');
+    expect(summary.textContent).not.toContain('The value is invalid.');
+    const hrefs = [...summary.querySelectorAll('a')].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(hrefs).toContain('#content-schema-registry-create-form-locale-tags');
+    expect(hrefs).toContain(
+      '#content-schema-registry-create-form-locale-chain-fr-CA',
+    );
+    expect(
+      document
+        .getElementById('content-schema-registry-create-form-locale-tags')
+        ?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(
+      document
+        .getElementById(
+          'content-schema-registry-create-form-locale-chain-fr-CA',
+        )
+        ?.getAttribute('aria-invalid'),
     ).toBe('true');
     expect(document.activeElement).toBe(summary);
     cleanup();
@@ -175,7 +257,7 @@ describe('content schema registry command feedback', () => {
     cleanup();
   });
 
-  it('fails closed when the same-key replay remains pending', async () => {
+  it('[P2-S09-AC-202] fails closed when the same-key replay remains pending', async () => {
     formMarkup();
     const methods: string[] = [];
     vi.stubGlobal(

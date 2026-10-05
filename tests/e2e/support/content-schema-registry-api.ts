@@ -8,19 +8,35 @@ import type {
   ContentSchemaRegistryDependencies,
   ContentSchemaRegistryResult,
 } from '../../../apps/worker/src/content-schema-registry/types';
+import { SchemaReviewResourceSchema } from '../../../apps/worker/src/content-schema-registry/contracts';
 import {
   createSessionVerifier,
   isLocalSessionId,
+  verifyLocalSessionRequest,
 } from './s09-session-authority';
+import { createS09DisclosurePorts } from './s09-disclosure-fixture';
+import {
+  dispatchRegistryPorts,
+  handleLaneControl,
+  laneDependencies,
+  registrySessionFor,
+  verifyLaneRequest,
+} from './s09-lane-api';
+import { revokeLaneSession } from './s09-lane-auth';
+import { createCmsTemplateFixture } from './cms-template-fixture';
+import { createCmsLocaleFixture } from './cms-locale-fixture';
+import { createCmsEditorialHistoryFixture } from './cms-editorial-history-fixture';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
-const PARTY_ID = '20000000-0000-4000-8000-000000000002';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';
 const VERSION_ID = '40000000-0000-4000-8000-000000000004';
 const FIELD_ID = '50000000-0000-4000-8000-000000000005';
 const ARTIFACT_ID = '60000000-0000-4000-8000-000000000006';
 const BLOCK_ID = '70000000-0000-4000-8000-000000000007';
 const DRY_RUN_ID = '90000000-0000-4000-8000-000000000009';
+const REVIEW_ID = '90000000-0000-4000-8000-00000000000a';
+const JOB_ID = '90000000-0000-4000-8000-00000000000b';
+const DECISION_ID = '90000000-0000-4000-8000-00000000000c';
 const HASH = 'a'.repeat(64);
 const INSTANT = '2026-09-02T12:00:00.000Z';
 
@@ -57,13 +73,16 @@ const fields = Array.from({ length: 128 }, (_, index) => {
 const resource = {
   ...versionMeta(VERSION_ID),
   resourceKind: 'content_type_version' as const,
-  state: 'draft' as const,
+  state: 'approved' as const,
   contentTypeId: TYPE_ID,
   typeKey: 'article',
   label: 'Article',
   ownerCapability: 'cms.content.article',
   sourceLocale: 'en-US',
   defaultLocale: 'en-US',
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
+  localeConfigHash: HASH,
   workflowKey: 'editorial.default',
   workflowVersion: '1',
   defaultTemplateVersionId: null,
@@ -157,7 +176,77 @@ const detail = {
   templateBindings: [],
   capabilityBindings: [capabilityBinding],
   blockDefinitions: [block],
+  // The legacy AC250 profile sessions inspect the activation confirmation of
+  // an approved candidate; the producers that reach this state are driven end
+  // to end by the stateful lane (tests/e2e/support/s09-lane-*.ts).
+  activationPreparation: {
+    dryRunRef: {
+      id: DRY_RUN_ID,
+      state: 'completed' as const,
+      result: 'passed' as const,
+      jobId: JOB_ID,
+      sourceCount: 0,
+      targetCount: 0,
+      rowErrorCount: 0,
+      sourceHash: HASH,
+      targetHash: HASH,
+      reportHash: HASH,
+    },
+    jobRef: { id: JOB_ID, state: 'succeeded' as const },
+    reviewRef: { id: REVIEW_ID, state: 'approved' as const },
+    permittedNextActions: ['activate' as const],
+  },
 };
+
+const approvedReview = SchemaReviewResourceSchema.parse({
+  ...versionMeta(REVIEW_ID),
+  resourceKind: 'schema_review',
+  state: 'approved',
+  contentTypeId: TYPE_ID,
+  contentTypeVersionId: VERSION_ID,
+  contentTypeVersionNo: '1',
+  riskClass: 'ordinary',
+  requiredDecisionCount: 1,
+  requiredCapabilities: ['cms.schema_review'],
+  distinctApprovalCount: 1,
+  recordedDecisionCount: 1,
+  frozenEvidence: {
+    contentTypeVersionId: VERSION_ID,
+    contentTypeVersionNo: '1',
+    definitionHash: HASH,
+    localeConfigHash: HASH,
+    schemaArtifact: {
+      id: ARTIFACT_ID,
+      state: 'compiled',
+      compilerVersion: '1.0.0',
+      zodContractRef: 'contracts/cms/content-type-v1',
+      artifactHash: HASH,
+    },
+    dependencyManifestHash: HASH,
+    dryRun: {
+      id: DRY_RUN_ID,
+      state: 'completed',
+      result: 'passed',
+      reportHash: HASH,
+    },
+  },
+  dryRunId: DRY_RUN_ID,
+  policyKey: 'cms.standard',
+  policyVersion: '1',
+  policyHash: HASH,
+  approvalEvidenceHash: HASH,
+  submittedAt: INSTANT,
+  decidedAt: INSTANT,
+  decisions: [
+    {
+      id: DECISION_ID,
+      decision: 'approve',
+      capability: 'cms.schema_review',
+      decidedAt: INSTANT,
+    },
+  ],
+  permittedNextActions: ['activate'],
+});
 
 const ok = <T>(value: T): ContentSchemaRegistryResult<T> => ({
   ok: true,
@@ -175,9 +264,13 @@ const unavailable = (): ContentSchemaRegistryResult<never> => ({
 
 const revokedSessionIds = new Set<string>();
 const hasValidSession = createSessionVerifier(USER_ID, revokedSessionIds);
+const s09 = createS09DisclosurePorts({
+  verifyClaim: (request) =>
+    verifyLocalSessionRequest(USER_ID, revokedSessionIds, request),
+});
 
 const registry: ContentSchemaRegistryDependencies = {
-  ports: {
+  ports: dispatchRegistryPorts({
     createTypeDraft: async () => unavailable(),
     addFieldDefinition: async () => unavailable(),
     bindRelation: async () => unavailable(),
@@ -186,26 +279,31 @@ const registry: ContentSchemaRegistryDependencies = {
     advanceBlockLifecycle: async () => unavailable(),
     listContentTypes: async () => ok(list),
     getContentTypeVersion: async () => ok(detail),
+    getSchemaReview: async () => ok(approvedReview),
+  } as never),
+  resolveSession: async (request) => {
+    const lane = await verifyLaneRequest(request);
+    if (lane !== null) return ok(registrySessionFor(lane));
+    const claim = await verifyLocalSessionRequest(
+      USER_ID,
+      revokedSessionIds,
+      request,
+    );
+    if (claim === null)
+      return {
+        ok: false,
+        status: 401,
+        code: 'UNAUTHENTICATED',
+        message: 'The authentication session is invalid.',
+        details: {},
+      };
+    return ok(s09.registrySessionForClaim(claim.sessionId));
   },
-  resolveSession: async (request) =>
-    (await hasValidSession(request))
-      ? ok({
-          userId: USER_ID,
-          actingPartyId: PARTY_ID,
-          capabilities: ['cms.schema_registry.read', 'cms.schema_designer'],
-          mfaFresh: true,
-        })
-      : {
-          ok: false,
-          status: 401,
-          code: 'UNAUTHENTICATED',
-          message: 'The authentication session is invalid.',
-          details: {},
-        },
   verifyRelease: async () => unavailable(),
   rateLimit: async () =>
     ok({ allowed: true, limit: 30, remaining: 29, resetAt: 2_000_000_000 }),
-  humanOrigins: ['http://127.0.0.1:4324'],
+  // The web facade forwards mutations with the internal service-binding origin.
+  humanOrigins: ['http://127.0.0.1:4324', 'https://platform-api.internal'],
   releaseOrigins: [],
   now: Date.now,
   deadlineMs: 1_000,
@@ -219,11 +317,22 @@ const logger = {
   error: noop,
 } as unknown as Logger;
 
+const legacyDependencies = {
+  auth: s09.auth,
+  identityAuthority: s09.identityAuthority,
+};
+
 const dependencies = {
   captureException: () => undefined,
   createLogger: () => logger,
   now: Date.now,
+  auth: s09.auth,
+  identityAuthority: s09.identityAuthority,
   contentSchemaRegistry: registry,
+  cmsTemplate: createCmsTemplateFixture(hasValidSession),
+  cmsLocale: createCmsLocaleFixture(hasValidSession),
+  cmsEditorial: createCmsEditorialHistoryFixture(hasValidSession),
+  ...laneDependencies(legacyDependencies),
 } as unknown as WorkerDependencies;
 
 const app = createWorkerApp(dependencies);
@@ -237,11 +346,14 @@ export default {
         if (!isLocalSessionId(body.sessionId))
           return Response.json({ revoked: false }, { status: 400 });
         revokedSessionIds.add(body.sessionId);
+        revokeLaneSession(body.sessionId);
         return Response.json({ revoked: true });
       } catch {
         return Response.json({ revoked: false }, { status: 400 });
       }
     }
+    const laneControl = await handleLaneControl(request);
+    if (laneControl !== null) return laneControl;
     return app.fetch(request, env, context);
   },
 };

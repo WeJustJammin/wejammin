@@ -52,8 +52,6 @@ describe('content schema registry server boundaries', () => {
       status: 429,
       page: {
         access: 'read-only',
-        actorId: ACTOR_ID,
-        actingPartyId: PARTY_ID,
         initialList: {
           status: 'error',
           error: { code: 'RATE_LIMITED' },
@@ -64,6 +62,8 @@ describe('content schema registry server boundaries', () => {
       },
     });
     if (result.kind !== 'error') throw new Error('expected rate-limit error');
+    expect(result.page).not.toHaveProperty('actorId');
+    expect(result.page).not.toHaveProperty('actingPartyId');
     const headers = new Headers();
     applyContentSchemaRegistryRecoveryHeaders(headers, result.page);
     expect(headers.get('x-content-schema-registry-retryable')).toBe('true');
@@ -129,7 +129,7 @@ describe('content schema registry server boundaries', () => {
                 requestId: upstreamRequestId,
                 details: {
                   currentVersion: '7',
-                  violations: [{ pointer: '/limit' }],
+                  violations: [{ path: '/limit' }],
                 },
               },
               retryAfterSeconds: null,
@@ -147,15 +147,19 @@ describe('content schema registry server boundaries', () => {
       status: 422,
       page: {
         access: 'read-only',
-        actorId: ACTOR_ID,
-        actingPartyId: PARTY_ID,
         initialList: {
           status: 'error',
           httpStatus: 422,
-          error: { requestId: upstreamRequestId },
         },
       },
     });
+    // FE03: the typed ApiError request id of the failed read reaches the
+    // error state so the user can quote it; the page-level id never does.
+    if (result.kind !== 'error') throw new Error('expected an error result');
+    expect(result.page.initialList).toMatchObject({
+      error: { requestId: upstreamRequestId },
+    });
+    expect(Object.keys(result.page)).not.toContain('requestId');
   });
 
   it('keeps a platform outage during session verification degraded', async () => {

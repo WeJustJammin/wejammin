@@ -69,21 +69,45 @@ describe('S09 worker content-schema-registry projections', () => {
       '?resourceKind=block_definition_registry_record&state=active',
     ],
     ['invalid limit', '?limit=101'],
+  ] as const)(
+    'refuses %s with 422 VALIDATION_FAILED before the list RPC',
+    async (_label, query) => {
+      const harness = makeHarness();
+      const response = await harness.app.request(
+        new Request(`${API_ORIGIN}/api/v1/cms/content-types${query}`, {
+          headers: {
+            origin: CMS_ORIGIN,
+            authorization: 'Bearer verified-session',
+            'x-request-id': REQUEST_ID,
+          },
+        }),
+      );
+      await expectApiError(response, 422, 'VALIDATION_FAILED');
+      expect(harness.ports.listContentTypes).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
     ['unknown query', '?ownerId=' + USER_ID],
-  ] as const)('rejects %s before the list RPC', async (_label, query) => {
-    const harness = makeHarness();
-    const response = await harness.app.request(
-      new Request(`${API_ORIGIN}/api/v1/cms/content-types${query}`, {
-        headers: {
-          origin: CMS_ORIGIN,
-          authorization: 'Bearer verified-session',
-          'x-request-id': REQUEST_ID,
-        },
-      }),
-    );
-    await expectApiError(response, 400, 'INVALID_REQUEST');
-    expect(harness.ports.listContentTypes).not.toHaveBeenCalled();
-  });
+    ['repeated key', '?limit=5&limit=6'],
+    ['malformed cursor', '?cursor='],
+  ] as const)(
+    'refuses a %s with 400 INVALID_REQUEST before the list RPC',
+    async (_label, query) => {
+      const harness = makeHarness();
+      const response = await harness.app.request(
+        new Request(`${API_ORIGIN}/api/v1/cms/content-types${query}`, {
+          headers: {
+            origin: CMS_ORIGIN,
+            authorization: 'Bearer verified-session',
+            'x-request-id': REQUEST_ID,
+          },
+        }),
+      );
+      await expectApiError(response, 400, 'INVALID_REQUEST');
+      expect(harness.ports.listContentTypes).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects mutation-only headers and bodies on protected reads', async () => {
     const harness = makeHarness();
@@ -120,7 +144,7 @@ describe('S09 worker content-schema-registry projections', () => {
         },
       }),
     );
-    await expectApiError(response, 502, 'DEPENDENCY_INVALID_RESPONSE');
+    await expectApiError(response, 502, 'DEPENDENCY_UNAVAILABLE');
   });
 
   it('returns safe detail projections with only browser-allowlisted block records', async () => {
@@ -247,7 +271,7 @@ describe('S09 worker content-schema-registry projections', () => {
   it.each([
     [
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
       { dependencyClass: 'cms_registry', retryable: false },
     ],
     [
@@ -257,7 +281,7 @@ describe('S09 worker content-schema-registry projections', () => {
     ],
     [
       504,
-      'DEPENDENCY_DEADLINE_EXCEEDED',
+      'DEPENDENCY_UNAVAILABLE',
       { dependencyClass: 'cms_registry', retryable: true },
     ],
     [429, 'RATE_LIMITED', { limit: 20, retryAfterSeconds: 5 }],
@@ -296,11 +320,7 @@ describe('S09 worker content-schema-registry projections', () => {
       expect(
         response.headers.get(CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER),
       ).toBe(
-        status === 502
-          ? 'false'
-          : status === 503 || status === 504
-            ? 'true'
-            : null,
+        status === 502 || status === 503 || status === 504 ? 'true' : null,
       );
     },
   );

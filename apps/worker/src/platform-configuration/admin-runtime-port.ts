@@ -20,7 +20,10 @@ type SchemaLike<T> = Readonly<{
     | Readonly<{ success: true; data: T }>
     | Readonly<{ success: false; error?: unknown }>;
 }>;
-type AdminPortName = keyof AdminWorkspaceDependencies;
+type AdminPortName = Exclude<
+  keyof AdminWorkspaceDependencies,
+  'resetMfaFactors'
+>;
 
 const deadlines: Readonly<Record<AdminOperationId, number>> = {
   'CFG-05B-01': 8_000,

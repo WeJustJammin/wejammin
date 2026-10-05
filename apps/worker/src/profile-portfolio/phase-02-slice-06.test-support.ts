@@ -286,10 +286,12 @@ export const expectApiError = async (
   response: Response,
   status: number,
   code: string,
+  details?: Record<string, unknown>,
 ): Promise<void> => {
   expect(response.status).toBe(status);
   const payload = (await response.json()) as Record<string, unknown>;
   expect(payload).toMatchObject({ code, requestId: REQUEST_ID });
+  if (details !== undefined) expect(payload.details).toEqual(details);
   expect(Object.keys(payload).sort()).toEqual([
     'code',
     'details',

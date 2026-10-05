@@ -1,0 +1,506 @@
+
+-- Fixtures for the Slice 10 RPC suite.  Everything lives in this rolled-back
+-- transaction: no grant, binding, or identity row survives the run, so the
+-- suite proves authority mechanics without seeding production authority.
+--
+-- Three actors are created:
+--   * creator   (auth user ...001) - confirmed member, cms.author + cms.editor
+--   * editor    (auth user ...002) - confirmed member, cms.editor only
+--   * outsider  (auth user ...003) - confirmed member, no CMS capability
+-- The creator owns one organization party; the acting party for every CMS RPC
+-- is that organization, never the person party.
+
+create temp table s10_ids(
+  key text primary key,
+  value text not null
+) on commit drop;
+
+-- Sets the request context that cfg_actor/cfg_acting_party read.  The
+-- jwt.claim.role switch keeps the server-derived actor path authoritative,
+-- matching the slice 09 fixture convention.
+create or replace function pg_temp.s10_rpc_as(
+  p_actor uuid,
+  p_acting_party uuid
+)
+returns void
+language plpgsql
+as $body$
+declare
+  resolved_person uuid;
+begin
+  select person_id into resolved_person
+  from identity.auth_user_bindings
+  where auth_user_id = p_actor;
+
+  perform pg_temp.set_jwt_claim('role', 'authenticated', true);
+  perform pg_temp.set_jwt_claim('sub', p_actor::text, true);
+  perform set_config('app.auth_user_id', p_actor::text, true);
+  perform set_config('app.actor_auth_user_id', p_actor::text, true);
+  perform set_config('app.actor_person_id', resolved_person::text, true);
+  perform set_config('app.acting_party_id', coalesce(p_acting_party::text, ''), true);
+  perform set_config('app.acting_context_id', '', true);
+end;
+$body$;
+
+-- Clears the actor override so an "unauthenticated" case exercises the
+-- UNAUTHENTICATED branch instead of inheriting the previous actor.
+create or replace function pg_temp.s10_rpc_clear_actor()
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.set_jwt_claim('role', 'anon', true);
+  perform pg_temp.set_jwt_claim('sub', '', true);
+  perform set_config('app.auth_user_id', '', true);
+  perform set_config('app.actor_auth_user_id', '', true);
+  perform set_config('app.actor_person_id', '', true);
+end;
+$body$;
+
+insert into auth.users(id) values
+  ('a9100000-0000-4000-8000-000000000001'),
+  ('a9100000-0000-4000-8000-000000000002'),
+  ('a9100000-0000-4000-8000-000000000003'),
+  ('a9100000-0000-4000-8000-000000000004');
+
+select platform_api.auth_bootstrap(
+  'a9100000-0000-4000-8000-000000000001', decode(repeat('31', 32), 'hex'),
+  decode(repeat('41', 32), 'hex'), 'a9100000-0000-4000-8000-000000000011',
+  'a9100000-0000-4000-8000-000000000012'
+);
+select platform_api.auth_bootstrap(
+  'a9100000-0000-4000-8000-000000000002', decode(repeat('32', 32), 'hex'),
+  decode(repeat('42', 32), 'hex'), 'a9100000-0000-4000-8000-000000000021',
+  'a9100000-0000-4000-8000-000000000022'
+);
+select platform_api.auth_bootstrap(
+  'a9100000-0000-4000-8000-000000000003', decode(repeat('33', 32), 'hex'),
+  decode(repeat('43', 32), 'hex'), 'a9100000-0000-4000-8000-000000000031',
+  'a9100000-0000-4000-8000-000000000032'
+);
+-- A fourth authenticated principal with a person party but no membership in the
+-- entry-owning organization.  It reaches the concealment branch: authenticated
+-- and resolvable, yet not a member of the owner tenant.
+select platform_api.auth_bootstrap(
+  'a9100000-0000-4000-8000-000000000004', decode(repeat('34', 32), 'hex'),
+  decode(repeat('44', 32), 'hex'), 'a9100000-0000-4000-8000-000000000041',
+  'a9100000-0000-4000-8000-000000000042'
+);
+
+insert into s10_ids(key, value)
+select 'creatorAuth', 'a9100000-0000-4000-8000-000000000001'
+union all select 'editorAuth', 'a9100000-0000-4000-8000-000000000002'
+union all select 'outsiderAuth', 'a9100000-0000-4000-8000-000000000003'
+union all select 'strangerAuth', 'a9100000-0000-4000-8000-000000000004'
+union all select 'creatorPerson', person_id::text
+  from identity.auth_user_bindings
+  where auth_user_id = 'a9100000-0000-4000-8000-000000000001'
+union all select 'editorPerson', person_id::text
+  from identity.auth_user_bindings
+  where auth_user_id = 'a9100000-0000-4000-8000-000000000002'
+union all select 'outsiderPerson', person_id::text
+  from identity.auth_user_bindings
+  where auth_user_id = 'a9100000-0000-4000-8000-000000000003'
+union all select 'strangerPerson', person_id::text
+  from identity.auth_user_bindings
+  where auth_user_id = 'a9100000-0000-4000-8000-000000000004';
+
+-- One organization party owned by the creator; derived server-side, never a
+-- caller-supplied authority claim.
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid, null);
+select set_config('app.correlation_id', 'a9100000-0000-4000-8000-000000000091', true);
+-- identity_private.rpc_create_organization reads its idempotency material from
+-- session settings rather than arguments, so the fixture supplies a
+-- reservation key and request hash exactly as the slice 09 harness does.
+select set_config('app.idempotency_key_hash', 's10-org-create-0001', true);
+select set_config('app.request_hash', 's10-org-create-request-0001', true);
+
+create temp table s10_org on commit drop as
+select (result->>'organizationId')::uuid as organization_id
+from lateral (
+  select platform_api.rpc_create_organization('self_member', '{}'::text[]) as result
+) created;
+
+insert into s10_ids(key, value)
+select 'organization', organization_id::text from s10_org;
+
+insert into identity_private.membership_tenure(
+  id, organization_id, person_id, state, provenance, governance_mode,
+  starts_on, accepted_at, actor_id, version
+)
+select
+  'a9100000-0000-4000-8000-000000000201', organization_id,
+  (select person_id from identity.auth_user_bindings
+   where auth_user_id = 'a9100000-0000-4000-8000-000000000002'),
+  'confirmed', 'invitation', 'ungoverned', current_date, clock_timestamp(),
+  (select person_id from identity.auth_user_bindings
+   where auth_user_id = 'a9100000-0000-4000-8000-000000000001'), 1
+from s10_org;
+
+insert into identity_private.membership_tenure(
+  id, organization_id, person_id, state, provenance, governance_mode,
+  starts_on, accepted_at, actor_id, version
+)
+select
+  'a9100000-0000-4000-8000-000000000202', organization_id,
+  (select person_id from identity.auth_user_bindings
+   where auth_user_id = 'a9100000-0000-4000-8000-000000000003'),
+  'confirmed', 'invitation', 'ungoverned', current_date, clock_timestamp(),
+  (select person_id from identity.auth_user_bindings
+   where auth_user_id = 'a9100000-0000-4000-8000-000000000001'), 1
+from s10_org;
+
+-- Grants are fixture-local and roll back with the transaction.  cms.author and
+-- cms.editor are the two keys the RPC migration adds to the closed registry.
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select organization_id, binding.person_id, capability_code,
+       current_date, current_date + 1, true
+from s10_org
+cross join lateral (
+  select person_id from identity.auth_user_bindings
+  where auth_user_id = 'a9100000-0000-4000-8000-000000000001'
+) binding
+cross join (values ('cms.author'), ('cms.editor'), ('cms.schema_designer')) capabilities(capability_code)
+on conflict (organization_id, person_id, capability_code)
+do update set active = excluded.active, valid_through = excluded.valid_through;
+
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select organization_id, binding.person_id, 'cms.editor',
+       current_date, current_date + 1, true
+from s10_org
+cross join lateral (
+  select person_id from identity.auth_user_bindings
+  where auth_user_id = 'a9100000-0000-4000-8000-000000000002'
+) binding
+on conflict (organization_id, person_id, capability_code)
+do update set active = excluded.active, valid_through = excluded.valid_through;
+
+-- The outsider deliberately receives no capability row so FORBIDDEN and
+-- concealment paths are reachable.
+
+-- Registry guard: the forward migration must have widened the closed registry
+-- before the create RPC can authorize cms.author.  This assertion is the
+-- harness contract that keeps the two lanes coupled by evidence, not by
+-- narrative.
+select ok(
+  pg_temp.s10_capability_registered('cms.author', 1)
+    and pg_temp.s10_capability_registered('cms.editor', 1),
+  'CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1'
+);
+
+-- One draft content type is enough for the minimal create path.  The full
+-- activation and detail fixtures land in fragment 002 onwards.
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+
+create temp table s10_type_request on commit drop as
+select jsonb_build_object(
+  'typeKey', 'article', 'label', 'Article',
+  'ownerCapability', 'cms.schema_designer',
+  'sourceLocale', 'en-US', 'defaultLocale', 'en-US',
+  'supportedLocales', jsonb_build_array('de-DE', 'en-US', 'fr-FR'),
+  'fallbackChains', jsonb_build_object('de-DE', jsonb_build_array('en-US'),
+    'fr-FR', jsonb_build_array('en-US')),
+  'workflowKey', 'editorial', 'workflowVersion', '1',
+  'defaultTemplateVersionId', null,
+  'fields', jsonb_build_array(
+    jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000101',
+      'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+      'required', true, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'localized',
+      'editorConfig', jsonb_build_object('label', 'Title', 'order', 0),
+      'lifecycle', 'active'
+    ),
+    jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000102',
+      'key', 'related', 'kind', 'relation', 'constraints', '{}'::jsonb,
+      'required', false, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'none',
+      'editorConfig', jsonb_build_object('label', 'Related', 'order', 1),
+      'lifecycle', 'active'
+    ),
+    jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000105',
+      'key', 'event_date', 'kind', 'date', 'constraints', '{}'::jsonb,
+      'required', false, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'localized',
+      'editorConfig', jsonb_build_object('label', 'Event date', 'order', 2),
+      'lifecycle', 'active'
+    ),
+    jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000106',
+      'key', 'event_datetime', 'kind', 'datetime', 'constraints', '{}'::jsonb,
+      'required', false, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'localized',
+      'editorConfig', jsonb_build_object('label', 'Event time', 'order', 3),
+      'lifecycle', 'active'
+    ),
+    jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000107',
+      'key', 'genre', 'kind', 'enum',
+      'constraints', jsonb_build_object('enumValues', jsonb_build_array('jazz', 'rock')),
+      'required', false, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'localized',
+      'editorConfig', jsonb_build_object('label', 'Genre', 'order', 4),
+      'lifecycle', 'active'
+    ),
+    jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000108',
+      'key', 'unbounded_genre', 'kind', 'enum', 'constraints', '{}'::jsonb,
+      'required', false, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'localized',
+      'editorConfig', jsonb_build_object('label', 'Unbounded genre', 'order', 5),
+      'lifecycle', 'active'
+    )
+  ),
+  'relations', jsonb_build_array(jsonb_build_object(
+    'fieldId', 'a9100000-0000-4000-8000-000000000102',
+    'targetKind', 'content', 'targetType', 'article',
+    'projectionKey', 'cms.article.card', 'cardinality', 'one',
+    'min', 0, 'max', 1, 'ordered', false, 'onUnavailable', 'omit'
+  )), 'templateBindings', '[]'::jsonb,
+  'capabilityBindings', '[]'::jsonb, 'idempotencyKey', 's10-type-create-0001'
+) as request;
+
+create temp table s10_type_created on commit drop as
+select platform_api.cms_create_type_draft(request) as response
+from s10_type_request;
+
+-- cms_create_type_draft returns the 03a version resource, which exposes
+-- contentHash + schemaArtifactId but neither the compiled artifact hash nor the
+-- child field ids.  Resolve those from the tables they live in instead of from
+-- response keys that do not exist.
+insert into s10_ids(key, value)
+select 'typeId', response->>'contentTypeId' from s10_type_created
+union all select 'draftVersionId', response->>'id' from s10_type_created
+union all select 'typeDefinitionHash', response->>'contentHash' from s10_type_created
+union all select 'typeArtifactId', response->>'schemaArtifactId' from s10_type_created
+union all select 'typeArtifactHash', artifact.artifact_hash::text
+  from platform_private.cms_schema_artifacts artifact
+  join s10_type_created created
+    on artifact.id = (created.response->>'schemaArtifactId')::uuid
+union all select 'typeArtifactCompiler', artifact.compiler_version
+  from platform_private.cms_schema_artifacts artifact
+  join s10_type_created created
+    on artifact.id = (created.response->>'schemaArtifactId')::uuid
+union all select 'typeArtifactZodRef', artifact.zod_contract_ref
+  from platform_private.cms_schema_artifacts artifact
+  join s10_type_created created
+    on artifact.id = (created.response->>'schemaArtifactId')::uuid;
+
+-- The stable field id is the create-time value pointer key.  It is stored on
+-- the field definition row, not on the field version id, so read it directly.
+insert into s10_ids(key, value)
+select 'typeFieldId', field.stable_field_id::text
+from platform_private.cms_field_definition_versions field
+join s10_type_created created
+  on field.content_type_version_id = (created.response->>'id')::uuid
+where field.field_key = 'title';
+
+insert into s10_ids(key, value)
+select 'typeRelationFieldId', field.stable_field_id::text
+from platform_private.cms_field_definition_versions field
+join s10_type_created created
+  on field.content_type_version_id = (created.response->>'id')::uuid
+where field.field_key = 'related';
+
+insert into s10_ids(key, value)
+select 'typeDateFieldId', field.stable_field_id::text
+from platform_private.cms_field_definition_versions field
+join s10_type_created created
+  on field.content_type_version_id = (created.response->>'id')::uuid
+where field.field_key = 'event_date'
+union all
+select 'typeDateTimeFieldId', field.stable_field_id::text
+from platform_private.cms_field_definition_versions field
+join s10_type_created created
+  on field.content_type_version_id = (created.response->>'id')::uuid
+where field.field_key = 'event_datetime';
+
+insert into s10_ids(key, value)
+select 'typeEnumFieldId', field.stable_field_id::text
+from platform_private.cms_field_definition_versions field
+join s10_type_created created
+  on field.content_type_version_id = (created.response->>'id')::uuid
+where field.field_key = 'genre'
+union all
+select 'typeUnboundedEnumFieldId', field.stable_field_id::text
+from platform_private.cms_field_definition_versions field
+join s10_type_created created
+  on field.content_type_version_id = (created.response->>'id')::uuid
+where field.field_key = 'unbounded_genre';
+
+select ok(
+  (select value is not null from s10_ids where key = 'draftVersionId')
+    and (select value is not null from s10_ids where key = 'typeId')
+    and (select value is not null from s10_ids where key = 'typeFieldId')
+    and (select value is not null from s10_ids where key = 'typeRelationFieldId')
+    and (select value is not null from s10_ids where key = 'typeDateFieldId')
+    and (select value is not null from s10_ids where key = 'typeDateTimeFieldId')
+    and (select value is not null from s10_ids where key = 'typeEnumFieldId')
+    and (select value is not null from s10_ids where key = 'typeUnboundedEnumFieldId')
+    and (select value is not null from s10_ids where key = 'typeArtifactHash'),
+  'P2-S10-RPC fixture content type draft is created with a schema artifact hash'
+);
+
+-- CMS-03B-10 requires the contentTypeId/contentTypeVersionId pair to resolve to
+-- the same *active compiled* 03a schema carrying non-null activation evidence.
+-- The 03a activation RPC and its approval chain are already exercised by the
+-- slice 09 suite, so this fixture lands the identical terminal state directly
+-- inside the CMS RPC context: the immutable artifact stays compiled with its
+-- matching definition_hash and the version row gains the activation envelope
+-- that the entry-create precondition reads.
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_type_versions
+set state = 'active',
+    version = version + 1,
+    activation_workflow_policy_key = 'cms.entry.author',
+    activation_workflow_policy_version = 1,
+    activation_workflow_policy_hash = repeat('a', 64),
+    activation_required_decision_count = 1,
+    activation_required_capabilities = jsonb_build_array('cms.author'),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from s10_ids where key = 'draftVersionId');
+
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from s10_ids where key = 'typeId');
+
+select ok(
+  (
+    select version_row.state = 'active'
+       and version_row.activation_workflow_policy_key is not null
+       and version_row.definition_hash = artifact.artifact_hash
+       and artifact.state = 'compiled'
+    from platform_private.cms_content_type_versions version_row
+    join platform_private.cms_schema_artifacts artifact
+      on artifact.id = version_row.schema_artifact_id
+    where version_row.id = (select value::uuid from s10_ids where key = 'draftVersionId')
+  ),
+  'P2-S10-RPC fixture schema version is active and compiled with activation evidence'
+);
+
+-- ---------------------------------------------------------------------------
+-- Seeded draft entry for the CMS-03B-11 read surface.
+--
+-- cms_create_entry is fail-closed on the missing editorial workflow-policy
+-- projection, so it cannot mint the entry the detail read needs.  The draft is
+-- therefore seeded directly, inside this rolled-back transaction, exactly as a
+-- create would have written it: entry -> revision -> field values -> relations
+-- -> creator/editor assignments.  This keeps CMS-03B-11 independently testable
+-- while the create dependency is unresolved.
+-- ---------------------------------------------------------------------------
+select set_config('app.cms_rpc', 'true', true);
+
+insert into platform_private.cms_content_entries(
+  id, owner_id, content_type_id, owner_party_id, lifecycle,
+  current_draft_revision_id, version, created_by, created_at, updated_at
+)
+select
+  'a9100000-0000-4000-8000-000000000301',
+  ids_org.value::uuid, ids_type.value::uuid, ids_org.value::uuid, 'active',
+  null, 1, ids_actor.value::uuid,
+  timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+from s10_ids ids_org, s10_ids ids_type, s10_ids ids_actor
+where ids_org.key = 'organization'
+  and ids_type.key = 'typeId'
+  and ids_actor.key = 'creatorAuth';
+
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id,
+  template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+  payload_hash, author_person_id, acting_party_id, state, version,
+  validation_state, validation_report, created_at, updated_at
+)
+select
+  'a9100000-0000-4000-8000-000000000302',
+  ids_org.value::uuid, 'a9100000-0000-4000-8000-000000000301', 1,
+  ids_version.value::uuid, null, '[]'::jsonb, '[]'::jsonb, 'en-US',
+  platform_private.cms_jcs_sha256(
+    jsonb_build_object(ids_field.value, 'Seeded draft title')
+  )::char(64),
+  ids_person.value::uuid, ids_org.value::uuid, 'draft', 1,
+  'valid', '{}'::jsonb,
+  timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+from s10_ids ids_org, s10_ids ids_version, s10_ids ids_field, s10_ids ids_person
+where ids_org.key = 'organization'
+  and ids_version.key = 'draftVersionId'
+  and ids_field.key = 'typeFieldId'
+  and ids_person.key = 'creatorPerson';
+
+update platform_private.cms_content_entries
+set current_draft_revision_id = 'a9100000-0000-4000-8000-000000000302'
+where id = 'a9100000-0000-4000-8000-000000000301';
+
+insert into platform_private.cms_entry_field_values(
+  owner_id, state, version, revision_id, field_id, field_definition_id,
+  locale, value, provenance, value_hash, created_at, updated_at
+)
+select
+  ids_org.value::uuid, 'active', 1,
+  'a9100000-0000-4000-8000-000000000302',
+  ids_field.value::uuid, ids_field.value::uuid, 'en-US',
+  to_jsonb('Seeded draft title'::text), 'authored',
+  platform_private.cms_jcs_sha256(to_jsonb('Seeded draft title'::text))::char(64),
+  timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+from s10_ids ids_org, s10_ids ids_field
+where ids_org.key = 'organization'
+  and ids_field.key = 'typeFieldId';
+
+insert into platform_private.cms_entry_relations(
+  owner_id, state, version, revision_id, field_id, field_definition_id,
+  target_kind, target_id, expected_target_version, position, on_unavailable,
+  created_at, updated_at
+)
+select
+  ids_org.value::uuid, 'active', 1,
+  'a9100000-0000-4000-8000-000000000302',
+  ids_field.value::uuid, ids_field.value::uuid, 'content',
+  'a9100000-0000-4000-8000-000000000301', 1, 0, 'omit',
+  timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+from s10_ids ids_org, s10_ids ids_field
+where ids_org.key = 'organization'
+  and ids_field.key = 'typeRelationFieldId';
+
+-- Assignments: the creator holds cms.author, the editor holds cms.editor, and
+-- the outsider holds a grant but no assignment.  Assignment rows are what turn
+-- a registered org grant into authority over one specific entry.
+insert into platform_private.cms_entry_assignments(
+  owner_id, entry_id, assignee_person_id, capability_key, state, version,
+  created_at, updated_at
+)
+select ids_org.value::uuid, 'a9100000-0000-4000-8000-000000000301',
+       ids_person.value::uuid, capability_key, 'active', 1,
+       timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+from s10_ids ids_org
+cross join lateral (
+  select 'cms.author' as capability_key, 'creatorPerson' as person_key
+  union all select 'cms.editor', 'editorPerson'
+) assignments
+join s10_ids ids_person on ids_person.key = assignments.person_key
+where ids_org.key = 'organization';
+
+insert into s10_ids(key, value)
+select 'entryId', 'a9100000-0000-4000-8000-000000000301'
+union all select 'entryRevisionId', 'a9100000-0000-4000-8000-000000000302';
+
+select ok(
+  (
+    select count(*) = 2
+    from platform_private.cms_entry_assignments assignment
+    where assignment.entry_id = 'a9100000-0000-4000-8000-000000000301'
+      and assignment.state = 'active'
+  )
+    and (
+      select entry_row.current_draft_revision_id
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = 'a9100000-0000-4000-8000-000000000301'
+    ) = 'a9100000-0000-4000-8000-000000000302'::uuid,
+  'P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value'
+);

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AuthenticationDependencies } from '../../../apps/worker/src/authentication/types';
 import type { WorkerDependencies } from '../../../apps/worker/src/index';
 import {
-  admit,
+  admitSession,
   parseBody,
   parseQuery,
   withDeadline,
@@ -78,13 +78,12 @@ describe('Slice 08 admin route admission defensive coverage', () => {
     expect(clearTimeoutSpy).not.toHaveBeenCalled();
   });
 
-  it('rejects an invalid server-owned request context before capability checks', async () => {
+  it('rejects an invalid server-owned request context at BE00 step 5, before any capability check', async () => {
     const { context } = makeContext(adminRequest());
 
-    const result = await admit(
+    const result = await admitSession(
       context,
       dependenciesFor(null),
-      'CFG-05B-01',
       new AbortController().signal,
     );
 
@@ -196,10 +195,9 @@ describe('Slice 08 admin route admission defensive coverage', () => {
       auth: authFor(),
     } as unknown as WorkerDependencies;
 
-    const result = await admit(
+    const result = await admitSession(
       context,
       dependencies,
-      'CFG-05B-01',
       new AbortController().signal,
     );
 
@@ -218,10 +216,9 @@ describe('Slice 08 admin route admission defensive coverage', () => {
         [field]: '99999999-9999-4999-8999-999999999999',
       });
 
-      const result = await admit(
+      const result = await admitSession(
         context,
         dependenciesFor(mismatch),
-        'CFG-05B-01',
         new AbortController().signal,
       );
 

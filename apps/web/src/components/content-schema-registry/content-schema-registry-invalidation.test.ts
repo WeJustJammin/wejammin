@@ -36,7 +36,7 @@ class FakeChannel {
 }
 
 describe('content schema registry invalidation boundary', () => {
-  it('accepts and publishes only a metadata-free hint', () => {
+  it('[P2-S09-AC-1021] [P2-S09-AC-232] accepts and publishes only a metadata-free hint', () => {
     const hint = createContentSchemaRegistryInvalidationHint();
     expect(isContentSchemaRegistryInvalidationHint(hint)).toBe(true);
     expect(
@@ -50,7 +50,7 @@ describe('content schema registry invalidation boundary', () => {
     expect(channel.messages).toEqual([hint]);
   });
 
-  it('refetches canonical data for valid hints and ignores payloads', () => {
+  it('[P2-S09-AC-1021] [P2-S09-AC-232] refetches canonical data for valid hints and ignores payloads', () => {
     const channel = new FakeChannel();
     const onInvalidate = vi.fn();
     const subscription = subscribeContentSchemaRegistryInvalidation({
@@ -69,7 +69,7 @@ describe('content schema registry invalidation boundary', () => {
     expect(onInvalidate).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the same invalidation contract for realtime adapters', () => {
+  it('[P2-S09-AC-232] uses the same invalidation contract for realtime adapters', () => {
     const channel = new FakeChannel();
     const onInvalidate = vi.fn();
     const unbind = bindContentSchemaRegistryRealtimeInvalidation(

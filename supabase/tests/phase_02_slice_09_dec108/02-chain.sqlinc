@@ -1,0 +1,275 @@
+-- DEC-108 producer chain.  Each step drives exactly one named RPC (successor ->
+-- dry-run -> worker seal -> submit -> assign -> decide -> activate) and records
+-- its outcome under the label '<tag>:<step>'.  A "tag" names one candidate
+-- version; ids live in s09d_ids as '<tag>:type', '<tag>:version', '<tag>:dryRun',
+-- '<tag>:plan', '<tag>:review', '<tag>:decision:<reviewer>'.
+
+create or replace function pg_temp.s09d_idem(p_tag text, p_step text) returns text
+language sql as $body$
+  select 's09d-' || p_tag || '-' || p_step || '-' || substr(extensions.gen_random_uuid()::text, 1, 8)
+$body$;
+
+create or replace function pg_temp.s09d_version(p_tag text) returns text
+language sql stable as $body$
+  select pg_temp.s09d_read('cms_content_type_versions', 'version', pg_temp.s09d_id(p_tag || ':version'))
+$body$;
+
+-- CMS-03A-01: draft type with one required title field, as the owner designer.
+create or replace function pg_temp.s09d_create_type(
+  p_tag text, p_type_key text, p_workflow text default 'editorial', p_actor text default 'owner',
+  p_supported jsonb default '["en-US"]'::jsonb, p_chains jsonb default '{}'::jsonb,
+  p_source text default 'en-US', p_default text default 'en-US'
+) returns jsonb language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(p_tag || ':create', 'platform_api.cms_create_type_draft', p_actor,
+    jsonb_build_object(
+      'typeKey', p_type_key, 'label', 'DEC-108 ' || p_type_key,
+      'ownerCapability', 'cms.schema_designer', 'sourceLocale', p_source,
+      'defaultLocale', p_default, 'supportedLocales', p_supported, 'fallbackChains', p_chains,
+      'workflowKey', p_workflow, 'workflowVersion', '1',
+      'defaultTemplateVersionId', null,
+      'fields', jsonb_build_array(jsonb_build_object(
+        'stableFieldId', extensions.gen_random_uuid(), 'key', 'title', 'kind', 'short_text',
+        'constraints', '{}'::jsonb, 'required', true, 'validatorKey', null,
+        'validatorVersion', null, 'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Title', 'order', 0),
+        'lifecycle', 'active')),
+      'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
+      'capabilityBindings', '[]'::jsonb, 'idempotencyKey', pg_temp.s09d_idem(p_tag, 'create')));
+  perform pg_temp.s09d_remember(p_tag || ':type', (resource->>'contentTypeId')::uuid);
+  perform pg_temp.s09d_remember(p_tag || ':version', (resource->>'id')::uuid);
+  return resource;
+end;
+$body$;
+
+-- CMS-03A-09: successor draft of an immutable source version.
+create or replace function pg_temp.s09d_successor(
+  p_tag text, p_source_tag text, p_actor text default 'owner', p_idem text default null,
+  p_supported jsonb default null, p_chains jsonb default null,
+  p_default_template uuid default null, p_bindings jsonb default null,
+  p_workflow_key text default null, p_workflow_version text default null
+) returns jsonb language plpgsql as $body$
+declare resource jsonb;
+begin
+  -- The workflow pair is sent only when the caller names it: an absent pair is the
+  -- inherit-the-source request every earlier suite makes.
+  resource := pg_temp.s09d_rpc(p_tag || ':successor', 'platform_api.cms_create_schema_successor', p_actor,
+    case when p_workflow_key is null and p_workflow_version is null then '{}'::jsonb
+         else jsonb_build_object('workflowKey', p_workflow_key, 'workflowVersion', p_workflow_version) end
+    || jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_source_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_source_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_version(p_source_tag),
+      'supportedLocales', p_supported, 'fallbackChains', p_chains,
+      'defaultTemplateVersionId', p_default_template, 'templateBindings', p_bindings,
+      'idempotencyKey', coalesce(p_idem, pg_temp.s09d_idem(p_tag, 'successor'))));
+  perform pg_temp.s09d_remember(p_tag || ':type', pg_temp.s09d_id(p_source_tag || ':type'));
+  if resource is not null then
+    perform pg_temp.s09d_remember(p_tag || ':version', (resource->>'id')::uuid);
+  end if;
+  return resource;
+end;
+$body$;
+
+-- CMS-03A-10: server-derived dry-run attempt (report + plan + job).
+create or replace function pg_temp.s09d_dry_run(
+  p_tag text, p_actor text default 'owner',
+  p_transform_key text default null, p_transform_version text default null,
+  p_idem text default null
+) returns jsonb language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(p_tag || ':dryRun', 'platform_api.cms_start_schema_dry_run', p_actor,
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_version(p_tag),
+      'transformKey', p_transform_key, 'transformVersion', p_transform_version,
+      'idempotencyKey', coalesce(p_idem, pg_temp.s09d_idem(p_tag, 'dry'))));
+  if resource is not null then
+    perform pg_temp.s09d_remember(p_tag || ':dryRun', (resource->>'id')::uuid);
+    perform pg_temp.s09d_remember(p_tag || ':plan', (resource->>'migrationPlanId')::uuid);
+    perform pg_temp.s09d_remember(p_tag || ':job', (resource->>'jobId')::uuid);
+  end if;
+  return resource;
+end;
+$body$;
+
+-- Service-role worker seal of the queued attempt through the named worker RPCs
+-- (claim -> bounded dry-run batch -> finalize).  Counts are the proven zero of a
+-- candidate with no affected rows; the DB, not this helper, must prove them.
+create or replace function pg_temp.s09d_seal(
+  p_tag text, p_source_count text default '0', p_actor text default 'owner'
+)
+returns jsonb language plpgsql as $body$
+declare
+  plan_id uuid := pg_temp.s09d_id(p_tag || ':plan');
+  plan_json jsonb; claim jsonb; sealed jsonb; base jsonb;
+begin
+  perform pg_temp.s09d_session(p_actor, 'service_role');
+  plan_json := pg_temp.s09d_call(p_tag || ':plan.get', 'platform_api.cms_get_schema_migration_plan',
+    jsonb_build_object('migrationPlanId', plan_id,
+      'schemaVersionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id)));
+  base := jsonb_build_object(
+    'migrationPlanId', plan_id, 'schemaVersionId', pg_temp.s09d_id(p_tag || ':version'),
+    'cursor', '0', 'transformKey', null, 'transformVersion', null,
+    'compilerHash', plan_json->'compilerHash', 'sourceHash', plan_json->'sourceHash',
+    'targetHash', plan_json->'targetHash');
+  claim := pg_temp.s09d_call(p_tag || ':plan.claim', 'platform_api.cms_claim_schema_migration_lease',
+    base || jsonb_build_object(
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'leaseOwner', 's09d-worker', 'workerId', 's09d-worker', 'leaseDurationMs', '30000',
+      'now', clock_timestamp()::text));
+  perform pg_temp.s09d_call(p_tag || ':plan.batch', 'platform_api.cms_process_schema_migration_dry_run_batch',
+    base || jsonb_build_object(
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'limit', '1', 'leaseToken', claim->>'leaseToken', 'rowEvidence', '[]'::jsonb,
+      'correlationId', extensions.gen_random_uuid(), 'causationId', null));
+  sealed := pg_temp.s09d_call(p_tag || ':plan.seal', 'platform_api.cms_finalize_schema_migration_dry_run',
+    (base - 'schemaVersionId') || jsonb_build_object(
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'sourceCount', p_source_count, 'targetCount', '0', 'rowErrorCount', '0'));
+  return sealed;
+end;
+$body$;
+
+-- CMS-03A-11: freeze evidence and move draft -> review.
+create or replace function pg_temp.s09d_submit(
+  p_tag text, p_actor text default 'owner', p_override jsonb default '{}'::jsonb
+) returns jsonb language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(p_tag || ':submit', 'platform_api.cms_submit_schema_review', p_actor,
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_version(p_tag),
+      'dryRunId', pg_temp.s09d_id(p_tag || ':dryRun'),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'submit')), true, p_override);
+  if resource is not null then
+    perform pg_temp.s09d_remember(p_tag || ':review', (resource->>'id')::uuid);
+  end if;
+  return resource;
+end;
+$body$;
+
+create or replace function pg_temp.s09d_review_version(p_tag text) returns text
+language sql stable as $body$
+  select pg_temp.s09d_read('cms_schema_reviews', 'version', pg_temp.s09d_id(p_tag || ':review'))
+$body$;
+
+-- CMS-03A-14: the server-derived owner assigns one reviewer to the frozen review.
+create or replace function pg_temp.s09d_assign(
+  p_tag text, p_reviewer text, p_expires interval default interval '1 day',
+  p_actor text default 'owner', p_label text default null
+) returns jsonb language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(coalesce(p_label, p_tag || ':assign:' || p_reviewer),
+    'platform_api.cms_assign_schema_review', p_actor,
+    jsonb_build_object(
+      'reviewId', pg_temp.s09d_id(p_tag || ':review'), 'action', 'create',
+      'expectedVersion', pg_temp.s09d_review_version(p_tag),
+      'reviewerPersonId', pg_temp.s09d_actor_id(p_reviewer, 'person'),
+      'expiresAt', to_char((clock_timestamp() + p_expires) at time zone 'UTC',
+                           'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'reason', 'dec108 test assignment',
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'assign-' || p_reviewer)), true);
+  if resource is not null then
+    perform pg_temp.s09d_remember(p_tag || ':assignment:' || p_reviewer, (resource->>'id')::uuid);
+  end if;
+  return resource;
+end;
+$body$;
+
+-- CMS-03A-12: an independently authenticated assigned reviewer decides.
+create or replace function pg_temp.s09d_decide(
+  p_tag text, p_reviewer text, p_decision text default 'approve',
+  p_override jsonb default '{}'::jsonb, p_label text default null
+) returns jsonb language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(coalesce(p_label, p_tag || ':decide:' || p_reviewer),
+    'platform_api.cms_decide_schema_review', p_reviewer,
+    jsonb_build_object(
+      'reviewId', pg_temp.s09d_id(p_tag || ':review'),
+      'expectedVersion', pg_temp.s09d_review_version(p_tag), 'decision', p_decision,
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'decide-' || p_reviewer)), true, p_override);
+  if resource is not null then
+    perform pg_temp.s09d_remember(p_tag || ':decision:' || p_reviewer, (resource->>'id')::uuid);
+  end if;
+  return resource;
+end;
+$body$;
+
+-- The approve-decision ids of the tag's review: the activation `approvalIds`.
+create or replace function pg_temp.s09d_approval_ids(p_tag text) returns jsonb
+language sql stable as $body$
+  select coalesce(pg_temp.s09d_scalar(format(
+    'select jsonb_agg(id order by id)::text from platform_private.cms_schema_review_decisions
+      where review_id = %L and decision = ''approve''',
+    pg_temp.s09d_id(p_tag || ':review')))::jsonb, '[]'::jsonb)
+$body$;
+
+-- CMS-03A-04: activation of the approved candidate with the bound plan.
+create or replace function pg_temp.s09d_activate(
+  p_tag text, p_actor text default 'owner', p_override jsonb default '{}'::jsonb,
+  p_label text default null, p_patch jsonb default '{}'::jsonb
+) returns jsonb language plpgsql as $body$
+begin
+  return pg_temp.s09d_rpc(coalesce(p_label, p_tag || ':activate'), 'platform_api.cms_activate_schema', p_actor,
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_version(p_tag),
+      'dryRunId', pg_temp.s09d_id(p_tag || ':dryRun'),
+      'approvalIds', pg_temp.s09d_approval_ids(p_tag),
+      'migrationPlanId', pg_temp.s09d_id(p_tag || ':plan'),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'activate')) || p_patch, true, p_override);
+end;
+$body$;
+
+-- Compound steps used by tests that only need a prepared candidate.
+create or replace function pg_temp.s09d_to_review(p_tag text) returns void
+language plpgsql as $body$
+begin
+  perform pg_temp.s09d_dry_run(p_tag);
+  perform pg_temp.s09d_seal(p_tag);
+  perform pg_temp.s09d_submit(p_tag);
+end;
+$body$;
+create or replace function pg_temp.s09d_to_approved(
+  p_tag text, p_reviewers text[] default array['rev1']
+) returns void language plpgsql as $body$
+declare reviewer text;
+begin
+  perform pg_temp.s09d_to_review(p_tag);
+  foreach reviewer in array p_reviewers loop
+    perform pg_temp.s09d_assign(p_tag, reviewer);
+    perform pg_temp.s09d_decide(p_tag, reviewer);
+  end loop;
+end;
+$body$;
+create or replace function pg_temp.s09d_to_active(
+  p_tag text, p_reviewers text[] default array['rev1']
+) returns jsonb language plpgsql as $body$
+begin
+  perform pg_temp.s09d_to_approved(p_tag, p_reviewers);
+  return pg_temp.s09d_activate(p_tag);
+end;
+$body$;
+
+-- CMS-03A-13 review projection for any actor.
+create or replace function pg_temp.s09d_get_review(
+  p_label text, p_tag text, p_actor text default 'owner'
+) returns jsonb language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session(p_actor);
+  return pg_temp.s09d_call(p_label, 'platform_api.cms_get_schema_review',
+    jsonb_build_object('reviewId', pg_temp.s09d_id(p_tag || ':review'),
+      'context', pg_temp.s09d_context(p_actor)));
+end;
+$body$;
+

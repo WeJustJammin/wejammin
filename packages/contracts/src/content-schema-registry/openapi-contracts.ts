@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
 import { ApiErrorSchema } from '../api-error.ts';
+import { anchorOpenApiSchemaReferences } from '../openapi-reference-normalization.ts';
 import * as models from './models.ts';
+import { pinTupleLengths } from './openapi-tuple.ts';
 import * as primitives from './primitives.ts';
 import * as requests from './requests.ts';
 import * as resources from './resources.ts';
+import * as stepUpErrors from './step-up-required.ts';
 
 const excludedWorkerEvidence = new Set([
   'BlockDefinitionVersionResourceSchema',
@@ -12,7 +15,7 @@ const excludedWorkerEvidence = new Set([
 ]);
 
 const featureSchemaContracts: Record<string, z.ZodTypeAny> = Object.fromEntries(
-  [primitives, models, requests, resources]
+  [primitives, models, requests, resources, stepUpErrors]
     .flatMap((module) => Object.entries(module))
     .filter(
       ([name, schema]) =>
@@ -73,8 +76,13 @@ export const schemaReference = (
 };
 
 export const toJsonSchema = (schemaName: string, schema: z.ZodTypeAny) =>
-  z.toJSONSchema(schemaForName(schemaName, { [schemaName]: schema }), {
-    io: 'input',
-    target: 'draft-7',
-    unrepresentable: 'any',
-  });
+  anchorOpenApiSchemaReferences(
+    componentName(schemaName),
+    pinTupleLengths(
+      z.toJSONSchema(schemaForName(schemaName, { [schemaName]: schema }), {
+        io: 'input',
+        target: 'draft-7',
+        unrepresentable: 'any',
+      }),
+    ),
+  );

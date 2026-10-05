@@ -34,9 +34,27 @@ const decodeJwtPayload = (
   }
 };
 
-const mfaVerificationTime = (
+/**
+ * True when the access token's own `exp` claim has passed. An unreadable token
+ * or a missing claim is not reported as expired here: the provider check and
+ * `verifyTokenResponse` still decide those.
+ */
+export const accessTokenExpired = (token: string, now: number): boolean => {
+  const expires = decodeJwtPayload(token)?.exp;
+  return typeof expires === 'number' && expires * 1000 <= now;
+};
+
+const MFA_AMR_METHODS: readonly string[] = ['mfa', 'totp', 'webauthn', 'phone'];
+
+/**
+ * Latest valid `amr` timestamp whose method satisfies `accepts`: positive
+ * safe-integer Unix seconds, not more than 30 seconds ahead of the Worker
+ * clock; anything else is ignored. JWT `iat` is never consulted.
+ */
+const amrTime = (
   claims: Readonly<Record<string, unknown>>,
   now: number,
+  accepts: (method: string) => boolean,
 ): string | null => {
   if (!Array.isArray(claims.amr)) return null;
   const timestamps = claims.amr.flatMap((entry) => {
@@ -44,7 +62,7 @@ const mfaVerificationTime = (
     const method = (entry as Readonly<Record<string, unknown>>).method;
     const timestamp = (entry as Readonly<Record<string, unknown>>).timestamp;
     if (
-      !['mfa', 'totp', 'webauthn', 'phone'].includes(String(method)) ||
+      !accepts(String(method)) ||
       typeof timestamp !== 'number' ||
       !Number.isSafeInteger(timestamp) ||
       timestamp <= 0 ||
@@ -56,6 +74,19 @@ const mfaVerificationTime = (
   if (timestamps.length === 0) return null;
   return new Date(Math.max(...timestamps) * 1000).toISOString();
 };
+
+const mfaVerificationTime = (
+  claims: Readonly<Record<string, unknown>>,
+  now: number,
+): string | null =>
+  amrTime(claims, now, (method) => MFA_AMR_METHODS.includes(method));
+
+/** A primary sign-in method is any `amr` method that is not an MFA method. */
+const primaryAuthenticationTime = (
+  claims: Readonly<Record<string, unknown>>,
+  now: number,
+): string | null =>
+  amrTime(claims, now, (method) => !MFA_AMR_METHODS.includes(method));
 
 const providerSubject = (
   user: Readonly<Record<string, unknown>>,
@@ -251,6 +282,8 @@ export const verifyTokenResponse = async (
       sessionId,
       expiresAt: new Date(expires * 1000).toISOString(),
       stepUpAt: mfaVerificationTime(claims, config.now()),
+      primaryAuthAt: primaryAuthenticationTime(claims, config.now()),
+      aal: claims.aal === 'aal1' || claims.aal === 'aal2' ? claims.aal : null,
       providerSubjectDigest:
         subject === null || expectedProvider === undefined
           ? null

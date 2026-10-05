@@ -47,6 +47,7 @@ const effectiveConfiguration = (key) => ({
   definitionVersionId: CONFIGURATION_VERSION_ID,
   key,
   valueKind: 'short_text',
+  ownerCapability: 'settings.web.write',
   typedValue:
     key === 'web.untrusted' ? '<script>untrusted-value</script>' : 'jam',
   sourceScope: 'platform',
@@ -103,6 +104,31 @@ const send = (response, status, value, headers = {}) => {
   response.end(payload);
 };
 
+const SESSION_CAPABILITIES = {
+  'slice-07-e2e-session': [
+    'settings.read',
+    'settings.web.write',
+    'settings.approve',
+    'settings.release',
+    'settings.rollback',
+  ],
+  'slice-07-e2e-read-only-session': ['settings.read'],
+  'slice-08-e2e-session': [
+    'admin.inbox.read',
+    'admin.capability.grant',
+    'admin.audit.read',
+  ],
+};
+
+const capabilitiesForSession = (cookieHeader = '') => {
+  const access = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('wj_access='))
+    ?.slice('wj_access='.length);
+  return SESSION_CAPABILITIES[access ?? ''] ?? [];
+};
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', `http://127.0.0.1:${PORT}`);
   if (url.pathname === '/healthz') return send(response, 200, { ok: true });
@@ -156,19 +182,8 @@ const server = createServer(async (request, response) => {
         },
         { 'retry-after': '30' },
       );
-    const capabilities =
-      key === 'web.read-only'
-        ? 'configuration.read'
-        : [
-            'configuration.read',
-            'configuration.editor',
-            'configuration.approver',
-            'configuration.release',
-            'configuration.rollback',
-          ].join(',');
     return send(response, 200, effectiveConfiguration(key), {
       etag: '"7"',
-      'x-configuration-capabilities': capabilities,
     });
   }
 
@@ -209,10 +224,21 @@ const server = createServer(async (request, response) => {
   }
 
   if (url.pathname === '/api/v1/admin/inbox' && request.method === 'GET')
-    return send(response, 200, adminInbox(), {
-      'x-configuration-capabilities':
-        'admin.inbox.read,admin.capability.grant,admin.audit.read',
-    });
+    return send(response, 200, adminInbox());
+
+  // CFG-05B-07: the only capability source the real Worker exposes. It is a
+  // session-level projection, never per-resource and never a response header,
+  // so each e2e session cookie stands for one verified capability set.
+  if (
+    url.pathname === '/api/v1/admin/capability-snapshot' &&
+    request.method === 'GET'
+  )
+    return send(
+      response,
+      200,
+      { capabilities: capabilitiesForSession(request.headers.cookie) },
+      { 'cache-control': 'no-store' },
+    );
 
   const profileMatch = url.pathname.match(/^\/api\/v1\/profiles\/([^/]+)$/u);
   if (profileMatch?.[1] === PARTY_ID && request.method === 'GET')

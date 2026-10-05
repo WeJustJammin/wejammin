@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe('S09 adversarial worker recovery', () => {
-  it('[P2-S09-AC-217] coalesces concurrent idempotent commands, replays the full response, and retries failed work', async () => {
+  it('[P2-S09-AC-217] keeps no Worker replay cache: concurrent same-key commands each reach the RPC and a failed command is retried through it', async () => {
     const harness = makeHarness();
     const dependencies = harness.dependencies;
     let resolveFirst:
@@ -39,7 +39,10 @@ describe('S09 adversarial worker recovery', () => {
         resolveFirst = resolve;
       },
     );
-    const createTypeDraft = vi.fn(() => firstResponse);
+    const createTypeDraft = vi
+      .fn()
+      .mockImplementationOnce(() => firstResponse)
+      .mockResolvedValueOnce(ok(resource));
     harness.ports.createTypeDraft = createTypeDraft;
     const domain = createContentSchemaRegistryDomain(dependencies);
     const input: ContentSchemaRegistryPortInput = {
@@ -53,12 +56,13 @@ describe('S09 adversarial worker recovery', () => {
     const first = domain.execute(input);
     const second = domain.execute({ ...input, request: readRequest() });
     await Promise.resolve();
-    expect(createTypeDraft).toHaveBeenCalledTimes(1);
+    // BE00: (actor, operation, key) is serialized by PostgreSQL, which waits
+    // on the unique row and replays; the Worker coalesces nothing itself.
+    expect(createTypeDraft).toHaveBeenCalledTimes(2);
     resolveFirst?.(ok(resource));
     const [firstResult, secondResult] = await Promise.all([first, second]);
     expect(firstResult).toEqual({ ok: true, value: resource });
     expect(secondResult).toEqual(firstResult);
-    expect(createTypeDraft).toHaveBeenCalledTimes(1);
 
     const retryPort = vi
       .fn()

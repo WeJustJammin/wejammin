@@ -18,6 +18,7 @@ import { verifyAc265CandidateEvidenceFiles } from './ac265-candidate-provenance-
 
 export interface Ac265VerifiedCandidateFiles {
   readonly artifactDigest: string;
+  readonly axeReportSha256: string;
   readonly buildId: string;
   readonly migrationVersion: string;
   readonly migration: Readonly<{
@@ -78,6 +79,7 @@ export const verifyAc265CandidateArtifactFiles = (
 
   return {
     artifactDigest: identity.artifactDigest,
+    axeReportSha256: evidence.axeReportSha256,
     buildId: identity.buildId,
     migrationVersion: identity.migrationVersion,
     migration: evidence.migration,

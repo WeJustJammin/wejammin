@@ -1,0 +1,238 @@
+-- DEC-108 support helpers: side-effect fingerprints, activation request
+-- builders, exact-request replay, and the worker backfill/switch steps.
+-- Requires 00-helpers.sqlinc and 02-chain.sqlinc.
+
+-- Side-effect fingerprint over every table a rejected or read-only call must
+-- leave byte-for-byte unchanged.
+create or replace function pg_temp.s09d_fingerprint(p_audit boolean default true) returns text
+language plpgsql as $body$
+declare parts text := '';
+begin
+  if p_audit then
+    parts := parts || coalesce(pg_temp.s09d_scalar('select count(*)::text from audit_private.audit_events'), 'x');
+  end if;
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select count(*)::text from platform_private.outbox_events'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select count(*)::text from platform_private.idempotency_records'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select md5(string_agg(t::text, '','' order by id)) from platform_private.cms_content_type_versions t'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by id), '''')) from platform_private.cms_schema_reviews t'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by id), '''')) from platform_private.cms_schema_review_decisions t'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by id), '''')) from platform_private.cms_schema_review_assignments t'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by id), '''')) from platform_private.cms_schema_migration_plans t'), 'x');
+  parts := parts || '|' || coalesce(pg_temp.s09d_scalar('select md5(coalesce(string_agg(t::text, '','' order by id), '''')) from platform_private.cms_schema_dry_run_reports t'), 'x');
+  return md5(parts);
+end;
+$body$;
+
+-- CMS-03A-02 + CMS-03A-03: a relation field bound to a protected projection, so
+-- a successor clone has a local reference to remap.  Existing draft commands.
+create or replace function pg_temp.s09d_add_relation(p_tag text) returns void
+language plpgsql as $body$
+declare field_resource jsonb;
+begin
+  field_resource := pg_temp.s09d_rpc(p_tag || ':field', 'platform_api.cms_add_field_definition', 'owner',
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'field', jsonb_build_object('key', 'related', 'kind', 'relation',
+        'constraints', '{}'::jsonb, 'required', false, 'validatorKey', null,
+        'validatorVersion', null, 'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Related', 'order', 1),
+        'lifecycle', 'active'),
+      'migrationPlanId', null, 'expectedVersion', pg_temp.s09d_version(p_tag),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'field')));
+  perform pg_temp.s09d_remember(p_tag || ':fieldId', (field_resource->>'id')::uuid);
+  perform pg_temp.s09d_rpc(p_tag || ':relation', 'platform_api.cms_bind_relation', 'owner',
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'fieldId', field_resource->>'id', 'targetKind', 'domain', 'targetType', 'profile',
+      'projectionKey', 'profile.summary', 'cardinality', 'many', 'min', 0, 'max', 3,
+      'ordered', false, 'onUnavailable', 'placeholder',
+      'expectedVersion', pg_temp.s09d_version(p_tag),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'relation')));
+end;
+$body$;
+
+-- CMS-03A-07 detail projection's activationPreparation.dryRunRef of the tag.
+create or replace function pg_temp.s09d_get_pr(p_tag text, p_actor text default 'owner') returns jsonb
+language plpgsql as $body$
+declare detail jsonb;
+begin
+  perform pg_temp.s09d_session(p_actor);
+  detail := pg_temp.s09d_call(p_tag || ':detail', 'platform_api.cms_get_content_type_version',
+    jsonb_build_object('contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'context', pg_temp.s09d_context(p_actor)));
+  return detail->'activationPreparation'->'dryRunRef';
+end;
+$body$;
+
+-- Builds a CMS-03A-04 request for the tag's approved candidate and selects the
+-- actor session as a side effect, so throws_ok/is can run it directly.
+create or replace function pg_temp.s09d_activation_request(
+  p_tag text, p_actor text default 'owner', p_override jsonb default '{}'::jsonb,
+  p_patch jsonb default '{}'::jsonb
+) returns jsonb language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session(p_actor);
+  return jsonb_build_object(
+    'contentTypeId', pg_temp.s09d_id(p_tag || ':type'), 'versionId', pg_temp.s09d_id(p_tag || ':version'),
+    'expectedVersion', pg_temp.s09d_version(p_tag), 'dryRunId', pg_temp.s09d_id(p_tag || ':dryRun'),
+    'approvalIds', pg_temp.s09d_approval_ids(p_tag), 'migrationPlanId', pg_temp.s09d_id(p_tag || ':plan'),
+    'idempotencyKey', pg_temp.s09d_idem(p_tag, 'act'),
+    'context', pg_temp.s09d_context(p_actor, true, p_override)) || p_patch;
+end;
+$body$;
+create or replace function pg_temp.s09d_activate_sql(
+  p_tag text, p_actor text default 'owner', p_override jsonb default '{}'::jsonb,
+  p_patch jsonb default '{}'::jsonb
+) returns text language sql as $body$
+  select format('select platform_api.cms_activate_schema(%L::jsonb)',
+    pg_temp.s09d_activation_request(p_tag, p_actor, p_override, p_patch)::text)
+$body$;
+
+
+-- CMS-03A-02 only: a relation-kind field with no relation bound yet.
+create or replace function pg_temp.s09d_add_field_only(p_tag text, p_actor text default 'owner') returns jsonb
+language plpgsql as $body$
+declare field_resource jsonb;
+begin
+  field_resource := pg_temp.s09d_rpc(p_tag || ':field', 'platform_api.cms_add_field_definition', p_actor,
+    jsonb_build_object(
+      'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'versionId', pg_temp.s09d_id(p_tag || ':version'),
+      'field', jsonb_build_object('key', 'related', 'kind', 'relation',
+        'constraints', '{}'::jsonb, 'required', false, 'validatorKey', null,
+        'validatorVersion', null, 'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Related', 'order', 1), 'lifecycle', 'active'),
+      'migrationPlanId', null, 'expectedVersion', pg_temp.s09d_version(p_tag),
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'fieldonly')));
+  if field_resource is not null then
+    perform pg_temp.s09d_remember(p_tag || ':fieldId', (field_resource->>'id')::uuid);
+  end if;
+  return field_resource;
+end;
+$body$;
+
+-- Worker backfill of a sealed zero-source plan to `completed` (claim -> bounded
+-- batch -> begin verification -> verify -> complete), as the BE00 worker does.
+-- Returns the final plan json; the plan version is read before every CAS step.
+create or replace function pg_temp.s09d_complete_plan(p_tag text, p_actor text default 'owner')
+returns jsonb language plpgsql as $body$
+declare
+  plan_id uuid := pg_temp.s09d_id(p_tag || ':plan');
+  version_id uuid := pg_temp.s09d_id(p_tag || ':version');
+  plan_json jsonb; base jsonb; claim jsonb; counts jsonb;
+begin
+  perform pg_temp.s09d_session(p_actor, 'service_role');
+  plan_json := pg_temp.s09d_call(p_tag || ':run.get', 'platform_api.cms_get_schema_migration_plan',
+    jsonb_build_object('migrationPlanId', plan_id, 'schemaVersionId', version_id,
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id)));
+  base := jsonb_build_object('migrationPlanId', plan_id, 'schemaVersionId', version_id, 'cursor', '0',
+    'transformKey', null, 'transformVersion', null, 'compilerHash', plan_json->'compilerHash',
+    'sourceHash', plan_json->'sourceHash', 'targetHash', plan_json->'targetHash');
+  counts := jsonb_build_object('sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0',
+    'migratedCount', '0', 'failedCount', '0');
+  claim := pg_temp.s09d_call(p_tag || ':run.claim', 'platform_api.cms_claim_schema_migration_lease',
+    base || jsonb_build_object('expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'leaseOwner', 's09d-worker', 'workerId', 's09d-worker', 'leaseDurationMs', '30000',
+      'now', clock_timestamp()::text));
+  perform pg_temp.s09d_call(p_tag || ':run.batch', 'platform_api.cms_process_schema_migration_batch',
+    base || jsonb_build_object('expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'limit', '128', 'leaseToken', claim->>'leaseToken', 'rowEvidence', '[]'::jsonb,
+      'correlationId', extensions.gen_random_uuid(), 'causationId', null));
+  perform pg_temp.s09d_call(p_tag || ':run.begin', 'platform_api.cms_begin_schema_migration_verification',
+    (base - 'schemaVersionId') || counts || jsonb_build_object('expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id)));
+  perform pg_temp.s09d_call(p_tag || ':run.verify', 'platform_api.cms_verify_schema_migration',
+    base || counts || jsonb_build_object('expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'leaseToken', claim->>'leaseToken'));
+  return pg_temp.s09d_call(p_tag || ':run.complete', 'platform_api.cms_complete_schema_migration',
+    jsonb_build_object('migrationPlanId', plan_id,
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'leaseToken', claim->>'leaseToken'));
+end;
+$body$;
+
+-- Worker switch (cms_activate_schema_migration) of a completed plan.
+create or replace function pg_temp.s09d_worker_activate(
+  p_tag text, p_source_tag text, p_key text, p_actor text default 'owner'
+) returns jsonb language plpgsql as $body$
+declare plan_id uuid := pg_temp.s09d_id(p_tag || ':plan'); plan_json jsonb;
+begin
+  perform pg_temp.s09d_session(p_actor, 'service_role');
+  plan_json := pg_temp.s09d_call(p_tag || ':wk.get', 'platform_api.cms_get_schema_migration_plan',
+    jsonb_build_object('migrationPlanId', plan_id, 'schemaVersionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id)));
+  return pg_temp.s09d_call(p_tag || ':wk.activate', 'platform_api.cms_activate_schema_migration',
+    jsonb_build_object('migrationPlanId', plan_id, 'contentTypeId', pg_temp.s09d_id(p_tag || ':type'),
+      'schemaVersionId', pg_temp.s09d_id(p_tag || ':version'),
+      'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', plan_id),
+      'expectedActiveVersionId', pg_temp.s09d_id(p_source_tag || ':version'),
+      'transformKey', null, 'transformVersion', null, 'compilerHash', plan_json->'compilerHash',
+      'sourceHash', plan_json->'sourceHash', 'targetHash', plan_json->'targetHash',
+      'idempotencyKey', p_key, 'switchOnlyOnce', true));
+end;
+$body$;
+
+-- Replays one exact request: the first call must succeed and the second call,
+-- carrying the identical request object, must return the identical response.
+create or replace function pg_temp.s09d_replay_pair(
+  p_label text, p_function text, p_actor text, p_request jsonb, p_binding boolean default false
+) returns boolean language plpgsql as $body$
+declare full_request jsonb; first_response jsonb; second_response jsonb;
+begin
+  perform pg_temp.s09d_session(p_actor);
+  full_request := p_request || jsonb_build_object('context', pg_temp.s09d_context(p_actor, p_binding));
+  first_response := pg_temp.s09d_call(p_label || '.1', p_function, full_request);
+  second_response := pg_temp.s09d_call(p_label || '.2', p_function, full_request);
+  return first_response is not null and second_response is not null and first_response = second_response;
+end;
+$body$;
+
+-- Sends a request that already completed under its Idempotency-Key again with one or
+-- more members changed (p_patch is merged over the original request) and returns the
+-- database outcome.  The BE00 request binding (actor, operation, key hash, request hash)
+-- refuses it before any other check, so the outcome is the idempotency refusal itself.
+create or replace function pg_temp.s09d_replay_changed(
+  p_label text, p_function text, p_actor text, p_request jsonb, p_patch jsonb, p_binding boolean default false
+) returns text language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session(p_actor);
+  perform pg_temp.s09d_call(p_label, p_function,
+    (p_request || p_patch) || jsonb_build_object('context', pg_temp.s09d_context(p_actor, p_binding)));
+  return pg_temp.s09d_outcome(p_label);
+end;
+$body$;
+
+-- Test-human provisioning (D3): a confirmed membership of the owner organization
+-- and an effective capability (a specialist reviewer slot, a template designer)
+-- granted through the owner command CMS-03A-15.  This provisions authority only;
+-- it never writes a review, decision, dry-run, approved or completed-plan row and
+-- never inserts an organization_actor_grant row by hand.
+create or replace function pg_temp.s09d_grant_specialist(p_actor text, p_capability text)
+returns void language plpgsql as $body$
+declare outcome text;
+begin
+  outcome := pg_temp.s09d_grant_via_rpc(p_actor, p_capability, 1);
+  if outcome not in ('OK', 'EXISTS') then
+    raise exception 'owner grant of % to % failed: %', p_capability, p_actor, outcome;
+  end if;
+end;
+$body$;
+
+-- A real CMS-03C-01 template definition (platform_api.cms_define_template) compatible with the
+-- type of p_type_tag; requires the owner to hold cms.template_designer (s09d_grant_specialist).
+-- Its template version is the only template evidence a binding of this suite may cite.
+create or replace function pg_temp.s09d_template(p_tag text, p_key text, p_type_tag text) returns jsonb
+language plpgsql as $body$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc(p_tag || ':template', 'platform_api.cms_define_template', 'owner',
+    jsonb_build_object('templateKey', p_key, 'compatibleTypeIds', jsonb_build_array(pg_temp.s09d_id(p_type_tag || ':type')),
+      'slots', '[]'::jsonb, 'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+      'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+      'idempotencyKey', pg_temp.s09d_idem(p_tag, 'template')));
+  if resource is not null then perform pg_temp.s09d_remember(p_tag || ':templateVersion', (resource->>'id')::uuid); end if;
+  return resource;
+end;
+$body$;

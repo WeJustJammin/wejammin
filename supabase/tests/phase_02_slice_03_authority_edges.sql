@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
@@ -18,7 +19,7 @@ create or replace function pg_temp.edge_context(
   p_key text, p_key_hash text, p_request_hash text
 ) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claim.sub', p_auth::text, true);
+  perform pg_temp.set_jwt_claim('sub', p_auth::text, true);
   perform set_config('app.auth_user_id', p_auth::text, true);
   perform set_config('app.actor_auth_user_id', p_auth::text, true);
   perform set_config('app.actor_person_id', p_person::text, true);

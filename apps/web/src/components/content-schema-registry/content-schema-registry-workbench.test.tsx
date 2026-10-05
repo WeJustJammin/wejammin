@@ -4,6 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 import ContentSchemaRegistryWorkbench from './ContentSchemaRegistryWorkbench';
 import ContentSchemaRegistryWorkbenchIsland from './ContentSchemaRegistryWorkbenchIsland';
+import {
+  approvedReviewPreparation,
+  emptyActivationPreparation,
+} from './content-schema-registry-activation-preparation.test-support';
+import { approvedProtectedReview } from './content-schema-review-dec108.test-support';
 import { CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS } from './content-schema-registry-types';
 import type {
   ContentSchemaRegistryDetail,
@@ -11,6 +16,8 @@ import type {
   ContentSchemaRegistryQuery,
   ContentSchemaRegistryWorkbenchProps,
 } from './content-schema-registry-types';
+
+const SUPPORT_REFERENCE = 'SR-0A1B-2C3D-4E5F-6A7B';
 
 const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
 const VERSION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132db';
@@ -42,6 +49,9 @@ const list = {
       ownerCapability: 'cms.schema_registry.read',
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',
+      supportedLocales: ['en-US'],
+      fallbackChains: {},
+      localeConfigHash: 'c'.repeat(64),
       workflowKey: 'cms.content.workflow',
       workflowVersion: '1',
       defaultTemplateVersionId: null,
@@ -85,6 +95,9 @@ const detail = {
     ownerCapability: 'cms.schema_registry.read',
     sourceLocale: 'en-US',
     defaultLocale: 'en-US',
+    supportedLocales: ['en-US'],
+    fallbackChains: {},
+    localeConfigHash: 'c'.repeat(64),
     workflowKey: 'cms.content.workflow',
     workflowVersion: '1',
     defaultTemplateVersionId: null,
@@ -124,6 +137,7 @@ const detail = {
   blockDefinitions: list.items.filter(
     (item) => item.resourceKind === 'block_definition_registry_record',
   ),
+  activationPreparation: emptyActivationPreparation,
 } satisfies ContentSchemaRegistryDetail;
 
 const query: ContentSchemaRegistryQuery = {
@@ -142,14 +156,12 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   },
   variant: 'entitledRead',
   access: 'read-only',
-  actorId: TYPE_ID,
-  actingPartyId: VERSION_ID,
   query,
   contentTypeId: TYPE_ID,
   versionId: VERSION_ID,
   cursor: null,
   expectedVersion: '4',
-  requestId: TYPE_ID,
+  supportReference: SUPPORT_REFERENCE,
   canonicalUrl: '/app/cms-content-modeling',
   listUrl:
     '/app/cms-content-modeling?resourceKind=content_type&limit=25&sort=key&direction=asc',
@@ -158,6 +170,23 @@ const baseProps: ContentSchemaRegistryWorkbenchProps = {
   csrfToken: 'csrf-token',
   onCanonicalRefetch: async () => undefined,
   contractFields: CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
+};
+
+// Activation renders only from server state: `activate` plus its approved review.
+const activatable: Partial<ContentSchemaRegistryWorkbenchProps> = {
+  access: 'full',
+  initialDetail: {
+    status: 'success',
+    data: { ...detail, activationPreparation: approvedReviewPreparation },
+    version: '4',
+    stale: false,
+  },
+  initialReview: {
+    status: 'success',
+    data: approvedProtectedReview(),
+    version: '3',
+    stale: false,
+  },
 };
 
 const render = (
@@ -171,6 +200,56 @@ const render = (
   );
 
 describe('ContentSchemaRegistryWorkbench server-first projection', () => {
+  it('[P2-S09-AC-250] renders the resolved acting-context disclosure without identifiers', () => {
+    // The disclosure re-derives against the rendering clock, so the fixture
+    // must sit inside the 10-minute verified window.
+    const freshUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const markup = render({
+      ...activatable,
+      actingContextLabel: 'Northwind Collective',
+      stepUpState: 'verified',
+      stepUpFreshUntil: freshUntil,
+    });
+    expect(markup).toContain('Northwind Collective');
+    expect(markup).toContain('Verified until');
+    // No identifier is ever the displayed acting context.
+    const disclosureStart = markup.indexOf('Acting context');
+    expect(markup.slice(disclosureStart, disclosureStart + 220)).not.toContain(
+      VERSION_ID,
+    );
+  });
+
+  it('[P2-S09-AC-250] states the honest fallback when no context or expiry is proven', () => {
+    const markup = render(activatable);
+    expect(markup).toContain('Server-verified acting context unavailable');
+    expect(markup).not.toContain('Verified until');
+    expect(markup).toContain('Step-up required before commit');
+  });
+
+  it('[P2-S09-AC-250] adds no private identifier to the island boundary', () => {
+    const boundary = render({
+      ...activatable,
+      actingContextLabel: 'Northwind Collective',
+      stepUpState: 'verified',
+      stepUpFreshUntil: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+    // The disclosure contributes only a human label and a derived expiry. The
+    // amended FE03 island invariant carries no actor, party, binding or
+    // session identifier, so none can render as the acting context.
+    const disclosureStart = boundary.indexOf('Acting context');
+    const disclosureSection = boundary.slice(
+      disclosureStart,
+      boundary.indexOf('<dt>Step-up</dt>', disclosureStart),
+    );
+    expect(disclosureSection).toContain('Northwind Collective');
+    expect(disclosureSection).not.toContain(VERSION_ID);
+    expect(disclosureSection).not.toContain(TYPE_ID);
+    // The idempotency key legitimately embeds the support reference; assert the
+    // boundary adds no private binding or session material beyond it.
+    expect(boundary).not.toContain('actingContextId');
+    expect(boundary).not.toContain('bindingId');
+  });
+
   it('keeps SSR markup while hydrating a client-owned canonical refetch callback', () => {
     const { onCanonicalRefetch, ...serializableProps } = baseProps;
     expect(onCanonicalRefetch).toBeTypeOf('function');
@@ -254,7 +333,6 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
       initialDetail: {
         status: 'degraded',
         data: null,
-        requestId: TYPE_ID,
         lastVerifiedAt: null,
       },
       listUrl:
@@ -276,7 +354,6 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
         error: {
           code: 'INTERNAL_ERROR',
           message: 'provider secret must never reach the browser',
-          requestId: TYPE_ID,
         },
         retryable: false,
       },
@@ -300,13 +377,12 @@ describe('ContentSchemaRegistryWorkbench server-first projection', () => {
       initialList: {
         status: 'degraded',
         data: null,
-        requestId: TYPE_ID,
         lastVerifiedAt: null,
       },
       initialDetail: null,
     });
     expect(degraded).toContain('temporarily unavailable');
-    expect(degraded).toContain(TYPE_ID);
+    expect(degraded).toContain(SUPPORT_REFERENCE);
     expect(degraded).toContain('Retry');
 
     const disabled = render({

@@ -14,10 +14,41 @@ import {
   clearAuthCookies,
   readCookie,
 } from './production-cookie';
-import type { AuthenticationDependencies } from './types';
+import type { AuthenticationDependencies, AuthRateLimitInput } from './types';
 
-const AUTH_RATE_LIMIT_OPERATION_PATTERN = /^AUTH-API-(?:0[1-9]|1[0-5])$/u;
+const AUTH_RATE_LIMIT_OPERATION_PATTERN = /^AUTH-API-(?:0[1-9]|1[0-9]|2[01])$/u;
 const AUTH_RATE_LIMIT_FALLBACK_OPERATION = 'AUTH-API-15' as const;
+
+/**
+ * Bucket identity per explicit scope. `user` and `party` buckets carry no
+ * client address and no other identity; the default `client` scope keeps the
+ * address-keyed buckets of the login and flow limits (a legacy party-only
+ * bucket still drops the address). Returns null when the scope's identity is
+ * missing, which the caller refuses rather than sharing a bucket.
+ */
+const rateBucketKey = (input: AuthRateLimitInput): string | null => {
+  const operation = input.operationId;
+  if (input.scope === 'user') {
+    const identity = input.authUserId ?? input.identifierDigest;
+    return identity === null || identity === ''
+      ? null
+      : `${operation}\u0000user\u0000${identity}`;
+  }
+  if (input.scope === 'party') {
+    const party = input.actingPartyId;
+    return typeof party !== 'string' || party === ''
+      ? null
+      : `${operation}\u0000party\u0000${party}`;
+  }
+  const isPartyBucket =
+    input.authUserId === null &&
+    typeof input.actingPartyId === 'string' &&
+    input.actingPartyId !== '';
+  const ip = isPartyBucket
+    ? ''
+    : (input.request.headers.get('cf-connecting-ip') ?? 'unknown');
+  return `${operation}\u0000${ip}\u0000${input.authUserId ?? ''}\u0000${input.actingPartyId ?? ''}\u0000${input.identifierDigest ?? ''}`;
+};
 
 export const createOperationalDependencies = (
   config: AuthProductionConfiguration,
@@ -116,10 +147,14 @@ export const createOperationalDependencies = (
           'INVALID_REQUEST',
           'The authentication rate limit request is invalid.',
         );
-      const ip = input.request.headers.get('cf-connecting-ip') ?? 'unknown';
-      const bucket = await sha256Hex(
-        `${input.operationId}\u0000${ip}\u0000${input.authUserId ?? ''}\u0000${input.actingPartyId ?? ''}\u0000${input.identifierDigest ?? ''}`,
-      );
+      const key = rateBucketKey(input);
+      if (key === null)
+        return authError(
+          400,
+          'INVALID_REQUEST',
+          'The authentication rate limit request is invalid.',
+        );
+      const bucket = await sha256Hex(key);
       const operationId = AUTH_RATE_LIMIT_OPERATION_PATTERN.test(
         input.operationId,
       )

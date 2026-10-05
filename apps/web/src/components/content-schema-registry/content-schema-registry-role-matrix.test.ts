@@ -21,7 +21,7 @@ describe('content schema registry server-authoritative role matrix', () => {
     }
   });
 
-  it('keeps role labels descriptive rather than client-side authority', () => {
+  it('[P2-S09-AC-989] keeps role labels descriptive rather than client-side authority', () => {
     expect(CONTENT_SCHEMA_REGISTRY_ROLE_MATRIX.Free.commands).toBe(
       'not-rendered',
     );

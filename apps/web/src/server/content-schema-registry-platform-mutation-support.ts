@@ -1,15 +1,4 @@
-import {
-  ApiErrorSchema,
-  ContentTypeDraftRequestSchema,
-  ContentTypeVersionResourceSchema,
-  FieldDefinitionVersionResourceSchema,
-  FieldSchemaChangeRequestSchema,
-  RelationBindingRequestSchema,
-  RelationDefinitionResourceSchema,
-  SchemaActivationRequestSchema,
-  SchemaActivationResourceSchema,
-  createRequestId,
-} from '@wejammin/contracts';
+import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 import {
   CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS,
   isSafeUuid,
@@ -20,6 +9,7 @@ import type {
   ContentSchemaRegistryMutationTarget,
 } from './content-schema-registry-platform-shared';
 import { filteredCookieHeader } from './content-schema-registry-platform-shared';
+import { fieldViolations } from './content-schema-registry-platform-locale-issues';
 
 const MUTATION_RESPONSE_HEADERS = new Set([
   'allow',
@@ -37,57 +27,75 @@ const MUTATION_RESPONSE_HEADERS = new Set([
   'x-request-id',
 ]);
 
+const pathIdentifiers = (
+  target: ContentSchemaRegistryMutationTarget,
+  scope: 'none' | 'version' | 'review' | 'grant',
+): Readonly<Record<string, string>> | null => {
+  if (scope === 'none') return {};
+  if (scope === 'grant')
+    return target.grantId !== undefined && isSafeUuid(target.grantId)
+      ? { grantId: target.grantId }
+      : null;
+  if (scope === 'review')
+    return target.reviewId !== undefined && isSafeUuid(target.reviewId)
+      ? { reviewId: target.reviewId }
+      : null;
+  return target.contentTypeId !== undefined &&
+    target.versionId !== undefined &&
+    isSafeUuid(target.contentTypeId) &&
+    isSafeUuid(target.versionId)
+    ? { contentTypeId: target.contentTypeId, versionId: target.versionId }
+    : null;
+};
+
 export const mutationPath = (
   target: ContentSchemaRegistryMutationTarget,
 ): string | null => {
   const operation =
     CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS[target.operationId];
   if (operation === undefined) return null;
-  if (target.operationId === 'CMS-03A-01') return operation.path;
-  if (
-    target.contentTypeId === undefined ||
-    target.versionId === undefined ||
-    !isSafeUuid(target.contentTypeId) ||
-    !isSafeUuid(target.versionId)
-  ) {
-    return null;
-  }
-  return operation.path
-    .replace('{contentTypeId}', encodeURIComponent(target.contentTypeId))
-    .replace('{versionId}', encodeURIComponent(target.versionId));
+  const identifiers = pathIdentifiers(target, operation.scope);
+  if (identifiers === null) return null;
+  return Object.entries(identifiers).reduce(
+    (path, [name, value]) =>
+      path.replace(`{${name}}`, encodeURIComponent(value)),
+    operation.path as string,
+  );
 };
 
+interface SchemaParser {
+  readonly safeParse: (value: unknown) =>
+    | { readonly success: true; readonly data: unknown }
+    | {
+        readonly success: false;
+        readonly error?: {
+          readonly issues: readonly {
+            readonly path: readonly PropertyKey[];
+            readonly message: string;
+          }[];
+        };
+      };
+}
+
+/** Strictly validate a browser payload against the generated request schema. */
 export const schemaParseMutation = (
   operationId: ContentSchemaRegistryMutationOperationId,
   value: unknown,
-) => {
-  switch (operationId) {
-    case 'CMS-03A-01':
-      return ContentTypeDraftRequestSchema.safeParse(value);
-    case 'CMS-03A-02':
-      return FieldSchemaChangeRequestSchema.safeParse(value);
-    case 'CMS-03A-03':
-      return RelationBindingRequestSchema.safeParse(value);
-    case 'CMS-03A-04':
-      return SchemaActivationRequestSchema.safeParse(value);
-  }
-};
+) =>
+  (
+    CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS[operationId]
+      .requestSchema as SchemaParser
+  ).safeParse(value);
 
+/** Strictly validate the private service success body for the operation. */
 export const schemaParseSuccess = (
   operationId: ContentSchemaRegistryMutationOperationId,
   value: unknown,
-) => {
-  switch (operationId) {
-    case 'CMS-03A-01':
-      return ContentTypeVersionResourceSchema.safeParse(value);
-    case 'CMS-03A-02':
-      return FieldDefinitionVersionResourceSchema.safeParse(value);
-    case 'CMS-03A-03':
-      return RelationDefinitionResourceSchema.safeParse(value);
-    case 'CMS-03A-04':
-      return SchemaActivationResourceSchema.safeParse(value);
-  }
-};
+) =>
+  (
+    CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS[operationId]
+      .successSchema as SchemaParser
+  ).safeParse(value);
 
 export const sameOriginMutationRequest = (request: Request): boolean => {
   let requestOrigin: string;
@@ -99,6 +107,9 @@ export const sameOriginMutationRequest = (request: Request): boolean => {
   const origin = request.headers.get('origin');
   if (origin !== null && origin !== requestOrigin) return false;
   const referer = request.headers.get('referer');
+  // Strict: a cookie mutation must name where it came from. A request with
+  // neither header cannot be shown to be same-origin and is refused.
+  if (origin === null && referer === null) return false;
   if (origin === null && referer !== null) {
     try {
       if (new URL(referer).origin !== requestOrigin) return false;
@@ -178,6 +189,7 @@ export const localMutationError = (
   request: Request,
   status: number,
   code = mutationErrorCode(status),
+  details: Readonly<Record<string, unknown>> = {},
 ): Response => {
   const requestId = createRequestId(
     request.headers.get('x-request-id') ?? undefined,
@@ -191,7 +203,7 @@ export const localMutationError = (
   return Response.json(
     ApiErrorSchema.parse({
       code,
-      details: {},
+      details,
       message: mutationErrorMessage(code),
       requestId,
     }),
@@ -234,4 +246,18 @@ export const copyMutationResponseHeaders = (source: Response): Headers => {
   });
   headers.set('cache-control', 'no-store');
   return headers;
+};
+
+/** Local 422 for a browser payload that fails the generated request schema. */
+export const invalidPayloadError = (
+  request: Request,
+  issues: readonly { path: readonly PropertyKey[]; message: string }[],
+): Response => {
+  const violations = fieldViolations(issues);
+  return localMutationError(
+    request,
+    422,
+    undefined,
+    violations.length === 0 ? {} : { violations },
+  );
 };

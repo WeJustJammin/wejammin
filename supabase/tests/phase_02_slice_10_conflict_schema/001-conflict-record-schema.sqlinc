@@ -1,0 +1,231 @@
+
+-- ConflictRecord / cms_conflict_records canonical record (BE03b row 12, DEC-107).
+
+select ok(
+  pg_temp.s10c_closed_labels('platform_private.cms_conflict_records', 'state')
+    @> array['open','resolved','superseded']::text[]
+    and pg_temp.s10c_has_check('platform_private.cms_conflict_records', 'version > 0')
+    and pg_temp.s10c_has_default('platform_private.cms_conflict_records', 'version'),
+  'conflict state is the closed open/resolved/superseded envelope'
+);
+
+select ok(
+  pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'entry_id')
+      = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'base_revision_id')
+      = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'theirs_revision_id')
+      = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'yours_revision_id')
+      = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'resolved_revision_id')
+      = 'platform_private.cms_entry_revisions.id',
+  'conflict binds a real entry and the base/theirs/yours/resolved revisions'
+);
+
+select ok(
+  pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'resolved_by_person_id')
+      = 'platform_private.person_party.party_id'
+    and pg_temp.s10c_fk_target('platform_private.cms_conflict_records', 'resolved_acting_party_id')
+      = 'platform_private.party.id',
+  'conflict resolution actors reference the canonical BE01 person and party'
+);
+
+select ok(
+  pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'entry_id')
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'base_revision_id')
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'theirs_revision_id')
+    -- A stale autosave can be rejected before any `yours` revision commits, so
+    -- the yours side is discriminated by yours_source: 'revision' carries a
+    -- persisted revision identity, 'proposed' carries an uncommitted payload.
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'yours_source')
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'yours_revision_id') = false
+    and pg_temp.s10c_column_type('platform_private.cms_conflict_records', 'proposed_values') = 'jsonb'
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'proposed_values') = false
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'proposed_values_hash') = false
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'changed_paths')
+    and pg_temp.s10c_column_type('platform_private.cms_conflict_records', 'changed_paths') = 'jsonb'
+    and pg_temp.s10c_col_notnull('platform_private.cms_conflict_records', 'resolved_acting_party_id') = false,
+  'binding evidence is mandatory while resolution actors stay nullable'
+);
+
+-- The yours-source discriminator is a closed union whose two labels are
+-- coupled to the revision identity and the private proposed payload. A row
+-- carrying both, or neither, is rejected.
+select ok(
+  pg_temp.s10c_has_check(
+    'platform_private.cms_conflict_records',
+    'yours_source = ANY (ARRAY[''revision''::text, ''proposed''::text])'
+  )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      'jsonb_typeof(proposed_values) = ''object'''
+    )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      'proposed_values_hash ~ ''^[a-f0-9]{64}$'''
+    )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      'yours_source = ''revision''::text'
+    )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      'yours_source = ''proposed''::text'
+    ),
+  'the yours source is a closed union bound to a revision or a proposed payload'
+);
+
+-- PostgreSQL renders BETWEEN as an expanded >= / <= pair, so the array bound
+-- is asserted in its rendered form rather than the source shorthand.
+select ok(
+  pg_temp.s10c_has_check(
+    'platform_private.cms_conflict_records', 'jsonb_typeof(changed_paths) = ''array'''
+  )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records', 'jsonb_array_length(changed_paths) >= 1'
+    )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records', 'jsonb_array_length(changed_paths) <= 128'
+    ),
+  'changed_paths is a bounded non-empty JSON array of conflicting paths'
+);
+
+select ok(
+  pg_temp.s10c_has_check('platform_private.cms_conflict_records', 'base_hash ~ ''^[a-f0-9]{64}$''')
+    and pg_temp.s10c_has_check('platform_private.cms_conflict_records', 'theirs_hash ~ ''^[a-f0-9]{64}$''')
+    and pg_temp.s10c_has_check('platform_private.cms_conflict_records', 'yours_hash ~ ''^[a-f0-9]{64}$''')
+    and pg_temp.s10c_has_check('platform_private.cms_conflict_records', 'conflict_hash ~ ''^[a-f0-9]{64}$''')
+    and pg_temp.s10c_unique_target('platform_private.cms_conflict_records')
+      @> array['conflict_hash']::text[],
+  'every conflict hash is 64-hex and the conflict identity is unique'
+);
+
+-- Envelope coupling is asserted against the exact rendered form so a weaker
+-- CHECK that only unions the state labels cannot satisfy it.
+select ok(
+  pg_temp.s10c_has_check(
+    'platform_private.cms_conflict_records',
+    '(state = ''open''::text) AND (resolved_revision_id IS NULL)'
+  )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      '(state = ''resolved''::text) AND (resolved_revision_id IS NOT NULL)'
+    )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records',
+      '(resolved_by_person_id IS NOT NULL) AND (resolved_at IS NOT NULL)'
+    )
+    and pg_temp.s10c_has_check(
+      'platform_private.cms_conflict_records', '(state = ''superseded''::text)'
+    ),
+  'resolution evidence is coupled to state so an open row cannot carry it'
+);
+
+-- DEC-107 locks exactly one open conflict per entry; the predicate is
+-- required so a resolved row does not permanently block a new conflict.
+select ok(
+  pg_temp.s10c_has_partial_index(
+    'platform_private.cms_conflict_records',
+    'cms_conflict_records_one_open_per_entry',
+    array['(entry_id)', '(state = ''open''::text)']
+  ),
+  'one open conflict per entry is enforced by a partial unique index'
+);
+
+select ok(
+  pg_temp.s10c_has_index(
+    'platform_private.cms_conflict_records', 'cms_conflict_records_owner_state_updated_idx',
+    array['(owner_id, state, updated_at DESC)']
+  )
+    and pg_temp.s10c_has_index(
+      'platform_private.cms_conflict_records', 'cms_conflict_records_entry_state_updated_idx',
+      array['(entry_id, state, updated_at DESC)']
+    )
+    and pg_temp.s10c_has_index(
+      'platform_private.cms_conflict_records', 'cms_conflict_records_entry_conflict_hash_idx',
+      array['(entry_id, conflict_hash)']
+    ),
+  'conflict carries the locked ownership, entry and identity indexes'
+);
+
+select ok(
+  pg_temp.s10c_has_index(
+    'platform_private.cms_conflict_records', 'cms_conflict_records_base_revision_idx',
+    array['(base_revision_id)']
+  )
+    and pg_temp.s10c_has_index(
+      'platform_private.cms_conflict_records', 'cms_conflict_records_theirs_revision_idx',
+      array['(theirs_revision_id)']
+    )
+    and pg_temp.s10c_has_index(
+      'platform_private.cms_conflict_records', 'cms_conflict_records_yours_revision_idx',
+      array['(yours_revision_id)']
+    ),
+  'each conflict parent revision is indexed for resolution lookup'
+);
+
+select ok(
+  pg_temp.s10c_has_default('platform_private.cms_conflict_records', 'created_at')
+    and pg_temp.s10c_has_default('platform_private.cms_conflict_records', 'updated_at')
+    and pg_temp.s10c_column_type('platform_private.cms_conflict_records', 'created_at') = 'timestamptz'
+    and pg_temp.s10c_column_type('platform_private.cms_conflict_records', 'resolved_at') = 'timestamptz'
+    -- The row is CAS-mutable open -> resolved | superseded, so it must NOT
+    -- carry the append-only snapshot lock used by immutable evidence rows.
+    and not pg_temp.s10c_has_check('platform_private.cms_conflict_records', 'updated_at = created_at'),
+  'conflict stays CAS-mutable with real timestamps and no snapshot lock'
+);
+
+select ok(
+  coalesce((
+    select relrowsecurity and relforcerowsecurity
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'platform_private' and c.relname = 'cms_conflict_records'
+  ), false),
+  'the conflict table enables and forces RLS'
+);
+
+-- has_table_privilege raises on an absent relation, so the OID guard keeps RED
+-- complete instead of aborting the plan at a missing table.
+select ok(
+  coalesce((
+    select bool_and(
+      case
+        when to_regclass('platform_private.cms_conflict_records') is null
+          then false
+        else
+          not has_table_privilege(
+            r.role_name, 'platform_private.cms_conflict_records', 'select')
+          and not has_table_privilege(
+            r.role_name, 'platform_private.cms_conflict_records', 'insert')
+          and not has_table_privilege(
+            r.role_name, 'platform_private.cms_conflict_records', 'update')
+          and not has_table_privilege(
+            r.role_name, 'platform_private.cms_conflict_records', 'delete')
+      end
+    )
+    from (values ('anon'), ('authenticated'), ('service_role'))
+      as r(role_name)
+  ), false),
+  'browser and service roles receive no direct grants on the conflict table'
+);
+
+select ok(
+  pg_temp.s10c_has_rpc_policy('platform_private.cms_conflict_records'),
+  'the conflict table is reachable only inside a verified CMS RPC context'
+);
+
+select ok(
+  pg_temp.s10c_trigger_events('platform_private.cms_conflict_records', 'write_guard')
+    = 'delete,insert,update'
+    and pg_temp.s10c_trigger_events('platform_private.cms_conflict_records', 'immutable_guard') = '',
+  'conflict writes are guarded while resolution state stays mutable'
+);
+
+select ok(
+  pg_temp.s10c_write_sqlstate(
+    'insert into platform_private.cms_conflict_records(id) values (gen_random_uuid())'
+  ) = 'P0001',
+  'a direct insert into the conflict table is rejected by the write guard'
+);

@@ -14,8 +14,12 @@ const requestWithText = (text: () => string | Promise<string>): Request =>
 
 /**
  * The boundary checks the signal at several synchronous and asynchronous
- * checkpoints. Returning true on a chosen read makes each checkpoint
- * deterministic without relying on event-loop timing.
+ * checkpoints, in this read order: 1 parseJsonBody entry, 2 readRequestText
+ * entry, 3 the body read resolving, 4 after readRequestText, 5 after the size
+ * check. (The former synchronous re-check after the abort listener was
+ * installed was redundant: nothing awaits between it and the entry check.)
+ * Returning true on a chosen read makes each checkpoint deterministic without
+ * relying on event-loop timing.
  */
 const signalAbortingOnRead = (abortOnRead: number): AbortSignal => {
   let reads = 0;
@@ -60,7 +64,7 @@ describe('Slice 08 authentication boundary coverage', () => {
     );
   });
 
-  it('handles a signal that aborts after the abort listener is installed', async () => {
+  it('handles a signal that aborts as the body read resolves', async () => {
     await expectTimeout(
       requestWithText(() => '{}'),
       signalAbortingOnRead(3),
@@ -97,17 +101,17 @@ describe('Slice 08 authentication boundary coverage', () => {
     });
   });
 
-  it('rejects when the signal aborts after reading but before JSON parsing', async () => {
+  it('rejects when the signal aborts after reading but before the size check', async () => {
     await expectTimeout(
       requestWithText(() => '{}'),
-      signalAbortingOnRead(5),
+      signalAbortingOnRead(4),
     );
   });
 
   it('rejects when the signal aborts after the body-size check', async () => {
     await expectTimeout(
       requestWithText(() => '{}'),
-      signalAbortingOnRead(6),
+      signalAbortingOnRead(5),
     );
   });
 });

@@ -1,0 +1,28 @@
+---
+interface Props {
+  readonly children?: never;
+  readonly requestId: string;
+  readonly detail: boolean;
+}
+
+const { requestId, detail } = Astro.props;
+---
+
+<p class="platform-configuration-request-id" role="status" aria-live="polite">
+  Request ID: <code>{requestId}</code>. {
+    detail
+      ? 'Detail route uses a safe no-read boundary until a canonical detail contract exists.'
+      : 'URL state refines the view but never grants authority.'
+  }
+</p>
+<p class="platform-configuration-security-note">
+  Supabase session expiry and revocation are checked server-side with the acting
+  context; expired sessions receive a 303 returnTo sign-in flow.
+</p>
+<p
+  class="platform-configuration-a11y-note"
+  data-a11y-contract="axe serious critical contrast VoiceOver NVDA target size focus trap"
+>
+  Accessibility contract: axe serious and critical findings, contrast,
+  VoiceOver, NVDA, target size, and focus trap behavior are tested.
+</p>

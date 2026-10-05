@@ -1,3 +1,4 @@
+import { evaluateReviewAndDenialAlerts } from './content-schema-registry-alert-review-denials';
 import { CONTENT_SCHEMA_REGISTRY_ALERT_THRESHOLDS } from './content-schema-registry-alert-thresholds';
 import type {
   ContentSchemaRegistryAlert,
@@ -152,5 +153,6 @@ export const evaluateContentSchemaRegistryAlerts = (
         thresholds.dailyDlqRate,
       ),
     );
+  alerts.push(...evaluateReviewAndDenialAlerts(snapshot));
   return Object.freeze(alerts);
 };

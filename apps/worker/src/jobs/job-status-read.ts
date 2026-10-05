@@ -10,9 +10,11 @@ import {
   JobStatusInternalError,
   type JobStatusRecord,
 } from './job-status-types';
+import { verifyReadOrigin } from '../authentication/boundary';
 import { authorizeJobStatus, currentTimeMs } from './job-status-access';
 import {
   dependencyError,
+  forbiddenOriginError,
   internalError,
   isUuid,
   notFoundError,
@@ -59,8 +61,12 @@ export const readJobStatus = async (
   rateLimiter: JobStatusRateLimiter,
   signal: AbortSignal = new AbortController().signal,
 ): Promise<JobReadResult> => {
-  const path = parseJobPath(request);
-  if ('code' in path) return { error: path, kind: 'error' };
+  // BE00 step 2: a read has no body, content type or CSRF token; the origin
+  // check is the transport gate. Step 6 (strict path and query) runs after the
+  // session, so an unauthenticated caller learns nothing about path shapes.
+  if (verifyReadOrigin(request) !== null) {
+    return { error: forbiddenOriginError(), kind: 'error' };
+  }
 
   let principalValue: unknown;
   try {
@@ -81,6 +87,9 @@ export const readJobStatus = async (
   ) {
     return { error: notFoundError(), kind: 'error' };
   }
+
+  const path = parseJobPath(request);
+  if ('code' in path) return { error: path, kind: 'error' };
 
   let nowMs: number;
   try {

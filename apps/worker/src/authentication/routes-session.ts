@@ -9,12 +9,11 @@ import {
 import type { WorkerApp } from '../index';
 import {
   appendCookies,
-  authError,
   parseIdempotencyKey,
-  parseJsonBody,
+  admitJsonMutationTransport,
   rejectUnexpectedQuery,
   responseForAuthError,
-  verifySameOriginCsrf,
+  verifyReadOrigin,
 } from './boundary';
 import {
   enforceRate,
@@ -23,6 +22,7 @@ import {
   requireSession,
 } from './route-support';
 import { configureRoute } from './routes-provider-access';
+import { stepUpRequiredError } from './step-up';
 import type { AuthenticationDependencies } from './types';
 
 export const registerSessionRoutes = (
@@ -31,10 +31,15 @@ export const registerSessionRoutes = (
 ): void => {
   app.get('/api/v1/auth/session', async (context) => {
     configureRoute(context, 'AUTH-API-05');
-    const queryError = rejectUnexpectedQuery(context.req.raw);
-    if (queryError !== null) return responseForAuthError(context, queryError);
+    // BE00 step 2: a read has no body or CSRF token; the origin is the gate.
+    const foreignOrigin = verifyReadOrigin(context.req.raw);
+    if (foreignOrigin !== null)
+      return responseForAuthError(context, foreignOrigin);
+    // BE00 steps 4 and 5: verified session; strict path and query follow (step 6).
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
+    const queryError = rejectUnexpectedQuery(context.req.raw);
+    if (queryError !== null) return responseForAuthError(context, queryError);
     const rateError = await enforceRate(
       context,
       dependencies,
@@ -59,15 +64,15 @@ export const registerSessionRoutes = (
 
   app.post('/api/v1/auth/session/refresh', async (context) => {
     configureRoute(context, 'AUTH-API-06');
-    const parsed = await parseJsonBody(
-      context.req.raw,
-      SessionRefreshRequestSchema,
-    );
-    if (!parsed.ok) return responseForAuthError(context, parsed);
-    const csrfError = await verifySameOriginCsrf(context.req.raw);
-    if (csrfError !== null) return responseForAuthError(context, csrfError);
+    // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+    const transport = await admitJsonMutationTransport(context.req.raw);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    // BE00 steps 4 and 5: verified session and acting context.
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
+    // BE00 step 6: strict body.
+    const parsed = transport.value.decode(SessionRefreshRequestSchema);
+    if (!parsed.ok) return responseForAuthError(context, parsed);
     const rateError = await enforceRate(
       context,
       dependencies,
@@ -93,17 +98,12 @@ export const registerSessionRoutes = (
 
   app.post('/api/v1/auth/bootstrap', async (context) => {
     configureRoute(context, 'AUTH-API-07');
-    const parsed = await parseJsonBody(
-      context.req.raw,
-      PersonBootstrapRequestSchema,
-    );
-    if (!parsed.ok) return responseForAuthError(context, parsed);
-    const key = parseIdempotencyKey(context.req.raw);
-    if (!key.ok) return responseForAuthError(context, key);
-    const csrfError = await verifySameOriginCsrf(context.req.raw);
-    if (csrfError !== null) return responseForAuthError(context, csrfError);
+    const transport = await admitJsonMutationTransport(context.req.raw);
+    if (!transport.ok) return responseForAuthError(context, transport);
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
+    const parsed = transport.value.decode(PersonBootstrapRequestSchema);
+    if (!parsed.ok) return responseForAuthError(context, parsed);
     const rateError = await enforceRate(
       context,
       dependencies,
@@ -111,6 +111,9 @@ export const registerSessionRoutes = (
       resolved.value,
     );
     if (rateError !== null) return rateError;
+    // BE00 step 8: exact Idempotency-Key.
+    const key = parseIdempotencyKey(context.req.raw);
+    if (!key.ok) return responseForAuthError(context, key);
     const result = await dependencies.bootstrap(
       resolved.value,
       key.value,
@@ -129,20 +132,15 @@ export const registerSessionRoutes = (
 
   app.post('/api/v1/auth/logout', async (context) => {
     configureRoute(context, 'AUTH-API-08');
-    const parsed = await parseJsonBody(context.req.raw, LogoutRequestSchema);
-    if (!parsed.ok) return responseForAuthError(context, parsed);
-    const key = parseIdempotencyKey(context.req.raw);
-    if (!key.ok) return responseForAuthError(context, key);
-    const csrfError = await verifySameOriginCsrf(context.req.raw);
-    if (csrfError !== null) return responseForAuthError(context, csrfError);
+    const transport = await admitJsonMutationTransport(context.req.raw);
+    if (!transport.ok) return responseForAuthError(context, transport);
     const resolved = await requireSession(context, dependencies);
     if (!resolved.ok) return responseForAuthError(context, resolved);
+    const parsed = transport.value.decode(LogoutRequestSchema);
+    if (!parsed.ok) return responseForAuthError(context, parsed);
     const scope = parsed.value.scope ?? 'current';
     if (scope === 'all' && !isStepUpFresh(resolved.value, Date.now())) {
-      return responseForAuthError(
-        context,
-        authError(403, 'FORBIDDEN', 'Recent verification is required.'),
-      );
+      return responseForAuthError(context, stepUpRequiredError());
     }
     const rateError = await enforceRate(
       context,
@@ -151,6 +149,9 @@ export const registerSessionRoutes = (
       resolved.value,
     );
     if (rateError !== null) return rateError;
+    // BE00 step 8: exact Idempotency-Key.
+    const key = parseIdempotencyKey(context.req.raw);
+    if (!key.ok) return responseForAuthError(context, key);
     const result = await dependencies.logout(
       resolved.value,
       { scope },

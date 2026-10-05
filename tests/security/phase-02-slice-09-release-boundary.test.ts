@@ -3,6 +3,8 @@ import { join, relative, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { BlockLifecycleAdvanceRequestSchema } from '@wejammin/contracts';
+
 const ROOT = resolve(import.meta.dirname, '../..');
 
 type SourceFile = Readonly<{ path: string; source: string }>;
@@ -40,10 +42,13 @@ const walk = (relativeDirectory: string): SourceFile[] => {
   return files.sort((left, right) => left.path.localeCompare(right.path));
 };
 
+// Comments carry prose about status codes; only executable code can reserve a code.
+const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/(^|[^:])\/\/.*$/gmu, '$1');
+
 const workerFiles = walk('apps/worker/src');
 const webFiles = walk('apps/web/src');
 const migrationFiles = walk('supabase/migrations');
-const workerSource = workerFiles.map(({ source }) => source).join('\n');
 const webCmsFiles = webFiles.filter(({ source }) =>
   /CMS-03A|ContentSchemaRegistry|cms\/content-types|schema-registry/iu.test(
     source,
@@ -58,6 +63,21 @@ const releaseWorkerSource = workerFiles
   )
   .map(({ source }) => source)
   .join('\n');
+const contractsLifecycleSource = readFileSync(
+  resolve(
+    ROOT,
+    'packages/contracts/src/content-schema-registry/resources-blocks.ts',
+  ),
+  'utf8',
+);
+const admissionSchemasSource =
+  workerFiles.find(({ path }) =>
+    path.endsWith('/content-schema-registry/admission-schemas.ts'),
+  )?.source ?? '';
+const releaseHandlerSource =
+  workerFiles.find(({ path }) =>
+    path.endsWith('/content-schema-registry/route-release-handler.ts'),
+  )?.source ?? '';
 const releaseAdmissionSource =
   workerFiles.find(({ path }) =>
     path.endsWith('/content-schema-registry/admission-release.ts'),
@@ -68,7 +88,7 @@ const signedContractSource = [...workerFiles]
       source,
     ),
   )
-  .map(({ source }) => source)
+  .map(({ source }) => stripComments(source))
   .join('\n');
 const s09MigrationSource = migrationFiles
   .filter(({ source }) =>
@@ -101,7 +121,7 @@ const workerEvidenceFields = [
 ] as const;
 
 describe('Phase 2 Slice 09 release and browser security boundaries', () => {
-  it('[P2-S09-AC-117, P2-S09-AC-120, P2-S09-AC-164, P2-S09-AC-281] gates A05 and A08 behind signed release-worker admission', () => {
+  it('[P2-S09-AC-117] [P2-S09-AC-120] [P2-S09-AC-164] [P2-S09-AC-281] gates A05 and A08 behind signed release-worker admission', () => {
     expect(releaseWorkerSource).not.toBe('');
     expect(releaseWorkerSource).toMatch(/CMS-03A-05/iu);
     expect(releaseWorkerSource).toMatch(/CMS-03A-08/iu);
@@ -126,7 +146,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     ).not.toMatch(/JSON\.parse|\.json\s*\(/u);
   });
 
-  it('[P2-S09-AC-135, P2-S09-AC-200] reserves WEBHOOK_REJECTED for the exact 401 release-principal/signature boundary', () => {
+  it('[P2-S09-AC-135] [P2-S09-AC-200] reserves WEBHOOK_REJECTED for the exact 401 release-principal/signature boundary', () => {
     const occurrences = [
       ...signedContractSource.matchAll(/WEBHOOK_REJECTED/gu),
     ];
@@ -148,7 +168,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     expect(webCmsSource).not.toContain('WEBHOOK_REJECTED');
   });
 
-  it('[P2-S09-AC-156, P2-S09-AC-158, P2-S09-AC-159, P2-S09-AC-163] persists durable nonce and append-only lifecycle evidence', () => {
+  it('[P2-S09-AC-156] [P2-S09-AC-158] [P2-S09-AC-159] [P2-S09-AC-163] persists durable nonce and append-only lifecycle evidence', () => {
     expect(s09MigrationSource).toMatch(/cms_release_nonce_receipts/iu);
     expect(s09MigrationSource).toMatch(
       /cms_block_definition_lifecycle_events/iu,
@@ -160,13 +180,34 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     expect(s09MigrationSource).toMatch(
       /(?:append.only|immutable|rejects?\s+(?:update|delete)|trigger)/iu,
     );
-    expect(workerSource).toMatch(/cms\.block\.lifecycle\.changed\.v1/iu);
-    expect(workerSource).toMatch(
-      /supported[\s\S]{0,180}deprecated[\s\S]{0,180}withdrawn/iu,
+    // The Worker no longer spells the event type or the lifecycle order; it
+    // enforces both by parsing the generated contracts (route-release-handler.ts
+    // parses through schemaForReleaseOperation -> BlockLifecycleAdvanceRequestSchema). Assert the contract itself.
+    expect(releaseHandlerSource).toContain('schemaForReleaseOperation');
+    expect(admissionSchemasSource).toMatch(
+      /BlockLifecycleAdvanceRequestSchema/u,
+    );
+    const base = {
+      expectedVersion: '1',
+      releaseDigest: 'a'.repeat(64),
+    };
+    const accepted = (fromLifecycle: string, toLifecycle: string): boolean =>
+      BlockLifecycleAdvanceRequestSchema.safeParse({
+        ...base,
+        fromLifecycle,
+        toLifecycle,
+      }).success;
+    expect(accepted('supported', 'deprecated')).toBe(true);
+    expect(accepted('deprecated', 'withdrawn')).toBe(true);
+    expect(accepted('supported', 'withdrawn')).toBe(false);
+    expect(accepted('withdrawn', 'deprecated')).toBe(false);
+    expect(accepted('deprecated', 'supported')).toBe(false);
+    expect(contractsLifecycleSource).toContain(
+      "eventType: z.literal('cms.block.lifecycle.changed.v1')",
     );
   });
 
-  it('[P2-S09-AC-123, P2-S09-AC-259, P2-S09-AC-260] keeps browser projections free of ownership and worker evidence', () => {
+  it('[P2-S09-AC-123] [P2-S09-AC-259] [P2-S09-AC-260] keeps browser projections free of ownership and worker evidence', () => {
     expect(webCmsFiles.length).toBeGreaterThan(0);
     expect(webCmsSource).toMatch(
       /BlockDefinitionRegistryRecord|block_definition_registry_record/iu,
@@ -177,7 +218,7 @@ describe('Phase 2 Slice 09 release and browser security boundaries', () => {
     expect(leakedFields).toEqual([]);
   });
 
-  it('[P2-S09-AC-222, P2-S09-AC-223, P2-S09-AC-257, P2-S09-AC-258] keeps protected CMS UI free of release controls', () => {
+  it('[P2-S09-AC-222] [P2-S09-AC-223] [P2-S09-AC-257] [P2-S09-AC-258] keeps protected CMS UI free of release controls', () => {
     expect(webCmsSource).toMatch(/ContentSchemaRegistryWorkbench/iu);
     expect(webCmsSource).toMatch(/(?:protected|session|capabilit|auth)/iu);
     const releaseControls = [

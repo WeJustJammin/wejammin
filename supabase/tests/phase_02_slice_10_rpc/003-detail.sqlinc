@@ -1,0 +1,324 @@
+
+-- CMS-03B-11 (cms_get_entry_draft): authorized draft detail read.
+--
+-- This is the independent GREEN surface for the lane: it depends only on the
+-- authority helpers and the seeded draft entry, never on the unresolved
+-- editorial workflow-policy projection.  The read writes nothing and emits no
+-- audit or outbox row, so the negative assertions can also prove the write-free
+-- contract.
+
+select ok(
+  (select value is not null from s10_ids where key = 'entryId')
+    and (select value is not null from s10_ids where key = 'entryRevisionId'),
+  'P2-S10-RPC draft-read fixture entry and revision ids are resolved'
+);
+
+create temp table s10_detail_request on commit drop as
+select jsonb_build_object(
+  'entryId', ids_entry.value,
+  'context', jsonb_build_object(
+    'actingPartyId', ids_org.value,
+    'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+    'correlationId', 'a9100000-0000-4000-8000-000000000095'
+  )
+) as request
+from s10_ids ids_entry, s10_ids ids_org
+where ids_entry.key = 'entryId'
+  and ids_org.key = 'organization';
+
+-- The audit and outbox tables are counted before and after so the read can be
+-- proven side-effect free rather than merely asserted to be.
+create temp table s10_effect_baseline on commit drop as
+select pg_temp.s10_audit_total() as audit_total,
+       pg_temp.s10_outbox_total() as outbox_total;
+
+-- The creator holds cms.author + the assignment, so the read is authorized.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+create temp table s10_detail_result on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+) as response;
+
+select is(
+  pg_temp.s10_last_error_state(),
+  '00000',
+  'CMS-03B-11 authorized draft read succeeds'
+);
+
+select ok(
+  (select response ?& array[
+     'entry', 'revision', 'lifecycle', 'state', 'locale', 'contentHash',
+     'validationState', 'fields', 'relations'
+   ]
+   from s10_detail_result),
+  'CMS-03B-11 returns the strict nine-key draft-detail envelope'
+);
+
+-- The detail envelope carries ResourceMeta only, so an extra key would be a
+-- contract break; assert the exact key set rather than a subset.
+select ok(
+  (select (select count(*) from jsonb_object_keys(response->'entry')) = 4
+      and (select count(*) from jsonb_object_keys(response->'revision')) = 4
+   from s10_detail_result),
+  'CMS-03B-11 entry and revision meta expose exactly id/version/createdAt/updatedAt'
+);
+
+select is(
+  (select response->'entry'->>'id' from s10_detail_result),
+  (select value from s10_ids where key = 'entryId'),
+  'CMS-03B-11 entry meta addresses the requested entry'
+);
+select is(
+  (select response->'revision'->>'id' from s10_detail_result),
+  (select value from s10_ids where key = 'entryRevisionId'),
+  'CMS-03B-11 revision meta addresses the current draft revision'
+);
+select is(
+  (select response->>'lifecycle' from s10_detail_result),
+  'active',
+  'CMS-03B-11 reports the stored entry lifecycle'
+);
+select is(
+  (select response->>'state' from s10_detail_result),
+  'draft',
+  'CMS-03B-11 reports the stored revision state'
+);
+select is(
+  (select response->>'locale' from s10_detail_result),
+  'en-US',
+  'CMS-03B-11 reports the stored revision locale'
+);
+select is(
+  (select response->>'validationState' from s10_detail_result),
+  'valid',
+  'CMS-03B-11 reports the stored validation state'
+);
+
+-- contentHash is the stored revision payload hash, recomputed from the values.
+select is(
+  (select response->>'contentHash' from s10_detail_result),
+  (
+    select revision.payload_hash::text
+    from platform_private.cms_entry_revisions revision
+    where revision.id = (select value::uuid from s10_ids where key = 'entryRevisionId')
+  ),
+  'CMS-03B-11 contentHash is the stored revision payload hash'
+);
+
+-- Fields: the seeded value round-trips with its stable and definition ids.
+select is(
+  (select jsonb_array_length(response->'fields') from s10_detail_result),
+  1,
+  'CMS-03B-11 returns the one stored field value'
+);
+select is(
+  (select response->'fields'->0->>'fieldId' from s10_detail_result),
+  (select value from s10_ids where key = 'typeFieldId'),
+  'CMS-03B-11 field value carries the stable field id'
+);
+select is(
+  (select response->'fields'->0->>'provenance' from s10_detail_result),
+  'authored',
+  'CMS-03B-11 field value carries the stored provenance'
+);
+select ok(
+  (select (response->'fields'->0->>'valueHash') is not null
+      and (response->'fields'->0->>'valueHash') ~ '^[a-f0-9]{64}$'
+   from s10_detail_result),
+  'CMS-03B-11 field value carries a 64-hex value hash'
+);
+
+-- Relations: the seeded binding round-trips, and a stored (resolved) binding
+-- must not carry the unavailable envelope.
+select is(
+  (select jsonb_array_length(response->'relations') from s10_detail_result),
+  1,
+  'CMS-03B-11 returns the one stored relation'
+);
+select is(
+  (select response->'relations'->0->>'targetKind' from s10_detail_result),
+  'content',
+  'CMS-03B-11 relation carries the stored target kind'
+);
+select is(
+  (select response->'relations'->0->>'expectedTargetVersion' from s10_detail_result),
+  '1',
+  'CMS-03B-11 relation carries the stored expected target version as a string'
+);
+select is(
+  (select response->'relations'->0->>'targetId' from s10_detail_result),
+  'a9100000-0000-4000-8000-000000000301',
+  'CMS-03B-11 relation target is the authorized existing entry'
+);
+select is(
+  (select response->'relations'->0->>'fieldId' from s10_detail_result),
+  (select value from s10_ids where key = 'typeRelationFieldId'),
+  'CMS-03B-11 relation is bound to the registry relation field'
+);
+select is(
+  (select response->'relations'->0->>'onUnavailable' from s10_detail_result),
+  'omit',
+  'CMS-03B-11 relation carries the stored on-unavailable policy'
+);
+select ok(
+  (select jsonb_typeof(response->'relations'->0->'unavailable') = 'null'
+   from s10_detail_result),
+  'CMS-03B-11 stored relation reports unavailable as null, never fabricated'
+);
+
+-- A stored target ID is not proof that the actor may still receive it.  The
+-- self-related target has an exact expected version; move that target inside a
+-- savepoint and prove the `omit` policy hides the entire stale relation.
+savepoint s10_detail_stale_target;
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries
+set version = 2
+where id = (select value::uuid from s10_ids where key = 'entryId');
+create temp table s10_detail_stale_result on commit drop as
+select pg_temp.s10_rpc_exec(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+) as response;
+select is(
+  pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-11 read succeeds when an omit-policy target becomes stale'
+);
+select is(
+  (select jsonb_array_length(response->'relations') from s10_detail_stale_result),
+  0,
+  'CMS-03B-11 omits a stale target without disclosing its stored identity'
+);
+rollback to savepoint s10_detail_stale_target;
+release savepoint s10_detail_stale_target;
+
+-- A read must not write: no audit row, no outbox row.
+select is(
+  pg_temp.s10_audit_total(),
+  (select audit_total from s10_effect_baseline),
+  'CMS-03B-11 draft read emits no audit event'
+);
+select is(
+  pg_temp.s10_outbox_total(),
+  (select outbox_total from s10_effect_baseline),
+  'CMS-03B-11 draft read emits no outbox event'
+);
+
+-- The editor holds cms.editor plus an assignment, so the read is authorized for
+-- a non-author holder.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000002'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select is(
+  pg_temp.s10_rpc_sqlstate(
+    'select platform_api.cms_get_entry_draft('
+      || quote_literal((select request::text from s10_detail_request))
+      || '::jsonb)'
+  ),
+  '00000',
+  'CMS-03B-11 assigned cms.editor can read the draft'
+);
+
+-- An authenticated member of the owner tenant with no cms.author/cms.editor
+-- grant: the entry is visible to the tenant, so the refusal is explicit.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000003'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'FORBIDDEN',
+  'CMS-03B-11 visible entry without a read capability returns FORBIDDEN'
+);
+
+-- An authenticated principal outside the owner tenant: the entry is concealed.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000004'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'NOT_FOUND',
+  'CMS-03B-11 non-member read conceals the entry as NOT_FOUND'
+);
+
+-- The creator's grant is real, but the entry assignment makes authority
+-- entry-scoped.  A grant holder with no assignment on this entry is refused.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal(
+         ((select request from s10_detail_request)
+           || jsonb_build_object('entryId', 'a9100000-0000-4000-8000-000000000399'))::text
+       )
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'NOT_FOUND',
+  'CMS-03B-11 read of an absent entry conceals as NOT_FOUND'
+);
+
+-- Unauthenticated callers never reach the entry: no actor, no read.
+select pg_temp.s10_rpc_clear_actor();
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'UNAUTHENTICATED',
+  'CMS-03B-11 read without an authenticated actor returns UNAUTHENTICATED'
+);
+
+-- A request that names authority fields has no slot for them.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal(
+         ((select request from s10_detail_request)
+           || jsonb_build_object('ownerId', 'a9100000-0000-4000-8000-000000000399'))::text
+       )
+    || '::jsonb)'
+);
+select ok(
+  pg_temp.s10_last_error_message() = 'INVALID_REQUEST',
+  'CMS-03B-11 rejects a caller-supplied owner field as INVALID_REQUEST'
+);
+
+-- A locale that does not address the draft is absent, not silently substituted.
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal(
+         ((select request from s10_detail_request)
+           || jsonb_build_object('locale', 'fr-FR'))::text
+       )
+    || '::jsonb)'
+);
+select ok(
+  pg_temp.s10_last_error_message() = 'NOT_FOUND',
+  'CMS-03B-11 unserved locale fails closed as NOT_FOUND'
+);

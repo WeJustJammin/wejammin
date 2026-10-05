@@ -27,3 +27,9 @@ or replace canonical data.
 See the [architecture design](../../../../.memory/wiki/specs/2026-08-02-architecture-design.md),
 [frontend contract](../../../../.memory/wiki/specs/fe/00-infrastructure.md), and
 [UI package guide](../../README.md).
+
+## Step-up presentation
+
+`presentInfrastructureState` maps `step_up_required` to a
+`/step-up?returnTo=` recovery (`gateRendered: false`); it never emits the
+`capability_gate` presentation for a 401 `STEP_UP_REQUIRED`.

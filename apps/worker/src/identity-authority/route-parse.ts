@@ -11,6 +11,7 @@ import {
   authError,
   parseJsonBody,
   quotedVersion,
+  type JsonMutationTransport,
   responseForAuthError,
 } from '../authentication/boundary';
 import type {
@@ -71,6 +72,12 @@ const mapBodyValidation = <T>(
     result.details,
   );
 };
+
+/** BE00 step 6: strict identity body on the transport read at step 2. */
+export const decodeIdentityBody = <T>(
+  transport: JsonMutationTransport,
+  schema: Parameters<typeof parseJsonBody<T>>[1],
+): AuthenticationResult<T> => mapBodyValidation(transport.decode(schema));
 
 export const parseIdentityJsonBody = async <T>(
   request: Request,

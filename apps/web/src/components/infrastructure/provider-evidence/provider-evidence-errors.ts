@@ -1,5 +1,5 @@
 export type ProviderEvidenceErrorOwner =
-  'inline' | 'capability' | 'rate-wait' | 'degraded';
+  'inline' | 'capability' | 'step-up' | 'rate-wait' | 'degraded';
 
 export interface ProviderEvidenceErrorPresentation {
   readonly owner: ProviderEvidenceErrorOwner;
@@ -41,7 +41,7 @@ const ERROR_PRESENTATIONS: Readonly<
     retryable: false,
   },
   STEP_UP_REQUIRED: {
-    owner: 'capability',
+    owner: 'step-up',
     message: 'Recent step-up verification is required before this view.',
     retryable: false,
   },

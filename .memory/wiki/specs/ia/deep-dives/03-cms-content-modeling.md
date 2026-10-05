@@ -24,26 +24,27 @@ diagnostics, import/export, and retention operations.
 
 ## Resolved Architecture Choices
 
-| Question                          | Locked resolution                                                                                                                                                                                                                                                        |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Dynamic schema storage            | Normalized definition/version tables plus strictly validated entry-revision JSONB and normalized links; no general ORM/EAV or runtime DDL per type.                                                                                                                      |
-| Schema compiler                   | Definition versions compile deterministically to Zod 4, OpenAPI/editor metadata, database validation metadata, and renderer binding manifest; artifact hash stored.                                                                                                      |
-| Admin-created fields/types        | Allowed only from protected registries and quotas; no user-authored validator, query, code, renderer, HTML, CSS, expression, or SQL.                                                                                                                                     |
-| Initial schema aggregate          | CMS-03A-01 creates the type, version, field/relation/template/capability bindings, locale/workflow references, and validation state in one atomic idempotent transaction; later field/relation commands edit only an unactivated draft.                                  |
-| Model envelope                    | Every persisted model carries `id`, `owner_id`, closed `state`, monotonic `version`, `created_at`, and `updated_at`; immutable rows pin `updated_at = created_at`. The explicit per-model exceptions matrix below is normative.                                          |
-| Locale/workflow/template defaults | `source_locale` is the required authoring/canonical source locale; `default_locale` is the governed delivery fallback root; `workflow_key` plus `workflow_version` resolve a protected policy; `default_template_version_id` is an optional immutable version reference. |
-| Autosave/locking                  | Optimistic revisions plus advisory presence lease; different fields merge, same-field conflicts require explicit choice.                                                                                                                                                 |
-| Review invalidation               | Approval binds exact revision hash, schema/template/taxonomy/settings versions, relation target visibility snapshots, and checker versions. Required decision count and roles are snapshotted from the workflow/risk policy.                                             |
-| Schedule semantics                | Local wall time + IANA zone + resolved UTC + tzdb version. Once approved, UTC instant is authoritative unless editor creates a new schedule version.                                                                                                                     |
-| Breaking migration                | Expand → dry-run → resumable backfill → compatibility verify → active switch → later contract. Old version remains readable through switch window.                                                                                                                       |
-| Block execution                   | Code release owns implementation. CMS selects immutable registered version/props only; unsupported versions block new publish. Human admin can read registration metadata but cannot register or mutate a block.                                                         |
-| Block props identity              | `props_schema_ref` and `props_schema_hash` are the immutable identity. A normalized, signed props snapshot is derived evidence and must be bound to the signed `release_digest`; it never replaces the reference/hash.                                                   |
-| Protected registry reads          | Shard 03 exposes authenticated, capability-scoped, `no-store` list/detail projections with named query/page/detail schemas, deterministic bounded cursor pagination, and discriminated resources. No protected registry row is a public delivery source.                 |
-| Pattern update                    | Explicit accept/detach per instance or bounded reviewed bulk operation; recursive/cyclic graph impossible.                                                                                                                                                               |
-| Preview                           | Exact immutable version-set token, 15 minutes, audience/capability bound, no-store/noindex, reauthorized on every request.                                                                                                                                               |
-| Taxonomy merge                    | Survivor keeps ID; retired term becomes permanent alias/redirect; assignments migrate idempotently with impact audit.                                                                                                                                                    |
-| Locale fallback                   | Field/type-specific ordered chain. Legal, policy acceptance, safety, jurisdiction and required accessibility content default no-fallback.                                                                                                                                |
-| Related candidates                | Explainable bounded deterministic rules only; no opaque model dependency at launch. Manual pins/exclusions are authoritative presentation choices.                                                                                                                       |
+| Question                          | Locked resolution                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dynamic schema storage            | Normalized definition/version tables plus strictly validated entry-revision JSONB and normalized links; no general ORM/EAV or runtime DDL per type.                                                                                                                                                                                                                                                                                                                                                                     |
+| Schema compiler                   | Definition versions compile deterministically to Zod 4, OpenAPI/editor metadata, database validation metadata, and renderer binding manifest; artifact hash stored.                                                                                                                                                                                                                                                                                                                                                     |
+| Admin-created fields/types        | Allowed only from protected registries and quotas; no user-authored validator, query, code, renderer, HTML, CSS, expression, or SQL.                                                                                                                                                                                                                                                                                                                                                                                    |
+| Initial schema aggregate          | CMS-03A-01 creates the type, version, field/relation/template/capability bindings, locale/workflow references, and validation state in one atomic idempotent transaction; later field/relation commands edit only an unactivated draft.                                                                                                                                                                                                                                                                                 |
+| Model envelope                    | Every persisted model carries `id`, `owner_id`, closed `state`, monotonic `version`, `created_at`, and `updated_at`; immutable rows pin `updated_at = created_at`. The explicit per-model exceptions matrix below is normative.                                                                                                                                                                                                                                                                                         |
+| Locale/workflow/template defaults | `source_locale` is the required authoring/canonical source locale; `default_locale` is the governed delivery fallback root; `supported_locales` and `fallback_chains` are the immutable locale configuration (see Localization and Publication algorithm rules); `workflow_key` plus `workflow_version` resolve a protected policy; `default_template_version_id` is an optional immutable version reference.                                                                                                                                                                                                                                                |
+| Autosave/locking                  | Optimistic revisions plus advisory presence lease; different fields merge, same-field conflicts require explicit choice.                                                                                                                                                                                                                                                                                                                                                                                                |
+| Review invalidation               | Approval binds exact revision hash, schema/template/taxonomy/settings versions, relation target visibility snapshots, and checker versions. Required decision count and roles are snapshotted from the workflow/risk policy.                                                                                                                                                                                                                                                                                            |
+| Schedule semantics                | Local wall time + IANA zone + resolved UTC + tzdb version. Once approved, UTC instant is authoritative unless editor creates a new schedule version.                                                                                                                                                                                                                                                                                                                                                                    |
+| Breaking migration                | Expand → dry-run → resumable backfill → compatibility verify → active switch → later contract. Old version remains readable through switch window.                                                                                                                                                                                                                                                                                                                                                                      |
+| Block execution                   | Code release owns implementation. CMS selects immutable registered version/props only; unsupported versions block new publish. Human admin can read registration metadata but cannot register or mutate a block.                                                                                                                                                                                                                                                                                                        |
+| Block props identity              | `props_schema_ref` and `props_schema_hash` are the immutable identity. A normalized, signed props snapshot is derived evidence and must be bound to the signed `release_digest`; it never replaces the reference/hash.                                                                                                                                                                                                                                                                                                  |
+| Protected registry reads          | Shard 03 exposes authenticated, capability-scoped, `no-store` list/detail projections with named query/page/detail schemas, deterministic bounded cursor pagination, and discriminated resources. No protected registry row is a public delivery source.                                                                                                                                                                                                                                                                |
+| Pattern update                    | Explicit accept/detach per instance or bounded reviewed bulk operation; recursive/cyclic graph impossible.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Preview                           | Exact immutable version-set token, 15 minutes, audience/capability bound, no-store/noindex, reauthorized on every request.                                                                                                                                                                                                                                                                                                                                                                                              |
+| Taxonomy merge                    | Survivor keeps ID; retired term becomes permanent alias/redirect; assignments migrate idempotently with impact audit.                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Locale fallback                   | Per-target-locale ordered chain declared on the content-type version (`fallback_chains`); a `no_fallback` field ignores it. Legal, policy acceptance, safety, jurisdiction and required accessibility content default no-fallback.                                                                                                                                                                                                                                                                                                                                                                               |
+| Related candidates                | Explainable bounded deterministic rules only; no opaque model dependency at launch. Manual pins/exclusions are authoritative presentation choices.                                                                                                                                                                                                                                                                                                                                                                      |
+| Entry bootstrap and draft detail  | `CMS-03B-10` creates the active entry with its first attributable draft revision, server-derived identity/assignment, and atomic audit/idempotency/outbox effects under a required `Idempotency-Key` and no update-only `If-Match`; `CMS-03B-11` serves only the caller-authorized current editable values, field provenance, schema identity, and canonical versions as `no-store` with a strong authenticated `ETag`, concealing a hidden or absent entry as 404 and denying a visible-but-unauthorized draft as 403. |
 
 ### Common Model Envelope and Exceptions
 
@@ -82,20 +83,123 @@ timestamps.
 | Model                      | Fields and constraints                                                                                                                                                                                                                                                                                                                                                                                               |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `content_type`             | `id uuid PK, key varchar(64) unique, built_in bool, owner_capability, lifecycle active\|retired, created_at`; key lowercase `^[a-z][a-z0-9_]{1,63}$`, immutable.                                                                                                                                                                                                                                                     |
-| `content_type_version`     | `id, content_type_id, version_no integer>0, label, workflow_key, workflow_version, source_locale, default_locale, default_template_version_id?, state, definition_hash, schema_artifact_id, supersedes_id?, created_by/at, activated_at?`; unique type/version. `source_locale` is the canonical authoring input; `default_locale` is the governed delivery fallback root and is not used for a `no_fallback` field. |
+| `content_type_version`     | `id, content_type_id, version_no integer>0, label, workflow_key, workflow_version, source_locale, default_locale, supported_locales[], fallback_chains jsonb, locale_config_hash, default_template_version_id?, state, definition_hash, schema_artifact_id, supersedes_id?, created_by/at, activated_at?`; unique type/version. `source_locale` is the canonical authoring input; `default_locale` is the governed delivery fallback root and is not used for a `no_fallback` field. |
 | `field_definition_version` | `id, type_version_id, field_id uuid, key, kind, constraints jsonb, validator_key/version?, required, default_mode none\|literal\|inherited, default_value?, localization_mode, editor_config, lifecycle`; unique type-version/key and field ID. Constraints use protected validator references; free-form executable patterns are forbidden.                                                                         |
 | `relation_definition`      | `field_definition_id, target_kind content\|domain, target_type, cardinality one\|many, min/max, projection_key, on_unavailable omit\|block\|placeholder, ordered`; target/projection allowlisted. Required one is `min=1,max=1`; optional one is `min=0,max=1`; many uses explicit non-negative bounds.                                                                                                              |
 | `schema_artifact`          | `id, type_version_id, compiler_version, zod_contract_ref, editor_manifest jsonb, renderer_manifest jsonb, artifact_hash, compiled_at`; immutable/reproducible and referenced by exactly one content-type version/hash.                                                                                                                                                                                               |
-| `schema_migration_plan`    | `id, type_id, from_version_id, to_version_id, compatibility additive\|conditional\|breaking, transform_key/version?, dry_run_report, source_count, target_count, row_error_count, migrated_count, failed_count, state, cursor?, version`. Operational counters are derived telemetry and do not replace the normative dry-run report.                                                                                |
+| `schema_migration_plan`    | `id, type_id, from_version_id, to_version_id, compatibility additive\|conditional\|breaking, transform_key/version?, dry_run_report, source_count, target_count, row_error_count, migrated_count, failed_count, state, cursor?, version`. `dry_run_report` is a provisional fingerprint object from creation (hashes, zero counters, lease) used for supersession, never a result; the sealed dry-run report is the normative result authority. Operational counters are derived telemetry and do not replace the normative dry-run report.                                                                                |
+| `schema_migration_target_row` | `id, owner_id, plan_id, target_version_id, source_table, source_row_id, source_hash, output_hash, target_document, written_at`; private append-only backfill store (revisions are immutable, so the transformed document lives here), unique per plan/table/row, written only by the backfill. |
+
+### Private Schema Review Records (DEC-108)
+
+Schema reviews are CMS-owned, never CFG setting-value candidates. Private
+`cms_schema_reviews` freezes candidate definition/artifact/compiler/dependency,
+actual immutable dry-run/report/plan identity, submitter/stable context and
+code-owned workflow policy/risk/count/capabilities. One live review per exact
+candidate evidence is allowed; frozen fields cannot be edited. States are
+`open|approved|rejected|invalidated`. The common owner/state/version/time envelope
+and ENABLE/FORCE RLS apply, with direct browser/service-role table grants revoked
+and pinned-search-path named private RPCs as the only command authority.
+
+`cms_schema_review_decisions` binds review, independently authenticated human,
+private binding, qualifying capability/version, decision and verified MFA/time.
+It is append-only, unique per review/human, and forbids submitter/self approval.
+`cms_schema_review_assignments` records owner/review, reviewer/grantor humans,
+fixed `cms.schema_review` read/decide scope, active/revoked state, starts/ends and
+reason. Starts must be current and ends finite, no later than seven days or
+the grantor authority end, which is the end of the owner's `cms.schema_designer`
+grant valid-through day (the owner initialization receipt grant end bounds only
+the grants created at initialization, and the owner renews through the owner CMS
+capability grant commands below). Recheck effective interval and binding authority on
+decision and activation; assignments create no identity or owner context and
+cannot be delegated or broadened. The existing owner alone assigns/revokes
+through `cms.schema_review.assign` with current binding-bound MFA.
+
+Review identity hashes use a versioned private actor/person/party/binding
+projection, excluding transient request/correlation and transport timestamps.
+Canonical SHA-256 evidence covers the exact sorted immutable decisions and
+frozen candidate/artifact/compiler/dry-run/policy composition. Private matching
+UUIDs never enter islands, public evidence resources or logs. A decision's MFA
+is checked and recorded at commit; activation checks current reviewer authority
+and activator MFA without an arbitrary ten-minute decision-age rule. Policy
+provides the exact count `1..8`: one independent reviewer for ordinary cases,
+at least two for protected cases. Candidate/policy/compiler/dependency/authority
+drift invalidates; rejection returns editable draft via audit, then resubmission
+requires a new frozen review.
+
+### Workflow Policy Registry and Owner CMS Capability Grants (DEC-109, DEC-110, DEC-119)
+
+The workflow policy registry is code-owned and versioned. A member is
+`{ key, version, riskClass, requiredDecisionCount 1..8, requiredCapabilities }`,
+seeded as an immutable row by a forward-only migration, and bound one per content
+type version through `workflow_key`/`workflow_version`. Every member is version 1.
+
+| Key                                                                      | Risk class | Required decisions | Required capabilities (ordered slots)    |
+| ------------------------------------------------------------------------ | ---------- | ------------------ | ---------------------------------------- |
+| `editorial`, `editorial.default`, `cms.content.workflow`, `cms.standard` | ordinary   | 1                  | `cms.reviewer`                           |
+| `cms.disclosure.policy`                                                  | protected  | 2                  | `cms.reviewer`, `cms.reviewer.policy`    |
+| `cms.disclosure.legal`                                                   | protected  | 2                  | `cms.reviewer`, `cms.reviewer.legal`     |
+| `cms.disclosure.security`                                                | protected  | 2                  | `cms.reviewer`, `cms.reviewer.security`  |
+| `cms.disclosure.financial`                                               | protected  | 2                  | `cms.reviewer`, `cms.reviewer.financial` |
+
+`policyHash` is the lowercase SHA-256 hex of the RFC 8785/JCS canonical JSON of
+the member object, with `requiredCapabilities` in registry order and no hash or
+evidence inside it. The first required capability is the base reviewer slot that
+every counted decision satisfies (an editorial decision under `cms.reviewer`, a
+schema-review decision under a current `cms.schema_review` assignment) and each
+further capability is a specialist slot that at least one counted approving
+human must hold through an effective grant. A schema review derives its policy
+from the candidate version's own bound member and freezes it. Downgrade guard:
+for a successor, the review (and the editorial policy the successor's version
+carries) uses the strictest of the source version's bound member and the
+candidate's own member: protected if either is protected, the larger decision
+count, and the specialist slots of both in order, so a protected-to-ordinary key
+change never lowers the requirement; the source member identity is kept on the
+review beside the effective values. A review is
+approved only when the distinct qualifying approvers equal the required count and
+every specialist slot is held by one of them. Because recorded decisions never
+exceed the required count, an approve decision is refused when the decisions
+left after it are fewer than the specialist slots no counted approver holds.
+
+The editorial `approvalEvidenceHash` is a decision-independent approval-basis
+digest, so it exists at entry bootstrap: the JCS canonical SHA-256 of the bound
+content-type version's frozen activation approval evidence hash, the bound
+policy member's `policyHash` and the schema version identifier. It carries no
+editorial decision and is distinct from the schema review's decision digest.
+
+`cms_capability_grants` is the versioned owner grant aggregate: owner
+organization, existing human, one grantable CMS capability, finite UTC
+valid-from and valid-through (at most 90 UTC days inclusive, valid-through at most valid-from plus 89; DEC-120), last action
+(`granted|renewed|revoked`), optional reason and version. `state` is physically
+`active|revoked`; `lapsed` is derived from valid-through. One aggregate exists
+per owner, human and capability. `cms_capability_grant_events` is the
+append-only history with one row per grant, renewal or revocation, the aggregate
+version, term and stable private context evidence. Each mutation writes the
+aggregate, the event and the effective-authority projection on the organization
+actor-grant row in one transaction with audit and outbox, and a forward-only
+migration backfills aggregates for the grants created at owner initialization.
+Grant (new or re-established), renewal and revocation require the receipt-derived
+owner with recent MFA; the subject must hold a confirmed membership in the
+owner's organization; the capability must be in the closed grantable registry;
+and the owner may target itself for any grantable capability, because the owner
+is the only human in the organization today and separation of duties is enforced
+at decision time (submitter is never the reviewer, distinct humans, specialist
+slot held), not at grant time. The grantable registry also carries the
+navigation editor, media contributor and media curator capabilities named by
+shard 04; their assigned menu, publication, upload-purpose and asset scopes are
+still checked by the owning operations. A protected owner-only list serves the
+console.
 
 ### Entries, Reviews, and Publication
 
 Review and activation evidence snapshots are immutable server results. They
 contain the protected workflow policy `key`, `version`, `policyHash`,
 `requiredDecisionCount` (`1..8`), `requiredCapabilities`, and
-`approvalEvidenceHash`; approval IDs are request references only. The server
-resolves the IDs to distinct humans, capabilities, and recent MFA, and a
-protected policy always has `requiredDecisionCount>=2`.
+`approvalEvidenceHash`; approval IDs are request references only: the approve-decision IDs of
+exactly one approved review for the candidate. The server resolves the IDs to
+distinct humans and capabilities under current assignment authority (each
+decision having recorded recent MFA at commit), and a protected policy always
+has `requiredDecisionCount>=2`.
 
 Relation definitions require finite non-null bounds: `min` is integer `0..128`,
 `max` is integer `1..128`, `min<=max`; `one` requires `min` `0|1` and `max=1`,
@@ -130,7 +234,7 @@ and `many` always records explicit bounds.
 
 | Aggregate                                     | Allowed transitions                                                                                                                     |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Type/schema/template/taxonomy/pattern version | `draft → review → approved → scheduled\|active → superseded\|retired`; blocked may return to draft; active content immutable.           |
+| Type/schema/template/taxonomy/pattern version | `draft → review → approved → scheduled\|active → superseded\|retired`; blocked may return to draft; active content immutable.; a definition edit on a candidate in review, or source drift after the review freeze, ends with the open review invalidated and the candidate back in draft (a drift refusal itself changes nothing; the new dry run, or the non-raising verify verdict, performs the invalidation), while an approved candidate stays frozen against edits |
 | Entry revision                                | `draft → submitted → approved\|rejected → scheduled\|published`; any changed draft creates a new revision and invalidates prior review. |
 | Review                                        | `open → approved\|rejected\|invalidated`; protected review requires required distinct capabilities/humans.                              |
 | Schedule                                      | `pending → executing → completed\|failed_retryable\|blocked\|cancelled`; exact action idempotent.                                       |
@@ -146,8 +250,56 @@ and `many` always records explicit bounds.
 3. Compile strict Zod input/output schemas; unknown fields reject except preserved retired fields during migration window.
 4. Compile editor manifest, render binding manifest, OpenAPI refs, migration diff, and compatibility class.
 5. Hash canonical normalized definition and compiler version; repeated compile must produce the same hash. Persist one immutable `schema_artifact` with the hash, compiler version, contract reference, and generated manifests; activation references this exact artifact.
-6. Additive: new optional field/type label/editor metadata. Conditional: stricter constraint or required field with proven complete non-fabricating transform. Breaking: kind/key/semantic removal, incompatible required/default, relation/cardinality change, or reserved binding change.
+6. Additive: new optional field/type label/editor metadata/supported locale with its chain. Conditional: stricter constraint or required field with proven complete non-fabricating transform. Breaking: kind/key/semantic removal, removal of a supported locale or a change to the members or order of a retained locale's chain, incompatible required/default, relation/cardinality change, or reserved binding change.
 7. Activation requires zero unresolved references, valid migration plan for conditional/breaking, impacted template/block compatibility, and dry-run counts/evidence.
+
+### Reachable Activation Producer Chain (DEC-108)
+
+1. CMS-03A-09 clones an immutable source into a new draft with new definition
+   row IDs, stable field IDs/keys and remapped local references. Increment the
+   version number without mutating the source; artifact references include the
+   exact `/v{versionNo}` and never use a random salt to hide collisions.
+2. CMS-03A-10 derives source/target/classification/compiler/transform evidence,
+   binds a new attempt/report identity to the still-draft candidate under CAS and
+   atomically creates the attempt, plan and job. Queued/running state does not
+   claim passed counts/hashes; actual scan completion seals immutable report
+   evidence. Exact idempotent retries reuse the same attempt/plan/job;
+   changed candidate/transform starts a new run and preserves earlier attempts.
+3. Scan every affected real current/draft/revision/template/binding/locale row,
+   recording bounded per-row input/output/error hashes and deterministic counts.
+   A change that alters no field (for example a locale-only configuration change) carries every row unchanged and seals clean; a breaking locale-configuration change scans the affected locale variant rows.
+   A zero-source additive result is valid only after proving zero actual rows;
+   nonzero scans cannot be replaced with counter arithmetic or manual reports.
+   Transforms are code-owned pure registry key/version/digest plus strict schema,
+   permitted field kinds and bounded behavior, never uploaded code/SQL.
+4. CMS-03A-11 accepts a passed immutable dry-run and freezes the review/policy
+   evidence atomically with `draft → review`. CMS-03A-14 assigns eligible existing
+   independent humans; CMS-03A-12 appends decisions; CMS-03A-13 returns the
+   authorized safe review detail. No producer trusts caller report counts,
+   hashes, classification, ownership or authority.
+5. CMS-03A-04 rechecks current authority and exact candidate/evidence under CAS,
+   runs/resumes actual backfill and verification, then switches only when ready.
+   The prior active remains readable until the atomic switch; failures or
+   concurrent changes cannot partially activate or erase immutable evidence.
+
+Production prerequisite coverage within Slice 09 includes only protected entry
+bootstrap/draft-read source authority, the real scanner/registered transform,
+CMS-03C-01 immutable template draft creation and
+`platform_api.cms_resolve_template_compatibility`. The named read/preflight
+resolver checks exact type/version/template/owner compatibility and withdrawn
+state without mutation or scope leakage. Initial bindings already use the draft
+aggregate producer. Readable immutable compatible template UUIDs suffice; public
+template activation is a separate Slice 12 contract gap. Remaining editorial,
+composition, taxonomy and localization outcomes stay in Slices 10/12.
+
+Acceptance exercises create → actual dry-run → frozen review → independent
+decisions → first activation, then actual source rows → compatible template →
+successor → nonzero dry-run/backfill/verify → independent review → second switch.
+Test humans for this path (author, editor, reviewers, specialist reviewers,
+template designer, publisher) are provisioned only through the owner CMS
+capability grant command and assigned through the review assignment command;
+inserting `organization_actor_grant` rows, or inserting review, decision,
+dry-run, approved state or completed plans directly, cannot satisfy this path.
 
 ## Entry Validation and Revision Merge
 
@@ -158,12 +310,19 @@ and `many` always records explicit bounds.
 - Same path changed from same base yields 409 with base/theirs/yours safe values and requires explicit resolution.
 - Relations validate target kind/existence/projection/visibility but publication/read rechecks current target authority/lifecycle.
 - Restore translates old revision through registered migration chain into a new draft; no direct activation of obsolete schema.
+- Entry bootstrap creates the active `ContentEntry` and its first attributable draft `EntryRevision` in one transaction from server-derived identity and assignment; a required `Idempotency-Key` makes a replay return the same entry and revision with no second audit/idempotency/outbox effect, and a refused create commits neither row.
+- The create request carries `contentTypeId`, a `contentTypeVersionId` that resolves to the same active compiled schema, a BCP 47 `locale`, 1-128 unique stable JSON-Pointer `changedPaths`, and strict stable-field-ID `values` (at most 128 keys, depth 8, 256 KiB); it carries a required `Idempotency-Key` and no update-only `If-Match`, and neither route trusts caller-supplied owner, acting party, capability, or authority.
+- The protected draft-detail `GET` returns only the caller-authorized current editable values, field provenance, schema identity, and canonical versions; a concealed or absent target is 404, a visible target without assignment or read scope is 403, the response is `no-store` with a strong authenticated `ETag`, it has no mutation effect, and browser direct table access stays revoked.
+
+### Entry Bootstrap and Draft Detail
+
+Entry bootstrap and draft detail are the two `CMS-05` boundaries that make first-draft authoring reachable without weakening concealment: create is a human form requiring an `Idempotency-Key` and no update-only `If-Match`, while draft detail is a protected read-only `GET` that carries no body, idempotency key, or precondition header and never mutates state.
 
 ## Review and Publication Algorithm
 
 1. Submit freezes revision hash and dependency manifest: schema, template, blocks, patterns, terms, locale sources, settings, relation targets/projections, checker/rule-pack versions.
 2. Run contract, relation, privacy, security, accessibility, rights/media, route/SEO, locale, migration, and domain-binding preflights owned across Shards 00/01/04/05.
-3. Resolve the immutable workflow key/version and risk classification, then collect exactly the distinct human/capability decisions required by that policy. Protected classes require at least two distinct humans, named specialist capability, and recent MFA; ordinary workflows may require fewer. Any revision/dependency/authority change invalidates affected approvals.
+3. Resolve the immutable workflow key/version and risk classification, then collect exactly the distinct human/capability decisions required by that policy. Protected classes require at least two distinct humans, named specialist capability, and recent MFA; ordinary workflows may require fewer. The members and slot semantics are in the Workflow Policy Registry subsection above. Any revision/dependency/authority change invalidates affected approvals.
 4. Schedule or immediate publish re-runs preflight against the frozen set/current revocation state.
 5. PostgreSQL transaction creates `publication_version`, marks prior version superseded, records audit/idempotency, and writes one outbox event.
 6. Shard 04 builds route/render/search/sitemap/cache projections from exact publication ID. Until convergence, last-known-good remains active unless revocation/takedown/privacy requires fail closed.
@@ -173,6 +332,7 @@ and `many` always records explicit bounds.
 
 - Dry run scans every current/draft/revision/template/binding/locale relation affected and records deterministic counts/errors without mutation.
 - Backfill uses registered code-owned pure transform over bounded batches, storing cursor, source/target versions, input/output hashes, and failures.
+- The initial registered transforms are `identity.revalidate`, which carries retained values unchanged and validates them against the target (the conditional stricter-constraint class, breaking changes that retain or retire the existing value, and the executor of the integrated second-activation path), and `default.fill_literal`, which writes only the target field's declared literal default (the conditional required-field class). A value-converting change has no registered transform, cannot name a transform pair and is refused until a transform ships in code.
 - Failed rows remain on old readable schema and block active switch unless policy explicitly permits a mixed-version compatibility period.
 - Verification compares counts, required fields, relation integrity, renderability, accessibility, and sample/full hash rules.
 - Switch changes active schema only after readiness evidence. Contract/removal occurs later after no supported app/publication reads old form.
@@ -238,23 +398,28 @@ nonces, and persists immutable `keyId`, `rawBodyHash`, `signatureHash`,
 - Term key immutable; rename changes labels; merge picks survivor, creates alias/redirect, migrates assignments idempotently, and preserves old ID resolution.
 - Free text is never silently coerced. Mapping proposal and curated acceptance are separate states.
 - Source locale change marks translated fields stale by source field/hash. Unchanged fields may retain approved state. `source_locale` is the required canonical authoring locale and `default_locale` is only the governed fallback root.
-- Fallback resolves per field through explicit ordered locales, recording chosen source. `no_fallback` returns missing/block state rather than wrong-language/jurisdiction text and never silently falls through to `default_locale`.
+- Locale configuration rules (OD-4): `supported_locales` holds 1–32 unique canonical-case BCP 47 tags (language lower, script Title, region upper, other subtags lower; 2–35 characters) and includes `source_locale` and `default_locale`. `fallback_chains` maps every supported locale other than `default_locale` to an ordered chain of 1–16 unique supported locales that excludes its own target and ends at `default_locale`; `{}` is valid only when the only supported locale is the default. The graph with an edge from each target to each locale in its chain is acyclic. The configuration is immutable per version (no draft command edits it), changes only through a successor version, and is part of the definition hash, so it is frozen in the review and activation evidence. A variant, entry or publication may use only a locale in the active version's `supported_locales` and may take its fallback order only from that version's chain for its locale.
+- Fallback resolves per field through the active version's explicit ordered chain for the target locale, recording chosen source. `no_fallback` returns missing/block state rather than wrong-language/jurisdiction text and never silently falls through to `default_locale`.
 - Manual related pins remain first if target eligible; exclusions always remove; derived candidates declare rule/reason/version and are recomputed from authorized current projections.
 
 ## Abuse and Recovery Verification
 
-| Threat/failure             | Required proof                                                                                                                    |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Canonical entity smuggling | Reserved-key/type/relation tests reject identity, rights, money, authority, dispute and entitlement ownership in CMS.             |
-| Arbitrary code/style       | Schema/block/template inputs reject scripts, expressions, CSS, HTML handlers, dynamic imports, and unknown renderer/data sources. |
-| Draft/control leak         | Public APIs/caches/search/sitemaps cannot select draft/control tables; preview tokens deny forwarding/revocation/expiry.          |
-| Relation BOLA              | Wrong user/party/target tests fail at authoring preview, publication, and public hydration.                                       |
-| Approval bypass            | Self-approval, stale hash, revoked reviewer, missing second reviewer, and changed dependency block protected publish.             |
-| Migration corruption       | Dry-run, resume, duplicate batch, partial failure, count/hash/relation/render checks prove convergence.                           |
-| Provenance override        | Templates/blocks cannot reorder/remove reserved Shard 02 provenance structure.                                                    |
-| Locale legal leak          | Missing no-fallback field blocks locale publication and never borrows another jurisdiction.                                       |
-| Scheduler duplication      | Same schedule/job executes publication transition once and records late/duplicate evidence.                                       |
-| Control-plane outage       | Last-known-good serves; revocation/takedown path can remove unsafe output independently.                                          |
+| Threat/failure              | Required proof                                                                                                                                                                                                                                        |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical entity smuggling  | Reserved-key/type/relation tests reject identity, rights, money, authority, dispute and entitlement ownership in CMS.                                                                                                                                 |
+| Arbitrary code/style        | Schema/block/template inputs reject scripts, expressions, CSS, HTML handlers, dynamic imports, and unknown renderer/data sources.                                                                                                                     |
+| Draft/control leak          | Public APIs/caches/search/sitemaps cannot select draft/control tables; preview tokens deny forwarding/revocation/expiry.                                                                                                                              |
+| Relation BOLA               | Wrong user/party/target tests fail at authoring preview, publication, and public hydration.                                                                                                                                                           |
+| Approval bypass             | Self-approval, stale hash, revoked reviewer, missing second reviewer, and changed dependency block protected publish.                                                                                                                                 |
+| Migration corruption        | Dry-run, resume, duplicate batch, partial failure, count/hash/relation/render checks prove convergence.                                                                                                                                               |
+| Provenance override         | Templates/blocks cannot reorder/remove reserved Shard 02 provenance structure.                                                                                                                                                                        |
+| Locale legal leak           | Missing no-fallback field blocks locale publication and never borrows another jurisdiction.                                                                                                                                                           |
+| Scheduler duplication       | Same schedule/job executes publication transition once and records late/duplicate evidence.                                                                                                                                                           |
+| Control-plane outage        | Last-known-good serves; revocation/takedown path can remove unsafe output independently.                                                                                                                                                              |
+| Entry create replay/refusal | Repeated create idempotency key returns the same entry and first revision with no duplicate effect; a refused create commits neither row and never leaks existence.                                                                                   |
+| Draft-detail concealment    | Concealed or absent entry returns 404 and visible-but-unauthorized returns 403 with no values, ownership, or authority disclosure; the response is `no-store` with no mutation effect.                                                                |
+| Grant overreach             | Non-owner callers, non-grantable capabilities (assignment-only and owner-only review keys, `admin.*`, wildcards), cross-organization subjects, terms over 90 UTC days and delegation are refused; every grant is step-up gated, audited and revocable. |
+| Specialist bypass           | A protected approval cannot complete without a counted approver who holds the class specialist capability through an effective grant; an assignment alone never satisfies the slot.                                                                   |
 
 ## Cross-Shard Contracts
 
@@ -282,12 +447,24 @@ template-version activation.
 
 ## Changelog
 
-| Date       | Change                                                                                                                                                                                                                                                              | Workflow                         | Sections Affected                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 2026-08-02 | Initial deep-dive skeleton                                                                                                                                                                                                                                          | /decompose-architecture-validate | All                                                                                            |
-| 2026-08-02 | Authored schema, revision, migration, composition, publication, taxonomy, locale and abuse contracts                                                                                                                                                                | /write-architecture-spec-deepen  | All                                                                                            |
-| 2026-09-02 | Applied Slice 09 IA-first contract clarification: atomic initial aggregate, model envelope exceptions, locale/workflow/template references, bounded relations, policy-derived approvals, immutable artifacts, protected reads, and release-only block registration  | /implement-slice                 | Canonical Field Contracts, Schema Compilation, Composition, Cross-Shard Contracts              |
-| 2026-09-02 | Locked Slice 09 remediation: finite relation bounds and opaque placeholder fallback; server-frozen policy/approval evidence; canonical block-registry digest; always-present nullable migrationPlanId; Ed25519 release envelope and immutable verification evidence | /implement-slice                 | Canonical Field Contracts, Model Envelope, Review/Publication, Composition, Abuse Verification |
+| Date       | Change                                                                                                                                                                                                                                                                                                                                                                                           | Workflow                         | Sections Affected                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 2026-08-02 | Initial deep-dive skeleton                                                                                                                                                                                                                                                                                                                                                                       | /decompose-architecture-validate | All                                                                                                               |
+| 2026-08-02 | Authored schema, revision, migration, composition, publication, taxonomy, locale and abuse contracts                                                                                                                                                                                                                                                                                             | /write-architecture-spec-deepen  | All                                                                                                               |
+| 2026-09-02 | Applied Slice 09 IA-first contract clarification: atomic initial aggregate, model envelope exceptions, locale/workflow/template references, bounded relations, policy-derived approvals, immutable artifacts, protected reads, and release-only block registration                                                                                                                               | /implement-slice                 | Canonical Field Contracts, Schema Compilation, Composition, Cross-Shard Contracts                                 |
+| 2026-09-02 | Locked Slice 09 remediation: finite relation bounds and opaque placeholder fallback; server-frozen policy/approval evidence; canonical block-registry digest; always-present nullable migrationPlanId; Ed25519 release envelope and immutable verification evidence                                                                                                                              | /implement-slice                 | Canonical Field Contracts, Model Envelope, Review/Publication, Composition, Abuse Verification                    |
+| 2026-09-26 | DEC-106: added protected initial-entry create (BE03b `CMS-03B-10`) and authorized draft-detail read (BE03b `CMS-03B-11`); atomic active entry plus first attributable draft revision with server-derived identity/assignment and create idempotency, authorized draft-detail loading with 404/403 concealment and no-store/ETag, no browser authority fields, browser table grants still revoked | /propagate-decision              | Resolved Architecture Choices, Entry Validation and Revision Merge, Abuse and Recovery Verification, Changelog    |
+| 2026-10-02 | DEC-108 consistency closure: `approvalIds` are the approve-decision IDs of one approved review resolved under current assignment authority, and the grantor authority end is defined.                                                                                                                                                                                                            |
+| 2026-10-02 | DEC-109/DEC-110/DEC-119: added the workflow policy registry members, `policyHash` and reviewer-slot semantics, the editorial `approvalEvidenceHash` basis, the owner CMS capability grant aggregate and event contract, the two initial transforms, the grant and specialist abuse rows, and the owner-grant provisioning of integrated-path test humans.                                        | /propagate-decision              | Canonical Field Contracts, Review and Publication Algorithm, Migration Algorithm, Abuse and Recovery Verification |
+| 2026-10-02 | DEC-119 follow-ups: owner may self-grant any grantable capability with separation enforced at decision time; strictest-of downgrade guard for a successor's review and editorial policy; navigation and media capabilities join the grantable registry                                                                                                                                           | /propagate-decision              | Owner CMS capability grants, Workflow policy registry, Abuse                                                      |
+| 2026-10-02 | DEC-120: standing CMS capability grants (BE03a `CMS-03A-15`/`CMS-03A-16`) may run up to 90 UTC days (valid-through at most the current UTC date plus 89), renewable with step-up, revocation immediate; replaced the seven-day owner-grant term and the grant-overreach ceiling. DEC-108 assignments (`CMS-03A-14`) stay at most seven days | /propagate-decision | Resolved Architecture Choices, Abuse and Recovery Verification, Changelog |
+| 2026-10-02 | OD-4: added the immutable per-version locale configuration (`supported_locales`, `fallback_chains`, `locale_config_hash`) with validity rules, successor-only change, definition-hash freezing, compatibility classification (locale removal or chain reorder is breaking) and active-version-only resolution for variants and publication. |
+| 2026-10-02 | Slice 09 implementation reconciliation: added the private `schema_migration_target_row` backfill store to the data model, and the review-edit and source-drift invalidation to the definition-state rule. |
+| 2026-10-02 | Slice 09 follow-ups reconciliation: drift refusals change nothing and a new dry run invalidates and returns the candidate to draft; field-neutral plans carry rows unchanged; locale-configuration breaking changes scan locale variant rows; `dry_run_report` is a provisional fingerprint and the sealed report is the authority. |
+
+DEC-108 (2026-10-02, owner-approved): private schema-review ownership and bounded
+assignment, reachable successor/dry-run/review producers, stable private evidence
+and actual source/template prerequisite scope added. No release gate was waived.
 
 ## Dependency References
 

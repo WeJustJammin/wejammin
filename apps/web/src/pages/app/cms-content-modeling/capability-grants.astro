@@ -1,0 +1,135 @@
+---
+import { env } from 'cloudflare:workers';
+import { createRequestId } from '@wejammin/contracts';
+
+import CmsCapabilityGrantConsoleIsland from '../../../components/cms-capability-grants/CmsCapabilityGrantConsoleIsland';
+import '../../../components/content-schema-registry/content-schema-registry.css';
+import '../../../components/cms-capability-grants/cms-capability-grants.css';
+import {
+  cmsCapabilityGrantIdFromRequest,
+  createCmsCapabilityGrantPlatformPorts,
+  type CmsCapabilityGrantPorts,
+} from '../../../server/cms-capability-grant-platform-api';
+import { resolveCmsCapabilityGrantPage } from '../../../server/cms-capability-grant-context';
+import {
+  cmsCapabilityGrantRefusalResponse,
+  isCmsCapabilityGrantRefusal,
+} from '../../../server/cms-capability-grant-page-response';
+import { safeContentSchemaRegistryReturnPath } from '../../../server/content-schema-registry-contracts';
+import { mutationFailureCode } from '../../../server/content-schema-registry-mutation-outcome';
+import {
+  contentSchemaRegistryMutationOperationFromRequest,
+  forwardContentSchemaRegistryMutation,
+} from '../../../server/content-schema-registry-platform-api';
+import {
+  isStepUpRequiredCode,
+  stepUpTargetForLocation,
+} from '../../../components/step-up-required';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const requestId = createRequestId(
+  Astro.request.headers.get('x-request-id') ?? undefined,
+);
+const consolePath = '/app/cms-content-modeling/capability-grants';
+if (Astro.request.method === 'POST') {
+  const operationId = await contentSchemaRegistryMutationOperationFromRequest(
+    Astro.request,
+  );
+  if (
+    operationId !== 'CMS-03A-15' &&
+    operationId !== 'CMS-03A-16' &&
+    operationId !== 'CMS-03A-17'
+  ) {
+    return new Response('Bad request', {
+      status: 400,
+      headers: { 'cache-control': 'no-store' },
+    });
+  }
+  const grantId = await cmsCapabilityGrantIdFromRequest(Astro.request);
+  const mutation = await forwardContentSchemaRegistryMutation(
+    Astro.request,
+    env.PLATFORM_API,
+    { operationId, ...(grantId === undefined ? {} : { grantId }) },
+  );
+  if (!mutation.ok) {
+    if (isStepUpRequiredCode(await mutationFailureCode(mutation)))
+      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
+    return mutation;
+  }
+  return Astro.redirect(consolePath, 303);
+}
+let ports: CmsCapabilityGrantPorts | null;
+try {
+  ports = createCmsCapabilityGrantPlatformPorts(env.PLATFORM_API);
+} catch {
+  ports = null;
+}
+const result = await resolveCmsCapabilityGrantPage({
+  request: Astro.request,
+  ports,
+  requestId,
+});
+if (result.kind === 'unauthenticated') {
+  return Astro.redirect(
+    `/auth/sign-in?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
+    303,
+  );
+}
+if (isCmsCapabilityGrantRefusal(result))
+  return cmsCapabilityGrantRefusalResponse(result);
+if (result.kind === 'degraded' || result.kind === 'error') {
+  Astro.response.status = result.status;
+}
+const page = result.page;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta
+      name="description"
+      content="Grant, renew or revoke CMS capabilities for people in your organization."
+    />
+    <meta name="robots" content="noindex" />
+    <title>CMS access | WeJammin</title>
+  </head>
+  <body class="content-schema-registry-page">
+    <nav aria-label="Skip navigation">
+      <a
+        class="content-schema-registry-skip-link"
+        href="#content-schema-registry-main"
+      >
+        Skip to main content
+      </a>
+    </nav>
+    <header
+      class="content-schema-registry-shell-header"
+      aria-label="Application navigation"
+    >
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/cms-content-modeling">Content schema registry</a>
+        <a href={consolePath} aria-current="page">CMS access</a>
+        <a href="/system/degraded">System status</a>
+      </nav>
+    </header>
+    <main id="content-schema-registry-main" tabindex="-1">
+      <header class="content-schema-registry-page-heading">
+        <p class="content-schema-registry-eyebrow">Authenticated workspace</p>
+        <h1 id="page-title" tabindex="-1">CMS access</h1>
+        <p>
+          Decide who can author, review and publish in your organization. Only
+          the organization owner can change these grants.
+        </p>
+      </header>
+      <CmsCapabilityGrantConsoleIsland {...page} client:load />
+    </main>
+    <script src="../../../lib/route-heading-focus.ts"></script>
+    <script src="../../../lib/auth-scope-sync.ts"></script>
+  </body>
+</html>

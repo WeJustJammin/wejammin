@@ -1,168 +1,22 @@
-import { createLogger } from '@wejammin/observability/logging';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { UploadCompletionPorts } from '@wejammin/application';
-import { createWorkerApp, type WorkerDependencies } from '../index';
-import type { UploadCompletionRouteDependencies } from './upload-intent-completion';
-
-const ACTOR_ID = '11111111-1111-4111-8111-111111111111';
-const PARTY_ID = '22222222-2222-4222-8222-222222222222';
-const TARGET_ID = '33333333-3333-4333-8333-333333333333';
-const INTENT_ID = '44444444-4444-4444-8444-444444444444';
-const OBJECT_ID = '55555555-5555-4555-8555-555555555555';
-const JOB_ID = '66666666-6666-4666-8666-666666666666';
-const EVENT_ID = '77777777-7777-4777-8777-777777777777';
-const CORRELATION_ID = '88888888-8888-4888-8888-888888888888';
-const CHECKSUM = 'a'.repeat(64);
-const NOW = Date.parse('2026-08-30T13:00:00.000Z');
-
-const intent = {
-  actingPartyId: PARTY_ID,
-  actorId: ACTOR_ID,
-  allowedMediaTypes: ['audio/mpeg'],
-  expiresAt: '2026-08-30T13:15:00.000Z',
-  id: INTENT_ID,
-  maxBytes: 10_000,
-  objectId: OBJECT_ID,
-  objectKey: `objects/${OBJECT_ID}`,
-  objectVersion: '7',
-  purpose: 'recording',
-  state: 'issued' as const,
-  targetId: TARGET_ID,
-  targetType: 'infrastructure.record',
-};
-
-const job = {
-  createdAt: '2026-08-30T13:00:00.000Z',
-  error: null,
-  id: JOB_ID,
-  progress: null,
-  resultRef: null,
-  state: 'queued' as const,
-  type: 'platform.object.verify',
-  updatedAt: '2026-08-30T13:00:00.000Z',
-};
-
-const event = {
-  aggregateId: OBJECT_ID,
-  aggregateType: 'object_record',
-  aggregateVersion: '8',
-  causationId: null,
-  correlationId: CORRELATION_ID,
-  eventId: EVENT_ID,
-  eventType: 'object.uploaded' as const,
-  schemaVersion: 1 as const,
-};
-
-const requestBody = {
-  byteSize: 512,
-  checksum: { algorithm: 'sha256' as const, value: CHECKSUM },
-  mediaType: 'AUDIO/MPEG',
-};
-
-const makePorts = (): UploadCompletionPorts => ({
-  authorization: {
-    authorize: vi.fn(async () => ({
-      actorId: ACTOR_ID,
-      actingPartyId: PARTY_ID,
-      capabilities: ['upload.complete'],
-      kind: 'allow' as const,
-    })),
-  },
-  digest: {
-    digest: vi.fn(async (value: string) =>
-      value === 'complete-key-1' ? 'b'.repeat(64) : 'c'.repeat(64),
-    ),
-  },
-  persistence: {
-    cancelCompletion: vi.fn(async () => undefined),
-    claimVerification: vi.fn(async () => ({
-      kind: 'claimed' as const,
-      expectedVersion: '8',
-      version: '9',
-    })),
-    commitCompletion: vi.fn(async () => ({
-      event,
-      kind: 'committed' as const,
-      job,
-      objectId: OBJECT_ID,
-      objectVersion: '8',
-    })),
-    finishVerification: vi.fn(async () => ({
-      kind: 'applied' as const,
-      job,
-      objectVersion: '10',
-    })),
-    readIntent: vi.fn(async () => intent),
-    readObject: vi.fn(async () => null),
-    readVerificationTarget: vi.fn(async () => null),
-  },
-  queue: { enqueue: vi.fn(async () => undefined) },
-  storage: {
-    observe: vi.fn(async () => ({
-      byteSize: 512,
-      checksum: { algorithm: 'sha256' as const, value: CHECKSUM },
-      mediaType: 'audio/mpeg',
-      objectKey: intent.objectKey,
-    })),
-  },
-});
-
-const createHarness = (
-  uploadCompletion?: UploadCompletionRouteDependencies,
-): ReturnType<typeof createWorkerApp> => {
-  const dependencies: WorkerDependencies = {
-    captureException: () => {},
-    createLogger: () =>
-      createLogger(
-        {
-          environment: 'staging',
-          release: 'a2ec4803',
-          service: 'wejammin-api',
-        },
-        { now: () => new Date(NOW), random: () => 0, sink: () => {} },
-      ),
-    now: () => NOW,
-    ...(uploadCompletion === undefined ? {} : { uploadCompletion }),
-  };
-  return createWorkerApp(dependencies);
-};
-
-const makeRouteDependencies = (
-  overrides: Partial<UploadCompletionRouteDependencies> = {},
-): UploadCompletionRouteDependencies => ({
-  now: () => NOW,
-  ports: makePorts(),
-  rateLimit: vi.fn(async () => ({
-    allowed: true,
-    limit: 60,
-    remaining: 59,
-    resetAt: Math.floor(NOW / 1_000) + 60,
-    scope: 'user' as const,
-  })),
-  resolveSession: vi.fn(async () => ({ userId: ACTOR_ID })),
-  ...overrides,
-});
-
-const requestFor = (
-  body: unknown = requestBody,
-  extraHeaders: Record<string, string> = {},
-): Request =>
-  new Request(
-    `https://api.example.test/api/v1/upload-intents/${INTENT_ID}/complete`,
-    {
-      body: JSON.stringify(body),
-      headers: {
-        'content-type': 'application/json',
-        'idempotency-key': 'complete-key-1',
-        'if-match': '"7"',
-        'x-correlation-id': CORRELATION_ID,
-        'x-request-id': ACTOR_ID,
-        ...extraHeaders,
-      },
-      method: 'POST',
-    },
-  );
+import {
+  ACTOR_ID,
+  CORRELATION_ID,
+  INTENT_ID,
+  JOB_ID,
+  NOW,
+  OBJECT_ID,
+  createHarness,
+  event,
+  intent,
+  job,
+  makePorts,
+  makeRouteDependencies,
+  requestBody,
+  requestFor,
+} from './upload-intent-completion.test-support';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -212,7 +66,7 @@ describe('upload completion Worker boundary', () => {
     );
   });
 
-  it('validates path, query, content type, body keys, and body ceiling before authority', async () => {
+  it('validates path, query, content type, body keys, and body ceiling before quota and authority', async () => {
     const route = makeRouteDependencies();
     const app = createHarness(route);
 
@@ -224,6 +78,9 @@ describe('upload completion Worker boundary', () => {
       requestFor(requestBody, { 'content-type': 'text/plain' }),
     );
     expect(wrongType.status).toBe(415);
+    expect(((await wrongType.json()) as { details: unknown }).details).toEqual({
+      allowedMediaTypes: ['application/json'],
+    });
     const oversized = await app.request(
       requestFor(requestBody, { 'content-length': String(256 * 1024 + 1) }),
     );
@@ -239,8 +96,13 @@ describe('upload completion Worker boundary', () => {
       ),
     );
     expect(invalidPath.status).toBe(400);
-    expect(route.resolveSession).not.toHaveBeenCalled();
+    // BE00: transport refusals (type, size) precede the session; query, path
+    // and body validation follow it; none reaches quota or the ports.
+    expect(route.resolveSession).toHaveBeenCalledTimes(3);
     expect(route.rateLimit).not.toHaveBeenCalled();
+    expect(
+      (route.ports as UploadCompletionPorts).persistence.readIntent,
+    ).not.toHaveBeenCalled();
   });
 
   it('returns authentication and rate errors without invoking completion ports', async () => {

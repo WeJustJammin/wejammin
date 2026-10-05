@@ -55,7 +55,7 @@ describe('S09 adversarial worker admission errors', () => {
       readRequest(undefined, { 'if-match': '"1"' }),
     );
     await expectError(response, 400, 'INVALID_REQUEST');
-    expect(harness.resolveSession).not.toHaveBeenCalled();
+    expect(harness.rateLimit).not.toHaveBeenCalled();
     expect(harness.ports.listContentTypes).not.toHaveBeenCalled();
 
     expect(
@@ -120,7 +120,7 @@ describe('S09 adversarial worker admission errors', () => {
       ok({ items: Array.from({ length: 101 }, () => {}), nextCursor: null }),
     );
     const response = await harness.app.request(readRequest());
-    await expectError(response, 502, 'DEPENDENCY_INVALID_RESPONSE');
+    await expectError(response, 502, 'DEPENDENCY_UNAVAILABLE');
     expect(response.headers.get('cache-control')).toBe('no-store');
   });
 

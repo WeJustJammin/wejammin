@@ -6,7 +6,6 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerApp } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
 import { configureProfileRoute, parseProfilePath } from './route-support';
 import type { ProfileRouteRuntime } from './route-runtime';
 
@@ -30,7 +29,6 @@ export const registerProfileShadowRoutes = (
     const path = parseProfilePath(ShadowPathSchema, {
       shadowId: context.req.param('shadowId'),
     });
-    if (!path.ok) return responseForAuthError(context, path);
     return runtime.command(
       context,
       'PRF-API-02',
@@ -38,7 +36,7 @@ export const registerProfileShadowRoutes = (
       InvitationRequestSchema,
       'session',
       true,
-      path.value,
+      path,
     );
   });
   app.post('/api/v1/shadow-remedies', async (context) => {

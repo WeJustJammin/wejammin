@@ -6,6 +6,11 @@ Authenticated route shell, bounded shadow-party and claim workbench, semantic
 list/detail views, strict command forms, account-free remedy form, shared
 actions, transport helpers, and Slice 05 tests.
 
+`use-profile-ownership-step-up-draft.ts` keeps the tab-scoped FE00 step-up draft
+(DEC-111) for the claim conversion form: only the allowlisted `reasonCode`
+field and the interrupted `Idempotency-Key` are stored, restored once on return,
+and never replayed without explicit re-confirmation.
+
 ## Ownership
 
 This directory owns the bounded Phase 2 Slice 05 browser surface for shadow

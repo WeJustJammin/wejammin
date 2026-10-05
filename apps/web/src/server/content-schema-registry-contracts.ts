@@ -14,7 +14,14 @@ import {
   RelationDefinitionResourceSchema,
   SchemaActivationRequestSchema,
   SchemaActivationResourceSchema,
+  SchemaReviewResourceSchema,
 } from '@wejammin/contracts';
+import type {
+  SchemaActivationPreparation,
+  SchemaReviewResource,
+} from '@wejammin/contracts';
+
+export type { SchemaActivationPreparation, SchemaReviewResource };
 
 export {
   BlockDefinitionRegistryRecordSchema as ContentSchemaRegistrySafeBlockProjectionSchema,
@@ -31,6 +38,7 @@ export {
   RelationDefinitionResourceSchema,
   SchemaActivationRequestSchema,
   SchemaActivationResourceSchema,
+  SchemaReviewResourceSchema,
 };
 
 export type ContentSchemaRegistrySafeBlockProjection = z.infer<
@@ -94,7 +102,9 @@ export const parseContentSchemaRegistryQuery = (
   const input: Record<string, string> = {};
   for (const key of CONTENT_SCHEMA_REGISTRY_QUERY_KEYS) {
     const value = params.get(key);
-    if (value !== null) input[key] = value;
+    // A native GET form submits every control, blank ones included; a blank
+    // filter means "no filter" and never reaches the strict schema.
+    if (value !== null && value !== '') input[key] = value;
   }
   return ContentSchemaRegistryListQuerySchema.parse(input);
 };

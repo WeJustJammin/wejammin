@@ -1,5 +1,9 @@
 import type { ContentSchemaRegistryRoutePolicy } from './route-policy.ts';
-import { humanMutationErrors, tier2Slo } from './routes-errors.ts';
+import {
+  humanMutationErrors,
+  humanStepUpMutationErrors,
+  tier2Slo,
+} from './routes-errors.ts';
 
 const humanMutationDefaults = {
   method: 'POST',
@@ -7,6 +11,7 @@ const humanMutationDefaults = {
   capability: 'cms.schema_designer',
   cors: 'cms-console',
   csrf: 'required',
+  stepUp: 'none',
   rawBodySignature: 'none',
   idempotency: 'required',
   rateWindowSeconds: 60,
@@ -63,6 +68,8 @@ export const humanRoutePolicies = [
     successSchema: 'SchemaActivationResourceSchema',
     successStatus: 202,
     successStatuses: [200, 202],
+    stepUp: 'required',
+    errors: humanStepUpMutationErrors,
     ifMatch: 'required',
     rateClass: 'cms-activation',
     rateLimit: 10,

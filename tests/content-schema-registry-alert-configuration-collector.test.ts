@@ -57,7 +57,23 @@ describe('AC209 protected alert configuration collector', () => {
     expect(result.report.conditionThresholds).toEqual(
       AC209_ALERT_CONDITION_THRESHOLDS,
     );
-    expect(result.report.conditionThresholds).toHaveLength(12);
+    expect(result.report.conditionThresholds).toHaveLength(16);
+    expect(
+      result.report.conditionThresholds
+        .slice(12)
+        .map(({ name, rule }) => [name, rule]),
+    ).toEqual([
+      ['review_open_past_window', 'reviewOpenAgeMs > 604800000'],
+      ['decision_denial_spike', 'decisionDenialRate > decisionDenialBaseline'],
+      [
+        'assignment_denial_spike',
+        'assignmentDenialRate > assignmentDenialBaseline',
+      ],
+      [
+        'capability_grant_denial_spike',
+        'capabilityGrantDenialRate > capabilityGrantDenialBaseline',
+      ],
+    ]);
     expect(result.report.bindings).toEqual(AC209_REQUIRED_BINDINGS);
     expect(result.report).not.toHaveProperty('providerPayload');
   });

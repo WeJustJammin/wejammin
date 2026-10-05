@@ -54,8 +54,18 @@ describe('AC266 manual accessibility finalizer workflow contract', () => {
       executableWorkflow,
       'staging-verified-candidate',
     );
-    expect(candidateDownload).toContain('path: candidate');
-    expect(candidateDownload).not.toContain('merge-multiple');
+    expect(candidateDownload).toBe('');
+    const candidateStep = namedStep(
+      executableWorkflow,
+      'Download the requested staging candidate',
+    );
+    expect(candidateStep).toContain('path: candidate');
+    expect(candidateStep).not.toContain('merge-multiple');
+    expect(candidateStep).not.toMatch(/^ {10}name:/mu);
+    expect(candidateStep).toContain(
+      'artifact-ids: ${{ steps.resolve.outputs.staging_artifact_id }}',
+    );
+    expect(candidateStep).toMatch(/^ {10}digest-mismatch: error$/mu);
     expect(stagingCandidateProducer).toContain('GITHUB_REPOSITORY');
     expect(stagingCandidateProducer).toContain('GITHUB_RUN_ID');
     expect(stagingCandidateProducer).toContain('GITHUB_RUN_ATTEMPT');
@@ -116,29 +126,33 @@ describe('AC266 manual accessibility finalizer workflow contract', () => {
   });
 
   it('downloads the candidate and sanitized intake manifest from distinct approved run IDs', () => {
-    const candidateDownload = artifactDownload(
+    const candidateStep = namedStep(
       executableWorkflow,
-      'staging-verified-candidate',
+      'Download the requested staging candidate',
     );
-    expect(candidateDownload).toMatch(
+    expect(candidateStep).toMatch(
       /actions\/download-artifact@(?:[0-9a-f]{40}|v\d+)/u,
     );
-    expect(candidateDownload).toContain('run-id: ${{ inputs.staging_run_id }}');
-    expect(candidateDownload).toContain('repository: ${{ github.repository }}');
-    expect(candidateDownload).toContain('github-token: ${{ github.token }}');
+    expect(candidateStep).toContain('run-id: ${{ inputs.staging_run_id }}');
+    expect(candidateStep).toContain('repository: ${{ github.repository }}');
+    expect(candidateStep).toContain('github-token: ${{ github.token }}');
+    expect(candidateStep).toContain(
+      'artifact-ids: ${{ steps.resolve.outputs.staging_artifact_id }}',
+    );
 
-    const reportDownload = artifactDownload(
+    const reportStep = namedStep(
       executableWorkflow,
-      'ac266-manual-accessibility-intake',
+      'Download the sanitized manual intake manifest',
     );
-    expect(reportDownload).toMatch(
+    expect(reportStep).toMatch(
       /actions\/download-artifact@(?:[0-9a-f]{40}|v\d+)/u,
     );
-    expect(reportDownload).toContain(
-      'run-id: ${{ inputs.manual_report_run_id }}',
+    expect(reportStep).toContain('run-id: ${{ inputs.manual_report_run_id }}');
+    expect(reportStep).toContain('repository: ${{ github.repository }}');
+    expect(reportStep).toContain('github-token: ${{ github.token }}');
+    expect(reportStep).toContain(
+      'artifact-ids: ${{ steps.resolve.outputs.intake_artifact_id }}',
     );
-    expect(reportDownload).toContain('repository: ${{ github.repository }}');
-    expect(reportDownload).toContain('github-token: ${{ github.token }}');
 
     expect(executableReportMaterializer).toContain(
       'manual/voiceover-safari.json',

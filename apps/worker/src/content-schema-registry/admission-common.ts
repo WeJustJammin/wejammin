@@ -1,3 +1,5 @@
+import { LOCALE_CONFIG_MESSAGES } from '@wejammin/contracts';
+
 import type {
   ContentSchemaRegistryError,
   ContentSchemaRegistryResult,
@@ -34,6 +36,8 @@ type ParsedFailure = Readonly<{
     issues: readonly Readonly<{
       path: readonly PropertyKey[];
       message: string;
+      code?: string;
+      keys?: readonly string[];
     }>[];
   }>;
 }>;
@@ -50,6 +54,13 @@ export const isParsedFailure = (value: unknown): value is ParsedFailure =>
   'success' in value &&
   value.success === false &&
   'error' in value;
+
+/**
+ * BE00 `UNSUPPORTED_MEDIA_TYPE` details are exactly `{ allowedMediaTypes }`,
+ * the route allowlist and nothing else. Every CMS registry route that reads a
+ * body accepts one media type.
+ */
+export const ALLOWED_MEDIA_TYPES: readonly string[] = ['application/json'];
 
 export const invalid = (
   message: string,
@@ -70,14 +81,78 @@ export const invalid = (
   details,
 });
 
+const LOCALE_CONFIG_MESSAGE_SET: ReadonlySet<string> = new Set(
+  Object.values(LOCALE_CONFIG_MESSAGES),
+);
+
+const jsonPointer = (path: readonly PropertyKey[]): string =>
+  `/${path
+    .map((segment) =>
+      String(segment).replaceAll('~', '~0').replaceAll('/', '~1'),
+    )
+    .join('/')}`;
+
+type ZodIssueLike = Readonly<{
+  path: readonly PropertyKey[];
+  message: string;
+  code?: string;
+  keys?: readonly string[];
+}>;
+
+const CONSTRAINT_CODE = /^[a-z][a-z0-9_]{0,63}$/u;
+const GENERIC_MESSAGE = 'The value is invalid.';
+
+/**
+ * One zod issue becomes one or more BE00 violations, each addressed by a
+ * `path` that holds a JSON Pointer (BE00 `FieldViolation`). Only server-owned
+ * text reaches the client:
+ * - the fixed BE03a OD-4 locale messages travel verbatim as `{ path, message }`;
+ * - a `custom` issue (a `.refine` or `.superRefine` literal such as
+ *   'not a real calendar date') travels verbatim as `{ path, message }`;
+ * - a lowercase constraint code authored in the contract (`etag_invalid`) is
+ *   the violation `code`, with the generic message;
+ * - every other built-in zod issue reports its closed zod code with the
+ *   generic message. Zod's own message text is never sent, because it can
+ *   echo caller input.
+ * An unrecognized key is reported once per key, at that key's path.
+ */
+const violationsFor = (
+  issue: ZodIssueLike,
+): readonly Record<string, unknown>[] => {
+  if (issue.code === 'unrecognized_keys' && Array.isArray(issue.keys))
+    return issue.keys.map((key) => ({
+      path: jsonPointer([...issue.path, key]),
+      code: 'unrecognized_keys',
+      message: GENERIC_MESSAGE,
+    }));
+  const path = jsonPointer(issue.path);
+  if (LOCALE_CONFIG_MESSAGE_SET.has(issue.message))
+    return [{ path, message: issue.message }];
+  if (CONSTRAINT_CODE.test(issue.message))
+    return [{ path, code: issue.message, message: GENERIC_MESSAGE }];
+  if (issue.code === 'custom') return [{ path, message: issue.message }];
+  return [
+    {
+      path,
+      ...(typeof issue.code === 'string' && CONSTRAINT_CODE.test(issue.code)
+        ? { code: issue.code }
+        : {}),
+      message: GENERIC_MESSAGE,
+    },
+  ];
+};
+
 export const issues = (error: {
-  issues: readonly { path: readonly PropertyKey[]; message: string }[];
+  issues: readonly ZodIssueLike[];
 }): Record<string, unknown> => ({
-  violations: error.issues.slice(0, 50).map((issue) => ({
-    path: `/${issue.path.map(String).join('/')}`,
-    code: issue.message,
-    message: 'The value is invalid.',
-  })),
+  violations: error.issues.flatMap(violationsFor).slice(0, 50),
 });
+
+export const unsupportedMediaType = (): ContentSchemaRegistryError =>
+  invalid(
+    'Use application/json.',
+    { allowedMediaTypes: [...ALLOWED_MEDIA_TYPES] },
+    415,
+  );
 
 export type Result<T> = ContentSchemaRegistryResult<T>;

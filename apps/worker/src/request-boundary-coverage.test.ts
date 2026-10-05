@@ -209,10 +209,26 @@ describe('Worker request boundary coverage branches', () => {
       ),
     ).toMatchObject({ ok: false, error: { code: 'PAYLOAD_TOO_LARGE' } });
 
+    const malformedLength = commandRequest();
+    Object.defineProperty(malformedLength, 'headers', {
+      value: new Headers({
+        ...commandHeaders(),
+        'content-length': '-1',
+      }),
+    });
+    expect(await parseProtectedCommandRequest(malformedLength)).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'The Content-Length header is invalid.',
+        status: 400,
+      },
+    });
+
     const unreadable = commandRequest();
-    Object.defineProperty(unreadable, 'text', {
+    Object.defineProperty(unreadable, 'body', {
       configurable: true,
-      value: () => {
+      get: () => {
         throw new Error('body read failed');
       },
     });

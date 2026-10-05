@@ -1,0 +1,82 @@
+-- Shared SEC-2 helpers for the definer-RLS suites (phase_02_slice_09_sec2_*.sql).
+-- Include after support/jwt-claims.sqlinc, inside the suite's transaction.
+-- Runs p_sql as p_role and returns the row count ('OK:n'), or the SQLSTATE and
+-- message of the refusal.  SET LOCAL ROLE is always undone, even on error.
+create or replace function pg_temp.sec2_as(p_role text, p_sql text) returns text
+language plpgsql as $body$
+declare n bigint;
+begin
+  begin
+    execute format('set local role %I', p_role);
+    execute p_sql;
+    get diagnostics n = row_count;
+    reset role;
+    return 'OK:' || n;
+  exception when others then
+    reset role;
+    return sqlstate || ':' || sqlerrm;
+  end;
+end;
+$body$;
+create or replace function pg_temp.sec2_count(p_role text, p_table text) returns bigint
+language plpgsql as $body$
+declare n bigint;
+begin
+  begin
+    execute format('set local role %I', p_role);
+    execute format('select count(*) from %s', p_table) into n;
+    reset role;
+    return n;
+  exception when others then
+    reset role;
+    return -1;
+  end;
+end;
+$body$;
+-- INSERT built from the catalog: overrides for the scope columns, a type-correct
+-- dummy for every other NOT NULL column without a default.  The policy's WITH
+-- CHECK is evaluated before the constraints, so a refusal by the policy is
+-- SQLSTATE 42501 and anything else means the policy admitted the row.
+create or replace function pg_temp.sec2_insert_sql(p_table regclass, p_overrides jsonb) returns text
+language plpgsql as $body$
+declare cols text := ''; vals text := ''; a record; lit text;
+begin
+  for a in
+    select att.attname, att.attnum, att.atttypid, att.attnotnull, att.atthasdef, att.attidentity, att.attgenerated,
+           format_type(att.atttypid, att.atttypmod) as type_name, t.typtype, t.typcategory, t.typelem
+      from pg_attribute att join pg_type t on t.oid = att.atttypid
+     where att.attrelid = p_table and att.attnum > 0 and not att.attisdropped order by att.attnum
+  loop
+    continue when a.attgenerated <> '';
+    if p_overrides ? a.attname then
+      lit := format('%L::%s', p_overrides ->> a.attname, a.type_name);
+    elsif a.atthasdef or a.attidentity <> '' or not a.attnotnull then
+      continue;
+    elsif a.typtype = 'e' then
+      lit := format('%L::%s', (select enumlabel from pg_enum where enumtypid = a.atttypid order by enumsortorder limit 1), a.type_name);
+    elsif a.typcategory = 'A' then lit := format('%L::%s', '{}', a.type_name);
+    elsif a.type_name = 'uuid' then lit := 'extensions.gen_random_uuid()';
+    elsif a.type_name in ('text', 'character varying') or a.type_name like 'character%' then lit := '''sec2''';
+    elsif a.type_name in ('integer', 'bigint', 'smallint') or a.type_name like 'numeric%' then lit := format('1::%s', a.type_name);
+    elsif a.type_name = 'boolean' then lit := 'false';
+    elsif a.typcategory = 'D' then lit := format('%L::%s', pg_catalog.clock_timestamp()::text, a.type_name);
+    elsif a.type_name = 'bytea' then lit := '''\x00''::bytea';
+    elsif a.type_name in ('jsonb', 'json') then lit := format('%L::%s', '{}', a.type_name);
+    else lit := 'null';
+    end if;
+    cols := cols || case when cols = '' then '' else ', ' end || quote_ident(a.attname);
+    vals := vals || case when vals = '' then '' else ', ' end || lit;
+  end loop;
+  return format('insert into %s (%s) values (%s)', p_table, cols, vals);
+end;
+$body$;
+create or replace function pg_temp.sec2_publish(p_actor uuid, p_party uuid, p_subject uuid, p_claim_role text)
+returns void language plpgsql as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  perform set_config('app.cms_session_actor', coalesce(p_actor::text, ''), true);
+  perform set_config('app.cms_session_party', coalesce(p_party::text, ''), true);
+  perform set_config('app.mfa_session_subject', coalesce(p_subject::text, ''), true);
+  perform pg_temp.set_jwt_claim('role', p_claim_role, true);
+end;
+$body$;

@@ -92,10 +92,19 @@ export type StagingScopeTamper =
   | 'subject-digest';
 
 export const createStagingScopeFixture = (
-  options: { readonly tamper?: StagingScopeTamper } = {},
+  options: {
+    readonly tamper?: StagingScopeTamper;
+    /**
+     * Overrides the generated runner contract. The CLI route authenticates the
+     * run, attempt, revision, and deployment against the GitHub API before it
+     * verifies the report, so a genuine end-to-end fixture needs a contract
+     * identity that matches the API it is resolved against.
+     */
+    readonly contract?: ContentSchemaRegistryHostedRunnerContract;
+  } = {},
 ) => {
   const tamper = options.tamper ?? 'none';
-  const contract = makeContract();
+  const contract = options.contract ?? makeContract();
   const contractBytes = jsonBytes(contract);
   const hosted = createHostedFixture({
     contract,

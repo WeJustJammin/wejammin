@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import ContentSchemaRegistryActivationForm from './ContentSchemaRegistryActivationForm';
 import ContentSchemaRegistryActionBar from './ContentSchemaRegistryActionBar';
-import ContentSchemaRegistryCapabilityGate from './ContentSchemaRegistryCapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import ContentSchemaRegistryConfirmationStep from './ContentSchemaRegistryConfirmationStep';
 import ContentSchemaRegistryCreateForm from './ContentSchemaRegistryCreateForm';
 import ContentSchemaRegistryFieldForm from './ContentSchemaRegistryFieldForm';
@@ -37,16 +37,26 @@ describe('content schema registry command forms and interaction primitives', () 
       'defaultLocale',
       'workflowKey',
       'workflowVersion',
-      'defaultTemplateVersionId',
       'fields',
       'relations',
-      'templateBindings',
       'capabilityBindings',
       'csrf',
       'idempotency-key',
     ]) {
       expect(markup).toContain(`name="${name}"`);
     }
+    // DEC-123: a new type binds no template at creation; the form offers no
+    // template input and says where the binding is made instead.
+    for (const name of ['defaultTemplateVersionId', 'templateBindings']) {
+      expect(markup).not.toContain(`name="${name}"`);
+    }
+    expect(markup).not.toContain('content-schema-registry-template-bindings');
+    expect(markup).not.toContain(
+      'content-schema-registry-default-template-version-id',
+    );
+    expect(markup).toContain(
+      'A template is bound after creation, through a successor version.',
+    );
     expect(markup).not.toContain('ReleaseEnvelopeHeaders');
     expect(markup).toContain('Content type draft');
   });
@@ -116,6 +126,8 @@ describe('content schema registry command forms and interaction primitives', () 
         idempotencyKey: IDEMPOTENCY,
         ifMatch: IF_MATCH,
         expectedVersion: '4',
+        dryRunId: '018f0c45-73fe-7dc2-9c09-68f7ecf132dc',
+        approvalIds: ['018f0c45-73fe-7dc2-9c09-68f7ecf132dd'],
       }),
     );
 
@@ -125,7 +137,6 @@ describe('content schema registry command forms and interaction primitives', () 
       'approvalIds',
       'expectedActivationEvidenceHash',
       'migrationPlanId',
-      'stepUpToken',
       'csrf',
       'idempotency-key',
       'if-match',
@@ -139,9 +150,32 @@ describe('content schema registry command forms and interaction primitives', () 
     expect(markup).not.toContain('X-WeJammin-Release');
   });
 
+  it('renders no step-up token or password field; step-up is session-based (DEC-111)', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(ContentSchemaRegistryActivationForm, {
+        action: `/app/cms-content-modeling/${TYPE_ID}/versions/${VERSION_ID}`,
+        contentTypeId: TYPE_ID,
+        versionId: VERSION_ID,
+        csrfToken: CSRF,
+        idempotencyKey: IDEMPOTENCY,
+        ifMatch: IF_MATCH,
+        expectedVersion: '4',
+        dryRunId: '018f0c45-73fe-7dc2-9c09-68f7ecf132dc',
+        approvalIds: ['018f0c45-73fe-7dc2-9c09-68f7ecf132dd'],
+      }),
+    );
+    expect(markup).not.toContain('stepUpToken');
+    expect(markup).not.toContain('step-up-token');
+    expect(markup).not.toMatch(/type="password"/u);
+    expect(markup).not.toMatch(
+      /autoComplete="one-time-code"|autocomplete="one-time-code"/u,
+    );
+  });
+
   it('keeps capability, pending, confirmation, offline, and conflict semantics explicit', () => {
     const hidden = renderToStaticMarkup(
-      React.createElement(ContentSchemaRegistryCapabilityGate, {
+      React.createElement(CapabilityGate, {
+        surface: 'content-schema-registry',
         variant: 'not-rendered',
         reasonCode: 'FORBIDDEN',
       }),
@@ -149,7 +183,8 @@ describe('content schema registry command forms and interaction primitives', () 
     expect(hidden).toBe('');
 
     const disabled = renderToStaticMarkup(
-      React.createElement(ContentSchemaRegistryCapabilityGate, {
+      React.createElement(CapabilityGate, {
+        surface: 'content-schema-registry',
         variant: 'disabled',
         reasonCode: 'SCHEMA_DESIGNER_REQUIRED',
         recoveryHref: '/app/security',

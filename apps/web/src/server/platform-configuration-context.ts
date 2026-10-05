@@ -20,11 +20,11 @@ import {
   forwardPlatformConfigurationRequest,
   hasPlatformConfigurationSession,
   parsePlatformConfigurationCapabilities,
-  platformConfigurationResponseCapabilities,
   resolvePlatformConfigurationBinding,
 } from './platform-configuration-platform-api';
 import type { PlatformConfigurationCapabilityResolutionInput } from './platform-configuration-platform-api';
 import { forwardIdentityAuthorityRequest } from './identity-authority-platform-api';
+import { readWorkerCapabilitySnapshot } from './platform-configuration-capability-snapshot';
 
 export type PlatformConfigurationPageState = Readonly<{
   state: 'ready' | 'forbidden' | 'degraded';
@@ -140,124 +140,33 @@ const readContexts = (request: Request, binding: unknown): Promise<Response> =>
   );
 
 /**
- * Capability names are deliberately explicit. A generic role, facet, or
- * provider claim must never be enough to select an administrative projection.
+ * Capability names are deliberately explicit (BE05a settings editor authority
+ * projection). A generic role, facet, provider claim or legacy alias must never
+ * be enough to select an administrative projection.
+ *
+ * - Read: `settings.read`, or any command authority below.
+ * - Edit: the definition's own `ownerCapability` (CFG-05A-02), which CFG-05A-03
+ *   requires on write; it is derived per definition, never from a fixed list.
+ * - Approve, release and rollback: the exact keys the BE05a command RPCs
+ *   authorize against.
  */
-const capabilityAliases = {
-  read: [
-    'configuration.read',
-    'configuration.definition-read',
-    'configuration.definition.read',
-    'configuration.definition_read',
-    'platform-configuration.read',
-    'platform-configuration.definition-read',
-    'platform-configuration.definition.read',
-    'platform_configuration_read',
-    'config.read',
-    'config.definition-read',
-    'config.definition.read',
-    'config.definition_read',
-    'settings.read',
-    'settings.definition-read',
-    'settings.definition.read',
-    'settings.definition_read',
-  ],
-  editor: [
-    'configuration.editor',
-    'configuration.settings.editor',
-    'configuration.settings-editor',
-    'configuration.write',
-    'configuration.manage',
-    'platform-configuration.editor',
-    'platform-configuration.settings.editor',
-    'platform-configuration.settings-editor',
-    'platform_configuration_editor',
-    'config.editor',
-    'config.settings.editor',
-    'config.settings-editor',
-    'config.write',
-    'settings.editor',
-    'settings.write',
-    'settings.manage',
-  ],
-  approver: [
-    'configuration.approver',
-    'configuration.settings.approver',
-    'configuration.settings-approver',
-    'configuration.approval',
-    'configuration.approve',
-    'configuration.action.approve',
-    'platform-configuration.approver',
-    'platform-configuration.settings.approver',
-    'platform-configuration.settings-approver',
-    'platform_configuration_approver',
-    'config.approver',
-    'config.settings.approver',
-    'config.settings-approver',
-    'config.approve',
-    'config.action.approve',
-    'settings.approver',
-    'settings.approve',
-    'settings.action.approve',
-  ],
-  release: [
-    'configuration.release-manager',
-    'configuration.release.manager',
-    'configuration.release',
-    'configuration.action.release',
-    'platform-configuration.release-manager',
-    'platform-configuration.release.manager',
-    'platform-configuration.release',
-    'platform_configuration_release_manager',
-    'config.release-manager',
-    'config.release.manager',
-    'config.release',
-    'config.action.release',
-    'settings.release-manager',
-    'settings.release.manager',
-    'settings.release',
-    'release.manager',
-    'release_manager',
-  ],
-  rollback: [
-    'configuration.rollback-authority',
-    'configuration.rollback.authority',
-    'configuration.rollback',
-    'configuration.action.rollback',
-    'platform-configuration.rollback-authority',
-    'platform-configuration.rollback.authority',
-    'platform-configuration.rollback',
-    'platform_configuration_rollback_authority',
-    'config.rollback-authority',
-    'config.rollback.authority',
-    'config.rollback',
-    'config.action.rollback',
-    'settings.rollback-authority',
-    'settings.rollback.authority',
-    'settings.rollback',
-    'rollback.authority',
-    'rollback_authority',
-  ],
-} as const;
+const READ_CAPABILITY = 'settings.read';
+const COMMAND_CAPABILITIES = [
+  'settings.approve',
+  'settings.release',
+  'settings.rollback',
+] as const;
 
-const capabilitySets = {
-  read: new Set(capabilityAliases.read),
-  editor: new Set(capabilityAliases.editor),
-  approver: new Set(capabilityAliases.approver),
-  release: new Set(capabilityAliases.release),
-  rollback: new Set(capabilityAliases.rollback),
-} as const;
-
-const hasCapability = (
+const hasCommandCapability = (
   capabilities: readonly string[],
-  kind: keyof typeof capabilityAliases,
-): boolean => {
-  const accepted: ReadonlySet<string> = capabilitySets[kind];
-  return capabilities.some((capability) => accepted.has(capability));
-};
+  ownerCapability: string | null,
+): boolean =>
+  (ownerCapability !== null && capabilities.includes(ownerCapability)) ||
+  COMMAND_CAPABILITIES.some((capability) => capabilities.includes(capability));
 
 const classifyCapabilities = (
   capabilities: readonly string[],
+  ownerCapability: string | null,
   responseReadVerified: boolean,
   resolverConfigured: boolean,
 ): Readonly<{
@@ -265,12 +174,8 @@ const classifyCapabilities = (
   readonly variant: PlatformConfigurationVariant;
   readonly readGranted: boolean;
 }> => {
-  const commandGranted =
-    hasCapability(capabilities, 'editor') ||
-    hasCapability(capabilities, 'approver') ||
-    hasCapability(capabilities, 'release') ||
-    hasCapability(capabilities, 'rollback');
-  const explicitRead = hasCapability(capabilities, 'read') || commandGranted;
+  const commandGranted = hasCommandCapability(capabilities, ownerCapability);
+  const explicitRead = capabilities.includes(READ_CAPABILITY) || commandGranted;
   const readGranted =
     explicitRead || (responseReadVerified && !resolverConfigured);
   if (!readGranted) {
@@ -298,17 +203,25 @@ const capabilityResolver = (
 ):
   | ((input: PlatformConfigurationCapabilityResolutionInput) => unknown)
   | null => {
+  // Own property only: a service binding on a modern compatibility date is an
+  // RPC stub that answers `in` and property reads for ANY name, so a prototype
+  // or proxy member is never the trusted server-side resolver.
   if (
     typeof binding !== 'object' ||
     binding === null ||
-    !('resolveCapabilities' in binding) ||
-    typeof binding.resolveCapabilities !== 'function'
+    !Object.hasOwn(binding, 'resolveCapabilities') ||
+    typeof (binding as { resolveCapabilities?: unknown })
+      .resolveCapabilities !== 'function'
   ) {
     return null;
   }
-  return binding.resolveCapabilities as (
-    input: PlatformConfigurationCapabilityResolutionInput,
-  ) => unknown;
+  return (
+    binding as {
+      resolveCapabilities: (
+        input: PlatformConfigurationCapabilityResolutionInput,
+      ) => unknown;
+    }
+  ).resolveCapabilities;
 };
 
 const capabilityResolverRequestHeaders = [
@@ -338,10 +251,20 @@ const authorityRequest = (request: Request): Request => {
 const readServerCapabilities = async (
   binding: unknown,
   input: PlatformConfigurationCapabilityResolutionInput,
+  projectFromWorker: boolean,
 ): Promise<CapabilityResolution> => {
   const resolver = capabilityResolver(binding);
   if (resolver === null) {
-    return { configured: false, available: true, capabilities: [] };
+    // A production service binding exposes only `fetch`. When a page asks for
+    // the capability projection, the protected Worker snapshot is the bridge;
+    // any failure there is an empty list, which fails closed at the caller.
+    return {
+      configured: false,
+      available: true,
+      capabilities: projectFromWorker
+        ? await readWorkerCapabilitySnapshot(input.request, binding)
+        : [],
+    };
   }
   try {
     const result = await resolver(input);
@@ -375,6 +298,15 @@ export const resolvePlatformConfigurationPage = async (input: {
   readonly recordId?: string | null;
   readonly requestId?: string;
   readonly surface?: Surface;
+  /**
+   * Opt in to the acting-party-bound capability projection on a key-less
+   * index read. A keyed index read always projects, because its command
+   * affordances depend on it. The projection is the Worker's CFG-05B-07 answer
+   * (or the trusted server-only resolver's) for the verified actor and acting
+   * party; it is never derived from the request. Other pages keep the empty
+   * snapshot.
+   */
+  readonly projectCapabilities?: boolean;
 }): Promise<PlatformConfigurationPageResult> => {
   const requestId =
     input.requestId ??
@@ -550,13 +482,17 @@ export const resolvePlatformConfigurationPage = async (input: {
     };
   }
 
-  const capabilityResolution = await readServerCapabilities(binding, {
-    request: authorityRequest(input.request),
-    actorId,
-    actingPartyId,
-    key,
-    surface,
-  });
+  const capabilityResolution = await readServerCapabilities(
+    binding,
+    {
+      request: authorityRequest(input.request),
+      actorId,
+      actingPartyId,
+      key,
+      surface,
+    },
+    surface === 'index' && (key !== null || input.projectCapabilities === true),
+  );
   if (!capabilityResolution.available) {
     return {
       kind: 'ready',
@@ -585,7 +521,10 @@ export const resolvePlatformConfigurationPage = async (input: {
         access: 'read-only',
         actorId,
         actingPartyId,
-        capabilitySnapshot: [],
+        capabilitySnapshot:
+          input.projectCapabilities === true && surface === 'index'
+            ? capabilityResolution.capabilities
+            : [],
         csrfToken,
         requestId,
         key,
@@ -689,14 +628,13 @@ export const resolvePlatformConfigurationPage = async (input: {
       },
     };
   }
-  const capabilities = [
-    ...new Set([
-      ...capabilityResolution.capabilities,
-      ...platformConfigurationResponseCapabilities(effectiveResponse),
-    ]),
-  ];
+  const capabilities = [...new Set(capabilityResolution.capabilities)];
+  const parsedEffective = parseEffectiveValue(
+    await readJson(effectiveResponse),
+  );
   const presentation = classifyCapabilities(
     capabilities,
+    parsedEffective?.ownerCapability ?? null,
     effectiveResponse.ok,
     capabilityResolution.configured,
   );
@@ -713,9 +651,6 @@ export const resolvePlatformConfigurationPage = async (input: {
       }),
     };
   }
-  const parsedEffective = parseEffectiveValue(
-    await readJson(effectiveResponse),
-  );
   if (parsedEffective === null) {
     return {
       kind: 'ready',

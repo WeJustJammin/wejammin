@@ -9,17 +9,19 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
+import {
+  admitJsonMutationTransport,
+  responseForAuthError,
+} from '../authentication/boundary';
 import {
   configureRelationshipRoute,
   enforceRelationshipRate,
   parseRelationshipCommandHeaders,
-  parseRelationshipJsonBody,
+  decodeRelationshipBody,
   relationshipPathError,
   resolveRelationshipSession,
 } from './relationship-handler-support';
 import { executeRelationship } from './relationship-handler-runtime';
-import { requireIdentityCsrf } from './route-support';
 import type { RecoveryState } from './recovery';
 
 export const inviteMembership = async (
@@ -28,6 +30,12 @@ export const inviteMembership = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'MEM-01');
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolveRelationshipSession(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
   const path = OrganizationPathSchema.safeParse({
     organizationId: context.req.param('organizationId'),
   });
@@ -36,17 +44,13 @@ export const inviteMembership = async (
       context,
       relationshipPathError('organizationId'),
     );
-  const body = await parseRelationshipJsonBody(
-    context.req.raw,
+  // BE00 step 6: strict body.
+  const body = decodeRelationshipBody(
+    transport.value,
     MembershipInvitationRequestSchema,
   );
   if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolveRelationshipSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await enforceRelationshipRate(
     context,
     dependencies,
@@ -54,6 +58,9 @@ export const inviteMembership = async (
     resolved.value,
   );
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     ...body.value,
     request: context.req.raw,
@@ -89,6 +96,12 @@ export const assertMembership = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'MEM-02');
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolveRelationshipSession(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
   const path = OrganizationPathSchema.safeParse({
     organizationId: context.req.param('organizationId'),
   });
@@ -97,17 +110,13 @@ export const assertMembership = async (
       context,
       relationshipPathError('organizationId'),
     );
-  const body = await parseRelationshipJsonBody(
-    context.req.raw,
+  // BE00 step 6: strict body.
+  const body = decodeRelationshipBody(
+    transport.value,
     HistoricalMembershipAssertionRequestSchema,
   );
   if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolveRelationshipSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await enforceRelationshipRate(
     context,
     dependencies,
@@ -115,6 +124,9 @@ export const assertMembership = async (
     resolved.value,
   );
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     ...body.value,
     request: context.req.raw,
@@ -150,22 +162,24 @@ export const acceptMembership = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'MEM-03');
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolveRelationshipSession(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
   const path = MembershipTenurePathSchema.safeParse({
     tenureId: context.req.param('tenureId'),
   });
   if (!path.success)
     return responseForAuthError(context, relationshipPathError('tenureId'));
-  const body = await parseRelationshipJsonBody(
-    context.req.raw,
+  // BE00 step 6: strict body.
+  const body = decodeRelationshipBody(
+    transport.value,
     AcceptMembershipRequestSchema,
   );
   if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolveRelationshipSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await enforceRelationshipRate(
     context,
     dependencies,
@@ -173,6 +187,9 @@ export const acceptMembership = async (
     resolved.value,
   );
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     ...body.value,
     request: context.req.raw,
@@ -208,22 +225,24 @@ export const endMembership = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureRelationshipRoute(context, 'MEM-04');
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolveRelationshipSession(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
   const path = MembershipTenurePathSchema.safeParse({
     tenureId: context.req.param('tenureId'),
   });
   if (!path.success)
     return responseForAuthError(context, relationshipPathError('tenureId'));
-  const body = await parseRelationshipJsonBody(
-    context.req.raw,
+  // BE00 step 6: strict body.
+  const body = decodeRelationshipBody(
+    transport.value,
     EndMembershipRequestSchema,
   );
   if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolveRelationshipSession(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await enforceRelationshipRate(
     context,
     dependencies,
@@ -231,6 +250,9 @@ export const endMembership = async (
     resolved.value,
   );
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseRelationshipCommandHeaders(context.req.raw, true);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     ...body.value,
     request: context.req.raw,

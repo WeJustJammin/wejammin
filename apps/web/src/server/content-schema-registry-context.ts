@@ -22,10 +22,12 @@ import {
   listState,
   pageFor,
 } from './content-schema-registry-context-presentation';
+import { resolveContentSchemaRegistryDisclosure } from './content-schema-registry-context-disclosure';
 import type {
   ContentSchemaRegistryResult,
   ResolveInput,
 } from './content-schema-registry-context-presentation';
+import { readContentSchemaRegistryReview } from './content-schema-registry-review-state';
 import {
   genericDegradedResult,
   platformFailure,
@@ -135,6 +137,13 @@ export const resolveContentSchemaRegistryPage = async (
     return genericDegradedResult(input, 'DEPENDENCY_UNAVAILABLE', { session });
   }
 
+  const disclosureForPage = await resolveContentSchemaRegistryDisclosure({
+    request: input.request,
+    ports: input.ports,
+    authority,
+    now: input.now ?? Date.now,
+  });
+
   if (input.route === 'list') {
     try {
       const parsed = ContentSchemaRegistryListPageSchema.safeParse(
@@ -164,6 +173,7 @@ export const resolveContentSchemaRegistryPage = async (
             contentTypeId,
             versionId,
             state: 'degraded',
+            ...disclosureForPage,
           }),
         };
       }
@@ -180,6 +190,7 @@ export const resolveContentSchemaRegistryPage = async (
           contentTypeId,
           versionId,
           state: 'ready',
+          ...disclosureForPage,
         }),
       };
     } catch (error) {
@@ -227,6 +238,7 @@ export const resolveContentSchemaRegistryPage = async (
           contentTypeId,
           versionId,
           state: 'degraded',
+          ...disclosureForPage,
         }),
       };
     }
@@ -236,6 +248,14 @@ export const resolveContentSchemaRegistryPage = async (
     ) {
       return { kind: 'not_found' };
     }
+    const review = await readContentSchemaRegistryReview({
+      ports: input.ports,
+      request: input.request,
+      session,
+      authority,
+      reviewId: parsed.data.activationPreparation.reviewRef?.id ?? null,
+      requestId: input.requestId,
+    });
     return {
       kind: 'authorized',
       page: pageFor({
@@ -246,9 +266,11 @@ export const resolveContentSchemaRegistryPage = async (
         query: queryResult.data,
         list: { status: 'empty', reason: 'no-records' },
         detail: detailState(parsed.data),
+        review,
         contentTypeId,
         versionId,
         state: 'ready',
+        ...disclosureForPage,
       }),
     };
   } catch (error) {

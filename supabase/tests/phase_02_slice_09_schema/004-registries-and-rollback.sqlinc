@@ -86,6 +86,39 @@ select ok(
    where id = (select (response->>'id')::uuid from s09_block_created)),
   'CMS-03A-08 lifecycle transitions do not mutate the immutable block definition'
 );
+-- BE00: a well-formed stale If-Match is 409 VERSION_MISMATCH carrying the
+-- decimal expectedVersion and currentVersion (r8 ND-1); a lifecycle or digest
+-- mismatch at the current version stays a bare CONFLICT.
+create or replace function pg_temp.s09_error_detail(p_sql text) returns text language plpgsql as $body$
+declare detail_text text;
+begin
+  execute p_sql;
+  return 'ACCEPTED';
+exception when others then
+  get stacked diagnostics detail_text = pg_exception_detail;
+  return sqlstate || '|' || sqlerrm || '|' || coalesce(detail_text, '');
+end;
+$body$;
+select is(
+  pg_temp.s09_error_detail($$select platform_api.cms_advance_block_lifecycle(
+    (select pg_temp.s09_sign_release(
+      request || jsonb_build_object(
+        'expectedVersion', '999', 'releaseNonce', 'a9090000-0000-4000-8000-000000000518',
+        'releaseIssuedAt', clock_timestamp()::text, 'idempotencyKey', 's09-block-lifecycle-stale-0001'),
+      'CMS-03A-08') from s09_lifecycle_second_request))$$),
+  'P0001|VERSION_MISMATCH|' || jsonb_build_object('expectedVersion', '999', 'currentVersion', '1')::text,
+  'CMS-03A-08 answers a stale block If-Match with VERSION_MISMATCH carrying both versions [P2-S09-AC-315]'
+);
+select is(
+  pg_temp.s09_error_detail($$select platform_api.cms_advance_block_lifecycle(
+    (select pg_temp.s09_sign_release(
+      request || jsonb_build_object(
+        'fromLifecycle', 'deprecated', 'releaseNonce', 'a9090000-0000-4000-8000-000000000519',
+        'releaseIssuedAt', clock_timestamp()::text, 'idempotencyKey', 's09-block-lifecycle-state-0001'),
+      'CMS-03A-08') from s09_lifecycle_second_request))$$),
+  'P0001|CONFLICT|',
+  'control: CMS-03A-08 at the current version but from a lifecycle the block no longer holds (a valid pair: supported to withdrawn is refused earlier as a 422) stays a bare CONFLICT with no version detail [P2-S09-AC-315]'
+);
 select set_config('app.cms_rpc', 'true', true);
 select throws_ok(
   $$update platform_private.cms_block_definition_versions
@@ -142,15 +175,15 @@ select ok(
   ))->>'nextCursor' is not null,
   'CMS-03A-06 returns a bounded cursor when another scoped resource exists'
 );
-select is(
+select ok(
   jsonb_array_length(
     platform_api.cms_get_content_type_version(jsonb_build_object(
       'contentTypeId', (select content_type_id from s09_type_ids),
       'versionId', (select version_id from s09_type_ids)
     ))->'blockDefinitions'
-  ),
-  0,
-  'CMS-03A-07 filters block projections by the acting owner scope'
+  ) = (select count(*)::integer from platform_private.cms_block_definition_versions where state = 'registered')
+  and (select count(*) from platform_private.cms_block_definition_versions where state = 'registered') > 0,
+  'CMS-03A-07 projects every registered block to an authorized reader: blocks are code-owned platform records, not tenant data'
 );
 
 -- Protected registries are closed authorities.  Grammar-valid unknown values
@@ -247,7 +280,8 @@ select
   jsonb_build_object(
     'typeKey', 'hashable', 'label', 'Hashable',
     'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
+    'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1',
     'defaultTemplateVersionId', null, 'fields', jsonb_build_array(field_a, field_b),
     'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
     'capabilityBindings', '[]'::jsonb
@@ -255,7 +289,8 @@ select
   jsonb_build_object(
     'typeKey', 'hashable', 'label', 'Hashable',
     'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
-    'defaultLocale', 'en-US', 'workflowKey', 'editorial', 'workflowVersion', '1',
+    'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1',
     'defaultTemplateVersionId', null, 'fields', jsonb_build_array(field_b, field_a),
     'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
     'capabilityBindings', '[]'::jsonb
@@ -264,12 +299,12 @@ from field_values;
 select is(
   (select platform_private.cms_definition_artifact_hash(request_a) from s09_hash_requests),
   (select platform_private.cms_definition_artifact_hash(request_b) from s09_hash_requests),
-  'CMS schema artifact compilation is deterministic under field input reordering'
+  'CMS schema artifact compilation is deterministic under field input reordering [P2-S09-AC-684]'
 );
 
 -- A01 must roll back the aggregate and its effects when a protected child
 -- registry check fails after the parent rows have been staged.
-select set_config('request.jwt.claim.role', 'authenticated', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
 select throws_ok(
   $$select platform_api.cms_create_type_draft(
     (select request || jsonb_build_object(
@@ -335,12 +370,12 @@ select is(
   1,
   'CMS-03A-06 lists schema_artifact resources'
 );
-select is(
+select ok(
   jsonb_array_length(platform_api.cms_list_content_types(jsonb_build_object(
     'resourceKind', 'block_definition_registry_record', 'limit', 25
-  ))->'items'),
-  0,
-  'CMS-03A-06 omits block resources outside the acting scope'
+  ))->'items') = (select count(*)::integer from platform_private.cms_block_definition_versions where state = 'registered')
+  and (select count(*) from platform_private.cms_block_definition_versions where state = 'registered') > 0,
+  'CMS-03A-06 lists every registered block to an authorized reader as a safe registry record'
 );
 select is(
   jsonb_array_length(platform_api.cms_list_content_types(jsonb_build_object(

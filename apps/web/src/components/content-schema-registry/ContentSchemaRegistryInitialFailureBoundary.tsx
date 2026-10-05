@@ -15,7 +15,7 @@ interface Props {
   readonly failure: ContentSchemaRegistryInitialFailure;
   readonly access: Extract<ContentSchemaRegistryAccess, 'disabled'>;
   readonly variant: ContentSchemaRegistryVariant;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly retryUrl: string;
 }
 
@@ -24,7 +24,7 @@ export default function ContentSchemaRegistryInitialFailureBoundary({
   failure,
   access,
   variant,
-  requestId,
+  supportReference,
   retryUrl,
 }: Props) {
   return (
@@ -42,7 +42,7 @@ export default function ContentSchemaRegistryInitialFailureBoundary({
       <ContentSchemaRegistryStatus
         state={failure}
         regionLabel="Registry"
-        requestId={requestId}
+        supportReference={supportReference}
         canonicalUrl={retryUrl}
       />
     </section>

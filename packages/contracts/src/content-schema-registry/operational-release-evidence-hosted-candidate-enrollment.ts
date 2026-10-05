@@ -19,6 +19,7 @@ export const AC265_STAGING_HOSTING_PROJECT_ID = 'wejammin-staging' as const;
 
 const GitHubRunIdSchema = z.string().regex(/^[1-9][0-9]{0,19}$/u);
 const GitHubArtifactDigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/u);
+const AC265_MAX_AUTHENTICATED_ARTIFACT_BYTES = 1024 * 1024 * 1024;
 const GitHubRunAttemptSchema = z.number().int().positive().max(1_000);
 const GitHubArtifactIdSchema = z.number().int().positive().safe();
 const SupabaseProjectRefSchema = z.string().regex(/^[a-z0-9]{20}$/u);
@@ -180,6 +181,11 @@ export const ContentSchemaRegistryAc265VerifiedCandidateProvenanceSchema = z
         artifactName: z.literal('staging-verified-candidate'),
         artifactId: GitHubArtifactIdSchema,
         artifactDigest: GitHubArtifactDigestSchema,
+        artifactBytes: z
+          .number()
+          .int()
+          .positive()
+          .max(AC265_MAX_AUTHENTICATED_ARTIFACT_BYTES),
         deploymentId: SafeReleaseIdSchema,
         deployedAt: SafeReleaseTimestampSchema,
         environment: z.literal('staging'),
@@ -191,6 +197,7 @@ export const ContentSchemaRegistryAc265VerifiedCandidateProvenanceSchema = z
     artifact: z
       .object({
         artifactDigest: ReleaseEvidenceDigestSchema,
+        axeReportSha256: ReleaseEvidenceDigestSchema,
         buildId: SafeReleaseIdSchema,
         migrationVersion: MigrationVersionSchema,
       })

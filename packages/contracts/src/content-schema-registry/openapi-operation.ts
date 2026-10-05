@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ContentSchemaRegistryRoutePolicy } from './route-policy.ts';
 import {
   apiErrorResponses,
+  capabilityGrantListQueryParameters,
   listQueryParameters,
   mutationHeaderParameters,
   pathParameters,
@@ -35,6 +36,9 @@ export const operation = (
     ...(route.requestSchema === 'ContentSchemaRegistryListQuerySchema'
       ? listQueryParameters(contracts)
       : []),
+    ...(route.requestSchema === 'CmsCapabilityGrantListQuerySchema'
+      ? capabilityGrantListQueryParameters(contracts)
+      : []),
     ...(route.method === 'POST' ? mutationHeaderParameters(route) : []),
   ];
   const result: Record<string, unknown> = {
@@ -44,13 +48,21 @@ export const operation = (
     responses,
     'x-audience': route.audience,
     'x-auth': route.auth,
-    'x-capability': route.capability,
-    'x-capabilities': route.capabilities ?? [route.capability],
+    ...(route.capability === undefined
+      ? {}
+      : { 'x-capability': route.capability }),
+    ...(route.capabilities === undefined && route.capability === undefined
+      ? {}
+      : { 'x-capabilities': route.capabilities ?? [route.capability] }),
+    ...(route.capabilityMode === undefined
+      ? {}
+      : { 'x-capability-mode': route.capabilityMode }),
     'x-cors': route.cors,
     'x-cache-control': route.cacheControl,
     'x-timeout-ms': route.timeoutMs,
     'x-slo': route.slo,
     'x-csrf': route.csrf,
+    'x-step-up': route.stepUp,
     'x-idempotency': route.idempotency,
     'x-if-match': route.ifMatch,
     'x-raw-body-signature': route.rawBodySignature,

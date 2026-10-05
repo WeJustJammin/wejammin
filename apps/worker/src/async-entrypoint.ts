@@ -1,6 +1,12 @@
-import { QueueEnvelopeSchema, type QueueEnvelope } from '@wejammin/contracts';
+import {
+  isConsumerEventType,
+  type ConsumerQueueEnvelope,
+  QueueEnvelopeSchema,
+  type QueueEnvelope,
+} from '@wejammin/contracts';
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
+import type { EventConsumerOutcome } from './event-consumers/types';
 import {
   SchemaMigrationQueueEnvelopeSchema,
   type SchemaMigrationQueueEnvelope,
@@ -15,7 +21,10 @@ const OUTBOX_SWEEP_CRON = '* * * * *' as const;
 
 type MaybePromise<T> = T | Promise<T>;
 
-export type PlatformJobsQueue = Pick<Queue<QueueEnvelope>, 'send'>;
+export type PlatformJobsQueue = Pick<
+  Queue<QueueEnvelope | ConsumerQueueEnvelope>,
+  'send'
+>;
 
 export type AsyncWorkerBindings = ServerEnvironment &
   Readonly<{
@@ -63,6 +72,12 @@ export type SchemaMigrationOrchestrationInput = Readonly<{
   event: SchemaMigrationQueueEnvelope | unknown;
 }>;
 
+export type EventConsumerOrchestrationInput = Readonly<{
+  env: AsyncWorkerBindings;
+  executionContext: AsyncExecutionContext;
+  message: PlatformJobsMessage;
+}>;
+
 export type OutboxSweepInput = Readonly<{
   controller: AsyncScheduledController;
   env: AsyncWorkerBindings;
@@ -76,7 +91,20 @@ export type AsyncEntrypointDependencies = Readonly<{
   processSchemaMigration?: (
     input: SchemaMigrationOrchestrationInput,
   ) => MaybePromise<QueueMessageOutcome>;
+  /**
+   * Registered event consumers (BE01a identity consumers, BE03a grant
+   * consumer). Receives every message of a consumer event family at any
+   * version; the consumer decides ack, delayed retry or durable dead letter.
+   */
+  processEventConsumer?: (
+    input: EventConsumerOrchestrationInput,
+  ) => MaybePromise<EventConsumerOutcome>;
   sweepOutbox?: (input: OutboxSweepInput) => MaybePromise<OutboxSweepOutcome>;
+  /**
+   * Samples the oldest reconciling MFA factor age once per sweep tick. It is
+   * observability only: a rejection is contained and never fails the sweep.
+   */
+  observeReconcilingAge?: (input: OutboxSweepInput) => MaybePromise<void>;
 }>;
 
 export type AsyncEntrypoint = Readonly<{
@@ -95,6 +123,12 @@ export type AsyncEntrypoint = Readonly<{
 const retryMessage = (message: PlatformJobsMessage): void => {
   message.retry();
 };
+
+const isEventConsumerCandidate = (body: unknown): boolean =>
+  typeof body === 'object' &&
+  body !== null &&
+  !Array.isArray(body) &&
+  isConsumerEventType((body as { eventType?: unknown }).eventType);
 
 const isSchemaMigrationCandidate = (body: unknown): boolean =>
   typeof body === 'object' &&
@@ -144,6 +178,26 @@ export const createAsyncEntrypoint = (
         continue;
       }
 
+      if (isEventConsumerCandidate(message.body)) {
+        if (dependencies.processEventConsumer === undefined) {
+          retryMessage(message);
+          continue;
+        }
+        try {
+          const result = await dependencies.processEventConsumer({
+            env,
+            executionContext,
+            message,
+          });
+          if (result.outcome === 'ack') message.ack();
+          else if (result.delaySeconds === undefined) retryMessage(message);
+          else message.retry({ delaySeconds: result.delaySeconds });
+        } catch {
+          retryMessage(message);
+        }
+        continue;
+      }
+
       if (dependencies.orchestrateQueueMessage === undefined) {
         retryMessage(message);
         continue;
@@ -184,11 +238,20 @@ export const createAsyncEntrypoint = (
       throw new Error('Outbox sweep dependency unavailable');
     }
 
-    const outcome = await dependencies.sweepOutbox({
-      controller,
-      env,
-      executionContext,
-    });
+    const input = { controller, env, executionContext };
+    const sample = (async (): Promise<void> => {
+      try {
+        await dependencies.observeReconcilingAge?.(input);
+      } catch {
+        // Observability only; the sweep outcome decides success.
+      }
+    })();
+    let outcome: OutboxSweepOutcome;
+    try {
+      outcome = await dependencies.sweepOutbox(input);
+    } finally {
+      await sample;
+    }
     if (outcome !== 'completed') {
       throw new Error('Outbox sweep requested retry');
     }

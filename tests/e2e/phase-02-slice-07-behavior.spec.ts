@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+import { openReadOnlyPage, readOnlyCookie } from './support/config-sessions';
+
 const APP_ROUTE = '/app/platform-configuration-admin';
 const SESSION_COOKIE = {
   name: 'wj_access',
@@ -69,8 +71,9 @@ test.describe('Phase 2 Slice 07 production browser behavior', () => {
     test.slow();
     const roles =
       'free paid creator guardian junior business staff admin'.split(' ');
+    await page.context().addCookies([readOnlyCookie]);
     for (const role of roles) {
-      await openConfiguration(page, 'web.read-only', `&role=${role}`);
+      await openConfiguration(page, 'web.theme', `&role=${role}`);
       const workbench = page.locator(
         '[data-workbench="settings-flags-runtime"]',
       );
@@ -85,6 +88,7 @@ test.describe('Phase 2 Slice 07 production browser behavior', () => {
       ).toHaveCount(0);
     }
 
+    await page.context().addCookies([SESSION_COOKIE]);
     await openConfiguration(page, 'web.theme', '&role=free');
     await expect(
       page.locator('[data-workbench="settings-flags-runtime"]'),
@@ -283,14 +287,16 @@ test.describe('Phase 2 Slice 07 production browser behavior', () => {
   });
 
   test('[P2-S07-AC-137, P2-S07-AC-172] reconnect, stale tabs, auth expiry, and outage recover safely', async ({
+    browser,
     context,
     page,
   }) => {
     await openConfiguration(page);
-    const second = await context.newPage();
-    await openConfiguration(second, 'web.read-only');
+    const second = await openReadOnlyPage(browser);
+    await openConfiguration(second);
     await expect(second.locator('[data-access="read-only"]')).toBeVisible();
     await expect(page.locator('[data-access="full"]')).toBeVisible();
+    await second.context().close();
 
     await context.setOffline(true);
     await expect(page.reload()).rejects.toThrow();

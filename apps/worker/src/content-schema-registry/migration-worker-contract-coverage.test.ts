@@ -118,6 +118,19 @@ describe('migration worker contracts and defensive helpers', () => {
         producer: 'x'.repeat(20_000),
       }).success,
     ).toBe(false);
+    // AC190: the producer of cms.schema.* events is the registered owner of the
+    // cms.schema. prefix (platform_private.outbox_event_producers), not any token.
+    expect(event.producer).toBe('cms.schema_registry');
+    for (const producer of [
+      'identity.authority',
+      'platform.infrastructure',
+      'cms.editorial',
+      'cms.schema_registry.x',
+    ])
+      expect(
+        SchemaMigrationQueueEnvelopeSchema.safeParse({ ...event, producer })
+          .success,
+      ).toBe(false);
     expect(
       SchemaMigrationQueueEnvelopeSchema.safeParse({ ...event, extra: true })
         .success,
@@ -145,6 +158,9 @@ describe('migration worker contracts and defensive helpers', () => {
       ['contentTypeId', 'bad'],
       ['schemaVersionId', 'bad'],
       ['migrationPlanId', 'bad'],
+      ['localeConfigHash', 'bad'],
+      ['localeConfigHash', 'A'.repeat(64)],
+      ['localeConfigHash', null],
       ['activationEvidence', null],
     ] as const;
     for (const [key, value] of payloadFields) {
@@ -197,6 +213,26 @@ describe('migration worker contracts and defensive helpers', () => {
         payload: { ...event.payload, migrationPlanId: PLAN_ID },
       }).success,
     ).toBe(true);
+  });
+
+  it('requires localeConfigHash exactly as the DB emits it in cms.schema.activated.v1', () => {
+    expect(event.payload.localeConfigHash).toMatch(/^[a-f0-9]{64}$/u);
+    const parsed = SchemaMigrationQueueEnvelopeSchema.safeParse(event);
+    expect(parsed).toMatchObject({
+      success: true,
+      data: { payload: { localeConfigHash: event.payload.localeConfigHash } },
+    });
+    const withoutHash = Object.fromEntries(
+      Object.entries(event.payload).filter(
+        ([key]) => key !== 'localeConfigHash',
+      ),
+    );
+    expect(
+      SchemaMigrationQueueEnvelopeSchema.safeParse({
+        ...event,
+        payload: withoutHash,
+      }).success,
+    ).toBe(false);
   });
 
   it('evaluates activation evidence capability and risk-class branches', () => {

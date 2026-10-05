@@ -155,7 +155,8 @@ export const platformOutcome = (
             safeContentSchemaRegistryErrorMessage('INTERNAL_ERROR'),
           requestId: error.apiError?.requestId ?? requestId,
         },
-        retryable: true,
+        // FE03: `retryable` is true only for 429 and 502/503/504.
+        retryable: false,
         status: 500,
         retryAfterSeconds: error.retryAfterSeconds,
       };
@@ -217,6 +218,7 @@ export const resultForPlatformOutcome = (
     versionId: input.versionId ?? null,
     ...context,
     state: outcome.kind === 'error' ? 'ready' : 'degraded',
+    now: (input.now ?? Date.now)(),
   });
   if (outcome.kind === 'degraded') {
     return { kind: 'degraded', page, status: outcome.status };
@@ -249,6 +251,7 @@ export const genericDegradedResult = (
     versionId: input.versionId ?? null,
     ...context,
     state: 'degraded',
+    now: (input.now ?? Date.now)(),
   });
   return { kind: 'degraded', page, status: 503 };
 };

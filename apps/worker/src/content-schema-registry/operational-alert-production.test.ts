@@ -55,7 +55,11 @@ describe('production operational alert dependencies', () => {
       const target = String(url);
       if (target.includes('cms_get_operational_state_snapshot'))
         return Promise.resolve(
-          Response.json({ activationBlockedMs: 1, outboxAgeMs: 2 }),
+          Response.json({
+            activationBlockedMs: 1,
+            outboxAgeMs: 2,
+            reviewOpenAgeMs: 700_000_000,
+          }),
         );
       if (target.includes('/workers/observability/telemetry/query'))
         return Promise.resolve(
@@ -85,6 +89,7 @@ describe('production operational alert dependencies', () => {
       conflictWindowMs: 300_000,
       dlqDepth: 0,
       outboxAgeMs: 2,
+      reviewOpenAgeMs: 700_000_000,
     });
 
     const requests = fetchImpl.mock.calls.map(([url, init]) => ({

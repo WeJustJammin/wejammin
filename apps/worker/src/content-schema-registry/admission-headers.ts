@@ -1,6 +1,10 @@
+import { contentSchemaRegistryRoutePolicies } from '@wejammin/contracts';
+
 import {
+  CmsCapabilityGrantListQuerySchema,
   CmsStrongEtagSchema,
   ContentSchemaRegistryListQuerySchema,
+  type CmsCapabilityGrantListQuery,
   type ContentSchemaRegistryListQuery,
 } from './contracts';
 import type {
@@ -9,6 +13,7 @@ import type {
   ContentSchemaRegistryResult,
 } from './types';
 import { IDEMPOTENCY_PATTERN, invalid, issues } from './admission-common';
+import { readBoundedRequestBytes } from '../http/bounded-body';
 
 export const parseMutationHeaders = (
   request: Request,
@@ -20,12 +25,11 @@ export const parseMutationHeaders = (
   if (idempotencyKey === null || !IDEMPOTENCY_PATTERN.test(idempotencyKey))
     return invalid('A valid Idempotency-Key is required.');
   const rawIfMatch = request.headers.get('if-match');
-  const needsIfMatch = new Set([
-    'CMS-03A-02',
-    'CMS-03A-03',
-    'CMS-03A-04',
-    'CMS-03A-08',
-  ]).has(operationId);
+  // The route policy is the single source of which commands carry If-Match.
+  const needsIfMatch = contentSchemaRegistryRoutePolicies.some(
+    (policy) =>
+      policy.operationId === operationId && policy.ifMatch === 'required',
+  );
   if (
     needsIfMatch &&
     (rawIfMatch === null || !CmsStrongEtagSchema.safeParse(rawIfMatch).success)
@@ -42,11 +46,59 @@ export const parseMutationHeaders = (
   };
 };
 
+type QuerySchema<T> = Readonly<{
+  safeParse: (value: unknown) =>
+    | Readonly<{ success: true; data: T }>
+    | Readonly<{
+        success: false;
+        error: Readonly<{
+          issues: readonly Readonly<{
+            path: readonly PropertyKey[];
+            message: string;
+          }>[];
+        }>;
+      }>;
+}>;
+
+/**
+ * Strict single-valued query. BE03a error matrix for the protected lists:
+ * an unknown or repeated key, or a malformed cursor, is a malformed request
+ * (400 INVALID_REQUEST); a filter, sort or page value that fails its schema
+ * (limit range, sort, direction, state, capability, subject, resource kind) is
+ * a validation failure (422 VALIDATION_FAILED). Both carry only `path`
+ * violations.
+ */
+const parseStrictQuery = <T>(
+  request: Request,
+  schema: QuerySchema<T>,
+  allowedKeys: readonly string[],
+): ContentSchemaRegistryResult<T> => {
+  const params = new URL(request.url).searchParams;
+  const allowed = new Set(allowedKeys);
+  const value: Record<string, unknown> = {};
+  for (const key of new Set(params.keys())) {
+    if (!allowed.has(key) || params.getAll(key).length !== 1)
+      return invalid('The query parameters are invalid.');
+    const raw = params.get(key);
+    if (raw === null) return invalid('The query parameters are invalid.');
+    value[key] = raw;
+  }
+  const parsed = schema.safeParse(value);
+  if (parsed.success) return { ok: true, value: parsed.data };
+  const malformedCursor = parsed.error.issues.some(
+    (issue) => issue.path[0] === 'cursor',
+  );
+  return invalid(
+    'The query parameters are invalid.',
+    issues(parsed.error),
+    malformedCursor ? 400 : 422,
+  );
+};
+
 export const parseQuery = (
   request: Request,
-): ContentSchemaRegistryResult<ContentSchemaRegistryListQuery> => {
-  const params = new URL(request.url).searchParams;
-  const allowed = new Set([
+): ContentSchemaRegistryResult<ContentSchemaRegistryListQuery> =>
+  parseStrictQuery(request, ContentSchemaRegistryListQuerySchema, [
     'resourceKind',
     'keyPrefix',
     'lifecycle',
@@ -56,19 +108,20 @@ export const parseQuery = (
     'sort',
     'direction',
   ]);
-  const value: Record<string, unknown> = {};
-  for (const key of new Set(params.keys())) {
-    if (!allowed.has(key) || params.getAll(key).length !== 1)
-      return invalid('The query parameters are invalid.');
-    const raw = params.get(key);
-    if (raw === null) return invalid('The query parameters are invalid.');
-    value[key] = raw;
-  }
-  const parsed = ContentSchemaRegistryListQuerySchema.safeParse(value);
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : invalid('The query parameters are invalid.', issues(parsed.error));
-};
+
+/** CMS-03A-18 strict grant list query (BE03a). */
+export const parseGrantListQuery = (
+  request: Request,
+): ContentSchemaRegistryResult<CmsCapabilityGrantListQuery> =>
+  parseStrictQuery(request, CmsCapabilityGrantListQuerySchema, [
+    'subjectPersonId',
+    'capability',
+    'state',
+    'limit',
+    'cursor',
+    'sort',
+    'direction',
+  ]);
 
 export const rejectReadMutationHeadersOrBody = async (
   request: Request,
@@ -78,14 +131,15 @@ export const rejectReadMutationHeadersOrBody = async (
   const declaredLength = Number(request.headers.get('content-length'));
   if (Number.isFinite(declaredLength) && declaredLength > 0)
     return invalid('Protected reads do not accept a request body.');
-  try {
-    const bytes = new Uint8Array(await request.clone().arrayBuffer());
-    return bytes.byteLength === 0
-      ? null
-      : invalid('Protected reads do not accept a request body.');
-  } catch {
-    return invalid('Protected reads do not accept a request body.');
-  }
+  // Any byte at all refuses the read, so the ceiling is zero: the stream is
+  // cancelled at its first byte rather than buffered to measure it.
+  const outcome = await readBoundedRequestBytes(request, {
+    maxBytes: 0,
+    fromClone: true,
+  });
+  return outcome.kind === 'ok'
+    ? null
+    : invalid('Protected reads do not accept a request body.');
 };
 
 export const rejectDetailQuery = (
@@ -107,7 +161,7 @@ export const checkOrigin = (
         status: 403,
         code: 'FORBIDDEN',
         message: 'The request origin is not allowed.',
-        details: {},
+        details: { reasonCode: 'POLICY_NOT_MET' },
       };
 };
 
@@ -130,6 +184,6 @@ export const csrfErrorIfCookie = (
         status: 403,
         code: 'FORBIDDEN',
         message: 'A valid CSRF token is required.',
-        details: {},
+        details: { reasonCode: 'POLICY_NOT_MET' },
       };
 };

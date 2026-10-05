@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-09-26T18:22:09.296Z",
-  "nodeCount": 1638,
-  "edgeCount": 10135,
+  "builtAt": "2026-10-04T06:09:15.639Z",
+  "nodeCount": 1654,
+  "edgeCount": 10166,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -270,6 +270,20 @@
       "shardId": null
     },
     {
+      "id": "audit:audits/propagation-cms-conflict-record-2026-09-26",
+      "type": "audit",
+      "label": "Approved CMS conflict-record propagation",
+      "path": ".memory/wiki/specs/audits/propagation-cms-conflict-record-2026-09-26.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-cms-entry-bootstrap-2026-09-26",
+      "type": "audit",
+      "label": "Approved CMS entry bootstrap and draft-read propagation",
+      "path": ".memory/wiki/specs/audits/propagation-cms-entry-bootstrap-2026-09-26.md",
+      "shardId": null
+    },
+    {
       "id": "audit:audits/propagation-github-repository-identity-2026-09-22",
       "type": "audit",
       "label": "Approved AC265 GitHub repository identity propagation",
@@ -344,6 +358,104 @@
       "type": "audit",
       "label": "AC265 pre-release gate propagation scan",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-ac265-pre-release.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-26-cms-conflict-record",
+      "type": "audit",
+      "label": "CMS conflict-record propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-cms-conflict-record.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-26-cms-entry-bootstrap",
+      "type": "audit",
+      "label": "CMS entry bootstrap and draft-read propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-26-cms-entry-bootstrap.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-27-cms-draft-revision-number",
+      "type": "audit",
+      "label": "Propagation scan — CMS-03B-11 draft authoring base",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-27-cms-template-latest-read",
+      "type": "audit",
+      "label": "CMS-11 protected latest-template read — propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-27-cms-template-latest-read.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-28-cms-editorial-policy-source",
+      "type": "audit",
+      "label": "Propagation scan — editorial workflow-policy authority",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-editorial-policy-source.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-28-cms-pattern-source",
+      "type": "audit",
+      "label": "Propagation scan — reusable-pattern authority source",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-pattern-source.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-28-cms-related-content-source",
+      "type": "audit",
+      "label": "CMS-16 related-content eligibility and derived-rule source scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-related-content-source.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-28-cms-restore-chain",
+      "type": "audit",
+      "label": "Propagation scan — CMS-03B-04 restore-chain identity",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-restore-chain.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-28-cms-taxonomy-source",
+      "type": "audit",
+      "label": "CMS-14 canonical taxonomy source and version-authoring scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-taxonomy-source.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-28-cms-template-activation",
+      "type": "audit",
+      "label": "Propagation scan — governed template activation",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-template-activation.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-30-cms-conflict-detail-read",
+      "type": "audit",
+      "label": "Propagation scan — protected CMS conflict-detail read",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-30-cms-conflict-detail-read.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-30-cms-revision-comparison",
+      "type": "audit",
+      "label": "Propagation scan — complete CMS-07 revision comparison",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-30-cms-revision-comparison.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-09-30-cms-rich-text-ast",
+      "type": "audit",
+      "label": "Propagation scan — approved CMS rich-text AST",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-30-cms-rich-text-ast.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-02",
+      "type": "audit",
+      "label": "Propagation scan — Slice 09 activation amendment",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-02.md",
       "shardId": null
     },
     {
@@ -10833,6 +10945,13 @@
       "shardId": null
     },
     {
+      "id": "decision:d-01",
+      "type": "decision",
+      "label": "D-01",
+      "path": ".memory/wiki/decisions.md#d-01",
+      "shardId": null
+    },
+    {
       "id": "decision:d-06",
       "type": "decision",
       "label": "D-06",
@@ -10900,13 +11019,6 @@
       "type": "decision",
       "label": "D-11",
       "path": ".memory/wiki/decisions.md#d-11",
-      "shardId": null
-    },
-    {
-      "id": "decision:d-01",
-      "type": "decision",
-      "label": "D-01",
-      "path": ".memory/wiki/decisions.md#d-01",
       "shardId": null
     },
     {
@@ -11706,6 +11818,12 @@
       "source": "phase-ref"
     },
     {
+      "from": "audit:audits/propagation-ac265-pre-release-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "audit:audits/propagation-ac266-2026-09-21",
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
@@ -11713,6 +11831,30 @@
     },
     {
       "from": "audit:audits/propagation-ac266-2026-09-21",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-cms-conflict-record-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-cms-conflict-record-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-cms-entry-bootstrap-2026-09-26",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-cms-entry-bootstrap-2026-09-26",
       "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
@@ -11830,6 +11972,90 @@
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
       "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-ac265-pre-release",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-conflict-record",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-conflict-record",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-entry-bootstrap",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-26-cms-entry-bootstrap",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-27-cms-template-latest-read",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-27-cms-template-latest-read",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-28-cms-taxonomy-source",
+      "to": "decision:d-01",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-conflict-detail-read",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-conflict-detail-read",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-revision-comparison",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-revision-comparison",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-rich-text-ast",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-09-30-cms-rich-text-ast",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
     },
     {
       "from": "audit:audits/remediation-state",
@@ -12236,6 +12462,42 @@
     {
       "from": "be-spec:be/02c-credentials-trader",
       "to": "be-spec:be/02b-profile-portfolio-epk",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "be-spec:be/04b-governed-media-renditions",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/04b-governed-media-renditions",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "be-spec:be/04c-public-delivery-cache",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/04c-public-delivery-cache",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "be-spec:be/05c-portability-quality-lifecycle",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/05c-portability-quality-lifecycle",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -13435,7 +13697,19 @@
     },
     {
       "from": "fe-spec:fe/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "fe-spec:fe/05-platform-configuration-admin",
       "to": "ia-spec:ia/05-platform-configuration-admin",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "fe-spec:fe/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -14503,6 +14777,12 @@
     },
     {
       "from": "ia-spec:ia/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "ia-spec:ia/05-platform-configuration-admin",
       "to": "ia-spec:ia/00-infrastructure",
       "type": "references",
       "source": "wikilink"
@@ -14534,6 +14814,12 @@
     {
       "from": "ia-spec:ia/05-platform-configuration-admin",
       "to": "ia-spec:ia/06-trust-safety",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "ia-spec:ia/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -16309,6 +16595,12 @@
     },
     {
       "from": "ia-spec:ia/deep-dives/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "ia-spec:ia/deep-dives/05-platform-configuration-admin",
       "to": "ia-spec:ia/05-platform-configuration-admin",
       "type": "references",
       "source": "wikilink"
@@ -16340,6 +16632,12 @@
     {
       "from": "ia-spec:ia/deep-dives/05-platform-configuration-admin",
       "to": "plan:2026-08-02-architecture-design",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "ia-spec:ia/deep-dives/05-platform-configuration-admin",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -72286,7 +72584,7 @@
     "byNodeType": {
       "plan": 12,
       "architecture": 18,
-      "audit": 35,
+      "audit": 51,
       "be-spec": 157,
       "fe-spec": 44,
       "ia-spec": 85,
@@ -72295,9 +72593,9 @@
       "decision": 97
     },
     "byEdgeType": {
-      "phases_into": 99,
-      "constrained_by": 9041,
-      "references": 922,
+      "phases_into": 113,
+      "constrained_by": 9042,
+      "references": 938,
       "derives_from": 64,
       "implemented_by": 6,
       "split_from": 3

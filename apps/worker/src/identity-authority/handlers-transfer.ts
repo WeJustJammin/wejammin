@@ -6,12 +6,14 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
+import {
+  admitJsonMutationTransport,
+  responseForAuthError,
+} from '../authentication/boundary';
 import {
   configureIdentityRoute,
   parseIdentityCommandHeaders,
-  parseIdentityJsonBody,
-  requireIdentityCsrf,
+  decodeIdentityBody,
 } from './route-support';
 import { execute, pathError, rate, resolve } from './handler-support';
 import type { RecoveryState } from './recovery';
@@ -24,6 +26,12 @@ const transferDecision = async (
   accept: boolean,
 ): Promise<Response> => {
   configureIdentityRoute(context, operationId);
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolve(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
   const path = IdentityOfferPathSchema.safeParse({
     offerId: context.req.param('offerId'),
   });
@@ -32,17 +40,10 @@ const transferDecision = async (
       context,
       pathError('The transfer offer identifier is invalid.'),
     );
-  const body = await parseIdentityJsonBody(
-    context.req.raw,
-    IdentityStrictEmptySchema,
-  );
+  // BE00 step 6: strict body.
+  const body = decodeIdentityBody(transport.value, IdentityStrictEmptySchema);
   if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseIdentityCommandHeaders(context.req.raw, true);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolve(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await rate(
     context,
     dependencies,
@@ -50,6 +51,9 @@ const transferDecision = async (
     resolved.value,
   );
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseIdentityCommandHeaders(context.req.raw, true);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     offerId: path.data.offerId,
     request: context.req.raw,

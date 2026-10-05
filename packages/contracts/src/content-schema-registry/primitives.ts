@@ -1,41 +1,79 @@
 import { z } from 'zod';
 
+import {
+  CMS_BLOCK_KEY_PATTERN,
+  CMS_CAPABILITY_KEY_PATTERN,
+  CMS_FIELD_KEY_PATTERN,
+  CMS_HASH_PATTERN,
+  CMS_LABEL_MAX_CHARACTERS,
+  CMS_LABEL_MIN_CHARACTERS,
+  CMS_LABEL_RAW_MAX_UNITS,
+  CMS_PROJECTION_KEY_PATTERN,
+  CMS_TARGET_TYPE_PATTERN,
+  CMS_TYPE_KEY_PATTERN,
+  CMS_VALIDATOR_KEY_PATTERN,
+  CMS_VERSION_PATTERN,
+  CMS_WORKFLOW_KEY_PATTERN,
+  isCmsVersion,
+} from './field-rules.ts';
+
+export * from './field-rules.ts';
+
 export const CmsUuidSchema = z.uuid();
 export const CmsVersionSchema = z
   .string()
-  .regex(/^[1-9][0-9]{0,18}$/u, 'version_invalid')
+  .regex(CMS_VERSION_PATTERN, 'version_invalid')
   .refine(
-    (value) => BigInt(value) <= 9_223_372_036_854_775_807n,
+    (value) => !CMS_VERSION_PATTERN.test(value) || isCmsVersion(value),
     'version_out_of_range',
   );
-export const CmsHashSchema = z
+
+/**
+ * A human label: trimmed, normalized to NFC, and 2 to 120 Unicode characters
+ * counted after normalization (not UTF-16 code units, not code points before
+ * composition), matching the database `length(normalize(label, NFC))` check.
+ */
+export const CmsLabelSchema = z
   .string()
-  .regex(/^[a-f0-9]{64}$/u, 'hash_invalid');
+  .min(CMS_LABEL_MIN_CHARACTERS)
+  .max(CMS_LABEL_RAW_MAX_UNITS)
+  .describe('2 to 120 Unicode characters after NFC normalization')
+  .transform((value) => value.normalize('NFC').trim())
+  .pipe(
+    z.string().refine((value) => {
+      const characters = Array.from(value).length;
+      return (
+        characters >= CMS_LABEL_MIN_CHARACTERS &&
+        characters <= CMS_LABEL_MAX_CHARACTERS
+      );
+    }, 'label_length_invalid'),
+  );
+export const CmsHashSchema = z.string().regex(CMS_HASH_PATTERN, 'hash_invalid');
 export const CmsInstantSchema = z.iso.datetime({ offset: true });
 export const CmsTypeKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9_]{1,63}$/u, 'type_key_invalid');
+  .regex(CMS_TYPE_KEY_PATTERN, 'type_key_invalid');
 export const CmsFieldKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9_]{1,63}$/u, 'field_key_invalid');
+  .regex(CMS_FIELD_KEY_PATTERN, 'field_key_invalid');
 export const CmsBlockKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9._-]{0,95}$/u, 'block_key_invalid');
+  .regex(CMS_BLOCK_KEY_PATTERN, 'block_key_invalid');
 export const CmsCapabilityKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9._-]{0,127}$/u, 'capability_key_invalid');
+  .regex(CMS_CAPABILITY_KEY_PATTERN, 'capability_key_invalid');
 export const CmsProjectionKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9._-]{0,127}$/u, 'projection_key_invalid');
+  .regex(CMS_PROJECTION_KEY_PATTERN, 'projection_key_invalid');
 export const CmsValidatorKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9._-]{0,127}$/u, 'validator_key_invalid');
+  .regex(CMS_VALIDATOR_KEY_PATTERN, 'validator_key_invalid');
 export const CmsWorkflowKeySchema = z
   .string()
-  .regex(/^[a-z][a-z0-9._-]{0,127}$/u, 'workflow_key_invalid');
+  .regex(CMS_WORKFLOW_KEY_PATTERN, 'workflow_key_invalid');
 export const CmsTargetTypeSchema = z
   .string()
-  .regex(/^[a-z][a-z0-9._-]{0,95}$/u, 'target_type_invalid');
+  .regex(CMS_TARGET_TYPE_PATTERN, 'target_type_invalid');
 export const CmsLocaleSchema = z
   .string()
   .regex(/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u, 'locale_invalid');

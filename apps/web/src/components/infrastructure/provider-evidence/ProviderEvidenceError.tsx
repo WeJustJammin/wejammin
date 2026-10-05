@@ -1,4 +1,6 @@
+import { StepUpRecoveryLink } from '../../identity-authority/step-up-mfa/StepUpRecoveryLink';
 import {
+  PROVIDER_EVIDENCE_LIST_HREF,
   evidenceRetryDelayForAttempt,
   getProviderEvidenceErrorPresentation,
   normalizeProviderEvidenceErrorCode,
@@ -39,6 +41,11 @@ export function ProviderEvidenceError({
     >
       <strong>{errorCode}</strong>
       <p>{presentation.message}</p>
+      {presentation.owner === 'step-up' && (
+        <p>
+          <StepUpRecoveryLink fallbackPath={PROVIDER_EVIDENCE_LIST_HREF} />
+        </p>
+      )}
       {requestId !== '' && (
         <p>
           Request ID: <code>{requestId}</code>

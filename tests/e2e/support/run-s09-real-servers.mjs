@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { createHoldingProxy } from './s09-hold-proxy.mjs';
+
 const projectRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const apiScript = `${projectRoot}/tests/e2e/support/content-schema-registry-api.ts`;
 const apiConfig = `${projectRoot}/tests/e2e/support/wrangler.s09-api.jsonc`;
@@ -20,10 +22,15 @@ const parsePort = (name, fallback) => {
 
 const apiPort = parsePort('S09_API_PORT', 8788);
 const webPort = parsePort('S09_WEB_PORT', 4324);
+// The web Worker listens on an inner port; the holding proxy owns `webPort`.
+const innerWebPort = parsePort('S09_WEB_INNER_PORT', webPort + 1000);
 const apiOrigin = `http://127.0.0.1:${apiPort}`;
-const webOrigin = `http://127.0.0.1:${webPort}`;
+const innerWebOrigin = `http://127.0.0.1:${innerWebPort}`;
+// A web server that keeps dying is a real fault, not a flake: stop after this.
+const maxWebRestarts = 20;
 const startupTimeoutMs = 120_000;
 const children = [];
+const detachedChildren = new Set();
 const runToken = `${Date.now()}-${process.pid}`;
 const apiName = `wejammin-s09-real-api-${runToken}`;
 const webName = `wejammin-s09-real-web-${runToken}`;
@@ -55,6 +62,15 @@ const sleep = (milliseconds) =>
 
 const killGroup = (child, signal) => {
   if (child.exitCode !== null || child.signalCode !== null) return;
+  if (detachedChildren.has(child)) {
+    // A detached child leads its own process group: take the whole tree.
+    try {
+      process.kill(-child.pid, signal);
+    } catch {
+      // The group may already have exited between the checks above.
+    }
+    return;
+  }
   if (ownProcessGroupId === process.pid) {
     try {
       process.kill(-process.pid, signal);
@@ -66,30 +82,48 @@ const killGroup = (child, signal) => {
   child.kill(signal);
 };
 
+let holdingProxy = null;
+
 const shutdown = (code) => {
   if (shuttingDown) return;
   shuttingDown = true;
   cleanupRuntimeConfig();
-  for (const child of [...children].reverse()) killGroup(child, 'SIGKILL');
+  void holdingProxy?.close();
+  // Detached trees first (they are not in this process group), then the group.
+  for (const child of [...children].reverse())
+    if (detachedChildren.has(child)) killGroup(child, 'SIGKILL');
+  for (const child of [...children].reverse())
+    if (!detachedChildren.has(child)) killGroup(child, 'SIGKILL');
   process.exit(code);
 };
+
+// If the process that started this launcher (Playwright) dies without sending a
+// signal, nothing may be left serving the loopback ports for the next run.
+const originalParentId = process.ppid;
+setInterval(() => {
+  if (process.ppid !== originalParentId) shutdown(1);
+}, 1_000).unref();
 
 process.once('SIGINT', () => void shutdown(0));
 process.once('SIGTERM', () => void shutdown(0));
 
-const spawnChild = (command, args, watch) => {
+const spawnChild = (command, args, watch, detached = false) => {
   const child = spawn(command, args, {
     cwd: projectRoot,
     env: process.env,
     stdio: 'inherit',
+    detached,
   });
   children.push(child);
+  if (detached) detachedChildren.add(child);
   if (watch)
     child.once('exit', (code, signal) => {
-      if (!shuttingDown) shutdown(code === null || code === 0 ? 1 : code);
-      console.error(
-        `S09 server exited before teardown (code=${String(code)}, signal=${String(signal)})`,
-      );
+      if (!shuttingDown) {
+        console.error(
+          `S09 ${args[1]} server exited before teardown (code=${String(code)}, signal=${String(signal)})`,
+        );
+        shutdown(code === null || code === 0 ? 1 : code);
+      }
     });
   return child;
 };
@@ -164,34 +198,86 @@ try {
       '--show-interactive-dev-session=false',
     ],
     true,
+    true,
   );
   await waitFor(`${apiOrigin}/api/v1/health`, 200);
 
-  spawnChild(
-    'pnpm',
-    [
-      '--filter',
-      '@wejammin/web',
-      'exec',
-      'wrangler',
-      'dev',
-      webScript,
-      '--config',
-      webConfig,
-      '--name',
-      webName,
-      '--ip',
-      '127.0.0.1',
-      '--port',
-      String(webPort),
-      '--show-interactive-dev-session=false',
-    ],
-    true,
-  );
-  for (let probe = 0; probe < 3; probe += 1) {
-    await waitFor(`${webOrigin}/_s09/ready`, 200);
-    await sleep(250);
-  }
+  // The web Worker is stateless (the lane world lives in the API session), and
+  // `wrangler dev` exits when its ProxyWorker meets a network error while it
+  // forwards a request. The launcher therefore supervises the web session and
+  // restarts it; the holding proxy on `webPort` keeps the browser from seeing
+  // the gap.
+  let webGeneration = 0;
+  let webRestarts = 0;
+  let webReady = Promise.resolve();
+
+  const startWeb = async () => {
+    webGeneration += 1;
+    const generation = webGeneration;
+    const child = spawnChild(
+      'pnpm',
+      [
+        '--filter',
+        '@wejammin/web',
+        'exec',
+        'wrangler',
+        'dev',
+        webScript,
+        '--config',
+        webConfig,
+        '--name',
+        `${webName}-${String(generation)}`,
+        '--ip',
+        '127.0.0.1',
+        '--port',
+        String(innerWebPort),
+        '--show-interactive-dev-session=false',
+      ],
+      false,
+      true,
+    );
+    child.once('exit', (code, signal) => {
+      if (shuttingDown || generation !== webGeneration) return;
+      console.error(
+        `S09 web server exited before teardown (code=${String(code)}, signal=${String(signal)}); restarting (${String(webRestarts + 1)}/${String(maxWebRestarts)})`,
+      );
+      // Anything the dead session left behind (an orphaned workerd) must not
+      // hold the inner port: take its whole process group, exited or not.
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        // The group is already empty.
+      }
+      webRestarts += 1;
+      if (webRestarts > maxWebRestarts) {
+        console.error('S09 web server keeps exiting; giving up.');
+        shutdown(1);
+        return;
+      }
+      webReady = startWeb().catch((error) => {
+        console.error(error instanceof Error ? error.message : String(error));
+        shutdown(1);
+      });
+    });
+    for (let probe = 0; probe < 3; probe += 1) {
+      await waitFor(`${innerWebOrigin}/_s09/ready`, 200);
+      await sleep(250);
+    }
+  };
+
+  webReady = startWeb();
+  await webReady;
+  holdingProxy = createHoldingProxy({
+    port: webPort,
+    upstreamPort: () => innerWebPort,
+    // A restart replaces `webReady`; re-read it on every hold.
+    ready: () => webReady,
+    onRetry: ({ method, url, code, attempt }) =>
+      console.error(
+        `S09 held ${method} ${url} (${code}, attempt ${String(attempt)}) until the web server is ready`,
+      ),
+  });
+  await holdingProxy.listen();
   await new Promise(() => undefined);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

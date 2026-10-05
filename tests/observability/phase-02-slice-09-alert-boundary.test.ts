@@ -16,7 +16,9 @@ const read = (path: string): string =>
 const registryTelemetry = read(
   'apps/worker/src/content-schema-registry/production-telemetry.ts',
 );
-const migrationTelemetry = read('apps/worker/src/production-worker-runtime.ts');
+const migrationTelemetry = read(
+  'apps/worker/src/production-worker-runtime-cms.ts',
+);
 const workerConfig = read('apps/worker/wrangler.jsonc');
 const boundaryReadme = read('infra/observability/README.md');
 const productionBoundary = read(

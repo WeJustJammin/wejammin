@@ -15,6 +15,7 @@ import {
   appendEffectiveConfigurationQuery,
 } from './platform-configuration-query';
 import { isSameOriginPlatformConfigurationRequest } from './platform-configuration-request';
+import { untouchedBodyInit } from './proxy-request-body';
 import { appendAllowedServiceBindingCookies } from './service-binding-cookies';
 
 export {
@@ -92,8 +93,6 @@ export const PLATFORM_CONFIGURATION_RESPONSE_HEADERS = new Set([
   'retry-after',
   'vary',
   'x-correlation-id',
-  'x-configuration-capability',
-  'x-configuration-capabilities',
   'x-request-id',
 ]);
 
@@ -123,7 +122,11 @@ const parseCapabilityValues = (
   return capabilities;
 };
 
-/** Parse only capability metadata emitted by the trusted Worker boundary. */
+/**
+ * Normalize capability names produced by a trusted server-only authority.
+ * Capability authority is never read from a response header: the Worker
+ * projects it through CFG-05B-07 (`readWorkerCapabilitySnapshot`).
+ */
 export const parsePlatformConfigurationCapabilities = (
   value: string | readonly unknown[] | null | undefined,
 ): readonly string[] =>
@@ -134,18 +137,6 @@ export const parsePlatformConfigurationCapabilities = (
         ? [value]
         : value,
   );
-
-/**
- * Read capability metadata from a response without accepting role labels,
- * query parameters, or arbitrary provider headers as authority.
- */
-export const platformConfigurationResponseCapabilities = (
-  response: Response,
-): readonly string[] =>
-  parseCapabilityValues([
-    response.headers.get('x-configuration-capabilities'),
-    response.headers.get('x-configuration-capability'),
-  ]);
 
 /** Keep only named authentication cookies while preserving their values. */
 export const filterPlatformConfigurationCookies = (
@@ -340,14 +331,11 @@ export const forwardPlatformConfigurationRequest = async (
   }
 
   headers.set('origin', 'https://platform-configuration.internal');
-  const init: RequestInit = { method, headers };
-  if (method !== 'GET') {
-    try {
-      init.body = await request.clone().arrayBuffer();
-    } catch {
-      return unavailable(request);
-    }
-  }
+  const init: RequestInit = {
+    method,
+    headers,
+    ...untouchedBodyInit(request, method),
+  };
 
   let upstream: Response;
   try {

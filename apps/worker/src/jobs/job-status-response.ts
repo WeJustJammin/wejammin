@@ -33,6 +33,8 @@ export const responseForError = (
       return context.json(payload, 400);
     case 401:
       return context.json(payload, 401);
+    case 403:
+      return context.json(payload, 403);
     case 404:
       return context.json(payload, 404);
     case 429:

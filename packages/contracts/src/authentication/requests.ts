@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
 import {
+  AuthCsrfHeaderSchema,
   AuthEmptyBodySchema,
   AuthIdempotencyKeySchema,
   AuthProviderCodeSchema,
   AuthReturnTargetSchema,
 } from './primitives.ts';
 
-const AuthCsrfHeaderSchema = z.string().min(16).max(256);
 const AuthIfMatchHeaderSchema = z.string().min(1).max(128);
 const AuthMutationHeadersSchema = z
   .object({

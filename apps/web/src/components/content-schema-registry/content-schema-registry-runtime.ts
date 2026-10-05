@@ -1,9 +1,20 @@
 import {
+  LOCALE_CONFIG_MESSAGES,
+  TEMPLATE_BINDING_MESSAGES,
+} from '@wejammin/contracts/client';
+
+import {
+  authoritativeResource,
   isAuthoritativeContentSchemaRegistryMutationResponse,
   reconcileContentSchemaRegistryMutation,
 } from './content-schema-registry-runtime-mutation-reconciliation';
 import { addClientBindingIdHeader } from '../../lib/client-binding';
 import { parseContentSchemaRegistryRetryAfter } from './content-schema-registry-runtime-constants';
+import {
+  classifyStepUpResponse,
+  type StepUpClassification,
+} from './content-schema-registry-step-up-classify';
+import { loadContractValidators } from './content-schema-registry-contract-validators';
 
 export {
   CONTENT_SCHEMA_REGISTRY_LOADING_DELAY_MS,
@@ -26,6 +37,9 @@ export type ContentSchemaRegistryMutationOutcome =
   | 'success'
   | 'validation'
   | 'unauthenticated'
+  | 'step-up-required'
+  | 'step-up-unavailable'
+  | 'step-up-malformed'
   | 'forbidden'
   | 'not-found'
   | 'conflict'
@@ -42,7 +56,13 @@ export interface ContentSchemaRegistryMutationResult {
   /** Number of same-key mutation replays used to reconcile an ambiguity. */
   readonly statusChecks: number;
   readonly errorDetails: readonly string[];
+  /** OD-4 locale refusals: exact server-owned messages with their pointers. */
+  readonly localeIssues?: readonly ContentSchemaRegistryLocaleIssue[];
   readonly serverVersion: string | null;
+  /** The request ID of a degraded step-up response, for recovery copy. */
+  readonly requestId?: string | null;
+  /** Unvalidated JSON body of an authoritative CMS-03A-04 answer, else null. */
+  readonly resource?: unknown;
   readonly formData: FormData;
 }
 
@@ -66,6 +86,49 @@ const safeVersion = (value: string | null): string | null => {
   return /^\d{1,19}$/u.test(normalized) ? normalized : null;
 };
 
+export interface ContentSchemaRegistryLocaleIssue {
+  readonly pointer: string;
+  readonly message: string;
+}
+
+const LOCALE_MESSAGES: ReadonlySet<string> = new Set([
+  ...Object.values(LOCALE_CONFIG_MESSAGES),
+  ...Object.values(TEMPLATE_BINDING_MESSAGES),
+]);
+
+/**
+ * Only the fixed BE03a OD-4 locale strings and DEC-123 template-binding
+ * strings may be rendered; all else stays opaque.
+ */
+const mutationLocaleIssues = async (
+  response: Response,
+): Promise<readonly ContentSchemaRegistryLocaleIssue[]> => {
+  if (response.status !== 422) return [];
+  try {
+    const body: unknown = await response.clone().json();
+    const details = (body as { readonly details?: unknown } | null)?.details;
+    const violations = (details as { readonly violations?: unknown } | null)
+      ?.violations;
+    if (!Array.isArray(violations)) return [];
+    return violations
+      .flatMap((violation): ContentSchemaRegistryLocaleIssue[] => {
+        const { path, message } = (violation ?? {}) as {
+          readonly path?: unknown;
+          readonly message?: unknown;
+        };
+        return typeof path === 'string' &&
+          path.length <= 256 &&
+          typeof message === 'string' &&
+          LOCALE_MESSAGES.has(message)
+          ? [{ pointer: path, message }]
+          : [];
+      })
+      .slice(0, 50);
+  } catch {
+    return [];
+  }
+};
+
 const mutationErrorDetails = async (
   response: Response,
 ): Promise<readonly string[]> => {
@@ -81,10 +144,8 @@ const mutationErrorDetails = async (
     return violations
       .map((violation) => {
         if (typeof violation !== 'object' || violation === null) return null;
-        const pointer = (violation as { readonly pointer?: unknown }).pointer;
-        return typeof pointer === 'string' && pointer.length <= 256
-          ? pointer
-          : null;
+        const path = (violation as { readonly path?: unknown }).path;
+        return typeof path === 'string' && path.length <= 256 ? path : null;
       })
       .filter((pointer): pointer is string => pointer !== null)
       .slice(0, 50);
@@ -132,11 +193,18 @@ export const executeContentSchemaRegistryMutation = async (input: {
   const outcomeFor = (
     response: Response | null,
     authoritative: boolean,
+    stepUp: StepUpClassification | null,
   ): ContentSchemaRegistryMutationOutcome => {
     if (response === null || authoritative)
       return authoritative ? 'success' : 'degraded';
     if (response.status === 400 || response.status === 422) return 'validation';
-    if (response.status === 401) return 'unauthenticated';
+    if (response.status === 401) {
+      if (stepUp === null) return 'unauthenticated';
+      if (stepUp.kind === 'navigate') return 'step-up-required';
+      return stepUp.kind === 'no-method'
+        ? 'step-up-unavailable'
+        : 'step-up-malformed';
+    }
     if (response.status === 403) return 'forbidden';
     if (response.status === 404) return 'not-found';
     if (response.status === 409) return 'conflict';
@@ -157,7 +225,16 @@ export const executeContentSchemaRegistryMutation = async (input: {
           input.operationId,
           response,
         )));
-    const outcome = outcomeFor(response, isAuthoritative);
+    const stepUp =
+      response === null ? null : await classifyStepUpResponse(response);
+    const outcome = outcomeFor(response, isAuthoritative, stepUp);
+    const resource =
+      outcome === 'success' && response !== null
+        ? await authoritativeResource(input.operationId, response)
+        : null;
+    // CMS-03A-04 renders its authoritative answer after strict validation, so
+    // the validators are loaded here, on the first activation, never earlier.
+    if (resource !== null) await loadContractValidators().catch(() => null);
     return {
       outcome,
       attempts,
@@ -173,8 +250,13 @@ export const executeContentSchemaRegistryMutation = async (input: {
       statusChecks,
       errorDetails:
         response === null ? [] : await mutationErrorDetails(response),
+      localeIssues:
+        response === null ? [] : await mutationLocaleIssues(response),
       serverVersion:
         response === null ? null : await mutationServerVersion(response),
+      requestId:
+        stepUp !== null && stepUp.kind !== 'navigate' ? stepUp.requestId : null,
+      resource,
       formData: input.formData,
     };
   };
@@ -202,6 +284,13 @@ export const executeContentSchemaRegistryMutation = async (input: {
         true,
         true,
       );
+    // FE03 offline/reconnect: the replay is a complete request, so a definitive
+    // refusal (identity 401, authority 403, input 400/422, version 409, rate
+    // 429) is the answer and must reach the page. Only a still-ambiguous
+    // 503/504 (or no answer at all) keeps the first, ambiguous result.
+    const replayed = reconciliation.response;
+    if (replayed !== null && !retryableMutationStatus(replayed.status))
+      return resultFor(replayed, initialAttempts + 1, true);
     return resultFor(initialResponse, initialAttempts + 1, true);
   };
 
@@ -210,6 +299,9 @@ export const executeContentSchemaRegistryMutation = async (input: {
     response = await fetcher(input.action, {
       method: 'POST',
       body: copyFormData(input.formData),
+      // A manual-redirect browser fetch cannot read a 303; ask for the JSON
+      // success answer instead (same Accept as the reconciliation replay).
+      headers: new Headers({ accept: 'application/json, text/html' }),
       credentials: 'same-origin',
       redirect: 'manual',
     });

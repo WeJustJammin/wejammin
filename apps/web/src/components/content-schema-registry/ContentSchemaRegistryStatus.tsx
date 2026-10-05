@@ -3,6 +3,7 @@ import type {
   ContentSchemaRegistryDetailState,
   ContentSchemaRegistryListState,
 } from './content-schema-registry-types';
+import ContentSchemaRegistryDiagnosticReference from './ContentSchemaRegistryDiagnosticReference';
 import {
   isError,
   retryAfterMessage,
@@ -17,7 +18,7 @@ interface Props {
   readonly state:
     ContentSchemaRegistryListState | ContentSchemaRegistryDetailState;
   readonly regionLabel: string;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly resetUrl?: string;
   readonly resultCount?: number;
@@ -27,17 +28,29 @@ interface Props {
 export default function ContentSchemaRegistryStatus({
   state,
   regionLabel,
-  requestId,
+  supportReference,
   canonicalUrl,
   resetUrl,
   resultCount,
   activeFilterSummary,
 }: Props) {
   const retryAfterSeconds = retryAfterSecondsFor(state);
-  const [retryDeadline] = useState<number | null>(() =>
-    retryAfterSeconds === null ? null : Date.now() + retryAfterSeconds * 1_000,
+  const deadlineFor = (seconds: number | null): number | null =>
+    seconds === null ? null : Date.now() + seconds * 1_000;
+  const [retryDeadline, setRetryDeadline] = useState<number | null>(() =>
+    deadlineFor(retryAfterSeconds),
   );
   const [clock, setClock] = useState(() => Date.now());
+  // A new canonical projection (new state identity) re-arms the countdown even
+  // when the server sends the same retry-after value, so a repeat 429 restarts
+  // rather than staying expired. Adjusting derived state during render is the
+  // React-endorsed alternative to a cascading effect.
+  const [retryIdentity, setRetryIdentity] = useState(state);
+  if (retryIdentity !== state) {
+    setRetryIdentity(state);
+    setRetryDeadline(() => deadlineFor(retryAfterSeconds));
+    setClock(() => Date.now());
+  }
   useEffect(() => {
     if (retryDeadline === null || retryDeadline <= clock) return;
     const timer = window.setTimeout(() => setClock(Date.now()), 1_000);
@@ -106,9 +119,10 @@ export default function ContentSchemaRegistryStatus({
         <h3>{regionLabel} needs attention</h3>
         <p>{message}</p>
         {filterSummary !== null ? <p>{filterSummary}</p> : null}
-        <p>
-          Request ID: <code>{state.error.requestId || requestId}</code>
-        </p>
+        <ContentSchemaRegistryDiagnosticReference
+          requestId={state.error.requestId}
+          supportReference={supportReference}
+        />
         {httpStatus === null ? null : (
           <p data-http-status={httpStatus}>Status: {httpStatus}</p>
         )}
@@ -131,9 +145,10 @@ export default function ContentSchemaRegistryStatus({
       >
         <p>{message}</p>
         {filterSummary !== null ? <p>{filterSummary}</p> : null}
-        <p>
-          Request ID: <code>{state.requestId || requestId}</code>.
-        </p>
+        <ContentSchemaRegistryDiagnosticReference
+          requestId={state.requestId}
+          supportReference={supportReference}
+        />
         {httpStatus === null ? null : (
           <p data-http-status={httpStatus}>Status: {httpStatus}</p>
         )}

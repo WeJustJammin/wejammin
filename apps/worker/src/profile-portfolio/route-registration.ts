@@ -4,7 +4,7 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
+import type { AuthenticationResult } from '../authentication/types';
 import {
   configureProfilePortfolioRoute,
   parseProfilePath,
@@ -63,16 +63,19 @@ export const emphasisBodySchema: SchemaLike<unknown> = {
   },
 };
 
+/**
+ * The path is parsed here but its refusal is the handler's to report: BE00
+ * "Hono Middleware Order" validates path, query and body (step 6) only after
+ * the origin, CSRF and session steps, so a malformed path never answers an
+ * unauthenticated or cross-origin request.
+ */
 export const usePath = async <T>(
   context: WorkerContext,
   operationId: ActiveProfilePortfolioOperation,
   schema: SchemaLike<T>,
   value: Readonly<Record<string, string>>,
-  callback: (path: T) => Promise<Response>,
+  callback: (path: AuthenticationResult<T>) => Promise<Response>,
 ): Promise<Response> => {
   configureProfilePortfolioRoute(context, operationId);
-  const parsed = parseProfilePath(schema, value);
-  return parsed.ok
-    ? callback(parsed.value)
-    : responseForAuthError(context, parsed);
+  return callback(parseProfilePath(schema, value));
 };

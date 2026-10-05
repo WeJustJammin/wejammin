@@ -1,5 +1,4 @@
 import type {
-  ApiError,
   AuthCallbackQuery,
   AuthorizationStart,
   EmailStartRequest,
@@ -14,29 +13,17 @@ import type {
 } from '@wejammin/contracts';
 
 import type { WorkerBindings } from '../worker-bindings';
+import type { MfaAuthenticationMethods } from './mfa-types';
+import type {
+  AuthenticationResult,
+  AuthenticationSession,
+} from './result-types';
 
-export type AuthenticationSession = Readonly<{
-  authUserId: string;
-  sessionId: string;
-  accountState: SessionResource['accountState'];
-  personId: string | null;
-  actingPartyId: string | null;
-  expiresAt: string;
-  stepUpAt: string | null;
-}>;
-
-export type AuthenticationError = Readonly<{
-  ok: false;
-  status:
-    400 | 401 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 502 | 503 | 504 | 500;
-  code: string;
-  message: string;
-  details?: ApiError['details'];
-  retryAfterSeconds?: number;
-}>;
-
-export type AuthenticationResult<T> =
-  Readonly<{ ok: true; value: T }> | AuthenticationError;
+export type {
+  AuthenticationError,
+  AuthenticationResult,
+  AuthenticationSession,
+} from './result-types';
 
 export type AuthRateLimitInput = Readonly<{
   operationId: string;
@@ -47,6 +34,15 @@ export type AuthRateLimitInput = Readonly<{
   identifierDigest: string | null;
   limit: number;
   windowSeconds: number;
+  /**
+   * Explicit bucket scope. `user` keys the bucket by operation plus the
+   * server-derived auth user only (the identifier digest stands in for a
+   * non-human principal); `party` by operation plus the server-derived acting
+   * party only. Neither is partitioned by client address or by the other
+   * identity. Omitted (`client`) keeps the client-address-scoped buckets that
+   * the login and flow limits intentionally use.
+   */
+  scope?: 'client' | 'party' | 'user';
 }>;
 
 export type AuthRateLimitDecision = Readonly<{
@@ -104,139 +100,142 @@ export type AccountMergeConfirmInput = AuthMutationInput &
     acknowledgements: readonly string[];
   }>;
 
-export type AuthenticationDependencies = Readonly<{
-  loadProviderCatalog: (
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<ProviderCatalog>>;
-  startEmail: (
-    input: EmailStartRequest,
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<
-    AuthenticationResult<
-      Readonly<{
-        resource: Readonly<{ accepted: true }>;
-        cookies: readonly string[];
-      }>
-    >
-  >;
-  startOAuth: (
-    input: OAuthStartRequest,
-    session: AuthenticationSession | null,
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<
-    AuthenticationResult<
-      Readonly<{
-        resource: AuthorizationStart;
-        cookies: readonly string[];
-      }>
-    >
-  >;
-  completeCallback: (
-    input: AuthCallbackQuery,
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<AuthCallbackResult>>;
-  resolveSession: (
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<AuthenticationSession>>;
-  readSession: (
-    session: AuthenticationSession,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<SessionResource>>;
-  refreshSession: (
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<
-    AuthenticationResult<
-      Readonly<{
-        resource: SessionResource;
-        cookies: readonly string[];
-      }>
-    >
-  >;
-  bootstrap: (
-    session: AuthenticationSession,
-    idempotencyKey: string,
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<AuthBootstrapResult>>;
-  logout: (
-    session: AuthenticationSession,
-    input: Required<LogoutRequest>,
-    idempotencyKey: string,
-    request: Request,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<Readonly<{ cookies: readonly string[] }>>>;
-  /** Account-control dependencies are optional for backwards-compatible
-   * test/runtime composition; production composition supplies every method.
-   * A route with a missing method fails closed with DEPENDENCY_UNAVAILABLE. */
-  readLoginMethods?: (
-    input: Readonly<{
-      session: AuthenticationSession;
-      request: Request;
-    }>,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<LoginMethodsResource>>;
-  startLoginMethodLink?: (
-    input: LoginMethodLinkInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<
-    AuthenticationResult<
-      Readonly<{
-        resource: AuthorizationStart;
-        cookies: readonly string[];
-      }>
-    >
-  >;
-  unlinkLoginMethod?: (
-    input: LoginMethodUnlinkInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<LoginMethodsResource>>;
-  createAccountMerge?: (
-    input: AccountMergeCreateInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<MergeCaseResource>>;
-  readAccountMerge?: (
-    input: AccountMergeReadInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<MergeCaseResource>>;
-  startAccountMergeProof?: (
-    input: AccountMergeProofInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<
-    AuthenticationResult<
-      Readonly<{
-        resource: AuthorizationStart;
-        cookies: readonly string[];
-      }>
-    >
-  >;
-  confirmAccountMerge?: (
-    input: AccountMergeConfirmInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<JobStatus>>;
-  rateLimit: (
-    input: AuthRateLimitInput,
-    env: WorkerBindings,
-    signal: AbortSignal,
-  ) => Promise<AuthenticationResult<AuthRateLimitDecision>>;
-}>;
+export type AuthenticationDependencies = MfaAuthenticationMethods &
+  Readonly<{
+    loadProviderCatalog: (
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<ProviderCatalog>>;
+    startEmail: (
+      input: EmailStartRequest,
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<
+      AuthenticationResult<
+        Readonly<{
+          resource: Readonly<{ accepted: true }>;
+          cookies: readonly string[];
+        }>
+      >
+    >;
+    startOAuth: (
+      input: OAuthStartRequest,
+      session: AuthenticationSession | null,
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<
+      AuthenticationResult<
+        Readonly<{
+          resource: AuthorizationStart;
+          cookies: readonly string[];
+        }>
+      >
+    >;
+    completeCallback: (
+      input: AuthCallbackQuery,
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<AuthCallbackResult>>;
+    resolveSession: (
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<AuthenticationSession>>;
+    readSession: (
+      session: AuthenticationSession,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<SessionResource>>;
+    refreshSession: (
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<
+      AuthenticationResult<
+        Readonly<{
+          resource: SessionResource;
+          cookies: readonly string[];
+        }>
+      >
+    >;
+    bootstrap: (
+      session: AuthenticationSession,
+      idempotencyKey: string,
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<AuthBootstrapResult>>;
+    logout: (
+      session: AuthenticationSession,
+      input: Required<LogoutRequest>,
+      idempotencyKey: string,
+      request: Request,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<
+      AuthenticationResult<Readonly<{ cookies: readonly string[] }>>
+    >;
+    /** Account-control dependencies are optional for backwards-compatible
+     * test/runtime composition; production composition supplies every method.
+     * A route with a missing method fails closed with DEPENDENCY_UNAVAILABLE. */
+    readLoginMethods?: (
+      input: Readonly<{
+        session: AuthenticationSession;
+        request: Request;
+      }>,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<LoginMethodsResource>>;
+    startLoginMethodLink?: (
+      input: LoginMethodLinkInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<
+      AuthenticationResult<
+        Readonly<{
+          resource: AuthorizationStart;
+          cookies: readonly string[];
+        }>
+      >
+    >;
+    unlinkLoginMethod?: (
+      input: LoginMethodUnlinkInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<LoginMethodsResource>>;
+    createAccountMerge?: (
+      input: AccountMergeCreateInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<MergeCaseResource>>;
+    readAccountMerge?: (
+      input: AccountMergeReadInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<MergeCaseResource>>;
+    startAccountMergeProof?: (
+      input: AccountMergeProofInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<
+      AuthenticationResult<
+        Readonly<{
+          resource: AuthorizationStart;
+          cookies: readonly string[];
+        }>
+      >
+    >;
+    confirmAccountMerge?: (
+      input: AccountMergeConfirmInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<JobStatus>>;
+    rateLimit: (
+      input: AuthRateLimitInput,
+      env: WorkerBindings,
+      signal: AbortSignal,
+    ) => Promise<AuthenticationResult<AuthRateLimitDecision>>;
+  }>;

@@ -63,8 +63,11 @@ describe('S09 adversarial generated contract surfaces', () => {
       expect(operation['x-auth']).toBe(route.auth);
       expect(operation['x-capability']).toBe(route.capability);
       expect(operation['x-capabilities']).toEqual(
-        route.capabilities ?? [route.capability],
+        route.capabilities ??
+          (route.capability === undefined ? undefined : [route.capability]),
       );
+      expect(operation['x-capability-mode']).toBe(route.capabilityMode);
+      expect(operation['x-step-up']).toBe(route.stepUp);
       expect(operation['x-cors']).toBe(route.cors);
       expect(operation['x-cache-control']).toBe(route.cacheControl);
       expect(operation['x-timeout-ms']).toBe(route.timeoutMs);
@@ -95,7 +98,10 @@ describe('S09 adversarial generated contract surfaces', () => {
     const canonicalRoutes = platformRegistrySet.routes.filter(
       ({ operationId }) => operationId.startsWith('CMS-03A-'),
     );
-    expect(canonicalRoutes).toHaveLength(8);
+    expect(canonicalRoutes).toHaveLength(18);
+    expect(canonicalRoutes.map(({ operationId }) => operationId)).toEqual(
+      contentSchemaRegistryRoutePolicies.map(({ operationId }) => operationId),
+    );
     for (const route of canonicalRoutes) {
       const operation = resultOperation(
         canonical,
@@ -105,6 +111,8 @@ describe('S09 adversarial generated contract surfaces', () => {
       expect(operation.operationId).toBe(route.operationId);
       expect(operation['x-capability']).toBe(route.capability);
       expect(operation['x-capabilities']).toEqual(route.capabilities);
+      expect(operation['x-capability-mode']).toBe(route.capabilityMode);
+      expect(operation['x-step-up']).toBe(route.stepUp);
       expect(operation['x-cors']).toBe(route.corsClass);
       expect(operation['x-audience']).toBe(route.audience);
       expect(operation['x-timeout-ms']).toBe(route.timeoutMs);

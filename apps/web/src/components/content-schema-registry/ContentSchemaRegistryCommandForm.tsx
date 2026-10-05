@@ -25,6 +25,7 @@ export interface ContentSchemaRegistryCommandFormProps {
   readonly formId: string;
   readonly children: React.ReactNode;
   readonly consequence: string;
+  readonly instanceKey?: string | undefined;
   readonly onSubmit?: React.ComponentProps<'form'>['onSubmit'];
 }
 
@@ -46,15 +47,34 @@ export const ContentSchemaRegistryTransportFields = ({
 }: Pick<
   ContentSchemaRegistryCommandFormProps,
   'csrfToken' | 'idempotencyKey' | 'ifMatch'
->): React.ReactElement => (
-  <>
-    <input type="hidden" name="csrf" value={csrfToken} />
-    <input type="hidden" name="idempotency-key" value={idempotencyKey} />
-    {ifMatch === undefined ? null : (
-      <input type="hidden" name="if-match" value={ifMatch} />
-    )}
-  </>
-);
+>): React.ReactElement => {
+  const keyField = React.useRef<HTMLInputElement>(null);
+  // After a step-up detour the draft restore pins the ORIGINAL key on this
+  // field (`data-pinned-key`). A hidden input's `value` is its content
+  // attribute and React rewrites it from props on every commit (for example the
+  // canonical refetch a step-up success triggers), so re-apply the pin after
+  // each commit and the resubmission keeps the original Idempotency-Key.
+  React.useLayoutEffect(() => {
+    const field = keyField.current;
+    const pinned = field?.dataset.pinnedKey;
+    if (field !== null && pinned !== undefined && field.value !== pinned)
+      field.value = pinned;
+  });
+  return (
+    <>
+      <input type="hidden" name="csrf" value={csrfToken} />
+      <input
+        ref={keyField}
+        type="hidden"
+        name="idempotency-key"
+        value={idempotencyKey}
+      />
+      {ifMatch === undefined ? null : (
+        <input type="hidden" name="if-match" value={ifMatch} />
+      )}
+    </>
+  );
+};
 
 export default function ContentSchemaRegistryCommandForm({
   action,
@@ -68,6 +88,7 @@ export default function ContentSchemaRegistryCommandForm({
   formId,
   children,
   consequence,
+  instanceKey,
   onSubmit,
 }: ContentSchemaRegistryCommandFormProps): React.ReactElement {
   return (
@@ -97,9 +118,6 @@ export default function ContentSchemaRegistryCommandForm({
         >
           <h3>Schema change needs attention</h3>
           <p>{safeErrorMessage(error)}</p>
-          <p>
-            Request ID: <code>{error.requestId}</code>
-          </p>
         </section>
       )}
       <fieldset disabled={state === 'pending'}>{children}</fieldset>
@@ -109,6 +127,7 @@ export default function ContentSchemaRegistryCommandForm({
         expectedVersion={expectedVersion ?? null}
         state={state}
         consequence={consequence}
+        {...(instanceKey === undefined ? {} : { instanceKey })}
       />
     </form>
   );

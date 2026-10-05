@@ -1,4 +1,4 @@
-import { CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER } from '@wejammin/contracts';
+import { CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER } from '@wejammin/contracts/client';
 
 import { addClientBindingIdHeader } from '../../lib/client-binding';
 import {

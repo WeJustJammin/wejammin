@@ -7,6 +7,7 @@ import {
   type UploadPrincipal,
   type UploadTargetPolicy,
 } from './upload-intent';
+import { UPLOAD_INTENT_BROWSER_HEADERS } from './upload-intent.test-support';
 import { UploadBodyReadAbortedError } from './upload-intent-body';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
@@ -67,6 +68,7 @@ const request = (overrides: Record<string, unknown> = {}) =>
       ...overrides,
     }),
     headers: {
+      ...UPLOAD_INTENT_BROWSER_HEADERS,
       'content-type': 'application/json',
       'idempotency-key': 'upload-key-1',
       'if-match': '"7"',
@@ -290,7 +292,10 @@ describe('upload-intent branch boundary', () => {
       (
         await make()(
           new Request('https://api.example.test', {
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              ...UPLOAD_INTENT_BROWSER_HEADERS,
+              'content-type': 'application/json',
+            },
             method: 'GET',
           }),
         )
@@ -306,7 +311,9 @@ describe('upload-intent branch boundary', () => {
       (
         await make()({
           body: declaredBody,
+          url: 'https://api.example.test/api/v1/upload-intents',
           headers: new Headers({
+            ...UPLOAD_INTENT_BROWSER_HEADERS,
             'content-length': '1',
             'content-type': 'application/json',
           }),
@@ -320,6 +327,7 @@ describe('upload-intent branch boundary', () => {
           new Request('https://api.example.test', {
             body: JSON.stringify({}),
             headers: {
+              ...UPLOAD_INTENT_BROWSER_HEADERS,
               'content-length': 'bad',
               'content-type': 'application/json',
             },
@@ -333,7 +341,10 @@ describe('upload-intent branch boundary', () => {
         await make()(
           new Request('https://api.example.test', {
             body: new Uint8Array([0xc3, 0x28]),
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              ...UPLOAD_INTENT_BROWSER_HEADERS,
+              'content-type': 'application/json',
+            },
             method: 'POST',
           }),
         )
@@ -347,7 +358,11 @@ describe('upload-intent branch boundary', () => {
           releaseLock: () => undefined,
         }),
       },
-      headers: new Headers({ 'content-type': 'application/json' }),
+      url: 'https://api.example.test/api/v1/upload-intents',
+      headers: new Headers({
+        ...UPLOAD_INTENT_BROWSER_HEADERS,
+        'content-type': 'application/json',
+      }),
       method: 'POST',
     } as unknown as Request;
     expect((await make({ deadlineMs: 1 })(pendingBody)).status).toBe(503);
@@ -361,7 +376,11 @@ describe('upload-intent branch boundary', () => {
           releaseLock: () => undefined,
         }),
       },
-      headers: new Headers({ 'content-type': 'application/json' }),
+      url: 'https://api.example.test/api/v1/upload-intents',
+      headers: new Headers({
+        ...UPLOAD_INTENT_BROWSER_HEADERS,
+        'content-type': 'application/json',
+      }),
       method: 'POST',
     } as unknown as Request;
     expect((await make()(abortedBody)).status).toBe(503);

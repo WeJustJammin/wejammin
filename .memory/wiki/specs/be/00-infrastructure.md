@@ -155,7 +155,7 @@ The locked four-field `ApiError` wire contract takes precedence over a generic R
 |---|---:|---|
 | `INVALID_REQUEST` | 400 | `{ violations?: FieldViolation[] }`; maximum 50; malformed JSON may use `{}` because no safe field path exists |
 | `UNAUTHENTICATED` | 401 | `{ recoveryAction: 'reauthenticate' }`; no session/provider detail |
-| `STEP_UP_REQUIRED` | 401 | `{ recoveryAction: 'step_up', allowedMethods: string[] }`; allowlisted method identifiers only |
+| `STEP_UP_REQUIRED` | 401 | `{ recoveryAction: 'step_up', allowedMethods: string[] }`; `allowedMethods` is the configured allowlisted MFA method ids (the BE01a method registry, launch value `['totp']`), never derived from the caller's enrolment; no factor, provider, or policy detail; routing below |
 | `FORBIDDEN` | 403 | `{ reasonCode: string, recoveryAction?: string }`; no capability graph, resource existence, or policy predicate |
 | `NOT_FOUND` | 404 | `{}` unless a public resource type is safe; concealed authorization denial is indistinguishable from absence |
 | `CONFLICT` | 409 | `{ conflict: 'VERSION_MISMATCH' | 'IDEMPOTENCY_MISMATCH' | 'INVALID_TRANSITION', expectedVersion?: string, currentVersion?: string, recoveryAction: string }`; versions only when disclosure is authorized |
@@ -166,6 +166,15 @@ The locked four-field `ApiError` wire contract takes precedence over a generic R
 | `WEBHOOK_REJECTED` | 401 | `{}`; one response for missing/unknown/bad/stale signature states |
 | `DEPENDENCY_UNAVAILABLE` | 502/503/504 | `{ dependencyClass: string, retryable: true, retryAfterSeconds?: number }`; no provider name/payload unless public contract admits it |
 | `INTERNAL_ERROR` | 500 | `{}` only |
+
+### STEP_UP_REQUIRED Recovery Routing
+
+DEC-111 makes this response the only trigger for the step-up page, for every shard.
+
+- **Wire shape**: always HTTP 401 with `recoveryAction: 'step_up'` and `allowedMethods` equal to the configured allowlisted method ids. A missing, stale, future-dated, or non-`aal2` proof is never 403. The check runs at middleware step 7, before idempotency reservation, so the response creates no idempotency, audit, or domain state.
+- **Browser routing**: the first-party browser navigates to `/step-up?returnTo=<current relative path>`, where the value is the page path plus query on which the command was attempted. It must satisfy the same relative first-party rule as every auth `returnTo` (1–512 characters, no scheme, authority, backslash, control character, or ambiguous encoding) and must not point at `/step-up` or an `/auth/` route; a value that fails the rule, or exceeds 512 characters with its query, falls back to the path without query, then to `/app`.
+- **Completion**: BE01a AUTH-API-20/21 verify the factor server-side and rotate the first-party session to `aal2`; the browser then returns to the validated `returnTo`. The interrupted command is never replayed automatically: the originating form restores its scoped draft and the human re-confirms, and because the 401 reserved nothing the draft may reuse its original `Idempotency-Key`.
+- **Freshness**: the window is defined once in BE01a (`STEP_UP_FRESHNESS_SECONDS = 600`); this document defines no second value.
 
 ### Resource Schemas
 
@@ -635,6 +644,7 @@ Provider integrations and domain routes remain disabled until their owning specs
 | Date | Change | Workflow | Sections Affected |
 |---|---|---|---|
 | 2026-08-28 | Initial complete cross-cutting backend foundation authored from ambiguity-passed IA | `/write-be-spec` | All |
+| 2026-10-02 | DEC-111: `STEP_UP_REQUIRED` recovery routing — `recoveryAction: 'step_up'` routes the browser to `/step-up?returnTo=<current relative path>`; `allowedMethods` is the configured allowlisted method ids; shortfalls are always 401 | `/propagate-decision` | Error Detail Schemas |
 
 
 <!-- spec-graph: auto-generated -->

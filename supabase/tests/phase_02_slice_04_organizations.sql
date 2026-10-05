@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -214,7 +215,7 @@ select lives_ok($$select platform_api.auth_bootstrap(
   'a4111111-1111-4111-8111-111111111112',
   'a4111111-1111-4111-8111-111111111113')$$,
   'organization fixture owner receives a canonical self context');
-select set_config('request.jwt.claim.sub', 'a4111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a4111111-1111-4111-8111-111111111111', true);
 select set_config('app.auth_user_id', 'a4111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_auth_user_id', 'a4111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings
@@ -351,7 +352,7 @@ select lives_ok($$select platform_api.auth_bootstrap(
   'a4222222-2222-4222-8222-222222222223',
   'a4222222-2222-4222-8222-222222222224')$$,
   'organization fixture outsider receives a self context');
-select set_config('request.jwt.claim.sub', 'a4222222-2222-4222-8222-222222222222', true);
+select pg_temp.set_jwt_claim('sub', 'a4222222-2222-4222-8222-222222222222', true);
 select set_config('app.auth_user_id', 'a4222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_auth_user_id', 'a4222222-2222-4222-8222-222222222222', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings
@@ -367,7 +368,7 @@ select ok((select (platform_api.identity_organization_read(
     'organizationId', 'typeDisplay', 'lifecycleLabel', 'version'])),
   'organization read returns only the public projection to an outsider');
 
-select set_config('request.jwt.claim.sub', 'a4111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a4111111-1111-4111-8111-111111111111', true);
 select set_config('app.auth_user_id', 'a4111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_auth_user_id', 'a4111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings

@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib';
 const CLIENT_DIRECTORY = 'client';
 const ASSET_EXTENSIONS = new Set(['.js', '.mjs']);
 const DEFAULT_ENTRY_NAME = 'InfrastructureWorkbench.tsx';
+const REGISTRY_ENTRY_STEM = 'ContentSchemaRegistryWorkbenchIsland';
 
 export const BUNDLE_BUDGETS = Object.freeze({
   workbenchGzipBytes: 35 * 1024,
@@ -282,6 +283,13 @@ function findRouteAssets(clientAssets, entryStem) {
       /^PlatformConfigurationAdminRoute\.astro_astro_type_script_index_0_lang\.[^/]+\.(?:js|mjs)$/.test(
         basename(path),
       ),
+    );
+  }
+  if (entryStem === REGISTRY_ENTRY_STEM) {
+    // The registry route loads the shared route-heading focus script beside
+    // its island; the island's static closure does not include it.
+    return clientAssets.filter((path) =>
+      /^route-heading-focus\.[^/]+\.(?:js|mjs)$/.test(basename(path)),
     );
   }
   return [];
@@ -716,7 +724,9 @@ export function measureBundleBudget({
       ? 'Infrastructure'
       : entryStem === 'SettingsFlagsRuntimeWorkbench'
         ? 'Platform configuration'
-        : entryStem;
+        : entryStem === REGISTRY_ENTRY_STEM
+          ? 'Content schema registry'
+          : entryStem;
   const resolvedDistDirectory = resolve(distDirectory);
   const clientDirectory = join(resolvedDistDirectory, CLIENT_DIRECTORY);
   const absoluteClientAssets = findClientAssets(clientDirectory);
@@ -938,6 +948,11 @@ async function main() {
     ...manifestOption,
     entryName: 'SettingsFlagsRuntimeWorkbench.tsx',
   });
+  const contentSchemaRegistry = measureBundleBudget({
+    distDirectory,
+    ...manifestOption,
+    entryName: `${REGISTRY_ENTRY_STEM}.tsx`,
+  });
   const sourceRevision = resolveSourceRevision();
   console.log(
     JSON.stringify(
@@ -947,6 +962,10 @@ async function main() {
           platformConfiguration,
           sourceRevision,
         ),
+        contentSchemaRegistry: formatBundleBudgetEvidence(
+          contentSchemaRegistry,
+          sourceRevision,
+        ),
       },
       null,
       2,
@@ -954,6 +973,7 @@ async function main() {
   );
   assertBundleBudget(report);
   assertBundleBudget(platformConfiguration);
+  assertBundleBudget(contentSchemaRegistry);
 }
 
 if (

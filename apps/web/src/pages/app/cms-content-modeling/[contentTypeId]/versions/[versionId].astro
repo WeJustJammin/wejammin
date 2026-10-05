@@ -14,6 +14,16 @@ import {
   forwardContentSchemaRegistryMutation,
 } from '../../../../../server/content-schema-registry-platform-api';
 import { safeContentSchemaRegistryReturnPath } from '../../../../../server/content-schema-registry-contracts';
+import {
+  createdResourceId,
+  jsonContinuation,
+  mutationFailureCode,
+  wantsJsonResponse,
+} from '../../../../../server/content-schema-registry-mutation-outcome';
+import {
+  isStepUpRequiredCode,
+  stepUpTargetForLocation,
+} from '../../../../../components/step-up-required';
 
 export const prerender = false;
 
@@ -29,7 +39,10 @@ if (Astro.request.method === 'POST') {
   if (
     operationId !== 'CMS-03A-02' &&
     operationId !== 'CMS-03A-03' &&
-    operationId !== 'CMS-03A-04'
+    operationId !== 'CMS-03A-04' &&
+    operationId !== 'CMS-03A-09' &&
+    operationId !== 'CMS-03A-10' &&
+    operationId !== 'CMS-03A-11'
   ) {
     return new Response('Bad request', {
       status: 400,
@@ -43,10 +56,34 @@ if (Astro.request.method === 'POST') {
     env.PLATFORM_API,
     { operationId, contentTypeId, versionId },
   );
-  if (!mutation.ok) return mutation;
-  return Astro.redirect(
+  const json = wantsJsonResponse(Astro.request);
+  if (!mutation.ok) {
+    // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
+    // itself; only a native form post is redirected from the server.
+    if (!json && isStepUpRequiredCode(await mutationFailureCode(mutation)))
+      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
+    return mutation;
+  }
+  const continueTo = (location: string): Response =>
+    json ? jsonContinuation(mutation, location) : Astro.redirect(location, 303);
+  // A submitted review continues on the protected review route, carrying only
+  // the review id; a successor draft continues on its own version page.
+  if (operationId === 'CMS-03A-11') {
+    const reviewId = await createdResourceId(mutation);
+    if (reviewId !== null)
+      return continueTo(
+        `/app/cms-content-modeling/schema-reviews/${encodeURIComponent(reviewId)}`,
+      );
+  }
+  if (operationId === 'CMS-03A-09') {
+    const successorId = await createdResourceId(mutation);
+    if (successorId !== null)
+      return continueTo(
+        `/app/cms-content-modeling/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(successorId)}`,
+      );
+  }
+  return continueTo(
     `/app/cms-content-modeling/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(versionId)}${new URL(Astro.request.url).search}`,
-    303,
   );
 }
 const result = await resolveContentSchemaRegistryPage({
@@ -96,11 +133,13 @@ const detailTitle = `${detailHeading} | WeJammin`;
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width" />
     <meta
       name="description"
       content="Review a disclosure-safe content schema registry version."
     />
+    <meta name="robots" content="noindex" />
     <title>{detailTitle}</title>
   </head>
   <body class="content-schema-registry-page">
@@ -138,5 +177,6 @@ const detailTitle = `${detailHeading} | WeJammin`;
       />
     </main>
     <script src="../../../../../lib/route-heading-focus.ts"></script>
+    <script src="../../../../../lib/auth-scope-sync.ts"></script>
   </body>
 </html>

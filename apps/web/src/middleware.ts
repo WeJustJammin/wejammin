@@ -6,6 +6,7 @@ import {
   shouldRedirectToHttps,
   withSecurityHeaders,
 } from './security-headers';
+import { withStepUpScope } from './server/step-up-scope';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const nonce = generateRequestNonce();
@@ -18,5 +19,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     );
   }
 
-  return withSecurityHeaders(await next(), nonce);
+  // Review r14: bind tab-held step-up drafts to the signed-in subject through a
+  // random nonce and an HttpOnly unkeyed subject digest (no secret).
+  return withStepUpScope(
+    context.request,
+    await withSecurityHeaders(await next(), nonce),
+  );
 });

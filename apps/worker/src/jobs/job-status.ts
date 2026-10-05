@@ -4,7 +4,7 @@ import {
   type JobStatusDependencies,
 } from './job-status-types';
 import { DEADLINE, readJobStatus, runWithDeadline } from './job-status-read';
-import { dependencyError, JOBS_PATH, parseJobPath } from './job-status-support';
+import { dependencyError, JOBS_PATH } from './job-status-support';
 import { responseForError, responseForRead } from './job-status-response';
 
 export {
@@ -28,8 +28,6 @@ export const registerJobStatusRoute = (
   const handler = async (context: WorkerContext): Promise<Response> => {
     context.set('operation', 'jobs.status.read');
     const request = context.req.raw;
-    const path = parseJobPath(request);
-    if ('code' in path) return responseForError(context, path);
     if (dependencies === undefined || dependencies.rateLimit === undefined) {
       return responseForError(context, dependencyError());
     }

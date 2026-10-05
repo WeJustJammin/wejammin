@@ -29,26 +29,37 @@ begin
   cleanup_sql := format($cleanup$
     do $body$
     begin
+      -- The committed probe rows are removed outside any command: user triggers
+      -- (the definition delete guard among them) stay out of this fixture
+      -- cleanup, as for the artifact guard below.
+      execute 'alter table platform_private.cms_content_type_versions disable trigger cms_content_type_versions_no_delete';
+      execute 'alter table platform_private.cms_content_types disable trigger cms_content_types_no_delete';
       -- Artifacts are immutable in normal operation.  Temporarily remove the
       -- cleanup-only guard so this committed probe leaves no registry rows;
       -- the exception path recreates it before returning the error.
-      execute 'drop trigger if exists cms_schema_artifacts_immutable_guard on platform_private.cms_schema_artifacts';
+      execute 'drop trigger if exists cms_schema_artifacts_z_compile_guard on platform_private.cms_schema_artifacts';
       delete from platform_private.cms_schema_artifacts where id = %L::uuid;
       delete from platform_private.cms_content_type_versions where id = %L::uuid;
       delete from platform_private.cms_content_types where id = %L::uuid;
+      -- FIXTURE FORGERY cleanup (lock-order probe): removes the forged binding, grant and membership rows built by the setup below.
       delete from platform_private.acting_context_binding where id in (%L::uuid, %L::uuid);
       delete from identity_private.organization_actor_grant
        where organization_id = %L::uuid and person_id = %L::uuid;
       delete from identity_private.membership_tenure where id = %L::uuid;
       delete from identity.auth_user_bindings where auth_user_id = %L::uuid;
       delete from platform_private.person_party where party_id = %L::uuid;
+      -- FIXTURE FORGERY cleanup (lock-order probe): removes the forged organization party.
       delete from identity_private.organization_party where party_id = %L::uuid;
       delete from platform_private.party where id in (%L::uuid, %L::uuid);
       delete from auth.users where id = %L::uuid;
-      execute 'create trigger cms_schema_artifacts_immutable_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_immutable_guard()';
+      execute 'create trigger cms_schema_artifacts_z_compile_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_schema_artifact_guard()';
+      execute 'alter table platform_private.cms_content_type_versions enable trigger cms_content_type_versions_no_delete';
+      execute 'alter table platform_private.cms_content_types enable trigger cms_content_types_no_delete';
     exception when others then
+      begin execute 'alter table platform_private.cms_content_type_versions enable trigger cms_content_type_versions_no_delete'; exception when others then null; end;
+      begin execute 'alter table platform_private.cms_content_types enable trigger cms_content_types_no_delete'; exception when others then null; end;
       begin
-        execute 'create trigger cms_schema_artifacts_immutable_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_immutable_guard()';
+        execute 'create trigger cms_schema_artifacts_z_compile_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_schema_artifact_guard()';
       exception when duplicate_object then null;
       end;
       raise;
@@ -73,6 +84,10 @@ begin
   setup_sql := format($setup$
     do $body$
     begin
+      -- FIXTURE FORGERY (lock-order probe): this committed setup builds a throwaway party, membership, grant, context binding,
+      -- type, version and artifact so two independent sessions can contend for the graph and authority locks.  No command can
+      -- build an organization outside owner initialization, so none of these rows is a claimed producer path or review evidence;
+      -- the cleanup SQL above removes them.
       insert into auth.users(id, is_sso_user, is_anonymous)
       values (%L::uuid, false, false);
       insert into platform_private.party(id, kind)
@@ -81,9 +96,11 @@ begin
       values (%L::uuid, %L::uuid, 'active');
       insert into identity.auth_user_bindings(auth_user_id, person_id, state)
       values (%L::uuid, %L::uuid, 'active');
+      -- FIXTURE FORGERY (lock-order probe): forged organization party.
       insert into identity_private.organization_party(
         party_id, ownership_state, governance_mode, lifecycle
       ) values (%L::uuid, 'owned', 'ungoverned', 'active');
+      -- FIXTURE FORGERY (lock-order probe): forged membership tenure.
       insert into identity_private.membership_tenure(
         id, organization_id, person_id, state, provenance, governance_mode,
         starts_on, accepted_at, actor_id
@@ -91,9 +108,11 @@ begin
         %L::uuid, %L::uuid, %L::uuid, 'confirmed', 'invitation', 'ungoverned',
         current_date, clock_timestamp(), %L::uuid
       );
+      -- FIXTURE FORGERY (lock-order probe): forged organization capability grant.
       insert into identity_private.organization_actor_grant(
         organization_id, person_id, capability_code, valid_from, active
       ) values (%L::uuid, %L::uuid, 'cms.schema_designer', current_date, true);
+      -- FIXTURE FORGERY (lock-order probe): forged acting-context bindings.
       insert into platform_private.acting_context_binding(
         id, person_id, acting_party_id, context_kind, client_binding_id, state,
         selected_at, last_seen_at, expires_at, projection_version, version
@@ -110,10 +129,12 @@ begin
       insert into platform_private.cms_content_type_versions(
         id, owner_id, state, version, content_type_id, version_no, labels,
         workflow_key, workflow_version, source_locale, default_locale,
+        supported_locales, fallback_chains, locale_config_hash,
         schema_artifact_id, definition_hash, compatibility, created_by
       ) values (
         %L::uuid, %L::uuid, 'review', 1, %L::uuid, 1, '{}'::jsonb,
-        'editorial', 1, 'en-US', 'en-US', %L::uuid, repeat('e', 64),
+        'editorial', 1, 'en-US', 'en-US', '["en-US"]'::jsonb, '{}'::jsonb,
+        '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860', %L::uuid, repeat('e', 64),
         'additive', %L::uuid
       );
       insert into platform_private.cms_schema_artifacts(
@@ -149,6 +170,8 @@ begin
     's09_activation_lock_b',
     'host=db port=5432 dbname=postgres user=postgres password=postgres'
   );
+  -- both contexts are commands: each holds the RPC context its locking reads go through
+  perform extensions.dblink_exec('s09_activation_lock_b', 'set app.cms_rpc = ''true''');
   perform extensions.dblink_exec('s09_activation_lock_b', 'set statement_timeout = ''3s''');
   perform extensions.dblink_exec('s09_activation_lock_b', 'set lock_timeout = ''750ms''');
   perform extensions.dblink_exec(

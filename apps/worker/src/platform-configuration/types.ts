@@ -1,4 +1,7 @@
-import type { RequestContext } from '@wejammin/contracts';
+import type {
+  Cfg05b06MfaFactorResetRequest,
+  RequestContext,
+} from '@wejammin/contracts';
 
 import type { WorkerBindings, WorkerDependencies } from '../index';
 import type {
@@ -15,7 +18,9 @@ export type PlatformConfigurationOperationId =
   | 'CFG-05A-04'
   | 'CFG-05B-01'
   | 'CFG-05B-04'
-  | 'CFG-05B-05';
+  | 'CFG-05B-05'
+  | 'CFG-05B-06'
+  | 'CFG-05B-07';
 
 export type AdminOperationId = 'CFG-05B-01' | 'CFG-05B-04' | 'CFG-05B-05';
 
@@ -61,10 +66,32 @@ export type AdminWorkspacePort = (
   signal: AbortSignal,
 ) => Promise<AuthenticationResult<unknown>>;
 
+/**
+ * CFG-05B-06 (DEC-111 recovery). Only the single boundary-validated target
+ * and reason cross the port; operator, organization and every factor
+ * identifier are derived server-side from the verified session and the
+ * database.
+ */
+export type AdminMfaFactorResetPortInput = Readonly<{
+  request: Request;
+  body: Cfg05b06MfaFactorResetRequest;
+  session: AuthenticationSession;
+  requestContext: RequestContext;
+  idempotencyKey: string;
+}>;
+
+export type AdminMfaFactorResetPort = (
+  input: AdminMfaFactorResetPortInput,
+  env: WorkerBindings,
+  signal: AbortSignal,
+) => Promise<AuthenticationResult<unknown>>;
+
 export type AdminWorkspaceDependencies = Readonly<{
   readInbox: AdminWorkspacePort;
   capabilityAction: AdminWorkspacePort;
   auditDiagnostic: AdminWorkspacePort;
+  /** Optional recovery port; absent compositions fail closed with 503. */
+  resetMfaFactors?: AdminMfaFactorResetPort;
 }>;
 
 /**
@@ -115,6 +142,7 @@ export type PlatformConfigurationDependencies = Readonly<{
   readInbox?: AdminWorkspacePort;
   capabilityAction?: AdminWorkspacePort;
   auditDiagnostic?: AdminWorkspacePort;
+  resetMfaFactors?: AdminMfaFactorResetPort;
   /** Required at runtime for service-consumer requests; optional in the
    * structural type so legacy test compositions fail closed instead of
    * gaining authority from headers. */

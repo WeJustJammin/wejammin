@@ -35,6 +35,16 @@ const contentSchemaRegistryOperationIds = new Set([
   'CMS-03A-06',
   'CMS-03A-07',
   'CMS-03A-08',
+  'CMS-03A-09',
+  'CMS-03A-10',
+  'CMS-03A-11',
+  'CMS-03A-12',
+  'CMS-03A-13',
+  'CMS-03A-14',
+  'CMS-03A-15',
+  'CMS-03A-16',
+  'CMS-03A-17',
+  'CMS-03A-18',
 ]);
 
 const contentSchemaRegistryComponentSchemas =
@@ -233,6 +243,18 @@ const errorSchema = (registry) => {
   return references.length === 1 ? references[0] : { oneOf: references };
 };
 
+/**
+ * A step-up 401 publishes the exact unauthenticated/step-up union so clients
+ * can tell an expired session (`reauthenticate`) from recoverable MFA
+ * (`step_up` plus `allowedMethods`).
+ */
+const stepUpUnauthorizedSchema = () => ({
+  oneOf: [
+    schemaReference('CmsUnauthenticatedErrorSchema'),
+    schemaReference('CmsStepUpRequiredErrorSchema'),
+  ],
+});
+
 const responseContent = (schema) => ({
   'application/json': { schema },
 });
@@ -249,7 +271,9 @@ const operation = (registry, definition) => {
           ? successReference
           : response.schema === 'error'
             ? errorReference
-            : undefined;
+            : response.schema === 'stepUpUnauthorized'
+              ? stepUpUnauthorizedSchema()
+              : undefined;
       const headers = responseHeaders(response.headers);
       return [
         response.status,
@@ -270,6 +294,10 @@ const operation = (registry, definition) => {
     ...(registry.capabilities
       ? { 'x-capabilities': registry.capabilities }
       : {}),
+    ...(registry.capabilityMode
+      ? { 'x-capability-mode': registry.capabilityMode }
+      : {}),
+    ...(registry.stepUp ? { 'x-step-up': registry.stepUp } : {}),
     ...(registry.corsClass ? { 'x-cors': registry.corsClass } : {}),
     ...(registry.audience ? { 'x-audience': registry.audience } : {}),
     'x-cache-class': registry.cacheClass,

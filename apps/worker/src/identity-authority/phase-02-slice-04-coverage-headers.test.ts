@@ -163,7 +163,9 @@ describe('Phase 2 Slice 04 command-header coverage', () => {
       code: 'INVALID_REQUEST',
       requestId: REQUEST_ID,
     });
-    expect(auth.resolveSession).not.toHaveBeenCalled();
+    // BE00: the session is verified (step 4) before strict validation (step 6)
+    // and the idempotency headers (step 8).
+    expect(auth.resolveSession).toHaveBeenCalledTimes(1);
   });
 
   it.each(headerCases)(
@@ -180,7 +182,9 @@ describe('Phase 2 Slice 04 command-header coverage', () => {
         code: 'INVALID_REQUEST',
         requestId: REQUEST_ID,
       });
-      expect(auth.resolveSession).not.toHaveBeenCalled();
+      // BE00: the session is verified (step 4) before strict validation (step 6)
+      // and the idempotency headers (step 8).
+      expect(auth.resolveSession).toHaveBeenCalledTimes(1);
     },
   );
 
@@ -206,7 +210,9 @@ describe('Phase 2 Slice 04 command-header coverage', () => {
 
     const response = await app.fetch(request, bindings);
     expect(response.status).toBe(400);
-    expect(auth.resolveSession).not.toHaveBeenCalled();
+    // BE00: the session is verified (step 4) before strict validation (step 6)
+    // and the idempotency headers (step 8).
+    expect(auth.resolveSession).toHaveBeenCalledTimes(1);
   });
 
   it('invokes the direct authenticated organization-read port', async () => {

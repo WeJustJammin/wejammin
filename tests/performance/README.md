@@ -11,6 +11,12 @@ HTTPS staging origin by the validation workflow.
 - `api-p95-smoke.test.ts` locks the deterministic latency-runner contract.
 - `bundle-budget.test.ts` verifies emitted browser-asset closure accounting.
 
+The bundle gate also measures the content schema registry route (the
+`ContentSchemaRegistryWorkbenchIsland` entry: at most 90 KB gzip initial and
+35 KB gzip workbench closure, with every lazy chunk at most 80 KB). Detail,
+review, and editor views load on demand, so the detail route total is reported
+in the JSON but not budgeted.
+
 ## Ownership
 
 Performance regression tests belong to the surface that owns the measured

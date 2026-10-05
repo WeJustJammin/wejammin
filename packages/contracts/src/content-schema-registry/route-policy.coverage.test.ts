@@ -22,13 +22,13 @@ describe('content schema registry route policy defensive checks', () => {
 
   it('rejects a full-length registry with a missing operation id', () => {
     const unknownOperation = {
-      ...contentSchemaRegistryRoutePolicies[7],
-      operationId: 'CMS-03A-09',
+      ...contentSchemaRegistryRoutePolicies[17],
+      operationId: 'CMS-03A-99',
       path: '/api/v1/cms/blocks/versions/missing/lifecycle',
-    } as (typeof contentSchemaRegistryRoutePolicies)[number];
+    } as unknown as (typeof contentSchemaRegistryRoutePolicies)[number];
     expect(() =>
       assertContentSchemaRegistryRouteRegistry([
-        ...contentSchemaRegistryRoutePolicies.slice(0, 7),
+        ...contentSchemaRegistryRoutePolicies.slice(0, 17),
         unknownOperation,
       ]),
     ).toThrow(/Missing content schema registry operation/u);

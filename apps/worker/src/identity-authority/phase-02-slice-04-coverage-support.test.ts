@@ -54,6 +54,7 @@ describe('Phase 2 Slice 04 relationship-support coverage', () => {
       ok: false,
       status: 415,
       code: 'UNSUPPORTED_MEDIA_TYPE',
+      details: { allowedMediaTypes: ['application/json'] },
     });
   });
 

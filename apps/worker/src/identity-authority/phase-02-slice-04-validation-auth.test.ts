@@ -262,7 +262,13 @@ describe('Phase 2 Slice 04 strict validation boundaries', () => {
     const response = await app.fetch(requestFor(testCase), bindings);
 
     await expectApiError(response, 400, 'INVALID_REQUEST');
-    expect(auth.resolveSession).not.toHaveBeenCalled();
+    // BE00: the session is verified (step 4) before strict validation (step 6)
+    // and the idempotency headers (step 8).
+    // ORG-02 reads with an optional session and resolves none for a request
+    // carrying no credential.
+    expect(auth.resolveSession).toHaveBeenCalledTimes(
+      testCase.criterion.includes('ORG-02') ? 0 : 1,
+    );
   });
 });
 

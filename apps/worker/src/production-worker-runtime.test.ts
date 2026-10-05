@@ -31,6 +31,7 @@ const migrationEvent = {
     contentTypeId: '77777777-7777-4777-8777-777777777777',
     schemaVersionId: '88888888-8888-4888-8888-888888888888',
     migrationPlanId: null,
+    localeConfigHash: 'c'.repeat(64),
     activationEvidence: {
       key: 'cms.schema.activate',
       version: '1',
@@ -247,11 +248,17 @@ describe('production Worker runtime', () => {
           'alert.route': 'platform.on_call',
           runbook: 'content-schema-registry',
         }),
-        metrics: {
+        // BE03a also requires the alert-routing counters (cms_queue_*,
+        // cms_migration_blocked_total) beside these three; assert the three
+        // exactly and tolerate only those spec-required additions.
+        metrics: expect.objectContaining({
           'cms.migration.dlq.total': expect.any(Number),
           'cms.migration.requests.total': 1,
           'cms.migration.retries.total': expect.any(Number),
-        },
+          cms_queue_dlq_total: expect.any(Number),
+          cms_queue_retry_total: expect.any(Number),
+          cms_migration_blocked_total: expect.any(Number),
+        }),
       }),
       expect.objectContaining({ samplingClass: 'always' }),
     );

@@ -1,0 +1,123 @@
+---
+import { env } from 'cloudflare:workers';
+import {
+  TemplateDesignerContextSchema,
+  type TemplateDesignerContext,
+} from '@wejammin/contracts';
+
+import CmsTemplateDesigner from '../../../../components/cms-composition/CmsTemplateDesigner';
+import '../../../../components/cms-composition/cms-template-designer.css';
+import { readCmsTemplateContext } from '../../../../server/cms-composition-platform-context';
+import { cmsEditorialCsrfCookie } from '../../../../server/cms-editorial-platform-shared';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+const selector = await readCmsTemplateContext(Astro.request, env.PLATFORM_API);
+if (selector.status === 401) {
+  return Astro.redirect(
+    '/auth/sign-in?returnTo=%2Fapp%2Fcms-content-modeling%2Ftemplates%2Fnew',
+    303,
+  );
+}
+
+let context: TemplateDesignerContext | null = null;
+if (selector.ok) {
+  try {
+    const parsed = TemplateDesignerContextSchema.safeParse(
+      await selector.json(),
+    );
+    if (parsed.success) context = parsed.data;
+  } catch {
+    // The protected projection is unavailable; never fall back to guessed choices.
+  }
+}
+if (context === null) {
+  Astro.response.status = selector.ok ? 502 : selector.status;
+  const retryAfter = selector.headers.get('retry-after');
+  if (
+    (selector.status === 429 ||
+      selector.status === 503 ||
+      selector.status === 504) &&
+    retryAfter !== null &&
+    /^[1-9]\d{0,4}$/u.test(retryAfter)
+  )
+    Astro.response.headers.set('Retry-After', retryAfter);
+}
+const csrfToken = cmsEditorialCsrfCookie(Astro.request) ?? '';
+const unavailableCopy =
+  selector.status === 403
+    ? 'Template designer access is required for the current acting context.'
+    : selector.status === 429
+      ? 'Template choices are temporarily rate-limited. Wait and reload.'
+      : 'Template choices are unavailable. Reload when the service is ready.';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Define an authorized private CMS template draft."
+    />
+    <title>Define template | WeJammin</title>
+  </head>
+  <body class="cms-template-page">
+    <nav aria-label="Skip navigation">
+      <a class="cms-template-skip" href="#cms-template-main"
+        >Skip to main content</a
+      >
+    </nav>
+    <header class="cms-template-header" aria-label="Application navigation">
+      <a href="/">WeJammin</a>
+      <nav aria-label="Primary navigation">
+        <a href="/app/cms-content-modeling">Content modeling</a>
+        <a href="/system/degraded">System status</a>
+      </nav>
+    </header>
+    <main id="cms-template-main" tabindex="-1">
+      <header class="cms-template-page-heading">
+        <p>Authenticated workspace · CMS composition</p>
+        <h1 id="page-title" tabindex="-1">Template designer</h1>
+        <p>
+          Define a private, versioned template using authorized registry
+          choices.
+        </p>
+      </header>
+      {
+        context === null ? (
+          <section
+            aria-labelledby="cms-template-unavailable-title"
+            role="status"
+          >
+            <h2 id="cms-template-unavailable-title">Designer unavailable</h2>
+            <p>{unavailableCopy}</p>
+            <a href="/app/cms-content-modeling/templates/new">
+              Reload template choices
+            </a>
+          </section>
+        ) : null
+      }
+      {
+        context !== null ? (
+          <CmsTemplateDesigner
+            context={context}
+            csrfToken={csrfToken}
+            client:load
+          />
+        ) : null
+      }
+    </main>
+    <script src="../../../../lib/route-heading-focus.ts"></script>
+    <script src="../../../../lib/auth-scope-sync.ts"></script>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 
 import { createProductionWorkerApp, type WorkerBindings } from '../index';
+import { COMPLETION_BROWSER_HEADERS } from './upload-intent-completion.test-support';
 import type { UploadCompletionRouteDependencies } from './upload-intent-completion';
 
 const INTENT_ID = '44444444-4444-4444-8444-444444444444';
@@ -27,6 +28,7 @@ it('keeps the production upload-completion provider registry empty', async () =>
           mediaType: 'audio/mpeg',
         }),
         headers: {
+          ...COMPLETION_BROWSER_HEADERS,
           'content-type': 'application/json',
           'idempotency-key': 'complete-key-1',
           'if-match': '"7"',
@@ -79,6 +81,7 @@ it('uses only an explicitly injected completion boundary', async () => {
           mediaType: 'audio/mpeg',
         }),
         headers: {
+          ...COMPLETION_BROWSER_HEADERS,
           'content-type': 'application/json',
           'idempotency-key': 'complete-key-2',
           'if-match': '"7"',

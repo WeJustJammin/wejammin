@@ -1,0 +1,425 @@
+import { z } from 'zod';
+
+import { TemplateCompatibilityProjectionSchema } from '../cms-composition/template-compatibility.ts';
+import { JobStateSchema } from '../job-status.ts';
+import {
+  CmsCapabilityKeySchema,
+  CmsHashSchema,
+  CmsInstantSchema,
+  CmsUuidSchema,
+  CmsVersionSchema,
+} from './primitives.ts';
+import {
+  CmsDryRunClassificationSchema,
+  CmsSchemaDryRunFailureCodeSchema,
+  CmsSchemaDryRunResultSchema,
+  CmsSchemaDryRunStateSchema,
+  CmsSchemaReviewAssignmentActionSchema,
+  CmsSchemaReviewAssignmentStateSchema,
+  CmsSchemaReviewDecisionSchema,
+  CmsSchemaReviewNextActionSchema,
+  CmsSchemaReviewRiskClassSchema,
+  CmsSchemaReviewStateSchema,
+} from './models.ts';
+import { SchemaReviewAssignmentSummarySchema } from './resources-review-assignments.ts';
+import { resourceMetaShape } from './resources-meta.ts';
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const NullableCountSchema = z.number().int().nonnegative().nullable();
+
+export const SchemaDryRunResourceSchema = z
+  .strictObject({
+    ...resourceMetaShape,
+    resourceKind: z.literal('schema_dry_run'),
+    state: CmsSchemaDryRunStateSchema,
+    contentTypeVersionId: CmsUuidSchema,
+    classification: CmsDryRunClassificationSchema,
+    attemptId: CmsUuidSchema,
+    jobId: CmsUuidSchema,
+    migrationPlanId: CmsUuidSchema,
+    compilerVersion: z.string().min(1).max(32),
+    transformKey: z
+      .string()
+      .regex(/^[a-z][a-z0-9._-]{0,127}$/u)
+      .nullable(),
+    transformVersion: CmsVersionSchema.nullable(),
+    result: CmsSchemaDryRunResultSchema.nullable(),
+    failureCode: CmsSchemaDryRunFailureCodeSchema.nullable(),
+    sourceCount: NullableCountSchema,
+    targetCount: NullableCountSchema,
+    rowErrorCount: NullableCountSchema,
+    sourceHash: CmsHashSchema.nullable(),
+    targetHash: CmsHashSchema.nullable(),
+    reportHash: CmsHashSchema.nullable(),
+  })
+  .superRefine((value, context) => {
+    const sealed = value.state === 'completed';
+    const sealedFields = [
+      value.result,
+      value.sourceCount,
+      value.targetCount,
+      value.rowErrorCount,
+      value.sourceHash,
+      value.targetHash,
+      value.reportHash,
+    ];
+    if (sealed && sealedFields.some((field) => field === null))
+      context.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'a completed dry-run must expose sealed report evidence',
+      });
+    if (!sealed && sealedFields.some((field) => field !== null))
+      context.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'an unsealed dry-run cannot carry final report evidence',
+      });
+    if (sealed && value.result === 'passed' && value.rowErrorCount !== 0)
+      context.addIssue({
+        code: 'custom',
+        path: ['rowErrorCount'],
+        message: 'a passed dry-run requires zero row errors',
+      });
+    if (sealed && value.result === 'failed' && (value.rowErrorCount ?? 0) === 0)
+      context.addIssue({
+        code: 'custom',
+        path: ['rowErrorCount'],
+        message: 'a sealed failing scan must carry the actual scan errors',
+      });
+    if (value.state === 'failed' && value.failureCode === null)
+      context.addIssue({
+        code: 'custom',
+        path: ['failureCode'],
+        message: 'an unsealed failed dry-run requires a safe failure code',
+      });
+    if (value.state !== 'failed' && value.failureCode !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['failureCode'],
+        message: 'only a failed dry-run carries a failure code',
+      });
+  })
+  .readonly();
+
+export const SchemaReviewFrozenEvidenceSchema = z
+  .strictObject({
+    contentTypeVersionId: CmsUuidSchema,
+    contentTypeVersionNo: CmsVersionSchema,
+    definitionHash: CmsHashSchema,
+    localeConfigHash: CmsHashSchema,
+    schemaArtifact: z
+      .strictObject({
+        id: CmsUuidSchema,
+        state: z.literal('compiled'),
+        compilerVersion: z.string().min(1).max(32),
+        zodContractRef: z.string().min(1).max(256),
+        artifactHash: CmsHashSchema,
+      })
+      .readonly(),
+    dependencyManifestHash: CmsHashSchema,
+    dryRun: z
+      .strictObject({
+        id: CmsUuidSchema,
+        state: CmsSchemaDryRunStateSchema,
+        result: CmsSchemaDryRunResultSchema.nullable(),
+        reportHash: CmsHashSchema.nullable(),
+      })
+      .readonly(),
+  })
+  .readonly();
+
+export const SchemaReviewDecisionSummarySchema = z
+  .strictObject({
+    id: CmsUuidSchema,
+    decision: CmsSchemaReviewDecisionSchema,
+    capability: CmsCapabilityKeySchema,
+    decidedAt: CmsInstantSchema,
+  })
+  .readonly();
+
+export const SchemaReviewResourceSchema = z
+  .strictObject({
+    ...resourceMetaShape,
+    resourceKind: z.literal('schema_review'),
+    state: CmsSchemaReviewStateSchema,
+    contentTypeId: CmsUuidSchema,
+    contentTypeVersionId: CmsUuidSchema,
+    contentTypeVersionNo: CmsVersionSchema,
+    riskClass: CmsSchemaReviewRiskClassSchema,
+    requiredDecisionCount: z.number().int().min(1).max(8),
+    requiredCapabilities: z
+      .array(CmsCapabilityKeySchema)
+      .min(1)
+      .max(16)
+      .readonly(),
+    distinctApprovalCount: z.number().int().nonnegative(),
+    recordedDecisionCount: z.number().int().nonnegative(),
+    frozenEvidence: SchemaReviewFrozenEvidenceSchema,
+    dryRunId: CmsUuidSchema,
+    policyKey: z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/u),
+    policyVersion: CmsVersionSchema,
+    policyHash: CmsHashSchema,
+    approvalEvidenceHash: CmsHashSchema.nullable(),
+    submittedAt: CmsInstantSchema,
+    decidedAt: CmsInstantSchema.nullable(),
+    decisions: z.array(SchemaReviewDecisionSummarySchema).max(8).readonly(),
+    /** Owner-only safe summaries; non-owners always receive an empty array. */
+    assignments: z
+      .array(SchemaReviewAssignmentSummarySchema)
+      .max(8)
+      .default([])
+      .readonly(),
+    permittedNextActions: z
+      .array(CmsSchemaReviewNextActionSchema)
+      .max(6)
+      .readonly(),
+  })
+  .superRefine((value, context) => {
+    const approves = value.decisions.filter(
+      (decision) => decision.decision === 'approve',
+    ).length;
+    const decisionIds = new Set(value.decisions.map((decision) => decision.id));
+    const frozen = value.frozenEvidence;
+    if (value.contentTypeVersionId !== frozen.contentTypeVersionId)
+      context.addIssue({
+        code: 'custom',
+        path: ['frozenEvidence', 'contentTypeVersionId'],
+        message: 'frozen_evidence_must_name_the_review_candidate_version',
+      });
+    if (value.dryRunId !== frozen.dryRun.id)
+      context.addIssue({
+        code: 'custom',
+        path: ['frozenEvidence', 'dryRun', 'id'],
+        message: 'frozen_dry_run_must_be_the_review_dry_run',
+      });
+    if (
+      frozen.dryRun.state !== 'completed' ||
+      frozen.dryRun.result !== 'passed' ||
+      frozen.dryRun.reportHash === null
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['frozenEvidence', 'dryRun'],
+        message: 'frozen_dry_run_must_be_completed_and_passed_with_report_hash',
+      });
+    if (decisionIds.size !== value.decisions.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['decisions'],
+        message: 'decision references must be unique',
+      });
+    if (value.recordedDecisionCount !== value.decisions.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['recordedDecisionCount'],
+        message: 'recorded decision count must equal the decision references',
+      });
+    if (
+      new Set(value.assignments.map((entry) => entry.assignmentId)).size !==
+        value.assignments.length ||
+      value.assignments.some((entry) => {
+        const span = Date.parse(entry.endsAt) - Date.parse(entry.startsAt);
+        return !(span > 0 && span <= SEVEN_DAYS_MS);
+      })
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['assignments'],
+        message:
+          'assignment ids must be unique and each span at most seven days',
+      });
+    if (value.decisions.length > 8)
+      context.addIssue({
+        code: 'custom',
+        path: ['decisions'],
+        message: 'review_decisions_exceed_bound',
+      });
+    if (value.distinctApprovalCount > approves)
+      context.addIssue({
+        code: 'custom',
+        path: ['distinctApprovalCount'],
+        message:
+          'distinct qualifying approvers cannot exceed recorded approvals',
+      });
+    if (
+      value.state === 'approved' &&
+      value.distinctApprovalCount !== value.requiredDecisionCount
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message:
+          'an approved review requires exactly the policy decision count',
+      });
+    if (
+      value.state === 'approved' &&
+      value.decisions.some((decision) => decision.decision === 'reject')
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'a review with a rejection cannot be approved',
+      });
+    if ((value.state === 'approved') !== (value.approvalEvidenceHash !== null))
+      context.addIssue({
+        code: 'custom',
+        path: ['approvalEvidenceHash'],
+        message:
+          'approval evidence hash exists only when the review is approved',
+      });
+    if ((value.state === 'approved') !== (value.decidedAt !== null))
+      context.addIssue({
+        code: 'custom',
+        path: ['decidedAt'],
+        message: 'decidedAt exists only when the review is approved',
+      });
+  })
+  .readonly();
+
+export const SchemaReviewDecisionResourceSchema = z
+  .strictObject({
+    ...resourceMetaShape,
+    resourceKind: z.literal('schema_review_decision'),
+    reviewId: CmsUuidSchema,
+    decision: CmsSchemaReviewDecisionSchema,
+    capability: CmsCapabilityKeySchema,
+    decidedAt: CmsInstantSchema,
+  })
+  .readonly();
+
+export const SchemaReviewAssignmentResourceSchema = z
+  .strictObject({
+    ...resourceMetaShape,
+    resourceKind: z.literal('schema_review_assignment'),
+    reviewId: CmsUuidSchema,
+    state: CmsSchemaReviewAssignmentStateSchema,
+    capability: z.literal('cms.schema_review'),
+    actions: z.tuple([
+      z.literal(CmsSchemaReviewAssignmentActionSchema.options[0]),
+      z.literal(CmsSchemaReviewAssignmentActionSchema.options[1]),
+    ]),
+    startsAt: CmsInstantSchema,
+    expiresAt: CmsInstantSchema,
+    reason: z.string().min(1).max(256).nullable(),
+  })
+  .readonly();
+
+export const SchemaActivationPreparationSchema = z
+  .strictObject({
+    dryRunRef: z
+      .strictObject({
+        id: CmsUuidSchema,
+        state: CmsSchemaDryRunStateSchema,
+        result: CmsSchemaDryRunResultSchema.nullable(),
+        jobId: CmsUuidSchema.nullable(),
+        /** Sealed dry-run failure code; non-null only on an unsealed failed run. */
+        failureCode: CmsSchemaDryRunFailureCodeSchema.nullable().optional(),
+        /**
+         * Sealed report evidence (BE03a SchemaDryRunResource members), read by
+         * FE03 only from a completed report. Optional for a bare reference;
+         * once any member is present all six are, and only when completed.
+         */
+        sourceCount: NullableCountSchema.optional(),
+        targetCount: NullableCountSchema.optional(),
+        rowErrorCount: NullableCountSchema.optional(),
+        sourceHash: CmsHashSchema.nullable().optional(),
+        targetHash: CmsHashSchema.nullable().optional(),
+        reportHash: CmsHashSchema.nullable().optional(),
+      })
+      .superRefine((value, context) => {
+        // A result exists only on a sealed (completed) report, so a queued,
+        // running or unsealed failed dry run can never be reported as passed.
+        if (value.result !== null && value.state !== 'completed')
+          context.addIssue({
+            code: 'custom',
+            path: ['result'],
+            message: 'only a completed dry-run carries a result',
+          });
+        if (
+          value.failureCode !== null &&
+          value.failureCode !== undefined &&
+          value.state !== 'failed'
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['failureCode'],
+            message: 'only a failed dry-run carries a failure code',
+          });
+        const evidence = [
+          value.sourceCount,
+          value.targetCount,
+          value.rowErrorCount,
+          value.sourceHash,
+          value.targetHash,
+          value.reportHash,
+        ];
+        const present = evidence.some(
+          (member) => member !== null && member !== undefined,
+        );
+        if (present && value.state !== 'completed')
+          context.addIssue({
+            code: 'custom',
+            path: ['state'],
+            message: 'an unsealed dry-run cannot carry final report evidence',
+          });
+        if (
+          present &&
+          value.state === 'completed' &&
+          evidence.some((member) => member === null || member === undefined)
+        )
+          context.addIssue({
+            code: 'custom',
+            path: ['state'],
+            message: 'a completed dry-run must expose sealed report evidence',
+          });
+        if (present && value.state === 'completed') {
+          if (value.result === 'passed' && value.rowErrorCount !== 0)
+            context.addIssue({
+              code: 'custom',
+              path: ['rowErrorCount'],
+              message: 'a passed dry-run requires zero row errors',
+            });
+          if (value.result === 'failed' && value.rowErrorCount === 0)
+            context.addIssue({
+              code: 'custom',
+              path: ['rowErrorCount'],
+              message:
+                'a sealed failing scan must carry the actual scan errors',
+            });
+        }
+      })
+      .nullable(),
+    jobRef: z
+      .strictObject({
+        id: CmsUuidSchema,
+        state: JobStateSchema,
+      })
+      .nullable(),
+    reviewRef: z
+      .strictObject({
+        id: CmsUuidSchema,
+        state: CmsSchemaReviewStateSchema,
+      })
+      .nullable(),
+    /** Safe resolver projection; the resolver itself is service-only. */
+    templateCompatibility:
+      TemplateCompatibilityProjectionSchema.nullable().optional(),
+    permittedNextActions: z
+      .array(CmsSchemaReviewNextActionSchema)
+      .max(6)
+      .readonly(),
+  })
+  .readonly();
+
+export type SchemaDryRunResource = z.infer<typeof SchemaDryRunResourceSchema>;
+export type SchemaReviewResource = z.infer<typeof SchemaReviewResourceSchema>;
+export type SchemaReviewDecisionResource = z.infer<
+  typeof SchemaReviewDecisionResourceSchema
+>;
+export type SchemaReviewAssignmentResource = z.infer<
+  typeof SchemaReviewAssignmentResourceSchema
+>;
+export type SchemaActivationPreparation = z.infer<
+  typeof SchemaActivationPreparationSchema
+>;

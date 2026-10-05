@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -7,8 +8,8 @@ insert into auth.users(id) values
   ('a7111111-1111-4111-8111-111111111111'),
   ('a7222222-2222-4222-8222-222222222222');
 
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a7111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a7111111-1111-4111-8111-111111111111', true);
 
 select throws_ok(
   $$select platform_private.cfg_actor(jsonb_build_object(

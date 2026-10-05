@@ -45,6 +45,8 @@ begin
       race_principal
     )
   );
+  -- FIXTURE FORGERY: no command registers a release signing principal (the release key registry is operator-provisioned trust
+  -- configuration); this row only lets the lock probe verify a signature, it claims no producer path.
   perform extensions.dblink_exec(
     's09_release_lock_a',
     format(

@@ -46,8 +46,29 @@ export default defineConfig({
   testIgnore: [
     // Protected staging evidence must never run against the local fixture servers.
     '**/*.ac265-hosted.spec.ts',
+    // Vitest-only unit suite colocated under the Playwright testDir; it imports
+    // workspace packages and must run under Vitest, never the browser runner.
+    '**/support/*.test.ts',
+    'phase-02-slice-09-capability-grant-personas-real-route.spec.ts',
     'phase-02-slice-09-content-schema-registry-performance.spec.ts',
     'phase-02-slice-09-content-schema-registry-real-route.spec.ts',
+    'phase-02-slice-09-confirmation-disclosure-real-route.spec.ts',
+    'phase-02-slice-10-revision-history-real-route.spec.ts',
+    'phase-02-slice-12-template-real-route.spec.ts',
+    'phase-02-slice-12-template-uncertain-real-route.spec.ts',
+    'phase-02-slice-12-locale-real-route.spec.ts',
+    'phase-02-slice-09-schema-review-real-route.spec.ts',
+    'phase-02-slice-09-schema-version-real-route.spec.ts',
+    'phase-02-slice-09-capability-grants-real-route.spec.ts',
+    'phase-02-slice-09-mfa-real-route.spec.ts',
+    'phase-02-slice-09-admin-mfa-reset-real-route.spec.ts',
+    'phase-02-slice-09-review-layout-real-route.spec.ts',
+    'phase-02-slice-09-locale-fields-real-route.spec.ts',
+    'phase-02-slice-09-step-up-return-real-route.spec.ts',
+    'phase-02-slice-09-cross-tab-scope-real-route.spec.ts',
+    'phase-02-slice-09-registry-browser-real-route.spec.ts',
+    'phase-02-slice-09-registry-layout-real-route.spec.ts',
+    'phase-02-slice-09-web-vitals-real-route.spec.ts',
   ],
   use: {
     baseURL: webOrigin,

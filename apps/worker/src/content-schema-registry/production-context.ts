@@ -6,6 +6,8 @@ import {
 
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
+import { isFreshProof } from '../authentication/step-up';
+
 import type {
   ContentSchemaRegistryPortInput,
   ContentSchemaRegistryResult,
@@ -15,6 +17,7 @@ import {
   deadlineExceeded,
   invalidResponse,
   isAbortError,
+  isRecord,
   unavailable,
 } from './production-errors';
 import {
@@ -39,6 +42,24 @@ export const correlationFor = (
   return parsed.success ? parsed.data : input.requestId;
 };
 
+/**
+ * Operations whose RPC rechecks the caller's validated acting-context binding
+ * (activation, review submission, decision and assignment, and the owner
+ * capability grant commands and list). The binding id is private: it is
+ * projected into these RPC contexts only, never into any other operation,
+ * response, header, log, or telemetry projection.
+ */
+const PRIVATE_BINDING_OPERATIONS: ReadonlySet<string> = new Set([
+  'CMS-03A-04',
+  'CMS-03A-11',
+  'CMS-03A-12',
+  'CMS-03A-14',
+  'CMS-03A-15',
+  'CMS-03A-16',
+  'CMS-03A-17',
+  'CMS-03A-18',
+]);
+
 export const contextFor = (
   input: ContentSchemaRegistryPortInput,
   contexts: WeakMap<Request, ServerSessionContext>,
@@ -50,18 +71,22 @@ export const contextFor = (
     fromServer?.actingPartyId ?? input.session?.actingPartyId ?? null;
   const sessionId = fromServer?.sessionId;
   const actorPersonId = fromServer?.actorPersonId;
+  const actingContextId =
+    PRIVATE_BINDING_OPERATIONS.has(input.operationId) &&
+    typeof fromServer?.actingContextId === 'string' &&
+    fromServer.actingContextId.length > 0
+      ? fromServer.actingContextId
+      : undefined;
   return {
     ...(userId === undefined ? {} : { authUserId: userId }),
     ...(sessionId === undefined ? {} : { sessionId }),
     ...(actorPersonId === undefined ? {} : { actorPersonId }),
     actingPartyId,
+    ...(actingContextId === undefined ? {} : { actingContextId }),
     ...(fromServer === undefined
       ? { stepUpVerified: input.session?.mfaFresh ?? false }
       : {
-          stepUpVerified:
-            fromServer.stepUpAt !== null &&
-            Number.isFinite(Date.parse(fromServer.stepUpAt)) &&
-            Date.parse(fromServer.stepUpAt) <= now(),
+          stepUpVerified: isFreshProof(fromServer.stepUpAt, now()),
           stepUpAt: fromServer.stepUpAt,
         }),
     ...(input.principal === undefined
@@ -72,12 +97,35 @@ export const contextFor = (
   };
 };
 
+/**
+ * BE03a's FieldSchemaChangeRequest is flat on the wire, but cms_add_field_definition
+ * takes the field definition as one `field` member beside `migrationPlanId` (its
+ * exact-key check refuses the flat members). Own keys are moved, never rebuilt, so
+ * the missing/null distinction of `defaultValue` survives: an absent key stays
+ * absent and an explicit JSON null stays an explicit null.
+ */
+const requestBodyFor = (
+  input: ContentSchemaRegistryPortInput,
+): Readonly<Record<string, unknown>> => {
+  const body: unknown = input.body;
+  if (input.operationId !== 'CMS-03A-02' || !isRecord(body))
+    return isRecord(body) ? body : {};
+  // `context` is server-authoritative (contextFor sets it), so a caller-supplied
+  // member of that name is never forwarded, nested or not.
+  const field = Object.fromEntries(
+    Object.entries(body).filter(
+      ([key]) => key !== 'migrationPlanId' && key !== 'context',
+    ),
+  );
+  return { field, migrationPlanId: body.migrationPlanId };
+};
+
 export const rpcBodyFor = (
   input: ContentSchemaRegistryPortInput,
   contexts: WeakMap<Request, ServerSessionContext>,
   now: () => number,
 ): Readonly<Record<string, unknown>> => ({
-  ...(input.body ?? {}),
+  ...requestBodyFor(input),
   ...(input.query ?? {}),
   ...(input.path ?? {}),
   ...(input.idempotencyKey === undefined

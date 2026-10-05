@@ -1,4 +1,14 @@
-import type { ContentSchemaRegistryMutationResult } from './content-schema-registry-runtime';
+import { CAPABILITY_GATE_SURFACES } from '../infrastructure/capability-gate-surfaces';
+import type {
+  ContentSchemaRegistryLocaleIssue,
+  ContentSchemaRegistryMutationResult,
+} from './content-schema-registry-runtime';
+import {
+  issueControlTarget,
+  localeControlId,
+  pathFromPointer,
+} from './content-schema-registry-locale-config';
+import { templateFieldId } from './content-schema-registry-template-binding';
 import {
   announce,
   clearDynamicFeedback,
@@ -6,6 +16,11 @@ import {
   sameOriginLocation,
   setFormBusy,
 } from './content-schema-registry-runtime-dom-feedback';
+import {
+  localVersion,
+  reapplyTarget,
+  rebaseForm,
+} from './content-schema-registry-runtime-dom-reapply';
 
 const fieldNameFromPointer = (pointer: string): string | null => {
   const name = pointer.split('/').filter(Boolean).at(-1);
@@ -14,9 +29,56 @@ const fieldNameFromPointer = (pointer: string): string | null => {
     : name;
 };
 
+/** DOM id of the control that owns an issue pointer (template, else locale). */
+const issueControlId = (
+  formId: string,
+  path: readonly (string | number)[],
+): string => {
+  if (path[0] === 'defaultTemplateVersionId')
+    return templateFieldId(formId, 'defaultTemplateVersionId');
+  if (path[0] === 'templateBindings')
+    return templateFieldId(formId, 'templateBindings');
+  return localeControlId(formId, issueControlTarget(path));
+};
+
+const appendLocaleIssues = (
+  form: HTMLFormElement,
+  list: HTMLElement,
+  issues: readonly ContentSchemaRegistryLocaleIssue[],
+  summaryId: string,
+): void => {
+  for (const issue of issues) {
+    const path = pathFromPointer(issue.pointer);
+    const id = issueControlId(form.id, path);
+    const element = form.ownerDocument.getElementById(id);
+    const item = form.ownerDocument.createElement('li');
+    const text = `${path.join(' / ')}: ${issue.message}`;
+    if (element !== null && !id.endsWith('-locale-summary')) {
+      element.setAttribute('aria-invalid', 'true');
+      const describedBy = new Set(
+        (element.getAttribute('aria-describedby') ?? '')
+          .split(' ')
+          .filter(Boolean),
+      );
+      describedBy.add(summaryId);
+      element.setAttribute('aria-describedby', [...describedBy].join(' '));
+      const link = form.ownerDocument.createElement('a');
+      link.href = `#${id}`;
+      link.textContent = text;
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        element.focus();
+      });
+      item.appendChild(link);
+    } else item.textContent = text;
+    list.appendChild(item);
+  }
+};
+
 export const renderValidationSummary = (
   form: HTMLFormElement,
   pointers: readonly string[],
+  localeIssues: readonly ContentSchemaRegistryLocaleIssue[] = [],
 ): HTMLElement => {
   const summary = form.ownerDocument.createElement('section');
   summary.id = `${form.id}-validation-summary`;
@@ -31,7 +93,9 @@ export const renderValidationSummary = (
   heading.textContent = 'Review the highlighted schema fields';
   summary.appendChild(heading);
   const list = form.ownerDocument.createElement('ul');
+  const localePointers = new Set(localeIssues.map((issue) => issue.pointer));
   const names = pointers
+    .filter((pointer) => !localePointers.has(pointer))
     .map(fieldNameFromPointer)
     .filter((name): name is string => name !== null);
   for (const name of names) {
@@ -59,7 +123,8 @@ export const renderValidationSummary = (
     } else item.textContent = `Review ${name}`;
     list.appendChild(item);
   }
-  if (names.length === 0) {
+  appendLocaleIssues(form, list, localeIssues, summary.id);
+  if (names.length === 0 && localeIssues.length === 0) {
     const item = form.ownerDocument.createElement('li');
     item.textContent = 'Review the submitted schema values.';
     list.appendChild(item);
@@ -70,36 +135,43 @@ export const renderValidationSummary = (
 };
 
 export const renderCapabilityGate = (form: HTMLFormElement): HTMLElement => {
+  const profile = CAPABILITY_GATE_SURFACES['content-schema-registry'];
   const gate = form.ownerDocument.createElement('section');
   gate.dataset.cmsCapabilityGate = 'true';
-  gate.className = 'content-schema-registry-capability-gate';
+  gate.className = profile.className;
   gate.setAttribute('role', 'status');
   gate.setAttribute('aria-live', 'polite');
   const heading = form.ownerDocument.createElement('h3');
   heading.tabIndex = -1;
-  heading.textContent = 'Schema changes unavailable';
+  heading.textContent = profile.disabledHeading;
   const copy = form.ownerDocument.createElement('p');
-  copy.textContent = 'A server capability prerequisite is not satisfied.';
+  copy.textContent = profile.disabledCopy;
   const reason = form.ownerDocument.createElement('p');
-  reason.textContent = 'Reason: FORBIDDEN';
+  reason.textContent = `${profile.reasonLabel} FORBIDDEN`;
   gate.appendChild(heading);
   gate.appendChild(copy);
   gate.appendChild(reason);
+  // FE03: a refused mutation names its recovery, which is a canonical re-read
+  // of the same protected page (never a broader disclosure).
+  const recovery = sameOriginLocation(form, form.action);
+  if (recovery !== null) {
+    const link = form.ownerDocument.createElement('a');
+    link.href = recovery;
+    link.textContent = 'Review access';
+    gate.appendChild(link);
+  }
   form.insertBefore(gate, form.firstChild);
   return gate;
 };
 
-const localVersion = (form: HTMLFormElement): string =>
-  (
-    form.elements.namedItem('if-match') as HTMLInputElement | null
-  )?.value.replace(/^"|"$/gu, '') || 'unknown';
-
 export const renderConflict = (
   form: HTMLFormElement,
-  result: ContentSchemaRegistryMutationResult,
+  result: Pick<ContentSchemaRegistryMutationResult, 'serverVersion'>,
   windowObject: Window,
   navigate: (target: string) => void = (target) =>
     windowObject.location.assign(target),
+  /** The version the preserved draft was made at, when the form's own differs. */
+  draftVersion?: string,
 ): HTMLElement => {
   const conflict = form.ownerDocument.createElement('section');
   conflict.id = `${form.id}-conflict`;
@@ -110,10 +182,18 @@ export const renderConflict = (
   const heading = form.ownerDocument.createElement('h3');
   heading.id = `${form.id}-conflict-heading`;
   heading.tabIndex = -1;
-  heading.textContent = 'Review the current registry version';
+  const icon = form.ownerDocument.createElement('span');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '⚠';
+  heading.appendChild(icon);
+  heading.appendChild(
+    form.ownerDocument.createTextNode(' Review the current registry version'),
+  );
+  const localeForm = form.querySelector('[data-locale-fields]') !== null;
   const copy = form.ownerDocument.createElement('p');
-  copy.textContent =
-    'No registry draft was overwritten. Review before reapplying any retained input.';
+  copy.textContent = localeForm
+    ? 'This version changed while you were editing. Review the current version, then reapply your languages.'
+    : 'No registry draft was overwritten. Review before reapplying any retained input.';
   const versions = form.ownerDocument.createElement('p');
   versions.appendChild(form.ownerDocument.createTextNode('Server version: '));
   const server = form.ownerDocument.createElement('code');
@@ -121,7 +201,7 @@ export const renderConflict = (
   versions.appendChild(server);
   versions.appendChild(form.ownerDocument.createTextNode('. Local version: '));
   const local = form.ownerDocument.createElement('code');
-  local.textContent = localVersion(form);
+  local.textContent = draftVersion ?? localVersion(form);
   versions.appendChild(local);
   versions.appendChild(form.ownerDocument.createTextNode('.'));
   conflict.appendChild(heading);
@@ -131,23 +211,42 @@ export const renderConflict = (
   actions.className = 'content-schema-registry-actions';
   const review = form.ownerDocument.createElement('button');
   review.type = 'button';
-  review.textContent = 'Review current version';
+  review.textContent = localeForm ? 'Review changes' : 'Review current version';
   review.addEventListener('click', () => {
     const target = sameOriginLocation(form, form.action);
     if (target !== null) navigate(target);
   });
   const reapply = form.ownerDocument.createElement('button');
   reapply.type = 'button';
-  reapply.textContent = 'Reapply retained input';
+  reapply.textContent = localeForm ? 'Reapply' : 'Reapply retained input';
+  // FE03 "Reapply when permitted": a locale draft is reapplied only over a
+  // typed version drift the server disclosed (a current version that differs
+  // from the one the form holds). Any other conflict would only repeat.
+  const reapplyVersion =
+    localeForm && result.serverVersion !== null && reapplyTarget(form, result)
+      ? result.serverVersion
+      : null;
+  if (localeForm && reapplyVersion === null) {
+    reapply.disabled = true;
+    reapply.setAttribute('aria-disabled', 'true');
+    reapply.setAttribute('aria-describedby', `${form.id}-reapply-reason`);
+    const reason = form.ownerDocument.createElement('p');
+    reason.id = `${form.id}-reapply-reason`;
+    reason.textContent =
+      'Reapply is not available because the server did not report a newer version. Review changes first.';
+    conflict.appendChild(reason);
+  }
   reapply.addEventListener('click', () => {
+    if (localeForm && reapplyVersion === null) return;
     clearDynamicFeedback(form);
     setFormBusy(form, false);
+    if (reapplyVersion !== null) rebaseForm(form, reapplyVersion);
     form.requestSubmit();
   });
   const discard = form.ownerDocument.createElement('button');
   discard.type = 'button';
   discard.className = 'secondary-action';
-  discard.textContent = 'Discard retained input';
+  discard.textContent = localeForm ? 'Discard' : 'Discard retained input';
   discard.addEventListener('click', () => {
     form.reset();
     clearDynamicFeedback(form);
@@ -172,7 +271,7 @@ export const renderRetryAction = (
   retry.dataset.cmsCommandRetry = 'true';
   retry.textContent = 'Retry schema change';
   retry.addEventListener('click', () => {
-    setFormBusy(form, true);
+    setFormBusy(form, true, true);
     windowObject.setTimeout(() => form.requestSubmit(), 0);
   });
   form.appendChild(retry);

@@ -86,6 +86,24 @@ interface PlatformConfigurationAdminRouteProps {
 - Renders useful semantic HTML before hydration. React is used only for bounded filtering, commands, realtime invalidation, media controls, or rich editing.
 - **A11y inline contract**: skip link targets `<main tabindex="-1">`; one `h1`; landmarks have unique names; route changes focus the `h1`; title includes record and state; 200% zoom and 320 CSS px reflow preserve reading/action order.
 
+### Capability projection for settings and admin affordances
+
+- Settings and admin affordances derive only from the server capability snapshot
+  (BE05b `CFG-05B-07`, `GET /api/v1/admin/capability-snapshot`): the Astro
+  server reads it through the private Worker service binding with the verified
+  session cookies, and passes the resulting `capabilitySnapshot` to the route.
+  A browser never calls it. Any failure yields an empty snapshot and every
+  affordance falls to `read-only`.
+- Capability is never read from a response header, a role label, a URL
+  parameter or a client alias list.
+- Admin tabs render from `admin.*` keys in the snapshot (for example
+  `admin.inbox.read`, `admin.capability.grant`, `admin.audit.read`). The
+  settings editor affordance is enabled when the effective-value response's
+  `ownerCapability` (BE05a `CFG-05A-02`) is in the snapshot. Approve, release and
+  rollback are enabled by `settings.approve`, `settings.release` and
+  `settings.rollback`. These only select what renders; the Worker and database
+  enforce every command, so a stale or forged affordance returns 403.
+
 ### `SettingsFlagsRuntimeWorkbench` (bounded React island)
 
 **BE owner**: `05a-settings-flags-runtime.md`
@@ -152,6 +170,39 @@ interface AdminWorkspaceOperationsRecord {
 - **Responsive contract**: desktop shows list and detail; tablet preserves list with an inline inspector; mobile uses list then detail stack with a persistent Back action and no hidden command rail.
 - **Error boundary**: isolates this domain section, sends scrubbed error plus request ID to provider-native diagnostics, preserves neighboring server HTML, and exposes Retry. A render error is never empty data.
 
+#### `AdminMfaFactorResetForm` (CFG-05B-06, DEC-111 recovery)
+
+**BE owner**: `05b-admin-workspace-operations.md` (`CFG-05B-06`, `POST /api/v1/admin/identity/mfa-factor-resets`); identity state change owned by `01a-auth-account-linking.md`.
+
+```ts
+interface AdminMfaFactorResetFormProps {
+  variant: 'adminStepUp' | 'forbiddenHidden' | 'disabledPrerequisite';
+  stepUp: { fresh: boolean; freshUntil: string | null }; // display-only; the server decides
+  onCanonicalRefetch: (reason: 'mutation') => Promise<void>;
+}
+
+interface AdminMfaFactorResetFormValues {
+  targetPersonId: string; // UUID, island memory only
+  reason: string; // 1..512 after trim
+}
+
+type AdminMfaFactorResetResult = {
+  resetId: string;
+  targetPersonId: string;
+  state: 'completed' | 'reconciling';
+  removedFactorCount: number; // 0..10
+  mfaVersion: string;
+};
+```
+
+- **Rendering and access.** The form is a tab (`tab=mfa-reset`) of the admin workbench, rendered only when the server projection says the actor holds `admin.identity.mfa_reset` (variant `adminStepUp`). Every other actor sees no navigation entry and a direct URL gets the disclosure-safe 404 or `<CapabilityGate>` the BE returns. A held capability with no fresh step-up renders `disabledPrerequisite` with `Verify your identity to reset a person's two-step verification.`
+- **Fields.** `targetPersonId` is a native text input with a persistent label, UUID validation on blur and submit, helper copy `Enter the person's ID exactly as it appears in the admin directory.`, and no autocomplete; no person lookup read operation exists, so none is invented. `reason` is a native textarea, required, 1..512 characters after trim, with a live character count. Unknown keys are never serialized, and the operator, organization, capability and step-up time are never sent.
+- **Confirmation.** A named confirmation step states the consequence in text: `Remove every two-step verification factor for this person. They will need to set up a new authenticator before they can approve protected actions. This cannot be undone.` The commit button reads `Reset factors` and shows a stable pending label (`Resetting`) with duplicate activation ignored; the request carries a per-instance `Idempotency-Key`.
+- **Success.** `200` (`completed`) announces `Two-step verification was reset for this person.`; `202` (`reconciling`) announces `The reset was recorded and is finishing. Check back shortly.` and never reports `completed` before the BE does. The result heading receives focus; the form clears `targetPersonId` and `reason`.
+- **Errors (exact copy; no more than the status is disclosed).** 401 `STEP_UP_REQUIRED`: navigate to `/step-up?returnTo=<current relative path>` using the typed `allowedMethods`, persist nothing (the person ID is never stored), and on return the form opens empty with `Your entries were not saved.` 401 `UNAUTHENTICATED`: safe sign-in redirect. 403: `You do not have permission to reset two-step verification.` 404: `That person could not be found.` 409 `MFA_RESET_IN_PROGRESS`: `A reset for this person is already finishing.` 409 `IDEMPOTENCY_CONFLICT`: refresh and re-enter. 422 `MFA_RESET_INVALID`: `You cannot reset your own two-step verification. Ask another administrator.` plus field errors from the schema. 429: inline countdown from `Retry-After`. 502/503/504 and `IDENTITY_UNAVAILABLE`: degraded with the request ID; an unknown outcome renders pending and is never guessed as reset.
+- **Sole administrator.** When the operator is the only administrator and has lost their own factor, no UI path exists. The form's help panel links the runbook `docs/runbooks/platform/sole-admin-mfa-lockout.md` by name as plain text, without exposing any operational detail.
+- **Accessibility and responsive.** Persistent labels, linked error summary focused on first invalid field, `aria-describedby` for helper and count, confirmation heading focus with Escape cancelling before commit, 44 by 44 px targets, single-column stack at every width, no information conveyed by color alone.
+
 ### `PortabilityQualityLifecycleWorkbench` (bounded React island)
 
 **BE owner**: `05c-portability-quality-lifecycle.md`
@@ -184,6 +235,149 @@ interface PortabilityQualityLifecycleRecord {
 - **A11y inline contract**: `<Workbench>` list/detail regions are named; selection is URL-addressable; rows use native links/buttons; Arrow keys are added only inside a declared composite; focus never moves on Realtime refetch; status changes use a polite atomic live region.
 - **Responsive contract**: desktop shows list and detail; tablet preserves list with an inline inspector; mobile uses list then detail stack with a persistent Back action and no hidden command rail.
 - **Error boundary**: isolates this domain section, sends scrubbed error plus request ID to provider-native diagnostics, preserves neighboring server HTML, and exposes Retry. A render error is never empty data.
+
+### `PortabilityQualityLifecycleWorkbench` views (Slice 16)
+
+The island renders five views selected by the URL `tab` query value `import`, `export`, `restore`, `quality` or `lifecycle`. Each view is a lazy module (dynamic import on selection) so the hydrated entry stays within budget; each view module is a lazy chunk of at most 80 KB gzip under the app/admin budget. All BE contracts are the generated Zod-inferred types of `05c-portability-quality-lifecycle.md` (`Cfg05c01PortabilityActionRequest`, `Cfg05c01PortabilityActionResponse`, `Cfg05c03PortabilityRecordPage`, `Cfg05c04PortabilityRecordDetail`, `Cfg05c02QualityLifecycleActionRequest`, `Cfg05c02QualityLifecycleActionResponse`, `Cfg05c06QualityLifecycleRecordPage`, `Cfg05c07QualityLifecycleRecordDetail`). The Supabase Free plan has no point-in-time recovery: the restore view states this in text and never offers promotion.
+
+```ts
+type PortabilityTab = 'import' | 'export' | 'restore' | 'quality' | 'lifecycle';
+type PortabilityRecordKind = 'import' | 'export' | 'restore';
+
+interface PortabilityRecordListProps {
+  kind: PortabilityRecordKind;
+  page: AsyncState<Cfg05c03PortabilityRecordPage>;
+  stateFilter: PortabilityState | null;
+  onFilter: (state: PortabilityState | null) => void;
+  onSelect: (kind: PortabilityRecordKind, recordId: string) => void;
+  access: AccessVariant;
+  children?: never;
+}
+
+interface ImportSourceUploadProps {
+  maxBytes: 52428800;
+  sourceFormat: Cfg05c01SourceFormat;
+  onReady: (object: { objectId: string; sha256: string; byteSize: number }) => void;
+  access: AccessVariant;
+  children?: never;
+}
+
+interface ImportRequestFormProps {
+  object: { objectId: string; sha256: string; byteSize: number } | null;
+  mappers: ReadonlyArray<{ mapperKey: string; mappingVersion: string; formats: readonly Cfg05c01SourceFormat[]; fields: readonly string[]; protectedData: boolean }>;
+  contentTypeSelectors: AsyncState<ReadonlyArray<{ contentTypeId: string; contentTypeVersionId: string; label: string; locale: string }>>;
+  stepUp: 'fresh' | 'required' | 'not-needed';
+  onSubmit: (request: Cfg05c01ImportAction) => Promise<Cfg05c01PortabilityActionResponse>;
+  access: AccessVariant;
+  children?: never;
+}
+
+interface ImportDryRunReportPanelProps {
+  detail: AsyncState<Cfg05c04PortabilityRecordDetail>;
+  canCommit: boolean;
+  canCancel: boolean;
+  stepUp: 'fresh' | 'required' | 'not-needed';
+  onCommit: (input: { importJobId: string; expectedVersion: string; expectedReportHash: string; reason: string }) => Promise<Cfg05c01PortabilityActionResponse>;
+  onCancel: (input: { importJobId: string; expectedVersion: string; reason: string }) => Promise<Cfg05c01PortabilityActionResponse>;
+  onRowsPage: (cursor: string | null) => void;
+  children?: never;
+}
+
+interface ExportRequestFormProps {
+  resourceFields: Readonly<Record<string, readonly string[]>>;
+  scopeCandidates: AsyncState<ReadonlyArray<{ resourceType: string; resourceId: string; version: string; label: string; protectedData: boolean }>>;
+  maxExpiryDays: 7;
+  stepUp: 'fresh' | 'required' | 'not-needed';
+  onSubmit: (request: Cfg05c01ExportAction) => Promise<Cfg05c01PortabilityActionResponse>;
+  access: AccessVariant;
+  children?: never;
+}
+
+interface ExportArtifactPanelProps {
+  detail: AsyncState<Cfg05c04PortabilityRecordDetail>;
+  canDownload: boolean;
+  canRevoke: boolean;
+  stepUp: 'fresh' | 'required' | 'not-needed';
+  onDownload: (exportArtifactId: string) => Promise<{ status: 'saved' | 'refused'; error: UiError | null }>;
+  onRevoke: (input: { exportArtifactId: string; expectedVersion: string; reason: string }) => Promise<Cfg05c01PortabilityActionResponse>;
+  children?: never;
+}
+
+interface RestoreRequestFormProps {
+  readyArtifacts: AsyncState<ReadonlyArray<{ exportArtifactId: string; manifestHash: string; expiresAt: string; scopeCount: number }>>;
+  targets: ReadonlyArray<{ targetEnvironment: string; label: string; isolated: true }>;
+  stepUp: 'fresh' | 'required' | 'not-needed';
+  onSubmit: (request: Cfg05c01RestoreAction) => Promise<Cfg05c01PortabilityActionResponse>;
+  access: AccessVariant;
+  children?: never;
+}
+
+interface RestoreVerificationPanelProps {
+  detail: AsyncState<Cfg05c04PortabilityRecordDetail>;
+  onRequestAgain: () => void;
+  children?: never;
+}
+
+interface QualityRunFormProps {
+  prefill: { targetType: string; targetId: string; targetVersion: string } | null;
+  checkers: ReadonlyArray<{ checkerKey: string; checkerVersion: string; targetTypes: readonly string[] }>;
+  onSubmit: (request: Cfg05c02QualityAction) => Promise<Cfg05c02QualityLifecycleActionResponse>;
+  access: AccessVariant;
+  children?: never;
+}
+
+interface QualityRunPanelProps {
+  detail: AsyncState<Cfg05c07QualityLifecycleRecordDetail>;
+  severityFilter: 'all' | 'blocking' | 'warning';
+  onFindingsPage: (cursor: string | null) => void;
+  onRerun: () => void;
+  children?: never;
+}
+
+interface LifecycleRequestPanelProps {
+  detail: AsyncState<Cfg05c07QualityLifecycleRecordDetail>;
+  onStoresPage: (cursor: string | null) => void;
+  children?: never;
+}
+```
+
+- **Common contract**: every command component sends one `Idempotency-Key` per user intent (regenerated only after an edit), the current `expectedVersion` where the BE branch has one, and never a client-chosen actor, party, state or hash that the server derives. A `202` response renders the record in its returned state with a polite status message and starts a status poll of CFG-05C-04 every 5,000 ms while the tab is visible, stopping at a terminal state, on navigation away, and waiting out any `Retry-After`; polling never moves focus. A `200` renders the terminal state.
+- **`ImportSourceUpload`**: wraps `<FileUpload>` with BE00 purpose `portability.import`, a `maxBytes` of 52,428,800 shown as “50 MiB”, and allowed media types per selected format (`application/json`, `application/x-ndjson`, `application/vnd.wejammin.cms-bundle+json`; `csv` and `xml` are listed with the disabled reason “No import mapper is registered for this format”). A file over the cap is refused before upload with “This file is larger than the 50 MiB hosted limit. Split it and import the parts.” Verification states (`uploaded`, `verifying`, `ready`, `rejected`, `quarantined`) are text; only `ready` calls `onReady`. Inactivity abort, cancel, and retry follow the shared network contract.
+- **`ImportRequestForm`**: fields are listed in the form table below. Mapper choice filters source formats and shows the registered mapping version read-only; `sourceHash` is read-only from the verified object; `duplicatePolicy` is a radio group whose descriptions are exactly: `reject` “Stop the whole import if any row duplicates a previously imported row”; `quarantine` “Set duplicate and conflicting rows aside and import the rest”; `update_if_version_matches` “Update a previously imported draft only when its version still matches, otherwise set the row aside”; `create_new` “Create a new draft for duplicates and never overwrite”. Submitting creates a dry run, never an import.
+- **`ImportDryRunReportPanel`**: renders `dryRunReport` as three semantic tables (classification counts, impact counts, the sampled `errors` with row index, classification and rule text) plus the paged `rows` table (50 per page, `Previous`/`Next` native buttons, URL `rowsCursor`). The report hash and version appear in `<ProvenanceFact>`. `errorsTruncated` is announced as “Showing the first 50 problems; open the row list for all rows.” **Commit import** opens `<ConfirmationStep>` stating “Creates N drafts and updates M drafts, sets Q rows aside. Nothing is published or activated.” with the counts from the report; it sends `expectedVersion` and `expectedReportHash` from the rendered report. A `409 MANIFEST_CONFLICT` or `VERSION_CONFLICT` shows `<SyncConflict>` with “The dry run changed. Review the new report before committing.” and reloads the detail. Cancel is a separate native button with its own confirmation naming that committed drafts stay.
+- **`ExportRequestForm`**: `scopeCandidates` come from the CFG-05B-02 admin search over the allowlisted entity types and from an accessible paste field accepting one `resourceType resourceId version` triple per line (up to 500 lines, with a per-line error list); selected scope is a `<DataTable>` basket with a remove button per row and a running count out of 500. Field checkboxes come from the shared registry constant and are grouped by resource type. `excludeProtectedEvidence` renders checked and disabled with the text “Protected evidence is never exported.” `expiresAt` is a labelled date-time input that shows the user's timezone and the resolved UTC instant and rejects values in the past or more than 7 days ahead. `maxDownloads` is a select of 1, 2 or 3. `encryptionMode` radios: “Managed key (the platform decrypts for you on download)” and “Your public key (only you can decrypt; the platform cannot)”; the second reveals a labelled textarea for an EC P-256 JWK with a local format check and the hint “Paste the public JWK, never a private key.” A pasted object containing a `d` member is rejected locally and never submitted.
+- **`ExportArtifactPanel`**: shows state, expiry with timezone, downloads used out of the maximum, byte size, encryption mode in words, manifest hash and, when `containsProtected`, “This export includes protected data and needs recent verification.” **Download** is a native button that sends `POST …/downloads` with a fresh `Idempotency-Key`, streams the response into a `Blob`, and saves it through a temporary object URL and a native anchor with the `download` attribute, then revokes the URL. The button is disabled with a visible reason when the state is not `ready`, the artifact is expired or revoked, or `downloadCount` equals `maxDownloads`. A network failure after the claim announces “The download was interrupted and still counts toward the limit.” **Revoke** opens `<ConfirmationStep>` (“Anyone with this export can no longer download it”) and sends `expectedVersion`.
+- **`RestoreRequestForm` and `RestoreVerificationPanel`**: `targets` lists the registered isolated targets (Phase 2: one, labelled “Isolated local restore target (diagnostic)”). Static text above the submit button reads “Supabase Free has no point-in-time recovery. This verification is diagnostic evidence only. It does not enable production recovery and nothing is promoted.” The panel renders the eight results (`schema`, `counts`, `hashes`, `references`, `rls`, `rendering`, `accessibility`, `secretScan`) as a semantic table with `pass`, `fail` or `unknown` as text plus icon, never a single green summary. `requested`, `restoring` and `verifying` show “Waiting for the isolated verifier” with attempt count out of 3; `failed` shows the failure code in words (RESTORE_KEY_UNAVAILABLE “The verifier did not have your private key”, OBJECT_BYTES_UNAVAILABLE “This export carries object references but no object bytes”, MANIFEST_HASH_MISMATCH “The restored data does not match the export”, LEASE_EXHAUSTED “The verifier stopped responding after 3 attempts”, CHECK_FAILED “One or more checks failed”) and offers **Request another verification** which creates a new evidence version. There is no promote control in any state; the panel states “Promotion is not available in this phase.”
+- **`QualityRunForm` and `QualityRunPanel`**: the form is prefilled from the URL when launched from an entry (`targetType`, `targetId`, `targetVersion`); the checker is read-only text showing key and version. The panel header shows state in words (`healthy` “No blocking findings”, `blocked` “Blocking findings found”, `failed` “The check could not finish”, `stale` “Out of date, run again”), blocking and warning counts, checker key and version, run time and the freshness expiry. A `504 UPSTREAM_TIMEOUT` shows the failed run with **Run again**. The panel always states “Automated checks do not replace human review.”
+- **Quality findings table**: a semantic table with caption “Findings for revision N”, columns Severity (text: Blocking or Warning), Rule (catalog title and rule ID in mono), Location and Human review (“Required”). Rows are ordered as returned, 50 per page, with a severity filter that is sent to the server as the `severity` query value. Location text reads “Field” or “Block” plus the pointer in mono; when `targetEntryId` is present it is a native link to the field in the CMS editor, otherwise plain text. A truncated document shows “Showing the first 500 of N findings.” The table never renders author text because the BE never sends any.
+- **`LifecycleRequestPanel`**: shows request type, state, manifest hash, hold conflict (“A legal hold blocks this action”) and the paged store-results table with state, item and residual counts and error code in words. It never states success while any store is not terminal.
+
+**Form field contracts for CFG-13 and CFG-14**
+
+| Form | Field | Control and validation | Error copy |
+|---|---|---|---|
+| Import | `sourceFormat` | Select; csv and xml disabled | “Choose a supported format.” |
+| Import | `mapperKey`, `mappingVersion` | Select of registered mappers; version read-only | “Choose a mapper for this format.” |
+| Import | `objectId`, `provenance.sourceHash` | Read-only from the verified upload | “Upload and verify a file first.” |
+| Import | `provenance.sourceSystem`, `provenance.sourceRunId` | Text, trimmed, 1–128 | “Enter 1 to 128 characters.” |
+| Import | `duplicatePolicy` | Radio group of four | “Choose how duplicates are handled.” |
+| Import | `targetScope` | Mapper-specific selectors; cms.entry needs content type version and locale (BCP 47), settings.value needs scope type, scope and environment | “Choose where imported drafts go.” |
+| Import | `fieldManifest` | Checkboxes from the mapper allowlist, 1–128 | “Select at least one field.” |
+| Import | `reason` | Textarea, trimmed, 1–512 | “Enter a reason of 1 to 512 characters.” |
+| Export | `exportType` | Select of four | “Choose an export type.” |
+| Export | `scopeManifest` | Basket or paste, 1–500 triples, UUID and version format per line | “Line N is not a resource type, UUID and version.” |
+| Export | `fieldManifest` | Checkboxes, 1–128 | “Select at least one field.” |
+| Export | `actorPurpose`, `reason` | Text/textarea, trimmed, 1–512 | “Enter 1 to 512 characters.” |
+| Export | `encryptionMode`, `recipientPublicKey` | Radio; JWK textarea required only for the public-key mode | “Paste an EC P-256 public key.” |
+| Export | `expiresAt` | Date-time with timezone, future and at most 7 days | “Choose a time within the next 7 days.” |
+| Export | `maxDownloads` | Select 1–3 | “Choose 1, 2 or 3 downloads.” |
+| Restore | `sourceArtifactId`, `expectedManifestHash` | Select of ready artifacts; hash read-only | “Choose an export that is ready.” |
+| Restore | `targetEnvironment` | Select of registered isolated targets | “Choose an isolated target.” |
+| Restore | `requestedScope` | Checkbox list defaulting to the whole artifact scope | “Select at least one resource.” |
+| Quality | `targetType`, `targetId`, `targetVersion` | Prefilled or typed; UUID and positive integer | “Enter a revision ID and version.” |
+| Quality | `reason` | Textarea, trimmed, 1–512 | “Enter a reason of 1 to 512 characters.” |
+
+Server errors map as in the error table below; `422 PROTECTED_FIELD` focuses the field manifest group with “One or more selected fields cannot be exported.”, and `422 PORTABILITY_LIMIT_EXCEEDED` shows the stated limit (50 MiB or 500 rows) and the Split action text.
 
 ### Global feedback and command components
 
@@ -244,6 +438,23 @@ interface PortabilityQualityLifecycleRecord {
 | `CFG-12` Inspect audit/diagnostics | Native link/button/form; focus stays until navigation or named result heading | Server-derived actor/context/capability, valid Zod input, required ETag/idempotency | Render authoritative response/version/provenance/next action; announce status | Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry | URL for navigation/filter; scoped draft before commit; server after success |
 | `CFG-13` Import/export/restore | Native link/button/form; focus stays until navigation or named result heading | Server-derived actor/context/capability, valid Zod input, required ETag/idempotency | Render authoritative response/version/provenance/next action; announce status | Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry | URL for navigation/filter; scoped draft before commit; server after success |
 | `CFG-14` Run quality/retention action | Native link/button/form; focus stays until navigation or named result heading | Server-derived actor/context/capability, valid Zod input, required ETag/idempotency | Render authoritative response/version/provenance/next action; announce status | Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry | URL for navigation/filter; scoped draft before commit; server after success |
+| `CFG-05B-06` Reset a person's MFA factors | Native form and named confirmation step on the `mfa-reset` tab; focus stays until the result heading | `admin.identity.mfa_reset` in the server projection, fresh step-up, valid `targetPersonId` UUID and reason 1..512, per-instance `Idempotency-Key`, no `If-Match` | Render `200` or `202` result per `AdminMfaFactorResetForm`; announce the state; clear the form | 401 `STEP_UP_REQUIRED` navigates to `/step-up?returnTo=` with no persisted entries; 403/404/409/422/429/503 render the exact copy in the component; unknown outcome reconciles by the BE reset state, never guessed | None: the person ID and reason live only in island memory |
+
+### Portability, quality and lifecycle action contracts (CFG-13 and CFG-14)
+
+| Interaction | Trigger and focus | Preconditions | Success | Failure and recovery | Persistence |
+|---|---|---|---|---|---|
+| Upload import source | `<FileUpload>` choose or drop; focus stays on the control, then the status heading | Capability `admin.portability.import`; format selected; file at most 50 MiB | BE00 upload intent then verification reaches `ready`; `onReady` fills the form read-only fields | 413/422 refusal copy with the 50 MiB limit; `rejected` or `quarantined` is shown as unusable; abort after 30 s without bytes; retry creates a new intent | Nothing persisted client-side; the server object survives reload through the form's `objectId` URL value |
+| Start import dry run | Submit `ImportRequestForm`; focus to result heading | Ready object, valid form, fresh step-up when the mapper is protected | `202` job in `draft`, then poll to `dry_run`; the report panel opens | 400 summary; 415 “This format has no registered mapper”; 409 hash conflict “The file changed after upload”; 401 `STEP_UP_REQUIRED` opens the step-up page with a safe `returnTo`; 429 countdown; 503 degraded | Form draft kept per tab; job in URL as `recordId` |
+| Review dry-run report | Native links to rows and page controls | Detail read succeeded | Tables render report and row results; no focus move on refetch | 404 disclosure-safe; 503 degraded with Retry | URL `recordId`, `rowsCursor` |
+| Commit import | `Commit import` button then `<ConfirmationStep>`; focus to confirmation heading, then result heading | State `dry_run` or `partial`; `canCommit`; report rendered; fresh step-up for protected data | `202`, state `running`, poll to `completed` or `partial` with counts | 409 `VERSION_CONFLICT` or `MANIFEST_CONFLICT` shows `<SyncConflict>` and reloads the report; 422 or 503 degrade; unknown outcome reconciles by reading the job before any retry | Server job state |
+| Cancel import | `Cancel import` button then confirmation | Non-terminal state; `canCancel` | `200` state `cancelled`; committed drafts remain and are listed | 409 conflict reloads; 404/403 gate | Server job state |
+| Create export | Submit `ExportRequestForm`; focus to result heading | Valid manifests; step-up fresh when any scoped resource is protected | `202` artifact `requested`, poll to `ready` | 422 `PROTECTED_FIELD` and `PORTABILITY_LIMIT_EXCEEDED` copy as above; 400 on expiry; 401 step-up; 429; 503 | Form draft per tab; artifact in URL |
+| Download export | `Download` button; focus stays on the button, result in the live region | State `ready`, unexpired, downloads remain; `canDownload`; fresh step-up when protected | Bytes saved; `downloadCount` refetched | 409 `ARTIFACT_NOT_DOWNLOADABLE` shows the state in words and disables the button; 403 gate; 429 countdown; interrupted transfer announced and counted | None client-side; blob URL revoked after click |
+| Revoke export | `Revoke` button then confirmation | State `requested`, `generating` or `ready`; `canRevoke` | `200` state `revoked` | 409 conflict reloads; 404/403 gate | Server artifact state |
+| Request restore verification | Submit `RestoreRequestForm`; focus to result heading | Ready unexpired artifact, registered target, step-up when protected | `202` verification `requested`, poll through `restoring` and `verifying` to `verified` or `failed` | 400 unknown target; 409 `MANIFEST_CONFLICT` with the artifact state or `VERSION_CONFLICT` “A verification is already open”; 401 step-up; 503 | Server verification; URL `recordId` |
+| Run quality check | Submit `QualityRunForm`; focus to result heading | `admin.quality.run`; exact target version | `200` run in `healthy` or `blocked`; findings table loads | 504 failed run with Run again; 404 hidden target; 403 gate; 429 countdown | Server run; URL `recordId` |
+| Read findings | Page and filter controls | Detail read succeeded | Findings page renders; focus never moves on refetch | 503 degraded with Retry | URL `childCursor`, severity filter |
 
 ### Network and retry contract
 
@@ -275,6 +486,22 @@ interface PortabilityQualityLifecycleRecord {
 
 Named variants: `publicRead`, `entitledRead`, `ownerFull`, `guardianMandate`, `juniorRestricted`, `businessMandate`, `staffCaseScoped`, `adminStepUp`, `forbiddenHidden`, and `disabledPrerequisite`. Role labels never grant authority client-side.
 
+**Portability, quality and lifecycle capability variants**
+
+| Capability held | Import view | Export view | Restore view | Quality view | Lifecycle view | Variant |
+|---|---|---|---|---|---|---|
+| `admin.portability.import` | full forms and commit | not-rendered | not-rendered | not-rendered | not-rendered | `adminStepUp` |
+| `admin.portability.export` | not-rendered | full forms, download, revoke | read-only artifacts list for selection | not-rendered | not-rendered | `adminStepUp` |
+| `admin.portability.restore` | not-rendered | read-only ready artifacts for selection | full form and verification panel | not-rendered | not-rendered | `adminStepUp` |
+| `admin.portability.read` only | read-only report and rows | read-only artifact facts, download disabled with reason | read-only verification | not-rendered | not-rendered | `disabledPrerequisite` |
+| `admin.quality.run` | not-rendered | not-rendered | not-rendered | full form, findings, rerun | not-rendered | `adminStepUp` |
+| `admin.quality.read` only | not-rendered | not-rendered | not-rendered | read-only run and findings, rerun disabled with reason | not-rendered | `disabledPrerequisite` |
+| `admin.privacy.lifecycle` | not-rendered | not-rendered | not-rendered | read-only | full request and store results with MFA | `adminStepUp` |
+| Support purpose grant on one quality or lifecycle record | not-rendered | not-rendered | not-rendered | read-only for that record | read-only for that record | `staffCaseScoped` |
+| No capability or hidden record | not-rendered with disclosure-safe 404 | not-rendered | not-rendered | not-rendered | not-rendered | `forbiddenHidden` |
+
+Tabs render only when the actor holds a capability that reaches them, and a tab never reveals the existence of a record outside the actor's scope. The restore verifier is a service principal with no UI.
+
 ## Responsive Behavior
 
 | Breakpoint | Grid/navigation | Workbench/detail | Forms/actions | Tables/media |
@@ -285,6 +512,7 @@ Named variants: `publicRead`, `entitledRead`, `ownerFull`, `guardianMandate`, `j
 
 - Container queries may switch composition but cannot change semantics, authorization, or consequences.
 - 200% zoom and text-spacing overrides retain content/action order. Hover-only disclosure and pointer-only reordering are prohibited.
+- Portability and quality tables keep every column reachable: on mobile each row is a priority list with the remaining columns in expandable facts, the export basket and findings table never scroll the page horizontally at 320 CSS px, and the download, commit, cancel and revoke buttons keep 44 by 44 px targets.
 
 ## Accessibility Inventory
 
@@ -297,6 +525,11 @@ Named variants: `publicRead`, `entitledRead`, `ownerFull`, `guardianMandate`, `j
 | Tables/filters | 1.3.1, 1.4.10, 2.1.1, 2.5.8 | Header buttons; Apply/Reset; 24 CSS px minimum, 44 preferred | Caption, headers, sort, count, active-filter summary | `05-platform-configuration-admin.md` User Flows/responsive |
 | High-risk confirmation | 2.1.2, 2.4.3, 3.3.4, 4.1.2 | Inline first; dialog heading focus, Tab containment, Escape before commit, return focus | Consequence, scope, version, context, step-up, irreversible effect | `05-platform-configuration-admin.md` Access Control/Edge Cases |
 | Motion/media | 1.2.x where applicable, 2.2.2, 2.3.3 | Media keyboard controls; pause/stop; no essential timed gesture | Captions/transcript/metadata; reduced motion; waveform never sole content | `05-platform-configuration-admin.md` Accessibility |
+| Import upload and dry-run report | 1.3.1, 1.4.10, 2.1.1, 3.3.1, 4.1.3 | Native file control; tables reachable by Tab; page buttons native; focus never moves on poll | Caption names job and report hash; counts, impact and errors in separate captioned tables; status in a polite live region | `05-platform-configuration-admin.md` Accessibility, Contracts |
+| Commit, cancel, revoke and download confirmations | 2.1.2, 2.4.3, 3.3.4, 4.1.2 | Inline first; heading focus; Escape before commit; focus returns to the trigger | Consequence, counts, scope and irreversibility stated before activation | `05-platform-configuration-admin.md` Access Control |
+| Export form | 1.3.1, 3.3.1–3.3.4, 1.3.5 | Persistent labels; basket remove buttons native; paste error list linked to the field | Expiry shows timezone and resolved UTC; encryption choice described in words; protected-evidence exclusion stated | `05-platform-configuration-admin.md` Accessibility |
+| Restore verification vector | 1.3.1, 1.4.1, 4.1.3 | Table reachable by Tab; Request another verification native button | Eight rows with pass, fail or unknown as text plus icon; the Free-tier no-PITR statement is plain text | `05-platform-configuration-admin.md` Contracts, Edge Cases |
+| Quality findings table | 1.3.1, 1.4.1, 2.4.4, 4.1.3 | Filter and page controls native; location links have specific names | Severity as text; “Human review required”; automation disclaimer in the caption | `05-platform-configuration-admin.md` Accessibility |
 
 The inventory exceeds the thin-coverage threshold and is woven into component contracts. WCAG 2.2 AA is the release floor, exceeding the requested 2.1 AA gate.
 
@@ -341,6 +574,14 @@ Every IA interaction row is represented above. No flow is inferred from a headin
 
 | BE operation/query | Server-state key | URL state | Island-local state | All async render states |
 |---|---|---|---|---|
+| `CFG-05C-03` records list | `portability-records` keyed by kind, state, cursor | `tab`, `kind`, `state`, `cursor` | Pending filter edit | idle, loading, success, empty (no records or filter miss), not-disclosed, error, degraded |
+| `CFG-05C-04` record detail | `portability-record` keyed by kind and record ID | `recordId`, `kind`, `rowsCursor` | Open confirmation, upload progress | idle, loading, success, optimistic-pending (cancel or revoke only), conflict, not-disclosed, error, degraded |
+| `CFG-05C-01` actions | none (command) | none | Pending command and idempotency key | idle, pending, success, per-class error, conflict, step-up required |
+| `CFG-05C-05` download | none (command) | none | Pending transfer and claim key | idle, pending, saved, per-class error |
+| `CFG-05C-06` records list | `quality-lifecycle-records` keyed by kind, state, target, cursor | `tab`, `kind`, `state`, `targetId`, `cursor` | Pending filter edit | idle, loading, success, empty, not-disclosed, error, degraded |
+| `CFG-05C-07` record detail | `quality-lifecycle-record` keyed by kind and record ID | `recordId`, `kind`, `childCursor`, `severity` | Open confirmation | idle, loading, success, stale, not-disclosed, error, degraded |
+| `CFG-05C-02` actions | none (command) | none | Pending command and idempotency key | idle, pending, success, per-class error, conflict, step-up required |
+| `CFG-05B-06` reset | none (command) | `tab=mfa-reset` | Form values, open confirmation, pending command and idempotency key | idle, pending, success (completed or reconciling), per-class error, conflict, step-up required |
 
 No global client store is authorized. A new cross-island state need requires architecture review; until then URL/server state or a colocated island state owns it.
 
@@ -417,7 +658,7 @@ Every BE operation and parsed response field is owned below. Components consume 
 |---|---|---|---|---|
 | `05a-settings-flags-runtime.md` | `05A-SETTINGS-FLAGS-RUNTIME-REGISTRY` | `REGISTERED See route registry` | `2xx` parsed into `SettingsFlagsRuntimeWorkbench`; update only after validation | BE00 typed envelope to inline, capability, conflict, rate-wait, or degraded state |
 | `05b-admin-workspace-operations.md` | `05B-ADMIN-WORKSPACE-OPERATIONS-REGISTRY` | `REGISTERED See route registry` | `2xx` parsed into `AdminWorkspaceOperationsWorkbench`; update only after validation | BE00 typed envelope to inline, capability, conflict, rate-wait, or degraded state |
-| `05c-portability-quality-lifecycle.md` | `05C-PORTABILITY-QUALITY-LIFECYCLE-REGISTRY` | `REGISTERED See route registry` | `2xx` parsed into `PortabilityQualityLifecycleWorkbench`; update only after validation | BE00 typed envelope to inline, capability, conflict, rate-wait, or degraded state |
+| `05c-portability-quality-lifecycle.md` | `CFG-05C-01` to `CFG-05C-07` (`CFG-05C-08` and `CFG-05C-09` are service-principal routes and have no UI) | `POST /api/v1/admin/portability/actions`; `POST /api/v1/admin/quality-lifecycle/actions`; `GET /api/v1/admin/portability/records`; `GET /api/v1/admin/portability/records/{kind}/{recordId}`; `POST /api/v1/admin/portability/artifacts/{artifactId}/downloads`; `GET /api/v1/admin/quality-lifecycle/records`; `GET /api/v1/admin/quality-lifecycle/records/{kind}/{recordId}` | `2xx` parsed into the matching `PortabilityQualityLifecycleWorkbench` view by schema; update only after validation; `202` starts a status poll of the detail read | BE00 typed envelope to inline, capability, conflict, rate-wait, or degraded state |
 
 ### Response field ownership
 
@@ -442,8 +683,13 @@ interface SettingsFlagsRuntimeWorkbenchContractFields {
 
 ```ts
 type AdminWorkspaceOperationsContractField =
+  | 'mfaVersion'
+  | 'reason'
+  | 'removedFactorCount'
+  | 'resetId'
   | 'staleAfter'
   | 'states'
+  | 'targetPersonId'
   | 'taskClasses';
 interface AdminWorkspaceOperationsWorkbenchContractFields {
   source: '05b-admin-workspace-operations.md';
@@ -453,7 +699,117 @@ interface AdminWorkspaceOperationsWorkbenchContractFields {
 
 ```ts
 type PortabilityQualityLifecycleContractField =
-  never;
+  | 'action'
+  | 'actorPurpose'
+  | 'actualManifestHash'
+  | 'attemptCount'
+  | 'blockedCount'
+  | 'blockingCount'
+  | 'blockPath'
+  | 'byteSize'
+  | 'checkerKey'
+  | 'checkerVersion'
+  | 'checkSetVersion'
+  | 'childCursor'
+  | 'childLimit'
+  | 'classification'
+  | 'containsProtected'
+  | 'counselDecisionRef'
+  | 'counts'
+  | 'createdAt'
+  | 'cursor'
+  | 'downloadCount'
+  | 'dryRunReport'
+  | 'duplicatePolicy'
+  | 'encryptionMode'
+  | 'errorCode'
+  | 'errors'
+  | 'errorsTruncated'
+  | 'evidenceRef'
+  | 'excludeProtectedEvidence'
+  | 'expectedManifestHash'
+  | 'expectedReportHash'
+  | 'expectedVersion'
+  | 'expiresAt'
+  | 'exportArtifactId'
+  | 'exportType'
+  | 'failureCode'
+  | 'fieldId'
+  | 'fieldManifest'
+  | 'findings'
+  | 'findingsTruncated'
+  | 'holdConflict'
+  | 'humanReview'
+  | 'impact'
+  | 'importedCount'
+  | 'importJobId'
+  | 'inputHash'
+  | 'isolatedTarget'
+  | 'itemCount'
+  | 'items'
+  | 'kind'
+  | 'lifecycleRequestId'
+  | 'limit'
+  | 'location'
+  | 'manifest'
+  | 'manifestHash'
+  | 'mapperKey'
+  | 'mappingVersion'
+  | 'maxDownloads'
+  | 'message'
+  | 'nextCursor'
+  | 'objectId'
+  | 'outboxEventId'
+  | 'outcome'
+  | 'pointer'
+  | 'provenance'
+  | 'qualityCheckRunId'
+  | 'quarantinedCount'
+  | 'reason'
+  | 'recipientPublicKey'
+  | 'recordId'
+  | 'reportHash'
+  | 'requestedScope'
+  | 'requestType'
+  | 'residualCount'
+  | 'restoreVerificationId'
+  | 'rowCount'
+  | 'rowIndex'
+  | 'rows'
+  | 'rowsCursor'
+  | 'rowsLimit'
+  | 'ruleCode'
+  | 'ruleId'
+  | 'runAt'
+  | 'scope'
+  | 'scopeCount'
+  | 'scopeManifest'
+  | 'severity'
+  | 'sourceArtifactId'
+  | 'sourceFormat'
+  | 'sourceHash'
+  | 'sourceRowId'
+  | 'sourceVersion'
+  | 'state'
+  | 'stepUpToken'
+  | 'store'
+  | 'stores'
+  | 'subjectPersonId'
+  | 'summary'
+  | 'targetEntryId'
+  | 'targetEnvironment'
+  | 'targetId'
+  | 'targetScope'
+  | 'targetType'
+  | 'targetVersion'
+  | 'timeoutMs'
+  | 'updatedAt'
+  | 'verification'
+  | 'verifiedSubject'
+  | 'verifyAccessibility'
+  | 'verifyRls'
+  | 'version'
+  | 'warningCount';
 interface PortabilityQualityLifecycleWorkbenchContractFields {
   source: '05c-portability-quality-lifecycle.md';
   fields: Readonly<Record<PortabilityQualityLifecycleContractField, unknown>>;
@@ -463,8 +819,8 @@ interface PortabilityQualityLifecycleWorkbenchContractFields {
 | BE source | Owning component/prop | Every discovered application error code | UI state owner |
 |---|---|---|---|
 | `05a-settings-flags-runtime.md` | `SettingsFlagsRuntimeWorkbenchContractFields.fields` and `SettingsFlagsRuntimeWorkbenchProps.contractFields` | `APPROVAL_INVALID`, `CONSENT_REQUIRED`, `CONTROL_PLANE_UNAVAILABLE`, `DEFINITION_NOT_FOUND`, `EXPERIMENT_NOT_FOUND`, `FLAG_INVALID`, `FLAG_NOT_FOUND`, `FORBIDDEN`, `IDEMPOTENCY_CONFLICT`, `INVALID_DEFINITION`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `REVIEW_NOT_FOUND`, `SNAPSHOT_UNAVAILABLE`, `STALE_DEFINITION`, `STEP_UP_REQUIRED`, `SWITCH_INVALID`, `SWITCH_NOT_FOUND`, `UNAUTHENTICATED`, `UPSTREAM_TIMEOUT`, `VALUE_INVALID`, `VALUE_UNAVAILABLE`, `VERSION_CONFLICT` | validation/input → linked summary; auth/permission → auth or capability gate; not-found → disclosure-safe route/row; conflict/stale/mismatch/duplicate → sync conflict; rate → retry wait; dependency/timeout/unavailable → degraded; blocked/failed/cancelled/revoked → exact terminal state and legitimate recovery |
-| `05b-admin-workspace-operations.md` | `AdminWorkspaceOperationsWorkbenchContractFields.fields` and `AdminWorkspaceOperationsWorkbenchProps.contractFields` | `AUDIT_TARGET_NOT_FOUND`, `BULK_UNAVAILABLE`, `DIAGNOSTIC_UNAVAILABLE`, `DIAGNOSTIC_VERSION_CONFLICT`, `FORBIDDEN`, `GRANT_INVALID`, `GRANT_NOT_FOUND`, `GRANT_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `INVALID_REQUEST`, `MANIFEST_CONFLICT`, `NOT_FOUND`, `RATE_LIMITED`, `SEARCH_UNAVAILABLE`, `STEP_UP_REQUIRED`, `TARGET_NOT_FOUND`, `TASK_SOURCE_UNAVAILABLE`, `UNAUTHENTICATED`, `UPSTREAM_TIMEOUT`, `VERSION_CONFLICT` | validation/input → linked summary; auth/permission → auth or capability gate; not-found → disclosure-safe route/row; conflict/stale/mismatch/duplicate → sync conflict; rate → retry wait; dependency/timeout/unavailable → degraded; blocked/failed/cancelled/revoked → exact terminal state and legitimate recovery |
-| `05c-portability-quality-lifecycle.md` | `PortabilityQualityLifecycleWorkbenchContractFields.fields` and `PortabilityQualityLifecycleWorkbenchProps.contractFields` | `FORBIDDEN`, `HOLD_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `INVALID_REQUEST`, `LIFECYCLE_TARGET_NOT_FOUND`, `LIFECYCLE_UNAVAILABLE`, `MANIFEST_CONFLICT`, `NOT_FOUND`, `PORTABILITY_TARGET_NOT_FOUND`, `PORTABILITY_UNAVAILABLE`, `STEP_UP_REQUIRED`, `UNAUTHENTICATED`, `UPSTREAM_TIMEOUT`, `VERSION_CONFLICT` | validation/input → linked summary; auth/permission → auth or capability gate; not-found → disclosure-safe route/row; conflict/stale/mismatch/duplicate → sync conflict; rate → retry wait; dependency/timeout/unavailable → degraded; blocked/failed/cancelled/revoked → exact terminal state and legitimate recovery |
+| `05b-admin-workspace-operations.md` | `AdminWorkspaceOperationsWorkbenchContractFields.fields` and `AdminWorkspaceOperationsWorkbenchProps.contractFields` | `AUDIT_TARGET_NOT_FOUND`, `BULK_UNAVAILABLE`, `DIAGNOSTIC_UNAVAILABLE`, `DIAGNOSTIC_VERSION_CONFLICT`, `FORBIDDEN`, `GRANT_INVALID`, `GRANT_NOT_FOUND`, `GRANT_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `IDENTITY_UNAVAILABLE`, `INVALID_REQUEST`, `MANIFEST_CONFLICT`, `MFA_RESET_INVALID`, `MFA_RESET_IN_PROGRESS`, `NOT_FOUND`, `RATE_LIMITED`, `SEARCH_UNAVAILABLE`, `STEP_UP_REQUIRED`, `TARGET_NOT_FOUND`, `TASK_SOURCE_UNAVAILABLE`, `UNAUTHENTICATED`, `UPSTREAM_TIMEOUT`, `VERSION_CONFLICT` | validation/input → linked summary; auth/permission → auth or capability gate; not-found → disclosure-safe route/row; conflict/stale/mismatch/duplicate → sync conflict; rate → retry wait; dependency/timeout/unavailable → degraded; blocked/failed/cancelled/revoked → exact terminal state and legitimate recovery |
+| `05c-portability-quality-lifecycle.md` | `PortabilityQualityLifecycleWorkbenchContractFields.fields` and `PortabilityQualityLifecycleWorkbenchProps.contractFields` | `ARTIFACT_NOT_DOWNLOADABLE`, `BLOCKING_FINDING`, `FORBIDDEN`, `HOLD_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `INVALID_REQUEST`, `LIFECYCLE_TARGET_NOT_FOUND`, `LIFECYCLE_UNAVAILABLE`, `MANIFEST_CONFLICT`, `NOT_FOUND`, `PORTABILITY_LIMIT_EXCEEDED`, `PORTABILITY_TARGET_NOT_FOUND`, `PORTABILITY_UNAVAILABLE`, `PROTECTED_FIELD`, `RATE_LIMITED`, `RESTORE_UNVERIFIED`, `STEP_UP_REQUIRED`, `UNAUTHENTICATED`, `UNSUPPORTED_FORMAT`, `UPSTREAM_TIMEOUT`, `VERSION_CONFLICT` | validation/input → linked summary; auth/permission → auth or capability gate; not-found → disclosure-safe route/row; conflict/stale/mismatch/duplicate → sync conflict; rate → retry wait; dependency/timeout/unavailable → degraded; blocked/failed/cancelled/revoked → exact terminal state and legitimate recovery |
 
 No discovered field or error code is allowed to fall through to generic rendering. An unrecognized schema discriminant or code is a contract mismatch: isolate in `ErrorBoundary`, show request ID and Retry/Status, and report scrubbed telemetry.
 
@@ -474,10 +830,14 @@ No discovered field or error code is allowed to fall through to generic renderin
 |---|---|---|---|
 | 400 `INVALID_REQUEST` / 422 `VALIDATION_FAILED` | Summary plus field/row errors; preserve valid input | Correction only | Focus linked summary then field; concise alert |
 | 401 `UNAUTHENTICATED` | Reauthentication with safe return; protected data removed | After session recovery | Focus auth heading; announce expiry |
-| 403 `FORBIDDEN` / step-up | `<CapabilityGate>` with reason/recovery; no broadened disclosure | After capability/step-up refetch | Focus gate; no protected names |
+| 401 `STEP_UP_REQUIRED` | Navigate to `/step-up?returnTo=<current relative path>` with the typed `allowedMethods`; no gate, never a 403 | After step-up the form re-opens and the human re-confirms | Focus the confirm control on return; announce `Verification complete. Review and confirm to continue.` |
+| 403 `FORBIDDEN` | `<CapabilityGate>` with reason/recovery; no broadened disclosure | After capability refetch | Focus gate; no protected names |
 | 404 | Disclosure-safe not-found; distinguish deleted only when authorized | Navigation | Focus route heading |
 | 409 conflict/idempotency/state | `<SyncConflict>` with server/current version and preserved draft | Reconcile first | Focus conflict; announce no overwrite |
 | 429 `RATE_LIMITED` | Inline countdown from `Retry-After`; input kept | At server time only | Polite coarse updates |
+| 415 `UNSUPPORTED_FORMAT` | Inline at the format control: “This format has no registered mapper”; no job created | Choose another format or mapper | Focus the format control; concise alert |
+| 422 `PROTECTED_FIELD` / `PORTABILITY_LIMIT_EXCEEDED` / `BLOCKING_FINDING` / `HOLD_CONFLICT` / `RESTORE_UNVERIFIED` | Inline at the named control or panel with the stated limit or blocker; no state change, never toast-only | Correction or splitting the source only | Focus the field group or panel heading; concise alert |
+| 409 `ARTIFACT_NOT_DOWNLOADABLE` | Artifact panel states not ready, expired, revoked or out of downloads; Download disabled with that reason | None; request a new export | Focus the panel heading; polite status |
 | 502/503/504 | Scoped degraded or full System / Degraded by honest renderability | Safe BE attempts only; mutation status first | Request ID/Retry; no raw provider detail |
 
 ## Navigation, Degradation, and Concurrency
@@ -499,6 +859,7 @@ No discovered field or error code is allowed to fall through to generic renderin
 | Playwright E2E | Critical IA flows by role; keyboard; landmarks/names/live regions; three breakpoints; 200% zoom; offline/reconnect; stale multi-tab; auth expiry; 429/outage |
 | Accessibility | axe zero serious/critical; contrast/non-color cues; VoiceOver/NVDA smoke; target size; focus; no trap; captions/transcripts where media exists |
 | Performance | Server-first HTML; bounded islands; no hydration waterfall; stable skeleton; LCP <2.5 s, CLS <0.1; virtualize >100; route JS budget verified in phase plan |
+| Portability and quality (Vitest component and integration, Playwright E2E) | Upload refusal over 50 MiB; dry-run report tables and 50-row paging; commit sends the rendered `expectedReportHash` and a stale hash shows `<SyncConflict>`; protected import and export require step-up and return to the same view; export form rejects past and over-7-day expiry and a pasted private JWK; recipient-key field appears only for the public-key mode; download uses POST with an idempotency key, saves a blob and shows interruption copy; Download disabled for every non-downloadable state; revoke and cancel confirmations; the restore panel shows eight text results, the Free-tier no-PITR statement, no promote control in any state and Request another verification only after failure; quality panel states for healthy, blocked, failed and stale; findings table has no author text, shows truncation and links locations only with a `targetEntryId`; status poll never moves focus and stops at terminal states; capability variants render per the table with no protected label leaking |
 
 ## Deepening and Ambiguity Gate
 
@@ -526,6 +887,9 @@ None. New product or architecture choices must re-open their originating locked 
 | Date | Change | Workflow | Sections affected |
 |---|---|---|---|
 | 2026-08-29 | Initial complete FE specification, source mapping, mandatory deepening, and convergence review | `/write-fe-spec` | All |
+| 2026-10-02 | DEC-114 Phase 2 scope: specified the portability, quality and lifecycle workbench views, forms, action contracts, capability variants, download, restore and findings behavior, contract field and error ownership for CFG-05C-01 to CFG-05C-07 | `/propagate-decision` | Component inventory, interactions, state registry, conditional rendering, accessibility, data mapping, testing |
+| 2026-10-02 | DEC-111 follow-up: specified the admin MFA factor-reset form (`CFG-05B-06`) with fields, confirmation, exact states and error copy, step-up recovery to `/step-up?returnTo=`, capability variant and a11y; split 401 `STEP_UP_REQUIRED` from 403 in the error-class table | `/write-fe-spec` | Component Inventory, Interaction Specification, FE Rubric Closure, Data Mapping |
+| 2026-10-02 | FX-E: specified that settings and admin affordances derive from the CFG-05B-07 capability snapshot (never a response header or alias), and that the settings editor affordance derives from the CFG-05A-02 `ownerCapability` being in that snapshot | `/propagate-decision` | Capability projection, Conditional Rendering |
 
 ## Quality Gates Checklist
 
@@ -547,5 +911,9 @@ None. New product or architecture choices must re-open their originating locked 
 ### Derives from
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
 
+### Phases into
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
+
 ### References
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
+- [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]

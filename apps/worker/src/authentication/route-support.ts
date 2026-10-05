@@ -1,10 +1,17 @@
 import { authRoutePolicies, type AuthOperationId } from '@wejammin/contracts';
 
 import type { WorkerContext } from '../index';
-import { applyRateHeaders, authError, responseForAuthError } from './boundary';
+import {
+  applyRateHeaders,
+  authError,
+  rateLimitedDetails,
+  responseForAuthError,
+} from './boundary';
 import { parseClientBindingIdHeader } from './client-binding-header';
+import { isFreshProof } from './step-up';
 import type {
   AuthenticationDependencies,
+  AuthenticationError,
   AuthenticationResult,
   AuthenticationSession,
 } from './types';
@@ -38,6 +45,10 @@ export const enforceRate = async (
   operationId: AuthOperationId,
   session: AuthenticationSession | null,
   identifierDigest: string | null = null,
+  respond: (
+    context: WorkerContext,
+    error: AuthenticationError,
+  ) => Response = responseForAuthError,
 ): Promise<Response | null> => {
   const policy = policyFor(operationId);
   const controller = new AbortController();
@@ -49,28 +60,30 @@ export const enforceRate = async (
       identifierDigest,
       limit: policy.rateLimit,
       windowSeconds: policy.rateWindowSeconds,
+      scope: policy.rateScope,
     },
     context.env,
     controller.signal,
   );
-  if (!result.ok) return responseForAuthError(context, result);
+  if (!result.ok) return respond(context, result);
   applyRateHeaders(context, result.value);
   return result.value.allowed
     ? null
-    : responseForAuthError(
+    : respond(
         context,
-        authError(429, 'RATE_LIMITED', 'Too many requests.'),
+        authError(
+          429,
+          'RATE_LIMITED',
+          'Too many requests.',
+          rateLimitedDetails(result.value),
+        ),
       );
 };
 
 export const isStepUpFresh = (
   session: AuthenticationSession,
   nowMs: number,
-): boolean => {
-  if (session.stepUpAt === null) return false;
-  const stepUpMs = Date.parse(session.stepUpAt);
-  return Number.isFinite(stepUpMs) && nowMs - stepUpMs <= 10 * 60 * 1000;
-};
+): boolean => isFreshProof(session.stepUpAt, nowMs);
 
 export const jsonSuccess = (
   context: WorkerContext,

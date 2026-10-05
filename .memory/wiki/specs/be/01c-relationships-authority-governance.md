@@ -384,6 +384,8 @@ Canonical relationship state lives in non-exposed schema identity_private. Brows
 
 All mutable canonical tables carry created_at, updated_at and positive bigint version unless marked append-only. Server actor/context fields are derived, never accepted from JSON. Protected columns are omitted from public projections.
 
+`identity_private.organization_actor_grant` is the identity-owned effective-authority projection of an organization-scoped capability held by a person: one row per `(organization_id, person_id, capability_code)` with `valid_from`, an optional `valid_through` (both UTC dates), `active`, and timestamps. Identity owns the table and its schema; consumers read the row as the person's effective authority for the capability and apply their own current-term and active checks. The Shard 03 CMS capability grant RPCs `cms_grant_capability`, `cms_renew_capability_grant` and `cms_revoke_capability_grant` (BE03a CMS-03A-15 through CMS-03A-17, DEC-119) are acknowledged writers of this projection for CMS capability codes only: each upserts or ends the matching row in the same transaction as its CMS-owned aggregate, event, audit and outbox rows. The forward migration that backfills CMS grant aggregates from the owner-initialization rows reads those projection rows and writes only CMS-owned aggregate rows. They never write a non-CMS capability code, never create or alter organization, person or membership state, and no other module writes this table outside the identity-owned RPCs.
+
 The IA typed-field registry’s generic core keys are normalized without duplicating authority: logical id maps to the physical primary key shown below; logical state maps to the row’s explicit state or temporal active/ended status; owner_id is a nullable derived owner/control reference where ownership can be ownerless and is never caller-writable. The deep-dive names remain the canonical domain fields. This mapping resolves the registry’s generic owner/state requirement against the deep-dive organization fields and keeps lifecycle separate from ownership_state.
 
 ### Canonical tables
@@ -786,6 +788,7 @@ None. The only implementation-level choices resolved here are schema placement i
 |---|---|---|---|
 | 2026-08-28 | Reconciled approved Shard 01 split; corrected downstream IA paths and authored complete organization, relationship, authority, governance, name, treasury and lifecycle BE contract | /write-be-spec | All |
 | 2026-08-28 | Added exact ten-step resolution, 30-route registry, Zod examples/error matrix, canonical schema/index/RLS design, event/queue contract, failure hygiene, tests and passes 1–10 | /write-be-spec-write | API, schema, policy, flow, errors, tests, gates |
+| 2026-10-02 | Acknowledged the Shard 03 CMS grant RPCs (CMS-03A-15 through CMS-03A-17) as authorized projection writers of `identity_private.organization_actor_grant` for CMS capability codes (DEC-119) | /propagate-decision | Schema and ownership boundary |
 
 
 <!-- spec-graph: auto-generated -->

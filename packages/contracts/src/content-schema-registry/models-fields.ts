@@ -14,6 +14,17 @@ import {
   CmsLocalizationModeSchema,
 } from './models-enums.ts';
 
+/**
+ * BE03a CMS-03A-02: constraints are capped at 8 KiB. The key set is the closed
+ * six-member list (so the 64-key and depth-4 caps hold by construction); only
+ * the size of `enumValues` can grow, so the cap is measured on the compact
+ * UTF-8 JSON of the whole object. The database applies the same cap to the
+ * stored form (`cms_json_bounded(constraints, 8192, 4, 64, 256)`).
+ */
+export const FIELD_CONSTRAINTS_MAX_BYTES = 8192;
+const utf8Length = (value: unknown): number =>
+  new TextEncoder().encode(JSON.stringify(value)).byteLength;
+
 export const FieldConstraintsSchema = z
   .strictObject({
     minLength: z.number().int().min(0).max(100_000).optional(),
@@ -24,6 +35,12 @@ export const FieldConstraintsSchema = z
     itemKind: CmsFieldKindSchema.optional(),
   })
   .superRefine((value, context) => {
+    if (utf8Length(value) > FIELD_CONSTRAINTS_MAX_BYTES)
+      context.addIssue({
+        code: 'custom',
+        path: [],
+        message: 'constraints_exceed_8_kib',
+      });
     if (
       value.minLength !== undefined &&
       value.maxLength !== undefined &&

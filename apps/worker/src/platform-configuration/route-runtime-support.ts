@@ -1,12 +1,12 @@
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { authError, responseForAuthError } from '../authentication/boundary';
+import { responseForAuthError } from '../authentication/boundary';
+import { stepUpRequiredError } from '../authentication/step-up';
 import type { AuthenticationSession } from '../authentication/types';
 import { configurationResponseVersion } from './runtime-helpers';
 import {
   enforceConfigurationRate,
   isConfigurationStepUpFresh,
   parseConfigurationPath,
-  requireConfigurationSession,
 } from './route-support';
 import type {
   ConfigurationOutcome,
@@ -37,47 +37,19 @@ export const send = (
   return response;
 };
 
-export const sessionWithRate = async (
+/**
+ * BE00 step 7 for a human settings mutation: step-up freshness, then the
+ * per-user and per-party quota. A refusal is the complete response.
+ */
+export const stepUpAndRate = async (
   context: WorkerContext,
   operationId: PlatformConfigurationOperationId,
   auth: WorkerDependencies['auth'],
-  actingPartyRequired: boolean,
-  requireFreshStepUp = false,
-): Promise<
-  | Readonly<{
-      session: AuthenticationSession;
-      rate: null;
-    }>
-  | Readonly<{
-      session: null;
-      rate: Response;
-    }>
-> => {
-  const session = await requireConfigurationSession(
-    context,
-    auth,
-    actingPartyRequired,
-  );
-  if (!session.ok)
-    return { session: null, rate: responseForAuthError(context, session) };
-  if (requireFreshStepUp && !isConfigurationStepUpFresh(session.value))
-    return {
-      session: null,
-      rate: responseForAuthError(
-        context,
-        authError(401, 'STEP_UP_REQUIRED', 'Recent verification is required.'),
-      ),
-    };
-  const rate = await enforceConfigurationRate(
-    context,
-    operationId,
-    auth,
-    session.value,
-    null,
-  );
-  return rate === null
-    ? { session: session.value, rate: null }
-    : { session: null, rate };
+  session: AuthenticationSession,
+): Promise<Response | null> => {
+  if (!isConfigurationStepUpFresh(session))
+    return responseForAuthError(context, stepUpRequiredError());
+  return enforceConfigurationRate(context, operationId, auth, session, null);
 };
 
 export const parseRoutePath = <T>(

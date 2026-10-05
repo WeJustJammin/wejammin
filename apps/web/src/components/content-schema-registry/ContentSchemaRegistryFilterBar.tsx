@@ -34,6 +34,7 @@ const stateValues = [
   'superseded',
   'retired',
   'blocked',
+  'compiled',
 ] as const;
 
 export const contentSchemaRegistryFilterSummary = (
@@ -53,6 +54,20 @@ export const contentSchemaRegistryFilterSummary = (
     : `Active filters: ${filters.join('; ')}.`;
 };
 
+const SORT_LABELS = {
+  key: 'Key',
+  createdAt: 'Created',
+  updatedAt: 'Updated',
+  version: 'Version',
+} as const;
+
+export const contentSchemaRegistrySortSummary = (
+  query: ContentSchemaRegistryQuery,
+): string =>
+  `Sorted by ${SORT_LABELS[query.sort]}, ${
+    query.direction === 'asc' ? 'ascending' : 'descending'
+  }.`;
+
 export default function ContentSchemaRegistryFilterBar({
   query,
   canonicalUrl,
@@ -62,7 +77,7 @@ export default function ContentSchemaRegistryFilterBar({
       className="content-schema-registry-filters"
       method="get"
       action={canonicalUrl}
-      aria-describedby="content-schema-registry-filter-help content-schema-registry-filter-summary"
+      aria-describedby="content-schema-registry-filter-help content-schema-registry-filter-summary content-schema-registry-sort-summary"
     >
       <p id="content-schema-registry-filter-help">
         Filters are URL state. Lifecycle filters apply to lifecycle-bearing
@@ -70,6 +85,9 @@ export default function ContentSchemaRegistryFilterBar({
       </p>
       <p id="content-schema-registry-filter-summary">
         {contentSchemaRegistryFilterSummary(query)}
+      </p>
+      <p id="content-schema-registry-sort-summary">
+        {contentSchemaRegistrySortSummary(query)}
       </p>
       <div className="content-schema-registry-filter-grid">
         <label htmlFor="content-schema-registry-resource-kind">

@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+import {
+  AUTH_RETURN_TARGET_MAX_LENGTH,
+  isRelativeFirstPartyPath,
+} from './return-target.ts';
+
+export { isRelativeFirstPartyPath };
+
 export const AuthProviderCodeSchema = z.enum([
   'email',
   'google',
@@ -10,52 +17,10 @@ export const AuthProviderCodeSchema = z.enum([
 
 export type AuthProviderCode = z.infer<typeof AuthProviderCodeSchema>;
 
-const hasAmbiguousEncoding = (value: string): boolean => {
-  try {
-    return (
-      /%(?:25|2e|2f|5c)/iu.test(value) ||
-      decodeURIComponent(value).includes('\\')
-    );
-  } catch {
-    return true;
-  }
-};
-
-export const isRelativeFirstPartyPath = (value: string): boolean =>
-  value.startsWith('/') &&
-  !value.startsWith('//') &&
-  !value.includes('\\') &&
-  ![...value].some((character) => {
-    const codePoint = character.charCodeAt(0);
-    return codePoint <= 31 || codePoint === 127;
-  }) &&
-  !hasAmbiguousEncoding(value) &&
-  (() => {
-    try {
-      const parsed = new URL(value, 'https://wejammin.invalid');
-      const allowedPath =
-        /^(?:\/$|\/(?:account|app|auth|settings|system)(?:\/|$))/u.test(
-          parsed.pathname,
-        );
-      const nestedRedirect = [...parsed.searchParams].some(
-        ([key, candidate]) =>
-          /^(?:callback|continue|next|redirect|returnto)$/iu.test(key) &&
-          /^(?:[a-z][a-z0-9+.-]*:|\/\/)/iu.test(candidate),
-      );
-      return (
-        parsed.origin === 'https://wejammin.invalid' &&
-        allowedPath &&
-        !nestedRedirect
-      );
-    } catch {
-      return false;
-    }
-  })();
-
 export const AuthReturnTargetSchema = z
   .string()
   .min(1, 'return_target_invalid')
-  .max(512, 'return_target_invalid')
+  .max(AUTH_RETURN_TARGET_MAX_LENGTH, 'return_target_invalid')
   .refine(isRelativeFirstPartyPath, 'return_target_invalid');
 
 export const AuthIsoTimeSchema = z.iso
@@ -77,15 +42,40 @@ export const AuthIdempotencyKeySchema = z
   .regex(/^[\x20-\x7e]+$/u)
   .refine((value) => value.trim() === value);
 
+const authStrongVersionPattern = /^"[1-9][0-9]{0,18}"$/u;
+
 export const AuthStrongVersionSchema = z
   .string()
-  .regex(/^"[1-9][0-9]{0,18}"$/u)
+  .regex(authStrongVersionPattern)
   .refine(
-    (value) => BigInt(value.slice(1, -1)) <= 9_223_372_036_854_775_807n,
+    (value) =>
+      !authStrongVersionPattern.test(value) ||
+      BigInt(value.slice(1, -1)) <= 9_223_372_036_854_775_807n,
     'version_out_of_range',
   );
 
 export const AuthEmptyBodySchema = z.object({}).strict();
+
+export const AuthCsrfHeaderSchema = z.string().min(16).max(256);
+
+/** Enabled MFA method registry ids; launch contents are exactly `totp`. */
+export const AuthMfaMethodSchema = z.enum(['totp']);
+
+export const isNfcWithoutControl = (value: string): boolean =>
+  value === value.normalize('NFC') && !/\p{Cc}/u.test(value);
+
+/** NFC, trimmed, 1-80 characters, no control character or newline. */
+export const AuthMfaFriendlyNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'friendly_name_invalid')
+  .max(80, 'friendly_name_invalid')
+  .refine(isNfcWithoutControl, 'friendly_name_invalid');
+
+/** Exactly six ASCII digits; no spaces, hyphens, or other characters. */
+export const AuthTotpCodeSchema = z
+  .string()
+  .regex(/^[0-9]{6}$/u, 'code_invalid');
 
 export const AuthProviderLaunchStateSchema = z.enum([
   'enabled',

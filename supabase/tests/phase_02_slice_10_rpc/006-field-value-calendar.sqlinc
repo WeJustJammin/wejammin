@@ -1,0 +1,95 @@
+-- The 03a field kinds are semantic, not merely string-shaped.  Keep this
+-- separate draft schema inside the rolled-back suite so immutable active
+-- field definitions in the entry fixture are never altered for a test.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table s10_calendar_type on commit drop as
+select platform_api.cms_create_type_draft(
+  request || jsonb_build_object(
+    'typeKey', 's10calendarprobe',
+    'label', 'Calendar Probe',
+    'idempotencyKey', 's10-calendar-probe-0001',
+    'fields', jsonb_build_array(
+      (request->'fields'->0) || jsonb_build_object(
+        'stableFieldId', 'a9100000-0000-4000-8000-000000000103',
+        'key', 'event_date', 'kind', 'date'
+      ),
+      (request->'fields'->0) || jsonb_build_object(
+        'stableFieldId', 'a9100000-0000-4000-8000-000000000104',
+        'key', 'event_datetime', 'kind', 'datetime'
+      )
+    ),
+    'relations', '[]'::jsonb
+  )
+) as response
+from s10_type_request;
+
+select ok(
+  (select response->>'id' is not null from s10_calendar_type),
+  'CMS draft calendar fixture has its own immutable 03a schema version'
+);
+
+select ok(
+  platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000103',
+    to_jsonb('2024-02-29'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000103',
+    to_jsonb('2026-02-29'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000103',
+    to_jsonb('2026-02-30'::text), 'authored'
+  ),
+  'CMS date kind accepts a leap day but rejects non-leap and nonexistent dates'
+);
+
+select ok(
+  platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2024-02-29T23:59:59+15:00'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2026-02-30T12:00:00Z'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2026-01-01T24:00:00Z'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2026-01-01T12:00:60Z'::text), 'authored'
+  ),
+  'CMS datetime kind accepts valid offsets but rejects impossible dates and times'
+);
+
+select ok(
+  platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2026-01-01T12:00:00+23:59'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2026-01-01T12:60:00Z'::text), 'authored'
+  )
+  and not platform_private.cms_draft_field_value_valid(
+    (select (response->>'id')::uuid from s10_calendar_type),
+    'a9100000-0000-4000-8000-000000000104',
+    to_jsonb('2026-01-01T12:00:00+24:00'::text), 'authored'
+  ),
+  'CMS datetime offset ceiling matches the contract without PostgreSQL timezone-range narrowing'
+);

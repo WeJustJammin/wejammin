@@ -1,0 +1,253 @@
+
+-- P2-S10-AC-059 (QA-RED) / P2-S10-AC-050 / P2-S10-AC-061.
+-- ContentEntry and EntryRevision table foundation, asserted against BE03b's
+-- canonical records table and its mutability envelope rules.
+
+select ok(
+  coalesce((
+    select bool_and(to_regclass(table_name) is not null)
+    from (values
+      ('platform_private.cms_content_entries'),
+      ('platform_private.cms_entry_revisions'),
+      ('platform_private.cms_entry_field_values'),
+      ('platform_private.cms_entry_relations'),
+      ('platform_private.cms_entry_assignments')
+    ) as tables(table_name)
+  ), false),
+  'P2-S10-AC-050 all five canonical editorial tables exist'
+);
+
+select ok(
+  coalesce((
+    select bool_and(
+      to_regclass(table_name) is not null
+      and (
+        select count(*)
+        from pg_attribute a
+        where a.attrelid = to_regclass(table_name)
+          and a.attnum > 0
+          and not a.attisdropped
+          and a.attname = any(expected_columns)
+      ) = cardinality(expected_columns)
+      and (
+        select count(*)
+        from pg_attribute a
+        where a.attrelid = to_regclass(table_name)
+          and a.attnum > 0
+          and not a.attisdropped
+      ) = cardinality(expected_columns)
+    )
+    from (values
+      ('platform_private.cms_content_entries', array[
+        'id','owner_id','content_type_id','owner_party_id','lifecycle',
+        'current_draft_revision_id','version','created_by','created_at',
+        'updated_at']::name[]),
+      ('platform_private.cms_entry_revisions', array[
+        'id','owner_id','entry_id','revision_number','schema_version_id',
+        'template_version_id','taxonomy_version_ids','parent_revision_ids',
+        'locale','payload_hash','author_person_id','acting_party_id','state',
+        'version','validation_state','validation_report','created_at',
+        'updated_at']::name[]),
+      ('platform_private.cms_entry_field_values', array[
+        'id','owner_id','state','version','revision_id','field_id',
+        'field_definition_id','locale','value','provenance','value_hash',
+        'created_at','updated_at']::name[]),
+      ('platform_private.cms_entry_relations', array[
+        'id','owner_id','state','version','revision_id','field_id',
+        'field_definition_id','target_kind','target_id',
+        'expected_target_version','position','on_unavailable','created_at',
+        'updated_at']::name[]),
+      ('platform_private.cms_entry_assignments', array[
+        'id','owner_id','entry_id','assignee_person_id','capability_key',
+        'state','version','created_at','updated_at']::name[])
+    ) as expected(table_name, expected_columns)
+  ), false),
+  'P2-S10-AC-050 all five tables have exact locked columns and no extras'
+);
+
+select ok(
+  pg_temp.s10_column_type('platform_private.cms_content_entries', 'id') = 'uuid'
+    and pg_temp.s10_column_type('platform_private.cms_content_entries', 'version') = 'int8'
+    and pg_temp.s10_column_type('platform_private.cms_content_entries', 'lifecycle') = 'text'
+    and pg_temp.s10_column_type('platform_private.cms_entry_revisions', 'revision_number') = 'int8'
+    and pg_temp.s10_column_type('platform_private.cms_entry_revisions', 'payload_hash') = 'bpchar'
+    and pg_temp.s10_column_type('platform_private.cms_entry_revisions', 'taxonomy_version_ids') = 'jsonb'
+    and pg_temp.s10_column_type('platform_private.cms_entry_revisions', 'validation_report') = 'jsonb',
+  'P2-S10-AC-050 entry and revision envelope types match the locked contract'
+);
+
+select ok(
+  pg_temp.s10_col_notnull('platform_private.cms_content_entries', 'owner_id')
+    and pg_temp.s10_col_notnull('platform_private.cms_content_entries', 'content_type_id')
+    and pg_temp.s10_col_notnull('platform_private.cms_content_entries', 'lifecycle')
+    and pg_temp.s10_col_notnull('platform_private.cms_content_entries', 'version')
+    and not pg_temp.s10_col_notnull('platform_private.cms_content_entries', 'owner_party_id')
+    and not pg_temp.s10_col_notnull('platform_private.cms_content_entries', 'current_draft_revision_id')
+    and pg_temp.s10_has_default('platform_private.cms_content_entries', 'id')
+    and pg_temp.s10_has_default('platform_private.cms_content_entries', 'created_at')
+    and pg_temp.s10_has_default('platform_private.cms_content_entries', 'updated_at'),
+  'P2-S10-AC-050 ContentEntry envelope nullability and defaults are locked'
+);
+
+select ok(
+  pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'entry_id')
+    and pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'revision_number')
+    and pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'schema_version_id')
+    and pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'payload_hash')
+    and pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'author_person_id')
+    and pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'validation_report')
+    and not pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'template_version_id')
+    and not pg_temp.s10_col_notnull('platform_private.cms_entry_revisions', 'acting_party_id'),
+  'P2-S10-AC-002 EntryRevision envelope nullability is locked'
+);
+
+select ok(
+  pg_temp.s10_closed_check_labels(
+    'platform_private.cms_content_entries', 'lifecycle'
+  ) = array['active','archived','deletion_pending','held']::text[],
+  'P2-S10-AC-050 ContentEntry lifecycle is the closed IA envelope union'
+);
+
+select ok(
+  pg_temp.s10_closed_check_labels(
+    'platform_private.cms_entry_revisions', 'state'
+  ) = array['approved','draft','published','rejected','scheduled','submitted']::text[],
+  'P2-S10-AC-001 EntryRevision state is the closed workflow union'
+);
+
+select ok(
+  pg_temp.s10_closed_check_labels(
+    'platform_private.cms_entry_revisions', 'validation_state'
+  ) = array['invalid','unknown','valid']::text[],
+  'P2-S10-AC-001 EntryRevision validation_state is the closed union'
+);
+
+select ok(
+  pg_temp.s10_fk_target(
+    'platform_private.cms_content_entries', 'content_type_id'
+  ) = 'platform_private.cms_content_types.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_content_entries', 'owner_party_id'
+    ) = 'platform_private.party.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_content_entries', 'created_by'
+    ) = 'auth.users.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_content_entries', 'current_draft_revision_id'
+    ) = 'platform_private.cms_entry_revisions.id',
+  'P2-S10-AC-050 ContentEntry foreign keys bind real registry and identity rows'
+);
+
+select ok(
+  pg_temp.s10_fk_target(
+    'platform_private.cms_entry_revisions', 'entry_id'
+  ) = 'platform_private.cms_content_entries.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_revisions', 'schema_version_id'
+    ) = 'platform_private.cms_content_type_versions.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_revisions', 'author_person_id'
+    ) = 'platform_private.person_party.party_id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_revisions', 'acting_party_id'
+    ) = 'platform_private.party.id',
+  'P2-S10-AC-002 EntryRevision foreign keys bind the real identity primary keys'
+);
+
+select ok(
+  to_regclass('platform_private.cms_entry_revisions') is not null
+    and pg_temp.s10_fk_count(
+      'platform_private.cms_entry_revisions', 'template_version_id'
+    ) = 0,
+  'P2-S10-AC-002 template_version_id defers its physical FK to 03c ownership'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_constraint c
+    where c.conrelid = to_regclass('platform_private.cms_entry_revisions')
+      and c.contype = 'c'
+      and pg_get_constraintdef(c.oid) like '%cms_template_registry_valid%'
+  ),
+  'P2-S10-AC-002 template_version_id carries the protected registry validation seam'
+);
+
+select ok(
+  exists (
+    select 1 from pg_constraint c
+    where c.conrelid = to_regclass('platform_private.cms_content_entries')
+      and c.contype = 'u'
+      and pg_get_constraintdef(c.oid) = 'UNIQUE (id, version)'
+  )
+    and exists (
+      select 1 from pg_constraint c
+      where c.conrelid = to_regclass('platform_private.cms_entry_revisions')
+        and c.contype = 'u'
+        and pg_get_constraintdef(c.oid) = 'UNIQUE (entry_id, revision_number, locale)'
+    ),
+  'P2-S10-AC-007 entry and revision CAS uniqueness constraints exist'
+);
+
+select ok(
+  pg_temp.s10_has_index(
+    'platform_private.cms_content_entries',
+    'cms_content_entries_owner_updated_idx', '(owner_id, updated_at DESC)'
+  )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_content_entries',
+      'cms_content_entries_owner_party_lifecycle_idx',
+      '(owner_party_id, lifecycle, updated_at DESC)'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_content_entries',
+      'cms_content_entries_type_lifecycle_idx',
+      '(content_type_id, lifecycle)'
+    ),
+  'P2-S10-AC-050 all three locked ContentEntry query indexes exist'
+);
+
+select ok(
+  pg_temp.s10_has_index(
+    'platform_private.cms_entry_revisions',
+    'cms_entry_revisions_entry_locale_revision_idx',
+    '(entry_id, locale, revision_number DESC)'
+  )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_revisions',
+      'cms_entry_revisions_entry_state_updated_idx',
+      '(entry_id, state, updated_at DESC)'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_revisions',
+      'cms_entry_revisions_owner_updated_idx', '(owner_id, updated_at DESC)'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_revisions',
+      'cms_entry_revisions_schema_version_idx', '(schema_version_id)'
+    ),
+  'P2-S10-AC-016 all four locked EntryRevision query indexes exist'
+);
+
+select ok(
+  pg_temp.s10_trigger_events(
+    'platform_private.cms_content_entries', 'write_guard'
+  ) = 'delete,insert,update'
+    and pg_temp.s10_trigger_function(
+      'platform_private.cms_content_entries', 'write_guard'
+    ) = 'cms_write_guard',
+  'P2-S10-AC-006 ContentEntry rejects every direct CMS table write'
+);
+
+select ok(
+  pg_temp.s10_trigger_events(
+    'platform_private.cms_entry_revisions', 'write_guard'
+  ) = 'delete,insert,update'
+    and pg_temp.s10_trigger_events(
+      'platform_private.cms_entry_revisions', 'immutable'
+    ) = 'delete,update'
+    and pg_temp.s10_trigger_function(
+      'platform_private.cms_entry_revisions', 'immutable'
+    ) = 'cms_immutable_guard',
+  'P2-S10-AC-002 EntryRevision is an immutable append-only snapshot'
+);

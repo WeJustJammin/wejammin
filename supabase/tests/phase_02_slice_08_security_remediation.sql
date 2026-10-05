@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
@@ -24,8 +25,8 @@ select
 -- Create an organization for each actor, then grant only the generic
 -- capability-management identity permission.  The S08 parent grant rows below
 -- are the effective named authority used to test subset enforcement.
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a8080000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a8080000-0000-4000-8000-000000000001', true);
 select set_config('app.auth_user_id', 'a8080000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_auth_user_id', 'a8080000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id',
@@ -37,7 +38,7 @@ create temp table p2_s08_parties on commit drop as
 select
   ((platform_api.rpc_create_organization('self_member', '{}'::text[]))->>'organizationId')::uuid
     as actor_one_party_id;
-select set_config('request.jwt.claim.sub', 'a8080000-0000-4000-8000-000000000002', true);
+select pg_temp.set_jwt_claim('sub', 'a8080000-0000-4000-8000-000000000002', true);
 select set_config('app.auth_user_id', 'a8080000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_auth_user_id', 'a8080000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_person_id',
@@ -115,8 +116,8 @@ insert into platform_private.admin_capability_grants(
   array['read'], clock_timestamp(), clock_timestamp() + interval '2 hours',
   (select actor_one_person_id from p2_s08_people), 'revoke fixture', false, 'active', 1
 );
-select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+select pg_temp.set_jwt_claim('sub', '', true);
 select lives_ok($revoke$
   select platform_api.admin_capability_action(jsonb_build_object(
     'action', 'revoke',

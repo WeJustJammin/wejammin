@@ -14,6 +14,18 @@ import { parseStrictJson } from './parse-strict-json.ts';
 type ManualAccessibilityEvidenceRun =
   ContentSchemaRegistryOperationalReleaseEvidence['accessibility']['manualRuns'][number];
 
+// The report binds only hosted identity fields; production deployment fields
+// remain mandatory in the production sidecar, not in this shared byte verifier.
+type ManualAccessibilityExpectedIdentity = Pick<
+  OperationalReleaseEvidenceExpectedIdentity,
+  | 'sourceRevision'
+  | 'hostedEnvironment'
+  | 'hostedDeploymentId'
+  | 'hostedDeployedAt'
+  | 'trustedCutoffAt'
+  | 'webOrigin'
+>;
+
 type AccessibilityEvidence =
   ContentSchemaRegistryOperationalReleaseEvidence['accessibility'];
 
@@ -71,7 +83,7 @@ export const validateContentSchemaRegistryManualAccessibilityReport = (
   manualRun: ManualAccessibilityEvidenceRun,
   accessibilityEvidence: AccessibilityEvidence,
   hostedEvidence: HostedE2eEvidence,
-  expectedIdentity: OperationalReleaseEvidenceExpectedIdentity,
+  expectedIdentity: ManualAccessibilityExpectedIdentity,
 ): ContentSchemaRegistryManualAccessibilityReport => {
   const parsed =
     ContentSchemaRegistryManualAccessibilityReportSchema.safeParse(report);
@@ -181,7 +193,7 @@ export const validateContentSchemaRegistryManualAccessibilityReportBytes = (
   manualRun: ManualAccessibilityEvidenceRun,
   accessibilityEvidence: AccessibilityEvidence,
   hostedEvidence: HostedE2eEvidence,
-  expectedIdentity: OperationalReleaseEvidenceExpectedIdentity,
+  expectedIdentity: ManualAccessibilityExpectedIdentity,
 ): ContentSchemaRegistryManualAccessibilityReport => {
   if (sha256Bytes(reportBytes) !== expectedDigest)
     throw new Error(

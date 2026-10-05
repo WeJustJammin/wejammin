@@ -106,6 +106,7 @@ describe('S09 schema migration worker contract', () => {
       SCHEMA_MIGRATION_RPC.readPlan,
       SCHEMA_MIGRATION_RPC.claimLease,
       SCHEMA_MIGRATION_RPC.heartbeatLease,
+      SCHEMA_MIGRATION_RPC.readSourceRows,
       SCHEMA_MIGRATION_RPC.processBatch,
       SCHEMA_MIGRATION_RPC.beginVerification,
       SCHEMA_MIGRATION_RPC.verify,
@@ -118,9 +119,9 @@ describe('S09 schema migration worker contract', () => {
       cursor: '0',
       workerId: 'worker-a',
     });
-    expect(port.calls[3]?.request).toMatchObject({
+    expect(port.calls[4]?.request).toMatchObject({
       cursor: '50',
-      transformKey: 'article.v2',
+      transformKey: 'identity.revalidate',
       transformVersion: '1',
       compilerHash: HASH,
       sourceHash: HASH,
@@ -157,7 +158,7 @@ describe('S09 schema migration worker contract', () => {
     expect(port.calls).toHaveLength(2);
   });
 
-  it('preserves the old active version and never deletes rows when a transform fails', async () => {
+  it('[P2-S09-AC-188] preserves the old active version and never deletes rows when a transform fails', async () => {
     const port = makePort({
       [SCHEMA_MIGRATION_RPC.readPlan]: () => basePlan(),
       [SCHEMA_MIGRATION_RPC.claimLease]: () => ({
@@ -187,10 +188,11 @@ describe('S09 schema migration worker contract', () => {
       SCHEMA_MIGRATION_RPC.readPlan,
       SCHEMA_MIGRATION_RPC.claimLease,
       SCHEMA_MIGRATION_RPC.heartbeatLease,
+      SCHEMA_MIGRATION_RPC.readSourceRows,
       SCHEMA_MIGRATION_RPC.processBatch,
       SCHEMA_MIGRATION_RPC.rollback,
     ]);
-    expect(port.calls[4]?.request).toMatchObject({
+    expect(port.calls[5]?.request).toMatchObject({
       fallbackVersionId: OLD_VERSION_ID,
       preserveOldActive: true,
       deleteRows: false,

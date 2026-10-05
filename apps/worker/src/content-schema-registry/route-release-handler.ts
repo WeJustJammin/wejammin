@@ -12,9 +12,13 @@ import {
   schemaForReleaseOperation,
   validReleasePrincipal,
 } from './admission';
+import { invalid } from './admission-common';
 import type { ContentSchemaRegistryDependencies } from './types';
 import type { FeatureContext } from './route-types';
-import { errorResponse, policyFor, setRateHeaders } from './route-response';
+import { rateLimitedError } from './route-rate-refusal';
+import { reportRateRefusal } from './route-rate-telemetry';
+import { createRefuse } from './route-refusal-telemetry';
+import { policyFor, setRateHeaders } from './route-response';
 import type { RouteExecutor } from './route-execution';
 
 export type ReleaseMutation = (
@@ -29,12 +33,22 @@ export const createReleaseMutation =
     execute: RouteExecutor,
   ): ReleaseMutation =>
   async (context, operationId, path = {}) => {
+    const startedAt = dependencies.now?.() ?? Date.now();
+    // The caller is anonymous until the signed principal is verified; every early
+    // answer is reported as sanitized refusal telemetry (a rejected signature is a
+    // rejected nonce claim for the release counters).
+    let actorClass: 'anonymous' | 'release-worker' = 'anonymous';
+    const refuse = createRefuse(
+      dependencies,
+      context,
+      operationId,
+      startedAt,
+      () => actorClass,
+    );
     const origin = checkOrigin(context.req.raw, dependencies.releaseOrigins);
-    if (origin !== null)
-      return errorResponse(context, origin, context.get('requestId'));
+    if (origin !== null) return refuse(origin);
     const headers = parseMutationHeaders(context.req.raw, operationId);
-    if (!headers.ok)
-      return errorResponse(context, headers, context.get('requestId'));
+    if (!headers.ok) return refuse(headers);
     const release = await readReleaseAdmission(
       context.req.raw,
       operationId,
@@ -42,21 +56,32 @@ export const createReleaseMutation =
       context.get('requestId'),
       new AbortController().signal,
     );
-    if (!release.ok)
-      return errorResponse(context, release, context.get('requestId'));
+    if (!release.ok) return refuse(release);
+    actorClass = 'release-worker';
     const validPrincipal = validReleasePrincipal(
       release.value.principal,
       release.value.headers.keyId,
     );
-    if (validPrincipal !== null)
-      return errorResponse(context, validPrincipal, context.get('requestId'));
+    if (validPrincipal !== null) return refuse(validPrincipal);
     const capability = requireReleaseCapability(release.value.principal);
-    if (capability !== null)
-      return errorResponse(context, capability, context.get('requestId'));
+    if (capability !== null) return refuse(capability);
     const body = await parseJsonBody<
       BlockRegistrationRequest | BlockLifecycleAdvanceRequest
     >(context.req.raw, schemaForReleaseOperation(operationId));
-    if (!body.ok) return errorResponse(context, body, context.get('requestId'));
+    if (!body.ok) return refuse(body);
+    // The body expectedVersion and the strong If-Match name one version; a
+    // disagreement is a malformed request, never silently resolved (the same
+    // rule the human mutations apply).
+    const bodyVersion = (body.value as { expectedVersion?: unknown })
+      .expectedVersion;
+    if (
+      typeof bodyVersion === 'string' &&
+      headers.value.ifMatch !== undefined &&
+      bodyVersion !== headers.value.ifMatch
+    )
+      return refuse(
+        invalid('expectedVersion must equal the If-Match version.'),
+      );
     const rate = await dependencyDeadline(
       (signal) =>
         dependencies.rateLimit(
@@ -74,25 +99,21 @@ export const createReleaseMutation =
         ),
       dependencies.deadlineMs ?? 15_000,
     );
-    if (!rate.ok) return errorResponse(context, rate, context.get('requestId'));
+    if (!rate.ok) return refuse(rate);
     setRateHeaders(context, rate.value);
-    if (!rate.value.allowed)
-      return errorResponse(
+    if (!rate.value.allowed) {
+      await reportRateRefusal(
+        dependencies,
         context,
-        {
-          ok: false,
-          status: 429,
-          code: 'RATE_LIMITED',
-          message: 'Too many requests.',
-          details: {
-            limit: rate.value.limit,
-            resetAt: rate.value.resetAt,
-            retryAfterSeconds: 5,
-          },
-          retryAfterSeconds: 5,
-        },
-        context.get('requestId'),
+        operationId,
+        'release-worker',
+        rate.value,
+        startedAt,
       );
+      return refuse(
+        rateLimitedError(rate.value, dependencies.now?.() ?? Date.now()),
+      );
+    }
     return execute(context, operationId, 'release-worker', {
       operationId,
       requestId: context.get('requestId'),

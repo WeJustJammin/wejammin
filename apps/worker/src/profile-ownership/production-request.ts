@@ -3,6 +3,7 @@ import {
   traceFor,
   type AuthProductionConfiguration,
 } from '../authentication/production-configuration';
+import { isFreshProof } from '../authentication/step-up';
 import type { AuthenticationSession } from '../authentication/types';
 import {
   callProfile,
@@ -31,6 +32,7 @@ export const requestHeaders = (
 
 export const databaseContext = (
   input: Pick<ProfilePortInput, 'request' | 'session'>,
+  now: () => number = Date.now,
 ): Readonly<Record<string, unknown>> => {
   const trace = traceFor(input.request);
   const session = input.session;
@@ -42,7 +44,7 @@ export const databaseContext = (
           sessionId: session.sessionId,
           actorPersonId: session.personId,
           actingPartyId: session.actingPartyId,
-          stepUpVerified: session.stepUpAt !== null,
+          stepUpVerified: isFreshProof(session.stepUpAt, now()),
         }),
     requestId: trace.requestId,
     correlationId: trace.correlationId,

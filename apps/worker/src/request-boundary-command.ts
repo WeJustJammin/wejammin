@@ -4,7 +4,10 @@ import {
 } from '@wejammin/contracts';
 
 import {
-  contentLengthExceedsLimit,
+  decodeBoundedText,
+  readBoundedRequestBytes,
+} from './http/bounded-body';
+import {
   invalid,
   isJsonContentType,
   issueDetails,
@@ -28,19 +31,15 @@ export const parseProtectedCommandRequest = async (
   if (!isJsonContentType(request.headers.get('content-type'))) {
     return unsupportedMediaType(requestId);
   }
-  if (contentLengthExceedsLimit(request)) {
-    return payloadTooLarge(requestId);
-  }
-
-  let bodyText: string;
-  try {
-    bodyText = await request.text();
-  } catch {
+  const outcome = await readBoundedRequestBytes(request, {
+    maxBytes: MAX_JSON_BODY_BYTES,
+  });
+  if (outcome.kind === 'too-large') return payloadTooLarge(requestId);
+  if (outcome.kind === 'malformed-length')
+    return invalid(requestId, 'The Content-Length header is invalid.');
+  if (outcome.kind !== 'ok')
     return invalid(requestId, 'The request body could not be read.');
-  }
-  if (new TextEncoder().encode(bodyText).byteLength > MAX_JSON_BODY_BYTES) {
-    return payloadTooLarge(requestId);
-  }
+  const bodyText = decodeBoundedText(outcome.bytes);
 
   let body: unknown;
   try {

@@ -1,5 +1,8 @@
 import type { RouteContract } from './route-policy-base.ts';
-import type { HumanMutationErrors } from './route-policy-errors.ts';
+import type {
+  HumanMutationErrors,
+  HumanStepUpMutationErrors,
+} from './route-policy-errors.ts';
 
 export type HumanRouteContractByOperation = {
   'CMS-03A-01': RouteContract & {
@@ -13,6 +16,7 @@ export type HumanRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'required';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'required';
     ifMatch: 'none';
@@ -33,6 +37,7 @@ export type HumanRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'required';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'required';
     ifMatch: 'required';
@@ -53,6 +58,7 @@ export type HumanRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'required';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'required';
     ifMatch: 'required';
@@ -74,6 +80,7 @@ export type HumanRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'required';
+    stepUp: 'required';
     rawBodySignature: 'none';
     idempotency: 'required';
     ifMatch: 'required';
@@ -81,6 +88,6 @@ export type HumanRouteContractByOperation = {
     rateLimit: 10;
     partyRateLimit: 20;
     rateScope: 'user';
-    errors: HumanMutationErrors;
+    errors: HumanStepUpMutationErrors;
   };
 };

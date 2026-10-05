@@ -5,6 +5,7 @@ import {
   type SchemaMigrationRpcName,
   SCHEMA_MIGRATION_RPC,
 } from '../../apps/worker/src/content-schema-registry/migration-worker';
+import { emptySourcePage } from '../../apps/worker/src/content-schema-registry/migration-worker-test-support';
 import {
   createDurableStore,
   incrementVersion,
@@ -73,6 +74,10 @@ export const createDurablePort = (path: string): MigrationWorkerPort => ({
         return input.leaseToken === state.leaseToken
           ? { renewed: true }
           : { renewed: false };
+      case SCHEMA_MIGRATION_RPC.readSourceRows:
+        // The worker reads one source page before every batch RPC. The durable
+        // record models the plan cursor, not source rows, so the page is empty.
+        return emptySourcePage(request);
       case SCHEMA_MIGRATION_RPC.processBatch: {
         if (input.expectedVersion !== state.plan.version)
           throw Object.assign(new Error('durable cursor version conflict'), {

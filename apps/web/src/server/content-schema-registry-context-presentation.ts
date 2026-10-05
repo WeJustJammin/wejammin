@@ -6,6 +6,7 @@ import type {
   ContentSchemaRegistryDetailState,
   ContentSchemaRegistryListState,
   ContentSchemaRegistryPage,
+  ContentSchemaRegistryReviewState,
 } from '../components/content-schema-registry/content-schema-registry-types';
 import { CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS } from '../components/content-schema-registry/content-schema-registry-types';
 import {
@@ -20,6 +21,11 @@ import type {
   ContentSchemaRegistryPorts,
   ContentSchemaRegistrySession,
 } from './content-schema-registry-context-types';
+import { contentSchemaRegistryStepUpStateFor } from './content-schema-registry-acting-context';
+import {
+  createSupportReference,
+  withoutDiagnosticIdentifiers,
+} from './content-schema-registry-diagnostic-ids';
 
 export type ContentSchemaRegistryResult =
   | { readonly kind: 'authorized'; readonly page: ContentSchemaRegistryPage }
@@ -52,6 +58,8 @@ export interface ResolveInput {
   readonly requestId: string;
   readonly contentTypeId?: string | undefined;
   readonly versionId?: string | undefined;
+  /** Trusted server clock used for the step-up disclosure window. */
+  readonly now?: (() => number) | undefined;
 }
 
 export const safeAccess = (input: {
@@ -167,44 +175,49 @@ export const pageFor = (input: {
   readonly query: z.infer<typeof ContentSchemaRegistryListQuerySchema>;
   readonly list: ContentSchemaRegistryListState;
   readonly detail: ContentSchemaRegistryDetailState | null;
+  readonly review?: ContentSchemaRegistryReviewState | null;
+  /** The review route's exact review id; null on every registry route. */
+  readonly reviewId?: string | null;
+  /** The review route pins both URLs to its own path and ignores any query. */
+  readonly canonicalUrl?: string;
+  readonly retryUrl?: string;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
   readonly state: 'ready' | 'degraded';
+  /** Server-resolved disclosure values; never raw identifiers. */
+  readonly actingContextLabel?: string | undefined;
+  /** Trusted clock for the step-up disclosure window. */
+  readonly now?: number | undefined;
 }): ContentSchemaRegistryPage => {
   const access = safeAccess(input);
-  const actorId =
-    input.session !== undefined && 'userId' in input.session
-      ? input.session.userId
-      : null;
-  const actingPartyId =
-    input.authority !== undefined && 'actingPartyId' in input.authority
-      ? input.authority.actingPartyId
-      : null;
   const variant =
     input.state === 'degraded'
       ? 'degradedPage'
       : (input.authority?.presentationVariant ??
         (access === 'full' ? 'ownerFull' : 'entitledRead'));
+  const stepUpFreshUntil = input.authority?.stepUpFreshUntil;
+  const disclosureNow = input.now ?? Date.now();
   return {
     state: input.state,
     variant,
     access,
-    actorId,
-    actingPartyId,
     query: input.query,
     contentTypeId: input.contentTypeId,
     versionId: input.versionId,
+    reviewId: input.reviewId ?? null,
     cursor: input.query.cursor ?? null,
     expectedVersion:
       input.detail?.status === 'success' ? input.detail.version : null,
-    requestId: input.requestId,
-    canonicalUrl: '/app/cms-content-modeling',
+    supportReference: createSupportReference(),
+    canonicalUrl: input.canonicalUrl ?? '/app/cms-content-modeling',
     listUrl: contentSchemaRegistryListUrl(input.query),
-    retryUrl: (() => {
-      const requestUrl = new URL(input.request.url);
-      const query = serializeContentSchemaRegistryQuery(input.query);
-      return `${requestUrl.pathname}${query.length > 0 ? `?${query}` : ''}`;
-    })(),
+    retryUrl:
+      input.retryUrl ??
+      (() => {
+        const requestUrl = new URL(input.request.url);
+        const query = serializeContentSchemaRegistryQuery(input.query);
+        return `${requestUrl.pathname}${query.length > 0 ? `?${query}` : ''}`;
+      })(),
     csrfToken: (() => {
       const cookie = input.request.headers.get('cookie');
       if (cookie === null) return '';
@@ -214,8 +227,22 @@ export const pageFor = (input: {
         .find((part) => part.startsWith('wj_csrf='));
       return token === undefined ? '' : token.slice('wj_csrf='.length);
     })(),
-    initialList: input.list,
-    initialDetail: input.detail,
+    // Server builders may carry the request id inside failure states; this is
+    // the only exit to hydration, so every diagnostic id is removed here except
+    // the ApiError request id of an error member or degraded state (FE03).
+    initialList: withoutDiagnosticIdentifiers(input.list),
+    initialDetail: withoutDiagnosticIdentifiers(input.detail),
+    initialReview: withoutDiagnosticIdentifiers(input.review ?? null),
     contractFields: CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS,
+    ...(input.actingContextLabel === undefined
+      ? {}
+      : { actingContextLabel: input.actingContextLabel }),
+    stepUpState: contentSchemaRegistryStepUpStateFor(
+      stepUpFreshUntil,
+      disclosureNow,
+    ),
+    ...(stepUpFreshUntil === undefined || !Number.isFinite(disclosureNow)
+      ? {}
+      : { stepUpFreshUntil }),
   };
 };

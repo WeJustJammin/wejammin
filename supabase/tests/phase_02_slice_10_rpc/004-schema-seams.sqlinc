@@ -1,0 +1,575 @@
+
+-- CMS-03B-11 fail-closed runtime seams.
+--
+-- EntryDraftDetailSchemaValidation requires the draft read to serve a
+-- schema-valid, bounded envelope.  A stored draft can drift out of contract
+-- after it was written, so the read carries fail-closed guards: the
+-- revision's pinned schema version must still resolve to the entry's content
+-- type and be active; every stored field value and relation binding must still
+-- be declared by that active schema version; every value must stay inside the
+-- byte/depth/key/array ceiling and its declared field kind; frozen field and
+-- revision hashes must match their stored value preimages.  This fragment
+-- drives violations through the RPC and proves fail-closed contract tokens.
+--
+-- Each violation runs inside pg_temp.s10_rpc_probe, which captures the outcome
+-- and then rolls the whole subtransaction back.  The seeded fixture therefore
+-- stays pristine, so the guards can be tested in any order and the following
+-- fragment still sees an untampered draft.  Every failing probe is paired with
+-- a control that uses the same shape but a declared, bounded value: if the
+-- control also failed, the guard would be over-broad rather than precise.
+
+select ok(
+  pg_temp.s10_probe_state('pristine-read') = 'MISSING',
+  'P2-S10-RPC seam harness starts with an empty probe ledger'
+);
+
+-- Builds one additional draft revision on the seeded entry and repoints the
+-- entry's draft pointer at it, so a probe can mutate a draft without touching
+-- the fixture revision.  A monotonically increasing revision number keeps the
+-- (entry_id, revision_number, locale) uniqueness satisfied across probes even
+-- though each probe is rolled back. The frozen hash is computed before insert
+-- because revision rows are immutable; p_forge_hash is reserved for drift tests.
+create or replace function pg_temp.s10_seam_revision(
+  p_revision_id uuid,
+  p_revision_number integer,
+  p_field_id uuid default null,
+  p_field_value jsonb default null,
+  p_forge_hash boolean default false
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id,
+    template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+    payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at)
+  select p_revision_id, ids_org.value::uuid,
+    'a9100000-0000-4000-8000-000000000301', p_revision_number,
+    ids_version.value::uuid, null, '[]'::jsonb, '[]'::jsonb, 'en-US',
+    (case when p_forge_hash then repeat('f', 64)
+      else platform_private.cms_jcs_sha256(
+        case when p_field_id is null then '{}'::jsonb
+          else jsonb_build_object(p_field_id::text, p_field_value) end
+      ) end)::char(64),
+    ids_person.value::uuid, ids_org.value::uuid, 'draft', 1,
+    'valid', '{}'::jsonb,
+    timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+  from s10_ids ids_org, s10_ids ids_version, s10_ids ids_person
+  where ids_org.key = 'organization'
+    and ids_version.key = 'draftVersionId'
+    and ids_person.key = 'creatorPerson';
+  update platform_private.cms_content_entries
+     set current_draft_revision_id = p_revision_id
+   where id = 'a9100000-0000-4000-8000-000000000301';
+end;
+$body$;
+
+-- Writes one field value on p_revision_id under the declared field definition
+-- with an explicit field_id, so a probe can break the field_id/definition
+-- pairing or supply an out-of-bounds value.
+create or replace function pg_temp.s10_seam_value(
+  p_revision_id uuid,
+  p_field_id uuid,
+  p_value jsonb,
+  p_forge_hash boolean default false
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_field_values(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    locale, value, provenance, value_hash, created_at, updated_at)
+  select ids_org.value::uuid, 'active', 1, p_revision_id, p_field_id,
+    ids_field.value::uuid, 'en-US', p_value, 'authored',
+    (case when p_forge_hash then repeat('f', 64)
+      else platform_private.cms_jcs_sha256(p_value) end)::char(64),
+    timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+  from s10_ids ids_org, s10_ids ids_field
+  where ids_org.key = 'organization' and ids_field.key = 'typeFieldId';
+end;
+$body$;
+
+-- Writes one relation on p_revision_id with an explicit field_id.
+create or replace function pg_temp.s10_seam_relation(
+  p_revision_id uuid,
+  p_field_id uuid,
+  p_target_id uuid,
+  p_definition_field_id uuid default null,
+  p_on_unavailable text default 'omit',
+  p_target_kind text default 'content',
+  p_expected_version bigint default 1
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_relations(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    target_kind, target_id, expected_target_version, position, on_unavailable,
+    created_at, updated_at)
+  select ids_org.value::uuid, 'active', 1, p_revision_id, p_field_id,
+    coalesce(p_definition_field_id, ids_field.value::uuid),
+    p_target_kind, p_target_id, p_expected_version, 0, p_on_unavailable,
+    timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+  from s10_ids ids_org, s10_ids ids_field
+  where ids_org.key = 'organization' and ids_field.key = 'typeRelationFieldId';
+end;
+$body$;
+
+-- A same-tenant target without an entry assignment is concealed from this
+-- actor even when its type and lifecycle otherwise match the definition.
+create or replace function pg_temp.s10_seam_unassigned_target(p_target_id uuid)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle,
+    current_draft_revision_id, version, created_by, created_at, updated_at
+  )
+  select p_target_id, ids_org.value::uuid, ids_type.value::uuid,
+    ids_org.value::uuid, 'active', null, 1, ids_actor.value::uuid,
+    timestamptz '2026-09-26T12:00:00Z',
+    timestamptz '2026-09-26T12:00:00Z'
+  from s10_ids ids_org, s10_ids ids_type, s10_ids ids_actor
+  where ids_org.key = 'organization'
+    and ids_type.key = 'typeId'
+    and ids_actor.key = 'creatorAuth';
+end;
+$body$;
+
+-- Control: the untouched fixture draft must still read.  This establishes the
+-- baseline the seam probes deviate from, so a later DEPENDENCY_UNAVAILABLE or
+-- INTERNAL_ERROR is attributable to the injected violation.
+select pg_temp.s10_rpc_probe(
+  'pristine-read',
+  null,
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('pristine-read'),
+  '00000',
+  'CMS-03B-11 baseline: the untouched fixture draft reads successfully'
+);
+
+-- Seam 1 - active schema version.  The draft pins a schema version; if that
+-- version is no longer active the stored values cannot be schema-typed, so the
+-- read refuses as a dependency failure rather than serving untyped output.
+select pg_temp.s10_rpc_probe(
+  'schema-inactive',
+  'select set_config(''app.cms_rpc'', ''true'', true);
+   update platform_private.cms_content_type_versions
+      set state = ''superseded'', version = version + 1
+    where id = (select value::uuid from s10_ids where key = ''draftVersionId'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('schema-inactive'),
+  'DEPENDENCY_UNAVAILABLE',
+  'CMS-03B-11 refuses DEPENDENCY_UNAVAILABLE when the pinned schema version is not active'
+);
+
+-- Seam 2 - field value typing.  A value whose field_id no longer matches the
+-- schema's stable field id is untyped evidence and must not be projected.
+select pg_temp.s10_rpc_probe(
+  'value-undeclared',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000401'', 2,
+     ''a9100000-0000-4000-8000-000000000104'', to_jsonb(''undeclared''::text));
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000401'',
+     ''a9100000-0000-4000-8000-000000000104'', to_jsonb(''undeclared''::text));',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('value-undeclared'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses INTERNAL_ERROR when a stored value is not declared by the active schema'
+);
+
+-- Control for seam 2: the same shape with the DECLARED stable field id reads,
+-- proving the refusal above is the declaration check and not the write itself.
+select pg_temp.s10_rpc_probe(
+  'value-declared',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000411'', 3,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(''declared''::text));
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000411'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(''declared''::text));',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('value-declared'),
+  '00000',
+  'CMS-03B-11 control: a declared, bounded value reads successfully'
+);
+
+-- A declared field id alone does not type its JSON value: the active schema
+-- declares this field as short_text, so an object must be refused even when
+-- its stored field hash and revision hash are internally consistent.
+select pg_temp.s10_rpc_probe(
+  'value-wrong-kind',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000413'', 8,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''{"unexpected":"object"}''::jsonb);
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000413'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''{"unexpected":"object"}''::jsonb);',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('value-wrong-kind'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses a stored value that violates its active field kind'
+);
+
+-- A frozen revision hash or field-value hash that no longer matches stored
+-- values must never be projected as authoritative draft provenance.
+select pg_temp.s10_rpc_probe(
+  'payload-hash-forged',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000414'', 9,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(''hash drift''::text), true);
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000414'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(''hash drift''::text));',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('payload-hash-forged'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses a frozen revision hash that disagrees with stored values'
+);
+select pg_temp.s10_rpc_probe(
+  'field-hash-forged',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000415'', 10,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(''field drift''::text));
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000415'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(''field drift''::text), true);',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('field-hash-forged'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses a stored field hash that disagrees with its value'
+);
+
+-- Seam 3 - relation typing.  A binding whose field_id is not the schema's
+-- stable field id cannot be resolved by the caller and must fail closed.
+select pg_temp.s10_rpc_probe(
+  'relation-undeclared',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000402'', 4);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000402'',
+     ''a9100000-0000-4000-8000-000000000103'',
+     ''a9100000-0000-4000-8000-000000000556'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('relation-undeclared'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses INTERNAL_ERROR when a stored relation is not declared by the active schema'
+);
+
+-- A declared text field is not a relation definition.  The field-id match
+-- alone must not authorize projecting its stored target identity.
+select pg_temp.s10_rpc_probe(
+  'relation-wrong-kind',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000413'', 15);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000413'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''a9100000-0000-4000-8000-000000000301'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''));',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('relation-wrong-kind'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses a relation attached to a non-relation schema field'
+);
+
+select pg_temp.s10_rpc_probe(
+  'relation-policy-forged',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000419'', 19);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000419'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000301'', null, ''placeholder'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('relation-policy-forged'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses stored onUnavailable metadata that contradicts its immutable definition'
+);
+
+select pg_temp.s10_rpc_probe(
+  'relation-kind-forged',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000420'', 20);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000420'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000301'', null, ''omit'', ''domain'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('relation-kind-forged'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses stored target kind that contradicts its immutable definition'
+);
+
+-- Control for seam 3: the registry-backed relation field reads.
+select pg_temp.s10_rpc_probe(
+  'relation-declared',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000412'', 5);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000412'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000301'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('relation-declared'),
+  '00000',
+  'CMS-03B-11 control: a declared relation reads successfully'
+);
+
+-- `omit` is registry policy: an absent target must be omitted with no target
+-- identifier in the draft-detail envelope, exactly like a concealed target.
+select pg_temp.s10_rpc_probe(
+  'relation-target-missing',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000416'', 16);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000416'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000555'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('relation-target-missing'),
+  '00000',
+  'CMS-03B-11 omit policy keeps an absent relation target read non-failing'
+);
+select is(
+  jsonb_array_length(pg_temp.s10_probe_response('relation-target-missing')->'relations'),
+  0,
+  'CMS-03B-11 omit policy reveals no absent target binding'
+);
+select ok(
+  pg_temp.s10_probe_response('relation-target-missing')::text
+    not like '%a9100000-0000-4000-8000-000000000555%',
+  'CMS-03B-11 omit policy excludes the absent target identifier entirely'
+);
+
+select pg_temp.s10_rpc_probe(
+  'relation-target-concealed',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000417'', 17);
+   select pg_temp.s10_seam_unassigned_target(''a9100000-0000-4000-8000-000000000556'');
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000417'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000556'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('relation-target-concealed'),
+  '00000',
+  'CMS-03B-11 omit policy keeps a concealed relation target read non-failing'
+);
+select is(
+  jsonb_array_length(pg_temp.s10_probe_response('relation-target-concealed')->'relations'),
+  0,
+  'CMS-03B-11 omit policy makes concealed and absent targets equally opaque'
+);
+select ok(
+  pg_temp.s10_probe_response('relation-target-concealed')::text
+    not like '%a9100000-0000-4000-8000-000000000556%',
+  'CMS-03B-11 omit policy excludes the concealed target identifier entirely'
+);
+
+select pg_temp.s10_rpc_probe(
+  'relation-target-stale',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000421'', 21);
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000421'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000301'', null, ''omit'', ''content'', 2);',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('relation-target-stale'),
+  '00000',
+  'CMS-03B-11 omit policy keeps stale target version non-failing'
+);
+select is(
+  jsonb_array_length(pg_temp.s10_probe_response('relation-target-stale')->'relations'),
+  0,
+  'CMS-03B-11 omits a target whose version moved past its pinned expectation'
+);
+
+-- Projection must not turn an invalid stored one-to-one relation into an
+-- apparently valid one by omitting only the concealed second target.
+select pg_temp.s10_rpc_probe(
+  'relation-cardinality',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000418'', 18);
+   select pg_temp.s10_seam_unassigned_target(''a9100000-0000-4000-8000-000000000557'');
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000418'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000301'');
+   select pg_temp.s10_seam_relation(''a9100000-0000-4000-8000-000000000418'',
+     (select value::uuid from s10_ids where key = ''typeRelationFieldId''),
+     ''a9100000-0000-4000-8000-000000000557'');',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('relation-cardinality'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses a stored relation group exceeding its immutable cardinality'
+);
+
+-- Seam 4 - value byte ceiling.  A value above 256 KiB cannot be served inside
+-- the bounded response, so an oversized document fails closed.
+select pg_temp.s10_rpc_probe(
+  'value-oversized',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000403'', 6,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(repeat(''x'', 300000)));
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000403'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     to_jsonb(repeat(''x'', 300000)));',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('value-oversized'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses INTERNAL_ERROR when a stored value exceeds the byte ceiling'
+);
+
+-- Seam 5 - value depth ceiling.  Deep nesting is unbounded work for every
+-- downstream consumer, so it is refused on the same contract token.
+select pg_temp.s10_rpc_probe(
+  'value-too-deep',
+  'select pg_temp.s10_seam_revision(''a9100000-0000-4000-8000-000000000404'', 7,
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''{"a":{"a":{"a":{"a":{"a":{"a":{"a":{"a":{"a":{"a":1}}}}}}}}}}''::jsonb);
+   select pg_temp.s10_seam_value(''a9100000-0000-4000-8000-000000000404'',
+     (select value::uuid from s10_ids where key = ''typeFieldId''),
+     ''{"a":{"a":{"a":{"a":{"a":{"a":{"a":{"a":{"a":{"a":1}}}}}}}}}}''::jsonb);',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('value-too-deep'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses INTERNAL_ERROR when a stored value exceeds the depth ceiling'
+);
+
+-- Seam 6 - relation count ceiling.  The envelope carries at most 512 relation
+-- bindings; the field ids are DECLARED here, so only the count gate can fire.
+select pg_temp.s10_rpc_probe(
+  'relation-count',
+  'select set_config(''app.cms_rpc'', ''true'', true);
+   insert into platform_private.cms_entry_relations(
+     owner_id, state, version, revision_id, field_id, field_definition_id,
+     target_kind, target_id, expected_target_version, position, on_unavailable,
+     created_at, updated_at)
+   select ids_org.value::uuid, ''active'', 1,
+     ''a9100000-0000-4000-8000-000000000302'', ids_field.value::uuid,
+     ids_field.value::uuid, ''content'',
+     lpad(to_hex(g), 32, ''0'')::uuid, 1, (g % 512), ''omit'',
+     timestamptz ''2026-09-26T12:00:00Z'', timestamptz ''2026-09-26T12:00:00Z''
+   from s10_ids ids_org, s10_ids ids_field, generate_series(1, 513) as g
+   where ids_org.key = ''organization'' and ids_field.key = ''typeRelationFieldId'';',
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_message('relation-count'),
+  'INTERNAL_ERROR',
+  'CMS-03B-11 refuses INTERNAL_ERROR above the 512-relation envelope ceiling'
+);
+
+-- The probes must not have leaked into the fixture.  A final read of the
+-- seeded revision proves the rollback contract the seam tests depend on.
+select pg_temp.s10_rpc_probe(
+  'pristine-final',
+  null,
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((select request::text from s10_detail_request))
+    || '::jsonb)'
+);
+select is(
+  pg_temp.s10_probe_state('pristine-final'),
+  '00000',
+  'CMS-03B-11 seam probes leave the seeded draft unmutated after rollback'
+);
+select is(
+  (
+    select entry_row.current_draft_revision_id
+    from platform_private.cms_content_entries entry_row
+    where entry_row.id = 'a9100000-0000-4000-8000-000000000301'
+  ),
+  'a9100000-0000-4000-8000-000000000302'::uuid,
+  'CMS-03B-11 seam probes leave the entry draft pointer on the seeded revision'
+);
+select is(
+  (
+    select count(*)::integer
+    from platform_private.cms_entry_revisions revision
+    where revision.entry_id = 'a9100000-0000-4000-8000-000000000301'
+  ),
+  1,
+  'CMS-03B-11 seam probes leave exactly the seeded revision behind'
+);
+
+select ok(
+  not exists (
+    select 1
+    from (values
+      ('platform_private.cms_draft_field_value_valid(uuid,uuid,jsonb,text)'::regprocedure),
+      ('platform_private.cms_draft_content_hash(uuid,text)'::regprocedure)
+    ) as helper(function_oid)
+    cross join (values
+      ('public'::name), ('anon'::name), ('authenticated'::name), ('service_role'::name)
+    ) as role(role_name)
+    where has_function_privilege(role.role_name, helper.function_oid, 'execute')
+  ),
+  'CMS-03B draft helpers are not directly executable by browser or service roles'
+);

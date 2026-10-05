@@ -206,9 +206,16 @@ describe('Slice 07 verified scope and rate boundaries', () => {
     expect(
       isConfigurationStepUpFresh({ ...session, stepUpAt: null }, now),
     ).toBe(false);
+    // DEC-111 window: a proof up to 30 s ahead of the clock is skew, beyond it is stale.
     expect(
       isConfigurationStepUpFresh(
-        { ...session, stepUpAt: new Date(now + 1_000).toISOString() },
+        { ...session, stepUpAt: new Date(now + 30_000).toISOString() },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      isConfigurationStepUpFresh(
+        { ...session, stepUpAt: new Date(now + 31_000).toISOString() },
         now,
       ),
     ).toBe(false);

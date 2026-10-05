@@ -33,6 +33,9 @@ const typeResource = {
   ownerCapability: 'cms.schema_designer',
   sourceLocale: 'en-US',
   defaultLocale: 'en-US',
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
+  localeConfigHash: 'c'.repeat(64),
   workflowKey: 'cms.content.workflow',
   workflowVersion: '1',
   defaultTemplateVersionId: null,
@@ -71,6 +74,8 @@ const validDraft = {
   ownerCapability: 'cms.schema_designer',
   sourceLocale: 'en-US',
   defaultLocale: 'en-US',
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
   workflowKey: 'cms.content.workflow',
   workflowVersion: '1',
   defaultTemplateVersionId: null,
@@ -222,5 +227,248 @@ describe('content schema registry mutation facade', () => {
     );
     expect(invalidId.response.status).toBe(400);
     expect(invalidId.binding.fetch).not.toHaveBeenCalled();
+  });
+
+  it('parses the native create form locale configuration into the contract body', async () => {
+    const form = {
+      typeKey: 'release_note',
+      label: 'Release note',
+      ownerCapability: 'cms.schema_designer',
+      sourceLocale: 'en-US',
+      defaultLocale: 'en-US',
+      supportedLocales: '["en-US","fr"]',
+      fallbackChains: '{"fr":["en-US"]}',
+      workflowKey: 'cms.content.workflow',
+      workflowVersion: '1',
+      defaultTemplateVersionId: '',
+      fields: '[]',
+      relations: '[]',
+      templateBindings: '[]',
+      capabilityBindings: '[]',
+    };
+    const { response, forwarded } = await call(
+      { operationId: 'CMS-03A-01' },
+      form,
+      typeResource,
+      {},
+      'application/x-www-form-urlencoded',
+    );
+    expect(response.status).toBe(201);
+    const body = (await forwarded?.clone().json()) as Record<string, unknown>;
+    expect(body.supportedLocales).toEqual(['en-US', 'fr']);
+    expect(body.fallbackChains).toEqual({ fr: ['en-US'] });
+  });
+
+  it('[P2-S09-AC-003] [P2-S09-AC-045] [P2-S09-AC-049] submits the template-free create form as a null default and no bindings', async () => {
+    const form = {
+      typeKey: 'release_note',
+      label: 'Release note',
+      ownerCapability: 'cms.schema_designer',
+      sourceLocale: 'en-US',
+      defaultLocale: 'en-US',
+      supportedLocales: '["en-US"]',
+      fallbackChains: '{}',
+      workflowKey: 'cms.content.workflow',
+      workflowVersion: '1',
+      fields: '[]',
+      relations: '[]',
+      capabilityBindings: '[]',
+    };
+    const { response, forwarded } = await call(
+      { operationId: 'CMS-03A-01' },
+      form,
+      typeResource,
+      {},
+      'application/x-www-form-urlencoded',
+    );
+    expect(response.status).toBe(201);
+    const body = (await forwarded?.clone().json()) as Record<string, unknown>;
+    expect(body.defaultTemplateVersionId).toBeNull();
+    expect(body.templateBindings).toEqual([]);
+  });
+
+  it.each([
+    [
+      'a default template version',
+      { defaultTemplateVersionId: '4f5d7c0e-0b50-4c43-a4a3-0d6a4f3b7c11' },
+    ],
+    [
+      'a template binding',
+      {
+        templateBindings:
+          '[{"templateVersionId":"4f5d7c0e-0b50-4c43-a4a3-0d6a4f3b7c11"}]',
+      },
+    ],
+  ])(
+    '[P2-S09-AC-045] [P2-S09-AC-049] refuses a posted create form carrying %s before any dependency call',
+    async (_name, extra) => {
+      const { response, binding } = await call(
+        { operationId: 'CMS-03A-01' },
+        {
+          typeKey: 'release_note',
+          label: 'Release note',
+          ownerCapability: 'cms.schema_designer',
+          sourceLocale: 'en-US',
+          defaultLocale: 'en-US',
+          supportedLocales: '["en-US"]',
+          fallbackChains: '{}',
+          workflowKey: 'cms.content.workflow',
+          workflowVersion: '1',
+          fields: '[]',
+          relations: '[]',
+          capabilityBindings: '[]',
+          ...extra,
+        },
+        typeResource,
+        {},
+        'application/x-www-form-urlencoded',
+      );
+      expect(response.status).toBe(422);
+      expect(binding.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('[P2-S09-AC-1230] returns the exact locale messages and pointers for an invalid create', async () => {
+    const { response, binding } = await call(
+      { operationId: 'CMS-03A-01' },
+      {
+        ...validDraft,
+        supportedLocales: ['en-US', 'fr'],
+        fallbackChains: { fr: ['en-US', 'fr'], 'de-DE': ['en-US'] },
+      },
+      typeResource,
+    );
+    expect(response.status).toBe(422);
+    expect(binding.fetch).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        violations: [
+          {
+            path: '/fallbackChains/de-DE',
+            message: 'fallbackChains key must be a supported locale',
+          },
+          {
+            path: '/fallbackChains/fr/1',
+            message: 'fallback chain must not include its own target locale',
+          },
+          {
+            path: '/fallbackChains/fr',
+            message: 'fallback chain must end at defaultLocale',
+          },
+        ],
+      },
+    });
+  });
+
+  it('parses the successor form pairs and ignores the replacement choice radios', async () => {
+    const target = {
+      operationId: 'CMS-03A-09',
+      contentTypeId: TYPE_ID,
+      versionId: VERSION_ID,
+    } as const;
+    const keep = await call(
+      target,
+      {
+        expectedVersion: '4',
+        localeChoice: 'keep',
+        supportedLocales: 'null',
+        fallbackChains: 'null',
+        templateChoice: 'keep',
+        defaultTemplateVersionId: '',
+        templateBindings: 'null',
+      },
+      typeResource,
+      { 'if-match': '"4"' },
+      'application/x-www-form-urlencoded',
+    );
+    expect(keep.response.status).toBe(201);
+    expect(await keep.forwarded?.clone().json()).toEqual({
+      expectedVersion: '4',
+      supportedLocales: null,
+      fallbackChains: null,
+      defaultTemplateVersionId: null,
+      templateBindings: null,
+    });
+    const change = await call(
+      target,
+      {
+        expectedVersion: '4',
+        localeChoice: 'change',
+        supportedLocales: '["en-US","fr"]',
+        fallbackChains: '{"fr":["en-US"]}',
+        templateChoice: 'change',
+        defaultTemplateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da',
+        templateBindings:
+          '[{"templateVersionId":"018f0c45-73fe-4dc2-9c09-68f7ecf132da"}]',
+      },
+      typeResource,
+      { 'if-match': '"4"' },
+      'application/x-www-form-urlencoded',
+    );
+    expect(await change.forwarded?.clone().json()).toEqual({
+      expectedVersion: '4',
+      supportedLocales: ['en-US', 'fr'],
+      fallbackChains: { fr: ['en-US'] },
+      defaultTemplateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da',
+      templateBindings: [
+        { templateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da' },
+      ],
+    });
+  });
+
+  it('[P2-S09-AC-049] refuses half of the template pair locally with the pair message and no upstream call', async () => {
+    const target = {
+      operationId: 'CMS-03A-09',
+      contentTypeId: TYPE_ID,
+      versionId: VERSION_ID,
+    } as const;
+    const { response, binding } = await call(
+      target,
+      {
+        expectedVersion: '4',
+        supportedLocales: 'null',
+        fallbackChains: 'null',
+        defaultTemplateVersionId: '018f0c45-73fe-4dc2-9c09-68f7ecf132da',
+        templateBindings: 'null',
+      },
+      typeResource,
+      { 'if-match': '"4"' },
+      'application/x-www-form-urlencoded',
+    );
+    expect(response.status).toBe(422);
+    expect(binding.fetch).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        violations: [
+          {
+            path: '/templateBindings',
+            message:
+              'defaultTemplateVersionId and templateBindings must be both null or both present',
+          },
+        ],
+      },
+    });
+  });
+
+  it('refuses malformed locale JSON text with a local 400', async () => {
+    const { response, binding } = await call(
+      {
+        operationId: 'CMS-03A-09',
+        contentTypeId: TYPE_ID,
+        versionId: VERSION_ID,
+      },
+      {
+        expectedVersion: '4',
+        supportedLocales: '{broken',
+        fallbackChains: 'null',
+      },
+      typeResource,
+      { 'if-match': '"4"' },
+      'application/x-www-form-urlencoded',
+    );
+    expect(response.status).toBe(400);
+    expect(binding.fetch).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,8 @@ export type AuthProductionOptions = Readonly<{
   fetchImpl?: typeof fetch;
   now?: () => number;
   randomBytes?: (length: number) => Uint8Array;
+  /** Registered authenticator-app issuer label; defaults per environment. */
+  mfaIssuer?: string;
 }>;
 
 export type AuthProductionConfiguration = Readonly<{
@@ -42,6 +44,8 @@ export type VerifiedAuthToken = Readonly<{
   sessionId: string;
   expiresAt: string;
   stepUpAt: string | null;
+  primaryAuthAt: string | null;
+  aal: 'aal1' | 'aal2' | null;
   providerSubjectDigest: string | null;
 }>;
 

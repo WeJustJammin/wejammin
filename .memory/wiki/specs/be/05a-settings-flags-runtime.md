@@ -17,6 +17,35 @@ records; this file provides typed configuration inputs and never promotes a
 setting, flag, experiment or switch into content, authorization, rights,
 financial, legal, evidence or transactional truth.
 
+## Settings editor authority projection (2026-10-02)
+
+The authority to edit a setting is the immutable `ownerCapability` of its
+definition version (Cfg05a01). CFG-05A-03 requires the acting party to hold
+exactly that capability, and the database re-checks it inside the proposal
+transaction. Approval, release and rollback (CFG-05A-04) are authorized by the
+named capabilities `settings.approve`, `settings.release` and
+`settings.rollback`. No capability alias, role label or response header carries
+any of this authority.
+
+- **Projection.** CFG-05A-02 returns the definition version's `ownerCapability`
+  in `Cfg05a02EffectiveValueResponse`. It is a capability name only, safe to
+  disclose to any caller that can already read the definition.
+- **Client derivation.** The web tier decides the edit affordance server-side:
+  the actor may edit the definition when `ownerCapability` is in the actor's
+  CFG-05B-07 capability snapshot (the `admin.*` and `settings.*` projection in
+  05b). The approve, release and rollback affordances are enabled by
+  `settings.approve`, `settings.release` and `settings.rollback` in that same
+  snapshot. An owner capability outside the `admin.*` and `settings.*`
+  namespaces cannot appear in the snapshot, so the edit affordance stays
+  read-only; that is a fail-closed rendering choice, never a grant.
+- **Enforcement.** The affordance only selects what the UI renders. The Worker
+  and the database enforce `ownerCapability` (propose) and the named
+  `settings.*` capability (action) on every write regardless of what any client
+  rendered or sent. A forged or stale affordance yields 403 `FORBIDDEN`.
+- **Unavailable projection.** When the capability snapshot or the effective
+  read is unavailable, no editor, approver, release or rollback affordance
+  renders.
+
 ## Classification
 
 | IA interaction | Operation ID | Backend classification | Authority and completion |
@@ -159,7 +188,7 @@ only are exposed.
 | Operation ID | Request and success | Error codes and status | 403 versus 404 |
 |---|---|---|---|
 | CFG-05A-01 | RegisterDefinitionRequest to DefinitionResponse; key, value kind, schema and policy are strict | INVALID_REQUEST 400; DEFINITION_KEY_REUSED 409; PROTECTED_SETTING 422; INVALID_DEFINITION 422; RATE_LIMITED 429; INTERNAL_ERROR 500 | Service principal is authenticated; malformed or forbidden registry class is 422, never a resource lookup. |
-| CFG-05A-02 | EffectiveValueQuery to EffectiveValueResponse with one typed value and provenance projection; pagination is N/A; typedValue permits nested arrays of at most 64 items, objects of at most 64 keys, maximum depth 8 and 65,536 serialized bytes | UNAUTHENTICATED 401; DEFINITION_NOT_FOUND 404; DISALLOWED_CONTEXT 422; VALUE_UNAVAILABLE 503; RATE_LIMITED 429 | Unknown or inaccessible key is 404; known key with a consumer that lacks read capability is 403 only when disclosure is already permitted, otherwise 404. |
+| CFG-05A-02 | EffectiveValueQuery to EffectiveValueResponse with one typed value, the definition's `ownerCapability` and provenance projection; pagination is N/A; typedValue permits nested arrays of at most 64 items, objects of at most 64 keys, maximum depth 8 and 65,536 serialized bytes | UNAUTHENTICATED 401; DEFINITION_NOT_FOUND 404; DISALLOWED_CONTEXT 422; VALUE_UNAVAILABLE 503; RATE_LIMITED 429 | Unknown or inaccessible key is 404; known key with a consumer that lacks read capability is 403 only when disclosure is already permitted, otherwise 404. |
 | CFG-05A-03 | ProposeChangeRequest to ChangeResponse in draft state | UNAUTHENTICATED 401; FORBIDDEN 403; DEFINITION_NOT_FOUND 404; STALE_DEFINITION 409; VALUE_INVALID 422; RATE_LIMITED 429 | Definition hidden by scope is 404; visible definition outside grant is 403. |
 | CFG-05A-04 | ChangeActionRequest to ChangeActionResponse; active transition may be 202 while snapshot work is queued | UNAUTHENTICATED 401; FORBIDDEN 403; REVIEW_NOT_FOUND 404; VERSION_CONFLICT 409; APPROVAL_INVALID 422; SNAPSHOT_UNAVAILABLE 503 | Hidden review is 404; visible review with insufficient action, stale MFA or missing authority is 403. |
 | CFG-05A-05 | FlagActionRequest to FlagActionResponse with version and fallback | UNAUTHENTICATED 401; FORBIDDEN 403; FLAG_NOT_FOUND 404; VERSION_CONFLICT 409; FLAG_INVALID 422; RATE_LIMITED 429 | Hidden flag is 404; visible flag outside named environment or capability is 403. |
@@ -294,6 +323,7 @@ export const Cfg05a02EffectiveValueResponse = z.strictObject({
   definitionVersionId: Uuid,
   key: Key,
   valueKind: ValueKind,
+  ownerCapability: Capability,
   typedValue: JsonValue,
   sourceScope: ScopeType,
   sourceSubjectId: Uuid.nullable(),
@@ -454,7 +484,9 @@ export type Cfg05aApiError = z.infer<typeof ApiError>;
 - Cfg05a01 rejects any secret-like key, credential, token, binary, code,
   HTML, auth/RLS rule, security limit, legal floor, money, rights, evidence,
   migration or transactional-state subject before a registry transaction.
-- Cfg05a02 accepts only request context and a consumer compatibility range.
+- Cfg05a02 returns `ownerCapability` from the immutable definition version so the
+  client can derive the edit affordance; it is never accepted from the request.
+  Cfg05a02 accepts only request context and a consumer compatibility range.
   It never accepts a schema, precedence, arbitrary scope or caller-supplied
   acting party as authoritative.
 - Cfg05a03 validates typedValue against the immutable definition schema and
@@ -774,6 +806,7 @@ None.
 |---|---|---|---|
 | 2026-08-28 | Authored 05a backend contracts from approved Shard 05 IA and deep dive; reconciled 25.07.01 through 25.07.05 | /write-be-spec | All |
 | 2026-08-28 | Added strict Zod 4 contracts, typed persistence, signed runtime fallback, event and recovery tests | /write-be-spec-write | API, database, middleware, events, tests |
+| 2026-10-02 | FX-E: CFG-05A-02 returns the definition `ownerCapability`; documented how settings editor authority is projected (owner capability in the CFG-05B-07 snapshot, named `settings.approve`, `settings.release` and `settings.rollback` for actions), with Worker and database enforcement on every write | /propagate-decision | Settings editor authority projection, Operation contract, Contracts, Contract and error rules |
 
 ## Dependency References
 

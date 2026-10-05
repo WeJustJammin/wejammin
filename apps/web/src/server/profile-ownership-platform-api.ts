@@ -1,5 +1,6 @@
 import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 
+import { untouchedBodyInit } from './proxy-request-body';
 import { appendAllowedServiceBindingCookies } from './service-binding-cookies';
 
 /** Private service binding used by the same-origin profile ownership façade. */
@@ -256,8 +257,11 @@ export const forwardProfileOwnershipRequest = async (
 
   headers.set('origin', 'https://profile-ownership.internal');
 
-  const init: RequestInit = { method, headers };
-  if (method !== 'GET') init.body = await request.clone().arrayBuffer();
+  const init: RequestInit = {
+    method,
+    headers,
+    ...untouchedBodyInit(request, method),
+  };
 
   let upstream: Response;
   try {

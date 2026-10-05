@@ -87,10 +87,12 @@ const expectError = async (
   response: Response,
   status: number,
   code: string,
+  details?: Record<string, unknown>,
 ): Promise<void> => {
   expect(response.status).toBe(status);
   expect(response.headers.get('cache-control')).toBe('no-store');
   const payload = (await response.json()) as Record<string, unknown>;
+  if (details !== undefined) expect(payload.details).toEqual(details);
   expect(Object.keys(payload).sort()).toEqual([
     'code',
     'details',
@@ -204,6 +206,7 @@ describe('Phase 2 Slice 05 Worker validation and authorization RED acceptance', 
       await unsupported.app.fetch(mediaRequest, bindings),
       415,
       'UNSUPPORTED_MEDIA_TYPE',
+      { allowedMediaTypes: ['application/json'] },
     );
 
     const malformed = createProfileApp();

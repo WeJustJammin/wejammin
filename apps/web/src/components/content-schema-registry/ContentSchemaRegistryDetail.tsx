@@ -1,3 +1,13 @@
+import ContentSchemaRegistryActionRail from './ContentSchemaRegistryActionRail';
+import {
+  ContentSchemaRegistryDetailArtifact,
+  ContentSchemaRegistryDetailEvidence,
+} from './ContentSchemaRegistryDetailArtifact';
+import ContentSchemaRegistryDetailBindings from './ContentSchemaRegistryDetailBindings';
+import ContentSchemaRegistryDetailDefinitions from './ContentSchemaRegistryDetailDefinitions';
+import ContentSchemaRegistryDetailFacts from './ContentSchemaRegistryDetailFacts';
+import ContentSchemaRegistryDetailPlaceholder from './ContentSchemaRegistryDetailPlaceholder';
+import ContentSchemaRegistryLocaleSummaryView from './ContentSchemaRegistryLocaleSummaryView';
 import ContentSchemaRegistryStatus from './ContentSchemaRegistryStatus';
 import type {
   ContentSchemaRegistryDetailState,
@@ -8,7 +18,8 @@ interface Props {
   readonly state: ContentSchemaRegistryDetailState | null;
   readonly backUrl: string;
   readonly retryUrl: string;
-  readonly requestId: string;
+  readonly supportReference: string;
+  readonly actingContextLabel?: string | undefined;
 }
 
 const SafeBlock = ({
@@ -19,6 +30,12 @@ const SafeBlock = ({
   <li>
     <strong>{block.blockKey}</strong> v{block.blockVersion} ({block.lifecycle})
     <dl className="content-schema-registry-block-meta">
+      <dt>Registry record ID</dt>
+      <dd>
+        <code>{block.id}</code>
+      </dd>
+      <dt>Registry record version</dt>
+      <dd>{block.version}</dd>
       <dt>Props schema reference</dt>
       <dd>
         <code>{block.propsSchemaRef}</code>
@@ -43,19 +60,10 @@ export default function ContentSchemaRegistryDetail({
   state,
   backUrl,
   retryUrl,
-  requestId,
+  supportReference,
+  actingContextLabel,
 }: Props) {
-  if (state === null) {
-    return (
-      <section
-        className="content-schema-registry-detail"
-        aria-labelledby="content-schema-registry-detail-heading"
-      >
-        <h3 id="content-schema-registry-detail-heading">Version detail</h3>
-        <p>Select a registry record to view its version detail.</p>
-      </section>
-    );
-  }
+  if (state === null) return <ContentSchemaRegistryDetailPlaceholder />;
   if (state.status !== 'success') {
     return (
       <section
@@ -66,7 +74,7 @@ export default function ContentSchemaRegistryDetail({
         <ContentSchemaRegistryStatus
           state={state}
           regionLabel="Version detail"
-          requestId={requestId}
+          supportReference={supportReference}
           canonicalUrl={retryUrl}
         />
       </section>
@@ -81,64 +89,21 @@ export default function ContentSchemaRegistryDetail({
       aria-labelledby="content-schema-registry-detail-heading"
     >
       <div className="content-schema-registry-detail-heading">
+        <a href={backUrl}>Back to registry</a>
         <div>
           <p className="content-schema-registry-eyebrow">Selected version</p>
           <h3 id="content-schema-registry-detail-heading">{resource.label}</h3>
         </div>
-        <a href={backUrl}>Back to registry</a>
       </div>
-      <dl className="content-schema-registry-summary">
-        <dt>Type key</dt>
-        <dd>
-          <code>{resource.typeKey}</code>
-        </dd>
-        <dt>Content type ID</dt>
-        <dd>
-          <code>{resource.contentTypeId}</code>
-        </dd>
-        <dt>Version</dt>
-        <dd>{resource.version}</dd>
-        <dt>State</dt>
-        <dd>{resource.state}</dd>
-        <dt>Content hash</dt>
-        <dd>
-          <code>{resource.contentHash}</code>
-        </dd>
-        <dt>Updated</dt>
-        <dd>
-          <time dateTime={resource.updatedAt}>{resource.updatedAt}</time>
-        </dd>
-      </dl>
-      <section aria-labelledby="content-schema-registry-fields-heading">
-        <h4 id="content-schema-registry-fields-heading">Fields</h4>
-        {detail.fields.length === 0 ? (
-          <p>No field definitions are attached to this version.</p>
-        ) : (
-          <ul>
-            {detail.fields.map((field) => (
-              <li key={field.id}>
-                <strong>{field.key}</strong> <code>{field.kind}</code> —{' '}
-                {field.required ? 'required' : 'optional'}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section aria-labelledby="content-schema-registry-relations-heading">
-        <h4 id="content-schema-registry-relations-heading">Relations</h4>
-        {detail.relations.length === 0 ? (
-          <p>No relations are attached to this version.</p>
-        ) : (
-          <ul>
-            {detail.relations.map((relation) => (
-              <li key={relation.id}>
-                <strong>{relation.projectionKey}</strong> —{' '}
-                {relation.cardinality} → {relation.targetType}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <ContentSchemaRegistryActionRail
+        actingContextLabel={actingContextLabel}
+        version={state.version}
+        permittedNextActions={detail.activationPreparation.permittedNextActions}
+      />
+      <ContentSchemaRegistryDetailFacts resource={resource} />
+      <ContentSchemaRegistryLocaleSummaryView resource={resource} />
+      <ContentSchemaRegistryDetailDefinitions detail={detail} />
+      <ContentSchemaRegistryDetailBindings detail={detail} />
       <section aria-labelledby="content-schema-registry-blocks-heading">
         <h4 id="content-schema-registry-blocks-heading">Supported blocks</h4>
         {detail.blockDefinitions.length === 0 ? (
@@ -151,26 +116,11 @@ export default function ContentSchemaRegistryDetail({
           </ul>
         )}
       </section>
-      <section aria-labelledby="content-schema-registry-artifact-heading">
-        <h4 id="content-schema-registry-artifact-heading">
-          Compiled schema artifact
-        </h4>
-        <p>
-          <code>{detail.schemaArtifact.zodContractRef}</code> · compiler{' '}
-          {detail.schemaArtifact.compilerVersion}
-        </p>
-      </section>
+      <ContentSchemaRegistryDetailArtifact artifact={detail.schemaArtifact} />
       {resource.activationEvidence !== null ? (
-        <section aria-labelledby="content-schema-registry-activation-heading">
-          <h4 id="content-schema-registry-activation-heading">
-            Activation evidence
-          </h4>
-          <p>
-            Policy <code>{resource.activationEvidence.key}</code> ·{' '}
-            {resource.activationEvidence.riskClass} ·{' '}
-            {resource.activationEvidence.requiredDecisionCount} decision(s)
-          </p>
-        </section>
+        <ContentSchemaRegistryDetailEvidence
+          evidence={resource.activationEvidence}
+        />
       ) : null}
     </section>
   );

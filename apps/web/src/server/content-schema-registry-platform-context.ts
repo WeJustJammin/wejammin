@@ -5,11 +5,21 @@ import {
   CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES,
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANT_HEADER,
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS,
+  CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
 } from '@wejammin/contracts';
 
-const humanCapabilities = new Set<string>(
-  CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES,
-);
+/**
+ * Capabilities the web projection accepts from the private boundary. The
+ * review-only `cms.schema_review` human (DEC-108) must survive the boundary
+ * so the `schemaReviewAssigned` route can render; the shared contract list is
+ * kept as the base so a later contract addition is a no-op here.
+ */
+const WEB_HUMAN_CAPABILITIES: readonly string[] = [
+  ...CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES,
+  'cms.schema_review',
+].filter((capability, index, all) => all.indexOf(capability) === index);
+
+const humanCapabilities = new Set<string>(WEB_HUMAN_CAPABILITIES);
 const presentationVariants = new Set<string>(
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS,
 );
@@ -30,10 +40,7 @@ export const parseContentSchemaRegistryCapabilities = (
     if (!humanCapabilities.has(capability) || capabilities.includes(capability))
       continue;
     capabilities.push(capability);
-    if (
-      capabilities.length === CONTENT_SCHEMA_REGISTRY_HUMAN_CAPABILITIES.length
-    )
-      break;
+    if (capabilities.length === WEB_HUMAN_CAPABILITIES.length) break;
   }
   return capabilities;
 };
@@ -44,6 +51,20 @@ export const parseContentSchemaRegistryPresentationVariant = (
   value !== null && presentationVariants.has(value)
     ? (value as ContentSchemaRegistryPresentationVariant)
     : null;
+
+/**
+ * Accept only a canonical RFC3339 millisecond instant so a malformed private
+ * disclosure header is dropped rather than forwarded to the browser.
+ */
+const parseContentSchemaRegistryStepUpFreshUntil = (
+  value: string | null,
+): string | null => {
+  if (value === null || value.length === 0) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value
+    ? value
+    : null;
+};
 
 export const isSafeUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
@@ -66,6 +87,9 @@ export const parseContentSchemaRegistryContextHeaders = (headers: Headers) => ({
   ),
   presentationVariant: parseContentSchemaRegistryPresentationVariant(
     headers.get(CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANT_HEADER),
+  ),
+  stepUpFreshUntil: parseContentSchemaRegistryStepUpFreshUntil(
+    headers.get(CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER),
   ),
 });
 
@@ -102,7 +126,8 @@ export const forwardedQuery = (url: URL): string => {
   const query = new URLSearchParams();
   for (const key of QUERY_KEYS) {
     const value = url.searchParams.get(key);
-    if (value !== null) query.set(key, value);
+    // A blank control of the native filter form is no filter, never a value.
+    if (value !== null && value !== '') query.set(key, value);
   }
   const serialized = query.toString();
   return serialized.length > 0 ? `?${serialized}` : '';

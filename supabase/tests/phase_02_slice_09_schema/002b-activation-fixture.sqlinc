@@ -1,12 +1,15 @@
--- Activation evidence is server-resolved through the existing immutable
--- configuration-review/approval authority.  The activation request's
--- step-up flags alone are insufficient.
+-- DEC-108 activation fixture.  The articlex candidate reaches `approved` and
+-- then `active` ONLY through the named producers (dry-run -> worker seal ->
+-- submit -> assign -> decide -> activate); no review, decision, dry-run,
+-- approved-state or completed-plan row is inserted by hand, and no artifact is
+-- rebuilt by hand.  Evidence is the CMS review chain (BE03a), never a CFG
+-- setting_value review.
 -- Fragment 002 leaves the session on the second tenant while proving
 -- owner-scoped mutations. Restore the original actor and tenant before
 -- constructing activation evidence so the gate tests reach their intended
 -- step-up/approval branches instead of the candidate owner lookup.
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a9090000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a9090000-0000-4000-8000-000000000001', true);
 select set_config('app.auth_user_id', 'a9090000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_auth_user_id', 'a9090000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id', (
@@ -21,6 +24,7 @@ select 'a9090000-0000-4000-8000-000000000090'::uuid as context_id,
        (select person_id from identity.auth_user_bindings
         where auth_user_id = 'a9090000-0000-4000-8000-000000000001') as person_id,
        (select organization_id from s09_fixture_org) as organization_id;
+-- LEGACY FIXTURE FORGERY: the GUC-era schema fixtures bind a context directly (a fixed id referenced by the legacy assertions); the DEC-108 fixture uses identity_context_bind, the real producer.
 insert into platform_private.acting_context_binding(
   id, person_id, acting_party_id, context_kind, client_binding_id,
   state, selected_at, last_seen_at, expires_at, projection_version, version
@@ -28,305 +32,143 @@ insert into platform_private.acting_context_binding(
 select context_id, person_id, organization_id, 'organization', 's09-activation-client',
        'active', clock_timestamp(), clock_timestamp(), clock_timestamp() + interval '2 hours', 1, 1
 from s09_activation_context;
-select set_config('app.cms_rpc', 'true', true);
-update platform_private.cms_content_type_versions
-set state = 'approved', dry_run_id = 'a9090000-0000-4000-8000-000000000401', updated_at = clock_timestamp()
-where id = (select version_id from s09_type_ids);
-select set_config('app.cms_rpc', 'true', true);
--- The draft child commands are followed by a compiler pass.  Rebuild this
--- fixture's immutable artifact exactly from the now-complete child graph so
--- the activation gate tests the current set rather than a stale lower bound.
-do $$
-declare v uuid; a uuid; f jsonb; r jsonb; e jsonb; m jsonb; h text;
-begin
-  select ids.version_id, version_row.schema_artifact_id,
-         jsonb_build_object('stableFieldId', field.stable_field_id, 'key', field.field_key,
-           'kind', field.kind, 'constraints', field.constraints, 'required', field.required,
-           'validatorKey', field.validator_key, 'validatorVersion', field.validator_version::text,
-           'defaultMode', field.default_mode, 'localizationMode', field.localization_mode,
-           'editorConfig', field.editor_config, 'lifecycle', field.state),
-         jsonb_build_object('fieldId', relation.field_definition_id, 'targetKind', relation.target_kind,
-           'targetType', relation.target_type, 'projectionKey', relation.projection_key,
-           'cardinality', relation.cardinality, 'min', relation.min_count, 'max', relation.max_count,
-           'ordered', relation.ordered, 'onUnavailable', relation.on_unavailable)
-    into v, a, f, r
-    from s09_type_ids ids
-    join platform_private.cms_content_type_versions version_row on version_row.id = ids.version_id
-    join platform_private.cms_field_definition_versions field on field.content_type_version_id = ids.version_id
-      and field.field_key = 'related'
-    join platform_private.cms_relation_definitions relation on relation.field_definition_id = field.id;
-  select artifact.editor_manifest, artifact.renderer_manifest into e, m
-    from platform_private.cms_schema_artifacts artifact where artifact.id = a;
-  e := jsonb_set(e, '{schema,fields}', (e->'schema'->'fields') || jsonb_build_array(f));
-  e := jsonb_set(e, '{schema,relations}', jsonb_build_array(r));
-  e := jsonb_set(e, '{fields}', (e->'fields') || jsonb_build_array(f));
-  m := jsonb_set(m, '{relations}', jsonb_build_array(r));
-  h := platform_private.cms_jcs_sha256(jsonb_build_object('compilerVersion', '1',
-    'zodContractRef', 'cms/content-type/articlex/v1', 'editorManifest', e, 'rendererManifest', m));
-  perform set_config('app.cms_rpc', 'true', true);
-  execute 'drop trigger cms_schema_artifacts_immutable_guard on platform_private.cms_schema_artifacts';
-  update platform_private.cms_schema_artifacts set editor_manifest = e, renderer_manifest = m,
-    artifact_hash = h, updated_at = created_at where id = a;
-  update platform_private.cms_content_type_versions set definition_hash = h where id = v;
-  execute 'create trigger cms_schema_artifacts_immutable_guard before update or delete on platform_private.cms_schema_artifacts for each row execute function platform_private.cms_immutable_guard()';
-end $$;
--- The candidate now points at a new compiler output.  Bind the fixed fixture
--- dry-run ID only after that output is complete, then persist the exact report
--- through the same immutable producer boundary used by the public RPC.
-select platform_private.cms_record_dry_run_report(
-  'a9090000-0000-4000-8000-000000000401',
-  (select owner_id from platform_private.cms_content_type_versions
-   where id = (select version_id from s09_type_ids)),
-  (select content_type_id from s09_type_ids), null,
-  (select version_id from s09_type_ids), 'additive', null, null,
-  repeat('0', 64),
-  (select definition_hash from platform_private.cms_content_type_versions
-   where id = (select version_id from s09_type_ids)),
-  (select artifact_hash from platform_private.cms_schema_artifacts
-   where content_type_version_id = (select version_id from s09_type_ids)),
-  '1',
-  jsonb_build_object(
-    'dryRunId', 'a9090000-0000-4000-8000-000000000401', 'result', 'pass',
-    'sourceHash', repeat('0', 64),
-    'targetHash', (select definition_hash from platform_private.cms_content_type_versions
-                   where id = (select version_id from s09_type_ids)),
-    'transformHash', platform_private.cms_migration_transform_hash(
-      'additive', null, null, repeat('0', 64),
-      (select definition_hash from platform_private.cms_content_type_versions
-       where id = (select version_id from s09_type_ids)),
-      (select artifact_hash from platform_private.cms_schema_artifacts
-       where content_type_version_id = (select version_id from s09_type_ids)), '1'
-    ),
-    'compilerHash', (select artifact_hash from platform_private.cms_schema_artifacts
-                    where content_type_version_id = (select version_id from s09_type_ids)),
-    'compilerVersion', '1', 'sourceCount', '0', 'targetCount', '0',
-    'rowErrorCount', '0', 'migratedCount', '0', 'failedCount', '0',
-    'lease', jsonb_build_object(
-      'state', 'completed', 'owner', null, 'token', null,
-      'expiresAt', (clock_timestamp() + interval '15 minutes')::text
-    )
-  ),
-  'a9090000-0000-4000-8000-000000000001'
-);
-create temp table s09_activation_context_json on commit drop as
-select jsonb_build_object('actingContextId', context_id::text) as context
-from s09_activation_context;
-create temp table s09_activation_review on commit drop as
-select extensions.gen_random_uuid() as review_id;
-insert into platform_private.cfg_config_change_reviews(
-  id, candidate_type, candidate_id, candidate_version, frozen_hash,
-  impact_manifest, impact_manifest_hash, effective_context_hash,
-  risk_class, required_approvals, state, submitted_by, submitted_at, version_no
-)
-select review_id, 'setting_value', ids.version_id,
-       version_row.version, version_row.definition_hash, '{}'::jsonb,
-       platform_private.cfg_hash_json('{}'::jsonb),
-       platform_private.cfg_hash_json(context_json.context),
-       'high', 2, 'approved',
-       'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1
-from s09_activation_review review
-cross join s09_type_ids ids
-cross join s09_activation_context_json context_json
-join platform_private.cms_content_type_versions version_row on version_row.id = ids.version_id;
-insert into platform_private.cfg_config_approvals(
-  review_id, reviewer_person_id, acting_party_id, capability, decision,
-  reason, reviewed_hash, decided_at, review_version
-)
-select review.review_id, reviewer.auth_user_id,
-       (select organization_id from s09_fixture_org), 'cms.schema_designer', 'approve',
-       'activation evidence', version_row.definition_hash, clock_timestamp(), 1
-from s09_activation_review review
-cross join (values
-  ('a9090000-0000-4000-8000-000000000002'::uuid),
-  ('a9090000-0000-4000-8000-000000000003'::uuid)
-) reviewer(auth_user_id)
-cross join s09_type_ids ids
-join platform_private.cms_content_type_versions version_row on version_row.id = ids.version_id;
-create temp table s09_activation_request on commit drop as
-select jsonb_build_object(
-  'contentTypeId', ids.content_type_id, 'versionId', ids.version_id,
-  'expectedVersion', version_row.version::text,
-  'dryRunId', version_row.dry_run_id,
-  'approvalIds', jsonb_build_array(review.review_id), 'migrationPlanId', null,
-  'idempotencyKey', 's09-activate-0001', 'context', context_json.context
-) as request
-from s09_type_ids ids
-join platform_private.cms_content_type_versions version_row on version_row.id = ids.version_id
-cross join s09_activation_review review
-cross join s09_activation_context_json context_json;
+
+\ir ../phase_02_slice_09_dec108/00-helpers.sqlinc
+\ir ../phase_02_slice_09_dec108/02-chain.sqlinc
+\ir ../phase_02_slice_09_dec108/03-support.sqlinc
+-- Actors: the fixture owner (designer, org context) plus two independently
+-- authenticated reviewers (users 002/003, own person context).
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_legacy_owner_receipt('a9090000-0000-4000-8000-000000000001',
+  (select organization_id from s09_fixture_org));
+select pg_temp.s09d_legacy_actor('owner', 'a9090000-0000-4000-8000-000000000001',
+  (select organization_id from s09_fixture_org), (select context_id from s09_activation_context));
+select pg_temp.s09d_legacy_actor('rev1', 'a9090000-0000-4000-8000-000000000002', null);
+select pg_temp.s09d_remember('x:type', (select content_type_id from s09_type_ids));
+select pg_temp.s09d_remember('x:version', (select version_id from s09_type_ids));
+select pg_temp.s09d_guc_restore();
+
+-- The draft aggregate (title + related relation field) goes through the real
+-- dry-run, which compiles the candidate and creates its report, plan and job.
+select pg_temp.s09d_dry_run('x');
+select pg_temp.s09d_seal('x');
+select pg_temp.s09d_submit('x');
+select pg_temp.s09d_assign('x', 'rev1');
+select is(pg_temp.s09d_outcome('x:assign:rev1'), 'OK',
+  'AC095 the owner assigns an independent reviewer to the frozen review');
+-- First review cycle: the reviewer rejects, the candidate returns to draft and
+-- the unchanged sealed evidence is frozen again as a second review.  The first
+-- review's decision is foreign evidence for the final approval.
+select pg_temp.s09d_decide('x', 'rev1', 'reject');
+select pg_temp.s09d_remember('x:rejectDecision', pg_temp.s09d_id('x:decision:rev1'));
+select ok(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('x:review')) = 'rejected'
+  and pg_temp.s09d_read('cms_content_type_versions', 'state', pg_temp.s09d_id('x:version')) = 'draft',
+  'AC095 a rejection returns the candidate to an editable draft through an audited transition');
+select pg_temp.s09d_submit('x');
+select pg_temp.s09d_assign('x', 'rev1');
+select pg_temp.s09d_decide('x', 'rev1');
+select is(pg_temp.s09d_read('cms_schema_reviews', 'state', pg_temp.s09d_id('x:review')), 'approved',
+  'AC095 the independent reviewer approved the resubmitted review through CMS-03A-12');
+
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object(
-      'idempotencyKey', 's09-activate-no-mfa-0001',
-      'context', jsonb_build_object('stepUpVerified', 'true', 'stepUpAt', clock_timestamp()::text)
-    ) from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', jsonb_build_object('actingContextId', null,
+    'stepUpVerified', 'true', 'stepUpAt', clock_timestamp()::text)),
   'P0001', 'STEP_UP_REQUIRED',
   'CMS-03A-04 rejects caller-supplied step-up flags without a bound server context'
 );
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object(
-      'approvalIds', jsonb_build_array(request->'approvalIds'->>0, request->'approvalIds'->>0),
-      'idempotencyKey', 's09-activate-duplicate-review-0001'
-    ) from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
+    'approvalIds', pg_temp.s09d_approval_ids('x') || pg_temp.s09d_approval_ids('x'))),
   'P0001', 'VALIDATION_FAILED',
-  'CMS-03A-04 rejects duplicate supplied approval review IDs'
+  'CMS-03A-04 rejects duplicate supplied approval decision IDs'
 );
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object(
-      'approvalIds', jsonb_build_array(
-        request->'approvalIds'->>0,
-        'a9090000-0000-4000-8000-000000000999'
-      ),
-      'idempotencyKey', 's09-activate-extra-review-0001'
-    ) from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
+    'approvalIds', pg_temp.s09d_approval_ids('x') || jsonb_build_array('a9090000-0000-4000-8000-000000000999'))),
   'P0001', 'APPROVAL_INVALID',
-  'CMS-03A-04 rejects an unknown extra review ID instead of counting a subset'
+  'CMS-03A-04 rejects an unknown extra decision ID instead of counting a subset'
 );
-update platform_private.cfg_config_change_reviews
-set version_no = version_no + 1, updated_at = clock_timestamp()
-where id = (select review_id from s09_activation_review);
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object('idempotencyKey', 's09-activate-stale-review-0001')
-       from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
+    'approvalIds', jsonb_build_array(pg_temp.s09d_id('x:rejectDecision')))),
   'P0001', 'APPROVAL_INVALID',
-  'CMS-03A-04 rejects approval evidence whose review version is no longer current'
+  'CMS-03A-04 rejects a decision that belongs to a different (rejected) review of the candidate'
 );
-update platform_private.cfg_config_change_reviews
-set version_no = version_no - 1, updated_at = clock_timestamp()
-where id = (select review_id from s09_activation_review);
-update platform_private.cfg_config_change_reviews
-set submitted_at = clock_timestamp() - interval '11 minutes', updated_at = clock_timestamp()
-where id = (select review_id from s09_activation_review);
+create temp table s09_forged_cfg_review on commit drop as select extensions.gen_random_uuid() as review_id;
+select pg_temp.s09d_try(format($q$insert into platform_private.cfg_config_change_reviews(
+    id, candidate_type, candidate_id, candidate_version, frozen_hash, impact_manifest,
+    impact_manifest_hash, effective_context_hash, risk_class, required_approvals,
+    state, submitted_by, submitted_at, version_no)
+  select %1$L, 'setting_value', version.id, version.version, version.definition_hash, '{}'::jsonb,
+         platform_private.cfg_hash_json('{}'::jsonb), null, 'high', 1, 'approved',
+         'a9090000-0000-4000-8000-000000000001', clock_timestamp(), 1
+  from platform_private.cms_content_type_versions version where version.id = %2$L$q$,
+  (select review_id from s09_forged_cfg_review), (select version_id from s09_type_ids)));
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object('idempotencyKey', 's09-activate-stale-submission-0001')
-       from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
+    'approvalIds', jsonb_build_array((select review_id from s09_forged_cfg_review)))),
   'P0001', 'APPROVAL_INVALID',
-  'CMS-03A-04 rejects approval evidence submitted outside the freshness window'
+  'CMS-03A-04 rejects a CFG setting_value review: schema approval is CMS review evidence only'
 );
-update platform_private.cfg_config_change_reviews
-set submitted_at = clock_timestamp(), updated_at = clock_timestamp()
-where id = (select review_id from s09_activation_review);
-update platform_private.cfg_config_change_reviews
-set candidate_type = 'feature_flag', updated_at = clock_timestamp()
-where id = (select review_id from s09_activation_review);
-select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object('idempotencyKey', 's09-activate-wrong-review-type-0001')
-       from s09_activation_request)
-  )$$,
-  'P0001', 'APPROVAL_INVALID',
-  'CMS-03A-04 rejects a review from a different configuration candidate type'
-);
-update platform_private.cfg_config_change_reviews
-set candidate_type = 'setting_value', updated_at = clock_timestamp()
-where id = (select review_id from s09_activation_review);
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp() - interval '11 minutes'
 where id = (select context_id from s09_activation_context);
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object('idempotencyKey', 's09-activate-stale-context-0001')
-       from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x'),
   'P0001', 'STEP_UP_REQUIRED',
   'CMS-03A-04 rejects an active context whose recent MFA observation is stale'
 );
+-- TIME-WARP: a stale or recent acting-context binding (heartbeat, MFA recency, expiry) cannot be produced without waiting; the binding itself was selected through identity_context_bind.
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp()
 where id = (select context_id from s09_activation_context);
-create temp table s09_activation_expected_hash on commit drop as
-with review_evidence as (
-  select review.id, max(review.required_approvals)::integer as required_decision_count
-  from platform_private.cfg_config_change_reviews review
-  join s09_activation_review supplied on supplied.review_id = review.id
-  group by review.id
-), approval_evidence as (
-  select encode(extensions.digest(convert_to(
-    coalesce(jsonb_agg(jsonb_build_object(
-      'reviewId', approval.review_id,
-      'reviewerAuthUserId', approval.reviewer_person_id,
-      'capability', approval.capability,
-      'reviewedHash', approval.reviewed_hash,
-      'reviewVersion', approval.review_version,
-      'decidedAt', approval.decided_at
-    ) order by approval.review_id, approval.reviewer_person_id)::text, '[]'),
-    'utf8'
-  ), 'sha256'), 'hex') as approval_hash
-  from platform_private.cfg_config_approvals approval
-  join s09_activation_review supplied on supplied.review_id = approval.review_id
-  where approval.decision = 'approve'
-), policy_evidence as (
-  select encode(extensions.digest(convert_to(
-    'cms.schema.activate:1:' || review_evidence.required_decision_count || ':'
-      || jsonb_build_array('cms.schema_designer')::text,
-    'utf8'
-  ), 'sha256'), 'hex') as policy_hash
-  from review_evidence
-)
-select encode(extensions.digest(convert_to(jsonb_build_object(
-  'key', 'cms.schema.activate', 'version', '1',
-  'policyHash', policy_evidence.policy_hash,
-  'riskClass', platform_private.cms_activation_risk_class(version_row.workflow_key),
-  'requiredDecisionCount', review_evidence.required_decision_count,
-  'requiredCapabilities', jsonb_build_array('cms.schema_designer'),
-  'approvalEvidenceHash', approval_evidence.approval_hash
-)::text, 'utf8'), 'sha256'), 'hex') as expected_hash
-from review_evidence
-cross join approval_evidence
-cross join policy_evidence
-cross join s09_type_ids ids
-join platform_private.cms_content_type_versions version_row
-  on version_row.id = ids.version_id;
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object(
-      'expectedActivationEvidenceHash', repeat('f', 64),
-      'idempotencyKey', 's09-activate-evidence-mismatch-0001'
-    ) from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
+    'expectedActivationEvidenceHash', repeat('f', 64))),
   'P0001', 'CONFLICT',
   'CMS-03A-04 rejects a mismatching expected activation-evidence hash'
 );
-create temp table s09_activation_matching_request on commit drop as
-select request || jsonb_build_object(
-  'expectedActivationEvidenceHash', expected.expected_hash
-) as request
-from s09_activation_request
-cross join s09_activation_expected_hash expected;
+
+-- An approval recorded long ago still counts: the ten-minute decision-age
+-- shortcut is replaced (DEC-108); only the activator's own MFA is rechecked.
+select pg_temp.s09d_timewarp('cms_schema_review_decisions', format($q$update platform_private.cms_schema_review_decisions
+  set decided_at = decided_at - interval '30 minutes', created_at = created_at - interval '30 minutes',
+      updated_at = updated_at - interval '30 minutes', mfa_verified_at = mfa_verified_at - interval '30 minutes'
+  where review_id = %L$q$, pg_temp.s09d_id('x:review')));
+select pg_temp.s09d_timewarp('cms_schema_reviews', format($q$update platform_private.cms_schema_reviews
+  set submitted_at = submitted_at - interval '45 minutes', decided_at = decided_at - interval '30 minutes'
+  where id = %L$q$, pg_temp.s09d_id('x:review')));
+create temp table s09_activation_request on commit drop as
+select pg_temp.s09d_activation_request('x', 'owner', jsonb_build_object('requestId', extensions.gen_random_uuid(),
+  'correlationId', extensions.gen_random_uuid()), jsonb_build_object('idempotencyKey', 's09-activate-0001')) as request;
 create temp table s09_activation_created on commit drop as
-select platform_api.cms_activate_schema(
-  request
-) as response
-from s09_activation_matching_request;
+select pg_temp.s09d_call('x:activation', 'platform_api.cms_activate_schema', request) as response
+from s09_activation_request;
+select pg_temp.s09d_guc_restore();
 select ok(
-  (select response ?& array['id','version','contentTypeVersionId','state','activationEvidence','eventType','eventId']
+  (select response ?& array['id','version','contentHash','createdAt','updatedAt','contentTypeVersionId','state','activationEvidence','eventType']
+   and not (response ? 'eventId')
    and response->>'state' = 'active'
-   and response->>'version' = '4'
    and response->>'eventType' = 'cms.schema.activated.v1'
    and response->'activationEvidence'->>'riskClass' = 'ordinary'
    and response->'activationEvidence'->>'approvalEvidenceHash' =
        (select activation_approval_evidence_hash::text
         from platform_private.cms_content_type_versions
         where id = (select version_id from s09_type_ids))
-   and (response->'activationEvidence'->>'requiredDecisionCount')::integer = 2
+   and (response->'activationEvidence'->>'requiredDecisionCount')::integer = 1
    from s09_activation_created),
-  'CMS-03A-04 resolves approved distinct humans/capabilities and activates atomically'
+  'CMS-03A-04 resolves the approved independent human/capability and activates atomically (30-minute-old decision)'
 );
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   platform_private.cms_worker_human_approval_valid(
     (select version_id from s09_type_ids)
   ),
   'CMS-03A-04 persists the full wrapped evidence hash accepted by the worker validator'
 );
+select set_config('app.cms_rpc', '', true);
 select ok(
   (select event.payload->'activationEvidence'->>'riskClass' = 'ordinary'
       and event.payload->'activationEvidence'->>'approvalEvidenceHash' =
@@ -341,8 +183,10 @@ select ok(
      and event.aggregate_id = (select version_id from s09_type_ids)
    order by event.occurred_at desc, event.id desc
    limit 1),
-  'CMS-03A-04 event carries the persisted outer activation-evidence hash and risk class'
+  'CMS-03A-04 event carries the persisted outer activation-evidence hash and risk class [P2-S09-AC-101]'
 );
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
 select ok(
   (select resource->'activationEvidence'->>'riskClass' = 'ordinary'
       and resource->'activationEvidence'->>'approvalEvidenceHash' =
@@ -354,9 +198,12 @@ select ok(
    ) resource),
   'CMS-03A-04 resource exposes the persisted outer activation-evidence hash and risk class'
 );
-select is(
-  (select platform_api.cms_activate_schema(request) from s09_activation_matching_request),
-  (select response from s09_activation_created),
+select set_config('app.cms_rpc', '', true);
+select pg_temp.s09d_session('owner');
+select ok(
+  (select response is not null
+     and pg_temp.s09d_call('x:replay', 'platform_api.cms_activate_schema', request) = response
+   from s09_activation_created cross join s09_activation_request),
   'CMS-03A-04 replay returns the exact original activation resource'
 );
 select is(
@@ -364,15 +211,12 @@ select is(
    where event_type = 'cms.schema.activated.v1'
      and aggregate_id = (select version_id from s09_type_ids)),
   1,
-  'CMS-03A-04 commits one activation outbox event and does not duplicate it on replay'
+  'CMS-03A-04 commits one activation outbox event and does not duplicate it on replay [P2-S09-AC-101]'
 );
 select throws_ok(
-  $$select platform_api.cms_activate_schema(
-    (select request || jsonb_build_object(
-      'approvalIds', jsonb_build_array('a9090000-0000-4000-8000-000000000999'),
-      'idempotencyKey', 's09-activate-bad-approval-0001'
-    ) from s09_activation_request)
-  )$$,
+  pg_temp.s09d_activate_sql('x', 'owner', '{}'::jsonb, jsonb_build_object(
+    'approvalIds', jsonb_build_array('a9090000-0000-4000-8000-000000000999'))),
   'P0001', 'CONFLICT',
-  'CMS-03A-04 stale active candidate is rejected after the one-shot CAS'
+  'CMS-03A-04 stale active candidate is rejected after the one-shot CAS [P2-S09-AC-097]'
 );
+select pg_temp.s09d_guc_restore();

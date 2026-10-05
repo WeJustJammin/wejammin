@@ -40,7 +40,27 @@ describe('content schema registry runtime retry contract', () => {
     ).toBe(expected);
   });
 
-  it('replays a transient mutation with the same idempotency key and reconciles success', async () => {
+  it('asks for JSON on the first post because a manual-redirect fetch can never read a 303', async () => {
+    let accept: string | null = null;
+    const fetcher = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        accept = new Headers(init?.headers).get('accept');
+        return new Response('{}', {
+          status: 303,
+          headers: { location: '/next' },
+        });
+      },
+    );
+    await executeContentSchemaRegistryMutation({
+      action: '/app/cms-content-modeling',
+      operationId: 'CMS-03A-01',
+      formData: formDataWithKey(),
+      fetcher,
+    });
+    expect(accept).toContain('application/json');
+  });
+
+  it('[P2-S09-AC-201] [P2-S09-AC-253] replays a transient mutation with the same idempotency key and reconciles success', async () => {
     const requests: FormData[] = [];
     const methods: string[] = [];
     const fetcher = vi.fn(
@@ -81,7 +101,7 @@ describe('content schema registry runtime retry contract', () => {
     ]);
   });
 
-  it('does not replay a 502 mutation response', async () => {
+  it('[P2-S09-AC-201] [P2-S09-AC-253] does not replay a 502 mutation response', async () => {
     const fetcher = vi.fn(
       async (_input: RequestInfo | URL, init?: RequestInit) =>
         new Response('{}', { status: init?.method === 'POST' ? 502 : 200 }),
@@ -103,7 +123,7 @@ describe('content schema registry runtime retry contract', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('does not treat an arbitrary successful projection as mutation reconciliation', async () => {
+  it('[P2-S09-AC-202] [P2-S09-AC-253] does not treat an arbitrary successful projection as mutation reconciliation', async () => {
     const methods: string[] = [];
     const fetcher = vi.fn(
       async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -132,7 +152,7 @@ describe('content schema registry runtime retry contract', () => {
     expect(methods).toEqual(['POST', 'POST']);
   });
 
-  it('leaves an ambiguous mutation degraded after the bounded retries', async () => {
+  it('[P2-S09-AC-202] [P2-S09-AC-253] leaves an ambiguous mutation degraded after the bounded retries', async () => {
     const fetcher = vi.fn(
       async () =>
         new Response('{}', {
@@ -157,7 +177,7 @@ describe('content schema registry runtime retry contract', () => {
     expect(sleep).not.toHaveBeenCalled();
   });
 
-  it('reconciles a network failure through one same-key mutation replay', async () => {
+  it('[P2-S09-AC-201] [P2-S09-AC-253] reconciles a network failure through one same-key mutation replay', async () => {
     const requests: FormData[] = [];
     const fetcher = vi.fn(
       async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -193,7 +213,7 @@ describe('content schema registry runtime retry contract', () => {
     ]);
   });
 
-  it('honors Retry-After for 429 without discarding the submitted input', async () => {
+  it('[P2-S09-AC-201] [P2-S09-AC-253] honors Retry-After for 429 without discarding the submitted input', async () => {
     const fetcher = vi.fn(
       async () =>
         new Response('{}', { status: 429, headers: { 'retry-after': '9' } }),
@@ -240,7 +260,7 @@ describe('content schema registry runtime retry contract', () => {
     });
   });
 
-  it('retries canonical reads without mutation headers', async () => {
+  it('[P2-S09-AC-201] [P2-S09-AC-253] retries canonical reads without mutation headers', async () => {
     const fetcher = vi
       .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
       .mockResolvedValueOnce(
@@ -298,7 +318,7 @@ describe('content schema registry runtime retry contract', () => {
     },
   );
 
-  it('preserves Retry-After on a rate-limited canonical read', async () => {
+  it('[P2-S09-AC-253] preserves Retry-After on a rate-limited canonical read', async () => {
     const fetcher = vi.fn(
       async () =>
         new Response('{}', { status: 429, headers: { 'retry-after': '9' } }),

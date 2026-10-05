@@ -25,6 +25,9 @@ const productionBindings = () =>
   }) as never;
 
 const operationalResponse = (url: string): Response | undefined => {
+  // The [P2-S09-AC-1135] reviewer-authority sweep shares every scheduled tick.
+  if (url.includes('/rest/v1/rpc/cms_sweep_expired_review_authority'))
+    return Response.json({ invalidatedReviews: 0 });
   if (url.includes('/rest/v1/rpc/cms_get_operational_state_snapshot'))
     return Response.json({});
   if (url.endsWith('/graphql'))

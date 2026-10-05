@@ -2,6 +2,8 @@
 import '@wejammin/ui/styles.css';
 import '../../styles/platform-configuration.css';
 import AdminWorkspaceOperationsWorkbench from './AdminWorkspaceOperationsWorkbench';
+import PlatformConfigurationFooterNotes from './PlatformConfigurationFooterNotes.astro';
+import PlatformConfigurationMfaResetTab from './PlatformConfigurationMfaResetTab.astro';
 import PlatformConfigurationPageHeader from './PlatformConfigurationPageHeader.astro';
 import PlatformConfigurationStatus from './PlatformConfigurationStatus.astro';
 import SettingsFlagsRuntimeWorkbench from './SettingsFlagsRuntimeWorkbench';
@@ -12,6 +14,7 @@ import type {
   PlatformConfigurationVariant,
 } from './platform-configuration-workbench-types';
 import type { AdminWorkspaceAsyncState } from './admin-workspace-types';
+import type { AdminMfaResetPageResolution } from '../../server/admin-mfa-reset-page-context';
 
 interface Props {
   readonly children?: never;
@@ -34,6 +37,11 @@ interface Props {
   readonly detail?: boolean;
   readonly adminInitial?: AdminWorkspaceAsyncState;
   readonly adminAccess?: PlatformConfigurationAccess;
+  /** The FE05 `tab=mfa-reset` projection; present only on that tab. */
+  readonly mfaReset?: Extract<
+    AdminMfaResetPageResolution,
+    { kind: 'ready' | 'degraded' }
+  >;
 }
 
 const {
@@ -56,8 +64,8 @@ const {
   detail = false,
   adminInitial,
   adminAccess,
+  mfaReset,
 } = Astro.props;
-
 const pageDescription =
   state === 'degraded'
     ? 'Platform configuration is temporarily unavailable. Protected changes remain disabled.'
@@ -69,6 +77,7 @@ const showProtected = access !== 'not-rendered';
 const adminTab =
   tab === 'inbox' || tab === 'capabilities' || tab === 'audit' ? tab : null;
 const showAdminWorkspace = adminTab !== null;
+const showMfaReset = tab === 'mfa-reset' && mfaReset !== undefined;
 const resolvedAdminAccess = adminAccess ?? access;
 const resolvedAdminInitial =
   adminInitial ??
@@ -125,6 +134,7 @@ const pageTitle = `${titleRecord} (${state}) | Platform configuration | WeJammin
         selectedId={selectedId}
         tab={tab}
         initialQuery={initialQuery}
+        capabilitySnapshot={capabilitySnapshot}
       />
       <PlatformConfigurationStatus
         state={state}
@@ -132,7 +142,9 @@ const pageTitle = `${titleRecord} (${state}) | Platform configuration | WeJammin
         returnTo={returnTo}
       />
       {
-        showAdminWorkspace ? (
+        showMfaReset ? (
+          <PlatformConfigurationMfaResetTab mfaReset={mfaReset} />
+        ) : showAdminWorkspace ? (
           <AdminWorkspaceOperationsWorkbench
             contractFields={{
               source: '05b-admin-workspace-operations.md',
@@ -171,29 +183,9 @@ const pageTitle = `${titleRecord} (${state}) | Platform configuration | WeJammin
         )
       }
 
-      <p
-        class="platform-configuration-request-id"
-        role="status"
-        aria-live="polite"
-      >
-        Request ID: <code>{requestId}</code>. {
-          detail
-            ? 'Detail route uses a safe no-read boundary until a canonical detail contract exists.'
-            : 'URL state refines the view but never grants authority.'
-        }
-      </p>
-      <p class="platform-configuration-security-note">
-        Supabase session expiry and revocation are checked server-side with the
-        acting context; expired sessions receive a 303 returnTo sign-in flow.
-      </p>
-      <p
-        class="platform-configuration-a11y-note"
-        data-a11y-contract="axe serious critical contrast VoiceOver NVDA target size focus trap"
-      >
-        Accessibility contract: axe serious and critical findings, contrast,
-        VoiceOver, NVDA, target size, and focus trap behavior are tested.
-      </p>
+      <PlatformConfigurationFooterNotes requestId={requestId} detail={detail} />
     </main>
     <script src="../../lib/route-heading-focus.ts"></script>
+    <script src="../../lib/auth-scope-sync.ts"></script>
   </body>
 </html>

@@ -54,7 +54,7 @@ describe('content schema registry mutation reconciliation', () => {
     expect(headers.get('x-content-schema-registry-idempotency-key')).toBeNull();
   });
 
-  it('keeps a pending dependency response fail-closed', async () => {
+  it('[P2-S09-AC-202] keeps a pending dependency response fail-closed', async () => {
     const result = await reconcileContentSchemaRegistryMutation(
       vi.fn(async () => new Response('{}', { status: 504 })),
       ACTION,
@@ -66,7 +66,7 @@ describe('content schema registry mutation reconciliation', () => {
     expect(result).toMatchObject({ outcome: 'pending', status: 504 });
   });
 
-  it('classifies a replay network failure as unknown', async () => {
+  it('[P2-S09-AC-202] classifies a replay network failure as unknown', async () => {
     const result = await reconcileContentSchemaRegistryMutation(
       vi.fn(async () => {
         throw new TypeError('network unavailable');
@@ -80,7 +80,7 @@ describe('content schema registry mutation reconciliation', () => {
     expect(result).toMatchObject({ outcome: 'unknown', status: null });
   });
 
-  it('does not replay when the idempotency binding is incomplete', async () => {
+  it('[P2-S09-AC-202] does not replay when the idempotency binding is incomplete', async () => {
     const fetcher = vi.fn(async () => new Response(null, { status: 303 }));
     const result = await reconcileContentSchemaRegistryMutation(
       fetcher,
@@ -113,7 +113,7 @@ describe('content schema registry mutation reconciliation', () => {
     },
   );
 
-  it('rejects an unknown operation even when a response looks successful', async () => {
+  it('[P2-S09-AC-202] rejects an unknown operation even when a response looks successful', async () => {
     await expect(
       isAuthoritativeContentSchemaRegistryMutationResponse(
         ACTION,
@@ -126,7 +126,7 @@ describe('content schema registry mutation reconciliation', () => {
     ).resolves.toBe(false);
   });
 
-  it('does not replay an unknown operation', async () => {
+  it('[P2-S09-AC-202] does not replay an unknown operation', async () => {
     const fetcher = vi.fn(async () => new Response(null, { status: 303 }));
 
     await expect(

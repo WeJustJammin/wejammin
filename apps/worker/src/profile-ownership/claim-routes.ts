@@ -7,7 +7,6 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerApp } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
 import { configureProfileRoute, parseProfilePath } from './route-support';
 import type { ProfileRouteRuntime } from './route-runtime';
 
@@ -31,15 +30,13 @@ export const registerProfileClaimRoutes = (
     const path = parseProfilePath(ClaimPathSchema, {
       claimId: context.req.param('claimId'),
     });
-    if (!path.ok) return responseForAuthError(context, path);
-    return runtime.read(context, 'PRF-API-05', 'readClaim', path.value);
+    return runtime.read(context, 'PRF-API-05', 'readClaim', path);
   });
   app.post('/api/v1/party-claims/:claimId/challenges', async (context) => {
     configureProfileRoute(context, 'PRF-API-06');
     const path = parseProfilePath(ClaimPathSchema, {
       claimId: context.req.param('claimId'),
     });
-    if (!path.ok) return responseForAuthError(context, path);
     return runtime.command(
       context,
       'PRF-API-06',
@@ -47,7 +44,7 @@ export const registerProfileClaimRoutes = (
       ChallengeRequestSchema,
       'session',
       true,
-      path.value,
+      path,
     );
   });
   app.post('/api/v1/party-claims/:claimId/proofs', async (context) => {
@@ -55,7 +52,6 @@ export const registerProfileClaimRoutes = (
     const path = parseProfilePath(ClaimPathSchema, {
       claimId: context.req.param('claimId'),
     });
-    if (!path.ok) return responseForAuthError(context, path);
     return runtime.command(
       context,
       'PRF-API-07',
@@ -63,7 +59,7 @@ export const registerProfileClaimRoutes = (
       ProofRequestSchema,
       'session_step_up',
       true,
-      path.value,
+      path,
     );
   });
   app.post('/api/v1/party-claims/:claimId/convert', async (context) => {
@@ -71,7 +67,6 @@ export const registerProfileClaimRoutes = (
     const path = parseProfilePath(ClaimPathSchema, {
       claimId: context.req.param('claimId'),
     });
-    if (!path.ok) return responseForAuthError(context, path);
     return runtime.command(
       context,
       'PRF-API-08',
@@ -79,7 +74,7 @@ export const registerProfileClaimRoutes = (
       ConversionRequestSchema,
       'session_step_up',
       true,
-      path.value,
+      path,
     );
   });
 };

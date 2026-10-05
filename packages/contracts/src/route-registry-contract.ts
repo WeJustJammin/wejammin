@@ -53,12 +53,19 @@ export const RouteRegistryEntrySchema = z
       .max(8)
       .readonly()
       .optional(),
+    capabilityMode: z.enum(['all_of', 'any_of']).optional(),
     corsClass: z.enum(['cms-console', 'release-worker']).optional(),
     audience: z.enum(['browser', 'release-worker']).optional(),
     csrf: z.enum(['required', 'forbidden', 'none']).optional(),
+    /**
+     * `required` when missing or stale MFA is 401 `STEP_UP_REQUIRED`;
+     * `conditional` when only some states of the target need it (AUTH-API-17
+     * and AUTH-API-19).
+     */
+    stepUp: z.enum(['required', 'conditional', 'none']).optional(),
     rawBodySignature: z.enum(['required', 'none']).optional(),
     idempotency: z.enum(['required', 'none']).optional(),
-    ifMatch: z.enum(['required', 'none']).optional(),
+    ifMatch: z.enum(['required', 'conditional', 'none']).optional(),
     slo: RouteSloSchema.optional(),
   })
   .strict()

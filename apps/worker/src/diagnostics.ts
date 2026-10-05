@@ -6,6 +6,8 @@ import {
   type JsonValue,
 } from '@wejammin/contracts';
 
+import { verifyReadOrigin } from './authentication/boundary';
+import { MFA_METHOD_REGISTRY } from './authentication/step-up';
 import type {
   DiagnosticAuditEvent,
   WorkerApp,
@@ -85,6 +87,16 @@ export const registerDiagnosticsRoute = (
   app.get('/api/v1/internal/diagnostics', async (context) => {
     context.set('operation', 'diagnostics.read');
     const request = context.req.raw;
+    // BE00 step 2: a read has no body or CSRF token; the origin is the gate.
+    if (verifyReadOrigin(request) !== null) {
+      return diagnosticError(
+        context,
+        'FORBIDDEN',
+        'The request origin is not allowed.',
+        403,
+        {},
+      );
+    }
     const reason = diagnosticReasonFrom(request);
     let requestContext: RequestContext | null = null;
     if (dependencies.resolveRequestContext !== undefined) {
@@ -126,6 +138,26 @@ export const registerDiagnosticsRoute = (
       );
     }
 
+    // BE00 step 6: strict header validation precedes authorization (step 7).
+    if (reason === null) {
+      await recordAudit('deny', null, requestContext);
+      return diagnosticError(
+        context,
+        'INVALID_REQUEST',
+        'A diagnostic reason is required.',
+        400,
+        {
+          violations: [
+            {
+              code: 'required',
+              message: 'A diagnostic reason is required.',
+              path: '/reason',
+            },
+          ],
+        },
+      );
+    }
+
     let freshStepUp = false;
     if (dependencies.isStepUpFresh !== undefined) {
       try {
@@ -145,7 +177,7 @@ export const registerDiagnosticsRoute = (
         'STEP_UP_REQUIRED',
         'Recent step-up authentication is required.',
         401,
-        { allowedMethods: ['totp'], recoveryAction: 'step_up' },
+        { allowedMethods: [...MFA_METHOD_REGISTRY], recoveryAction: 'step_up' },
       );
     }
 
@@ -157,25 +189,6 @@ export const registerDiagnosticsRoute = (
         'The named diagnostic capability is required.',
         403,
         { reasonCode: 'CAPABILITY_REQUIRED' },
-      );
-    }
-
-    if (reason === null) {
-      await recordAudit('deny', null, requestContext);
-      return diagnosticError(
-        context,
-        'INVALID_REQUEST',
-        'A diagnostic reason is required.',
-        400,
-        {
-          violations: [
-            {
-              code: 'required',
-              message: 'A diagnostic reason is required.',
-              path: '/reason',
-            },
-          ],
-        },
       );
     }
 

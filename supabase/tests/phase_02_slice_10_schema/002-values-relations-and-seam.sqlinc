@@ -1,0 +1,153 @@
+
+-- P2-S10-AC-050 / P2-S10-AC-002 / P2-S10-AC-057.
+-- Immutable normalized value and relation snapshots, plus the forward FK
+-- debt on template_version_id that 03c TemplateVersion ownership must close.
+
+select ok(
+  pg_temp.s10_closed_check_labels(
+    'platform_private.cms_entry_field_values', 'state'
+  ) = array['active']::text[]
+    and pg_temp.s10_closed_check_labels(
+      'platform_private.cms_entry_field_values', 'provenance'
+    ) = array[
+      'authored','default','explicit_null','inherited','localized_fallback','missing'
+    ]::text[]
+    and pg_temp.s10_closed_check_labels(
+      'platform_private.cms_entry_relations', 'state'
+    ) = array['active']::text[]
+    and pg_temp.s10_closed_check_labels(
+      'platform_private.cms_entry_relations', 'on_unavailable'
+    ) = array['block','omit','placeholder']::text[],
+  'P2-S10-AC-050 value and relation closed unions match the locked contract'
+);
+
+select ok(
+  pg_temp.s10_has_default(
+    'platform_private.cms_entry_field_values', 'version'
+  )
+    and pg_temp.s10_has_default(
+      'platform_private.cms_entry_relations', 'version'
+    )
+    and not pg_temp.s10_col_notnull(
+      'platform_private.cms_entry_field_values', 'value'
+    )
+    and not pg_temp.s10_col_notnull(
+      'platform_private.cms_entry_field_values', 'value_hash'
+    )
+    and not pg_temp.s10_col_notnull(
+      'platform_private.cms_entry_relations', 'expected_target_version'
+    )
+    and pg_temp.s10_col_notnull(
+      'platform_private.cms_entry_relations', 'target_id'
+    )
+    and pg_temp.s10_col_notnull(
+      'platform_private.cms_entry_relations', 'position'
+    ),
+  'P2-S10-AC-050 value and relation envelope nullability and defaults are locked'
+);
+
+select ok(
+  exists (
+    select 1 from pg_constraint c
+    where c.conrelid = to_regclass('platform_private.cms_entry_field_values')
+      and c.contype = 'u'
+      and pg_get_constraintdef(c.oid) = 'UNIQUE (revision_id, field_id, locale)'
+  )
+    and exists (
+      select 1 from pg_constraint c
+      where c.conrelid = to_regclass('platform_private.cms_entry_field_values')
+        and c.contype = 'u'
+        and pg_get_constraintdef(c.oid)
+          = 'UNIQUE (revision_id, field_definition_id, locale)'
+    )
+    and exists (
+      select 1 from pg_constraint c
+      where c.conrelid = to_regclass('platform_private.cms_entry_relations')
+        and c.contype = 'u'
+        and pg_get_constraintdef(c.oid)
+          = 'UNIQUE (revision_id, field_id, target_kind, target_id)'
+    ),
+  'P2-S10-AC-050 value and relation uniqueness constraints are locked'
+);
+
+select ok(
+  pg_temp.s10_fk_target(
+    'platform_private.cms_entry_field_values', 'revision_id'
+  ) = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_field_values', 'field_definition_id'
+    ) = 'platform_private.cms_field_definition_versions.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_relations', 'revision_id'
+    ) = 'platform_private.cms_entry_revisions.id'
+    and pg_temp.s10_fk_target(
+      'platform_private.cms_entry_relations', 'field_definition_id'
+    ) = 'platform_private.cms_field_definition_versions.id',
+  'P2-S10-AC-050 value and relation foreign keys bind the locked registry rows'
+);
+
+select ok(
+  to_regclass('platform_private.cms_entry_relations') is not null
+    and pg_temp.s10_fk_count(
+      'platform_private.cms_entry_relations', 'target_id'
+    ) = 0,
+  'P2-S10-AC-057 relation targets stay cross-domain and intentionally unfettered'
+);
+
+select ok(
+  pg_temp.s10_trigger_events(
+    'platform_private.cms_entry_field_values', 'write_guard'
+  ) = 'delete,insert,update'
+    and pg_temp.s10_trigger_events(
+      'platform_private.cms_entry_field_values', 'immutable'
+    ) = 'delete,update'
+    and pg_temp.s10_trigger_events(
+      'platform_private.cms_entry_relations', 'write_guard'
+    ) = 'delete,insert,update'
+    and pg_temp.s10_trigger_events(
+      'platform_private.cms_entry_relations', 'immutable'
+    ) = 'delete,update'
+    and pg_temp.s10_trigger_function(
+      'platform_private.cms_entry_field_values', 'immutable'
+    ) = 'cms_immutable_guard'
+    and pg_temp.s10_trigger_function(
+      'platform_private.cms_entry_relations', 'immutable'
+    ) = 'cms_immutable_guard',
+  'P2-S10-AC-002 value and relation snapshots are immutable append-only rows'
+);
+
+select ok(
+  pg_temp.s10_has_index(
+    'platform_private.cms_entry_field_values',
+    'cms_entry_field_values_revision_locale_idx', '(revision_id, locale)'
+  )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_field_values',
+      'cms_entry_field_values_field_locale_idx', '(field_id, locale)'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_relations',
+      'cms_entry_relations_revision_field_position_idx',
+      -- "position" is a reserved word, so PostgreSQL always renders this key
+      -- column quoted in the index definition.
+      '(revision_id, field_id, "position")'
+    )
+    and pg_temp.s10_has_index(
+      'platform_private.cms_entry_relations',
+      'cms_entry_relations_target_idx', '(target_kind, target_id)'
+    ),
+  'P2-S10-AC-050 all four locked value and relation query indexes exist'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'platform_private'
+      and p.proname = 'cms_template_registry_valid'
+      and p.provolatile = 's'
+      and p.proconfig @> array['search_path=""']::text[]
+  ),
+  'P2-S10-AC-002 the template registry seam exists with a fixed empty search path'
+);

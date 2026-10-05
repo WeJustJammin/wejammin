@@ -1,0 +1,422 @@
+#!/usr/bin/env node
+
+/**
+ * Slice 09 DEC-108 two-session race evidence (BE03a "Source drift").  The
+ * activation switch proves the scanned source unchanged and then flips the
+ * source version to superseded; an entry that committed in between would be
+ * unscanned.  This runner proves, across two real committed PostgreSQL
+ * sessions, that the entry write (FOR SHARE on the source version row) and the
+ * switch (FOR UPDATE on the same row, before its final unchanged check) cannot
+ * interleave:
+ *
+ *   S1  an entry is in flight (uncommitted) when the switch starts: the switch
+ *       BLOCKS on the source-version row, and once the entry commits the switch
+ *       sees the new row and refuses with 409 CONFLICT / MIGRATION_SOURCE_DRIFT;
+ *       the source stays active and nothing was switched over the unscanned row.
+ *   S2  the switch is in flight (uncommitted) when the entry starts: the entry
+ *       BLOCKS on the source-version row, and once the switch commits the entry
+ *       is refused with CONFLICT by the version-lock guard; no entry row exists
+ *       on the switched-away version.  Without the guard the waiting insert's
+ *       foreign-key check (a key-share lock, unaffected by the non-key UPDATE of
+ *       `state`) succeeds and the entry COMMITS on the superseded version,
+ *       unscanned: that is the race the guard closes.
+ *   S3  (AC097) a transaction holds ONLY the candidate row (an explicit row lock, no
+ *       write) when the switch starts: the switch BLOCKS on the candidate row, and
+ *       once the holder commits it performs its compare-and-swap (candidate active,
+ *       source superseded).  S1 and S2 prove the source (active) row lock; this
+ *       proves the candidate row lock.
+ *   S4  (AC097) two switches of the SAME approved candidate: the second blocks
+ *       behind the first, and once the first commits it is refused with the typed
+ *       409 VERSION_MISMATCH by the compare-and-swap (the first switch advanced the
+ *       candidate version the loser still carries); exactly one version of the type
+ *       is active.
+ *
+ * Run only against the disposable local Supabase database right after
+ * `pnpm db:reset` (the owner is initialized with the one-time operator command
+ * and immutable rows are retained until the next reset); run `pnpm db:reset`
+ * again afterwards so the pgTAP suite finds an uninitialized owner.  The
+ * candidates are produced ONLY through the named commands (create -> dry-run ->
+ * worker seal -> submit -> assign -> decide); the runner never inserts a review,
+ * decision, dry-run report, approved version or plan row.  The pgTAP fragments
+ * are reused through one committed psql transaction.
+ */
+import { spawn, spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const container = process.env.AC217_DB_CONTAINER ?? 'supabase_db_wejammin';
+const testsDir = join(dirname(fileURLToPath(import.meta.url)), '..');
+const SLEEP_SECONDS = 6;
+const sql = (value) => `'${String(value).replaceAll("'", "''")}'`;
+const assert = (condition, message) => {
+  if (!condition) throw new Error(`ASSERTION FAILED: ${message}`);
+  console.log(`ok - ${message}`);
+};
+
+const psqlArgs = (appName, args) => [
+  'exec',
+  '-i',
+  '-e',
+  `PGAPPNAME=${appName}`,
+  container,
+  'psql',
+  '-X',
+  '-v',
+  'ON_ERROR_STOP=1',
+  '-U',
+  'postgres',
+  '-d',
+  'postgres',
+  ...args,
+];
+
+const runScript = (script, appName = 's09race-setup') => {
+  const result = spawnSync('docker', psqlArgs(appName, ['-At', '-f', '-']), {
+    input: script,
+    encoding: 'utf8',
+    timeout: 240_000,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `setup failed: ${(result.stderr || result.error?.message || '').split('\n').slice(-12).join(' | ')}`,
+    );
+  }
+  return result.stdout
+    .trim()
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .at(-1);
+};
+
+const runValue = (statement) => {
+  const result = spawnSync(
+    'docker',
+    psqlArgs('s09race-probe', ['-At', '-c', statement]),
+    { encoding: 'utf8', timeout: 30_000 },
+  );
+  if (result.error || result.status !== 0) {
+    throw new Error(`probe failed: ${result.stderr || result.error?.message}`);
+  }
+  return result.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
+};
+
+const runAsync = (appName, script) => {
+  const child = spawn('docker', psqlArgs(appName, ['-At', '-c', script]));
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', (chunk) => {
+    stdout += chunk;
+  });
+  child.stderr.on('data', (chunk) => {
+    stderr += chunk;
+  });
+  const done = new Promise((resolve) => {
+    child.on('close', (code) => resolve({ code, stdout, stderr }));
+  });
+  return { done };
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const waitFor = async (description, probe, timeoutMs = 25_000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (probe()) return;
+    await sleep(250);
+  }
+  throw new Error(`timed out waiting for ${description}`);
+};
+const waitEvent = (appName) =>
+  runValue(
+    `select coalesce(wait_event_type || ':' || wait_event, 'none') from pg_stat_activity where application_name = ${sql(appName)} and state = 'active' and pid <> pg_backend_pid() limit 1;`,
+  );
+
+const fragment = (relative) => readFileSync(join(testsDir, relative), 'utf8');
+
+// ----------------------------------------------------------------- setup ----
+console.log('# building two approved candidates through the named commands');
+const setupScript = [
+  '\\set ON_ERROR_STOP on',
+  fragment('support/jwt-claims.sqlinc'),
+  'begin;',
+  fragment('phase_02_slice_09_dec108/00-helpers.sqlinc'),
+  fragment('phase_02_slice_09_dec108/01-actors.sqlinc'),
+  fragment('phase_02_slice_09_dec108/02-chain.sqlinc'),
+  fragment('phase_02_slice_09_dec108/03-support.sqlinc'),
+  fragment('phase_02_slice_09_dec108/04-worker.sqlinc'),
+  fragment('phase_02_slice_09_dec119/00-support.sqlinc'),
+  `select pg_temp.s09g_grant('e:author', 'owner', 'owner', 'cms.author', pg_temp.s09g_day(5));`,
+  // Race 1 type: version 1 active, a zero-row additive successor approved.
+  `select pg_temp.s09d_create_type('a', 'racefirst');`,
+  `select pg_temp.s09d_to_active('a');`,
+  `select pg_temp.s09d_successor('b', 'a');`,
+  `select pg_temp.s09d_dry_run('b');`,
+  `select pg_temp.s09d_seal('b');`,
+  `select pg_temp.s09d_submit('b');`,
+  `select pg_temp.s09d_assign('b', 'rev1');`,
+  `select pg_temp.s09d_decide('b', 'rev1');`,
+  // Race 2 type.
+  `select pg_temp.s09d_create_type('c', 'racesecond');`,
+  `select pg_temp.s09d_to_active('c');`,
+  `select pg_temp.s09d_successor('d', 'c');`,
+  `select pg_temp.s09d_dry_run('d');`,
+  `select pg_temp.s09d_seal('d');`,
+  `select pg_temp.s09d_submit('d');`,
+  `select pg_temp.s09d_assign('d', 'rev1');`,
+  `select pg_temp.s09d_decide('d', 'rev1');`,
+  // Race 3 type (candidate-row lock) and race 4 type (two switches of one candidate).
+  `select pg_temp.s09d_create_type('e', 'racethird');`,
+  `select pg_temp.s09d_to_active('e');`,
+  `select pg_temp.s09d_successor('f', 'e');`,
+  `select pg_temp.s09d_dry_run('f');`,
+  `select pg_temp.s09d_seal('f');`,
+  `select pg_temp.s09d_submit('f');`,
+  `select pg_temp.s09d_assign('f', 'rev1');`,
+  `select pg_temp.s09d_decide('f', 'rev1');`,
+  `select pg_temp.s09d_create_type('g', 'racefourth');`,
+  `select pg_temp.s09d_to_active('g');`,
+  `select pg_temp.s09d_successor('h', 'g');`,
+  `select pg_temp.s09d_dry_run('h');`,
+  `select pg_temp.s09d_seal('h');`,
+  `select pg_temp.s09d_submit('h');`,
+  `select pg_temp.s09d_assign('h', 'rev1');`,
+  `select pg_temp.s09d_decide('h', 'rev1');`,
+  `do $check$ begin
+     if pg_temp.s09d_outcome('a:activate') <> 'OK' or pg_temp.s09d_outcome('c:activate') <> 'OK'
+        or pg_temp.s09d_outcome('e:activate') <> 'OK' or pg_temp.s09d_outcome('g:activate') <> 'OK'
+        or pg_temp.s09d_outcome('b:decide:rev1') <> 'OK' or pg_temp.s09d_outcome('d:decide:rev1') <> 'OK'
+        or pg_temp.s09d_outcome('f:decide:rev1') <> 'OK' or pg_temp.s09d_outcome('h:decide:rev1') <> 'OK' then
+       raise exception 'setup chain did not complete: % % % % % % % %', pg_temp.s09d_outcome('a:activate'),
+         pg_temp.s09d_outcome('c:activate'), pg_temp.s09d_outcome('e:activate'), pg_temp.s09d_outcome('g:activate'),
+         pg_temp.s09d_outcome('b:decide:rev1'), pg_temp.s09d_outcome('d:decide:rev1'),
+         pg_temp.s09d_outcome('f:decide:rev1'), pg_temp.s09d_outcome('h:decide:rev1');
+     end if;
+   end $check$;`,
+  `select jsonb_build_object(
+     'guc', (select jsonb_build_object('auth', auth_user_id, 'person', person_id, 'party', party_id, 'binding', binding_id)
+             from s09d_actor where key = 'owner'),
+     'a', pg_temp.s09d_id('a:version'), 'b', pg_temp.s09d_id('b:version'),
+     'c', pg_temp.s09d_id('c:version'), 'd', pg_temp.s09d_id('d:version'),
+     'e', pg_temp.s09d_id('e:version'), 'f', pg_temp.s09d_id('f:version'),
+     'g', pg_temp.s09d_id('g:version'), 'h', pg_temp.s09d_id('h:version'),
+     'entryA', pg_temp.s09w_entry_request('race-a', 'a', 'Race entry one')
+       || jsonb_build_object('context', pg_temp.s09d_context('owner')),
+     'entryC', pg_temp.s09w_entry_request('race-c', 'c', 'Race entry two')
+       || jsonb_build_object('context', pg_temp.s09d_context('owner')),
+     'activateB', pg_temp.s09d_activation_request('b'),
+     'activateD', pg_temp.s09d_activation_request('d'),
+     'activateF', pg_temp.s09d_activation_request('f'),
+     'activateH1', pg_temp.s09d_activation_request('h'),
+     'activateH2', pg_temp.s09d_activation_request('h', 'owner', '{}'::jsonb, '{"idempotencyKey":"s09race-act-h-0002"}'::jsonb))::text;`,
+  'commit;',
+].join('\n');
+const ids = JSON.parse(runScript(setupScript));
+
+const gucs = `select set_config('request.jwt.claims',${sql(JSON.stringify({ role: 'service_role', sub: ids.guc.auth }))},false),
+  set_config('app.auth_user_id',${sql(ids.guc.auth)},false),
+  set_config('app.actor_auth_user_id',${sql(ids.guc.auth)},false),
+  set_config('app.actor_person_id',${sql(ids.guc.person)},false),
+  set_config('app.acting_party_id',${sql(ids.guc.party)},false),
+  set_config('app.acting_context_id',${sql(ids.guc.binding)},false);`;
+const call = (name, request) =>
+  `select platform_api.${name}(${sql(JSON.stringify(request))}::jsonb);`;
+const versionState = (id) =>
+  runValue(
+    `select state::text from platform_private.cms_content_type_versions where id = ${sql(id)}::uuid;`,
+  );
+const revisionCount = (versionId) =>
+  Number(
+    runValue(
+      `select count(*) from platform_private.cms_entry_revisions where schema_version_id = ${sql(versionId)}::uuid;`,
+    ),
+  );
+
+assert(
+  versionState(ids.a) === 'active' && versionState(ids.b) === 'approved',
+  'fixture 1: version 1 is active and its zero-row successor is approved',
+);
+assert(
+  versionState(ids.c) === 'active' && versionState(ids.d) === 'approved',
+  'fixture 2: version 1 is active and its zero-row successor is approved',
+);
+
+// -------------------------------------------------- S1: entry first ----
+console.log(
+  `# S1: an entry is in flight when the switch starts (${SLEEP_SECONDS}s hold)`,
+);
+const entryHold = runAsync(
+  's09race-entry1',
+  `begin; ${gucs} ${call('cms_create_entry', ids.entryA)} select pg_sleep(${SLEEP_SECONDS}); commit;`,
+);
+await waitFor(
+  'the in-flight entry to hold its locks (pg_sleep)',
+  () => waitEvent('s09race-entry1') === 'Timeout:PgSleep',
+);
+const switchBlocked = runAsync(
+  's09race-switch1',
+  `${gucs} ${call('cms_activate_schema', ids.activateB)}`,
+);
+await waitFor('the switch to block on the source-version row', () =>
+  waitEvent('s09race-switch1').startsWith('Lock:'),
+);
+assert(
+  waitEvent('s09race-entry1') === 'Timeout:PgSleep',
+  '[P2-S09-AC-097] S1: the switch is blocked behind the still-uncommitted entry (it locks the source row before its compare-and-swap and did not overtake it)',
+);
+assert(
+  versionState(ids.a) === 'active',
+  'S1: the source version is untouched while the switch waits',
+);
+const entryResult = await entryHold.done;
+const switchResult = await switchBlocked.done;
+assert(entryResult.code === 0, 'S1: the in-flight entry committed');
+assert(
+  switchResult.code !== 0 &&
+    /CONFLICT/.test(switchResult.stderr) &&
+    /MIGRATION_SOURCE_DRIFT/.test(switchResult.stderr),
+  `S1: the switch re-checked after the entry committed and refused with CONFLICT / MIGRATION_SOURCE_DRIFT (${switchResult.stderr.trim().split('\n').slice(-3).join(' ')})`,
+);
+assert(
+  versionState(ids.a) === 'active' && versionState(ids.b) === 'approved',
+  'S1: nothing was switched over the unscanned entry (source active, candidate approved)',
+);
+assert(
+  revisionCount(ids.a) === 1,
+  'S1: the entry is committed on the still-active source version',
+);
+
+// ------------------------------------------------ S2: switch first ----
+console.log(
+  `# S2: the switch is in flight when an entry starts (${SLEEP_SECONDS}s hold)`,
+);
+const switchHold = runAsync(
+  's09race-switch2',
+  `begin; ${gucs} ${call('cms_activate_schema', ids.activateD)} select pg_sleep(${SLEEP_SECONDS}); commit;`,
+);
+await waitFor(
+  'the in-flight switch to hold its locks (pg_sleep)',
+  () => waitEvent('s09race-switch2') === 'Timeout:PgSleep',
+);
+const entryBlocked = runAsync(
+  's09race-entry2',
+  `${gucs} ${call('cms_create_entry', ids.entryC)}`,
+);
+await waitFor('the entry to block on the source-version row', () =>
+  waitEvent('s09race-entry2').startsWith('Lock:'),
+);
+assert(
+  waitEvent('s09race-switch2') === 'Timeout:PgSleep',
+  '[P2-S09-AC-097] [P2-S09-AC-217] S2: the entry is blocked behind the still-uncommitted switch and, once it committed, no duplicate or unscanned switch exists (it did not overtake it)',
+);
+const switchResult2 = await switchHold.done;
+const entryResult2 = await entryBlocked.done;
+assert(switchResult2.code === 0, 'S2: the in-flight switch committed');
+assert(
+  versionState(ids.c) === 'superseded' && versionState(ids.d) === 'active',
+  'S2: the successor is active and the source superseded',
+);
+assert(
+  entryResult2.code !== 0 &&
+    /CONFLICT/.test(entryResult2.stderr) &&
+    /cms_entry_version_lock_guard/.test(entryResult2.stderr),
+  `S2: the waiting entry was refused with CONFLICT by the version-lock guard after the switch committed (${entryResult2.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
+);
+assert(
+  revisionCount(ids.c) === 0,
+  'S2: no entry revision exists on the switched-away version',
+);
+const activeVersions = (versionId) =>
+  Number(
+    runValue(
+      `select count(*) from platform_private.cms_content_type_versions v where v.state = 'active' and v.content_type_id = (select content_type_id from platform_private.cms_content_type_versions where id = ${sql(versionId)}::uuid);`,
+    ),
+  );
+
+// -------------------------------- S3: the candidate row is locked first ----
+assert(
+  versionState(ids.e) === 'active' && versionState(ids.f) === 'approved',
+  'fixture 3: version 1 is active and its zero-row successor is approved',
+);
+console.log(
+  `# S3: a transaction holds only the candidate row when the switch starts (${SLEEP_SECONDS}s hold)`,
+);
+// LOCK PROBE: an explicit row lock on the candidate and nothing else; it writes no row and claims no producer path.
+const candidateHold = runAsync(
+  's09race-candidate3',
+  `begin; select 1 from platform_private.cms_content_type_versions where id = ${sql(ids.f)}::uuid for update; select pg_sleep(${SLEEP_SECONDS}); commit;`,
+);
+await waitFor(
+  'the candidate-row lock holder to sleep',
+  () => waitEvent('s09race-candidate3') === 'Timeout:PgSleep',
+);
+const switchOnCandidate = runAsync(
+  's09race-switch3',
+  `${gucs} ${call('cms_activate_schema', ids.activateF)}`,
+);
+await waitFor('the switch to block on the candidate row', () =>
+  waitEvent('s09race-switch3').startsWith('Lock:'),
+);
+assert(
+  waitEvent('s09race-candidate3') === 'Timeout:PgSleep' &&
+    versionState(ids.f) === 'approved' &&
+    versionState(ids.e) === 'active',
+  '[P2-S09-AC-097] S3: the switch is blocked behind a transaction that holds only the candidate row (it locks the candidate row, and nothing was switched while it waited)',
+);
+const candidateResult = await candidateHold.done;
+const switchResult3 = await switchOnCandidate.done;
+assert(
+  candidateResult.code === 0,
+  'S3: the candidate-row lock holder committed',
+);
+assert(
+  switchResult3.code === 0 &&
+    versionState(ids.f) === 'active' &&
+    versionState(ids.e) === 'superseded',
+  `[P2-S09-AC-097] S3: once the candidate row was released the switch performed its compare-and-swap: candidate active, source superseded (${switchResult3.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
+);
+
+// -------------------------- S4: two switches of one approved candidate ----
+assert(
+  versionState(ids.g) === 'active' && versionState(ids.h) === 'approved',
+  'fixture 4: version 1 is active and its zero-row successor is approved',
+);
+console.log(
+  `# S4: two switches of one approved candidate (${SLEEP_SECONDS}s hold on the first)`,
+);
+const firstSwitch = runAsync(
+  's09race-switch4a',
+  `begin; ${gucs} ${call('cms_activate_schema', ids.activateH1)} select pg_sleep(${SLEEP_SECONDS}); commit;`,
+);
+await waitFor(
+  'the first switch to hold the candidate and source rows (pg_sleep)',
+  () => waitEvent('s09race-switch4a') === 'Timeout:PgSleep',
+);
+const secondSwitch = runAsync(
+  's09race-switch4b',
+  `${gucs} ${call('cms_activate_schema', ids.activateH2)}`,
+);
+await waitFor('the second switch to block on a row lock', () =>
+  waitEvent('s09race-switch4b').startsWith('Lock:'),
+);
+assert(
+  waitEvent('s09race-switch4a') === 'Timeout:PgSleep',
+  '[P2-S09-AC-097] S4: the second switch of the same candidate is blocked behind the still-uncommitted first one (it did not overtake it)',
+);
+const firstResult4 = await firstSwitch.done;
+const secondResult4 = await secondSwitch.done;
+assert(firstResult4.code === 0, 'S4: the first switch committed');
+assert(
+  secondResult4.code !== 0 &&
+    /ERROR:\s+VERSION_MISMATCH\b/.test(secondResult4.stderr),
+  `[P2-S09-AC-097] S4: the second switch re-read the candidate after the first committed and its compare-and-swap refused it with the typed 409 VERSION_MISMATCH, the first switch having advanced the candidate version the loser still carries (${secondResult4.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
+);
+assert(
+  versionState(ids.h) === 'active' &&
+    versionState(ids.g) === 'superseded' &&
+    activeVersions(ids.h) === 1,
+  '[P2-S09-AC-097] S4: exactly one version of the type is active: the candidate is active and the source superseded',
+);
+console.log(
+  '# all race assertions passed; run `pnpm db:reset` before the pgTAP suite',
+);

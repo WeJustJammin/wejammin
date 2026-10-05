@@ -1,10 +1,11 @@
+\ir support/jwt-claims.sqlinc
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 -- P2-S05-AC-084..090, P2-S05-AC-113, P2-S05-AC-114, P2-S05-AC-117.
 -- Opaque fixture IDs stand in for Shard 01/06 references.  Every row is
 -- admitted through the private boundary before route behavior is exercised.
-select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('sub', '20000000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id', '20000000-0000-4000-8000-000000000001', true);
 select set_config('app.acting_party_id', '10000000-0000-4000-8000-000000000001', true);
 insert into platform_private.party(id, kind) values ('10000000-0000-4000-8000-000000000001', 'alias'),
@@ -232,10 +233,10 @@ select lives_ok($$select platform_api.rpc_match_shadow(request)
   from p2_s05_requests where op = 'match'$$, 'PRF-API-01 happy path matches a source tuple');
 select lives_ok($$select platform_api.rpc_dispatch_invitation(request)
   from p2_s05_requests where op = 'invite'$$, 'PRF-API-02 happy path queues one invitation attempt');
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_jwt_claim('sub', '', true);
 select lives_ok($$select platform_api.rpc_submit_remedy(request)
   from p2_s05_requests where op = 'remedy'$$, 'PRF-API-03 anonymous remedy happy path remains account-free');
-select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
+select pg_temp.set_jwt_claim('sub', '20000000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_person_id', '20000000-0000-4000-8000-000000000002', true);
 select set_config('app.acting_party_id',
   '10000000-0000-4000-8000-000000000002', true);

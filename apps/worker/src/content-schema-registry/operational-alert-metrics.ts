@@ -6,6 +6,7 @@ type SnapshotInput = Readonly<{
   database: Readonly<{
     activationBlockedMs?: number;
     outboxAgeMs?: number;
+    reviewOpenAgeMs?: number;
   }>;
   dlqDepth?: number;
   events: readonly ProviderEvent[];
@@ -18,12 +19,26 @@ type StructuredEvent = Readonly<{
   errorCode?: string;
   eventName?: string;
   metrics?: unknown;
+  operation?: unknown;
   outcome?: string;
   retryable?: boolean;
   timestamp?: string;
 }>;
 
 const MIGRATION_DLQ_TOTAL = 'cms.migration.dlq.total' as const;
+
+/**
+ * BE03a Observability denial families. A denial is a protected command whose
+ * response is 401, 403 or 404 (the `denied` outcome label of the lifecycle
+ * counters). A refused command rolls back its transaction, so denials are
+ * counted from the command telemetry events, never from database rows.
+ */
+const DENIAL_STATUSES: ReadonlySet<number> = new Set([401, 403, 404]);
+const DENIAL_FAMILIES = {
+  decision: ['CMS-03A-12'],
+  assignment: ['CMS-03A-14'],
+  capabilityGrant: ['CMS-03A-15', 'CMS-03A-16', 'CMS-03A-17'],
+} as const;
 
 const record = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -83,6 +98,44 @@ const migrationDlqTotal = (
   return total;
 };
 
+const denialCount = (
+  events: readonly StructuredEvent[],
+  operationIds: readonly string[],
+): number =>
+  count(events, (event) => {
+    if (event.eventName !== 'cms.registry.command') return false;
+    if (typeof event.operation !== 'string') return false;
+    const operation = event.operation;
+    if (!operationIds.some((id) => operation === `cms.registry.${id}`))
+      return false;
+    const status = record(event.metrics)?.request_status;
+    return typeof status === 'number' && DENIAL_STATUSES.has(status);
+  });
+
+/**
+ * BE03a Observability gauges produced where the data lives (the protected
+ * database snapshot): the age of the oldest blocked activation, the oldest
+ * undispatched outbox event, the oldest open schema review and the DLQ depth.
+ * All are non-negative milliseconds (or a message count) and are logged as
+ * metrics each time the snapshot is loaded.
+ */
+export const operationalGaugeMetrics = (
+  snapshot: ContentSchemaRegistryOperationalSnapshot,
+): Readonly<Record<string, number>> => ({
+  ...(snapshot.activationBlockedMs === undefined
+    ? {}
+    : { cms_activation_age: snapshot.activationBlockedMs }),
+  ...(snapshot.outboxAgeMs === undefined
+    ? {}
+    : { cms_outbox_lag: snapshot.outboxAgeMs }),
+  ...(snapshot.reviewOpenAgeMs === undefined
+    ? {}
+    : { cms_schema_review_age: snapshot.reviewOpenAgeMs }),
+  ...(snapshot.dlqDepth === undefined
+    ? {}
+    : { cms_queue_dlq_total: snapshot.dlqDepth }),
+});
+
 export const buildContentSchemaRegistryOperationalSnapshot = (
   input: SnapshotInput,
 ): ContentSchemaRegistryOperationalSnapshot => {
@@ -137,6 +190,21 @@ export const buildContentSchemaRegistryOperationalSnapshot = (
     ...(retryAttempts.length > 0
       ? { migrationRetryCount: Math.max(...retryAttempts) }
       : {}),
+    ...(finite(input.database.reviewOpenAgeMs)
+      ? { reviewOpenAgeMs: input.database.reviewOpenAgeMs }
+      : {}),
+    decisionDenialRate: denialCount(current, DENIAL_FAMILIES.decision),
+    decisionDenialBaseline: denialCount(baseline, DENIAL_FAMILIES.decision),
+    assignmentDenialRate: denialCount(current, DENIAL_FAMILIES.assignment),
+    assignmentDenialBaseline: denialCount(baseline, DENIAL_FAMILIES.assignment),
+    capabilityGrantDenialRate: denialCount(
+      current,
+      DENIAL_FAMILIES.capabilityGrant,
+    ),
+    capabilityGrantDenialBaseline: denialCount(
+      baseline,
+      DENIAL_FAMILIES.capabilityGrant,
+    ),
     nonceRejectionRate: count(current, (event) =>
       errorIncludes(event, 'NONCE'),
     ),

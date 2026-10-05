@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import {
   CmsCapabilityKeySchema,
-  CmsLocaleSchema,
+  CmsHashSchema,
+  CmsLabelSchema,
   CmsTypeKeySchema,
   CmsUuidSchema,
   CmsWorkflowKeySchema,
@@ -13,6 +14,12 @@ import {
   CmsCompatibilitySchema,
   WorkflowPolicyEvidenceSchema,
 } from './models.ts';
+import {
+  CmsCanonicalLocaleSchema,
+  CmsFallbackChainsSchema,
+  CmsSupportedLocalesSchema,
+  refineLocaleConfig,
+} from './locale-config.ts';
 import { resourceMetaShape } from './resources-meta.ts';
 
 export const ContentTypeResourceSchema = z
@@ -46,10 +53,13 @@ export const ContentTypeVersionResourceSchema = z
     state: ContentTypeVersionStateSchema,
     contentTypeId: CmsUuidSchema,
     typeKey: CmsTypeKeySchema,
-    label: z.string().trim().min(2).max(120),
+    label: CmsLabelSchema,
     ownerCapability: CmsCapabilityKeySchema,
-    sourceLocale: CmsLocaleSchema,
-    defaultLocale: CmsLocaleSchema,
+    sourceLocale: CmsCanonicalLocaleSchema,
+    defaultLocale: CmsCanonicalLocaleSchema,
+    supportedLocales: CmsSupportedLocalesSchema,
+    fallbackChains: CmsFallbackChainsSchema,
+    localeConfigHash: CmsHashSchema,
     workflowKey: CmsWorkflowKeySchema,
     workflowVersion: CmsVersionSchema,
     defaultTemplateVersionId: CmsUuidSchema.nullable(),
@@ -62,6 +72,7 @@ export const ContentTypeVersionResourceSchema = z
     activationEvidence: WorkflowPolicyEvidenceSchema.nullable(),
   })
   .superRefine((value, context) => {
+    refineLocaleConfig(value, context);
     if (
       ['active', 'superseded', 'retired'].includes(value.state) &&
       value.activationEvidence === null

@@ -12,6 +12,7 @@ const baseRoute = {
   audience: 'browser',
   cors: 'cms-console',
   csrf: 'required',
+  stepUp: 'none',
   rawBodySignature: 'none',
   idempotency: 'none',
   ifMatch: 'none',

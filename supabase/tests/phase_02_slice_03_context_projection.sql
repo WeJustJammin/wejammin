@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 select plan(61);
 
@@ -36,7 +37,7 @@ select ok(to_regclass('platform_private.identity_public_person_projection') is n
 -- RPCs themselves absent so this file is intentionally RED.
 select lives_ok($$insert into auth.users(id) values ('a3111111-1111-4111-8111-111111111111')$$, 'projection fixture Auth user is accepted');
 select lives_ok($$select platform_api.auth_bootstrap('a3111111-1111-4111-8111-111111111111', decode(repeat('ab', 32), 'hex'), decode(repeat('cd', 32), 'hex'), 'a3111111-1111-4111-8111-111111111112', 'a3111111-1111-4111-8111-111111111113')$$, 'fixture receives canonical self context');
-select set_config('request.jwt.claim.sub', 'a3111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.auth_user_id', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_auth_user_id', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from identity.auth_user_bindings where auth_user_id = 'a3111111-1111-4111-8111-111111111111'), true);

@@ -6,6 +6,8 @@ import {
   SCHEMA_MIGRATION_RPC,
   type SchemaMigrationRpcName,
 } from './migration-worker-constants';
+import { DEFAULT_TRANSFORM_REGISTRY } from './migration-transform-registry';
+import type { TransformRegistry } from './migration-transform-types';
 import type { SchemaMigrationQueueEnvelope } from './migration-worker-input-schemas';
 import type {
   MigrationWorkerTelemetryEvent,
@@ -29,6 +31,7 @@ export type MigrationWorkerRuntime = Readonly<{
   leaseDurationMs: number;
   maxBatchRows: number;
   maxBatches: number;
+  transformRegistry: TransformRegistry;
   emit: (event: MigrationWorkerTelemetryEvent) => Promise<void>;
   call: RpcCaller;
   createEventClaimToken: () => string;
@@ -185,6 +188,8 @@ export const createMigrationWorkerRuntime = (
     leaseDurationMs,
     maxBatchRows,
     maxBatches,
+    transformRegistry:
+      dependencies.transformRegistry ?? DEFAULT_TRANSFORM_REGISTRY,
     emit,
     call,
     createEventClaimToken,

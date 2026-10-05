@@ -1,0 +1,49 @@
+-- Generated per-constraint evidence (AC215): every CHECK constraint of the BE03a persistence tables
+-- is rejected by an override of its own columns (isolated from every other constraint) while the
+-- unchanged producer row passes.  Tables that hold no producer row at this point are reported by a
+-- diagnostic, never silently skipped (cms_content_type_capability_bindings is probed in
+-- phase_02_slice_09_evidence_constraints.sql, whose fixture creates a real binding).  The helpers live in 05-probes.sqlinc.
+\ir ../phase_02_slice_09_dec108/05-probes.sqlinc
+
+create temp table s09e_auto_results on commit drop as
+select t as table_name, con.conname as constraint_name, pg_temp.s09e_auto_check(t, con.conname) as outcome
+from unnest(array['cms_content_types', 'cms_content_type_versions', 'cms_field_definition_versions', 'cms_relation_definitions',
+  'cms_content_type_template_bindings', 'cms_schema_artifacts', 'cms_schema_migration_plans',
+  'cms_schema_migration_target_rows', 'cms_block_definition_versions', 'cms_block_definition_lifecycle_events', 'cms_release_nonce_receipts']) t
+join pg_constraint con on con.conrelid = format('platform_private.%I', t)::regclass and con.contype = 'c';
+select diag(table_name || ' ' || constraint_name || ' => ' || outcome) from s09e_auto_results where outcome not like 'PROVEN:%' order by 1;
+select ok(outcome like 'PROVEN:%',
+  constraint_name || ' rejects an override of its own columns while the producer row passes (' || outcome || ') [P2-S09-AC-215]')
+from s09e_auto_results where outcome <> 'EMPTY' order by table_name, constraint_name;
+select is((select count(*)::integer from s09e_auto_results where outcome = 'EMPTY'), 0,
+  'every BE03a persistence table held a producer row, so no CHECK was skipped [P2-S09-AC-215]');
+
+-- Every plain unique constraint and column-based unique index (partial ones included) of the same
+-- tables: two producer-row copies collide on it and a copy with a different key does not.
+create temp table s09e_auto_unique_results on commit drop as
+select t as table_name, i.relname as index_name,
+       pg_temp.s09e_auto_unique(t, (select array_agg(a.attname::text order by a.attname) from pg_attribute a where a.attrelid = ix.indrelid and a.attnum = any(ix.indkey))) as outcome
+from unnest(array['cms_content_types', 'cms_content_type_versions', 'cms_field_definition_versions', 'cms_relation_definitions',
+  'cms_content_type_template_bindings', 'cms_schema_artifacts', 'cms_schema_migration_plans',
+  'cms_schema_migration_target_rows', 'cms_block_definition_versions', 'cms_block_definition_lifecycle_events', 'cms_release_nonce_receipts']) t
+join pg_index ix on ix.indrelid = format('platform_private.%I', t)::regclass and ix.indisunique and not ix.indisprimary
+join pg_class i on i.oid = ix.indexrelid
+where 0 not in (select unnest(ix.indkey::int2[]));
+select diag(table_name || ' ' || index_name || ' => ' || outcome) from s09e_auto_unique_results where outcome not like 'PROVEN:%' order by 1;
+select ok(outcome like 'PROVEN:%',
+  index_name || ' rejects a duplicate producer row and accepts a distinct key (' || outcome || ') [P2-S09-AC-215]')
+from s09e_auto_unique_results where outcome <> 'EMPTY' order by table_name, index_name;
+
+-- Every foreign key of the same tables rejects a dangling reference.
+create temp table s09e_auto_fk_results on commit drop as
+select t as table_name,
+       pg_temp.s09e_fk_probe('platform_private', t,
+         case when t = 'cms_schema_artifacts' then jsonb_build_object('artifact_hash', encode(extensions.digest(extensions.gen_random_uuid()::text, 'sha256'), 'hex')) end) as outcome,
+       (select count(*)::integer from pg_constraint con where con.conrelid = format('platform_private.%I', t)::regclass and con.contype = 'f') as fk_count
+from unnest(array['cms_content_types', 'cms_content_type_versions', 'cms_field_definition_versions', 'cms_relation_definitions',
+  'cms_content_type_template_bindings', 'cms_schema_artifacts', 'cms_schema_migration_plans',
+  'cms_schema_migration_target_rows', 'cms_block_definition_versions', 'cms_block_definition_lifecycle_events', 'cms_release_nonce_receipts']) t;
+select diag(table_name || ' => ' || outcome) from s09e_auto_fk_results where outcome not like 'probed=%;bad=' order by 1;
+select ok(outcome = 'probed=' || fk_count || ';bad=',
+  table_name || ': all ' || fk_count || ' foreign keys reject a dangling reference (' || outcome || ') [P2-S09-AC-215]')
+from s09e_auto_fk_results where outcome <> 'EMPTY' order by table_name;

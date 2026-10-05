@@ -1,5 +1,20 @@
 # BE 05b — Admin workspace and operations
 
+## CMS schema-review assignment reciprocity (DEC-108, 2026-10-02)
+
+BE03a owns the newly approved owner-only `cms.schema_review.assign` command
+authority and private schema-review assignment ledger. It is not a generic
+CFG-11 grant, a settings review or additional admin/design authority. Only
+read/decide for one frozen owner-scoped CMS review may be assigned to an existing
+eligible human, for at most seven days and no later than the grantor's current
+authority; current verified binding and MFA remain required. CFG operations do
+not manufacture CMS review decisions or treat a CMS version as `setting_value`.
+
+The singleton operator-only initial-owner operation below still initializes
+exactly its four original capabilities. The amendment does not authorize another
+initialization, real grant/account mutation, or wider operator/delegation scope.
+BE03a's approved private contract supplies the separate assignment authority.
+
 ## Operator-only initial-owner setup (2026-09-10)
 
 The owner-approved empty-installation exception is
@@ -39,6 +54,71 @@ This is the sole initial-installation exception to the grant-RPC-only insertion
 rule below. Ordinary grantor-subset, step-up, distinct-approver and revocation
 requirements are unchanged. Hosted tests must separately prove real access.
 
+## Admin MFA factor reset (DEC-111 follow-up, 2026-10-02)
+
+`CFG-05B-06` is the recovery operation for a person who has lost every
+verified MFA factor. It is a BE-first operation with no IA05 interaction yet;
+it does not change CFG-11 or any CFG-08 through CFG-12 behavior.
+
+- **Authority.** The caller is a verified admin operator who holds the named
+  admin capability `admin.identity.mfa_reset` with action `reset`, granted
+  through CFG-11 on resource type `organization` for the organization that
+  contains the target. The target is a person with a confirmed, unended
+  membership in that organization; an absent, ineligible, banned or
+  cross-organization target is an indistinguishable 404. The operator cannot
+  target themselves (422 `MFA_RESET_INVALID`), because a reset by the account
+  holder would defeat step-up.
+- **Step-up, reason and audit.** Recent step-up is read from the verified session
+  exactly as BE01a defines (401 `STEP_UP_REQUIRED` with
+  `{ recoveryAction: 'step_up', allowedMethods: string[] }`, never 403, checked
+  before idempotency reservation). `reason` is required (1..512). One
+  transaction writes the reset record, the BE00 audit row, the security
+  evidence, the target's security-notification request and the outbox row.
+- **Effect.** One identity RPC owned by BE01a
+  (`identity.rpc_admin_reset_mfa_factors`) moves every live factor of the target
+  to `reconciling`, and the Worker unenrolls each provider factor through the
+  operator-only provider adapter in BE01a's seam table. That adapter is a
+  separate credential binding reachable only from this RPC path, never from a
+  user-facing route and never with a caller's token. No session, login method
+  or other account state changes; the target enrolls again through BE01a
+  AUTH-API-17 under its first-factor rule.
+- **Sole-administrator lockout.** When the only administrator has lost their
+  factor, no second operator can reset it. That case is the audited runbook
+  `docs/runbooks/platform/sole-admin-mfa-lockout.md`, performed through the
+  Supabase dashboard and recorded by an audit note; no HTTP route, grant or
+  support bypass substitutes for it.
+
+## Capability snapshot (CFG-05B-07, 2026-10-02)
+
+`CFG-05B-07` is the one server-truthful source the web tier uses to decide
+which settings and admin affordances to render. It is a protected,
+service-binding-only read: the web server calls it with the verified session
+cookies and trace headers, never from the browser, and never with a caller role,
+capability, query or identifier.
+
+- **Authority.** There is no capability key. Any session that the shared admin
+  admission accepts may read its own projection, and the response adds no
+  authority: it is the same server-derived request-context capability list the
+  Worker already admits every admin route on.
+- **Response.** `{ capabilities: string[] }`, strict, at most 32 unique keys.
+  Only keys in the `admin.*` namespace (admin workspace tabs) and the
+  `settings.*` namespace (the keys BE05a command RPCs authorize against:
+  `settings.approve`, `settings.release`, `settings.rollback` and each
+  definition's `ownerCapability`) leave the Worker. Every other domain
+  capability is dropped, never echoed. The list carries names only: no person,
+  party, session, grant or provider identifier crosses it.
+- **Transport.** Capability is never transported as a response header. The web
+  tier ignores and strips any `x-configuration-capabilities` or
+  `x-configuration-capability` header from an upstream response, and no Worker
+  route emits one. Any failure to read the snapshot (no binding, no session,
+  non-200, non-JSON, contract mismatch) resolves to an empty list, so every
+  affordance fails closed to read-only.
+- **Use, not enforcement.** The snapshot only selects UI affordances. The Worker
+  and the database re-check authority on every command regardless of what any
+  client rendered.
+- **Cache and rate.** `Cache-Control: no-store`; no query string is accepted
+  (400 `INVALID_REQUEST`); 120/min per user; 8s deadline.
+
 ## Split Group
 
 This companion is the backend contract for Shard 05 administration and
@@ -58,75 +138,77 @@ decisions remain owned by their respective shards.
 
 ## Classification
 
-| IA interaction | Operation ID | Backend classification | Authority and completion |
-|---|---|---|---|
-| CFG-08 Work admin inbox | CFG-05B-01 | Capability-filtered bounded projection query | Task cards are derived, freshness-labelled projections; the source domain rechecks any completion. |
-| CFG-09 Search/filter control plane | CFG-05B-02 | Allowlisted metadata search query | Search schema and per-item plus aggregate authorization run before response composition; counts never disclose protected existence. |
-| CFG-10 Preview/run bulk action | CFG-05B-03 | Dry-run manifest command and bounded asynchronous job | Exact command, target IDs and versions are frozen; ordinary guarded commands process each item and preserve partial evidence. |
-| CFG-11 Grant/revoke admin capability | CFG-05B-04 | Protected capability grant state-transition command | Named actions, resource, scope, term, reason, step-up and distinct approval are required; revocation is immediate. |
-| CFG-12 Inspect audit/diagnostics | CFG-05B-05 | Minimal audit-link query plus registered diagnostic command | Links expose IDs and versions, not protected payload; diagnostics return healthy, stale, unknown or failed evidence without becoming a second truth. |
+| IA interaction                       | Operation ID | Backend classification                                      | Authority and completion                                                                                                                              |
+| ------------------------------------ | ------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CFG-08 Work admin inbox              | CFG-05B-01   | Capability-filtered bounded projection query                | Task cards are derived, freshness-labelled projections; the source domain rechecks any completion.                                                    |
+| CFG-09 Search/filter control plane   | CFG-05B-02   | Allowlisted metadata search query                           | Search schema and per-item plus aggregate authorization run before response composition; counts never disclose protected existence.                   |
+| CFG-10 Preview/run bulk action       | CFG-05B-03   | Dry-run manifest command and bounded asynchronous job       | Exact command, target IDs and versions are frozen; ordinary guarded commands process each item and preserve partial evidence.                         |
+| CFG-11 Grant/revoke admin capability | CFG-05B-04   | Protected capability grant state-transition command         | Named actions, resource, scope, term, reason, step-up and distinct approval are required; revocation is immediate.                                    |
+| CFG-12 Inspect audit/diagnostics     | CFG-05B-05   | Minimal audit-link query plus registered diagnostic command | Links expose IDs and versions, not protected payload; diagnostics return healthy, stale, unknown or failed evidence without becoming a second truth.  |
+| None (DEC-111 recovery)              | CFG-05B-06   | Protected identity-recovery command                         | Named capability, recent step-up, reason and audit; resets another person's MFA factors through the operator-only provider adapter; never self-reset. |
 
 ## Referenced Material Inventory
 
-| Source | Sections and exact lines | Use in this companion |
-|---|---|---|
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | title, links and scope lines 1-22 | Confirms the parent boundary, approved three-way split and deferred enterprise administration. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Features and acceptance criteria lines 24-45 | Binds feature IDs 25.08.01 through 25.08.05 and required partial, capability and diagnostic behavior. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Interactions and global rules lines 47-71 | Supplies exact CFG-08 through CFG-12 identifiers and no-false-zero or no-auth-by-setting rules. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Contracts lines 86-96 | Supplies task, search, bulk, capability, audit and diagnostic safety contracts. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Data Models and typed registry lines 108-152 | Supplies AdminTaskProjection, AdminCapabilityGrant, BulkOperation, AdminAuditLink, DiagnosticDefinitionVersion and DiagnosticRun. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Access Control and escalation lines 154-187 | Supplies admin/operator/support roles, immediate revoke, purpose grants and no-override escalation. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Accessibility lines 189-197 | Supplies loading, stale, partial, unknown, per-item bulk and checker/audit presentation requirements. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Event Schemas lines 199-211 | Supplies admin.capability.changed.v1, admin.bulk.changed.v1 and quality.diagnostic.changed.v1. |
-| .memory/wiki/specs/ia/05-platform-configuration-admin.md | Edge cases and matrix lines 213-258 | Supplies dependency lag, count leakage, target drift, mid-job revoke and diagnostic-unavailable recovery. |
-| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | scope and deepening record lines 1-18 | Confirms adversarial rejection of mass mutation, count leakage and break-glass permanence. |
-| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | admin model contracts lines 35-55 | Expands task, grant, bulk item, audit, diagnostic and result fields. |
-| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | state machine and admin algorithms lines 57-69 and 98-104 | Locks grant, bulk, projection, search, lease, cancellation and diagnostic transitions. |
-| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | abuse/recovery and cross-shard lines 132-162 | Locks proof for grant abuse, search/count leaks, mass overreach and diagnostic false health. |
-| .memory/wiki/specs/feature-ledger.md | Shard 05 rows lines 776-780 | Reconciles every assigned 25.08 feature row to an operation and test surface. |
-| .memory/wiki/specs/be/00-infrastructure.md | inventory, ApiError and contracts lines 22-41 and 112-138 | Inherits RequestContext, strict Zod 4 and exact ApiError { code, message, requestId, details }. |
-| .memory/wiki/specs/be/00-infrastructure.md | database, middleware, jobs and provider boundaries lines 202-365 | Inherits private schema, RLS, middleware order, idempotency, queue retry and provider circuit rules. |
-| .memory/wiki/specs/be/00-infrastructure.md | errors, observability, tests and ambiguity lines 416-534 | Inherits typed errors, scrubbed telemetry, recovery proof and ambiguity gates. |
-| .memory/wiki/specs/2026-08-02-architecture-design.md | stack, access and integration lines 157-167, 348-370 and 495-502 | Confirms Hono/Zod/Workers, server-derived authorization, PostgreSQL RPC and replaceable provider seams. |
-| .memory/wiki/specs/2026-08-02-architecture-design.md | API security lines 707-765 and 900-907 | Confirms BOLA/BOPLA protection, allowlisted filters, explicit CORS and safe errors. |
-| .memory/wiki/specs/data-placement-strategy.md | placement and isolation lines 13-16, 23-32, 42-52 and 120-130 | Confirms PostgreSQL authority, protected schemas, object boundary and acting-context/RLS enforcement. |
-| .memory/wiki/specs/ENGINEERING-STANDARDS.md | contract, bounds, security and migration lines 35-50, 92-101 and 149-188 | Sets strict validation, 256 KiB bodies, 50-row list limit, endpoint tests and RLS/grant tests. |
+| Source                                                              | Sections and exact lines                                                 | Use in this companion                                                                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | title, links and scope lines 1-22                                        | Confirms the parent boundary, approved three-way split and deferred enterprise administration.                                    |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Features and acceptance criteria lines 24-45                             | Binds feature IDs 25.08.01 through 25.08.05 and required partial, capability and diagnostic behavior.                             |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Interactions and global rules lines 47-71                                | Supplies exact CFG-08 through CFG-12 identifiers and no-false-zero or no-auth-by-setting rules.                                   |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Contracts lines 86-96                                                    | Supplies task, search, bulk, capability, audit and diagnostic safety contracts.                                                   |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Data Models and typed registry lines 108-152                             | Supplies AdminTaskProjection, AdminCapabilityGrant, BulkOperation, AdminAuditLink, DiagnosticDefinitionVersion and DiagnosticRun. |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Access Control and escalation lines 154-187                              | Supplies admin/operator/support roles, immediate revoke, purpose grants and no-override escalation.                               |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Accessibility lines 189-197                                              | Supplies loading, stale, partial, unknown, per-item bulk and checker/audit presentation requirements.                             |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Event Schemas lines 199-211                                              | Supplies admin.capability.changed.v1, admin.bulk.changed.v1 and quality.diagnostic.changed.v1.                                    |
+| .memory/wiki/specs/ia/05-platform-configuration-admin.md            | Edge cases and matrix lines 213-258                                      | Supplies dependency lag, count leakage, target drift, mid-job revoke and diagnostic-unavailable recovery.                         |
+| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | scope and deepening record lines 1-18                                    | Confirms adversarial rejection of mass mutation, count leakage and break-glass permanence.                                        |
+| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | admin model contracts lines 35-55                                        | Expands task, grant, bulk item, audit, diagnostic and result fields.                                                              |
+| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | state machine and admin algorithms lines 57-69 and 98-104                | Locks grant, bulk, projection, search, lease, cancellation and diagnostic transitions.                                            |
+| .memory/wiki/specs/ia/deep-dives/05-platform-configuration-admin.md | abuse/recovery and cross-shard lines 132-162                             | Locks proof for grant abuse, search/count leaks, mass overreach and diagnostic false health.                                      |
+| .memory/wiki/specs/feature-ledger.md                                | Shard 05 rows lines 776-780                                              | Reconciles every assigned 25.08 feature row to an operation and test surface.                                                     |
+| .memory/wiki/specs/be/00-infrastructure.md                          | inventory, ApiError and contracts lines 22-41 and 112-138                | Inherits RequestContext, strict Zod 4 and exact ApiError { code, message, requestId, details }.                                   |
+| .memory/wiki/specs/be/00-infrastructure.md                          | database, middleware, jobs and provider boundaries lines 202-365         | Inherits private schema, RLS, middleware order, idempotency, queue retry and provider circuit rules.                              |
+| .memory/wiki/specs/be/00-infrastructure.md                          | errors, observability, tests and ambiguity lines 416-534                 | Inherits typed errors, scrubbed telemetry, recovery proof and ambiguity gates.                                                    |
+| .memory/wiki/specs/2026-08-02-architecture-design.md                | stack, access and integration lines 157-167, 348-370 and 495-502         | Confirms Hono/Zod/Workers, server-derived authorization, PostgreSQL RPC and replaceable provider seams.                           |
+| .memory/wiki/specs/2026-08-02-architecture-design.md                | API security lines 707-765 and 900-907                                   | Confirms BOLA/BOPLA protection, allowlisted filters, explicit CORS and safe errors.                                               |
+| .memory/wiki/specs/data-placement-strategy.md                       | placement and isolation lines 13-16, 23-32, 42-52 and 120-130            | Confirms PostgreSQL authority, protected schemas, object boundary and acting-context/RLS enforcement.                             |
+| .memory/wiki/specs/ENGINEERING-STANDARDS.md                         | contract, bounds, security and migration lines 35-50, 92-101 and 149-188 | Sets strict validation, 256 KiB bodies, 50-row list limit, endpoint tests and RLS/grant tests.                                    |
 
 ## IA Source Map
 
-| Exact source item | 05b ownership | Backend realization |
-|---|---|---|
-| CFG-08 Work admin inbox | Owned | CFG-05B-01 and admin_task_projections with freshness and partial state. |
-| CFG-09 Search/filter control plane | Owned | CFG-05B-02 and registered metadata schema with per-result and aggregate policy. |
-| CFG-10 Preview/run bulk action | Owned | CFG-05B-03, admin_bulk_operations, admin_bulk_item_results and exact target manifest. |
-| CFG-11 Grant/revoke admin capability | Owned | CFG-05B-04 and admin_capability_grants with named action, scope and expiry. |
-| CFG-12 Inspect audit/diagnostics | Owned | CFG-05B-05, admin_audit_links, admin_diagnostic_definition_versions and admin_diagnostic_runs. |
-| AdminTaskProjection | Owned | Derived task projection; owning domain remains source of truth. |
-| AdminCapabilityGrant | Owned | Current grant and append-only transition evidence. |
-| BulkOperation | Owned | Frozen command, manifest, cursor and counts. |
-| AdminAuditLink | Owned | Identifier/version link to immutable audit and security evidence. |
-| DiagnosticDefinitionVersion | Owned | Code-owned definition, bounded input and evidence schema. |
-| DiagnosticRun | Owned | Evidence-backed diagnostic result with freshness and state. |
-| BulkItemResult | Supporting deep-dive model, owned | One guarded outcome per operation and exact target version. |
-| admin.capability.changed.v1 | Owned event | Identifier-only event after grant or revocation commit. |
-| admin.bulk.changed.v1 | Owned event | Identifier-only event after bulk state or item-result summary change. |
-| quality.diagnostic.changed.v1 | Owned event | Identifier-only event after diagnostic run state changes. |
-| CFG-01 through CFG-07 | Excluded | 05a owns settings, flags, experiments and switch runtime. |
-| CFG-13 through CFG-14 | Excluded | 05c owns import/export/restore, quality and lifecycle. |
+| Exact source item                    | 05b ownership                     | Backend realization                                                                            |
+| ------------------------------------ | --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| CFG-08 Work admin inbox              | Owned                             | CFG-05B-01 and admin_task_projections with freshness and partial state.                        |
+| CFG-09 Search/filter control plane   | Owned                             | CFG-05B-02 and registered metadata schema with per-result and aggregate policy.                |
+| CFG-10 Preview/run bulk action       | Owned                             | CFG-05B-03, admin_bulk_operations, admin_bulk_item_results and exact target manifest.          |
+| CFG-11 Grant/revoke admin capability | Owned                             | CFG-05B-04 and admin_capability_grants with named action, scope and expiry.                    |
+| CFG-12 Inspect audit/diagnostics     | Owned                             | CFG-05B-05, admin_audit_links, admin_diagnostic_definition_versions and admin_diagnostic_runs. |
+| None (DEC-111 recovery)              | Owned, BE-first                   | CFG-05B-06 and admin_mfa_factor_resets; identity state change stays in BE01a.                  |
+| AdminTaskProjection                  | Owned                             | Derived task projection; owning domain remains source of truth.                                |
+| AdminCapabilityGrant                 | Owned                             | Current grant and append-only transition evidence.                                             |
+| BulkOperation                        | Owned                             | Frozen command, manifest, cursor and counts.                                                   |
+| AdminAuditLink                       | Owned                             | Identifier/version link to immutable audit and security evidence.                              |
+| DiagnosticDefinitionVersion          | Owned                             | Code-owned definition, bounded input and evidence schema.                                      |
+| DiagnosticRun                        | Owned                             | Evidence-backed diagnostic result with freshness and state.                                    |
+| BulkItemResult                       | Supporting deep-dive model, owned | One guarded outcome per operation and exact target version.                                    |
+| admin.capability.changed.v1          | Owned event                       | Identifier-only event after grant or revocation commit.                                        |
+| admin.bulk.changed.v1                | Owned event                       | Identifier-only event after bulk state or item-result summary change.                          |
+| quality.diagnostic.changed.v1        | Owned event                       | Identifier-only event after diagnostic run state changes.                                      |
+| CFG-01 through CFG-07                | Excluded                          | 05a owns settings, flags, experiments and switch runtime.                                      |
+| CFG-13 through CFG-14                | Excluded                          | 05c owns import/export/restore, quality and lifecycle.                                         |
 
 ## Feature Ledger Coverage
 
-| Feature ledger ID | Feature | Operation coverage | Acceptance evidence |
-|---|---|---|---|
-| 25.08.01 | Admin Home & Task Inbox | CFG-05B-01 | Capability-filtered cards, source version, freshness, partial and unknown-state tests. |
-| 25.08.02 | Global Search, Filtering & Bulk Actions | CFG-05B-02 and CFG-05B-03 | Schema allowlist, count policy, exact manifest, item outcomes and query-drift tests. |
-| 25.08.03 | Admin Capabilities, Delegation & Step-Up | CFG-05B-04 | Named actions/resources, no wildcard, MFA, distinct approver, term and immediate revoke tests. |
-| 25.08.04 | Activity Audit & Security Notifications | CFG-05B-04 and CFG-05B-05 | Minimal audit links, immutable IDs, notification intents and no protected payload leakage. |
-| 25.08.05 | Site Health & Configuration Diagnostics | CFG-05B-01 and CFG-05B-05 | Registered definitions, freshness, unknown-on-timeout and no automatic high-risk repair. |
+| Feature ledger ID | Feature                                  | Operation coverage        | Acceptance evidence                                                                            |
+| ----------------- | ---------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------- |
+| 25.08.01          | Admin Home & Task Inbox                  | CFG-05B-01                | Capability-filtered cards, source version, freshness, partial and unknown-state tests.         |
+| 25.08.02          | Global Search, Filtering & Bulk Actions  | CFG-05B-02 and CFG-05B-03 | Schema allowlist, count policy, exact manifest, item outcomes and query-drift tests.           |
+| 25.08.03          | Admin Capabilities, Delegation & Step-Up | CFG-05B-04                | Named actions/resources, no wildcard, MFA, distinct approver, term and immediate revoke tests. |
+| 25.08.04          | Activity Audit & Security Notifications  | CFG-05B-04 and CFG-05B-05 | Minimal audit links, immutable IDs, notification intents and no protected payload leakage.     |
+| 25.08.05          | Site Health & Configuration Diagnostics  | CFG-05B-01 and CFG-05B-05 | Registered definitions, freshness, unknown-on-timeout and no automatic high-risk repair.       |
 
 ## Endpoint Completeness Reconciliation
 
-The five assigned interactions each have exactly one route registry entry, one
+The assigned interactions each have exactly one route registry entry (CFG-05B-06 is a BE-first operation with no IA interaction), one
 strict request and success contract, one status/error row, one authorization
 row, one idempotency/rate/observability row and one test row below. Search is a
 single query route; it does not expose unrestricted SQL or a second entity
@@ -158,13 +240,15 @@ impersonate a human or grant themselves capability.
 
 ### Route Registry
 
-| Operation ID | IA interaction | Method and path | Auth and capability | Request contract | Success contract | Error contract | Idempotency and rate | CORS and middleware |
-|---|---|---|---|---|---|---|---|---|
-| CFG-05B-01 | CFG-08 Work admin inbox | GET /api/v1/admin/inbox | Authenticated admin operator with at least one current named task capability | Cfg05b01InboxQuery | Cfg05b01InboxResponse 200 | ApiError { code, message, requestId, details }; 401 or 403 or 503 | No mutation key; signed keyset cursor over `(dueAt ASC NULLS LAST, taskId ASC)`; default limit 25, max 50; stable sort `dueAt ASC NULLS LAST, taskId ASC`; filter allowlist `taskClasses`, `states`, `staleAfter` only; 120/min user and 240/min party; 8s deadline | CORS first-party admin read allowlist; BE00 request-id, strict query, session/context, capability, rate and ApiError normalization |
-| CFG-05B-02 | CFG-09 Search/filter control plane | POST /api/v1/admin/search | Authenticated admin operator with entity-specific read capability | Cfg05b02SearchRequest | Cfg05b02SearchResponse 200 | ApiError { code, message, requestId, details }; 400 or 403 or 422 or 429 | Idempotency-Key required for stable replay; 60/min user and 120/min party; 8s deadline | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, schema policy, rate and ApiError normalization |
-| CFG-05B-03 | CFG-10 Preview/run bulk action | POST /api/v1/admin/bulk-operations | Admin operator with command capability for every target; step-up for protected command | Cfg05b03BulkActionRequest | Cfg05b03BulkActionResponse 200 or 202 | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 422 or 503 | Idempotency-Key required; 10/min user and 20/min party; 15s route deadline and queue lease | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization |
-| CFG-05B-04 | CFG-11 Grant/revoke admin capability | POST /api/v1/admin/capability-grants/actions | Grantor with every named action/resource; MFA and distinct approver for elevated/purpose grant | Cfg05b04CapabilityActionRequest | Cfg05b04CapabilityActionResponse 200 or 201 | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 422 | Idempotency-Key required; 20/min user and 40/min party; 15s deadline | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization |
-| CFG-05B-05 | CFG-12 Inspect audit/diagnostics | POST /api/v1/admin/audit-diagnostics/actions | Admin audit capability or diagnostic capability for exact scope and definition | Cfg05b05AuditDiagnosticRequest | Cfg05b05AuditDiagnosticResponse 200 or 202 | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 503 | Read action 120/min; run action Idempotency-Key and 30/min; 8s read or 15s queued | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, capability, rate and ApiError normalization |
+| Operation ID | IA interaction                       | Method and path                               | Auth and capability                                                                                            | Request contract                | Success contract                            | Error contract                                                                         | Idempotency and rate                                                                                                                                                                                                                                                | CORS and middleware                                                                                                                |
+| ------------ | ------------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| CFG-05B-01   | CFG-08 Work admin inbox              | GET /api/v1/admin/inbox                       | Authenticated admin operator with at least one current named task capability                                   | Cfg05b01InboxQuery              | Cfg05b01InboxResponse 200                   | ApiError { code, message, requestId, details }; 401 or 403 or 503                      | No mutation key; signed keyset cursor over `(dueAt ASC NULLS LAST, taskId ASC)`; default limit 25, max 50; stable sort `dueAt ASC NULLS LAST, taskId ASC`; filter allowlist `taskClasses`, `states`, `staleAfter` only; 120/min user and 240/min party; 8s deadline | CORS first-party admin read allowlist; BE00 request-id, strict query, session/context, capability, rate and ApiError normalization |
+| CFG-05B-02   | CFG-09 Search/filter control plane   | POST /api/v1/admin/search                     | Authenticated admin operator with entity-specific read capability                                              | Cfg05b02SearchRequest           | Cfg05b02SearchResponse 200                  | ApiError { code, message, requestId, details }; 400 or 403 or 422 or 429               | Idempotency-Key required for stable replay; 60/min user and 120/min party; 8s deadline                                                                                                                                                                              | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, schema policy, rate and ApiError normalization                   |
+| CFG-05B-03   | CFG-10 Preview/run bulk action       | POST /api/v1/admin/bulk-operations            | Admin operator with command capability for every target; step-up for protected command                         | Cfg05b03BulkActionRequest       | Cfg05b03BulkActionResponse 200 or 202       | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 422 or 503 | Idempotency-Key required; 10/min user and 20/min party; 15s route deadline and queue lease                                                                                                                                                                          | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization        |
+| CFG-05B-04   | CFG-11 Grant/revoke admin capability | POST /api/v1/admin/capability-grants/actions  | Grantor with every named action/resource; MFA and distinct approver for elevated/purpose grant                 | Cfg05b04CapabilityActionRequest | Cfg05b04CapabilityActionResponse 200 or 201 | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 422        | Idempotency-Key required; 20/min user and 40/min party; 15s deadline                                                                                                                                                                                                | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization        |
+| CFG-05B-05   | CFG-12 Inspect audit/diagnostics     | POST /api/v1/admin/audit-diagnostics/actions  | Admin audit capability or diagnostic capability for exact scope and definition                                 | Cfg05b05AuditDiagnosticRequest  | Cfg05b05AuditDiagnosticResponse 200 or 202  | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 409 or 503        | Read action 120/min; run action Idempotency-Key and 30/min; 8s read or 15s queued                                                                                                                                                                                   | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, capability, rate and ApiError normalization                      |
+| CFG-05B-06   | None (DEC-111 recovery)              | POST /api/v1/admin/identity/mfa-factor-resets | Admin operator holding `admin.identity.mfa_reset` action `reset` for the target's organization; recent step-up | Cfg05b06MfaFactorResetRequest   | Cfg05b06MfaFactorResetResponse 200 or 202   | ApiError { code, message, requestId, details }; 401 or 403 or 404 or 422 or 429 or 503 | Idempotency-Key required; 5/hour user and 10/hour party; 15s deadline                                                                                                                                                                                               | CORS first-party admin allowlist; BE00 session, CSRF, strict Zod, step-up, capability, rate, RPC and ApiError normalization        |
+| CFG-05B-07   | None (web affordance projection)     | GET /api/v1/admin/capability-snapshot         | Any admitted session; service binding only; no capability key; reads only the actor's own `admin.*` and `settings.*` capabilities | None (no body, no query)        | Cfg05b07CapabilitySnapshotResponse 200      | ApiError { code, message, requestId, details }; 400 or 401 or 403 or 429 or 500        | No mutation key; 120/min user; 8s deadline; `Cache-Control: no-store`                                                                                                                                                                                               | CORS none (service binding only); BE00 session, same-origin, strict empty query, rate and ApiError normalization                    |
 
 ### Registry invariants
 
@@ -181,19 +265,24 @@ impersonate a human or grant themselves capability.
 - Audit links contain IDs, versions, hashes and safe labels only. Diagnostic
   definitions and runbooks are code-owned and a diagnostic result cannot
   trigger a high-risk repair.
+- The MFA factor reset names one target person, never a list or a query, is
+  never reachable by the target for itself, and reaches the identity provider
+  only through the operator-only adapter.
 - 403 means a visible target or schema exists but the named action is outside
   the current grant. 404 is used when target visibility itself is denied and
   for a hidden audit or grant, preventing existence disclosure.
 
 ### Operation contract and error matrix
 
-| Operation ID | Request and success | Error codes and status | 403 versus 404 |
-|---|---|---|---|
-| CFG-05B-01 | InboxQuery to InboxResponse with task source, state and freshness | UNAUTHENTICATED 401; FORBIDDEN 403; TASK_SOURCE_UNAVAILABLE 503; RATE_LIMITED 429 | Empty capability scope is 403 only after the admin shell is authorized; inaccessible task sources are omitted as disclosure-safe 404 at source lookup and aggregate remains partial or unknown. |
-| CFG-05B-02 | SearchRequest to SearchResponse with bounded results, facets and count state | INVALID_REQUEST 400; FORBIDDEN 403; SEARCH_FIELD_NOT_ALLOWED 422; COUNT_SUPPRESSED 422; RATE_LIMITED 429; SEARCH_UNAVAILABLE 503 | Entity family outside capability is 403 only when schema visibility is granted; protected target/result is omitted and never disclosed by 404, facet or count. |
-| CFG-05B-03 | BulkActionRequest to BulkActionResponse with manifest and per-item summary | UNAUTHENTICATED 401; FORBIDDEN 403; TARGET_NOT_FOUND 404; MANIFEST_CONFLICT 409; COMMAND_NOT_ALLOWED 422; BULK_UNAVAILABLE 503 | A target absent from the actor's source projection is 404; visible target with missing command capability is 403; changed version is a per-item 409. |
-| CFG-05B-04 | CapabilityActionRequest to CapabilityActionResponse with current grant state | UNAUTHENTICATED 401; FORBIDDEN 403; GRANT_NOT_FOUND 404; GRANT_VERSION_CONFLICT 409; GRANT_INVALID 422 | Hidden grant or subject is 404; visible resource outside grantor authority is 403; no grant payload is exposed on denial. |
-| CFG-05B-05 | AuditDiagnosticRequest to AuditDiagnosticResponse with minimal links or evidence state | UNAUTHENTICATED 401; FORBIDDEN 403; AUDIT_TARGET_NOT_FOUND 404; DIAGNOSTIC_VERSION_CONFLICT 409; DIAGNOSTIC_UNAVAILABLE 503 | Hidden audit target and diagnostic definition are 404; visible target outside audit or diagnostic capability is 403; timeout is 503 unknown, never healthy. |
+| Operation ID | Request and success                                                                       | Error codes and status                                                                                                                                                                                                          | 403 versus 404                                                                                                                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CFG-05B-01   | InboxQuery to InboxResponse with task source, state and freshness                         | UNAUTHENTICATED 401; FORBIDDEN 403; TASK_SOURCE_UNAVAILABLE 503; RATE_LIMITED 429                                                                                                                                               | Empty capability scope is 403 only after the admin shell is authorized; inaccessible task sources are omitted as disclosure-safe 404 at source lookup and aggregate remains partial or unknown. |
+| CFG-05B-02   | SearchRequest to SearchResponse with bounded results, facets and count state              | INVALID_REQUEST 400; FORBIDDEN 403; SEARCH_FIELD_NOT_ALLOWED 422; COUNT_SUPPRESSED 422; RATE_LIMITED 429; SEARCH_UNAVAILABLE 503                                                                                                | Entity family outside capability is 403 only when schema visibility is granted; protected target/result is omitted and never disclosed by 404, facet or count.                                  |
+| CFG-05B-03   | BulkActionRequest to BulkActionResponse with manifest and per-item summary                | UNAUTHENTICATED 401; FORBIDDEN 403; TARGET_NOT_FOUND 404; MANIFEST_CONFLICT 409; COMMAND_NOT_ALLOWED 422; BULK_UNAVAILABLE 503                                                                                                  | A target absent from the actor's source projection is 404; visible target with missing command capability is 403; changed version is a per-item 409.                                            |
+| CFG-05B-04   | CapabilityActionRequest to CapabilityActionResponse with current grant state              | UNAUTHENTICATED 401; FORBIDDEN 403; GRANT_NOT_FOUND 404; GRANT_VERSION_CONFLICT 409; GRANT_INVALID 422                                                                                                                          | Hidden grant or subject is 404; visible resource outside grantor authority is 403; no grant payload is exposed on denial.                                                                       |
+| CFG-05B-05   | AuditDiagnosticRequest to AuditDiagnosticResponse with minimal links or evidence state    | UNAUTHENTICATED 401; FORBIDDEN 403; AUDIT_TARGET_NOT_FOUND 404; DIAGNOSTIC_VERSION_CONFLICT 409; DIAGNOSTIC_UNAVAILABLE 503                                                                                                     | Hidden audit target and diagnostic definition are 404; visible target outside audit or diagnostic capability is 403; timeout is 503 unknown, never healthy.                                     |
+| CFG-05B-06   | MfaFactorResetRequest to MfaFactorResetResponse with reset state and removed-factor count | INVALID_REQUEST 400; UNAUTHENTICATED 401 or STEP_UP_REQUIRED 401; FORBIDDEN 403; TARGET_NOT_FOUND 404; IDEMPOTENCY_CONFLICT 409 or MFA_RESET_IN_PROGRESS 409; MFA_RESET_INVALID 422; RATE_LIMITED 429; IDENTITY_UNAVAILABLE 503 | Hidden or non-member target is 404; a visible organization without the capability is 403; self-target is 422; no factor, session or target detail is exposed on denial.                         |
+| CFG-05B-07   | No input to CapabilitySnapshotResponse with named `admin.*` and `settings.*` capabilities | INVALID_REQUEST 400; UNAUTHENTICATED 401; FORBIDDEN 403; RATE_LIMITED 429; INTERNAL_ERROR 500 | A visible session only ever receives its own projection; there is no hidden-record case. Capabilities outside `admin.*` and `settings.*` are dropped, never echoed. |
 
 ## Request/Response Contracts (Zod 4 schemas)
 
@@ -202,189 +291,341 @@ limits are bounded, IDs are UUIDs, timestamps have offsets and all response
 payloads are safe projections. The route adapter validates path, query,
 headers and JSON separately before authorization.
 
-~~~ts
-import { z } from "zod";
+```ts
+import { z } from 'zod';
 
 const Uuid = z.uuid();
 const IsoTime = z.string().datetime({ offset: true });
 const Version = z.string().regex(/^[1-9][0-9]{0,17}$/);
 const NonEmptyText = z.string().trim().min(1).max(512);
-const Key = z.string().regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+){0,15}$/).max(128);
-const Cursor = z.string().regex(/^[A-Za-z0-9_-]{1,256}$/).nullable();
- const JsonObject = z.record(z.string().max(128), z.json()).superRefine((v, c) => {
-  if (Object.keys(v).length > 64) c.addIssue({ code: "custom", message: "too many keys" });
-  if (JSON.stringify(v).length > 65536) c.addIssue({ code: "custom", message: "object exceeds 64 KiB" });
-});
-const Freshness = z.enum(["healthy", "stale", "partial", "unknown", "failed"]);
+const Key = z
+  .string()
+  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+){0,15}$/)
+  .max(128);
+const Cursor = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{1,256}$/)
+  .nullable();
+const JsonObject = z
+  .record(z.string().max(128), z.json())
+  .superRefine((v, c) => {
+    if (Object.keys(v).length > 64)
+      c.addIssue({ code: 'custom', message: 'too many keys' });
+    if (JSON.stringify(v).length > 65536)
+      c.addIssue({ code: 'custom', message: 'object exceeds 64 KiB' });
+  });
+const Freshness = z.enum(['healthy', 'stale', 'partial', 'unknown', 'failed']);
 const ApiError = z.strictObject({
   code: z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/),
   message: z.string().min(1).max(256),
   requestId: Uuid,
-   details: z.record(z.string().max(64), z.json()).superRefine((v, c) => {
-    if (Object.keys(v).length > 16) c.addIssue({ code: "custom", message: "too many details" });
-  })
+  details: z.record(z.string().max(64), z.json()).superRefine((v, c) => {
+    if (Object.keys(v).length > 16)
+      c.addIssue({ code: 'custom', message: 'too many details' });
+  }),
 });
 
-const TaskClass = z.enum(["approval", "failed_job", "schedule", "expiring_right", "expiring_flag", "hold", "diagnostic", "incident"]);
-const TaskState = z.enum(["open", "assigned", "blocked", "completed", "unknown"]);
+const TaskClass = z.enum([
+  'approval',
+  'failed_job',
+  'schedule',
+  'expiring_right',
+  'expiring_flag',
+  'hold',
+  'diagnostic',
+  'incident',
+]);
+const TaskState = z.enum([
+  'open',
+  'assigned',
+  'blocked',
+  'completed',
+  'unknown',
+]);
 export const Cfg05b01InboxQuery = z.strictObject({
   cursor: Cursor.optional(),
   limit: z.number().int().min(1).max(50).default(25),
   taskClasses: z.array(TaskClass).max(8).optional(),
   states: z.array(TaskState).max(5).optional(),
-  staleAfter: IsoTime.optional()
+  staleAfter: IsoTime.optional(),
 });
 export const Cfg05b01InboxResponse = z.strictObject({
-  items: z.array(z.strictObject({
-    taskId: Uuid,
-    sourceType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
-    sourceId: Uuid,
-    sourceVersion: Version,
-    taskClass: TaskClass,
-    requiredCapability: Key,
-    assigneePersonId: Uuid.nullable(),
-    dueAt: IsoTime.nullable(),
-    severity: z.enum(["info", "warning", "high", "critical"]),
-    freshnessAt: IsoTime,
-    freshness: Freshness,
-    state: TaskState,
-    sourceStatus: z.string().max(64),
-    canAct: z.boolean()
-  })).max(50),
-  nextCursor: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/).nullable(),
+  items: z
+    .array(
+      z.strictObject({
+        taskId: Uuid,
+        sourceType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
+        sourceId: Uuid,
+        sourceVersion: Version,
+        taskClass: TaskClass,
+        requiredCapability: Key,
+        assigneePersonId: Uuid.nullable(),
+        dueAt: IsoTime.nullable(),
+        severity: z.enum(['info', 'warning', 'high', 'critical']),
+        freshnessAt: IsoTime,
+        freshness: Freshness,
+        state: TaskState,
+        sourceStatus: z.string().max(64),
+        canAct: z.boolean(),
+      }),
+    )
+    .max(50),
+  nextCursor: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,256}$/)
+    .nullable(),
   aggregateFreshness: Freshness,
   partialSources: z.array(z.string().max(64)).max(16),
-  generatedAt: IsoTime
+  generatedAt: IsoTime,
 });
 
-const SearchEntity = z.enum(["content", "media", "navigation", "setting", "job", "audit_ref", "diagnostic", "capability"]);
+const SearchEntity = z.enum([
+  'content',
+  'media',
+  'navigation',
+  'setting',
+  'job',
+  'audit_ref',
+  'diagnostic',
+  'capability',
+]);
 const SearchFilter = z.strictObject({
   field: z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/),
-  operator: z.enum(["equals", "prefix", "contains", "before", "after", "in"]),
-  value: z.union([z.string().max(256), z.array(z.string().max(256)).max(32)])
+  operator: z.enum(['equals', 'prefix', 'contains', 'before', 'after', 'in']),
+  value: z.union([z.string().max(256), z.array(z.string().max(256)).max(32)]),
 });
 export const Cfg05b02SearchRequest = z.strictObject({
   entityType: SearchEntity,
-  fields: z.array(z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/)).min(1).max(24),
+  fields: z
+    .array(z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/))
+    .min(1)
+    .max(24),
   filters: z.array(SearchFilter).max(16),
-  sort: z.array(z.strictObject({ field: z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/), direction: z.enum(["asc", "desc"]) })).max(4),
+  sort: z
+    .array(
+      z.strictObject({
+        field: z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/),
+        direction: z.enum(['asc', 'desc']),
+      }),
+    )
+    .max(4),
   snippet: z.boolean().default(false),
   minCount: z.number().int().min(0).max(20).default(0),
   cursor: Cursor.optional(),
-  limit: z.number().int().min(1).max(50).default(25)
+  limit: z.number().int().min(1).max(50).default(25),
 });
 export const Cfg05b02SearchResponse = z.strictObject({
   entityType: SearchEntity,
-  results: z.array(z.strictObject({
-    entityId: Uuid,
-    entityVersion: Version,
-    fields: z.record(z.string().max(64), z.union([z.string().max(512), z.number(), z.boolean(), z.null()])),
-    snippet: z.string().max(512).nullable(),
-    authorized: z.literal(true)
-  })).max(50),
+  results: z
+    .array(
+      z.strictObject({
+        entityId: Uuid,
+        entityVersion: Version,
+        fields: z.record(
+          z.string().max(64),
+          z.union([z.string().max(512), z.number(), z.boolean(), z.null()]),
+        ),
+        snippet: z.string().max(512).nullable(),
+        authorized: z.literal(true),
+      }),
+    )
+    .max(50),
   count: z.number().int().min(0).max(1000000).nullable(),
-  countState: z.enum(["exact", "suppressed", "unknown"]),
-  nextCursor: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/).nullable(),
+  countState: z.enum(['exact', 'suppressed', 'unknown']),
+  nextCursor: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,256}$/)
+    .nullable(),
   freshnessAt: IsoTime,
-  freshness: Freshness
+  freshness: Freshness,
 });
 
 const Target = z.strictObject({
   targetType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
   targetId: Uuid,
-  expectedVersion: Version
+  expectedVersion: Version,
 });
-const BulkAction = z.enum(["preview", "run", "cancel"]);
-export const Cfg05b03BulkActionRequest = z.strictObject({
-  action: BulkAction,
-  commandKey: Key,
-  commandVersion: Version,
-  targets: z.array(Target).min(1).max(500),
-  manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
-  dryRunId: Uuid.nullable(),
-  reason: NonEmptyText,
-  stepUpToken: z.string().min(20).max(4096).optional()
-}).superRefine((v, c) => {
-  if (new Set(v.targets.map(t => t.targetType + ":" + t.targetId)).size !== v.targets.length) c.addIssue({ code: "custom", path: ["targets"], message: "duplicate target" });
-  if (v.action === "run" && v.dryRunId === null) c.addIssue({ code: "custom", path: ["dryRunId"], message: "run requires dry run" });
-  if (v.action === "preview" && v.dryRunId !== null) c.addIssue({ code: "custom", path: ["dryRunId"], message: "preview cannot reference dry run" });
-});
+const BulkAction = z.enum(['preview', 'run', 'cancel']);
+export const Cfg05b03BulkActionRequest = z
+  .strictObject({
+    action: BulkAction,
+    commandKey: Key,
+    commandVersion: Version,
+    targets: z.array(Target).min(1).max(500),
+    manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+    dryRunId: Uuid.nullable(),
+    reason: NonEmptyText,
+    stepUpToken: z.string().min(20).max(4096).optional(),
+  })
+  .superRefine((v, c) => {
+    if (
+      new Set(v.targets.map((t) => t.targetType + ':' + t.targetId)).size !==
+      v.targets.length
+    )
+      c.addIssue({
+        code: 'custom',
+        path: ['targets'],
+        message: 'duplicate target',
+      });
+    if (v.action === 'run' && v.dryRunId === null)
+      c.addIssue({
+        code: 'custom',
+        path: ['dryRunId'],
+        message: 'run requires dry run',
+      });
+    if (v.action === 'preview' && v.dryRunId !== null)
+      c.addIssue({
+        code: 'custom',
+        path: ['dryRunId'],
+        message: 'preview cannot reference dry run',
+      });
+  });
 export const Cfg05b03BulkActionResponse = z.strictObject({
   bulkOperationId: Uuid,
   commandKey: Key,
   commandVersion: Version,
   manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
-  state: z.enum(["draft", "dry_run", "approved", "running", "completed", "partial", "failed", "cancelled"]),
+  state: z.enum([
+    'draft',
+    'dry_run',
+    'approved',
+    'running',
+    'completed',
+    'partial',
+    'failed',
+    'cancelled',
+  ]),
   targetCount: z.number().int().min(1).max(500),
   successCount: z.number().int().min(0).max(500),
   failureCount: z.number().int().min(0).max(500),
   skippedCount: z.number().int().min(0).max(500),
   cursor: z.number().int().min(0).max(500),
-  itemResults: z.array(z.strictObject({
-    targetId: Uuid,
-    targetType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
-    expectedVersion: Version,
-    state: z.enum(["pending", "succeeded", "failed", "skipped", "cancelled"]),
-    attemptCount: z.number().int().min(0).max(3),
-    errorCode: z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/).nullable()
-  })).max(500),
-  outboxEventId: Uuid.nullable()
+  itemResults: z
+    .array(
+      z.strictObject({
+        targetId: Uuid,
+        targetType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
+        expectedVersion: Version,
+        state: z.enum([
+          'pending',
+          'succeeded',
+          'failed',
+          'skipped',
+          'cancelled',
+        ]),
+        attemptCount: z.number().int().min(0).max(3),
+        errorCode: z
+          .string()
+          .regex(/^[A-Z][A-Z0-9_]{2,63}$/)
+          .nullable(),
+      }),
+    )
+    .max(500),
+  outboxEventId: Uuid.nullable(),
 });
 
-const GrantAction = z.enum(["create", "revoke"]);
-const GrantScope = z.record(z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/), z.union([z.string().max(256), z.boolean(), z.array(z.string().max(128)).max(32)]));
-export const Cfg05b04CapabilityActionRequest = z.strictObject({
-  action: GrantAction,
-  grantId: Uuid.nullable(),
-  expectedVersion: Version.nullable(),
-  subjectPersonId: Uuid,
-  capabilityKey: Key,
-  resourceType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
-  resourceId: Uuid,
-  scope: GrantScope,
-  actions: z.array(Key).min(1).max(16),
-  startsAt: IsoTime,
-  endsAt: IsoTime,
-  reason: NonEmptyText,
-  approverPersonId: Uuid.nullable(),
-  purposeGrant: z.boolean(),
-  stepUpToken: z.string().min(20).max(4096).optional()
-}).superRefine((v, c) => {
-  if (v.endsAt <= v.startsAt) c.addIssue({ code: "custom", path: ["endsAt"], message: "end must follow start" });
-  if (v.actions.some(a => a === "*" || a.includes("*"))) c.addIssue({ code: "custom", path: ["actions"], message: "wildcard action prohibited" });
-  if (v.action === "revoke" && v.grantId === null) c.addIssue({ code: "custom", path: ["grantId"], message: "revoke requires grant" });
-  if (v.purposeGrant && v.actions.some(a => a === "grant" || a === "revoke")) c.addIssue({ code: "custom", path: ["actions"], message: "purpose grant cannot grant or revoke" });
-});
+const GrantAction = z.enum(['create', 'revoke']);
+const GrantScope = z.record(
+  z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/),
+  z.union([
+    z.string().max(256),
+    z.boolean(),
+    z.array(z.string().max(128)).max(32),
+  ]),
+);
+export const Cfg05b04CapabilityActionRequest = z
+  .strictObject({
+    action: GrantAction,
+    grantId: Uuid.nullable(),
+    expectedVersion: Version.nullable(),
+    subjectPersonId: Uuid,
+    capabilityKey: Key,
+    resourceType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
+    resourceId: Uuid,
+    scope: GrantScope,
+    actions: z.array(Key).min(1).max(16),
+    startsAt: IsoTime,
+    endsAt: IsoTime,
+    reason: NonEmptyText,
+    approverPersonId: Uuid.nullable(),
+    purposeGrant: z.boolean(),
+    stepUpToken: z.string().min(20).max(4096).optional(),
+  })
+  .superRefine((v, c) => {
+    if (v.endsAt <= v.startsAt)
+      c.addIssue({
+        code: 'custom',
+        path: ['endsAt'],
+        message: 'end must follow start',
+      });
+    if (v.actions.some((a) => a === '*' || a.includes('*')))
+      c.addIssue({
+        code: 'custom',
+        path: ['actions'],
+        message: 'wildcard action prohibited',
+      });
+    if (v.action === 'revoke' && v.grantId === null)
+      c.addIssue({
+        code: 'custom',
+        path: ['grantId'],
+        message: 'revoke requires grant',
+      });
+    if (
+      v.purposeGrant &&
+      v.actions.some((a) => a === 'grant' || a === 'revoke')
+    )
+      c.addIssue({
+        code: 'custom',
+        path: ['actions'],
+        message: 'purpose grant cannot grant or revoke',
+      });
+  });
 export const Cfg05b04CapabilityActionResponse = z.strictObject({
   grantId: Uuid,
   subjectPersonId: Uuid,
   capabilityKey: Key,
   resourceType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
   resourceId: Uuid,
-  state: z.enum(["pending", "active", "expired", "revoked"]),
+  state: z.enum(['pending', 'active', 'expired', 'revoked']),
   startsAt: IsoTime,
   endsAt: IsoTime,
   version: Version,
   notificationTaskId: Uuid.nullable(),
-  outboxEventId: Uuid
+  outboxEventId: Uuid,
 });
 
-const DiagnosticAction = z.enum(["read_audit", "run_diagnostic"]);
-export const Cfg05b05AuditDiagnosticRequest = z.strictObject({
-  action: DiagnosticAction,
-  targetType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
-  targetId: Uuid,
-  targetVersion: Version.nullable(),
-  auditLinkId: Uuid.nullable(),
-  diagnosticDefinitionKey: Key.nullable(),
-  diagnosticDefinitionVersion: Version.nullable(),
-  input: JsonObject.nullable(),
-  expectedFreshnessAt: IsoTime.nullable(),
-  reason: NonEmptyText
-}).superRefine((v, c) => {
-  if (v.action === "read_audit" && v.auditLinkId === null) c.addIssue({ code: "custom", path: ["auditLinkId"], message: "audit link required" });
-  if (v.action === "run_diagnostic" && (v.diagnosticDefinitionKey === null || v.diagnosticDefinitionVersion === null)) c.addIssue({ code: "custom", path: ["diagnosticDefinitionKey"], message: "diagnostic definition required" });
-});
+const DiagnosticAction = z.enum(['read_audit', 'run_diagnostic']);
+export const Cfg05b05AuditDiagnosticRequest = z
+  .strictObject({
+    action: DiagnosticAction,
+    targetType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
+    targetId: Uuid,
+    targetVersion: Version.nullable(),
+    auditLinkId: Uuid.nullable(),
+    diagnosticDefinitionKey: Key.nullable(),
+    diagnosticDefinitionVersion: Version.nullable(),
+    input: JsonObject.nullable(),
+    expectedFreshnessAt: IsoTime.nullable(),
+    reason: NonEmptyText,
+  })
+  .superRefine((v, c) => {
+    if (v.action === 'read_audit' && v.auditLinkId === null)
+      c.addIssue({
+        code: 'custom',
+        path: ['auditLinkId'],
+        message: 'audit link required',
+      });
+    if (
+      v.action === 'run_diagnostic' &&
+      (v.diagnosticDefinitionKey === null ||
+        v.diagnosticDefinitionVersion === null)
+    )
+      c.addIssue({
+        code: 'custom',
+        path: ['diagnosticDefinitionKey'],
+        message: 'diagnostic definition required',
+      });
+  });
 export const Cfg05b05AuditDiagnosticResponse = z.strictObject({
   action: DiagnosticAction,
   auditLinkId: Uuid.nullable(),
@@ -392,15 +633,38 @@ export const Cfg05b05AuditDiagnosticResponse = z.strictObject({
   targetType: z.string().regex(/^[a-z][a-z0-9._-]{1,63}$/),
   targetId: Uuid,
   targetVersion: Version.nullable(),
-  state: z.enum(["unknown", "running", "healthy", "stale", "failed"]),
+  state: z.enum(['unknown', 'running', 'healthy', 'stale', 'failed']),
   freshnessAt: IsoTime.nullable(),
   evidenceRef: z.string().max(256).nullable(),
   resultCodes: z.array(z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/)).max(32),
-  outboxEventId: Uuid.nullable()
+  outboxEventId: Uuid.nullable(),
+});
+
+export const Cfg05b06MfaFactorResetRequest = z.strictObject({
+  targetPersonId: Uuid,
+  reason: NonEmptyText,
+});
+export const Cfg05b06MfaFactorResetResponse = z.strictObject({
+  resetId: Uuid,
+  targetPersonId: Uuid,
+  state: z.enum(['completed', 'reconciling']),
+  removedFactorCount: z.number().int().min(0).max(10),
+  mfaVersion: Version,
+  outboxEventId: Uuid,
 });
 
 export type Cfg05bApiError = z.infer<typeof ApiError>;
-~~~
+
+export const Cfg05b07CapabilityKey = z
+  .string()
+  .regex(/^(?:admin|settings)\.[a-z][a-z0-9_.-]{0,90}$/);
+export const Cfg05b07CapabilitySnapshotResponse = z.strictObject({
+  capabilities: z
+    .array(Cfg05b07CapabilityKey)
+    .max(32)
+    .refine(v => new Set(v).size === v.length, "capabilities_duplicate")
+});
+```
 
 ### Contract and policy rules
 
@@ -418,6 +682,16 @@ export type Cfg05bApiError = z.infer<typeof ApiError>;
   approver, missing MFA or an invalid purpose grant fails before persistence.
 - Audit read returns minimal links to content revision, change, security or
   financial audit IDs. It never copies immutable protected payload.
+- An MFA factor reset request names exactly one target person and a reason.
+  The operator, organization, capability, step-up time and factor identifiers
+  are server-derived and never accepted from JSON. `removedFactorCount` is at
+  most 10, the BE01a live-factor bound; `state` is `completed` only when every
+  provider removal is confirmed and `reconciling` (HTTP 202) otherwise.
+- The capability snapshot is a server-to-server read bound to the verified
+  session and acting party. It accepts no body, query, path or header claim,
+  returns only validated `admin.*` and `settings.*` names (at most 32), is
+  `no-store`, and is never mirrored into a response header. The web tier fails
+  closed to an empty list on any error.
 - Diagnostics execute only a code-owned definition version with bounded input,
   timeout and freshness policy. Timeout, unavailable dependency or stale
   input is unknown or stale, never healthy and never an automatic repair.
@@ -433,20 +707,21 @@ RPCs have grants.
 
 ### Canonical records and fields
 
-| Table | Fields with SQL type, nullability and constraints | Foreign keys | Query indexes and uniqueness | RLS and grants |
-|---|---|---|---|---|
-| platform_private.admin_task_projections | id uuid NOT NULL PRIMARY KEY; source_type text NOT NULL CHECK registry type; source_id uuid NOT NULL; source_version bigint NOT NULL CHECK >0; task_class text NOT NULL CHECK bounded enum; required_capability text NOT NULL; assignee_person_id uuid NULL; due_at timestamptz NULL; severity text NOT NULL CHECK info or warning or high or critical; freshness_at timestamptz NOT NULL; freshness_state text NOT NULL CHECK healthy or stale or partial or unknown or failed; state text NOT NULL CHECK open or assigned or blocked or completed or unknown; source_status text NOT NULL; last_error_code text NULL CHECK uppercase code <=64; created_at timestamptz NOT NULL; updated_at timestamptz NOT NULL | assignee_person_id references auth.users(id); source_type and source_id validated against producer projection and cannot use a generic FK | UNIQUE source_type, source_id, source_version, task_class; INDEX assignee_person_id, state, due_at; INDEX required_capability, freshness_state; INDEX source_type, source_id, source_version DESC | RLS forced; source projection worker writes through admin_task_upsert RPC; admin inbox RPC returns only capability-filtered rows; no table grant to authenticated |
-| platform_private.admin_capability_grants | id uuid NOT NULL PRIMARY KEY; subject_person_id uuid NOT NULL; capability_key text NOT NULL CHECK registered key; resource_type text NOT NULL CHECK registered type; resource_id uuid NOT NULL; scope jsonb NOT NULL; actions text[] NOT NULL CHECK cardinality 1..16; starts_at timestamptz NOT NULL; ends_at timestamptz NOT NULL; grantor_person_id uuid NOT NULL; approver_person_id uuid NULL; reason text NOT NULL CHECK length 1..512; purpose_grant boolean NOT NULL; state text NOT NULL CHECK pending or active or expired or revoked; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL; revoked_at timestamptz NULL; revoked_by uuid NULL; UNIQUE id and version_no | subject_person_id, grantor_person_id, approver_person_id and revoked_by reference auth.users(id); capability/resource/scope validated by grant RPC; no wildcard values | INDEX subject_person_id, state, ends_at; INDEX grantor_person_id, created_at DESC; INDEX capability_key, resource_type, resource_id, state; partial UNIQUE subject_person_id, capability_key, resource_type, resource_id WHERE state = active | RLS forced; only grant/revoke RPC can insert or transition; current grant predicate checks subject, acting party, scope, action and term; authenticated has no direct DML |
-| platform_private.admin_bulk_operations | id uuid NOT NULL PRIMARY KEY; command_key text NOT NULL CHECK registered command; command_version bigint NOT NULL CHECK >0; query_spec jsonb NULL; target_manifest_object_id uuid NOT NULL; target_manifest_hash text NOT NULL CHECK 64 lowercase hex; target_count integer NOT NULL CHECK 1..500; dry_run_report jsonb NULL; state text NOT NULL CHECK draft or dry_run or approved or running or completed or partial or failed or cancelled; cursor integer NOT NULL CHECK 0..500; success_count integer NOT NULL CHECK 0..500; failure_count integer NOT NULL CHECK 0..500; skipped_count integer NOT NULL CHECK 0..500; actor_person_id uuid NOT NULL; acting_party_id uuid NULL; idempotency_key text NOT NULL CHECK length 16..128; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL; updated_at timestamptz NOT NULL; cancelled_at timestamptz NULL | target_manifest_object_id references platform_private.object_records(id); actor_person_id references auth.users(id); acting_party_id references platform_private.party(id) | UNIQUE actor_person_id, idempotency_key; INDEX state, updated_at; INDEX command_key, command_version, state; INDEX target_manifest_hash; INDEX acting_party_id, created_at DESC | RLS forced; create/run/cancel RPC checks command registry, exact target and actor grant; worker lease RPC rechecks grant and row version; authenticated sees only safe summary |
-| platform_private.admin_bulk_item_results | id uuid NOT NULL PRIMARY KEY; operation_id uuid NOT NULL; target_type text NOT NULL CHECK registry type; target_id uuid NOT NULL; expected_version bigint NOT NULL CHECK >0; state text NOT NULL CHECK pending or succeeded or failed or skipped or cancelled; attempt_count integer NOT NULL CHECK 0..3; result_code text NULL CHECK uppercase code <=64; result_summary jsonb NULL; completed_at timestamptz NULL; version_no bigint NOT NULL CHECK >0; UNIQUE operation_id, target_type, target_id | operation_id references admin_bulk_operations(id); target_type and target_id validated by ordinary command registry; no generic target FK | UNIQUE operation_id, target_type, target_id; INDEX operation_id, state; INDEX target_type, target_id; INDEX result_code | RLS forced; worker and command RPC only; item projection redacts result_summary unless actor retains current target capability; no authenticated table grant |
-| platform_private.admin_audit_links | id uuid NOT NULL PRIMARY KEY; source_type text NOT NULL; source_id uuid NOT NULL; source_version bigint NOT NULL CHECK >0; content_revision_id uuid NULL; change_id uuid NULL; audit_event_id uuid NULL; security_event_id uuid NULL; financial_audit_id uuid NULL; safe_label text NOT NULL CHECK length 1..128; created_at timestamptz NOT NULL | content_revision_id and change_id reference owning CMS/config tables where available; audit_event_id, security_event_id and financial_audit_id reference protected audit registries; nullable references permit one link class but RPC requires at least one ID | INDEX source_type, source_id, source_version; INDEX content_revision_id; INDEX change_id; INDEX audit_event_id; INDEX security_event_id; UNIQUE source_type, source_id, source_version, safe_label | RLS forced; append-only audit-link RPC; read RPC applies audit capability and field projection; protected payload remains in owner table; no direct table grant |
-| platform_private.admin_diagnostic_definition_versions | id uuid NOT NULL PRIMARY KEY; key text NOT NULL CHECK registered key; version_no bigint NOT NULL CHECK >0; owner_capability text NOT NULL; input_schema jsonb NOT NULL; timeout_ms integer NOT NULL CHECK 100..2000; freshness_seconds integer NOT NULL CHECK 1..604800; evidence_schema jsonb NOT NULL; severity_mapping jsonb NOT NULL; runbook_ref text NOT NULL CHECK length 1..256; lifecycle text NOT NULL CHECK draft or active or deprecated or retired; hash text NOT NULL CHECK 64 lowercase hex; created_at timestamptz NOT NULL; UNIQUE key, version_no | owner_capability and runbook_ref are code-owned registry references validated by release RPC; no caller-controlled FK | INDEX key, lifecycle; INDEX owner_capability; UNIQUE key, version_no; partial INDEX active key WHERE lifecycle = active | RLS forced; release worker registry RPC inserts immutable definitions; diagnostic run RPC reads active version; admin cannot edit definition or runbook |
-| platform_private.admin_diagnostic_runs | id uuid NOT NULL PRIMARY KEY; definition_id uuid NOT NULL; definition_version bigint NOT NULL CHECK >0; target_type text NOT NULL; target_id uuid NOT NULL; target_version bigint NULL; state text NOT NULL CHECK unknown or running or healthy or stale or failed; started_at timestamptz NOT NULL; completed_at timestamptz NULL; evidence_ref text NULL; result_codes text[] NOT NULL; freshness_at timestamptz NULL; actor_person_id uuid NULL; job_id uuid NULL; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL | definition_id references admin_diagnostic_definition_versions(id); actor_person_id references auth.users(id); job_id references platform_private.jobs(id); target type/id validated against owning projection; no generic FK | INDEX target_type, target_id, target_version; INDEX definition_id, definition_version, created_at DESC; INDEX state, freshness_at; UNIQUE definition_id, definition_version, target_type, target_id, started_at | RLS forced; diagnostic RPC and worker only; read projection requires diagnostic capability; result evidence is reference-only and never a secret or payload copy |
+| Table                                                 | Fields with SQL type, nullability and constraints                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Foreign keys                                                                                                                                                                                                                                                    | Query indexes and uniqueness                                                                                                                                                                                                                  | RLS and grants                                                                                                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| platform_private.admin_task_projections               | id uuid NOT NULL PRIMARY KEY; source_type text NOT NULL CHECK registry type; source_id uuid NOT NULL; source_version bigint NOT NULL CHECK >0; task_class text NOT NULL CHECK bounded enum; required_capability text NOT NULL; assignee_person_id uuid NULL; due_at timestamptz NULL; severity text NOT NULL CHECK info or warning or high or critical; freshness_at timestamptz NOT NULL; freshness_state text NOT NULL CHECK healthy or stale or partial or unknown or failed; state text NOT NULL CHECK open or assigned or blocked or completed or unknown; source_status text NOT NULL; last_error_code text NULL CHECK uppercase code <=64; created_at timestamptz NOT NULL; updated_at timestamptz NOT NULL                                                                                                                                                              | assignee_person_id references auth.users(id); source_type and source_id validated against producer projection and cannot use a generic FK                                                                                                                       | UNIQUE source_type, source_id, source_version, task_class; INDEX assignee_person_id, state, due_at; INDEX required_capability, freshness_state; INDEX source_type, source_id, source_version DESC                                             | RLS forced; source projection worker writes through admin_task_upsert RPC; admin inbox RPC returns only capability-filtered rows; no table grant to authenticated              |
+| platform_private.admin_capability_grants              | id uuid NOT NULL PRIMARY KEY; subject_person_id uuid NOT NULL; capability_key text NOT NULL CHECK registered key; resource_type text NOT NULL CHECK registered type; resource_id uuid NOT NULL; scope jsonb NOT NULL; actions text[] NOT NULL CHECK cardinality 1..16; starts_at timestamptz NOT NULL; ends_at timestamptz NOT NULL; grantor_person_id uuid NOT NULL; approver_person_id uuid NULL; reason text NOT NULL CHECK length 1..512; purpose_grant boolean NOT NULL; state text NOT NULL CHECK pending or active or expired or revoked; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL; revoked_at timestamptz NULL; revoked_by uuid NULL; UNIQUE id and version_no                                                                                                                                                                              | subject_person_id, grantor_person_id, approver_person_id and revoked_by reference auth.users(id); capability/resource/scope validated by grant RPC; no wildcard values                                                                                          | INDEX subject_person_id, state, ends_at; INDEX grantor_person_id, created_at DESC; INDEX capability_key, resource_type, resource_id, state; partial UNIQUE subject_person_id, capability_key, resource_type, resource_id WHERE state = active | RLS forced; only grant/revoke RPC can insert or transition; current grant predicate checks subject, acting party, scope, action and term; authenticated has no direct DML      |
+| platform_private.admin_bulk_operations                | id uuid NOT NULL PRIMARY KEY; command_key text NOT NULL CHECK registered command; command_version bigint NOT NULL CHECK >0; query_spec jsonb NULL; target_manifest_object_id uuid NOT NULL; target_manifest_hash text NOT NULL CHECK 64 lowercase hex; target_count integer NOT NULL CHECK 1..500; dry_run_report jsonb NULL; state text NOT NULL CHECK draft or dry_run or approved or running or completed or partial or failed or cancelled; cursor integer NOT NULL CHECK 0..500; success_count integer NOT NULL CHECK 0..500; failure_count integer NOT NULL CHECK 0..500; skipped_count integer NOT NULL CHECK 0..500; actor_person_id uuid NOT NULL; acting_party_id uuid NULL; idempotency_key text NOT NULL CHECK length 16..128; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL; updated_at timestamptz NOT NULL; cancelled_at timestamptz NULL | target_manifest_object_id references platform_private.object_records(id); actor_person_id references auth.users(id); acting_party_id references platform_private.party(id)                                                                                      | UNIQUE actor_person_id, idempotency_key; INDEX state, updated_at; INDEX command_key, command_version, state; INDEX target_manifest_hash; INDEX acting_party_id, created_at DESC                                                               | RLS forced; create/run/cancel RPC checks command registry, exact target and actor grant; worker lease RPC rechecks grant and row version; authenticated sees only safe summary |
+| platform_private.admin_bulk_item_results              | id uuid NOT NULL PRIMARY KEY; operation_id uuid NOT NULL; target_type text NOT NULL CHECK registry type; target_id uuid NOT NULL; expected_version bigint NOT NULL CHECK >0; state text NOT NULL CHECK pending or succeeded or failed or skipped or cancelled; attempt_count integer NOT NULL CHECK 0..3; result_code text NULL CHECK uppercase code <=64; result_summary jsonb NULL; completed_at timestamptz NULL; version_no bigint NOT NULL CHECK >0; UNIQUE operation_id, target_type, target_id                                                                                                                                                                                                                                                                                                                                                                           | operation_id references admin_bulk_operations(id); target_type and target_id validated by ordinary command registry; no generic target FK                                                                                                                       | UNIQUE operation_id, target_type, target_id; INDEX operation_id, state; INDEX target_type, target_id; INDEX result_code                                                                                                                       | RLS forced; worker and command RPC only; item projection redacts result_summary unless actor retains current target capability; no authenticated table grant                   |
+| platform_private.admin_mfa_factor_resets              | id uuid NOT NULL PRIMARY KEY; target_person_id uuid NOT NULL; organization_id uuid NOT NULL; operator_person_id uuid NOT NULL CHECK operator_person_id <> target_person_id; grant_id uuid NOT NULL REFERENCES platform_private.admin_capability_grants(id); reason text NOT NULL CHECK length 1..512; idempotency_key text NOT NULL CHECK length 16..128; state text NOT NULL CHECK reconciling or completed; removed_factor_count integer NOT NULL CHECK 0..10; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL; completed_at timestamptz NULL CHECK (completed_at IS NULL) = (state = 'reconciling')                                                                                                                                                                                                                                                     | operator_person_id and target_person_id reference auth.users(id); organization_id references the organization party; grant_id references platform_private.admin_capability_grants(id)                                                                           | UNIQUE operator_person_id, idempotency_key; partial UNIQUE target_person_id WHERE state = reconciling; INDEX target_person_id, created_at DESC                                                                                                | RLS forced; only the admin_reset_mfa_factors RPC can insert or transition; current grant and membership predicate; authenticated has no direct DML                             |
+| platform_private.admin_audit_links                    | id uuid NOT NULL PRIMARY KEY; source_type text NOT NULL; source_id uuid NOT NULL; source_version bigint NOT NULL CHECK >0; content_revision_id uuid NULL; change_id uuid NULL; audit_event_id uuid NULL; security_event_id uuid NULL; financial_audit_id uuid NULL; safe_label text NOT NULL CHECK length 1..128; created_at timestamptz NOT NULL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | content_revision_id and change_id reference owning CMS/config tables where available; audit_event_id, security_event_id and financial_audit_id reference protected audit registries; nullable references permit one link class but RPC requires at least one ID | INDEX source_type, source_id, source_version; INDEX content_revision_id; INDEX change_id; INDEX audit_event_id; INDEX security_event_id; UNIQUE source_type, source_id, source_version, safe_label                                            | RLS forced; append-only audit-link RPC; read RPC applies audit capability and field projection; protected payload remains in owner table; no direct table grant                |
+| platform_private.admin_diagnostic_definition_versions | id uuid NOT NULL PRIMARY KEY; key text NOT NULL CHECK registered key; version_no bigint NOT NULL CHECK >0; owner_capability text NOT NULL; input_schema jsonb NOT NULL; timeout_ms integer NOT NULL CHECK 100..2000; freshness_seconds integer NOT NULL CHECK 1..604800; evidence_schema jsonb NOT NULL; severity_mapping jsonb NOT NULL; runbook_ref text NOT NULL CHECK length 1..256; lifecycle text NOT NULL CHECK draft or active or deprecated or retired; hash text NOT NULL CHECK 64 lowercase hex; created_at timestamptz NOT NULL; UNIQUE key, version_no                                                                                                                                                                                                                                                                                                             | owner_capability and runbook_ref are code-owned registry references validated by release RPC; no caller-controlled FK                                                                                                                                           | INDEX key, lifecycle; INDEX owner_capability; UNIQUE key, version_no; partial INDEX active key WHERE lifecycle = active                                                                                                                       | RLS forced; release worker registry RPC inserts immutable definitions; diagnostic run RPC reads active version; admin cannot edit definition or runbook                        |
+| platform_private.admin_diagnostic_runs                | id uuid NOT NULL PRIMARY KEY; definition_id uuid NOT NULL; definition_version bigint NOT NULL CHECK >0; target_type text NOT NULL; target_id uuid NOT NULL; target_version bigint NULL; state text NOT NULL CHECK unknown or running or healthy or stale or failed; started_at timestamptz NOT NULL; completed_at timestamptz NULL; evidence_ref text NULL; result_codes text[] NOT NULL; freshness_at timestamptz NULL; actor_person_id uuid NULL; job_id uuid NULL; version_no bigint NOT NULL CHECK >0; created_at timestamptz NOT NULL                                                                                                                                                                                                                                                                                                                                      | definition_id references admin_diagnostic_definition_versions(id); actor_person_id references auth.users(id); job_id references platform_private.jobs(id); target type/id validated against owning projection; no generic FK                                    | INDEX target_type, target_id, target_version; INDEX definition_id, definition_version, created_at DESC; INDEX state, freshness_at; UNIQUE definition_id, definition_version, target_type, target_id, started_at                               | RLS forced; diagnostic RPC and worker only; read projection requires diagnostic capability; result evidence is reference-only and never a secret or payload copy               |
 
 ### Permission, RLS and grants
 
 The Worker receives EXECUTE only on admin_inbox, admin_search,
-admin_bulk_action, admin_capability_action and admin_audit_diagnostic RPCs.
+admin_bulk_action, admin_capability_action, admin_audit_diagnostic and admin_reset_mfa_factors RPCs.
 Security-definer functions set an empty fixed search path, qualify every
 object and derive RequestContext from verified session or service binding.
 
@@ -457,7 +732,10 @@ actor capability for each manifest item; a revoked grant blocks new leases.
 Grant RLS ensures a grantor's action/resource set is a subset of its own
 current grant and that elevated/purpose grants have MFA, distinct approval
 and notification evidence. Audit and diagnostic RLS check exact target scope
-and never widen access because a link exists.
+and never widen access because a link exists. The reset RLS predicate
+requires a current, effective `admin.identity.mfa_reset` grant whose resource is
+the target's organization and a confirmed unended target membership; the
+identity state change runs only through the BE01a identity RPC.
 
 ## Middleware & Policies
 
@@ -472,13 +750,15 @@ Bulk item policy runs again inside each lease transaction.
 
 ### Per-operation authorization matrix
 
-| Operation ID | Principal and capability | Ownership and scope predicate | Commit or response recheck | Denial result |
-|---|---|---|---|---|
-| CFG-05B-01 | Admin operator with one or more current named task capabilities | Task source, class, assignee and acting party are within grant scope | Re-read source version/freshness before action affordance; inbox never completes source | No current capability 403; hidden source is omitted and aggregate marked partial or unknown |
-| CFG-05B-02 | Admin operator with entity-specific read capability | Entity type, requested fields, filters, sort and snippet policy are all registered and scoped | Recheck authorization per result and count policy before serialization | Schema outside grant 403 or 422; protected result/count suppressed without leak |
-| CFG-05B-03 | Admin operator with command capability per target and step-up if required | Frozen target ID/version and command registry scope match actor grants | Lock operation; recheck manifest hash and grant before every item lease | Hidden target 404; visible target without command 403; target version 409 |
-| CFG-05B-04 | Grantor capable of all requested actions/resources; distinct approver for elevated grant | Named subject, resource UUID, scope, term and purpose are within grantor authority | Lock grant; recheck grantor, approver, MFA and target before insert/revoke | Hidden grant 404; overreach, wildcard or stale grant 403/422 |
-| CFG-05B-05 | Audit operator or diagnostic operator for exact target/definition | Audit link or diagnostic version and target are in capability scope | Recheck link owner and definition version; dependency freshness before healthy result | Hidden target/definition 404; visible but unauthorized 403; unavailable 503 unknown |
+| Operation ID | Principal and capability                                                                                      | Ownership and scope predicate                                                                 | Commit or response recheck                                                                                              | Denial result                                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| CFG-05B-01   | Admin operator with one or more current named task capabilities                                               | Task source, class, assignee and acting party are within grant scope                          | Re-read source version/freshness before action affordance; inbox never completes source                                 | No current capability 403; hidden source is omitted and aggregate marked partial or unknown                                         |
+| CFG-05B-02   | Admin operator with entity-specific read capability                                                           | Entity type, requested fields, filters, sort and snippet policy are all registered and scoped | Recheck authorization per result and count policy before serialization                                                  | Schema outside grant 403 or 422; protected result/count suppressed without leak                                                     |
+| CFG-05B-03   | Admin operator with command capability per target and step-up if required                                     | Frozen target ID/version and command registry scope match actor grants                        | Lock operation; recheck manifest hash and grant before every item lease                                                 | Hidden target 404; visible target without command 403; target version 409                                                           |
+| CFG-05B-04   | Grantor capable of all requested actions/resources; distinct approver for elevated grant                      | Named subject, resource UUID, scope, term and purpose are within grantor authority            | Lock grant; recheck grantor, approver, MFA and target before insert/revoke                                              | Hidden grant 404; overreach, wildcard or stale grant 403/422                                                                        |
+| CFG-05B-05   | Audit operator or diagnostic operator for exact target/definition                                             | Audit link or diagnostic version and target are in capability scope                           | Recheck link owner and definition version; dependency freshness before healthy result                                   | Hidden target/definition 404; visible but unauthorized 403; unavailable 503 unknown                                                 |
+| CFG-05B-06   | Admin operator with `admin.identity.mfa_reset` action `reset` on the target's organization and recent step-up | Target is a confirmed unended member of that organization and is not the operator             | Lock reset and target binding; recheck grant, step-up, membership and no live reconciling reset before the identity RPC | Hidden or non-member target 404; visible organization without capability 403; self-target 422; stale step-up 401 `STEP_UP_REQUIRED` |
+| CFG-05B-07   | Any session admitted by the shared admin admission; no capability key                                         | The acting party and capability list are server-derived from the verified request context      | None: read-only projection with no side effect; the response never grants authority | Hidden-record cases do not exist; unauthenticated 401 |
 
 ### Security and abuse controls
 
@@ -501,6 +781,13 @@ Bulk item policy runs again inside each lease transaction.
 - Diagnostic definitions are code-owned, input and output schemas are bounded,
   and stale/unavailable dependencies produce unknown. A result cannot
   authorize a repair or change business truth.
+- The MFA factor reset is least-privilege and single-target: it never accepts a
+  list, query or wildcard, it cannot target the operator's own account, and it
+  has no bulk form (CFG-05B-03 does not register it as a command). The
+  operator-only provider adapter credential is bound to the reset RPC path and
+  is unreachable from user-facing routes. Audit, security evidence and the
+  target's notification record IDs and codes only, never a factor identifier,
+  secret or reason text in logs or events.
 - Rate counters are keyed by verified user and acting party, not caller
   fields. Trace/log fields are IDs, versions and codes only.
 
@@ -508,13 +795,14 @@ Bulk item policy runs again inside each lease transaction.
 
 ### Transaction and external seams
 
-| Operation ID | Canonical transaction | External seam request and response | Timeout, retries and circuit breaker |
-|---|---|---|---|
-| CFG-05B-01 | Read capability-filtered task projection with freshness; annotate partial dependencies; no source mutation | Task projection adapter request: capability scope, classes, cursor and at time. Response: task IDs, source IDs/versions, status and freshness. | 2,000 ms per provider, 1 retry at 250 ms for safe read; circuit after 5 consecutive failures for 60 s; route deadline 8,000 ms. Failed source yields partial or unknown. |
-| CFG-05B-02 | Validate search registry and policy; query indexed projection; authorize results and aggregate before response | Search adapter request: registered entity type, field list, normalized filters, sort and cursor. Response: safe IDs/versions/fields and count state. | 2,000 ms, 1 retry at 250 ms for read-only query; circuit 5/60 s; route deadline 8,000 ms; no fallback count on timeout. |
-| CFG-05B-03 | Preview stores exact manifest and dry-run report; run locks operation, leases one item, executes ordinary command, records item result and cursor; outbox summary | Command adapter request: command key/version, target type/id/expected version, item idempotency and correlation. Response: succeeded or typed failure with resulting version. | Worker attempt timeout 2,000 ms; 3 retries at 15/60/300 s only for retryable command; circuit 5/60 s per adapter; three attempts then DLQ and partial state. |
-| CFG-05B-04 | Lock grant or target grant; validate subset authority, MFA, approval and term; append grant/revoke, notification intent, audit and outbox | Notification adapter request: grant ID, subject and event type with no capability payload. Response: notification receipt or accepted queue ID. | 2,000 ms, 3 retries at 15/60/300 s; circuit 5/60 s; grant commit does not roll back on notification ambiguity, task remains pending. |
-| CFG-05B-05 | Audit read selects minimal link projection; diagnostic run locks definition, records run and leases provider; result stores evidence reference and freshness | Diagnostic adapter request: definition key/version, bounded input, target type/id/version and correlation. Response: state, result codes, evidence reference and completed time. | Definition timeout is 100..2,000 ms from stored contract; one provider attempt, no retry for non-idempotent checks; circuit 5/60 s; route deadline 15,000 ms for queued run. |
+| Operation ID | Canonical transaction                                                                                                                                                                                                                                                             | External seam request and response                                                                                                                                               | Timeout, retries and circuit breaker                                                                                                                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CFG-05B-01   | Read capability-filtered task projection with freshness; annotate partial dependencies; no source mutation                                                                                                                                                                        | Task projection adapter request: capability scope, classes, cursor and at time. Response: task IDs, source IDs/versions, status and freshness.                                   | 2,000 ms per provider, 1 retry at 250 ms for safe read; circuit after 5 consecutive failures for 60 s; route deadline 8,000 ms. Failed source yields partial or unknown.                                                                   |
+| CFG-05B-02   | Validate search registry and policy; query indexed projection; authorize results and aggregate before response                                                                                                                                                                    | Search adapter request: registered entity type, field list, normalized filters, sort and cursor. Response: safe IDs/versions/fields and count state.                             | 2,000 ms, 1 retry at 250 ms for read-only query; circuit 5/60 s; route deadline 8,000 ms; no fallback count on timeout.                                                                                                                    |
+| CFG-05B-03   | Preview stores exact manifest and dry-run report; run locks operation, leases one item, executes ordinary command, records item result and cursor; outbox summary                                                                                                                 | Command adapter request: command key/version, target type/id/expected version, item idempotency and correlation. Response: succeeded or typed failure with resulting version.    | Worker attempt timeout 2,000 ms; 3 retries at 15/60/300 s only for retryable command; circuit 5/60 s per adapter; three attempts then DLQ and partial state.                                                                               |
+| CFG-05B-04   | Lock grant or target grant; validate subset authority, MFA, approval and term; append grant/revoke, notification intent, audit and outbox                                                                                                                                         | Notification adapter request: grant ID, subject and event type with no capability payload. Response: notification receipt or accepted queue ID.                                  | 2,000 ms, 3 retries at 15/60/300 s; circuit 5/60 s; grant commit does not roll back on notification ambiguity, task remains pending.                                                                                                       |
+| CFG-05B-05   | Audit read selects minimal link projection; diagnostic run locks definition, records run and leases provider; result stores evidence reference and freshness                                                                                                                      | Diagnostic adapter request: definition key/version, bounded input, target type/id/version and correlation. Response: state, result codes, evidence reference and completed time. | Definition timeout is 100..2,000 ms from stored contract; one provider attempt, no retry for non-idempotent checks; circuit 5/60 s; route deadline 15,000 ms for queued run.                                                               |
+| CFG-05B-06   | Lock target binding and grant; insert the reset row `reconciling`; call the BE01a identity RPC to mark live factors `reconciling`; audit, security evidence, notification intent and outbox in one transaction; then provider removals; a second transaction confirms `completed` | Operator-only provider adapter request: provider factor reference per live factor, reset id and request id. Response: removed, absent or failed per factor.                      | 5,000 ms per provider call; no retry after send; ambiguity leaves the reset `reconciling` for `auth-state-reconciler`; circuit 5/60 s; route deadline 15,000 ms; the committed first transaction is never rolled back on provider failure. |
 
 All queue and provider deliveries are at-least-once and carry operation
 idempotency. Unknown provider outcome remains pending or unknown. A worker
@@ -523,13 +811,14 @@ cannot repeat a non-idempotent command.
 
 ### State machine and concurrency
 
-| Aggregate | Allowed transitions and guards | Concurrent or failure behavior |
-|---|---|---|
-| Admin task projection | open to assigned to blocked or completed; any state may become unknown on source failure | Source version and capability recheck on action; projection lag marks stale/partial and source remains authoritative. |
-| Capability grant | pending to active to expired or revoked | Grant and revoke use row lock and CAS; revoke is immediate, cached sessions and in-flight commits recheck; no restoration without a new grant. |
-| Bulk operation | draft to dry_run to approved to running to completed or partial or failed or cancelled | Exact ordered manifest and cursor are immutable. Lease claim is CAS; revoked grant stops future leases; cancel preserves completed items. |
-| Bulk item result | pending to succeeded or failed or skipped or cancelled | Unique operation/target prevents duplicate command. Version mismatch skips or fails only that item; retry count max three. |
-| Diagnostic run | unknown to running to healthy or stale or failed | Timeout/unavailable becomes unknown; stale target/checker becomes stale; duplicate run returns existing idempotent run. |
+| Aggregate             | Allowed transitions and guards                                                           | Concurrent or failure behavior                                                                                                                                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin task projection | open to assigned to blocked or completed; any state may become unknown on source failure | Source version and capability recheck on action; projection lag marks stale/partial and source remains authoritative.                                                                                                                                |
+| Capability grant      | pending to active to expired or revoked                                                  | Grant and revoke use row lock and CAS; revoke is immediate, cached sessions and in-flight commits recheck; no restoration without a new grant.                                                                                                       |
+| Bulk operation        | draft to dry_run to approved to running to completed or partial or failed or cancelled   | Exact ordered manifest and cursor are immutable. Lease claim is CAS; revoked grant stops future leases; cancel preserves completed items.                                                                                                            |
+| Bulk item result      | pending to succeeded or failed or skipped or cancelled                                   | Unique operation/target prevents duplicate command. Version mismatch skips or fails only that item; retry count max three.                                                                                                                           |
+| Diagnostic run        | unknown to running to healthy or stale or failed                                         | Timeout/unavailable becomes unknown; stale target/checker becomes stale; duplicate run returns existing idempotent run.                                                                                                                              |
+| MFA factor reset      | reconciling to completed                                                                 | One live `reconciling` reset per target (partial unique index); a second request is 409 `MFA_RESET_IN_PROGRESS`; same key and body replays; a changed body under the same key is 409 `IDEMPOTENCY_CONFLICT`; provider ambiguity stays `reconciling`. |
 
 Bulk preview returns a dry-run ID, manifest hash, eligibility and bounded
 impact report. Run accepts only that dry-run ID and exact hash. Each item calls
@@ -546,61 +835,69 @@ actorRef uuid nullable, aggregateId uuid, aggregateVersion bigint and the
 strict payload below. No grant actions, audit payload, target data or diagnostic
 evidence is emitted.
 
-~~~ts
+```ts
 export const AdminCapabilityChangedV1 = z.strictObject({
   grantId: z.uuid(),
-  subjectPersonId: z.uuid()
+  subjectPersonId: z.uuid(),
 });
 
 export const AdminBulkChangedV1 = z.strictObject({
-  bulkOperationId: z.uuid()
+  bulkOperationId: z.uuid(),
 });
 
 export const QualityDiagnosticChangedV1 = z.strictObject({
-  diagnosticRunId: z.uuid()
+  diagnosticRunId: z.uuid(),
 });
-~~~
 
-| Event type | Producer operation | Payload and consumer rule |
-|---|---|---|
-| admin.capability.changed.v1 | CFG-05B-04 | grantId and subjectPersonId; authorization consumers refetch current grant and never treat event as permission proof. |
-| admin.bulk.changed.v1 | CFG-05B-03 | bulkOperationId; admin projections refetch summary and item states by authorized route. |
-| quality.diagnostic.changed.v1 | CFG-05B-05 | diagnosticRunId; health projections refetch state and freshness; unknown remains unknown until evidence is available. |
+export const AdminMfaFactorResetV1 = z.strictObject({
+  resetId: z.uuid(),
+  targetPersonId: z.uuid(),
+});
+```
+
+| Event type                    | Producer operation | Payload and consumer rule                                                                                                       |
+| ----------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| admin.capability.changed.v1   | CFG-05B-04         | grantId and subjectPersonId; authorization consumers refetch current grant and never treat event as permission proof.           |
+| admin.bulk.changed.v1         | CFG-05B-03         | bulkOperationId; admin projections refetch summary and item states by authorized route.                                         |
+| quality.diagnostic.changed.v1 | CFG-05B-05         | diagnosticRunId; health projections refetch state and freshness; unknown remains unknown until evidence is available.           |
+| admin.mfa-factor.reset.v1     | CFG-05B-06         | resetId and targetPersonId; consumers refetch current factor state and never treat the event as proof of removal or permission. |
 
 ## Error Handling
 
 ### Boundary mapping
 
-| Boundary | Typed internal failure | HTTP and ApiError code | State guarantee |
-|---|---|---|---|
-| Query/body schema | Unknown entity field, filter, sort, action or key | 400 INVALID_REQUEST or 422 SEARCH_FIELD_NOT_ALLOWED | No query, grant or mutation begins. |
-| Auth/session | Missing, expired or invalid session | 401 UNAUTHENTICATED | No projection or target existence is exposed. |
-| Capability/scope/MFA | Visible target outside action grant, expired grant or missing step-up | 403 FORBIDDEN or 401 STEP_UP_REQUIRED | No mutation or item lease. |
-| Target visibility | Source, grant, audit or diagnostic target hidden | 404 NOT_FOUND | No existence, count, snippet or payload leakage. |
-| Version/idempotency | Manifest, grant, definition or target changed | 409 VERSION_CONFLICT, MANIFEST_CONFLICT or IDEMPOTENCY_CONFLICT | Transaction rolls back; completed prior items remain separately evidenced. |
-| Domain safety | Wildcard, overreach, non-registered command, protected count or purpose violation | 422 COMMAND_NOT_ALLOWED, COUNT_SUPPRESSED or GRANT_INVALID | No grant, query response or bulk execution. |
-| Provider/worker | Timeout, unavailable source or diagnostic | 503 TASK_SOURCE_UNAVAILABLE, SEARCH_UNAVAILABLE or DIAGNOSTIC_UNAVAILABLE; 504 UPSTREAM_TIMEOUT | Projection is partial/unknown; diagnostic is unknown; bulk remains pending/partial. |
-| Unexpected | Unclassified exception | 500 INTERNAL_ERROR | No partial transaction; request ID and safe operation code logged. |
+| Boundary             | Typed internal failure                                                            | HTTP and ApiError code                                                                                                | State guarantee                                                                     |
+| -------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Query/body schema    | Unknown entity field, filter, sort, action or key                                 | 400 INVALID_REQUEST or 422 SEARCH_FIELD_NOT_ALLOWED                                                                   | No query, grant or mutation begins.                                                 |
+| Auth/session         | Missing, expired or invalid session                                               | 401 UNAUTHENTICATED                                                                                                   | No projection or target existence is exposed.                                       |
+| Capability/scope/MFA | Visible target outside action grant, expired grant or missing step-up             | 403 FORBIDDEN or 401 STEP_UP_REQUIRED                                                                                 | No mutation or item lease.                                                          |
+| Target visibility    | Source, grant, audit, diagnostic or MFA-reset target hidden                       | 404 NOT_FOUND                                                                                                         | No existence, count, snippet or payload leakage.                                    |
+| Version/idempotency  | Manifest, grant, definition or target changed                                     | 409 VERSION_CONFLICT, MANIFEST_CONFLICT, MFA_RESET_IN_PROGRESS or IDEMPOTENCY_CONFLICT                                | Transaction rolls back; completed prior items remain separately evidenced.          |
+| Domain safety        | Wildcard, overreach, non-registered command, protected count or purpose violation | 422 COMMAND_NOT_ALLOWED, COUNT_SUPPRESSED, GRANT_INVALID or MFA_RESET_INVALID                                         | No grant, query response or bulk execution.                                         |
+| Provider/worker      | Timeout, unavailable source or diagnostic                                         | 503 TASK_SOURCE_UNAVAILABLE, SEARCH_UNAVAILABLE, DIAGNOSTIC_UNAVAILABLE or IDENTITY_UNAVAILABLE; 504 UPSTREAM_TIMEOUT | Projection is partial/unknown; diagnostic is unknown; bulk remains pending/partial. |
+| Unexpected           | Unclassified exception                                                            | 500 INTERNAL_ERROR                                                                                                    | No partial transaction; request ID and safe operation code logged.                  |
 
 ### Operation error coverage
 
-| Operation ID | Required edge cases and recovery |
-|---|---|
-| CFG-05B-01 | Failed or lagging dependency, stale task, source version disagreement and absent capability; card/aggregate is partial or unknown and source refreshes. |
-| CFG-05B-02 | Off-schema field/filter/sort, unauthorized result, protected snippet, count side channel, cursor exhaustion and search outage; reject or suppress safely. |
-| CFG-05B-03 | Raw SQL/expression/unregistered command, changed target, duplicate target, manifest drift, revoked capability, worker crash and cancel; exact item failure, stop new leases and preserve completed results. |
-| CFG-05B-04 | Wildcard action/resource, missing end, grantor overreach, self approval, stale MFA, purpose grant with grant/revoke action and immediate revoke; no grant or session continuation. |
-| CFG-05B-05 | Missing link, unavailable diagnostic dependency, timeout, stale input, unknown definition version and false healthy result; 404/503 or unknown/stale evidence, never automatic repair. |
+| Operation ID | Required edge cases and recovery                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CFG-05B-01   | Failed or lagging dependency, stale task, source version disagreement and absent capability; card/aggregate is partial or unknown and source refreshes.                                                                                      |
+| CFG-05B-02   | Off-schema field/filter/sort, unauthorized result, protected snippet, count side channel, cursor exhaustion and search outage; reject or suppress safely.                                                                                    |
+| CFG-05B-03   | Raw SQL/expression/unregistered command, changed target, duplicate target, manifest drift, revoked capability, worker crash and cancel; exact item failure, stop new leases and preserve completed results.                                  |
+| CFG-05B-04   | Wildcard action/resource, missing end, grantor overreach, self approval, stale MFA, purpose grant with grant/revoke action and immediate revoke; no grant or session continuation.                                                           |
+| CFG-05B-05   | Missing link, unavailable diagnostic dependency, timeout, stale input, unknown definition version and false healthy result; 404/503 or unknown/stale evidence, never automatic repair.                                                       |
+| CFG-05B-06   | Missing capability, stale or absent step-up, non-member or hidden target, self-target, reset already reconciling, provider ambiguity, circuit open and replay; 401, 403, 404, 422, 409 or reconciling state, never a partial silent removal. |
 
 ## Observability
 
-| Operation ID | Required structured event and metrics | Trace and redaction |
-|---|---|---|
-| CFG-05B-01 | admin.inbox.read with actor hash, task count state, partial source count, freshness and outcome; stale/unknown source and latency metrics | Trace source adapters and RLS; no task payload, protected title or hidden count |
-| CFG-05B-02 | admin.search.completed with entity type, result count state, field count, filter count and outcome; rejected schema, suppressed-count and latency metrics | Trace registry, query and per-item policy; no query values, snippets, private IDs or protected facets |
-| CFG-05B-03 | admin.bulk.changed with bulk ID, command key/version, state, manifest hash, counts and outcome; item retry, mismatch, revoke-stop and DLQ metrics | Trace lease and command adapter; target IDs may be salted/hashed, no raw command args or content |
-| CFG-05B-04 | admin.capability.changed with grant ID, subject hash, capability key hash, resource type, term and state; grant/revoke, denial and expiry metrics | Trace grant policy and notification; no scope payload, reason text, token or grant secret |
-| CFG-05B-05 | quality.diagnostic.changed with run ID, definition key/version, target type, state, freshness and result-code count; unknown/stale/healthy and timeout metrics | Trace definition lookup and provider; evidence bytes, target payload and private audit fields are excluded |
+| Operation ID | Required structured event and metrics                                                                                                                          | Trace and redaction                                                                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| CFG-05B-01   | admin.inbox.read with actor hash, task count state, partial source count, freshness and outcome; stale/unknown source and latency metrics                      | Trace source adapters and RLS; no task payload, protected title or hidden count                            |
+| CFG-05B-02   | admin.search.completed with entity type, result count state, field count, filter count and outcome; rejected schema, suppressed-count and latency metrics      | Trace registry, query and per-item policy; no query values, snippets, private IDs or protected facets      |
+| CFG-05B-03   | admin.bulk.changed with bulk ID, command key/version, state, manifest hash, counts and outcome; item retry, mismatch, revoke-stop and DLQ metrics              | Trace lease and command adapter; target IDs may be salted/hashed, no raw command args or content           |
+| CFG-05B-04   | admin.capability.changed with grant ID, subject hash, capability key hash, resource type, term and state; grant/revoke, denial and expiry metrics              | Trace grant policy and notification; no scope payload, reason text, token or grant secret                  |
+| CFG-05B-05   | quality.diagnostic.changed with run ID, definition key/version, target type, state, freshness and result-code count; unknown/stale/healthy and timeout metrics | Trace definition lookup and provider; evidence bytes, target payload and private audit fields are excluded |
+| CFG-05B-06   | admin.mfa_factor.reset with reset ID, target hash, state, removed-factor count and outcome; denied, stale-step-up, reconciling and circuit-open metrics        | Trace RPC and operator-only adapter; no factor identifier, secret, token or reason text                    |
 
 Logs use BE00 severity, environment, release, service, operation, outcome,
 latency, requestId and correlationId. provider-native diagnostic sinks receive scrubbed exception
@@ -611,13 +908,14 @@ and empty; no absent card or missing provider is silently counted as healthy.
 
 ### Contract and route tests
 
-| Operation ID | Contract and route acceptance tests |
-|---|---|
-| CFG-05B-01 | Validate cursor, 1..50 page, task enums and freshness; assert capability-filtered source/version rows, partial/unknown states, explicit CORS and ApiError envelope. |
-| CFG-05B-02 | Reject unknown fields, filters, sorts and oversized values; assert per-result auth before snippets, minimum-count suppression, cursor bounds and no search SQL injection. |
-| CFG-05B-03 | Assert unique exact manifest, command registry, dry-run hash binding, 500-target cap, action requirements, 202 queue response, per-item states and idempotent replay. |
-| CFG-05B-04 | Assert no wildcard, finite term, subset authority, distinct approver, purpose grant restrictions, MFA and 403/404 hiding; replay create/revoke safely. |
-| CFG-05B-05 | Assert read-audit and run-diagnostic branch requirements, definition/version binding, evidence reference projection, timeout unknown and stale semantics. |
+| Operation ID | Contract and route acceptance tests                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CFG-05B-01   | Validate cursor, 1..50 page, task enums and freshness; assert capability-filtered source/version rows, partial/unknown states, explicit CORS and ApiError envelope.                                                                                                                                                                                                                                                   |
+| CFG-05B-02   | Reject unknown fields, filters, sorts and oversized values; assert per-result auth before snippets, minimum-count suppression, cursor bounds and no search SQL injection.                                                                                                                                                                                                                                             |
+| CFG-05B-03   | Assert unique exact manifest, command registry, dry-run hash binding, 500-target cap, action requirements, 202 queue response, per-item states and idempotent replay.                                                                                                                                                                                                                                                 |
+| CFG-05B-04   | Assert no wildcard, finite term, subset authority, distinct approver, purpose grant restrictions, MFA and 403/404 hiding; replay create/revoke safely.                                                                                                                                                                                                                                                                |
+| CFG-05B-05   | Assert read-audit and run-diagnostic branch requirements, definition/version binding, evidence reference projection, timeout unknown and stale semantics.                                                                                                                                                                                                                                                             |
+| CFG-05B-06   | Assert strict request (unknown keys, bad UUID, empty or 513-character reason), 401 `STEP_UP_REQUIRED` body with allowed methods, 403 without `admin.identity.mfa_reset`, 404 for non-member and cross-organization targets, 422 self-target, one live reset per target, replay and changed-body 409, 200 completed and 202 reconciling, rate buckets, and that no event, log or response carries a factor identifier. |
 
 ### Authorization, persistence and concurrency tests
 
@@ -633,6 +931,14 @@ and empty; no absent card or missing provider is silently counted as healthy.
 - Change a target after dry run and assert only that item fails with version
   mismatch. Revoke capability while leases are in flight and assert no new
   item starts while completed items retain audit evidence.
+- For CFG-05B-06 run the reset against a target with pending, verified and
+  reconciling factors and assert every live factor ends `removed`, pending
+  step-up challenges expire, `mfa_version` advances once, the target is notified
+  and no session changes. Fail the operator-only adapter mid-reset and assert
+  `reconciling` with a 202, no rollback of the audit/evidence transaction, no
+  blind resend, and eventual settlement by the reconciler. Assert a second
+  concurrent reset for the same target is 409 and that the adapter credential is
+  unreachable from every user-facing route.
 - Make an inbox source lag, search provider fail and diagnostic dependency
   timeout. Assert partial, unknown or stale state rather than zero or healthy.
 
@@ -665,13 +971,13 @@ exact checker, target, version, finding severity and runbook/manual fallback.
 
 ## Deepening Passes
 
-| Pass | Resulting hardening |
-|---|---|
-| Micro contract pass | Added strict action branches, bounded cursor/list/input values, finite grant terms, duplicate-target detection and aggregate count state. |
-| Boundary pass | Separated derived task/search/audit projections from owning domain truth and kept command execution behind registered RPCs. |
-| Authorization pass | Added per-result/count policy, exact resource UUID, grantor subset check, distinct approval, MFA and immediate revocation. |
-| Failure/recovery pass | Added partial/unknown/stale states, exact manifest/cursor, item idempotency, queue retry/DLQ and diagnostic false-health prevention. |
-| Data pass | Typed every field, constraint, FK or polymorphic registry rationale, index, RLS predicate and named grant. |
+| Pass                   | Resulting hardening                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Micro contract pass    | Added strict action branches, bounded cursor/list/input values, finite grant terms, duplicate-target detection and aggregate count state.     |
+| Boundary pass          | Separated derived task/search/audit projections from owning domain truth and kept command execution behind registered RPCs.                   |
+| Authorization pass     | Added per-result/count policy, exact resource UUID, grantor subset check, distinct approval, MFA and immediate revocation.                    |
+| Failure/recovery pass  | Added partial/unknown/stale states, exact manifest/cursor, item idempotency, queue retry/DLQ and diagnostic false-health prevention.          |
+| Data pass              | Typed every field, constraint, FK or polymorphic registry rationale, index, RLS predicate and named grant.                                    |
 | Macro consistency pass | Reconciled five 25.08 features, five interactions, seven models including BulkItemResult and three exact event types with 05a/05c boundaries. |
 
 ## Ambiguity Gate
@@ -702,17 +1008,20 @@ None.
 
 ## Changelog
 
-| Date | Change | Workflow | Sections affected |
-|---|---|---|---|
-| 2026-08-28 | Authored 05b backend contracts from approved Shard 05 IA and deep dive; reconciled 25.08.01 through 25.08.05 | /write-be-spec | All |
-| 2026-08-28 | Added strict admin projections, manifest-bound bulk, least-privilege grants, diagnostic evidence and recovery tests | /write-be-spec-write | API, database, middleware, events, tests |
+| Date       | Change                                                                                                                                                                                                                                                                                   | Workflow             | Sections affected                                                                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-08-28 | Authored 05b backend contracts from approved Shard 05 IA and deep dive; reconciled 25.08.01 through 25.08.05                                                                                                                                                                             | /write-be-spec       | All                                                                                                                                        |
+| 2026-08-28 | Added strict admin projections, manifest-bound bulk, least-privilege grants, diagnostic evidence and recovery tests                                                                                                                                                                      | /write-be-spec-write | API, database, middleware, events, tests                                                                                                   |
+| 2026-10-02 | DEC-111 follow-up: authored CFG-05B-06 admin MFA factor reset (named `admin.identity.mfa_reset` capability on the target's organization, recent step-up, reason, audit, operator-only provider adapter via the BE01a identity RPC) and referenced the sole-administrator lockout runbook | /propagate-decision  | Admin MFA factor reset, Classification, Route Registry, Contracts, Database, Middleware, Data Flow, Events, Errors, Observability, Testing |
+| 2026-10-02 | FX-E: documented CFG-05B-07 capability snapshot exactly as implemented (no capability key, service-binding only, `admin.*` and `settings.*` keys, at most 32, strict, `no-store`) and stated that capability is never transported as a response header; FE05 settings and admin affordances derive from this snapshot | /propagate-decision | Capability snapshot, Route Registry, Operation contract, Contracts, Authorization matrix, Security controls |
 
 ## Dependency References
 
 - BE00 Cross-cutting platform foundation: ApiError, RequestContext,
   idempotency, jobs, outbox, logging, SLOs and recovery.
 - Shard 01 Identity authority and party governance: session, acting-party,
-  capability context and MFA freshness.
+  capability context and MFA freshness; BE01a owns the MFA factor registry and
+  the identity RPC and operator-only provider adapter that CFG-05B-06 calls.
 - Shard 03 CMS content modeling and authoring: content source projections,
   revision IDs and ordinary guarded commands.
 - Shard 04 CMS navigation, media and delivery: navigation/media projections,

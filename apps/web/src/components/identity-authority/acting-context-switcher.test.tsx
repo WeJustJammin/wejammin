@@ -223,4 +223,79 @@ describe('acting context switcher', () => {
     expect(changed).toHaveBeenCalledOnce();
     expect(changed.mock.calls[0]?.[0]).not.toHaveProperty('detail');
   });
+
+  const seedStepUpState = (): void => {
+    const stamp = { binding: null, createdAt: Date.now() };
+    browserState.sessionStorage.setItem(
+      'wj-step-up-draft:/app/cms-content-modeling:CMS-03A-04',
+      JSON.stringify({
+        values: { reason: 'tidy up' },
+        idempotencyKey: 'key-0000000001',
+        expectedVersion: '"7"',
+        ...stamp,
+      }),
+    );
+    browserState.sessionStorage.setItem(
+      'wj:cms-grants:step-up-return',
+      JSON.stringify({
+        kind: 'grant',
+        grantId: null,
+        idempotencyKey: 'key-0000000002',
+        ...stamp,
+      }),
+    );
+    browserState.sessionStorage.setItem(
+      'wj-admin-mfa-reset-interrupted',
+      JSON.stringify(stamp),
+    );
+  };
+
+  it('[P2-S09-AC-911] clears every pending step-up draft and envelope when the acting context changes', async () => {
+    seedStepUpState();
+    const { container } = mountSwitcher(
+      async () => ({ selectedPartyId: ALIAS_PARTY_ID }),
+      async () => initial,
+    );
+    chooseAlias(container);
+
+    await confirm(container);
+
+    for (const key of [
+      'wj-step-up-draft:/app/cms-content-modeling:CMS-03A-04',
+      'wj:cms-grants:step-up-return',
+      'wj-admin-mfa-reset-interrupted',
+    ])
+      expect(browserState.sessionStorage.getItem(key), key).toBeNull();
+  });
+
+  it('[P2-S09-AC-911] clears pending step-up state on an acting-context revocation receipt', async () => {
+    seedStepUpState();
+    let receiveRevocation: (() => void) | undefined;
+    class TestBroadcastChannel {
+      onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+
+      constructor() {
+        receiveRevocation = () =>
+          this.onmessage?.({
+            data: { eventType: 'identity.acting-context.revoked.v1' },
+          } as MessageEvent<unknown>);
+      }
+
+      close(): void {}
+    }
+    vi.stubGlobal('BroadcastChannel', TestBroadcastChannel);
+    mountSwitcher(
+      async () => ({ selectedPartyId: ALIAS_PARTY_ID }),
+      async () => initial,
+    );
+
+    await act(async () => {
+      receiveRevocation?.();
+      await Promise.resolve();
+    });
+
+    expect(
+      browserState.sessionStorage.getItem('wj:cms-grants:step-up-return'),
+    ).toBeNull();
+  });
 });

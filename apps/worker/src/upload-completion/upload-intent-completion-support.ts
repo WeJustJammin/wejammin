@@ -5,7 +5,7 @@ import {
   type UploadCompletionRouteError,
 } from './upload-intent-completion-types';
 
-const parseContentLength = (
+export const parseContentLength = (
   request: Request,
   maxBodyBytes: number,
 ): UploadCompletionRouteError | null => {

@@ -1,5 +1,10 @@
+import { createLogger, type Logger } from '@wejammin/observability/logging';
+
 import { supabaseRpcHeaders } from '../supabase-rpc-headers';
-import { buildContentSchemaRegistryOperationalSnapshot } from './operational-alert-metrics';
+import {
+  buildContentSchemaRegistryOperationalSnapshot,
+  operationalGaugeMetrics,
+} from './operational-alert-metrics';
 import { postOperationalProviderJson } from './operational-alert-provider';
 import type {
   OperationalAlertDependencies,
@@ -20,6 +25,7 @@ export type OperationalAlertProductionBindings = Readonly<{
 }>;
 
 type ProductionOptions = Readonly<{
+  logger?: Logger;
   providerTimeoutMs?: number;
   randomUuid?: () => string;
 }>;
@@ -150,7 +156,11 @@ const databaseSnapshot = async (
   input: OperationalAlertRunInput,
   timeoutMs: number,
 ): Promise<
-  Readonly<{ activationBlockedMs?: number; outboxAgeMs?: number }>
+  Readonly<{
+    activationBlockedMs?: number;
+    outboxAgeMs?: number;
+    reviewOpenAgeMs?: number;
+  }>
 > => {
   const value = await supabaseRpc(
     bindings,
@@ -166,6 +176,9 @@ const databaseSnapshot = async (
       : {}),
     ...(typeof value.outboxAgeMs === 'number'
       ? { outboxAgeMs: value.outboxAgeMs }
+      : {}),
+    ...(typeof value.reviewOpenAgeMs === 'number'
+      ? { reviewOpenAgeMs: value.reviewOpenAgeMs }
       : {}),
   };
 };
@@ -201,12 +214,31 @@ export const createProductionOperationalAlertDependencies = (
         input,
         providerTimeoutMs,
       );
-      return buildContentSchemaRegistryOperationalSnapshot({
+      const snapshot = buildContentSchemaRegistryOperationalSnapshot({
         database,
         ...(dlqDepth === undefined ? {} : { dlqDepth }),
         events,
         now: Date.parse(input.scheduledAt),
       });
+      const gauges = operationalGaugeMetrics(snapshot);
+      if (Object.keys(gauges).length > 0)
+        (
+          options.logger ??
+          createLogger({
+            environment: input.environment,
+            release: input.release,
+            service: 'wejammin-api',
+          })
+        ).info(
+          {
+            eventName: 'cms.registry.operational_state',
+            operation: 'operational.snapshot',
+            outcome: 'success',
+            metrics: gauges,
+          },
+          { samplingClass: 'always' },
+        );
+      return snapshot;
     },
     claim: async (alert, input) => {
       const claimToken = randomUuid();

@@ -34,6 +34,7 @@ export interface Ac265VerifiedArtifact {
   readonly id: number;
   readonly name: string;
   readonly digest: string;
+  readonly sizeInBytes: number;
   readonly createdAt: number;
 }
 
@@ -71,6 +72,7 @@ export interface Ac265VerifiedCandidateProvenance {
     artifactName: typeof AC265_CANDIDATE_ARTIFACT_NAME;
     artifactId: number;
     artifactDigest: string;
+    artifactBytes: number;
     deploymentId: string;
     deployedAt: string;
     environment: 'staging';
@@ -79,6 +81,7 @@ export interface Ac265VerifiedCandidateProvenance {
   }>;
   readonly artifact: Readonly<{
     artifactDigest: string;
+    axeReportSha256: string;
     buildId: string;
     migrationVersion: string;
   }>;

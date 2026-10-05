@@ -4,9 +4,6 @@ export {
 } from './ContentSchemaRegistryActionBar';
 export type { ContentSchemaRegistryActionBarProps } from './ContentSchemaRegistryActionBar';
 
-export { ContentSchemaRegistryCapabilityGate } from './ContentSchemaRegistryCapabilityGate';
-export type { ContentSchemaRegistryCapabilityGateProps } from './ContentSchemaRegistryCapabilityGate';
-
 export { default as ContentSchemaRegistryWorkbenchIsland } from './ContentSchemaRegistryWorkbenchIsland';
 export type { ContentSchemaRegistryWorkbenchIslandProps } from './ContentSchemaRegistryWorkbenchIsland';
 
@@ -25,7 +22,7 @@ export { CONTENT_SCHEMA_REGISTRY_ROLE_MATRIX } from './content-schema-registry-r
 export type { ContentSchemaRegistryRole } from './content-schema-registry-role-matrix';
 
 export { ContentSchemaRegistryActionBar as ActionBar } from './ContentSchemaRegistryActionBar';
-export { ContentSchemaRegistryCapabilityGate as CapabilityGate } from './ContentSchemaRegistryCapabilityGate';
+export { CapabilityGate } from '../infrastructure/CapabilityGate';
 export { ContentSchemaRegistryConfirmationStep as ConfirmationStep } from './ContentSchemaRegistryConfirmationStep';
 export { ContentSchemaRegistryOfflineStatus as OfflineStatus } from './ContentSchemaRegistryOfflineStatus';
 export { ContentSchemaRegistrySyncConflict as SyncConflict } from './ContentSchemaRegistrySyncConflict';

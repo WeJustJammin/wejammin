@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 select plan(55);
 
@@ -124,7 +125,7 @@ select lives_ok(
   $$insert into auth.users(id) values ('93111111-1111-4111-8111-111111111111')$$,
   'the verified Auth fixture is accepted'
 );
-select set_config('request.jwt.claim.sub', '93111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', '93111111-1111-4111-8111-111111111111', true);
 select set_config('app.auth_user_id', '93111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_auth_user_id', '93111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', '', true);
@@ -290,7 +291,7 @@ select throws_ok(
   'P2-S03-AC-141 denies direct curation-source insertion to callers'
 );
 reset role;
-select set_config('request.jwt.claim.sub', '93111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', '93111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', coalesce((select party_id::text from platform_private.person_party where auth_user_id = '93111111-1111-4111-8111-111111111111'), ''), true);
 select throws_ok(
   $$select platform_api.identity_facet_add('performer')$$,

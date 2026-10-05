@@ -1,5 +1,6 @@
-import { CONTENT_SCHEMA_REGISTRY_OPERATION_IDS as GENERATED_CONTENT_SCHEMA_REGISTRY_OPERATION_IDS } from '@wejammin/contracts';
-import type { ContentSchemaRegistryOperationId as GeneratedContentSchemaRegistryOperationId } from '@wejammin/contracts';
+import { CONTENT_SCHEMA_REGISTRY_OPERATION_IDS as GENERATED_CONTENT_SCHEMA_REGISTRY_OPERATION_IDS } from '@wejammin/contracts/client';
+import type { ContentSchemaRegistryOperationId as GeneratedContentSchemaRegistryOperationId } from '@wejammin/contracts/client';
+import type { ContentSchemaRegistryStepUpState } from './ContentSchemaRegistryConfirmationStep';
 import type {
   ContentSchemaRegistryDetail,
   ContentSchemaRegistryListPage,
@@ -13,7 +14,9 @@ import type {
   SchemaActivationRequest,
   SchemaActivationResource,
 } from '../../server/content-schema-registry-contracts';
+import type { ContentSchemaRegistryReviewState } from './content-schema-registry-review-types';
 
+export type { ContentSchemaRegistryReviewState } from './content-schema-registry-review-types';
 export type {
   ContentSchemaRegistryDetail,
   ContentSchemaRegistryListPage,
@@ -27,8 +30,10 @@ export type {
   FieldSchemaChangeRequest,
   RelationBindingRequest,
   RelationDefinitionResource,
+  SchemaActivationPreparation,
   SchemaActivationRequest,
   SchemaActivationResource,
+  SchemaReviewResource,
 } from '../../server/content-schema-registry-contracts';
 
 export type ContentSchemaRegistryAccess =
@@ -42,6 +47,7 @@ export type ContentSchemaRegistryVariant =
   | 'businessMandate'
   | 'staffCaseScoped'
   | 'adminStepUp'
+  | 'schemaReviewAssigned'
   | 'forbiddenHidden'
   | 'disabledPrerequisite';
 
@@ -86,7 +92,12 @@ export const CONTENT_SCHEMA_REGISTRY_CONTRACT_FIELDS = {
 export interface ContentSchemaRegistryUiError {
   readonly code: ContentSchemaRegistryErrorCode;
   readonly message: string;
-  readonly requestId: string;
+  /**
+   * Server-side only. Removed before hydration (see
+   * `content-schema-registry-diagnostic-ids.ts`); the browser shows the
+   * island's `supportReference` instead.
+   */
+  readonly requestId?: string;
 }
 
 export type ContentSchemaRegistryErrorCode =
@@ -151,7 +162,8 @@ export type ContentSchemaRegistryListState =
         | 'DEPENDENCY_INVALID_RESPONSE'
         | 'DEPENDENCY_UNAVAILABLE'
         | 'DEPENDENCY_DEADLINE_EXCEEDED';
-      readonly requestId: string;
+      /** Server-side only; removed before hydration. */
+      readonly requestId?: string;
       readonly lastVerifiedAt: string | null;
       /** Server-declared dependency retry proof; absent means fail closed. */
       readonly retryable?: boolean;
@@ -193,7 +205,8 @@ export type ContentSchemaRegistryDetailState =
         | 'DEPENDENCY_INVALID_RESPONSE'
         | 'DEPENDENCY_UNAVAILABLE'
         | 'DEPENDENCY_DEADLINE_EXCEEDED';
-      readonly requestId: string;
+      /** Server-side only; removed before hydration. */
+      readonly requestId?: string;
       readonly lastVerifiedAt: string | null;
       /** Server-declared dependency retry proof; absent means fail closed. */
       readonly retryable?: boolean;
@@ -213,19 +226,39 @@ export interface ContentSchemaRegistryWorkbenchProps {
   readonly contractFields: ContentSchemaRegistryContractFields;
   readonly variant: ContentSchemaRegistryVariant;
   readonly access: ContentSchemaRegistryAccess;
-  /** Required for an authorized Workbench; unavailable pages are outside it. */
-  readonly actorId: string;
-  readonly actingPartyId: string;
+  /** Server-resolved human acting-context label; never a raw identifier. */
+  readonly actingContextLabel?: string;
+  /** Server-derived disclosure state for the activation step-up clause. */
+  readonly stepUpState?: ContentSchemaRegistryStepUpState;
+  /** Server-derived absolute expiry of the verified step-up window. */
+  readonly stepUpFreshUntil?: string;
   readonly query: ContentSchemaRegistryQuery;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
+  /** The exact protected review the route reads; null off the review route. */
+  readonly reviewId?: string | null;
+  /** CMS-03A-13 read named by `activationPreparation.reviewRef`, if any. */
+  readonly initialReview?: ContentSchemaRegistryReviewState | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
-  readonly requestId: string;
+  /**
+   * User-facing support reference with no relationship to any request,
+   * trace or correlation identifier (none of those cross into the island).
+   */
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly listUrl: string;
   readonly retryUrl: string;
   readonly csrfToken: string;
+  /**
+   * Browser-owned counter the island bumps on a trusted acting-context change
+   * so a local confirmation resets without any identifier crossing the boundary.
+   */
+  readonly contextEpoch?: number;
+  /** Browser-owned canonical refresh presentation (island only). */
+  readonly loading?: boolean;
+  readonly offline?: boolean;
+  readonly message?: string | null;
   readonly onCanonicalRefetch: (
     reason: 'list-read' | 'detail-read' | 'mutation' | 'reconnect',
   ) => Promise<void>;
@@ -235,19 +268,22 @@ export interface ContentSchemaRegistryPage {
   readonly state: 'ready' | 'degraded';
   readonly variant: ContentSchemaRegistryVariant;
   readonly access: ContentSchemaRegistryAccess;
-  readonly actorId: string | null;
-  readonly actingPartyId: string | null;
+  readonly actingContextLabel?: string;
+  readonly stepUpState?: ContentSchemaRegistryStepUpState;
+  readonly stepUpFreshUntil?: string;
   readonly query: ContentSchemaRegistryQuery;
   readonly contentTypeId: string | null;
   readonly versionId: string | null;
+  readonly reviewId: string | null;
   readonly cursor: string | null;
   readonly expectedVersion: string | null;
-  readonly requestId: string;
+  readonly supportReference: string;
   readonly canonicalUrl: string;
   readonly listUrl: string;
   readonly retryUrl: string;
   readonly csrfToken: string;
   readonly initialList: ContentSchemaRegistryListState;
   readonly initialDetail: ContentSchemaRegistryDetailState | null;
+  readonly initialReview: ContentSchemaRegistryReviewState | null;
   readonly contractFields: ContentSchemaRegistryContractFields;
 }

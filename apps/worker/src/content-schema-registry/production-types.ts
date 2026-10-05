@@ -87,6 +87,13 @@ export type ServerSessionContext = Readonly<{
   actorPersonId: string | null;
   actingPartyId: string | null;
   stepUpAt: string | null;
+  /**
+   * Private validated acting-context binding id from the service-role session
+   * projection. Internal only: activation alone carries it to the private RPC
+   * for binding authority checks. Other RPCs, public responses, headers, logs,
+   * and telemetry never receive it.
+   */
+  actingContextId: string | null;
 }>;
 
 export type ReleaseVerifierFactory = (

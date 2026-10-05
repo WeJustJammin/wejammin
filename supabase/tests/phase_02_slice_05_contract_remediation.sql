@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
@@ -5,7 +6,7 @@ select no_plan();
 -- P2-S05-AC-010, P2-S05-AC-044, P2-S05-AC-091..092.
 -- This focused fixture exercises the two response-contract repairs without
 -- widening the active PRF01..08 database boundary.
-select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('sub', '20000000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id', '20000000-0000-4000-8000-000000000001', true);
 select set_config('app.acting_party_id', '10000000-0000-4000-8000-000000000001', true);
 insert into platform_private.party(id, kind) values
@@ -85,7 +86,7 @@ select lives_ok($$insert into profile_private.claim_proof_attempts(
    'pending', 'pending', 5, clock_timestamp() + interval '1 hour', 1)$$,
   'seed expired, rejected, and exhausted proof attempts');
 
-select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
+select pg_temp.set_jwt_claim('sub', '20000000-0000-4000-8000-000000000002', true);
 select set_config('app.actor_person_id', '20000000-0000-4000-8000-000000000002', true);
 select set_config('app.acting_party_id', '10000000-0000-4000-8000-000000000002', true);
 create temp table p2_s05_proof_failures(kind text primary key, response jsonb not null);

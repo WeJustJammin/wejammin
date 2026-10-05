@@ -32,21 +32,36 @@ import {
   createContentSchemaRegistryInvalidationHint,
 } from '../../apps/web/src/components/content-schema-registry/content-schema-registry-invalidation';
 import {
-  activation,
+  activation as sharedActivation,
   block,
-  detail,
+  detail as sharedDetail,
   field,
   lifecycleEvent,
   relation,
-  resource,
+  resource as sharedResource,
   safeBlock,
   validActivation,
   validBlock,
-  validDraft,
+  validDraft as sharedValidDraft,
   validField,
   validLifecycle,
   validRelation,
 } from '../../apps/worker/src/content-schema-registry/phase-02-slice-09-test-values';
+
+// BE03a OD-4 (2026-10-02) added the locale configuration to
+// ContentTypeDraftRequest, ContentTypeVersionResource and SchemaActivationResource.
+// The shared fixtures predate it, so this file supplies a valid configuration; the
+// shared worker fixtures and the producers that must emit these members stay tracked
+// by the reopened P2-S09-AC-264.
+const localeConfig = {
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
+} as const;
+const localeConfigHash = 'a'.repeat(64);
+const validDraft = { ...sharedValidDraft, ...localeConfig };
+const resource = { ...sharedResource, ...localeConfig, localeConfigHash };
+const activation = { ...sharedActivation, localeConfigHash };
+const detail = { ...sharedDetail, resource };
 
 const REQUEST_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';
@@ -77,7 +92,17 @@ const successFixtures = {
     items: [resource, safeBlock],
     nextCursor: null,
   },
-  ContentSchemaRegistryDetailSchema: detail,
+  // The shared worker fixture predates the DEC-108 required activationPreparation
+  // member, so the contract-evidence fixture supplies a valid empty projection.
+  ContentSchemaRegistryDetailSchema: {
+    ...detail,
+    activationPreparation: {
+      dryRunRef: null,
+      jobRef: null,
+      reviewRef: null,
+      permittedNextActions: [],
+    },
+  },
   BlockLifecycleEventResourceSchema: lifecycleEvent,
 } as const;
 
@@ -103,12 +128,27 @@ const successSchemas = {
   BlockLifecycleEventResourceSchema,
 } as const;
 
+const ORIGINAL_OPERATION_IDS = [
+  'CMS-03A-01',
+  'CMS-03A-02',
+  'CMS-03A-03',
+  'CMS-03A-04',
+  'CMS-03A-05',
+  'CMS-03A-06',
+  'CMS-03A-07',
+  'CMS-03A-08',
+] as const;
+
 describe('P2-S09 generated contract integration evidence', () => {
-  it('[P2-S09-AC-264] validates generated request and success fixtures for all eight operations', () => {
-    expect(
-      contentSchemaRegistryRoutePolicies.map(({ operationId }) => operationId),
-    ).toEqual(CONTENT_SCHEMA_REGISTRY_OPERATION_IDS);
-    for (const route of contentSchemaRegistryRoutePolicies) {
+  it('[P2-S09-AC-264] validates generated request and success fixtures for the eight original operations', () => {
+    const originalPolicies = contentSchemaRegistryRoutePolicies.filter(
+      ({ operationId }) =>
+        (ORIGINAL_OPERATION_IDS as readonly string[]).includes(operationId),
+    );
+    expect(originalPolicies.map(({ operationId }) => operationId)).toEqual([
+      ...ORIGINAL_OPERATION_IDS,
+    ]);
+    for (const route of originalPolicies) {
       expect(
         requestSchemas[route.requestSchema].safeParse(
           requestFixtures[route.requestSchema],
@@ -225,9 +265,7 @@ describe('P2-S09 generated contract integration evidence', () => {
               message: 'Check the highlighted schema fields.',
               requestId: REQUEST_ID,
               details: {
-                violations: [
-                  { pointer: '/label', message: 'Label is required' },
-                ],
+                violations: [{ path: '/label', message: 'Label is required' }],
                 currentVersion: '7',
                 ownerId: 'must-not-cross-boundary',
               },
@@ -260,7 +298,7 @@ describe('P2-S09 generated contract integration evidence', () => {
       requestId: REQUEST_ID,
       details: {
         currentVersion: '7',
-        violations: [{ pointer: '/label', message: 'Label is required' }],
+        violations: [{ path: '/label', message: 'Label is required' }],
       },
     });
   });
@@ -322,5 +360,22 @@ describe('P2-S09 generated contract integration evidence', () => {
       'DEPENDENCY_DEADLINE_EXCEEDED',
       'INTERNAL_ERROR',
     ]);
+  });
+
+  it('[P2-S09-AC-284] registers all eighteen operation policies with request and success schemas and valid error codes', () => {
+    expect(CONTENT_SCHEMA_REGISTRY_OPERATION_IDS).toHaveLength(18);
+    expect(
+      contentSchemaRegistryRoutePolicies.map(({ operationId }) => operationId),
+    ).toEqual([...CONTENT_SCHEMA_REGISTRY_OPERATION_IDS]);
+    for (const route of contentSchemaRegistryRoutePolicies) {
+      expect(route.requestSchema.length, route.operationId).toBeGreaterThan(0);
+      expect(route.successSchema.length, route.operationId).toBeGreaterThan(0);
+      for (const [code, status] of Object.entries(route.errors)) {
+        expect(status, `${route.operationId} ${code}`).toBeGreaterThanOrEqual(
+          400,
+        );
+        expect(status, `${route.operationId} ${code}`).toBeLessThanOrEqual(599);
+      }
+    }
   });
 });

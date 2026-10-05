@@ -1,6 +1,7 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
-select plan(9);
+select plan(13);
 
 -- BE01b authentication-session context resolution and fail-closed selectors.
 -- Each suite owns and rolls back its own fixtures.
@@ -25,7 +26,7 @@ where auth_user_id in (
   'b3111111-1111-4111-8111-111111111111'
 );
 
-select set_config('request.jwt.claim.sub', 'a3111111-1111-4111-8111-111111111111', true);
+select pg_temp.set_jwt_claim('sub', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.auth_user_id', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_auth_user_id', 'a3111111-1111-4111-8111-111111111111', true);
 select set_config('app.actor_person_id', (select person_id::text from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111'), true);
@@ -128,10 +129,19 @@ exception when others then
 end;
 $fn$;
 select set_config('request.headers', '{}', true);
+create temporary table context_switch_self_read(response jsonb);
+insert into context_switch_self_read
+select platform_api.auth_session_read('a3111111-1111-4111-8111-111111111111', 'a3111111-1111-4111-8111-111111111141');
 select is(
-  platform_api.auth_session_read('a3111111-1111-4111-8111-111111111111', 'a3111111-1111-4111-8111-111111111141')->>'actingPartyId',
+  (select response->>'actingPartyId' from context_switch_self_read),
   (select person_id::text from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111'),
   'missing client binding header resolves auth session to self'
+);
+select ok(
+  (select response ? 'actingContextId'
+       and response->'actingContextId' = 'null'::jsonb
+     from context_switch_self_read),
+  'absent client binding selector returns explicit null actingContextId'
 );
 select ok(
   not exists (
@@ -141,10 +151,19 @@ select ok(
   'fresh browser tab UUID has never been recorded by any person'
 );
 select set_config('request.headers', '{"x-client-binding-id":"d3111111-1111-4111-8111-111111111177"}', true);
+create temporary table context_switch_unseen_read(response jsonb);
+insert into context_switch_unseen_read
+select pg_temp.try_auth_session_read('a3111111-1111-4111-8111-111111111111', 'a3111111-1111-4111-8111-111111111141');
 select is(
-  pg_temp.try_auth_session_read('a3111111-1111-4111-8111-111111111111', 'a3111111-1111-4111-8111-111111111141')->>'actingPartyId',
+  (select response->>'actingPartyId' from context_switch_unseen_read),
   (select person_id::text from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111'),
   'globally unseen client binding UUID resolves to self before the first deliberate bind'
+);
+select ok(
+  (select response ? 'actingContextId'
+       and response->'actingContextId' = 'null'::jsonb
+     from context_switch_unseen_read),
+  'unbound client binding selector returns explicit null actingContextId'
 );
 update platform_private.acting_context_binding
 set last_seen_at = clock_timestamp() - interval '10 minutes', expires_at = clock_timestamp() + interval '1 day'
@@ -162,6 +181,21 @@ select ok(
        where person_id = (select person_id from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111')
          and client_binding_id = 'tab-a' and state = 'active'),
   'active tab header resolves the selected party and touches binding freshness'
+);
+select is(
+  (select response->>'actingContextId' from context_switch_session_result),
+  (select id::text from platform_private.acting_context_binding
+    where person_id = (select person_id from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111')
+      and client_binding_id = 'tab-a' and state = 'active'),
+  'validated active tab binding id is returned as actingContextId'
+);
+select ok(
+  (select response ?& array['accountState', 'bootstrapState', 'personId', 'actingPartyId']
+       and response->>'accountState' = 'active'
+       and response->>'bootstrapState' = 'complete'
+       and response->>'personId' = (select person_id::text from context_switch_actors where auth_user_id = 'a3111111-1111-4111-8111-111111111111')
+     from context_switch_session_result),
+  'existing public session projection fields remain unchanged with a tab selector'
 );
 select set_config('request.headers', '{"x-client-binding-id":"foreign-tab"}', true);
 select throws_ok($$select platform_api.auth_session_read('a3111111-1111-4111-8111-111111111111', 'a3111111-1111-4111-8111-111111111141')$$,

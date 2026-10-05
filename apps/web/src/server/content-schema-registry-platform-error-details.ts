@@ -1,8 +1,12 @@
 import {
   ApiErrorSchema,
   CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER,
+  CmsStepUpRequiredDetailsSchema,
 } from '@wejammin/contracts';
 import type { ApiError, JsonValue } from '@wejammin/contracts';
+
+import { rfc3339ResetAt } from './rate-limit-reset-at';
+import { isStepUpRequiredCode } from '../components/step-up-required';
 
 export interface ContentSchemaRegistryErrorMetadata {
   readonly apiError: ApiError | null;
@@ -12,6 +16,12 @@ export interface ContentSchemaRegistryErrorMetadata {
 }
 
 const MAX_RETRY_AFTER_SECONDS = 3_600;
+const CONFLICT_KINDS: ReadonlySet<string> = new Set([
+  'VERSION_MISMATCH',
+  'IDEMPOTENCY_MISMATCH',
+  'INVALID_TRANSITION',
+]);
+const RECOVERY_ACTION = /^[a-z][a-z0-9_]{0,31}$/u;
 
 const boundedText = (value: unknown, maximum: number): string | null =>
   typeof value === 'string' &&
@@ -24,19 +34,20 @@ const boundedText = (value: unknown, maximum: number): string | null =>
 const boundedNumber = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
+/**
+ * BE00 `FieldViolation`: `{ path, code, message }`, `path` a JSON Pointer. A
+ * violation needs a bounded printable `path` and `message`; `code` is kept
+ * only when it is a bounded printable token. Unknown members are never copied.
+ */
 const safeViolation = (value: JsonValue): JsonValue | null => {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     return null;
   const object = value as { readonly [key: string]: JsonValue };
-  const pointer = boundedText(object.pointer, 256);
+  const path = boundedText(object.path, 256);
   const message = boundedText(object.message, 500);
+  if (path === null || message === null) return null;
   const code = boundedText(object.code, 64);
-  if (pointer === null && message === null && code === null) return null;
-  return {
-    ...(pointer === null ? {} : { pointer }),
-    ...(message === null ? {} : { message }),
-    ...(code === null ? {} : { code }),
-  };
+  return { path, ...(code === null ? {} : { code }), message };
 };
 
 const safeTextFields = (
@@ -50,9 +61,31 @@ const safeTextFields = (
     }),
   );
 
+/**
+ * BE03a 401 `STEP_UP_REQUIRED`: only the exact recovery action and the
+ * allowlisted method identifiers cross the boundary. Anything else, including
+ * a malformed method list, collapses to no details so the browser falls back
+ * to plain re-authentication rather than a step-up route it cannot verify.
+ */
+const safeStepUpDetails = (
+  details: Readonly<Record<string, JsonValue>>,
+): Readonly<Record<string, JsonValue>> => {
+  const parsed = CmsStepUpRequiredDetailsSchema.safeParse({
+    recoveryAction: details.recoveryAction,
+    allowedMethods: details.allowedMethods,
+  });
+  return parsed.success
+    ? {
+        recoveryAction: parsed.data.recoveryAction,
+        allowedMethods: [...parsed.data.allowedMethods],
+      }
+    : {};
+};
+
 const safeDetails = (
   status: number,
   details: Readonly<Record<string, JsonValue>>,
+  code: string,
 ): Readonly<Record<string, JsonValue>> => {
   if (status === 400 || status === 422) {
     const violations = Array.isArray(details.violations)
@@ -71,6 +104,7 @@ const safeDetails = (
     };
   }
   if (status === 401) {
+    if (isStepUpRequiredCode(code)) return safeStepUpDetails(details);
     return details.recoveryAction === 'reauthenticate'
       ? { recoveryAction: 'reauthenticate' }
       : {};
@@ -80,20 +114,37 @@ const safeDetails = (
     return reasonCode === null ? {} : { reasonCode };
   }
   if (status === 409) {
-    return safeTextFields(details, [
-      'expectedVersion',
-      'currentVersion',
-      'reason',
-    ]);
+    // BE00 CONFLICT: the registered kind and the recovery action token (the grant
+    // console follows `renew`), then the versions and reason text.
+    const conflict =
+      typeof details.conflict === 'string' &&
+      CONFLICT_KINDS.has(details.conflict)
+        ? details.conflict
+        : null;
+    const recoveryAction =
+      typeof details.recoveryAction === 'string' &&
+      RECOVERY_ACTION.test(details.recoveryAction)
+        ? details.recoveryAction
+        : null;
+    return {
+      ...(conflict === null ? {} : { conflict }),
+      ...(recoveryAction === null ? {} : { recoveryAction }),
+      ...safeTextFields(details, [
+        'expectedVersion',
+        'currentVersion',
+        'reason',
+      ]),
+    };
   }
   if (status === 429) {
-    const values = ['limit', 'resetAt', 'retryAfterSeconds'] as const;
-    return Object.fromEntries(
-      values.flatMap((key) => {
-        const value = boundedNumber(details[key]);
-        return value === null ? [] : [[key, value]];
-      }),
-    );
+    const limit = boundedNumber(details.limit);
+    const resetAt = rfc3339ResetAt(details.resetAt);
+    const retryAfterSeconds = boundedNumber(details.retryAfterSeconds);
+    return {
+      ...(limit === null ? {} : { limit }),
+      ...(resetAt === null ? {} : { resetAt }),
+      ...(retryAfterSeconds === null ? {} : { retryAfterSeconds }),
+    };
   }
   if (status === 502 || status === 503 || status === 504) {
     const dependencyClass = boundedText(details.dependencyClass, 128);
@@ -136,7 +187,7 @@ export const parseContentSchemaRegistryErrorMetadata = async (
     if (parsed.success)
       apiError = {
         ...parsed.data,
-        details: safeDetails(status, parsed.data.details),
+        details: safeDetails(status, parsed.data.details, parsed.data.code),
       };
   } catch {
     apiError = null;

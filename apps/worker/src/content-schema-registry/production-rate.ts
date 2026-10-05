@@ -4,6 +4,7 @@ import type {
   RateLimitDecision,
 } from './types';
 import type { ContentSchemaRegistryProductionOptions } from './production-types';
+import { MAX_RATE_RESET_EPOCH_SECONDS } from './route-rate-refusal';
 import {
   deadlineExceeded,
   invalidResponse,
@@ -17,29 +18,86 @@ const digestHex = async (value: BufferSource): Promise<string> =>
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
 
+/**
+ * The decision that leaves the least room. The user decision is always
+ * allowed here (a user refused by their own bucket never reaches the party
+ * bucket), so only the party decision can be a refusal.
+ */
+const stricterDecision = (
+  allowedUser: RateLimitDecision,
+  party: RateLimitDecision,
+): RateLimitDecision => {
+  if (!party.allowed) return party;
+  if (allowedUser.remaining !== party.remaining)
+    return allowedUser.remaining < party.remaining ? allowedUser : party;
+  return allowedUser.limit <= party.limit ? allowedUser : party;
+};
+
+/**
+ * Enforces the per-user bucket and, for a human with an acting party, the
+ * per-party bucket (BE03a rate rows), each with an explicit rate scope. The
+ * user bucket is keyed by operation plus the server-derived auth user only
+ * (scope `user`: no acting party, no client address). The party bucket is keyed
+ * by operation plus the server-derived party only (scope `party`: no user, no
+ * client address). A user refused by their own bucket is not charged to the
+ * party. If the party bucket cannot be evaluated the request fails closed.
+ */
 const authRateLimiter = (
   options: ContentSchemaRegistryProductionOptions,
 ): ContentSchemaRegistryDependencies['rateLimit'] | undefined => {
   const limiter = options.auth?.rateLimit;
   if (limiter === undefined) return undefined;
   return async (input, signal) => {
-    const identifierDigest = await digestHex(
-      new TextEncoder().encode(`${input.principalClass}:${input.actorId}`),
+    const bucket = async (
+      scope: 'party' | 'user',
+      authUserId: string | null,
+      actingPartyId: string | null,
+      identifier: string,
+      limit: number,
+    ): Promise<ContentSchemaRegistryResult<RateLimitDecision>> =>
+      mapAuthResult(
+        await limiter(
+          {
+            operationId: input.operationId,
+            request: input.request,
+            scope,
+            authUserId,
+            actingPartyId,
+            identifierDigest: await digestHex(
+              new TextEncoder().encode(identifier),
+            ),
+            limit,
+            windowSeconds: input.windowSeconds,
+          },
+          options.environment,
+          signal,
+        ),
+      );
+    const user = await bucket(
+      'user',
+      input.principalClass === 'human' ? input.actorId : null,
+      null,
+      `${input.principalClass}:${input.actorId}`,
+      input.limit,
     );
-    const result = await limiter(
-      {
-        operationId: input.operationId,
-        request: input.request,
-        authUserId: input.principalClass === 'human' ? input.actorId : null,
-        actingPartyId: input.actingPartyId,
-        identifierDigest,
-        limit: input.limit,
-        windowSeconds: input.windowSeconds,
-      },
-      options.environment,
-      signal,
+    if (
+      !user.ok ||
+      !user.value.allowed ||
+      input.principalClass !== 'human' ||
+      input.actingPartyId === null ||
+      input.partyLimit === undefined
+    )
+      return user;
+    const party = await bucket(
+      'party',
+      null,
+      input.actingPartyId,
+      `party:${input.actingPartyId}`,
+      input.partyLimit,
     );
-    return mapAuthResult(result);
+    return party.ok
+      ? { ok: true, value: stricterDecision(user.value, party.value) }
+      : party;
   };
 };
 
@@ -61,7 +119,8 @@ export const createRateLimiter = (
         !Number.isSafeInteger(value.remaining) ||
         value.remaining > value.limit ||
         !Number.isSafeInteger(value.resetAt) ||
-        value.resetAt < 0
+        value.resetAt < 0 ||
+        value.resetAt > MAX_RATE_RESET_EPOCH_SECONDS
       )
         return invalidResponse();
       return {

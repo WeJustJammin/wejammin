@@ -45,7 +45,7 @@ describe('Phase 2 Slice 06 direct route runtime coverage', () => {
         context,
         'PRF-PROF-04',
         'putEmphasis',
-        { partyId: PARTY_ID },
+        { ok: true, value: { partyId: PARTY_ID } },
         emphasisBodySchema,
         false,
       ),

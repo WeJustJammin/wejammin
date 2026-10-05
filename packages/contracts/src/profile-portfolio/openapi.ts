@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ApiErrorSchema } from '../api-error.ts';
+import { anchorOpenApiSchemaReferences } from '../openapi-reference-normalization.ts';
 import { JobStatusSchema } from '../job-status.ts';
 import * as enums from './enums.ts';
 import * as epkModels from './epk-models.ts';
@@ -55,11 +56,14 @@ const schemaForName = (schemaName: string): z.ZodTypeAny => {
 export const getProfilePortfolioOpenApiSchemaJson = (
   schemaName: string,
 ): unknown =>
-  z.toJSONSchema(schemaForName(schemaName), {
-    io: 'input',
-    target: 'draft-7',
-    unrepresentable: 'any',
-  });
+  anchorOpenApiSchemaReferences(
+    componentName(schemaName),
+    z.toJSONSchema(schemaForName(schemaName), {
+      io: 'input',
+      target: 'draft-7',
+      unrepresentable: 'any',
+    }),
+  );
 
 export const getProfilePortfolioOpenApiComponentSchemas = (): Readonly<
   Record<string, unknown>

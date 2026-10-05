@@ -8,15 +8,23 @@ import {
 } from '@wejammin/contracts';
 
 import type { WorkerContext, WorkerDependencies } from '../index';
-import { responseForAuthError } from '../authentication/boundary';
+import {
+  admitJsonMutationTransport,
+  responseForAuthError,
+} from '../authentication/boundary';
 import {
   configureIdentityRoute,
   identityError,
   parseIdentityCommandHeaders,
-  parseIdentityJsonBody,
-  requireIdentityCsrf,
+  decodeIdentityBody,
 } from './route-support';
-import { execute, pathError, rate, resolve } from './handler-support';
+import {
+  execute,
+  pathError,
+  rate,
+  refuseForeignReadOrigin,
+  resolve,
+} from './handler-support';
 import type { RecoveryState } from './recovery';
 
 export const createPerson = async (
@@ -25,19 +33,21 @@ export const createPerson = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-01');
-  const body = await parseIdentityJsonBody(
-    context.req.raw,
-    CreatePersonRequestSchema,
-  );
-  if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseIdentityCommandHeaders(context.req.raw, false);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
   const resolved = await resolve(context, dependencies);
   if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 6: strict body.
+  const body = decodeIdentityBody(transport.value, CreatePersonRequestSchema);
+  if (!body.ok) return responseForAuthError(context, body);
+  // BE00 step 7: quota.
   const limited = await rate(context, dependencies, 'BE01b-01', resolved.value);
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseIdentityCommandHeaders(context.req.raw, false);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     request: context.req.raw,
     session: resolved.value,
@@ -64,10 +74,14 @@ export const readPerson = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-02');
-  const query = parseIdentityReadQuery(context.req.raw);
-  if (!query.ok) return responseForAuthError(context, query);
+  const foreignOrigin = refuseForeignReadOrigin(context);
+  if (foreignOrigin !== null) return foreignOrigin;
+  // BE00 steps 4 and 5: verified session, then acting context.
   const resolved = await resolve(context, dependencies);
   if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 6: strict path and query.
+  const query = parseIdentityReadQuery(context.req.raw);
+  if (!query.ok) return responseForAuthError(context, query);
   const limited = await rate(context, dependencies, 'BE01b-02', resolved.value);
   if (limited !== null) return limited;
   const input = { request: context.req.raw, session: resolved.value };
@@ -117,19 +131,21 @@ export const addFacet = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-03');
-  const body = await parseIdentityJsonBody(
-    context.req.raw,
-    AddFacetRequestSchema,
-  );
-  if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseIdentityCommandHeaders(context.req.raw, false);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
   const resolved = await resolve(context, dependencies);
   if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 6: strict body.
+  const body = decodeIdentityBody(transport.value, AddFacetRequestSchema);
+  if (!body.ok) return responseForAuthError(context, body);
+  // BE00 step 7: quota.
   const limited = await rate(context, dependencies, 'BE01b-03', resolved.value);
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseIdentityCommandHeaders(context.req.raw, false);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     ...body.value,
     request: context.req.raw,
@@ -163,6 +179,12 @@ export const removeFacet = async (
   state: RecoveryState,
 ): Promise<Response> => {
   configureIdentityRoute(context, 'BE01b-04');
+  // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+  const transport = await admitJsonMutationTransport(context.req.raw);
+  if (!transport.ok) return responseForAuthError(context, transport);
+  // BE00 steps 4 and 5: verified session, then acting context.
+  const resolved = await resolve(context, dependencies);
+  if (!resolved.ok) return responseForAuthError(context, resolved);
   const path = IdentityFacetPathSchema.safeParse({
     facetCode: context.req.param('facetCode'),
   });
@@ -171,19 +193,15 @@ export const removeFacet = async (
       context,
       pathError('The facet identifier is invalid.'),
     );
-  const body = await parseIdentityJsonBody(
-    context.req.raw,
-    IdentityStrictEmptySchema,
-  );
+  // BE00 step 6: strict body.
+  const body = decodeIdentityBody(transport.value, IdentityStrictEmptySchema);
   if (!body.ok) return responseForAuthError(context, body);
-  const headers = parseIdentityCommandHeaders(context.req.raw, true);
-  if (!headers.ok) return responseForAuthError(context, headers);
-  const csrf = await requireIdentityCsrf(context);
-  if (csrf !== null) return csrf;
-  const resolved = await resolve(context, dependencies);
-  if (!resolved.ok) return responseForAuthError(context, resolved);
+  // BE00 step 7: quota.
   const limited = await rate(context, dependencies, 'BE01b-04', resolved.value);
   if (limited !== null) return limited;
+  // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+  const headers = parseIdentityCommandHeaders(context.req.raw, true);
+  if (!headers.ok) return responseForAuthError(context, headers);
   const input = {
     facetCode: path.data.facetCode,
     request: context.req.raw,

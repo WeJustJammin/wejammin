@@ -77,7 +77,50 @@ describe('[P2-S09-AC-269] locked cross-layer traceability', () => {
 
   it('anchors AC269 itself to the engineering-standard traceability requirement', () => {
     expect(phasePlan).toMatch(
-      /P2-S09-AC-269[^\n]*Trace all eight BE03a operations[^\n]*five feature-ledger rows[^\n]*IA CMS-01\/02\/03\/04\/10[^\n]*FE registry ownership[^\n]*BE03b\/03c/iu,
+      /P2-S09-AC-269[^\n]*Trace all eight original BE03a operations[^\n]*five feature-ledger rows[^\n]*IA CMS-01\/02\/03\/04\/10[^\n]*FE registry ownership[^\n]*BE03b\/03c/iu,
     );
+  });
+
+  it('[P2-S09-AC-1149] maps the amended operations to the plan, BE03a and FE03', () => {
+    const amendedOperations = [
+      'CMS-03A-09',
+      'CMS-03A-10',
+      'CMS-03A-11',
+      'CMS-03A-12',
+      'CMS-03A-13',
+      'CMS-03A-14',
+      'CMS-03A-15',
+      'CMS-03A-16',
+      'CMS-03A-17',
+      'CMS-03A-18',
+    ] as const;
+    for (const operationId of amendedOperations) {
+      expect(phasePlan, operationId).toContain(operationId);
+      expect(be03a, operationId).toContain(operationId);
+      expect(fe03, operationId).toContain(operationId);
+    }
+    const be01a = read('.memory/wiki/specs/be/01a-auth-account-linking.md');
+    const fe01 = read('.memory/wiki/specs/fe/01-identity-authority.md');
+    const be05b = read(
+      '.memory/wiki/specs/be/05b-admin-workspace-operations.md',
+    );
+    const fe05 = read(
+      '.memory/wiki/specs/fe/05-platform-configuration-admin.md',
+    );
+    for (const operationId of [
+      'AUTH-API-16',
+      'AUTH-API-17',
+      'AUTH-API-18',
+      'AUTH-API-19',
+      'AUTH-API-20',
+      'AUTH-API-21',
+    ] as const) {
+      expect(be01a, operationId).toContain(operationId);
+      expect(fe01, operationId).toContain(operationId);
+      expect(phasePlan, operationId).toContain(operationId);
+    }
+    expect(be05b).toContain('CFG-05B-06');
+    expect(fe05).toContain('CFG-05B-06');
+    expect(phasePlan).toContain('CFG-05B-06');
   });
 });

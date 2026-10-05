@@ -1,0 +1,310 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  LOCALE_FALLBACK_CHAIN_MISMATCH,
+  LocaleFallbackChainMismatchDetailsSchema,
+  LocaleVariantHeadersSchema,
+  LocaleVariantPathSchema,
+  LocaleVariantRequestSchema,
+  LocaleVariantResourceSchema,
+} from './locale-variant';
+
+const ENTRY_ID = '10000000-0000-4000-8000-000000000001';
+const SOURCE_REVISION_ID = '20000000-0000-4000-8000-000000000002';
+const FIELD_ID = '30000000-0000-4000-8000-000000000003';
+const VARIANT_ID = '40000000-0000-4000-8000-000000000004';
+const REVISION_ID = '50000000-0000-4000-8000-000000000005';
+const HASH = 'a'.repeat(64);
+const request = {
+  entryId: ENTRY_ID,
+  locale: 'fr-CA',
+  sourceRevisionId: SOURCE_REVISION_ID,
+  fields: [{ fieldId: FIELD_ID, value: { text: 'Bonjour' } }],
+  fallbackChain: ['fr', 'en-US'],
+  noFallbackFieldIds: [FIELD_ID],
+  sourceHash: HASH,
+  expectedVersion: '2',
+};
+const resource = {
+  id: VARIANT_ID,
+  version: '3',
+  contentHash: HASH,
+  createdAt: '2026-09-27T12:00:00Z',
+  updatedAt: '2026-09-27T12:00:00Z',
+  state: 'draft',
+  entryId: ENTRY_ID,
+  revisionId: REVISION_ID,
+  locale: 'fr-CA',
+  sourceRevisionId: SOURCE_REVISION_ID,
+  fallbackChain: ['fr', 'en-US'],
+  noFallbackFieldIds: [FIELD_ID],
+};
+
+describe('CMS-03C-04 locale-variant wire contract', () => {
+  it('accepts the strict path, request, and explicit no-fallback field set', () => {
+    expect(
+      LocaleVariantPathSchema.parse({ entryId: ENTRY_ID, locale: 'fr-CA' }),
+    ).toEqual({
+      entryId: ENTRY_ID,
+      locale: 'fr-CA',
+    });
+    expect(LocaleVariantRequestSchema.parse(request)).toEqual(request);
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        fields: [{ fieldId: FIELD_ID, value: null }],
+        fallbackChain: [],
+        noFallbackFieldIds: [],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects malformed addressing, caller authority, hashes, and versions', () => {
+    for (const path of [
+      { entryId: 'private', locale: 'fr-CA' },
+      { entryId: ENTRY_ID, locale: 'fr_CA' },
+      { entryId: ENTRY_ID, locale: 'fr-CA', ownerId: ENTRY_ID },
+    ])
+      expect(LocaleVariantPathSchema.safeParse(path).success).toBe(false);
+    for (const candidate of [
+      { ...request, ownerId: ENTRY_ID },
+      { ...request, entryId: 'private' },
+      { ...request, locale: 'fr_CA' },
+      { ...request, sourceRevisionId: 'private' },
+      { ...request, sourceHash: HASH.toUpperCase() },
+      { ...request, expectedVersion: '0' },
+    ])
+      expect(LocaleVariantRequestSchema.safeParse(candidate).success).toBe(
+        false,
+      );
+  });
+
+  it('bounds and deduplicates localizable fields and fallback selections', () => {
+    for (const candidate of [
+      { ...request, fields: [] },
+      {
+        ...request,
+        fields: Array.from({ length: 129 }, () => request.fields[0]),
+      },
+      { ...request, fields: [request.fields[0], request.fields[0]] },
+      { ...request, fields: [{ fieldId: 'private', value: 'x' }] },
+      { ...request, fields: [{ fieldId: FIELD_ID, value: Number.NaN }] },
+      {
+        ...request,
+        fields: [{ fieldId: FIELD_ID, value: 'x', privateValue: 'private' }],
+      },
+      { ...request, fallbackChain: Array.from({ length: 17 }, () => 'fr') },
+      { ...request, fallbackChain: ['fr', 'fr'] },
+      { ...request, fallbackChain: ['fr_CA'] },
+      {
+        ...request,
+        noFallbackFieldIds: Array.from({ length: 129 }, () => FIELD_ID),
+      },
+      { ...request, noFallbackFieldIds: [FIELD_ID, FIELD_ID] },
+      { ...request, noFallbackFieldIds: ['private'] },
+    ])
+      expect(LocaleVariantRequestSchema.safeParse(candidate).success).toBe(
+        false,
+      );
+  });
+
+  it('requires idempotent JSON and a strong source-version validator', () => {
+    expect(
+      LocaleVariantHeadersSchema.parse({
+        contentType: 'application/json',
+        idempotencyKey: 'locale-variant-0001',
+        ifMatch: '"2"',
+      }),
+    ).toMatchObject({ ifMatch: '"2"' });
+    for (const headers of [
+      {
+        contentType: 'text/plain',
+        idempotencyKey: 'locale-variant-0001',
+        ifMatch: '"2"',
+      },
+      {
+        contentType: 'application/json',
+        idempotencyKey: 'short',
+        ifMatch: '"2"',
+      },
+      {
+        contentType: 'application/json',
+        idempotencyKey: 'locale-variant-0001',
+      },
+      {
+        contentType: 'application/json',
+        idempotencyKey: 'locale-variant-0001',
+        ifMatch: 'W/"2"',
+      },
+    ])
+      expect(LocaleVariantHeadersSchema.safeParse(headers).success).toBe(false);
+  });
+
+  it('accepts only the closed state and safe locale resource', () => {
+    expect(LocaleVariantResourceSchema.parse(resource)).toEqual(resource);
+    for (const state of [
+      'untranslated',
+      'draft',
+      'review',
+      'approved',
+      'stale',
+    ])
+      expect(
+        LocaleVariantResourceSchema.safeParse({ ...resource, state }).success,
+      ).toBe(true);
+    for (const candidate of [
+      { ...resource, ownerId: ENTRY_ID },
+      { ...resource, state: 'published' },
+      { ...resource, entryId: 'private' },
+      { ...resource, revisionId: 'private' },
+      { ...resource, locale: 'fr_CA' },
+      { ...resource, sourceRevisionId: 'private' },
+      { ...resource, fallbackChain: Array.from({ length: 17 }, () => 'fr') },
+      {
+        ...resource,
+        noFallbackFieldIds: Array.from({ length: 129 }, () => FIELD_ID),
+      },
+    ])
+      expect(LocaleVariantResourceSchema.safeParse(candidate).success).toBe(
+        false,
+      );
+  });
+});
+
+describe('CMS-03C-04 fallback-chain equality conflict (OD-4)', () => {
+  it('pins the machine reason code', () => {
+    expect(LOCALE_FALLBACK_CHAIN_MISMATCH).toBe('FALLBACK_CHAIN_MISMATCH');
+  });
+
+  it('accepts the active chain, bounded at sixteen canonical tags', () => {
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.parse({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: ['fr', 'en-US'],
+      }),
+    ).toEqual({
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['fr', 'en-US'],
+    });
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.safeParse({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.safeParse({
+        reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+        activeFallbackChain: Array.from({ length: 16 }, (_unused, i) =>
+          String.fromCharCode(97 + i).repeat(2),
+        ),
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    { reasonCode: 'FALLBACK_CHAIN_MISMATCH' },
+    { activeFallbackChain: ['en-US'] },
+    { reasonCode: 'SOURCE_HASH_CONFLICT', activeFallbackChain: ['en-US'] },
+    { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en-us'] },
+    { reasonCode: 'FALLBACK_CHAIN_MISMATCH', activeFallbackChain: ['en_US'] },
+    {
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: Array.from({ length: 17 }, () => 'fr'),
+    },
+    {
+      reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      activeFallbackChain: ['en-US'],
+      extra: true,
+    },
+  ])('refuses %j', (candidate) => {
+    expect(
+      LocaleFallbackChainMismatchDetailsSchema.safeParse(candidate).success,
+    ).toBe(false);
+  });
+});
+
+describe('[P2-S09-AC-1166] no_fallback is stored per locale variant', () => {
+  const OTHER_FIELD_ID = '30000000-0000-4000-8000-000000000033';
+
+  it('[P2-S09-AC-1166] the variant request carries the explicit per-variant no_fallback field set', () => {
+    expect(
+      LocaleVariantRequestSchema.parse(request).noFallbackFieldIds,
+    ).toEqual([FIELD_ID]);
+  });
+
+  it('[P2-S09-AC-1166] the stored variant resource reports the per-variant no_fallback field set', () => {
+    expect(
+      LocaleVariantResourceSchema.parse(resource).noFallbackFieldIds,
+    ).toEqual([FIELD_ID]);
+  });
+
+  it('[P2-S09-AC-1166] the set is required on the request and on the resource, never implied', () => {
+    const without = (value: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(value).filter(([key]) => key !== 'noFallbackFieldIds'),
+      );
+    const withoutOnRequest = without(request);
+    const withoutOnResource = without(resource);
+    expect(LocaleVariantRequestSchema.safeParse(withoutOnRequest).success).toBe(
+      false,
+    );
+    expect(
+      LocaleVariantResourceSchema.safeParse(withoutOnResource).success,
+    ).toBe(false);
+  });
+
+  it('[P2-S09-AC-1166] two variants of one entry store their own different sets', () => {
+    const fr = LocaleVariantResourceSchema.parse(resource);
+    const de = LocaleVariantResourceSchema.parse({
+      ...resource,
+      locale: 'de-DE',
+      noFallbackFieldIds: [OTHER_FIELD_ID],
+    });
+    expect([fr.noFallbackFieldIds, de.noFallbackFieldIds]).toEqual([
+      [FIELD_ID],
+      [OTHER_FIELD_ID],
+    ]);
+  });
+
+  it('[P2-S09-AC-1166] a duplicated field id in the set is refused on the request and on the resource', () => {
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: [FIELD_ID, FIELD_ID],
+      }).success,
+    ).toBe(false);
+    expect(
+      LocaleVariantResourceSchema.safeParse({
+        ...resource,
+        noFallbackFieldIds: [FIELD_ID, FIELD_ID],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('[P2-S09-AC-1166] the set is bounded at 128 field ids and every member is a UUID', () => {
+    const ids = Array.from(
+      { length: 129 },
+      (_, index) =>
+        `30000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    );
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: ids.slice(0, 128),
+      }).success,
+    ).toBe(true);
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: ids,
+      }).success,
+    ).toBe(false);
+    expect(
+      LocaleVariantRequestSchema.safeParse({
+        ...request,
+        noFallbackFieldIds: ['not-a-uuid'],
+      }).success,
+    ).toBe(false);
+  });
+});

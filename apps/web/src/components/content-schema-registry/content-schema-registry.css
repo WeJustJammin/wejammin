@@ -5,9 +5,15 @@
   --registry-surface: #f7f9fb;
   --registry-accent: #0b5cad;
   color: var(--registry-ink);
-  max-width: 82rem;
+  /* FE03 Responsive Behavior: 4 columns, 16 px gutter and margins (mobile). */
+  --registry-columns: 4;
+  --registry-gutter: 1rem;
+  --registry-margin: 1rem;
+  box-sizing: border-box;
+  max-width: 90rem;
   margin: 0 auto;
-  padding: 1rem;
+  min-inline-size: 0;
+  padding: var(--registry-margin);
 }
 
 .content-schema-registry a,
@@ -153,6 +159,8 @@
   align-items: center;
   display: flex;
   gap: 0.35rem;
+  /* The whole row is the target: 44 px tall on every width (WCAG 2.5.8 floor is 24). */
+  min-block-size: 2.75rem;
 }
 
 .content-schema-registry-checkbox-field input {
@@ -164,6 +172,17 @@
   color: var(--registry-muted);
   font-size: 0.9rem;
   margin: 0;
+}
+
+.content-schema-registry-field-error {
+  color: #b42318;
+  font-size: 0.95rem;
+  margin-block: 0;
+}
+
+.content-schema-registry-command-form [aria-invalid='true'] {
+  border-color: #b42318;
+  outline-color: #b42318;
 }
 
 .content-schema-registry-actions {
@@ -244,6 +263,12 @@
   overflow-wrap: anywhere;
 }
 
+.content-schema-registry dd,
+.content-schema-registry p,
+.content-schema-registry code {
+  overflow-wrap: anywhere;
+}
+
 .content-schema-registry-filter-actions {
   align-items: center;
   display: flex;
@@ -263,9 +288,51 @@
   padding-inline: 1rem;
 }
 
+/* Shell: the sidebar exists from 769 px; mobile keeps the route's own compact navigation. */
+.content-schema-registry-sidebar {
+  display: none;
+}
+
+.content-schema-registry-shell-main {
+  container-name: registry-main;
+  container-type: inline-size;
+  min-inline-size: 0;
+}
+
+.content-schema-registry-sidebar-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.content-schema-registry-action-rail {
+  background: var(--registry-surface);
+  border: 1px solid var(--registry-border);
+  border-radius: 0.5rem;
+  margin-block: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.content-schema-registry-action-rail h4 {
+  margin-block: 0 0.5rem;
+}
+
+.content-schema-registry-action-rail ul {
+  margin-block: 0.25rem 0;
+  padding-inline-start: 1.25rem;
+}
+
 .content-schema-registry-grid {
+  column-gap: var(--registry-gutter);
   display: grid;
-  gap: 1.25rem;
+  grid-template-columns: repeat(var(--registry-columns), minmax(0, 1fr));
+  row-gap: var(--registry-gutter);
+}
+
+/* Mobile: list, then detail, then inspector and commands, one column. */
+.content-schema-registry-grid > * {
+  grid-column: 1 / -1;
+  min-inline-size: 0;
 }
 
 .content-schema-registry-list,
@@ -330,6 +397,22 @@
 
 .content-schema-registry th {
   background: var(--registry-surface);
+}
+
+.content-schema-registry-sort-form {
+  margin: 0;
+}
+
+.content-schema-registry-sort-form button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  padding-inline: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .content-schema-registry td small {
@@ -418,14 +501,98 @@
   white-space: nowrap;
 }
 
-/* Keep the two-column layout off at the 768px stacked-layout boundary. */
+/* Tablet 769 to 1024 px: 8 columns, 20 px gutter, 24 px margins. */
 @media (min-width: 48.0625rem) {
   .content-schema-registry {
-    padding: 1.5rem;
+    --registry-columns: 8;
+    --registry-gutter: 1.25rem;
+    --registry-margin: 1.5rem;
   }
 
-  .content-schema-registry-grid {
-    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+  .content-schema-registry-shell {
+    align-items: start;
+    column-gap: var(--registry-gutter);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .content-schema-registry-sidebar {
+    border: 1px solid var(--registry-border);
+    border-radius: 0.5rem;
+    box-sizing: border-box;
+    display: block;
+    inline-size: 12rem;
+    padding: 0.5rem;
+    position: sticky;
+    top: 1rem;
+  }
+
+  .content-schema-registry-sidebar-toggle {
+    background: transparent;
+    border: 1px solid var(--registry-border);
+    border-radius: 0.25rem;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 650;
+    gap: 0.4rem;
+    inline-size: 100%;
+  }
+
+  .content-schema-registry-sidebar-toggle::before {
+    content: '\00ab' / '';
+  }
+
+  .content-schema-registry-sidebar-nav {
+    margin-block-start: 0.5rem;
+  }
+
+  .content-schema-registry-detail-heading > a {
+    order: 2;
+  }
+
+  .content-schema-registry-grid > * {
+    grid-column: span 4;
+  }
+
+  .content-schema-registry-grid > .content-schema-registry-detail:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Tablet disclosure: the collapsed sidebar keeps only its toggle. */
+/* Range syntax keeps 1025 px out of this band: Chrome rounds a max-width of
+   64.0624rem up to 1025 px, which hid the nav of a collapsed sidebar at desktop. */
+@media (width > 48rem) and (width < 64.0625rem) {
+  .content-schema-registry-sidebar[data-collapsed='true'] {
+    inline-size: auto;
+  }
+
+  .content-schema-registry-sidebar[data-collapsed='true']
+    .content-schema-registry-sidebar-toggle::before {
+    content: '\00bb' / '';
+  }
+
+  .content-schema-registry-sidebar[data-collapsed='true']
+    .content-schema-registry-sidebar-label {
+    block-size: 1px;
+    clip-path: inset(50%);
+    inline-size: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+  }
+
+  .content-schema-registry-sidebar[data-collapsed='true']
+    .content-schema-registry-sidebar-nav {
+    display: none;
+  }
+}
+
+/* Tablet: list and inspector stack when the main column cannot hold both. */
+@container registry-main (max-width: 39.99rem) {
+  .content-schema-registry-grid > * {
+    grid-column: 1 / -1;
   }
 }
 
@@ -439,9 +606,64 @@
   }
 }
 
-@media (min-width: 64rem) {
-  .content-schema-registry-grid {
-    grid-template-columns: minmax(0, 1.25fr) minmax(24rem, 0.75fr);
+/* Desktop 1025 px and up: 12 columns, 24 px gutter, 1440 px maximum. */
+@media (min-width: 64.0625rem) {
+  .content-schema-registry {
+    --registry-columns: 12;
+    --registry-gutter: 1.5rem;
+    --registry-margin: 1.5rem;
+  }
+
+  .content-schema-registry .content-schema-registry-sidebar-toggle {
+    display: none;
+  }
+
+  .content-schema-registry-grid > .content-schema-registry-list-column {
+    grid-column: span 7;
+  }
+
+  .content-schema-registry-grid > .content-schema-registry-detail {
+    grid-column: span 5;
+  }
+
+  .content-schema-registry-grid > .content-schema-registry-version-side,
+  .content-schema-registry-grid > .content-schema-registry-command-stack {
+    grid-column: span 6;
+  }
+
+  .content-schema-registry-grid > .content-schema-registry-detail:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Stable list/detail split: a lone detail owns a sticky action rail beside its body. */
+@media (min-width: 48.0625rem) {
+  @container registry-main (min-width: 44rem) {
+    .content-schema-registry-detail:first-child {
+      column-gap: var(--registry-gutter);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 14rem;
+    }
+
+    .content-schema-registry-detail:first-child > * {
+      grid-column: 1;
+      min-inline-size: 0;
+    }
+
+    .content-schema-registry-detail:first-child
+      > .content-schema-registry-detail-heading {
+      grid-column: 1 / -1;
+    }
+
+    .content-schema-registry-detail:first-child
+      > .content-schema-registry-action-rail {
+      align-self: start;
+      grid-column: 2;
+      grid-row: 2 / span 24;
+      margin-block-start: 0;
+      position: sticky;
+      top: 1rem;
+    }
   }
 }
 

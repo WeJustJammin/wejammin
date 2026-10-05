@@ -116,7 +116,7 @@ describe('Slice 09 operational release evidence contract', () => {
     ).toBe(false);
   });
 
-  it('[P2-S09-AC-209] locks the full canonical twelve-condition alert set', () => {
+  it('[P2-S09-AC-209] [P2-S09-AC-693] [P2-S09-AC-694] locks the full canonical sixteen-condition alert set', () => {
     expect(CONTENT_SCHEMA_REGISTRY_ALERT_CONDITIONS).toEqual([
       'activation_blocked',
       'migration_retry_exceeded',
@@ -130,6 +130,10 @@ describe('Slice 09 operational release evidence contract', () => {
       'acceptance_p99_exceeded',
       'queue_first_attempt_p95_exceeded',
       'daily_dlq_rate_exceeded',
+      'review_open_past_window',
+      'decision_denial_spike',
+      'assignment_denial_spike',
+      'capability_grant_denial_spike',
     ]);
   });
 

@@ -17,6 +17,12 @@ import {
   forwardContentSchemaRegistryMutation,
 } from '../../../server/content-schema-registry-platform-api';
 import { safeContentSchemaRegistryReturnPath } from '../../../server/content-schema-registry-contracts';
+import { cmsAccessNavigationVisible } from '../../../server/cms-capability-grant-page-response';
+import { probeCmsCapabilityGrantOwner } from '../../../server/cms-capability-grant-platform-api';
+import {
+  jsonContinuation,
+  wantsJsonResponse,
+} from '../../../server/content-schema-registry-mutation-outcome';
 
 export const prerender = false;
 
@@ -46,10 +52,12 @@ if (Astro.request.method === 'POST') {
   );
   if (!mutation.ok) return mutation;
   try {
-    return Astro.redirect(
-      contentSchemaRegistryDetailPath(await mutation.clone().json()),
-      303,
+    const location = contentSchemaRegistryDetailPath(
+      await mutation.clone().json(),
     );
+    return wantsJsonResponse(Astro.request)
+      ? jsonContinuation(mutation, location)
+      : Astro.redirect(location, 303);
   } catch {
     return new Response('Bad gateway', {
       status: 502,
@@ -92,6 +100,12 @@ if (result.kind === 'degraded' || result.kind === 'error') {
 }
 const page = result.page;
 applyContentSchemaRegistryRecoveryHeaders(Astro.response.headers, page);
+// Navigation only: the grant console entry is shown solely to the owner, whose
+// proof is a successful one-row CMS-03A-18 read. A failed probe hides the link.
+const ownerProbeSucceeded =
+  page.variant === 'ownerFull' &&
+  (await probeCmsCapabilityGrantOwner(Astro.request, env.PLATFORM_API));
+const ownerNav = cmsAccessNavigationVisible(page.variant, ownerProbeSucceeded);
 ---
 
 <html lang="en">
@@ -102,6 +116,7 @@ applyContentSchemaRegistryRecoveryHeaders(Astro.response.headers, page);
       name="description"
       content="Review disclosure-safe content schema registry records."
     />
+    <meta name="robots" content="noindex" />
     <title>Content schema registry | WeJammin</title>
   </head>
   <body class="content-schema-registry-page">
@@ -122,6 +137,11 @@ applyContentSchemaRegistryRecoveryHeaders(Astro.response.headers, page);
         <a href="/app/cms-content-modeling" aria-current="page"
           >Content schema registry</a
         >
+        {
+          ownerNav ? (
+            <a href="/app/cms-content-modeling/capability-grants">CMS access</a>
+          ) : null
+        }
         <a href="/system/degraded">System status</a>
       </nav>
     </header>
@@ -140,5 +160,6 @@ applyContentSchemaRegistryRecoveryHeaders(Astro.response.headers, page);
       />
     </main>
     <script src="../../../lib/route-heading-focus.ts"></script>
+    <script src="../../../lib/auth-scope-sync.ts"></script>
   </body>
 </html>

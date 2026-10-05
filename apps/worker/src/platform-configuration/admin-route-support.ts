@@ -1,7 +1,9 @@
 import type { WorkerContext } from '../index';
+import { isFreshProof } from '../authentication/step-up';
 import {
   applyRateHeaders,
   authError,
+  rateLimitedDetails,
   responseForAuthError,
 } from '../authentication/boundary';
 import type {
@@ -82,19 +84,11 @@ export const requireConfigurationSession = async (
   }
 };
 
-/** Step-up must be in the past and no more than ten minutes old. */
+/** DEC-111 window: `-30 s <= now - stepUpAt <= 600 s`, the one shared rule. */
 export const isConfigurationStepUpFresh = (
   session: AuthenticationSession,
   nowMs = Date.now(),
-): boolean => {
-  if (session.stepUpAt === null) return false;
-  const stepUpMs = Date.parse(session.stepUpAt);
-  return (
-    Number.isFinite(stepUpMs) &&
-    stepUpMs <= nowMs &&
-    nowMs - stepUpMs <= 10 * 60 * 1000
-  );
-};
+): boolean => isFreshProof(session.stepUpAt, nowMs);
 
 const localRateState = new Map<string, { count: number; resetAt: number }>();
 
@@ -183,11 +177,12 @@ export const enforceConfigurationRate = async (
   if (merged.allowed) return null;
   return responseForAuthError(
     context,
-    authError(429, 'RATE_LIMITED', 'Too many requests.', {
-      retryAfterSeconds: Math.max(1, merged.resetAt - now),
-      limit: merged.limit,
-      resetAt: merged.resetAt,
-    }),
+    authError(
+      429,
+      'RATE_LIMITED',
+      'Too many requests.',
+      rateLimitedDetails(merged, now * 1000),
+    ),
   );
 };
 

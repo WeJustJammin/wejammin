@@ -1,0 +1,79 @@
+-- CMS-03B-10 must not reveal a schema version owned by another organization.
+-- A content-type/version pair that resolves globally is still NOT_FOUND to an
+-- author acting for this organization; neither artifact nor policy comparison
+-- may disclose that the foreign version exists. All rows roll back with pgTAP.
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000004'::uuid, null);
+select set_config('app.correlation_id', 'a9100000-0000-4000-8000-000000000791', true);
+select set_config('app.idempotency_key_hash', 's10-foreign-org-create-0001', true);
+select set_config('app.request_hash', 's10-foreign-org-request-0001', true);
+
+create temp table s10_foreign_org on commit drop as
+select (result->>'organizationId')::uuid as organization_id
+from lateral (
+  select platform_api.rpc_create_organization('self_member', '{}'::text[]) as result
+) created;
+
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_content_types(
+  id, owner_id, state, version, type_key, owner_capability, created_by
+)
+select 'a9100000-0000-4000-8000-000000000701', organization_id,
+  'active', 1, 'foreign_article', 'cms.schema_designer',
+  'a9100000-0000-4000-8000-000000000004'
+from s10_foreign_org;
+
+insert into platform_private.cms_content_type_versions(
+  id, owner_id, state, version, content_type_id, version_no, labels,
+  workflow_key, workflow_version, source_locale, default_locale,
+  supported_locales, fallback_chains, locale_config_hash,
+  schema_artifact_id, definition_hash, compatibility, created_by,
+  activation_workflow_policy_key, activation_workflow_policy_version,
+  activation_workflow_policy_hash, activation_required_decision_count,
+  activation_required_capabilities, activation_approval_evidence_hash
+)
+select 'a9100000-0000-4000-8000-000000000702', organization_id,
+  'active', 1, 'a9100000-0000-4000-8000-000000000701', 1,
+  '{"label":"Foreign article"}'::jsonb, 'editorial', 1, 'en-US', 'en-US',
+  '["en-US"]'::jsonb, '{}'::jsonb, '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
+  'a9100000-0000-4000-8000-000000000703', repeat('a', 64), 'additive',
+  'a9100000-0000-4000-8000-000000000004',
+  'cms.entry.author', 1, repeat('a', 64), 1,
+  jsonb_build_array('cms.author'), repeat('b', 64)
+from s10_foreign_org;
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_create_entry('
+    || quote_literal((
+      select jsonb_set(
+        jsonb_set(request, '{contentTypeId}',
+          to_jsonb('a9100000-0000-4000-8000-000000000701'::text)),
+        '{contentTypeVersionId}',
+        to_jsonb('a9100000-0000-4000-8000-000000000702'::text)
+      )::text
+      from s10_create_request
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_state(), 'P0001',
+  'CMS-03B-10 foreign schema pair returns a typed, non-disclosing refusal'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'NOT_FOUND',
+  'CMS-03B-10 conceals a foreign active version before artifact or policy lookup'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_content_entries entry
+   where entry.owner_id = (select value::uuid from s10_ids where key = 'organization')),
+  1,
+  'CMS-03B-10 foreign version attempt leaves the acting owner with only its seeded entry'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_content_entries entry
+   where entry.owner_id = (select organization_id from s10_foreign_org)),
+  0,
+  'CMS-03B-10 foreign version attempt does not create an entry for the other owner'
+);

@@ -1,0 +1,96 @@
+---
+import { createRequestId } from '@wejammin/contracts';
+import { env } from 'cloudflare:workers';
+import '@wejammin/ui/styles.css';
+import '../styles/infrastructure.css';
+import '../styles/step-up-mfa.css';
+
+import StepUpChallengeForm from '../components/identity-authority/step-up-mfa/StepUpChallengeForm.tsx';
+import StepUpPageHeading from '../components/identity-authority/step-up-mfa/StepUpPageHeading.tsx';
+import { STEP_UP_PAGE_HEADINGS } from '../components/identity-authority/step-up-mfa/step-up-page-headings.ts';
+import { authPageRedirect } from '../server/auth-page-redirect.ts';
+import { resolveStepUpPage } from '../server/step-up-page-context.ts';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const requestId = createRequestId(
+  Astro.request.headers.get('x-request-id') ?? undefined,
+);
+const resolved = await resolveStepUpPage({
+  request: Astro.request,
+  binding: env.PLATFORM_API,
+  returnToParam: Astro.url.searchParams.get('returnTo'),
+  requestId,
+});
+if (resolved.kind === 'unauthenticated')
+  return authPageRedirect(resolved.location);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="Confirm it is you with your authenticator before a protected action."
+    />
+    <title>{STEP_UP_PAGE_HEADINGS['step-up'].documentTitle}</title>
+  </head>
+  <body class="infra-page">
+    <nav aria-label="Skip navigation">
+      <a class="infra-skip-link" href="#main-content">Skip to main content</a>
+    </nav>
+    <main id="main-content" class="infra-main" tabindex="-1">
+      <StepUpPageHeading page="step-up" />
+      {
+        resolved.kind === 'ready' ? (
+          <StepUpChallengeForm
+            variant="authPage"
+            returnTo={resolved.page.returnTo}
+            factors={resolved.page.factors.map(({ id, friendlyName }) => ({
+              id,
+              friendlyName,
+            }))}
+            initialPhase={resolved.page.initialPhase}
+            initialFreshUntil={
+              resolved.page.stepUp.fresh
+                ? resolved.page.stepUp.freshUntil
+                : null
+            }
+            client:load
+          />
+        ) : (
+          <section
+            class="infra-capability-gate"
+            role="status"
+            aria-live="polite"
+          >
+            <h2>
+              {resolved.reason === 'no-method'
+                ? 'No verification method is available'
+                : 'Verification is temporarily unavailable'}
+            </h2>
+            <p>
+              {resolved.reason === 'no-method'
+                ? 'This account cannot verify a protected action right now.'
+                : 'We could not check your verification options. Nothing was changed.'}
+            </p>
+            <p>
+              <a href={resolved.returnTo}>Go back</a>
+            </p>
+            <p class="infra-request-id">
+              Request ID: <code>{resolved.requestId}</code>
+            </p>
+          </section>
+        )
+      }
+    </main>
+    <script
+      src="../components/identity-authority/step-up-mfa/focus-page-heading.ts"
+    ></script>
+    <script src="../lib/auth-scope-sync.ts"></script>
+  </body>
+</html>

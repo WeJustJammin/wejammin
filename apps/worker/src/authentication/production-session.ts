@@ -6,6 +6,7 @@ import {
   asRecord,
   traceFor,
   type AuthProductionConfiguration,
+  type VerifiedAuthToken,
 } from './production-configuration';
 import { callAuthJson, callRpc, mapProductionFailure } from './production-http';
 import {
@@ -16,17 +17,49 @@ import {
   readCookie,
   sessionCookies,
 } from './production-cookie';
-import { verifyTokenResponse } from './production-token';
+import { accessTokenExpired, verifyTokenResponse } from './production-token';
 import type {
   AuthenticationDependencies,
   AuthenticationResult,
   AuthenticationSession,
 } from './types';
 
+/**
+ * Canonical UUID form (any version/variant nibble). The private binding id is
+ * a database identifier, not a canonical v4 value, so this shape check is
+ * deliberately narrower than the public resource contracts.
+ */
+const ACTING_CONTEXT_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
+/**
+ * The service-role projection is the only carrier of the private
+ * acting-context binding id. Anything that is neither an explicit null nor a
+ * canonical UUID fails closed so a malformed dependency response can never be
+ * mistaken for an unbound session.
+ */
+const parseActingContextId = (
+  value: unknown,
+): AuthenticationResult<string | null> =>
+  value === null || value === undefined
+    ? { ok: true, value: null }
+    : typeof value === 'string' && ACTING_CONTEXT_UUID_PATTERN.test(value)
+      ? { ok: true, value: value }
+      : authError(
+          502,
+          'DEPENDENCY_INVALID_RESPONSE',
+          'Authentication persistence returned an invalid response.',
+        );
+
 const sessionProjection = (
   value: unknown,
   token: Pick<AuthenticationSession, 'expiresAt'>,
-): AuthenticationResult<ReturnType<typeof SessionResourceSchema.parse>> => {
+): AuthenticationResult<
+  Readonly<{
+    resource: ReturnType<typeof SessionResourceSchema.parse>;
+    actingContextId: string | null;
+  }>
+> => {
   const candidate = asRecord(value);
   const parsed = SessionResourceSchema.safeParse({
     authenticated: true,
@@ -36,13 +69,42 @@ const sessionProjection = (
     actingPartyId: candidate?.actingPartyId ?? null,
     sessionExpiresAt: token.expiresAt,
   });
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : authError(
-        502,
-        'DEPENDENCY_INVALID_RESPONSE',
-        'Authentication persistence returned an invalid response.',
-      );
+  if (!parsed.success) {
+    return authError(
+      502,
+      'DEPENDENCY_INVALID_RESPONSE',
+      'Authentication persistence returned an invalid response.',
+    );
+  }
+  const actingContextId = parseActingContextId(candidate?.actingContextId);
+  return actingContextId.ok
+    ? {
+        ok: true,
+        value: {
+          resource: parsed.data,
+          actingContextId: actingContextId.value,
+        },
+      }
+    : actingContextId;
+};
+
+/**
+ * BE01a "Step-Up Proof": the proof is a verified session whose token carries
+ * `aal: "aal2"` and a valid MFA `amr` entry, and it is evaluated per request.
+ * The sealed session reference only anchors the instant so a refreshed token
+ * can never extend freshness: the proof instant is the older of the token's own
+ * MFA `amr` time and the sealed instant, and any token that is not `aal2` with
+ * an MFA `amr` entry carries no proof at all, however fresh the sealed instant.
+ */
+export const sessionStepUpAt = (
+  token: Pick<VerifiedAuthToken, 'aal' | 'stepUpAt'>,
+  sealedInstant: string,
+  nowMs: number,
+): string | null => {
+  if (token.aal !== 'aal2' || token.stepUpAt === null) return null;
+  const sealed = Date.parse(sealedInstant);
+  if (!Number.isFinite(sealed) || sealed > nowMs + 30_000) return null;
+  return sealed <= Date.parse(token.stepUpAt) ? sealedInstant : token.stepUpAt;
 };
 
 const readIndexedSession = async (
@@ -100,10 +162,11 @@ export const createSessionDependencies = (
           value: {
             authUserId: reference.nonce,
             sessionId: reference.state,
-            accountState: indexed.value.accountState,
-            personId: indexed.value.personId,
-            actingPartyId: indexed.value.actingPartyId,
-            expiresAt: indexed.value.sessionExpiresAt,
+            accountState: indexed.value.resource.accountState,
+            personId: indexed.value.resource.personId,
+            actingPartyId: indexed.value.resource.actingPartyId,
+            actingContextId: indexed.value.actingContextId,
+            expiresAt: indexed.value.resource.sessionExpiresAt,
             stepUpAt: null,
           },
         };
@@ -115,6 +178,15 @@ export const createSessionDependencies = (
           ? null
           : await openFlowCookie(sealedReference, config);
       if (accessToken === null || sessionReference?.provider !== 'session') {
+        return authError(
+          401,
+          'UNAUTHENTICATED',
+          'The authentication session is invalid.',
+        );
+      }
+      // An access token past its own expiry is an expired session (401), not a
+      // malformed provider response, and needs no provider round trip.
+      if (accessTokenExpired(accessToken, config.now())) {
         return authError(
           401,
           'UNAUTHENTICATED',
@@ -151,16 +223,17 @@ export const createSessionDependencies = (
         value: {
           authUserId: verified.value.authUserId,
           sessionId: verified.value.sessionId,
-          accountState: indexed.value.accountState,
-          personId: indexed.value.personId,
-          actingPartyId: indexed.value.actingPartyId,
+          accountState: indexed.value.resource.accountState,
+          personId: indexed.value.resource.personId,
+          actingPartyId: indexed.value.resource.actingPartyId,
+          actingContextId: indexed.value.actingContextId,
           expiresAt: verified.value.expiresAt,
-          stepUpAt:
-            sessionReference.verifier !== '' &&
-            Number.isFinite(Date.parse(sessionReference.verifier)) &&
-            Date.parse(sessionReference.verifier) <= config.now() + 30_000
-              ? sessionReference.verifier
-              : null,
+          primaryAuthAt: verified.value.primaryAuthAt,
+          stepUpAt: sessionStepUpAt(
+            verified.value,
+            sessionReference.verifier,
+            config.now(),
+          ),
         },
       };
     } catch (error) {
@@ -221,12 +294,11 @@ export const createSessionDependencies = (
       }
       const preservedToken = {
         ...token.value,
-        stepUpAt:
-          sessionReference.verifier !== '' &&
-          Number.isFinite(Date.parse(sessionReference.verifier)) &&
-          Date.parse(sessionReference.verifier) <= config.now() + 30_000
-            ? sessionReference.verifier
-            : null,
+        stepUpAt: sessionStepUpAt(
+          token.value,
+          sessionReference.verifier,
+          config.now(),
+        ),
       };
       const trace = traceFor(request);
       await callRpc(
@@ -253,7 +325,7 @@ export const createSessionDependencies = (
       return {
         ok: true,
         value: {
-          resource: indexed.value,
+          resource: indexed.value.resource,
           cookies: await sessionCookies(preservedToken, config),
         },
       };

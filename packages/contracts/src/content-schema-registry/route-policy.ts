@@ -41,3 +41,29 @@ export const assertContentSchemaRegistryRouteRegistry = <
       );
   return routes;
 };
+
+/**
+ * Whether the held capabilities open a route. `capabilityMode: 'any_of'`
+ * needs one listed capability (CMS-03A-13: submitter/designer scope OR
+ * assigned review-only scope); otherwise every listed capability is needed.
+ * A route with no capability key (the owner-only CMS-03A-15 through
+ * CMS-03A-18) is opened by the receipt-derived owner and never by a
+ * capability, so it fails closed here.
+ */
+export const routeCapabilitiesSatisfied = (
+  route: Readonly<{
+    capability?: string;
+    capabilities?: readonly string[];
+    capabilityMode?: 'any_of' | 'all_of';
+  }>,
+  held: Iterable<string>,
+): boolean => {
+  const required =
+    route.capabilities ??
+    (route.capability === undefined ? [] : [route.capability]);
+  if (required.length === 0) return false;
+  const heldSet = new Set(held);
+  return route.capabilityMode === 'any_of'
+    ? required.some((capability) => heldSet.has(capability))
+    : required.every((capability) => heldSet.has(capability));
+};

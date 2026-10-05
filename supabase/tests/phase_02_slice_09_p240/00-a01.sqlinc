@@ -1,0 +1,51 @@
+-- Shared CMS-03A-01 request builders and the commit-nothing fingerprint for the
+-- Slice 09 pre-amendment (p240) pgTAP suites.  Requires the DEC-108 fragments
+-- 00-helpers, 01-actors, 02-chain and 03-support.  pg_temp.p_run runs CMS-03A-01 as the
+-- owner designer and returns 'ok' only when the outcome token is the expected one
+-- and, for a refusal, nothing at all was committed.
+
+create or replace function pg_temp.p_rows() returns text language sql as $body$
+  select concat_ws('|',
+    (select count(*) from platform_private.cms_content_types),
+    (select count(*) from platform_private.cms_content_type_versions),
+    (select count(*) from platform_private.cms_field_definition_versions),
+    (select count(*) from platform_private.cms_relation_definitions),
+    (select count(*) from platform_private.cms_content_type_template_bindings),
+    (select count(*) from platform_private.cms_content_type_capability_bindings),
+    (select count(*) from platform_private.cms_schema_artifacts),
+    (select count(*) from platform_private.outbox_events),
+    (select count(*) from audit_private.audit_events),
+    (select count(*) from platform_private.idempotency_records))
+$body$;
+create or replace function pg_temp.p_field(p_key text, p_kind text, p_over jsonb default '{}'::jsonb) returns jsonb
+language sql as $body$
+  select jsonb_build_object('stableFieldId', extensions.gen_random_uuid(), 'key', p_key, 'kind', p_kind,
+    'constraints', '{}'::jsonb, 'required', false, 'validatorKey', null, 'validatorVersion', null,
+    'defaultMode', 'none', 'localizationMode', 'none',
+    'editorConfig', jsonb_build_object('label', initcap(p_key), 'order', 0), 'lifecycle', 'active') || p_over
+$body$;
+create or replace function pg_temp.p_key(p_label text) returns text language sql immutable as $body$
+  select 'p240_' || substr(md5(p_label), 1, 20)
+$body$;
+create or replace function pg_temp.p_base(p_key text, p_over jsonb default '{}'::jsonb) returns jsonb
+language sql as $body$
+  select jsonb_build_object('typeKey', p_key, 'label', 'P240 ' || p_key, 'ownerCapability', 'cms.schema_designer',
+    'sourceLocale', 'en-US', 'defaultLocale', 'en-US', 'supportedLocales', '["en-US"]'::jsonb, 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1', 'defaultTemplateVersionId', null,
+    'fields', jsonb_build_array(pg_temp.p_field('title', 'short_text')),
+    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb,
+    'idempotencyKey', 'p240-' || substr(extensions.gen_random_uuid()::text, 1, 24)) || p_over
+$body$;
+-- Runs CMS-03A-01 as the owner designer; 'ok' only when the outcome token is the
+-- expected one AND (for a refusal) nothing at all was committed.
+create or replace function pg_temp.p_run(p_label text, p_req jsonb, p_expected text) returns text
+language plpgsql as $body$
+declare before_rows text := pg_temp.p_rows(); outcome text;
+begin
+  perform pg_temp.s09d_rpc(p_label, 'platform_api.cms_create_type_draft', 'owner', p_req);
+  outcome := pg_temp.s09d_outcome(p_label);
+  return case when outcome = p_expected and (p_expected = 'OK' or before_rows = pg_temp.p_rows()) then 'ok'
+    else 'bad:' || outcome || ' rows ' || before_rows || ' -> ' || pg_temp.p_rows() end;
+end;
+$body$;
+

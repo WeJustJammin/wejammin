@@ -11,22 +11,22 @@ import { authError, responseForAuthError } from '../authentication/boundary';
 import type { AuthenticationSession } from '../authentication/types';
 import { createPlatformConfigurationPortRunner } from './runtime-port';
 import {
+  admitConfigurationTransport,
   checkConfigurationSameOrigin,
   configurationBodySchemas,
   configurationOperation,
   configurationPathSchemas,
   bindEffectiveQueryScope,
   bindMutationScope,
-  csrfIfCookie,
   enforceConfigurationRate,
   hasServiceConsumerHeaders,
-  parseConfigurationBody,
   parseConfigurationCommandHeaders,
   parseEffectiveQuery,
+  requireConfigurationSession,
   resolveReleasePrincipal,
   resolveServiceConsumer,
 } from './route-support';
-import { parseRoutePath, send, sessionWithRate } from './route-runtime-support';
+import { parseRoutePath, send, stepUpAndRate } from './route-runtime-support';
 import type { ConfigurationServiceConsumer } from './types';
 
 export type PlatformConfigurationRouteRuntime = Readonly<{
@@ -46,20 +46,19 @@ export const createPlatformConfigurationRouteRuntime = (
   const register = async (context: WorkerContext): Promise<Response> => {
     const operationId = 'CFG-05A-01' as const;
     configurationOperation(context, operationId);
-    const origin = checkConfigurationSameOrigin(context);
-    if (!origin.ok) return responseForAuthError(context, origin);
-    const body = await parseConfigurationBody(
-      context.req.raw,
-      configurationBodySchemas.register,
-    );
-    if (!body.ok) return responseForAuthError(context, body);
-    const headers = parseConfigurationCommandHeaders(context.req.raw);
-    if (!headers.ok) return responseForAuthError(context, headers);
+    // BE00 step 2: origin, body ceiling, content type (a signed service call
+    // carries no cookie, so there is no CSRF step).
+    const transport = await admitConfigurationTransport(context);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    // BE00 step 4: the verified release principal.
     const principal = await resolveReleasePrincipal(
       context,
       configuration?.resolveReleasePrincipal,
     );
     if (!principal.ok) return responseForAuthError(context, principal);
+    // BE00 step 6: strict body.
+    const body = transport.value.decode(configurationBodySchemas.register);
+    if (!body.ok) return responseForAuthError(context, body);
     const rate = await enforceConfigurationRate(
       context,
       operationId,
@@ -71,6 +70,9 @@ export const createPlatformConfigurationRouteRuntime = (
       },
     );
     if (rate !== null) return rate;
+    // BE00 step 8: exact Idempotency-Key.
+    const headers = parseConfigurationCommandHeaders(context.req.raw);
+    if (!headers.ok) return responseForAuthError(context, headers);
     return send(
       context,
       await runner.run(
@@ -93,8 +95,27 @@ export const createPlatformConfigurationRouteRuntime = (
   const effective = async (context: WorkerContext): Promise<Response> => {
     const operationId = 'CFG-05A-02' as const;
     configurationOperation(context, operationId);
+    // BE00 step 2: origin (a read has no body, CSRF or media).
     const origin = checkConfigurationSameOrigin(context);
     if (!origin.ok) return responseForAuthError(context, origin);
+    // BE00 steps 4 and 5: a verified service consumer or a verified session.
+    const serviceAttempt = hasServiceConsumerHeaders(context.req.raw);
+    let session: AuthenticationSession | undefined;
+    let service: ConfigurationServiceConsumer | null = null;
+    if (serviceAttempt) {
+      const resolvedService = await resolveServiceConsumer(
+        context,
+        configuration?.resolveServiceConsumer,
+      );
+      if (!resolvedService.ok)
+        return responseForAuthError(context, resolvedService);
+      service = resolvedService.value;
+    } else {
+      const resolved = await requireConfigurationSession(context, auth, false);
+      if (!resolved.ok) return responseForAuthError(context, resolved);
+      session = resolved.value;
+    }
+    // BE00 step 6: strict path and query.
     const path = parseRoutePath(
       configurationPathSchemas.key,
       context.req.param('key'),
@@ -102,19 +123,10 @@ export const createPlatformConfigurationRouteRuntime = (
     if (!path.ok) return responseForAuthError(context, path);
     let query = parseEffectiveQuery(context.req.raw, path.value);
     if (!query.ok) return responseForAuthError(context, query);
-    const serviceAttempt = hasServiceConsumerHeaders(context.req.raw);
-    let session: AuthenticationSession | undefined;
-    let serviceConsumer: ConfigurationServiceConsumer | null = null;
-    let servicePrincipalId: string | undefined;
-    let serviceConsumerKey: string | undefined;
-    if (serviceAttempt) {
-      const service = await resolveServiceConsumer(
-        context,
-        configuration?.resolveServiceConsumer,
-      );
-      if (!service.ok) return responseForAuthError(context, service);
+    // BE00 step 7: the caller's own scope, then quota.
+    if (service !== null) {
       const queryRecord = query.value as Readonly<Record<string, unknown>>;
-      if (queryRecord.consumerKey !== service.value.consumerKey)
+      if (queryRecord.consumerKey !== service.consumerKey)
         return responseForAuthError(
           context,
           authError(
@@ -123,27 +135,27 @@ export const createPlatformConfigurationRouteRuntime = (
             'The service consumer is not allowed for this key.',
           ),
         );
-      servicePrincipalId = service.value.principalId;
-      serviceConsumerKey = service.value.consumerKey;
-      serviceConsumer = service.value;
-    } else {
-      const resolved = await sessionWithRate(context, operationId, auth, false);
-      if (resolved.rate !== null) return resolved.rate;
-      session = resolved.session;
-      const bound = bindEffectiveQueryScope(
-        query.value as Readonly<Record<string, unknown>>,
-        session,
-      );
-      if (!bound.ok) return responseForAuthError(context, bound);
-      query = bound;
-    }
-    if (serviceConsumer !== null) {
       const rate = await enforceConfigurationRate(
         context,
         operationId,
         auth,
         null,
-        serviceConsumer,
+        service,
+      );
+      if (rate !== null) return rate;
+    } else {
+      const bound = bindEffectiveQueryScope(
+        query.value as Readonly<Record<string, unknown>>,
+        session as AuthenticationSession,
+      );
+      if (!bound.ok) return responseForAuthError(context, bound);
+      query = bound;
+      const rate = await enforceConfigurationRate(
+        context,
+        operationId,
+        auth,
+        session as AuthenticationSession,
+        null,
       );
       if (rate !== null) return rate;
     }
@@ -159,8 +171,12 @@ export const createPlatformConfigurationRouteRuntime = (
           path: { key: path.value },
           query: query.value as Readonly<Record<string, unknown>>,
           ...(session === undefined ? {} : { session }),
-          ...(servicePrincipalId === undefined ? {} : { servicePrincipalId }),
-          ...(serviceConsumerKey === undefined ? {} : { serviceConsumerKey }),
+          ...(service === null
+            ? {}
+            : {
+                servicePrincipalId: service.principalId,
+                serviceConsumerKey: service.consumerKey,
+              }),
         },
         Cfg05a02EffectiveValueResponseSchema,
       ),
@@ -171,35 +187,36 @@ export const createPlatformConfigurationRouteRuntime = (
   const propose = async (context: WorkerContext): Promise<Response> => {
     const operationId = 'CFG-05A-03' as const;
     configurationOperation(context, operationId);
-    const origin = checkConfigurationSameOrigin(context);
-    if (!origin.ok) return responseForAuthError(context, origin);
+    // BE00 step 2: origin, body ceiling, content type, session-bound CSRF.
+    const transport = await admitConfigurationTransport(context);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    // BE00 steps 4 and 5: verified session, then the acting context.
+    const session = await requireConfigurationSession(context, auth, true);
+    if (!session.ok) return responseForAuthError(context, session);
+    // BE00 step 6: strict path and body, then the server-bound scope.
     const path = parseRoutePath(
       configurationPathSchemas.definitionId,
       context.req.param('definitionId'),
     );
     if (!path.ok) return responseForAuthError(context, path);
-    const body = await parseConfigurationBody(
-      context.req.raw,
-      configurationBodySchemas.propose,
-    );
+    const body = transport.value.decode(configurationBodySchemas.propose);
     if (!body.ok) return responseForAuthError(context, body);
-    const headers = parseConfigurationCommandHeaders(context.req.raw);
-    if (!headers.ok) return responseForAuthError(context, headers);
-    const resolved = await sessionWithRate(
+    const bound = bindMutationScope(
+      body.value as Readonly<Record<string, unknown>>,
+      session.value,
+    );
+    if (!bound.ok) return responseForAuthError(context, bound);
+    // BE00 step 7: step-up freshness, then quota.
+    const gated = await stepUpAndRate(
       context,
       operationId,
       auth,
-      true,
-      true,
+      session.value,
     );
-    if (resolved.rate !== null) return resolved.rate;
-    const bound = bindMutationScope(
-      body.value as Readonly<Record<string, unknown>>,
-      resolved.session,
-    );
-    if (!bound.ok) return responseForAuthError(context, bound);
-    const csrf = await csrfIfCookie(context);
-    if (!csrf.ok) return responseForAuthError(context, csrf);
+    if (gated !== null) return gated;
+    // BE00 step 8: exact Idempotency-Key and quoted If-Match.
+    const headers = parseConfigurationCommandHeaders(context.req.raw);
+    if (!headers.ok) return responseForAuthError(context, headers);
     return send(
       context,
       await runner.run(
@@ -215,7 +232,7 @@ export const createPlatformConfigurationRouteRuntime = (
           ...(headers.value.ifMatch === undefined
             ? {}
             : { ifMatch: headers.value.ifMatch }),
-          session: resolved.session,
+          session: session.value,
         },
         Cfg05a03ChangeResponseSchema,
       ),
@@ -226,30 +243,26 @@ export const createPlatformConfigurationRouteRuntime = (
   const action = async (context: WorkerContext): Promise<Response> => {
     const operationId = 'CFG-05A-04' as const;
     configurationOperation(context, operationId);
-    const origin = checkConfigurationSameOrigin(context);
-    if (!origin.ok) return responseForAuthError(context, origin);
+    const transport = await admitConfigurationTransport(context);
+    if (!transport.ok) return responseForAuthError(context, transport);
+    const session = await requireConfigurationSession(context, auth, true);
+    if (!session.ok) return responseForAuthError(context, session);
     const path = parseRoutePath(
       configurationPathSchemas.reviewId,
       context.req.param('reviewId'),
     );
     if (!path.ok) return responseForAuthError(context, path);
-    const body = await parseConfigurationBody(
-      context.req.raw,
-      configurationBodySchemas.action,
-    );
+    const body = transport.value.decode(configurationBodySchemas.action);
     if (!body.ok) return responseForAuthError(context, body);
-    const headers = parseConfigurationCommandHeaders(context.req.raw);
-    if (!headers.ok) return responseForAuthError(context, headers);
-    const resolved = await sessionWithRate(
+    const gated = await stepUpAndRate(
       context,
       operationId,
       auth,
-      true,
-      true,
+      session.value,
     );
-    if (resolved.rate !== null) return resolved.rate;
-    const csrf = await csrfIfCookie(context);
-    if (!csrf.ok) return responseForAuthError(context, csrf);
+    if (gated !== null) return gated;
+    const headers = parseConfigurationCommandHeaders(context.req.raw);
+    if (!headers.ok) return responseForAuthError(context, headers);
     return send(
       context,
       await runner.run(
@@ -265,7 +278,7 @@ export const createPlatformConfigurationRouteRuntime = (
           ...(headers.value.ifMatch === undefined
             ? {}
             : { ifMatch: headers.value.ifMatch }),
-          session: resolved.session,
+          session: session.value,
         },
         Cfg05a04ChangeActionResponseSchema,
       ),

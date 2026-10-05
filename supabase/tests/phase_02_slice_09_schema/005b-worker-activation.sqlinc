@@ -1,14 +1,13 @@
 create temp table s09_worker_activation_request on commit drop as
 select jsonb_build_object(
-  'migrationPlanId', 'a9090000-0000-4000-8000-000000000105',
+  'migrationPlanId', :'y_plan',
   'contentTypeId', (select content_type_id from s09_type_ids),
-  'schemaVersionId', 'a9090000-0000-4000-8000-000000000103',
+  'schemaVersionId', :'y_version',
   'expectedVersion', '6',
   'expectedActiveVersionId', (select version_id from s09_type_ids),
-  'transformKey', null, 'transformVersion', null, 'compilerHash', repeat('b', 64),
-  'sourceHash', (select definition_hash from platform_private.cms_content_type_versions
-                where id = (select version_id from s09_type_ids)),
-  'targetHash', repeat('b', 64), 'idempotencyKey', 's09-worker-activate-0001',
+  'transformKey', null, 'transformVersion', null, 'compilerHash', :'y_compiler',
+  'sourceHash', :'y_source',
+  'targetHash', :'y_target', 'idempotencyKey', 's09-worker-activate-0001',
   'switchOnlyOnce', true
 ) as request;
 create temp table s09_worker_activated on commit drop as
@@ -16,7 +15,7 @@ select platform_api.cms_activate_schema_migration(request) as response
 from s09_worker_activation_request;
 select ok(
   (select response->>'activated' = 'true' and response->>'status' = 'activated'
-    and response->>'schemaVersionId' = 'a9090000-0000-4000-8000-000000000103'
+    and response->>'schemaVersionId' = :'y_version'
     and response->>'eventId' is not null from s09_worker_activated),
   'S09 worker activation switches exactly once through the service RPC'
 );
@@ -28,14 +27,14 @@ select is(
 select is(
   (select count(*)::integer from platform_private.outbox_events
    where event_type = 'cms.schema.activated.v1'
-     and payload->>'migrationPlanId' = 'a9090000-0000-4000-8000-000000000105'),
+     and payload->>'migrationPlanId' = :'y_plan'),
   1,
   'S09 worker activation atomically appends one durable outbox event'
 );
 select ok(
   (select (platform_api.cms_reconcile_schema_activation(jsonb_build_object(
-    'migrationPlanId', 'a9090000-0000-4000-8000-000000000105',
-    'schemaVersionId', 'a9090000-0000-4000-8000-000000000103',
+    'migrationPlanId', :'y_plan',
+    'schemaVersionId', :'y_version',
     'expectedActiveVersionId', (select version_id from s09_type_ids),
     'idempotencyKey', 's09-worker-reconcile-0001'
   ))->>'activated')::boolean),
@@ -48,7 +47,7 @@ select jsonb_build_object(
   'schemaVersion', event.schema_version, 'aggregateType', event.aggregate_type,
   'aggregateId', event.aggregate_id,
   'aggregateVersion', event.aggregate_version::text,
-  'migrationPlanId', 'a9090000-0000-4000-8000-000000000105',
+  'migrationPlanId', :'y_plan',
   'claimToken', 'a9090000-0000-4000-8000-000000000108', 'replay', false
 ) as request
 from platform_private.outbox_events event
@@ -86,8 +85,8 @@ insert into platform_private.outbox_events(
   aggregate_version, correlation_id, payload, occurred_at
 ) values (
   'a9090000-0000-4000-8000-000000000107', 'cms.schema.activated.v1', 1,
-  'cms.schema.migration', 'a9090000-0000-4000-8000-000000000105', 1,
+  'cms.schema.migration', :'y_plan', 1,
   'a9090000-0000-4000-8000-000000000607',
-  jsonb_build_object('migrationPlanId', 'a9090000-0000-4000-8000-000000000105'),
+  jsonb_build_object('migrationPlanId', :'y_plan'),
   clock_timestamp()
 );

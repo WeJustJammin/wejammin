@@ -291,7 +291,11 @@ describe('Phase 2 Slice 03 endpoint invalid-input boundaries', () => {
       );
 
       await expectApiError(response, 400, 'INVALID_REQUEST');
-      expect(auth.resolveSession).not.toHaveBeenCalled();
+      // BE00: the session is verified (step 4) before strict validation (step 6);
+      // a public read (BE01b-18) has no session step.
+      expect(auth.resolveSession).toHaveBeenCalledTimes(
+        testCase.criterion.includes('BE01b-18') ? 0 : 1,
+      );
       expectNoAuthMutation(auth);
     },
   );

@@ -1,12 +1,18 @@
 import {
   BlockDefinitionVersionResourceSchema,
   BlockLifecycleEventResourceSchema,
+  CmsCapabilityGrantListPageSchema,
+  CmsCapabilityGrantResourceSchema,
   ContentSchemaRegistryDetailSchema,
   ContentSchemaRegistryListPageSchema,
   ContentTypeVersionResourceSchema,
   FieldDefinitionVersionResourceSchema,
   RelationDefinitionResourceSchema,
   SchemaActivationResourceSchema,
+  SchemaDryRunResourceSchema,
+  SchemaReviewAssignmentResourceSchema,
+  SchemaReviewDecisionResourceSchema,
+  SchemaReviewResourceSchema,
 } from './contracts';
 import type {
   ContentSchemaRegistryDependencies,
@@ -34,6 +40,16 @@ const responseSchemas: Readonly<
   'CMS-03A-06': ContentSchemaRegistryListPageSchema,
   'CMS-03A-07': ContentSchemaRegistryDetailSchema,
   'CMS-03A-08': BlockLifecycleEventResourceSchema,
+  'CMS-03A-09': ContentTypeVersionResourceSchema,
+  'CMS-03A-10': SchemaDryRunResourceSchema,
+  'CMS-03A-11': SchemaReviewResourceSchema,
+  'CMS-03A-12': SchemaReviewDecisionResourceSchema,
+  'CMS-03A-13': SchemaReviewResourceSchema,
+  'CMS-03A-14': SchemaReviewAssignmentResourceSchema,
+  'CMS-03A-15': CmsCapabilityGrantResourceSchema,
+  'CMS-03A-16': CmsCapabilityGrantResourceSchema,
+  'CMS-03A-17': CmsCapabilityGrantResourceSchema,
+  'CMS-03A-18': CmsCapabilityGrantListPageSchema,
 };
 
 const portNames: Readonly<
@@ -50,6 +66,16 @@ const portNames: Readonly<
   'CMS-03A-06': 'listContentTypes',
   'CMS-03A-07': 'getContentTypeVersion',
   'CMS-03A-08': 'advanceBlockLifecycle',
+  'CMS-03A-09': 'createSchemaSuccessor',
+  'CMS-03A-10': 'startSchemaDryRun',
+  'CMS-03A-11': 'submitSchemaReview',
+  'CMS-03A-12': 'decideSchemaReview',
+  'CMS-03A-13': 'getSchemaReview',
+  'CMS-03A-14': 'assignSchemaReview',
+  'CMS-03A-15': 'grantCapability',
+  'CMS-03A-16': 'renewCapabilityGrant',
+  'CMS-03A-17': 'revokeCapabilityGrant',
+  'CMS-03A-18': 'listCapabilityGrants',
 };
 
 const unavailable = (): ContentSchemaRegistryError => ({
@@ -78,6 +104,26 @@ const invalidResponse = (): ContentSchemaRegistryError => ({
   details: { dependencyClass: 'cms_registry', retryable: false },
 });
 
+/**
+ * A port reports every expected dependency fault as a result: the production
+ * adapter turns a transport failure into 503, a deadline into 504 and an
+ * invalid body into 502. An exception that still escapes a port is therefore a
+ * defect, not a dependency outage, and answers 500 INTERNAL_ERROR with nothing
+ * of the exception on the wire. Only an abort is a deadline.
+ */
+const unexpectedFailure = (): ContentSchemaRegistryError => ({
+  ok: false,
+  status: 500,
+  code: 'INTERNAL_ERROR',
+  message: 'An unexpected error occurred.',
+  details: {},
+});
+
+const isAbort = (value: unknown): boolean =>
+  typeof value === 'object' &&
+  value !== null &&
+  (value as { name?: unknown }).name === 'AbortError';
+
 const withDeadline = async <T>(
   invoke: (signal: AbortSignal) => Promise<ContentSchemaRegistryResult<T>>,
   deadlineMs: number,
@@ -92,8 +138,8 @@ const withDeadline = async <T>(
   });
   try {
     return await Promise.race([invoke(controller.signal), timeout]);
-  } catch {
-    return unavailable();
+  } catch (failure) {
+    return isAbort(failure) ? timedOut() : unexpectedFailure();
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }

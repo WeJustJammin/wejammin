@@ -14,6 +14,7 @@ import {
   CapabilityBindingResourceSchema,
   TemplateBindingResourceSchema,
 } from './resources-bindings.ts';
+import { SchemaActivationPreparationSchema } from './resources-workflow.ts';
 
 export const ContentSchemaRegistryRecordSchema = z.discriminatedUnion(
   'resourceKind',
@@ -52,6 +53,7 @@ export const ContentSchemaRegistryDetailSchema = z
       .array(BlockDefinitionRegistryRecordSchema)
       .max(128)
       .readonly(),
+    activationPreparation: SchemaActivationPreparationSchema,
   })
   .readonly();
 

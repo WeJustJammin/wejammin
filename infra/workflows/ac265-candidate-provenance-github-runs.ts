@@ -142,13 +142,14 @@ const verifyArtifact = (
 ): Ac265VerifiedArtifact => {
   if (!isAc265Record(value)) return failAc265CandidateProvenance();
   const id = requireSafeInteger(value.id);
+  const sizeInBytes = requireSafeInteger(value.size_in_bytes);
   const origin = isAc265Record(value.workflow_run)
     ? value.workflow_run
     : undefined;
   if (
     value.name !== expected.artifactName ||
     value.expired !== false ||
-    requireSafeInteger(value.size_in_bytes) > 1024 * 1024 * 1024 ||
+    sizeInBytes > 1024 * 1024 * 1024 ||
     !isSha256PrefixedDigest(value.digest) ||
     origin?.id !== Number(expected.run.runId) ||
     origin?.repository_id !== expected.run.repositoryId ||
@@ -183,6 +184,7 @@ const verifyArtifact = (
     id,
     name: expected.artifactName,
     digest: value.digest,
+    sizeInBytes,
     createdAt,
   };
 };

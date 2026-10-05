@@ -1,0 +1,39 @@
+---
+import '../../styles/infrastructure.css';
+import '../../styles/step-up-mfa.css';
+import { AdminMfaFactorResetForm } from './admin-mfa-reset/AdminMfaFactorResetForm';
+import {
+  ADMIN_MFA_RESET_ROUTE,
+  type AdminMfaResetPageResolution,
+} from '../../server/admin-mfa-reset-page-context';
+
+interface Props {
+  readonly children?: never;
+  /** The FE05 `tab=mfa-reset` projection from the server; nothing else is passed. */
+  readonly mfaReset: Extract<
+    AdminMfaResetPageResolution,
+    { kind: 'ready' | 'degraded' }
+  >;
+}
+
+const { mfaReset } = Astro.props;
+---
+
+{
+  mfaReset.kind === 'degraded' ? (
+    <section class="infra-capability-gate" role="status" aria-live="polite">
+      <h2>The reset service is temporarily unavailable</h2>
+      <p>Nothing was changed.</p>
+      <a href={ADMIN_MFA_RESET_ROUTE}>Try again</a>
+      <p class="infra-request-id">
+        Request ID: <code>{mfaReset.requestId}</code>
+      </p>
+    </section>
+  ) : (
+    <AdminMfaFactorResetForm
+      variant={mfaReset.variant}
+      stepUp={mfaReset.stepUp}
+      client:load
+    />
+  )
+}

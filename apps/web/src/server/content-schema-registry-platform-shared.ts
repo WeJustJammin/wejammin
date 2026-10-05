@@ -1,14 +1,4 @@
-import {
-  ClientBindingIdSchema,
-  ContentTypeDraftRequestSchema,
-  ContentTypeVersionResourceSchema,
-  FieldDefinitionVersionResourceSchema,
-  FieldSchemaChangeRequestSchema,
-  RelationBindingRequestSchema,
-  RelationDefinitionResourceSchema,
-  SchemaActivationRequestSchema,
-  SchemaActivationResourceSchema,
-} from '@wejammin/contracts';
+import { ClientBindingIdSchema } from '@wejammin/contracts';
 import { ContentSchemaRegistryPlatformError } from './content-schema-registry-platform-errors';
 import type { ContentSchemaRegistryPlatformErrorKind } from './content-schema-registry-platform-errors';
 import { parseContentSchemaRegistryErrorMetadata } from './content-schema-registry-platform-error-details';
@@ -25,6 +15,11 @@ export {
   isContentSchemaRegistryPlatformError,
 } from './content-schema-registry-platform-errors';
 export type { ContentSchemaRegistryPlatformErrorKind } from './content-schema-registry-platform-errors';
+export {
+  CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS,
+  type ContentSchemaRegistryMutationOperationId,
+  type ContentSchemaRegistryMutationTarget,
+} from './content-schema-registry-platform-operations';
 export {
   forwardedQuery,
   hasSessionCookie,
@@ -43,63 +38,6 @@ export {
 export type ContentSchemaRegistryPlatformApiBinding = Readonly<{
   fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }>;
-
-export type ContentSchemaRegistryMutationOperationId =
-  'CMS-03A-01' | 'CMS-03A-02' | 'CMS-03A-03' | 'CMS-03A-04';
-
-export interface ContentSchemaRegistryMutationTarget {
-  readonly operationId: ContentSchemaRegistryMutationOperationId;
-  readonly contentTypeId?: string;
-  readonly versionId?: string;
-}
-
-/** The browser facade's operation map mirrors the generated BE03a registry. */
-export const CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS = {
-  'CMS-03A-01': {
-    method: 'POST',
-    path: '/api/v1/cms/content-types',
-    requestSchema: ContentTypeDraftRequestSchema,
-    successSchema: ContentTypeVersionResourceSchema,
-    successStatuses: [201],
-    requiresIfMatch: false,
-  },
-  'CMS-03A-02': {
-    method: 'POST',
-    path: '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/fields',
-    requestSchema: FieldSchemaChangeRequestSchema,
-    successSchema: FieldDefinitionVersionResourceSchema,
-    successStatuses: [201],
-    requiresIfMatch: true,
-  },
-  'CMS-03A-03': {
-    method: 'POST',
-    path: '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/relations',
-    requestSchema: RelationBindingRequestSchema,
-    successSchema: RelationDefinitionResourceSchema,
-    successStatuses: [201],
-    requiresIfMatch: true,
-  },
-  'CMS-03A-04': {
-    method: 'POST',
-    path: '/api/v1/cms/content-types/{contentTypeId}/versions/{versionId}/activate',
-    requestSchema: SchemaActivationRequestSchema,
-    successSchema: SchemaActivationResourceSchema,
-    successStatuses: [200, 202],
-    requiresIfMatch: true,
-  },
-} as const satisfies Readonly<
-  Record<
-    ContentSchemaRegistryMutationOperationId,
-    Readonly<{
-      method: 'POST';
-      path: string;
-      requestSchema: unknown;
-      successSchema: unknown;
-      successStatuses: readonly (200 | 201 | 202)[];
-      requiresIfMatch: boolean;
-    }>
-  >
->;
 
 export const PLATFORM_API_ORIGIN = 'https://platform-api.internal';
 export const LIST_PATH = '/api/v1/cms/content-types';
@@ -136,6 +74,14 @@ export const apiPathForDetail = (
     throw new ContentSchemaRegistryPlatformError('not_found', 404);
   }
   return `${LIST_PATH}/${encodeURIComponent(contentTypeId)}/versions/${encodeURIComponent(versionId)}`;
+};
+
+/** CMS-03A-13 read path; the id is validated before any upstream call. */
+export const apiPathForReview = (reviewId: string): string => {
+  if (!isSafeUuid(reviewId)) {
+    throw new ContentSchemaRegistryPlatformError('not_found', 404);
+  }
+  return `/api/v1/cms/schema-reviews/${encodeURIComponent(reviewId)}`;
 };
 
 export const filteredCookieHeader = (request: Request): string | null => {
@@ -198,6 +144,7 @@ export type UpstreamResult =
       readonly presentationVariant: ContentSchemaRegistryPresentationVariant | null;
       readonly actorId: string | null;
       readonly actingPartyId: string | null;
+      readonly stepUpFreshUntil: string | null;
     }
   | {
       readonly kind: Exclude<ContentSchemaRegistryPlatformErrorKind, 'ok'>;

@@ -17,6 +17,8 @@ const body = {
   ownerCapability: 'cms.schema_designer',
   sourceLocale: 'en-US',
   defaultLocale: 'en-US',
+  supportedLocales: ['en-US'],
+  fallbackChains: {},
   workflowKey: 'cms.standard',
   workflowVersion: '1',
   defaultTemplateVersionId: null,

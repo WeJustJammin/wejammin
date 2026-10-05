@@ -9,6 +9,7 @@ import { callRpc, mapProductionFailure } from './production-http';
 import { createAccountMergeDependencies } from './production-account-merges';
 import { createAuthenticationFlowDependencies } from './production-flows';
 import { createLoginMethodDependencies } from './production-login-methods';
+import { createMfaDependencies } from './production-mfa';
 import { createOperationalDependencies } from './production-rate-limit';
 import { createSessionDependencies } from './production-session';
 import type { AuthenticationDependencies } from './types';
@@ -17,6 +18,11 @@ export const createProductionAuthenticationDependencies = (
   options: AuthProductionOptions,
 ): AuthenticationDependencies => {
   const config = normalizeAuthProductionOptions(options);
+  const issuer =
+    options.mfaIssuer ??
+    (options.environment.APP_ENVIRONMENT === 'production'
+      ? 'WeJammin'
+      : `WeJammin (${options.environment.APP_ENVIRONMENT})`);
 
   return {
     ...createAuthenticationFlowDependencies(config),
@@ -24,6 +30,7 @@ export const createProductionAuthenticationDependencies = (
     ...createOperationalDependencies(config),
     ...createLoginMethodDependencies(config),
     ...createAccountMergeDependencies(config),
+    ...createMfaDependencies(config, issuer),
     loadProviderCatalog: async (_env, signal) => {
       try {
         const parsed = ProviderCatalogSchema.safeParse(

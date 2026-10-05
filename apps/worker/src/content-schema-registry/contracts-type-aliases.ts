@@ -12,6 +12,12 @@ import {
   BlockLifecycleEventResourceSchema,
   BlockRegistrationRequestSchema,
   CapabilityBindingResourceSchema,
+  CapabilityGrantRenewalRequestSchema,
+  CapabilityGrantRequestSchema,
+  CapabilityGrantRevocationRequestSchema,
+  CmsCapabilityGrantListPageSchema,
+  CmsCapabilityGrantListQuerySchema,
+  CmsCapabilityGrantResourceSchema,
   ContentSchemaRegistryDetailSchema,
   ContentSchemaRegistryListPageSchema,
   ContentSchemaRegistryListQuerySchema,
@@ -29,6 +35,15 @@ import {
   SchemaActivationRequestSchema,
   SchemaActivationResourceSchema,
   SchemaArtifactResourceSchema,
+  SchemaDryRunRequestSchema,
+  SchemaDryRunResourceSchema,
+  SchemaReviewAssignmentRequestSchema,
+  SchemaReviewAssignmentResourceSchema,
+  SchemaReviewDecisionRequestSchema,
+  SchemaReviewDecisionResourceSchema,
+  SchemaReviewResourceSchema,
+  SchemaReviewSubmissionRequestSchema,
+  SchemaSuccessorRequestSchema,
   TemplateBindingResourceSchema,
 } from '@wejammin/contracts';
 
@@ -106,4 +121,49 @@ export type SchemaArtifactResource = ReturnType<
 >;
 export type TemplateBindingResource = ReturnType<
   typeof TemplateBindingResourceSchema.parse
+>;
+export type SchemaSuccessorRequest = ReturnType<
+  typeof SchemaSuccessorRequestSchema.parse
+>;
+export type SchemaDryRunRequest = ReturnType<
+  typeof SchemaDryRunRequestSchema.parse
+>;
+export type SchemaDryRunResource = ReturnType<
+  typeof SchemaDryRunResourceSchema.parse
+>;
+export type SchemaReviewSubmissionRequest = ReturnType<
+  typeof SchemaReviewSubmissionRequestSchema.parse
+>;
+export type SchemaReviewDecisionRequest = ReturnType<
+  typeof SchemaReviewDecisionRequestSchema.parse
+>;
+export type SchemaReviewAssignmentRequest = ReturnType<
+  typeof SchemaReviewAssignmentRequestSchema.parse
+>;
+export type SchemaReviewResource = ReturnType<
+  typeof SchemaReviewResourceSchema.parse
+>;
+export type SchemaReviewDecisionResource = ReturnType<
+  typeof SchemaReviewDecisionResourceSchema.parse
+>;
+export type SchemaReviewAssignmentResource = ReturnType<
+  typeof SchemaReviewAssignmentResourceSchema.parse
+>;
+export type CapabilityGrantRequest = ReturnType<
+  typeof CapabilityGrantRequestSchema.parse
+>;
+export type CapabilityGrantRenewalRequest = ReturnType<
+  typeof CapabilityGrantRenewalRequestSchema.parse
+>;
+export type CapabilityGrantRevocationRequest = ReturnType<
+  typeof CapabilityGrantRevocationRequestSchema.parse
+>;
+export type CmsCapabilityGrantListQuery = ReturnType<
+  typeof CmsCapabilityGrantListQuerySchema.parse
+>;
+export type CmsCapabilityGrantResource = ReturnType<
+  typeof CmsCapabilityGrantResourceSchema.parse
+>;
+export type CmsCapabilityGrantListPage = ReturnType<
+  typeof CmsCapabilityGrantListPageSchema.parse
 >;

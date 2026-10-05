@@ -1,34 +1,11 @@
 -- AC217 recovery drill against the real PostgreSQL worker authority.  The
--- target is a complete 128-field definition, while application-content row
--- counts remain truthfully zero until S10 supplies the first source adapter.
-select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('app.cms_rpc', 'true', true);
-select set_config('app.cfg_rpc', 'true', true);
-create temp table s09_ac217_ids on commit drop as
-select active.id as source_version_id,
-       active.content_type_id,
-       active.owner_id,
-       'a9090000-0000-4000-8000-000000000701'::uuid as target_version_id,
-       'a9090000-0000-4000-8000-000000000702'::uuid as artifact_id,
-       'a9090000-0000-4000-8000-000000000703'::uuid as plan_id,
-       'a9090000-0000-4000-8000-000000000704'::uuid as dry_run_id
-from platform_private.cms_content_type_versions active
-join s09_type_ids fixture on fixture.content_type_id = active.content_type_id
-where active.state = 'active'
-order by active.version_no desc
-limit 1;
-insert into platform_private.cms_content_type_versions(
-  id, owner_id, state, version, content_type_id, version_no, labels,
-  workflow_key, workflow_version, source_locale, default_locale,
-  schema_artifact_id, definition_hash, compatibility, supersedes_id,
-  dry_run_id, created_by
-)
-select ids.target_version_id, ids.owner_id, 'approved', 1, ids.content_type_id,
-       20, jsonb_build_object('label', 'Article X recovery 128'), 'editorial', 1,
-       'en-US', 'en-US', ids.artifact_id, repeat('a', 64), 'additive',
-       ids.source_version_id, ids.dry_run_id,
-       'a9090000-0000-4000-8000-000000000001'
-from s09_ac217_ids ids;
+-- target is a complete 128-field definition created through CMS-03A-01 (the
+-- named producer compiles and persists the artifact), dry-run by CMS-03A-10 and
+-- sealed by the worker; the recovery drill then leases the backfill, loses the
+-- worker, and takes the plan over with a replacement worker through durable CAS.
+-- The type is a first version, so its application-content row count is truthfully
+-- zero; a non-zero cursor recovery is covered by the non-zero fragments.
+select pg_temp.s09d_guc_save();
 create temp table s09_ac217_field_manifest on commit drop as
 select jsonb_agg(
   jsonb_build_object(
@@ -46,226 +23,124 @@ select jsonb_agg(
   ) order by number
 ) as fields
 from generate_series(1, 128) generated(number);
-insert into platform_private.cms_field_definition_versions(
-  owner_id, state, version, content_type_version_id, stable_field_id,
-  field_key, kind, constraints, required, validator_key, validator_version,
-  default_mode, localization_mode, editor_config, created_by
-)
-select ids.owner_id, 'active', 1, ids.target_version_id,
-       (field.value->>'stableFieldId')::uuid,
-       field.value->>'key', field.value->>'kind', field.value->'constraints',
-       (field.value->>'required')::boolean, null, null,
-       field.value->>'defaultMode', field.value->>'localizationMode',
-       field.value->'editorConfig',
-       'a9090000-0000-4000-8000-000000000001'
-from s09_ac217_ids ids
-cross join s09_ac217_field_manifest manifest
-cross join lateral jsonb_array_elements(manifest.fields) field(value);
--- Reconstruct compiler input from persisted rows; generated manifest is fixture input.
--- read of PostgreSQL state and the production compiler functions.
-create temp table s09_ac217_compiler_request on commit drop as
-select jsonb_build_object(
-  'typeKey', type_row.type_key, 'label', target.labels->>'label',
-  'ownerCapability', type_row.owner_capability,
-  'sourceLocale', target.source_locale, 'defaultLocale', target.default_locale,
-  'workflowKey', target.workflow_key,
-  'workflowVersion', target.workflow_version::text,
-  'defaultTemplateVersionId', target.default_template_version_id,
-  'fields', coalesce(fields.value, '[]'::jsonb), 'relations', '[]'::jsonb,
-  'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb
-) as request
-from s09_ac217_ids ids
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join platform_private.cms_content_types type_row
-  on type_row.id = ids.content_type_id
-cross join lateral (
-  select jsonb_agg(jsonb_build_object(
-    'stableFieldId', field.stable_field_id, 'key', field.field_key,
-    'kind', field.kind, 'constraints', field.constraints,
-    'required', field.required, 'validatorKey', field.validator_key,
-    'validatorVersion', field.validator_version,
-    'defaultMode', field.default_mode, 'localizationMode', field.localization_mode,
-    'editorConfig', field.editor_config, 'lifecycle', 'active'
-  ) order by field.stable_field_id, field.field_key) as value
-  from platform_private.cms_field_definition_versions field
-  where field.content_type_version_id = target.id
-) fields;
-create temp table s09_ac217_artifact on commit drop as
-select ids.artifact_id, ids.owner_id, ids.target_version_id,
-       platform_private.cms_compiled_editor_manifest(request.request) as editor_manifest,
-       platform_private.cms_compiled_renderer_manifest(request.request) as renderer_manifest,
-       platform_private.cms_definition_artifact_hash(request.request) as artifact_hash
-from s09_ac217_ids ids
-cross join s09_ac217_compiler_request request;
-select ok((select pg_catalog.octet_length(editor_manifest::text) between 8193 and 524288
-    and pg_catalog.jsonb_array_length(editor_manifest->'schema'->'fields') = 128
-    and platform_private.cms_compiled_manifest_bounded(editor_manifest) and platform_private.cms_compiled_manifest_bounded(renderer_manifest)
-  from s09_ac217_artifact), 'AC217 128-field compiler output needs and satisfies the 512 KiB aggregate cap');
-insert into platform_private.cms_schema_artifacts(
-  id, owner_id, state, version, content_type_version_id, compiler_version,
-  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash, compiled_at
-)
-select artifact_id, owner_id, 'compiled', 1, target_version_id, '1',
-       'cms/content-type/' || (select type_key from platform_private.cms_content_types
-                               where id = (select content_type_id from s09_ac217_ids)) || '/v1', editor_manifest,
-       renderer_manifest, artifact_hash, clock_timestamp()
-from s09_ac217_artifact artifact;
-update platform_private.cms_content_type_versions target
-set definition_hash = artifact.artifact_hash
-from s09_ac217_artifact artifact
-where target.id = artifact.target_version_id;
-insert into platform_private.cms_schema_dry_run_reports(
-  id, owner_id, content_type_id, source_version_id, target_version_id,
-  classification, transform_key, transform_version, source_hash, target_hash,
-  compiler_hash, compiler_version, source_count, target_count, row_error_count,
-  migrated_count, failed_count, result, report, created_by
-)
-select ids.dry_run_id, ids.owner_id, ids.content_type_id, ids.source_version_id,
-       ids.target_version_id, 'additive', null, null, source.definition_hash,
-       target.definition_hash, artifact.artifact_hash, '1', 0, 0, 0, 0, 0,
-       'pass', jsonb_build_object(
-         'dryRunId', ids.dry_run_id, 'result', 'pass',
-         'sourceHash', source.definition_hash, 'targetHash', target.definition_hash,
-         'compilerHash', artifact.artifact_hash, 'compilerVersion', '1',
-         'transformHash', platform_private.cms_migration_transform_hash(
-           'additive', null, null, source.definition_hash, target.definition_hash,
-            artifact.artifact_hash, '1'), 'sourceCount', 0, 'targetCount', 0,
-         'rowErrorCount', 0, 'migratedCount', 0, 'failedCount', 0,
-         'lease', jsonb_build_object('state', 'ready',
-           'expiresAt', (clock_timestamp() + interval '15 minutes')::text)
-       ), 'a9090000-0000-4000-8000-000000000001'
-from s09_ac217_ids ids
-join platform_private.cms_content_type_versions source on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target on target.id = ids.target_version_id
-join s09_ac217_artifact artifact on artifact.target_version_id = target.id;
+select pg_temp.s09d_rpc('big:create', 'platform_api.cms_create_type_draft', 'owner',
+  jsonb_build_object(
+    'typeKey', 'articlebig', 'label', 'Article X recovery 128',
+    'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US',
+    'defaultLocale', 'en-US', 'supportedLocales', jsonb_build_array('en-US'), 'fallbackChains', '{}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1',
+    'defaultTemplateVersionId', null,
+    'fields', (select fields from s09_ac217_field_manifest),
+    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
+    'capabilityBindings', '[]'::jsonb, 'idempotencyKey', 's09-ac217-create-0001'));
+select pg_temp.s09d_remember('big:type', (pg_temp.s09d_resp('big:create')->>'contentTypeId')::uuid);
+select pg_temp.s09d_remember('big:version', (pg_temp.s09d_resp('big:create')->>'id')::uuid);
+select pg_temp.s09d_dry_run('big');
+select pg_temp.s09d_seal('big');
+select pg_temp.s09d_guc_restore();
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+-- a Worker request of its own: nothing a previous (human) command published is still set
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true), set_config('app.mfa_session_subject', '', true);
+select pg_temp.s09d_id('big:version') as big_version, pg_temp.s09d_id('big:plan') as big_plan,
+       pg_temp.s09d_id('big:dryRun') as big_dry_run \gset
+create temp table s09_ac217_plan on commit drop as
+select platform_api.cms_get_schema_migration_plan(jsonb_build_object(
+  'migrationPlanId', :'big_plan', 'schemaVersionId', :'big_version',
+  'expectedVersion', pg_temp.s09d_read('cms_schema_migration_plans', 'version', :'big_plan')
+)) as response;
+select response->>'compilerHash' as big_compiler, response->>'sourceHash' as big_source,
+       response->>'targetHash' as big_target, response->>'version' as big_ready_version
+  from s09_ac217_plan \gset
 select ok(
-   (select (select count(*) = 128
-              from platform_private.cms_field_definition_versions
-             where content_type_version_id = target.id)
-      and target.definition_hash = artifact.artifact_hash
-       and (select request->'fields' from s09_ac217_compiler_request) = (
-         select jsonb_agg(value order by value->>'stableFieldId', value->>'key')
-         from jsonb_array_elements((select fields from s09_ac217_field_manifest)) entry(value)
-       )
-      and artifact.editor_manifest = platform_private.cms_compiled_editor_manifest((select request from s09_ac217_compiler_request))
-      and artifact.renderer_manifest = platform_private.cms_compiled_renderer_manifest((select request from s09_ac217_compiler_request))
-   from s09_ac217_ids ids
-   join platform_private.cms_content_type_versions target
-     on target.id = ids.target_version_id
-   join s09_ac217_artifact artifact
-     on artifact.target_version_id = target.id),
-  'AC217 persists a complete 128-field target definition and matching artifact'
- );
+  (select count(*) = 128
+     from platform_private.cms_field_definition_versions
+    where content_type_version_id = :'big_version')
+  and (select version_row.definition_hash = artifact.artifact_hash
+         and pg_catalog.octet_length(artifact.editor_manifest::text) between 8193 and 524288
+         and pg_catalog.jsonb_array_length(artifact.editor_manifest->'schema'->'fields') = 128
+         and platform_private.cms_compiled_manifest_bounded(artifact.editor_manifest)
+         and platform_private.cms_compiled_manifest_bounded(artifact.renderer_manifest)
+         and (select jsonb_agg(value order by value->>'stableFieldId', value->>'key')
+                from jsonb_array_elements((select fields from s09_ac217_field_manifest)) entry(value))
+           = (select jsonb_agg(jsonb_build_object(
+                'stableFieldId', field.stable_field_id, 'key', field.field_key,
+                'kind', field.kind, 'constraints', field.constraints,
+                'required', field.required, 'validatorKey', field.validator_key,
+                'validatorVersion', field.validator_version,
+                'defaultMode', field.default_mode,
+                'localizationMode', field.localization_mode,
+                'editorConfig', field.editor_config, 'lifecycle', 'active'
+              ) order by field.stable_field_id::text, field.field_key)
+                from platform_private.cms_field_definition_versions field
+               where field.content_type_version_id = :'big_version')
+       from platform_private.cms_content_type_versions version_row
+       join platform_private.cms_schema_artifacts artifact
+         on artifact.id = version_row.schema_artifact_id
+      where version_row.id = :'big_version'),
+  'AC217 the producer persists a complete 128-field target definition and matching bounded artifact [P2-S09-AC-217]'
+);
+-- definer helper called outside a command: it reads the forced tables under the RPC context, as a command does
+select set_config('app.cms_rpc', 'true', true);
+select ok(
+  (select platform_private.cms_persisted_dry_run_report_valid(
+     report.id, report.owner_id, report.content_type_id, report.source_version_id,
+     report.target_version_id, 'additive', null, null, report.source_hash,
+     report.target_hash, report.compiler_hash, report.compiler_version)
+   from platform_private.cms_schema_dry_run_reports report where report.id = :'big_dry_run'),
+  'AC217 the worker seal persists an independent immutable dry-run report for the 128-field target'
+);
+select set_config('app.cms_rpc', '', true);
 
-insert into platform_private.cms_schema_migration_plans(
-  id, owner_id, state, version, content_type_id, from_version_id, to_version_id,
-  classification, transform_key, transform_version, dry_run_report,
-  source_count, target_count, row_error_count, migrated_count, failed_count,
-  created_by
-)
-select ids.plan_id, ids.owner_id, 'ready', 1, ids.content_type_id,
-       ids.source_version_id, ids.target_version_id, 'additive', null, null,
-       jsonb_build_object(
-         'sourceHash', source.definition_hash,
-         'targetHash', target.definition_hash,
-         'dryRunId', ids.dry_run_id,
-         'transformHash', platform_private.cms_migration_transform_hash(
-           'additive', null, null, source.definition_hash, target.definition_hash,
-           artifact.artifact_hash, '1'
-         ),
-         'compilerHash', artifact.artifact_hash, 'compilerVersion', '1',
-   'result', 'pass', 'sourceCount', '0', 'targetCount', '0',
-         'rowErrorCount', '0', 'migratedCount', '0', 'failedCount', '0',
-         'lease', jsonb_build_object(
-           'state', 'ready',
-           'expiresAt', (clock_timestamp() + interval '15 minutes')::text
-         )
-        ), 0, 0, 0, 0, 0,
-       'a9090000-0000-4000-8000-000000000001'
-from s09_ac217_ids ids
-join platform_private.cms_content_type_versions source
-  on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join s09_ac217_artifact artifact
-  on artifact.target_version_id = target.id;
-select ok((select platform_private.cms_persisted_dry_run_report_valid(ids.dry_run_id,ids.owner_id,ids.content_type_id,ids.source_version_id,ids.target_version_id,'additive',null,null,source.definition_hash,target.definition_hash,artifact.artifact_hash,'1') from s09_ac217_ids ids join platform_private.cms_content_type_versions source on source.id=ids.source_version_id join platform_private.cms_content_type_versions target on target.id=ids.target_version_id join s09_ac217_artifact artifact on artifact.target_version_id=target.id), 'AC217 validates zero-row dry-run evidence for the persisted 128-field artifact');
-update platform_private.cms_schema_migration_plans
-set dry_run_report = jsonb_set(dry_run_report, '{lease,expiresAt}', to_jsonb((clock_timestamp() - interval '1 minute')::text))
-where id = (select plan_id from s09_ac217_ids);
+-- The sealed plan is ready; the first worker leases the backfill for 1 ms.
 create temp table s09_ac217_claim_one on commit drop as
 select platform_api.cms_claim_schema_migration_lease(jsonb_build_object(
-  'migrationPlanId', ids.plan_id, 'schemaVersionId', ids.target_version_id,
-  'expectedVersion', '1', 'cursor', '0', 'leaseOwner', 's09-ac217-worker-1',
+  'migrationPlanId', :'big_plan', 'schemaVersionId', :'big_version',
+  'expectedVersion', :'big_ready_version', 'cursor', '0', 'leaseOwner', 's09-ac217-worker-1',
   'workerId', 's09-ac217-worker-1', 'leaseDurationMs', '1',
   'now', clock_timestamp()::text, 'transformKey', null, 'transformVersion', null,
-  'compilerHash', artifact.artifact_hash, 'sourceHash', source.definition_hash,
-  'targetHash', target.definition_hash
-)) as response
-from s09_ac217_ids ids
-join platform_private.cms_content_type_versions source
-  on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join s09_ac217_artifact artifact
-  on artifact.target_version_id = target.id;
+  'compilerHash', :'big_compiler', 'sourceHash', :'big_source', 'targetHash', :'big_target'
+)) as response;
 select ok(
   (select response->>'acquired' = 'true'
       and response->'plan'->>'state' = 'running'
-      and response->'plan'->>'version' = '2'
+      and response->'plan'->>'version' = (:'big_ready_version'::bigint + 1)::text
       and response->'plan'->>'cursor' = '0'
    from s09_ac217_claim_one),
   'AC217 records the first bounded lease before simulated worker loss'
 );
 
 -- A second worker observes server-time expiry and takes over the same durable
--- zero-row plan.  Non-zero cursor recovery remains gated on S10's source
--- adapter, but the real lease/CAS takeover path is exercised here.
+-- plan through the real lease/CAS path.
 create temp table s09_ac217_claim_two on commit drop as
 select platform_api.cms_claim_schema_migration_lease(jsonb_build_object(
-  'migrationPlanId', ids.plan_id, 'schemaVersionId', ids.target_version_id,
-  'expectedVersion', '2', 'cursor', '0', 'leaseOwner', 's09-ac217-worker-2',
+  'migrationPlanId', :'big_plan', 'schemaVersionId', :'big_version',
+  'expectedVersion', (:'big_ready_version'::bigint + 1)::text, 'cursor', '0',
+  'leaseOwner', 's09-ac217-worker-2',
   'workerId', 's09-ac217-worker-2', 'leaseDurationMs', '30000',
   'now', (clock_timestamp() + interval '1 hour')::text,
   'transformKey', null, 'transformVersion', null,
-  'compilerHash', artifact.artifact_hash, 'sourceHash', source.definition_hash,
-  'targetHash', target.definition_hash
-)) as response
-from s09_ac217_ids ids
-join platform_private.cms_content_type_versions source
-  on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join s09_ac217_artifact artifact
-  on artifact.target_version_id = target.id;
+  'compilerHash', :'big_compiler', 'sourceHash', :'big_source', 'targetHash', :'big_target'
+)) as response;
 select ok(
   (select response->>'acquired' = 'true'
       and response->'plan'->>'state' = 'running'
-      and response->'plan'->>'version' = '3'
+      and response->'plan'->>'version' = (:'big_ready_version'::bigint + 2)::text
       and response->'plan'->>'cursor' = '0'
    from s09_ac217_claim_two),
-  'AC217 replacement worker resumes the expired lease through durable CAS'
+  'AC217 replacement worker resumes the expired lease through durable CAS [P2-S09-AC-217]'
 );
 
 create temp table s09_ac217_batch on commit drop as
 select platform_api.cms_process_schema_migration_batch(jsonb_build_object(
-  'migrationPlanId', ids.plan_id, 'schemaVersionId', ids.target_version_id,
-  'expectedVersion', '3', 'cursor', '0', 'limit', '32',
-  'leaseToken', claim.response->>'leaseToken', 'transformKey', null,
-  'transformVersion', null, 'compilerHash', artifact.artifact_hash,
-  'sourceHash', source.definition_hash, 'targetHash', target.definition_hash,
+  'migrationPlanId', :'big_plan', 'schemaVersionId', :'big_version',
+  'expectedVersion', (:'big_ready_version'::bigint + 2)::text, 'cursor', '0', 'limit', '32',
+  'leaseToken', (select response->>'leaseToken' from s09_ac217_claim_two),
+  'rowEvidence', '[]'::jsonb, 'transformKey', null,
+  'transformVersion', null, 'compilerHash', :'big_compiler',
+  'sourceHash', :'big_source', 'targetHash', :'big_target',
   'correlationId', 'a9090000-0000-4000-8000-000000000706',
   'causationId', null
-)) as response
-from s09_ac217_ids ids
-cross join s09_ac217_claim_two claim
-join platform_private.cms_content_type_versions source
-  on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join s09_ac217_artifact artifact
-  on artifact.target_version_id = target.id;
+)) as response;
 select ok(
   (select response->>'done' = 'true'
       and response->>'cursor' = '0'
@@ -277,19 +152,13 @@ select ok(
 
 create temp table s09_ac217_verification_begin on commit drop as
 select platform_api.cms_begin_schema_migration_verification(jsonb_build_object(
-  'migrationPlanId', ids.plan_id, 'expectedVersion', '3', 'cursor', '0',
+  'migrationPlanId', :'big_plan',
+  'expectedVersion', (:'big_ready_version'::bigint + 2)::text, 'cursor', '0',
   'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0',
   'migratedCount', '0', 'failedCount', '0', 'transformKey', null,
-  'transformVersion', null, 'compilerHash', artifact.artifact_hash,
-  'sourceHash', source.definition_hash, 'targetHash', target.definition_hash
-)) as response
-from s09_ac217_ids ids
-join platform_private.cms_content_type_versions source
-  on source.id = ids.source_version_id
-join platform_private.cms_content_type_versions target
-  on target.id = ids.target_version_id
-join s09_ac217_artifact artifact
-  on artifact.target_version_id = target.id;
+  'transformVersion', null, 'compilerHash', :'big_compiler',
+  'sourceHash', :'big_source', 'targetHash', :'big_target'
+)) as response;
 select is(
   (select response->>'state' from s09_ac217_verification_begin),
   'verifying',
@@ -297,39 +166,33 @@ select is(
 );
 select ok(
   (select (platform_api.cms_verify_schema_migration(jsonb_build_object(
-      'migrationPlanId', ids.plan_id, 'schemaVersionId', ids.target_version_id,
-      'expectedVersion', '4', 'cursor', '0',
+      'migrationPlanId', :'big_plan', 'schemaVersionId', :'big_version',
+      'expectedVersion', (:'big_ready_version'::bigint + 3)::text, 'cursor', '0',
       'leaseToken', claim.response->>'leaseToken',
       'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0',
       'migratedCount', '0', 'failedCount', '0', 'transformKey', null,
-      'transformVersion', null, 'compilerHash', artifact.artifact_hash,
-      'sourceHash', source.definition_hash, 'targetHash', target.definition_hash
+      'transformVersion', null, 'compilerHash', :'big_compiler',
+      'sourceHash', :'big_source', 'targetHash', :'big_target'
     ))->>'valid')::boolean
-   from s09_ac217_ids ids
-   cross join s09_ac217_claim_two claim
-   join platform_private.cms_content_type_versions source
-     on source.id = ids.source_version_id
-   join platform_private.cms_content_type_versions target
-     on target.id = ids.target_version_id
-   join s09_ac217_artifact artifact
-     on artifact.target_version_id = target.id),
+   from s09_ac217_claim_two claim),
   'AC217 verification accepts exact zero-row counters and fingerprints'
 );
 
 create temp table s09_ac217_completed on commit drop as
 select platform_api.cms_complete_schema_migration(jsonb_build_object(
-  'migrationPlanId', ids.plan_id, 'expectedVersion', '4',
+  'migrationPlanId', :'big_plan', 'expectedVersion', (:'big_ready_version'::bigint + 3)::text,
   'leaseToken', claim.response->>'leaseToken'
 )) as response
-from s09_ac217_ids ids
-cross join s09_ac217_claim_two claim;
+from s09_ac217_claim_two claim;
 select ok(
   (select response->>'state' = 'completed'
-      and response->>'version' = '5'
+      and response->>'version' = (:'big_ready_version'::bigint + 4)::text
       and response->>'cursor' = '0'
    from s09_ac217_completed)
   and (select count(*) = 128
        from platform_private.cms_field_definition_versions
-       where content_type_version_id = (select target_version_id from s09_ac217_ids)),
+       where content_type_version_id = :'big_version')
+  and (select count(*) = 0 from platform_private.cms_schema_migration_target_rows
+       where plan_id = :'big_plan'),
   'AC217 completes recovered plan without fabricating application-content rows'
 );

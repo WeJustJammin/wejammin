@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 begin;
 
 create extension if not exists pgtap with schema extensions;
@@ -21,8 +22,8 @@ select
   (select person_id from identity.auth_user_bindings
     where auth_user_id = 'a80a0000-0000-4000-8000-000000000002') as actor_two_person_id;
 
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'a80a0000-0000-4000-8000-000000000001', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
+select pg_temp.set_jwt_claim('sub', 'a80a0000-0000-4000-8000-000000000001', true);
 select set_config('app.auth_user_id', 'a80a0000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_auth_user_id', 'a80a0000-0000-4000-8000-000000000001', true);
 select set_config('app.actor_person_id',
@@ -105,8 +106,8 @@ insert into platform_private.admin_task_projections(
     clock_timestamp() - interval '2 minutes', 'healthy', 'completed', 'active'
   );
 
-select set_config('request.jwt.claim.role', 'service_role', true);
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+select pg_temp.set_jwt_claim('sub', '', true);
 
 -- Both allowlisted filters are applied before pagination and authorization.
 create temp table p2_s08_inbox_filtered on commit drop as

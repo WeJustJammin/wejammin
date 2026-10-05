@@ -15,6 +15,7 @@ select throws_ok(
 -- A key can be valid for the historical issuedAt yet outside its current
 -- rotation window.  The SQL verifier must reject that direct service-role RPC
 -- instead of treating issuedAt as the only validity check.
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals
 set valid_through = clock_timestamp() - interval '1 minute'
 where key_id = 'release.ci';
@@ -33,6 +34,7 @@ select throws_ok(
   'P0001', 'UNAUTHENTICATED',
   'CMS-03A-05 rejects a key outside its current valid-through window even when issuedAt remains valid'
 );
+-- FIXTURE FORGERY: release key lifecycle (revocation / validity window) of an operator-provisioned principal has no command; the statement moves a window to reach the time-dependent branch, no producer path is claimed.
 update platform_private.cfg_release_principals
 set valid_through = null
 where key_id = 'release.ci';
@@ -75,15 +77,17 @@ select pg_temp.s09_sign_release(request || jsonb_build_object(
   'idempotencyKey', 's09-block-lifecycle-0001'
 ) , 'CMS-03A-08') as request
 from s09_block_request;
-select set_config('request.jwt.claim.role', 'authenticated', true);
+select pg_temp.set_jwt_claim('role', 'authenticated', true);
 select throws_ok(
   $$select platform_api.cms_advance_block_lifecycle(
     (select request from s09_lifecycle_request)
   )$$,
-  'P0001', 'UNAUTHENTICATED',
-  'CMS-03A-08 rejects authenticated callers before release-principal resolution'
+  'P0001', 'FORBIDDEN',
+  'CMS-03A-08 rejects authenticated callers (a human or admin session) with 403 before release-principal resolution [P2-S09-AC-034]'
 );
-select set_config('request.jwt.claim.role', 'service_role', true);
+select pg_temp.set_jwt_claim('role', 'service_role', true);
+-- a Worker request of its own: nothing a previous (human) command published is still set
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true), set_config('app.mfa_session_subject', '', true);
 create temp table s09_lifecycle_created on commit drop as
 select platform_api.cms_advance_block_lifecycle(request) as response
 from s09_lifecycle_request;

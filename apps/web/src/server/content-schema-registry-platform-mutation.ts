@@ -19,10 +19,16 @@ import {
 } from './content-schema-registry-platform-input';
 import type { ParsedMutationInput } from './content-schema-registry-platform-input';
 import {
+  boundedMutationInput,
+  contentSchemaRegistryMutationOperationFromBoundedInput,
+  isJsonMutationContentType,
+} from './content-schema-registry-platform-bounded-input';
+import {
   copyMutationResponseHeaders,
   csrfCookie,
   forwardedMutationCookies,
   forwardedMutationError,
+  invalidPayloadError,
   localMutationError,
   mutationPath,
   printableToken,
@@ -50,12 +56,14 @@ export const forwardContentSchemaRegistryMutation = async (
   const path = mutationPath(target);
   if (path === null) return localMutationError(request, 400);
 
-  const contentType = request.headers.get('content-type') ?? '';
+  // One bounded read of this request, shared with the operation probe below.
+  const bounded = await boundedMutationInput(request);
+  if (!bounded.read.ok) return localMutationError(request, 400);
   let parsed: ParsedMutationInput;
   try {
-    parsed = /^application\/json(?:\s*;|$)/iu.test(contentType)
-      ? await parseJsonInput(request, target)
-      : await parseFormDataInput(request, target);
+    parsed = isJsonMutationContentType(bounded.contentType)
+      ? await parseJsonInput(bounded, target)
+      : await parseFormDataInput(bounded, target);
   } catch (error) {
     if (error instanceof MutationInputError)
       return localMutationError(request, 400);
@@ -118,17 +126,23 @@ export const forwardContentSchemaRegistryMutation = async (
   ) {
     return localMutationError(request, 400);
   }
+  // Recent MFA is the session's step-up proof, which the Worker checks (401
+  // STEP_UP_REQUIRED); the activation form has no token field, so a token is
+  // forwarded only when a caller supplied one and is never demanded here.
   if (
     target.operationId === 'CMS-03A-04' &&
-    (!printableToken(stepUpToken, 512) ||
-      (parsed.transport.source === 'form' &&
-        parsed.transport.confirmed !== true))
+    parsed.transport.source === 'form' &&
+    parsed.transport.confirmed !== true
   ) {
+    return localMutationError(request, 403);
+  }
+  if (stepUpToken !== null && !printableToken(stepUpToken, 512)) {
     return localMutationError(request, 403);
   }
 
   const validated = schemaParseMutation(target.operationId, parsed.payload);
-  if (!validated.success) return localMutationError(request, 422);
+  if (!validated.success)
+    return invalidPayloadError(request, validated.error?.issues ?? []);
 
   const headers = new Headers({
     accept: 'application/json',
@@ -201,22 +215,16 @@ export const forwardContentSchemaRegistryRequest =
 export const contentSchemaRegistryMutationOperationFromRequest = async (
   request: Request,
 ): Promise<ContentSchemaRegistryMutationOperationId | null> => {
+  // BE00 step 2: a request that cannot be shown to be same-origin is refused
+  // before its body is read, so a cross-site POST is never buffered here.
+  if (!sameOriginMutationRequest(request)) return null;
+  // The same bounded read (and, for a form, the same parsed form) the facade
+  // uses, so a cookie-bearing request is never read twice.
+  const bounded = await boundedMutationInput(request);
   try {
-    const contentType = request.headers.get('content-type') ?? '';
-    let value: unknown;
-    if (/^application\/json(?:\s*;|$)/iu.test(contentType)) {
-      value = await request.clone().json();
-    } else {
-      value = (await request.clone().formData()).get('operationId');
-    }
-    const operationId =
-      typeof value === 'object' && value !== null
-        ? (value as { readonly operationId?: unknown }).operationId
-        : value;
-    return typeof operationId === 'string' &&
-      Object.hasOwn(CONTENT_SCHEMA_REGISTRY_MUTATION_OPERATIONS, operationId)
-      ? (operationId as ContentSchemaRegistryMutationOperationId)
-      : null;
+    return await contentSchemaRegistryMutationOperationFromBoundedInput(
+      bounded,
+    );
   } catch {
     return null;
   }

@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-09-26T18:22:09.296Z",
+  "builtAt": "2026-10-04T06:09:15.639Z",
   "issues": [
     {
       "severity": "warning",
@@ -144,6 +144,48 @@
       "code": "ORPHAN_SPEC",
       "message": ".memory/wiki/specs/audits/propagation-observability-cost-2026-08-30.md has no graph relationships",
       "path": ".memory/wiki/specs/audits/propagation-observability-cost-2026-08-30.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-editorial-policy-source.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-editorial-policy-source.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-pattern-source.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-pattern-source.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-related-content-source.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-related-content-source.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-restore-chain.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-restore-chain.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-template-activation.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-28-cms-template-activation.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-10-02.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-02.md"
     },
     {
       "severity": "warning",

@@ -1,4 +1,9 @@
 import type { ContentSchemaRegistryMutationTarget } from './content-schema-registry-platform-shared';
+import {
+  boundedFormData,
+  boundedJsonText,
+  type BoundedMutationInput,
+} from './content-schema-registry-platform-bounded-input';
 
 const FORM_JSON_FIELDS = new Set([
   'fields',
@@ -9,6 +14,8 @@ const FORM_JSON_FIELDS = new Set([
   'defaultValue',
   'editorConfig',
   'approvalIds',
+  'supportedLocales',
+  'fallbackChains',
 ]);
 const FORM_BOOLEAN_FIELDS = new Set(['required', 'ordered', 'confirmed']);
 const FORM_NUMBER_FIELDS = new Set(['min', 'max']);
@@ -17,11 +24,14 @@ const FORM_NULLABLE_FIELDS = new Set([
   'validatorKey',
   'validatorVersion',
   'migrationPlanId',
+  'transformKey',
+  'transformVersion',
 ]);
 const FORM_OPTIONAL_FIELDS = new Set([
   'stableFieldId',
   'defaultValue',
   'expectedActivationEvidenceHash',
+  'reason',
 ]);
 const FORM_TRANSPORT_FIELDS = new Set([
   'operationId',
@@ -31,9 +41,33 @@ const FORM_TRANSPORT_FIELDS = new Set([
   'stepUpToken',
   'confirmation',
   'confirmed',
+  'localeChoice',
+  'templateChoice',
   'contentTypeId',
   'versionId',
+  'reviewId',
+  'grantId',
 ]);
+
+const PATH_IDENTIFIERS = [
+  'contentTypeId',
+  'versionId',
+  'reviewId',
+  'grantId',
+] as const;
+
+/**
+ * A browser may echo the path identifier the route already bound, but it can
+ * never introduce one the target does not declare or contradict one it does.
+ */
+const pathIdentifiersMatch = (
+  target: ContentSchemaRegistryMutationTarget,
+  supplied: (name: (typeof PATH_IDENTIFIERS)[number]) => string | null,
+): boolean =>
+  PATH_IDENTIFIERS.every((name) => {
+    const value = supplied(name);
+    return value === null || target[name] === value;
+  });
 
 export type MutationTransport = {
   readonly operationId: string | null;
@@ -69,15 +103,11 @@ const parseJsonText = (value: string, field: string): unknown => {
 };
 
 export const parseFormDataInput = async (
-  request: Request,
+  bounded: BoundedMutationInput,
   target: ContentSchemaRegistryMutationTarget,
 ): Promise<ParsedMutationInput> => {
-  let form: FormData;
-  try {
-    form = await request.clone().formData();
-  } catch {
-    throw new MutationInputError('form_invalid');
-  }
+  const form = await boundedFormData(bounded);
+  if (form === null) throw new MutationInputError('form_invalid');
   const values = new Map<string, string>();
   for (const [name, raw] of form.entries()) {
     if (typeof raw !== 'string') throw new MutationInputError('file_invalid');
@@ -86,21 +116,8 @@ export const parseFormDataInput = async (
   }
 
   const suppliedOperation = values.get('operationId') ?? null;
-  const suppliedContentTypeId = values.get('contentTypeId');
-  const suppliedVersionId = values.get('versionId');
-  if (
-    (target.contentTypeId === undefined &&
-      suppliedContentTypeId !== undefined) ||
-    (target.contentTypeId !== undefined &&
-      suppliedContentTypeId !== undefined &&
-      suppliedContentTypeId !== target.contentTypeId) ||
-    (target.versionId === undefined && suppliedVersionId !== undefined) ||
-    (target.versionId !== undefined &&
-      suppliedVersionId !== undefined &&
-      suppliedVersionId !== target.versionId)
-  ) {
+  if (!pathIdentifiersMatch(target, (name) => values.get(name) ?? null))
     throw new MutationInputError('path_id_mismatch');
-  }
 
   const payload: Record<string, unknown> = {};
   let confirmed: boolean | null = null;
@@ -141,6 +158,14 @@ export const parseFormDataInput = async (
     payload.required = false;
   if (target.operationId === 'CMS-03A-03' && !Object.hasOwn(payload, 'ordered'))
     payload.ordered = false;
+  // DEC-123: the create form carries no template inputs, so the request names
+  // none. A posted value is kept as sent and is refused by the contract.
+  if (target.operationId === 'CMS-03A-01') {
+    if (!Object.hasOwn(payload, 'defaultTemplateVersionId'))
+      payload.defaultTemplateVersionId = null;
+    if (!Object.hasOwn(payload, 'templateBindings'))
+      payload.templateBindings = [];
+  }
   for (const field of FORM_NULLABLE_FIELDS) {
     if (values.has(field) && values.get(field)?.trim() === '')
       payload[field] = null;
@@ -160,12 +185,14 @@ export const parseFormDataInput = async (
 };
 
 export const parseJsonInput = async (
-  request: Request,
+  bounded: BoundedMutationInput,
   target: ContentSchemaRegistryMutationTarget,
 ): Promise<ParsedMutationInput> => {
   let value: unknown;
   try {
-    value = await request.clone().json();
+    const text = boundedJsonText(bounded);
+    if (text === null) throw new Error('bounded read refused');
+    value = JSON.parse(text) as unknown;
   } catch {
     throw new MutationInputError('json_invalid');
   }
@@ -173,23 +200,16 @@ export const parseJsonInput = async (
     throw new MutationInputError('json_invalid');
   const input = { ...(value as Record<string, unknown>) };
   const suppliedOperation = textOrNull(input.operationId, 'operationId');
-  const suppliedContentTypeId = textOrNull(
-    input.contentTypeId,
-    'contentTypeId',
+  const suppliedIdentifiers = new Map(
+    PATH_IDENTIFIERS.map((name) => [name, textOrNull(input[name], name)]),
   );
-  const suppliedVersionId = textOrNull(input.versionId, 'versionId');
   if (
-    (target.contentTypeId === undefined && suppliedContentTypeId !== null) ||
-    (target.contentTypeId !== undefined &&
-      suppliedContentTypeId !== null &&
-      suppliedContentTypeId !== target.contentTypeId) ||
-    (target.versionId === undefined && suppliedVersionId !== null) ||
-    (target.versionId !== undefined &&
-      suppliedVersionId !== null &&
-      suppliedVersionId !== target.versionId)
-  ) {
+    !pathIdentifiersMatch(
+      target,
+      (name) => suppliedIdentifiers.get(name) ?? null,
+    )
+  )
     throw new MutationInputError('path_id_mismatch');
-  }
   const csrfToken = textOrNull(input.csrf, 'csrf');
   const idempotencyKey = textOrNull(
     input['idempotency-key'],
@@ -212,8 +232,7 @@ export const parseJsonInput = async (
               })();
   for (const key of [
     'operationId',
-    'contentTypeId',
-    'versionId',
+    ...PATH_IDENTIFIERS,
     'csrf',
     'idempotency-key',
     'if-match',

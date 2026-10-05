@@ -1,5 +1,5 @@
 import * as React from 'react';
-import CapabilityGate from './CapabilityGate';
+import CapabilityGate from '../infrastructure/CapabilityGate';
 import OfflineStatus from './OfflineStatus';
 import PlatformConfigurationAsync from './platform-configuration-async';
 import SettingsFlagsRuntimeActionPanel from './SettingsFlagsRuntimeActionPanel';
@@ -121,6 +121,7 @@ export function SettingsFlagsRuntimeWorkbenchView({
             />
             {access !== 'full' ? (
               <CapabilityGate
+                surface="platform-configuration"
                 variant={access}
                 reasonCode={
                   initial.error?.code ??

@@ -1,0 +1,113 @@
+/*
+ * Grant console layout. Colour, spacing and control sizing come from the
+ * shared `.content-schema-registry` tokens; this file adds only the table and
+ * the desktop/tablet/mobile arrangement (FE03 responsive contract).
+ */
+.cms-capability-grant-layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-capability-grant-mono {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.cms-capability-grant-table {
+  border-collapse: collapse;
+  inline-size: 100%;
+}
+
+.cms-capability-grant-table caption {
+  font-weight: 750;
+  margin-block-end: 0.5rem;
+  text-align: start;
+}
+
+.cms-capability-grant-table th,
+.cms-capability-grant-table td {
+  border-block-end: 1px solid var(--registry-border);
+  padding: 0.6rem 0.5rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+.cms-capability-grant-table [data-facts-toggle] {
+  display: none;
+}
+
+.cms-capability-grant-table td code {
+  overflow-wrap: anywhere;
+}
+
+.cms-capability-grant-table [data-actions-cell] button {
+  margin-inline-end: 0.5rem;
+}
+
+.cms-capability-grant-table th button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 750;
+  padding-inline: 0;
+}
+
+@media (min-width: 64rem) {
+  .cms-capability-grant-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  /* The shared registry table rule floors every table at 42rem, which would
+     keep the stacked mobile rows wider than the viewport. */
+  .content-schema-registry .cms-capability-grant-table {
+    min-inline-size: 0;
+  }
+
+  .cms-capability-grant-table thead {
+    block-size: 1px;
+    inline-size: 1px;
+    overflow: hidden;
+    position: absolute;
+  }
+
+  .cms-capability-grant-table,
+  .cms-capability-grant-table tbody,
+  .cms-capability-grant-table tr,
+  .cms-capability-grant-table td {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .cms-capability-grant-table tr {
+    border: 1px solid var(--registry-border);
+    border-radius: 0.5rem;
+    margin-block-end: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  .cms-capability-grant-table td {
+    border: 0;
+    padding: 0.25rem 0;
+  }
+
+  /* Expandable facts: person ID and last-updated stay behind the row toggle. */
+  .cms-capability-grant-table
+    tr:not([data-facts-open])
+    :is([data-person-cell], [data-updated-cell]) {
+    display: none;
+  }
+
+  .cms-capability-grant-table [data-facts-toggle] {
+    display: block;
+    margin-block-start: 0.25rem;
+  }
+
+  .cms-capability-grant-table [data-actions-cell] button,
+  .cms-capability-grant-table [data-facts-toggle] {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
+}

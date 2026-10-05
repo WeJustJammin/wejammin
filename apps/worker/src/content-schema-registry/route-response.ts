@@ -7,6 +7,7 @@ import {
   CONTENT_SCHEMA_REGISTRY_PRESENTATION_VARIANTS,
   CONTENT_SCHEMA_REGISTRY_PRIVATE_SERVICE_HOST,
   CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER,
+  CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
   contentSchemaRegistryRoutePolicies,
 } from '@wejammin/contracts';
 
@@ -20,6 +21,7 @@ import { CONTENT_SCHEMA_REGISTRY_RUNBOOK } from './types';
 import type { FeatureContext } from './route-types';
 import { statusFor } from './route-types';
 export { safeDetails } from './route-response-details';
+import { boundedRetryAfterSeconds } from './error-detail-values';
 import { safeDetails } from './route-response-details';
 
 export const successStatusFor = (
@@ -32,6 +34,12 @@ export const successStatusFor = (
     value !== null
   )
     return (value as { jobId?: unknown }).jobId === null ? 200 : 202;
+  if (
+    operationId === 'CMS-03A-14' &&
+    typeof value === 'object' &&
+    value !== null
+  )
+    return (value as { state?: unknown }).state === 'revoked' ? 200 : 201;
   return statusFor[operationId] as 200 | 201 | 202;
 };
 
@@ -96,6 +104,7 @@ export const setContentSchemaRegistryCapabilityHeader = (
   presentationVariant?: string,
   actorId?: string,
   actingPartyId?: string | null,
+  stepUpFreshUntil?: string,
 ): void => {
   const safeCapabilities = capabilities.filter((capability) =>
     humanCapabilities.has(capability),
@@ -124,12 +133,27 @@ export const setContentSchemaRegistryCapabilityHeader = (
       CONTENT_SCHEMA_REGISTRY_ACTING_PARTY_ID_HEADER,
       actingPartyId,
     );
+  if (stepUpFreshUntil !== undefined && isCanonicalInstant(stepUpFreshUntil))
+    context.header(
+      CONTENT_SCHEMA_REGISTRY_STEP_UP_FRESH_UNTIL_HEADER,
+      stepUpFreshUntil,
+    );
 };
 
 const isCmsContextUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
     value,
   );
+
+/**
+ * A canonical RFC3339 instant with millisecond precision. A malformed
+ * disclosure instant is dropped rather than forwarded; the browser fails
+ * closed to "required" when the header is absent.
+ */
+const isCanonicalInstant = (value: string): boolean => {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+};
 
 /** Select the least-privileged presentation from authenticated server data. */
 export const presentationVariantForSession = (
@@ -149,38 +173,80 @@ export const presentationVariantForSession = (
   return undefined;
 };
 
+/**
+ * WEBHOOK_REJECTED is reserved for the exact 401 outcome of the signed release
+ * boundary (CMS-03A-05 and CMS-03A-08). Any other status, or any other
+ * operation, that reports it is a defect upstream: the wire shows the code
+ * the status itself declares, never the reserved release outcome.
+ */
+const RELEASE_BOUNDARY_OPERATIONS: ReadonlySet<string> = new Set([
+  'CMS-03A-05',
+  'CMS-03A-08',
+]);
+const STATUS_DECLARED_CODE: Readonly<Record<number, string>> = {
+  400: 'INVALID_REQUEST',
+  401: 'UNAUTHENTICATED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  413: 'PAYLOAD_TOO_LARGE',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
+  422: 'VALIDATION_FAILED',
+  429: 'RATE_LIMITED',
+};
+
+const NOT_FOUND_MESSAGE = 'The requested CMS registry resource was not found.';
+
 export const errorResponse = (
   context: FeatureContext,
   result: ContentSchemaRegistryError,
   requestId: string,
 ): Response => {
-  const code = /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
-    ? result.code
-    : 'INTERNAL_ERROR';
+  // BE00 uses the single code DEPENDENCY_UNAVAILABLE for 502, 503 and 504; the
+  // finer internal reason codes never reach the wire.
+  const dependencyFailure =
+    result.status === 502 || result.status === 503 || result.status === 504;
+  // BE00 has one 409 code, CONFLICT; `details.conflict` names the kind.
+  const reservedMisuse =
+    result.code === 'WEBHOOK_REJECTED' &&
+    !(
+      result.status === 401 &&
+      RELEASE_BOUNDARY_OPERATIONS.has(context.get('operationId') ?? '')
+    );
+  const code = dependencyFailure
+    ? 'DEPENDENCY_UNAVAILABLE'
+    : result.status === 409
+      ? 'CONFLICT'
+      : reservedMisuse
+        ? (STATUS_DECLARED_CODE[result.status] ?? 'INTERNAL_ERROR')
+        : /^[A-Z][A-Z0-9_]{0,63}$/u.test(result.code)
+          ? result.code
+          : 'INTERNAL_ERROR';
+  // A concealed resource must be indistinguishable from an absent one, so a 404
+  // never carries port-authored text (BE03a 403-versus-404 rule).
   const safeMessage =
-    result.status >= 500
-      ? code === 'INTERNAL_ERROR'
-        ? 'An unexpected error occurred.'
-        : code === 'DEPENDENCY_DEADLINE_EXCEEDED'
-          ? 'The CMS registry dependency exceeded its deadline.'
-          : code === 'DEPENDENCY_INVALID_RESPONSE'
-            ? 'The CMS registry dependency returned an invalid response.'
-            : 'The CMS registry dependency is temporarily unavailable.'
-      : result.message;
+    result.status === 404
+      ? NOT_FOUND_MESSAGE
+      : result.status >= 500
+        ? code === 'INTERNAL_ERROR'
+          ? 'An unexpected error occurred.'
+          : result.status === 504
+            ? 'The CMS registry dependency exceeded its deadline.'
+            : result.status === 502
+              ? 'The CMS registry dependency returned an invalid response.'
+              : 'The CMS registry dependency is temporarily unavailable.'
+        : result.message;
   const body = {
     code,
     message: safeMessage,
     requestId,
-    details: safeDetails(result),
+    details: safeDetails(result, context.get('operationId')),
   };
   context.header('cache-control', 'no-store');
   if (result.status === 502 || result.status === 503 || result.status === 504)
-    context.header(
-      CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER,
-      String(result.details?.retryable === true),
-    );
-  if (result.retryAfterSeconds !== undefined)
-    context.header('retry-after', String(result.retryAfterSeconds));
+    context.header(CONTENT_SCHEMA_REGISTRY_RETRYABLE_HEADER, 'true');
+  const retryAfterSeconds = boundedRetryAfterSeconds(result.retryAfterSeconds);
+  if (retryAfterSeconds !== null)
+    context.header('retry-after', String(retryAfterSeconds));
   return context.json(body, result.status);
 };
 

@@ -166,10 +166,10 @@ const contentSchemaRegistryResponses = (
     schema: 'success',
     headers: successHeaders,
   })),
-  ...errors.map(({ status, description }) => ({
+  ...errors.map(({ status, description, schema = 'error' }) => ({
     status: String(status),
     description,
-    schema: 'error',
+    schema,
     ...(status === 429 ? { headers: 'rate' } : {}),
   })),
 ];
@@ -195,6 +195,18 @@ const contentSchemaRegistryHumanMutationErrors = [
   { status: 504, description: 'Content schema dependency timed out' },
 ];
 
+const contentSchemaRegistryStepUpMutationErrors =
+  contentSchemaRegistryHumanMutationErrors.map((error) =>
+    error.status === 401
+      ? {
+          status: 401,
+          description:
+            'Authentication or recent step-up verification is required',
+          schema: 'stepUpUnauthorized',
+        }
+      : error,
+  );
+
 const contentSchemaRegistryListErrors = [
   { status: 400, description: 'Content schema list query is malformed' },
   { status: 401, description: 'Authentication is required' },
@@ -210,6 +222,21 @@ const contentSchemaRegistryListErrors = [
   { status: 504, description: 'Content schema projection timed out' },
 ];
 
+const contentSchemaRegistryGrantListErrors = [
+  { status: 400, description: 'Capability grant list query is malformed' },
+  { status: 401, description: 'Authentication is required' },
+  { status: 403, description: 'Owner authority is required' },
+  { status: 422, description: 'Capability grant list query fails validation' },
+  { status: 429, description: 'Capability grant list rate limit exceeded' },
+  { status: 500, description: 'Capability grant list failed safely' },
+  {
+    status: 502,
+    description: 'Capability grant projection returned invalid data',
+  },
+  { status: 503, description: 'Capability grant projection unavailable' },
+  { status: 504, description: 'Capability grant projection timed out' },
+];
+
 const contentSchemaRegistryDetailErrors = [
   { status: 400, description: 'Content schema detail path is malformed' },
   { status: 401, description: 'Authentication is required' },
@@ -223,6 +250,21 @@ const contentSchemaRegistryDetailErrors = [
   },
   { status: 503, description: 'Content schema projection unavailable' },
   { status: 504, description: 'Content schema projection timed out' },
+];
+
+const contentSchemaRegistryReviewDetailErrors = [
+  { status: 400, description: 'Schema review path is malformed' },
+  { status: 401, description: 'Authentication is required' },
+  { status: 403, description: 'Schema review read capability is forbidden' },
+  { status: 404, description: 'Schema review is absent or concealed' },
+  { status: 429, description: 'Schema review read rate limit exceeded' },
+  { status: 500, description: 'Schema review read failed safely' },
+  {
+    status: 502,
+    description: 'Schema review projection returned invalid data',
+  },
+  { status: 503, description: 'Schema review projection unavailable' },
+  { status: 504, description: 'Schema review projection timed out' },
 ];
 
 const contentSchemaRegistryReleaseErrors = [
@@ -250,6 +292,96 @@ const contentSchemaRegistryReleaseErrors = [
   },
   { status: 503, description: 'Signed content schema dependency unavailable' },
   { status: 504, description: 'Signed content schema dependency timed out' },
+];
+
+const authMfaCommandErrors = (
+  subject,
+  { stepUp = false, notFound, conflict, validation, rate },
+) => [
+  { status: '400', description: `${subject} request or headers are malformed` },
+  {
+    status: '401',
+    description: stepUp
+      ? 'Verified session or recent step-up verification is required'
+      : 'Verified session is required',
+    ...(stepUp ? { schema: 'stepUpUnauthorized' } : {}),
+  },
+  { status: '403', description: 'Account is not eligible or CSRF failed' },
+  { status: '404', description: notFound },
+  { status: '409', description: conflict },
+  { status: '413', description: `${subject} body is too large` },
+  { status: '415', description: `${subject} media type is unsupported` },
+  { status: '422', description: validation },
+  { status: '429', description: rate },
+  { status: '500', description: `${subject} failed safely` },
+  {
+    status: '502',
+    description: 'Authentication provider returned an invalid response',
+  },
+  { status: '503', description: `${subject} dependency unavailable` },
+  { status: '504', description: `${subject} dependency timed out` },
+];
+
+const authMfaResponses = (
+  successStatus,
+  successDescription,
+  errors,
+  headers,
+) => [
+  {
+    status: successStatus,
+    description: successDescription,
+    schema: 'success',
+    ...(headers ? { headers } : {}),
+  },
+  ...errors.map((error) => ({
+    schema: 'error',
+    ...error,
+    ...(error.status === '429' ? { headers: 'rate' } : {}),
+  })),
+];
+
+const authMfaFactorErrors = {
+  notFound: 'Factor is absent or concealed',
+  conflict: 'MFA state, factor, or version conflicts',
+  validation: 'MFA fields fail semantic validation',
+  rate: 'MFA rate limit exceeded',
+};
+
+const adminMfaFactorResetErrors = [
+  {
+    status: '400',
+    description: 'MFA factor reset request or headers are malformed',
+  },
+  {
+    status: '401',
+    description: 'Verified session or recent step-up verification is required',
+    schema: 'stepUpUnauthorized',
+  },
+  {
+    status: '403',
+    description:
+      'Named admin.identity.mfa_reset capability or CSRF is forbidden',
+  },
+  { status: '404', description: 'Target person is absent or concealed' },
+  {
+    status: '409',
+    description: 'Reset is already in progress or idempotency conflicts',
+  },
+  { status: '413', description: 'MFA factor reset body is too large' },
+  { status: '415', description: 'MFA factor reset media type is unsupported' },
+  {
+    status: '422',
+    description: 'Reset fails validation or targets the operator themselves',
+  },
+  { status: '429', description: 'MFA factor reset rate limit exceeded' },
+  { status: '500', description: 'MFA factor reset failed safely' },
+  {
+    status: '502',
+    description: 'Identity dependency returned an invalid response',
+  },
+  { status: '503', description: 'Identity service unavailable' },
+  { status: '504', description: 'Identity dependency timed out' },
 ];
 
 export const routeDefinitions = {
@@ -322,12 +454,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Protected OAuth intent requires authentication',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Protected OAuth intent requires fresh self authority',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -505,12 +638,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'CSRF or global-logout step-up verification failed',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -583,12 +717,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh self step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -654,12 +789,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh self step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -730,12 +866,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh self step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -842,12 +979,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh survivor step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -913,12 +1051,13 @@ export const routeDefinitions = {
       },
       {
         status: '401',
-        description: 'Verified session is required',
-        schema: 'error',
+        description:
+          'Verified session or recent step-up verification is required',
+        schema: 'stepUpUnauthorized',
       },
       {
         status: '403',
-        description: 'Fresh survivor step-up and CSRF are required',
+        description: 'Account is not eligible or CSRF verification failed',
         schema: 'error',
       },
       {
@@ -968,6 +1107,96 @@ export const routeDefinitions = {
         schema: 'error',
       },
     ],
+  },
+  authMfaFactorsRead: {
+    responses: [
+      {
+        status: '200',
+        description: 'Current MFA factors and step-up state',
+        schema: 'success',
+        headers: 'entity',
+      },
+      {
+        status: '401',
+        description: 'Verified session is required',
+        schema: 'error',
+      },
+      {
+        status: '403',
+        description: 'Account is not eligible',
+        schema: 'error',
+      },
+      {
+        status: '429',
+        description: 'MFA factor read rate limit exceeded',
+        schema: 'error',
+        headers: 'rate',
+      },
+      {
+        status: '503',
+        description: 'MFA factor dependency unavailable',
+        schema: 'error',
+      },
+      {
+        status: '504',
+        description: 'MFA factor read timed out',
+        schema: 'error',
+      },
+      {
+        status: '500',
+        description: 'MFA factor read failed safely',
+        schema: 'error',
+      },
+    ],
+  },
+  authMfaEnrollmentStart: {
+    responses: authMfaResponses(
+      '201',
+      'TOTP enrollment started; secret shown once',
+      authMfaCommandErrors('Enrollment', {
+        stepUp: true,
+        ...authMfaFactorErrors,
+        notFound: 'Enrollment target is absent or concealed',
+      }),
+      'entity',
+    ),
+  },
+  authMfaFactorVerify: {
+    responses: authMfaResponses(
+      '200',
+      'MFA factor verified and session rotated to aal2',
+      authMfaCommandErrors('Factor verification', authMfaFactorErrors),
+      'entity',
+    ),
+  },
+  authMfaFactorRemove: {
+    responses: authMfaResponses(
+      '200',
+      'MFA factor removed',
+      authMfaCommandErrors('Factor removal', {
+        stepUp: true,
+        ...authMfaFactorErrors,
+      }),
+      'entity',
+    ),
+  },
+  authStepUpChallengeCreate: {
+    responses: authMfaResponses(
+      '201',
+      'Step-up challenge created',
+      authMfaCommandErrors('Challenge', authMfaFactorErrors),
+    ),
+  },
+  authStepUpVerify: {
+    responses: authMfaResponses(
+      '200',
+      'Step-up verified and session rotated to aal2',
+      authMfaCommandErrors('Step-up verification', {
+        ...authMfaFactorErrors,
+        notFound: 'Challenge is absent or concealed',
+        conflict: 'Challenge is expired or already consumed',
+      }),
+    ),
   },
   identityCreate: {
     responses: identityResponse(
@@ -1517,8 +1746,45 @@ export const routeDefinitions = {
     responses: contentSchemaRegistryResponses(
       [200, 202],
       'Schema activation accepted',
-      contentSchemaRegistryHumanMutationErrors,
+      contentSchemaRegistryStepUpMutationErrors,
       'mutation',
+    ),
+  },
+  'CFG-05B-06': {
+    responses: [
+      ...['200', '202'].map((status) => ({
+        status,
+        description:
+          status === '200'
+            ? 'MFA factors reset and removed'
+            : 'MFA factor removal is reconciling',
+        schema: 'success',
+      })),
+      ...adminMfaFactorResetErrors.map((error) => ({
+        schema: 'error',
+        ...error,
+        ...(error.status === '429' ? { headers: 'rate' } : {}),
+      })),
+    ],
+  },
+  'CFG-05B-07': {
+    responses: identityResponse(
+      '200',
+      'Named admin capabilities of the verified session and acting party',
+      [
+        { status: '401', description: 'Verified session is required' },
+        {
+          status: '403',
+          description: 'Acting context is not allowed or CSRF is forbidden',
+        },
+        {
+          status: '429',
+          description: 'Capability snapshot rate limit exceeded',
+        },
+        { status: '500', description: 'Capability snapshot failed safely' },
+        { status: '503', description: 'Authorization context unavailable' },
+        { status: '504', description: 'Authorization context timed out' },
+      ],
     ),
   },
   'CMS-03A-05': {
@@ -1550,6 +1816,451 @@ export const routeDefinitions = {
       [201],
       'Block lifecycle event appended',
       contentSchemaRegistryReleaseErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-09': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Successor schema draft created',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-10': {
+    responses: contentSchemaRegistryResponses(
+      [202],
+      'Schema dry run accepted',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-11': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Schema review submitted',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-12': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Schema review decision recorded',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-13': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Capability-safe schema review',
+      contentSchemaRegistryReviewDetailErrors,
+      'entity',
+    ),
+  },
+  'CMS-03A-14': {
+    responses: contentSchemaRegistryResponses(
+      [200, 201],
+      'Schema review assignment revoked or created',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-15': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'CMS capability grant created',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-16': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'CMS capability grant renewed',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-17': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'CMS capability grant revoked',
+      contentSchemaRegistryStepUpMutationErrors,
+      'mutation',
+    ),
+  },
+  'CMS-03A-18': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Owner CMS capability grant page',
+      contentSchemaRegistryGrantListErrors,
+      'entity',
+    ),
+  },
+  'CMS-03B-01': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Immutable entry revision created',
+      [
+        { status: 400, description: 'Revision request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Revision assignment or edit capability is forbidden',
+        },
+        { status: 404, description: 'Entry is absent or concealed' },
+        {
+          status: 409,
+          description: 'Stale base, conflict, or idempotency mismatch',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Revision fields fail validation' },
+        { status: 429, description: 'Author-write rate limit exceeded' },
+        { status: 500, description: 'Revision write failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-02': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Two-parent conflict-resolution revision created',
+      [
+        { status: 400, description: 'Conflict request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Conflict resolve capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Entry or conflict is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Moved base, invalid choice, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Conflict choice or value fails schema' },
+        { status: 429, description: 'Conflict-write rate limit exceeded' },
+        { status: 500, description: 'Conflict resolution failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-03': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized revision history page',
+      [
+        {
+          status: 400,
+          description: 'History path, query, or cursor is malformed',
+        },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'History read scope is forbidden' },
+        {
+          status: 404,
+          description: 'Entry or revision is absent or concealed',
+        },
+        { status: 409, description: 'Cursor or context mismatch' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'History query bounds fail validation' },
+        { status: 429, description: 'Read rate limit exceeded' },
+        { status: 500, description: 'History read failed safely' },
+        {
+          status: 502,
+          description: 'History dependency returned invalid data',
+        },
+        { status: 503, description: 'History dependency unavailable' },
+        { status: 504, description: 'History dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03B-04': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'New draft revision restored from a readable source revision',
+      [
+        { status: 400, description: 'Restore request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Restore edit capability is forbidden' },
+        {
+          status: 404,
+          description: 'Entry or source revision is absent or concealed',
+        },
+        {
+          status: 409,
+          description:
+            'Stale version, migration mismatch, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Restore fields fail validation' },
+        { status: 429, description: 'Restore rate limit exceeded' },
+        { status: 500, description: 'Restore failed safely' },
+        {
+          status: 502,
+          description: 'Migration dependency returned invalid data',
+        },
+        { status: 503, description: 'Migration dependency unavailable' },
+        { status: 504, description: 'Migration dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-10': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Entry and initial draft revision created',
+      [
+        { status: 400, description: 'Entry create request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Entry create capability is forbidden' },
+        { status: 404, description: 'Content schema is absent or concealed' },
+        { status: 409, description: 'Entry create or idempotency conflicts' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Entry create fields fail validation' },
+        { status: 429, description: 'Entry create rate limit exceeded' },
+        { status: 500, description: 'Entry create failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-11': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Authorized current draft detail',
+      [
+        { status: 400, description: 'Draft-detail request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Draft-detail read capability is forbidden',
+        },
+        { status: 404, description: 'Entry is absent or concealed' },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Draft-detail fields fail validation' },
+        { status: 429, description: 'Draft-detail rate limit exceeded' },
+        { status: 500, description: 'Draft-detail read failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03C-01': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Template version created',
+      contentSchemaRegistryHumanMutationErrors,
+      'mutation',
+    ),
+  },
+  cmsTemplateContextRead: {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Protected template designer selector context',
+      [
+        { status: 400, description: 'Context request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Template designer capability is forbidden',
+        },
+        { status: 429, description: 'Context read rate limit exceeded' },
+        { status: 500, description: 'Context read failed safely' },
+        {
+          status: 502,
+          description: 'Context projection returned invalid data',
+        },
+        { status: 503, description: 'Context dependency unavailable' },
+        { status: 504, description: 'Context dependency timed out' },
+      ],
+    ),
+  },
+  cmsTemplateLatestRead: {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Current authorized editable template definition',
+      [
+        { status: 400, description: 'Template key or query is invalid' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Template designer capability is forbidden',
+        },
+        { status: 404, description: 'Template is absent or not visible' },
+        { status: 429, description: 'Template read rate limit exceeded' },
+        { status: 500, description: 'Template read failed safely' },
+        { status: 502, description: 'Template detail returned invalid data' },
+        { status: 503, description: 'Template dependency unavailable' },
+        { status: 504, description: 'Template dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03C-04': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Locale variant revision created',
+      [
+        { status: 400, description: 'Locale variant request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Locale authoring capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Entry or source revision is absent or concealed',
+        },
+        {
+          status: 409,
+          description:
+            'Source, version, or idempotency conflicts; LOCALE_VERSION_CONFLICT with reasonCode FALLBACK_CHAIN_MISMATCH and details.activeFallbackChain when fallbackChain differs from the active content type version chain',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description:
+            'Locale fields fail validation, or locale is not in the active content type version supportedLocales',
+        },
+        { status: 429, description: 'Locale authoring rate limit exceeded' },
+        { status: 500, description: 'Locale authoring failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03C-02': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Immutable pattern instance created on an authorized draft',
+      [
+        { status: 400, description: 'Composition request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Draft edit capability is forbidden' },
+        {
+          status: 404,
+          description: 'Revision or pattern is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Revision, slot, graph, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Pattern graph or overrides fail validation',
+        },
+        { status: 429, description: 'Composition write rate limit exceeded' },
+        { status: 500, description: 'Composition mutation failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03C-03': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Taxonomy term action applied to the authorized vocabulary',
+      [
+        { status: 400, description: 'Taxonomy term request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Taxonomy curator capability is forbidden',
+        },
+        { status: 404, description: 'Taxonomy or term is absent or concealed' },
+        {
+          status: 409,
+          description: 'Term version, survivor, or idempotency conflicts',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Taxonomy term fields fail validation' },
+        { status: 429, description: 'Taxonomy write rate limit exceeded' },
+        { status: 500, description: 'Taxonomy mutation failed safely' },
+        {
+          status: 502,
+          description: 'Taxonomy dependency returned invalid data',
+        },
+        { status: 503, description: 'Taxonomy dependency unavailable' },
+        { status: 504, description: 'Taxonomy dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03C-05': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Related content rule revision created',
+      [
+        { status: 400, description: 'Related content request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Related content capability is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Source entry is absent or concealed',
+        },
+        {
+          status: 409,
+          description: 'Source, version, or idempotency conflicts',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Pins, exclusions, or rule fail validation',
+        },
+        {
+          status: 429,
+          description: 'Related content rate limit exceeded',
+        },
+        { status: 500, description: 'Related content failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        { status: 503, description: 'Editorial dependency unavailable' },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
       'mutation',
     ),
   },

@@ -8,17 +8,23 @@ import type { WorkerContext } from '../index';
 import {
   applyRateHeaders,
   authError,
+  decodeJsonBodyText,
+  jsonBodyPreflight,
   parseIdempotencyKey,
   parseIfMatch,
-  parseJsonBody,
+  readJsonBodyText,
   responseForAuthError,
+  type JsonMutationTransport,
 } from '../authentication/boundary';
 import type {
   AuthenticationDependencies,
+  AuthenticationError,
   AuthenticationResult,
   AuthenticationSession,
   AuthRateLimitDecision,
 } from '../authentication/types';
+
+import { checkProfilePortfolioCsrf, checkSameOrigin } from './route-admission';
 
 export const MAX_PROFILE_PORTFOLIO_BODY_BYTES = 256 * 1024;
 
@@ -108,20 +114,40 @@ export const parseProfileQuery = <T>(
       );
 };
 
-export const parseProfileBody = async <T>(
-  request: Request,
-  schema: SchemaLike<T>,
-): Promise<AuthenticationResult<T>> => {
-  const result = await parseJsonBody(request, schema);
-  if (result.ok) return result;
-  if (result.code === 'PAYLOAD_TOO_LARGE')
+/**
+ * BE00 step 2 for a profile portfolio command: the same-origin check, the body
+ * ceiling, the content type and, for a request carrying a session cookie, the
+ * session-bound CSRF token, then the raw body. JSON syntax and strict Zod
+ * validation run later (step 6) through `decode`.
+ */
+export const admitProfileCommandTransport = async (
+  context: WorkerContext,
+): Promise<AuthenticationResult<JsonMutationTransport>> => {
+  const origin = checkSameOrigin(context);
+  if (!origin.ok) return origin;
+  const preflight = jsonBodyPreflight(context.req.raw);
+  if (preflight !== null) return boundaryDetails(preflight);
+  if (/(?:^|;\s*)wj_session_ref=/u.test(context.req.header('cookie') ?? '')) {
+    const csrf = await checkProfilePortfolioCsrf(context);
+    if (!csrf.ok) return csrf;
+  }
+  const text = await readJsonBodyText(context.req.raw);
+  if (!text.ok) return boundaryDetails(text);
+  return {
+    ok: true,
+    value: { decode: (schema) => decodeJsonBodyText(text.value, schema) },
+  };
+};
+
+const boundaryDetails = (error: AuthenticationError): AuthenticationError => {
+  if (error.code === 'PAYLOAD_TOO_LARGE')
     return {
-      ...result,
+      ...error,
       details: { maxBytes: MAX_PROFILE_PORTFOLIO_BODY_BYTES },
     };
-  if (result.code === 'UNSUPPORTED_MEDIA_TYPE')
-    return { ...result, details: { allowedMediaTypes: ['application/json'] } };
-  return result;
+  if (error.code === 'UNSUPPORTED_MEDIA_TYPE')
+    return { ...error, details: { allowedMediaTypes: ['application/json'] } };
+  return error;
 };
 
 export const parseProfileCommandHeaders = (

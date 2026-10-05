@@ -5,6 +5,7 @@ import {
   createTestApp,
   bindings,
   json,
+  allowRate,
   record,
   request,
   status,
@@ -39,18 +40,27 @@ describe('Slice 03 Worker job-status endpoint', () => {
       kind: 'user' as const,
       userId: '22222222-2222-4222-8222-222222222222',
     }));
-    const app = createTestApp(createJobDependencies({ resolvePrincipal }));
+    const loadJobStatus = vi.fn(async () => record);
+    const rateLimit = vi.fn(async () => allowRate);
+    const app = createTestApp(
+      createJobDependencies({ loadJobStatus, rateLimit, resolvePrincipal }),
+    );
     const response = await app.fetch(
       request('/api/v1/jobs/not-a-uuid'),
       bindings,
     );
 
+    // BE00 step 4 (authentication) precedes step 6 (validation); validation
+    // precedes authorization, quota and the data read.
     expect({
       status: response.status,
-      calls: resolvePrincipal.mock.calls.length,
+      authentications: resolvePrincipal.mock.calls.length,
+      quotaAndReads:
+        rateLimit.mock.calls.length + loadJobStatus.mock.calls.length,
     }).toEqual({
       status: 400,
-      calls: 0,
+      authentications: 1,
+      quotaAndReads: 0,
     });
   });
 
@@ -82,7 +92,7 @@ describe('Slice 03 Worker job-status endpoint', () => {
     expect({
       statuses: responses.map((item) => item.status),
       authCalls: resolvePrincipal.mock.calls.length,
-    }).toEqual({ statuses: [400, 400, 400], authCalls: 0 });
+    }).toEqual({ statuses: [400, 400, 400], authCalls: 3 });
   });
 
   it('P1-S03-AC-004', async () => {

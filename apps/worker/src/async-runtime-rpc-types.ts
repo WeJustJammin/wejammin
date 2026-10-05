@@ -3,11 +3,13 @@ import type {
   PlatformJobsMessage,
 } from './async-entrypoint';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
+import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
 export type AsyncRpcOperation =
   | 'claim_outbox_batch'
   | 'complete_outbox_event'
   | 'idempotency_expiry_sweep'
+  | 'cms_sweep_expired_review_authority'
   | 'read_canonical_job'
   | 'read_restore_fence'
   | 'claim_job'
@@ -15,6 +17,7 @@ export type AsyncRpcOperation =
   | 'apply_job_outcome'
   | 'record_processed_event'
   | 'ac265_prepare_hosted_run'
+  | EventConsumerRpcName
   | SchemaMigrationRpcName;
 
 export const PLATFORM_API_PROFILE = 'platform_api' as const;

@@ -1,0 +1,59 @@
+-- CMS-03B-11: an assignment on one owner's entry cannot be combined with a
+-- cms.author grant held only in another acting organization.  The assignment
+-- FK binds its owner to the entry, but the authority resolver must bind that
+-- owner to the grant's acting party as well.  All fixture changes roll back.
+savepoint s10_detail_cross_owner_assignment;
+
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select foreign_org.organization_id, stranger.value::uuid, 'cms.author',
+       current_date, current_date + 1, true
+from s10_foreign_org foreign_org
+join s10_ids stranger on stranger.key = 'strangerPerson';
+
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_entry_assignments(
+  owner_id, entry_id, assignee_person_id, capability_key, state, version
+)
+select owner.value::uuid, entry.value::uuid, stranger.value::uuid,
+       'cms.author', 'active', 1
+from s10_ids owner
+join s10_ids entry on entry.key = 'entryId'
+join s10_ids stranger on stranger.key = 'strangerPerson'
+where owner.key = 'organization';
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000004'::uuid,
+  (select organization_id from s10_foreign_org)
+);
+select is(
+  platform_private.cms_authority_origin(
+    'a9100000-0000-4000-8000-000000000004'::uuid,
+    (select organization_id from s10_foreign_org),
+    'cms.author',
+    (select value::uuid from s10_ids where key = 'entryId')
+  ),
+  null::text,
+  'CMS-03B-11 entry-scoped authority refuses a grant from another owner'
+);
+
+select pg_temp.s10_rpc_call(
+  'select platform_api.cms_get_entry_draft('
+    || quote_literal((
+      select jsonb_build_object(
+        'entryId', entry.value,
+        'context', jsonb_build_object('actingPartyId', foreign_org.organization_id)
+      )::text
+      from s10_ids entry, s10_foreign_org foreign_org
+      where entry.key = 'entryId'
+    )) || '::jsonb)'
+);
+select is(
+  pg_temp.s10_last_error_message(),
+  'NOT_FOUND',
+  'CMS-03B-11 conceals an entry when assignment and grant owners differ'
+);
+
+rollback to savepoint s10_detail_cross_owner_assignment;
+release savepoint s10_detail_cross_owner_assignment;

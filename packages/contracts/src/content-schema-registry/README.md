@@ -5,6 +5,13 @@
 Strict request, response, event, and release-evidence schemas for the CMS
 content schema registry and their Slice 09 contract tests.
 
+`locale-config.ts` and `locale-canonical.ts` own the BE03a OD-4 locale
+configuration: the canonical-case BCP 47 mapper, the exact 422 messages, the
+single ordered `refineLocaleConfig` pass shared by CMS-03A-01 (source/default
+from the request) and CMS-03A-09 (inherited, so `null`), and the JCS canonical
+JSON that `localeConfigHash` binds. The database validator must reproduce the
+same rules, messages and hash vector (see `locale-config.test.ts`).
+
 The operational release-evidence sidecar is structural and fail-closed. It
 binds production alerts/SLOs, hosted Auth/RLS/IdP E2E, and both manual screen-
 reader platform reports to one immutable artifact without storing raw provider
@@ -74,6 +81,48 @@ resolving it is decided solely by the approved external broker at dereference
 time inside the protected run, and the resolve envelope reports only the bound
 handle and its digest. The schemas are sharded so every shard stays inside the
 repository schema line cap.
+
+The DEC-108 activation producers CMS-03A-09 through CMS-03A-14 (successor,
+dry run, review submission, review decision, review read, review assignment)
+are declared in `route-policy-review.ts` (types) and `routes-review.ts`
+(policies), alongside the 03A-01 through 03A-08 policies. Each policy carries a
+`stepUp` flag; missing or stale MFA on a `stepUp: 'required'` route is 401
+`STEP_UP_REQUIRED` with the details of `step-up-required.ts`
+(`{ recoveryAction: 'step_up', allowedMethods }`). Their request and resource
+schemas live in `requests-human.ts` and `resources-workflow.ts`; the safe
+`activationPreparation` projection reuses the BE00 job states and may carry the
+`templateCompatibility` projection from `../cms-composition/`.
+`openapi-tuple.ts` pins fixed-length tuples (the read/decide assignment actions)
+to `prefixItems` with equal `minItems`/`maxItems` in generated OpenAPI. Contract
+tests for these live in `routes-review.test.ts`,
+`requests-review.coverage.test.ts`, `resources-workflow.coverage.test.ts`, and
+`openapi-tuple.test.ts`; `review-fixtures.test-support.ts` holds their shared
+valid fixtures.
+
+CMS-03A-13 declares `capabilityMode: 'any_of'` (submitter/schema-designer scope
+or assigned review-only scope); `routeCapabilitiesSatisfied` in
+`route-policy.ts` is the one evaluation of that field, and generated OpenAPI
+carries it as `x-capability-mode`. Every `stepUp: 'required'` route publishes
+its 401 as the exact union of `CmsUnauthenticatedErrorSchema`
+(`reauthenticate`) and `CmsStepUpRequiredErrorSchema` (`step_up`) and emits
+`x-step-up: required`; `openapi-errors.ts` builds the package documents and
+`infra/openapi-definitions.mjs` plus `infra/openapi-document.mjs` build the
+canonical one. `SchemaReviewResourceSchema` refuses frozen evidence that names
+another candidate version or dry run, or a frozen dry run that is not
+completed and passed with a report hash (`resources-review-binding.test.ts`).
+
+The DEC-119 owner CMS capability grant operations CMS-03A-15 through
+CMS-03A-18 (grant, renew, revoke, list) are declared in
+`route-policy-grants.ts` and `routes-grants.ts`. The owner is derived from the
+immutable owner initialization receipt, so these routes carry the `cms_owner`
+auth class and no capability key. `models-grants.ts` holds the closed
+`GRANTABLE_CMS_CAPABILITIES` registry (extended only by code plus a forward
+migration), the derived grant states, and the UTC-date helpers;
+`requests-grants.ts` and `resources-grants.ts` hold the strict requests, the
+list query, and `CmsCapabilityGrantResourceSchema`. The owner may grant any
+grantable capability, including to itself, so no self-grant refusal code
+exists. Their tests are `grants.contract.test.ts`, `routes-grants.test.ts`, and
+`step-up-openapi.test.ts`.
 
 ## Ownership
 

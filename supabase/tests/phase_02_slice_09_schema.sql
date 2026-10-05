@@ -1,3 +1,4 @@
+\ir support/jwt-claims.sqlinc
 commit;
 create extension if not exists dblink with schema extensions;
 create extension if not exists pgtap with schema extensions;
@@ -42,6 +43,8 @@ select ok(
 \ir phase_02_slice_09_schema/009b-recovery-activation.sqlinc
 \ir phase_02_slice_09_schema/010-operational-alerts.sqlinc
 \ir phase_02_slice_09_schema/010b-provider-message-boundaries.sqlinc
+\ir phase_02_slice_09_schema/011-constraint-probes.sqlinc
+\ir phase_02_slice_09_schema/012-trigger-catalog.sqlinc
 
 select finish();
 

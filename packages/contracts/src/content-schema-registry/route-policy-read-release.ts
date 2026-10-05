@@ -1,5 +1,6 @@
 import type { RouteContract } from './route-policy-base.ts';
 import type {
+  BlockRegistrationErrors,
   HumanDetailErrors,
   HumanListErrors,
   ReleaseErrors,
@@ -18,13 +19,14 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'release-worker';
     cors: 'release-worker';
     csrf: 'forbidden';
+    stepUp: 'none';
     rawBodySignature: 'required';
     idempotency: 'required';
     ifMatch: 'none';
     rateClass: 'release-registry-write';
     rateLimit: 20;
     rateScope: 'release';
-    errors: ReleaseErrors;
+    errors: BlockRegistrationErrors;
   };
   'CMS-03A-06': RouteContract & {
     method: 'GET';
@@ -38,6 +40,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'none';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'none';
     ifMatch: 'none';
@@ -59,6 +62,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'browser';
     cors: 'cms-console';
     csrf: 'none';
+    stepUp: 'none';
     rawBodySignature: 'none';
     idempotency: 'none';
     ifMatch: 'none';
@@ -80,6 +84,7 @@ export type ReadReleaseRouteContractByOperation = {
     audience: 'release-worker';
     cors: 'release-worker';
     csrf: 'forbidden';
+    stepUp: 'none';
     rawBodySignature: 'required';
     idempotency: 'required';
     ifMatch: 'required';
