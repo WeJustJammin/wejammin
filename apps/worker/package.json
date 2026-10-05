@@ -16,7 +16,7 @@
     "@wejammin/config": "workspace:*",
     "@wejammin/contracts": "workspace:*",
     "@wejammin/observability": "workspace:*",
-    "hono": "4.13.5",
+    "hono": "4.13.7",
     "jose": "6.2.10"
   },
   "devDependencies": {
