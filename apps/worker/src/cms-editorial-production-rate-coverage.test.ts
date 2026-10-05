@@ -6,6 +6,12 @@ import type {
   CmsEditorialRateLimitInput,
 } from './cms-editorial-production-types';
 import {
+  CMS_EDITORIAL_DEADLINE_MS,
+  CMS_EDITORIAL_RATE_CLASS,
+  CMS_EDITORIAL_RATE_LIMIT,
+} from './cms-editorial-production-types';
+import { bucketDigestFor } from './cms-editorial-production-rate';
+import {
   PARTY_ID,
   USER_ID,
   compose,
@@ -224,5 +230,58 @@ describe('cms editorial production rate limiter', () => {
     });
     expect(revisionResource).toBeDefined();
     expect(json).toBeDefined();
+  });
+
+  it('[P2-S10-AC-097] [P2-S10-AC-103] scope-pins the S10 read bucket key and never persists the raw identity', async () => {
+    // CMS-03B-12/13/14 reuse the shared read rate class. The bucket key must
+    // stay pinned to its own scope -- user id for `user`, acting party for
+    // `party` -- and the persisted digest must never be the raw identifier.
+    const userDigest = await bucketDigestFor(
+      input({ rateScope: 'user', actorId: USER_ID }),
+    );
+    const partyDigest = await bucketDigestFor(
+      input({ rateScope: 'party', actorId: PARTY_ID }),
+    );
+    expect(userDigest).toMatch(/^[a-f0-9]{64}$/u);
+    expect(partyDigest).toMatch(/^[a-f0-9]{64}$/u);
+    expect(userDigest).not.toBe(partyDigest);
+    expect(userDigest).not.toContain(USER_ID);
+    expect(partyDigest).not.toContain(PARTY_ID);
+  });
+
+  it('[P2-S10-AC-091] [P2-S10-AC-097] [P2-S10-AC-103] declares the S10 read rate keys, limits, and deadline', async () => {
+    // RED: the production rate/deadline tables do not yet carry the CMS-03B-12
+    // /-13/-14 reads, so these lookups are undefined until the adapter adds
+    // them. Each read shares the bounded `cms-entry-read` class at 300/min/user,
+    // 600/min/party, and the 8,000ms read budget.
+    // Control: the sibling read CMS-03B-11 already declares those exact values,
+    // so the RED assertions below are not a wrapper over an unimplemented field.
+    expect(CMS_EDITORIAL_RATE_LIMIT['CMS-03B-11']).toEqual({
+      limit: 300,
+      partyLimit: 600,
+      windowSeconds: 60,
+    });
+    expect(CMS_EDITORIAL_RATE_CLASS['CMS-03B-11']).toBe('cms-entry-read');
+    expect(CMS_EDITORIAL_DEADLINE_MS['CMS-03B-11']).toBe(8_000);
+    for (const operationId of ['CMS-03B-12', 'CMS-03B-13', 'CMS-03B-14']) {
+      const limits = (
+        CMS_EDITORIAL_RATE_LIMIT as Readonly<Record<string, unknown>>
+      )[operationId];
+      expect(limits).toEqual({
+        limit: 300,
+        partyLimit: 600,
+        windowSeconds: 60,
+      });
+      expect(
+        (CMS_EDITORIAL_RATE_CLASS as Readonly<Record<string, unknown>>)[
+          operationId
+        ],
+      ).toBe('cms-entry-read');
+      expect(
+        (CMS_EDITORIAL_DEADLINE_MS as Readonly<Record<string, unknown>>)[
+          operationId
+        ],
+      ).toBe(8_000);
+    }
   });
 });

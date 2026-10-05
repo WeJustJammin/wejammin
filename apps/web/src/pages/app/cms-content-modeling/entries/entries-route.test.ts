@@ -9,9 +9,14 @@ const fromHere = (relative: string): string =>
 /*
  * These routes are read as text, not rendered. The guarantees that matter
  * here are structural — a heading focus target, a skip link, an explicit
- * status code, a real protected proxy call, and the absence of any form — so
+ * status code, a real protected proxy call, and a native authoring form — so
  * asserting on the source keeps the test free of a Cloudflare runtime while
  * still failing if a route is weakened or starts fabricating data.
+ *
+ * Slice 10 WP-S10-2c rewrites this suite from the fail-closed create shell to
+ * the planned CMS-05 authoring surfaces: an active create form on new.astro and
+ * a protected draft-detail load plus editor island on [entryId].astro. It is
+ * expected to be RED until WP-S10-5 lands those surfaces.
  */
 const documentShell = readFileSync(
   fromHere('../../../../components/cms-editorial/CmsEditorialDocument.astro'),
@@ -19,10 +24,10 @@ const documentShell = readFileSync(
 );
 
 /*
- * The document shell is processed Astro markup, so its `<script src>` tags are
+ * The document shell is processed Astro markup, so its script tags are
  * bundled. A page that rebuilt the shell as a runtime HTML string would ship
- * unbuilt `.ts` URLs, so no entry route may carry a script tag or an HTML
- * string of its own.
+ * unbuilt .ts URLs, so no entry route may carry a script tag or an HTML string
+ * of its own.
  */
 const expectSharedBundledShell = (source: string): void => {
   expect(source).toContain('export const prerender = false');
@@ -50,21 +55,24 @@ describe('cms editorial entries routes', () => {
       expectSharedBundledShell(source);
     });
 
-    it('stays fail-closed and fabricates no write path', () => {
-      expect(source).toContain('Astro.response.status = 503');
-      expect(source).not.toContain('<form');
-      expect(source).not.toContain('<input');
-      expect(source.toLowerCase()).not.toContain('idempotency');
-      // No submission can be attempted while the surface is disabled.
-      expect(source).not.toContain('forwardCmsEditorialEntryCreateMutation');
+    it('renders the native create form instead of a fail-closed 503', () => {
+      expect(source).toContain('<form');
+      expect(source).toContain('method="post"');
+      expect(source).not.toContain('Astro.response.status = 503');
+      expect(source).not.toContain('Entry creation is unavailable');
     });
 
-    it('traces the disabled reason to the owning boundary', () => {
-      expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY');
-      expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY.blocker');
-      expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON');
-      // Astro escapes the interpolated strings; no raw-HTML path is used.
+    it('prefills the frozen request evidence from the authoring-context read', () => {
+      expect(source).toContain('/api/v1/cms/entries/authoring-context');
+      expect(source).toContain('workflowPolicy');
+      expect(source).toMatch(/AuthoringContext/u);
       expect(source).not.toContain('set:html');
+      expect(source.toLowerCase()).not.toContain('raw json');
+    });
+
+    it('names a focus target for create results and validation recovery', () => {
+      expect(source).toContain('id="entry-create-title"');
+      expect(source).toContain('tabindex="-1"');
     });
   });
 
@@ -110,8 +118,14 @@ describe('cms editorial entries routes', () => {
     });
 
     it('never echoes the requested entry id into the document', () => {
-      expect(source).not.toContain('${entryId}</');
       expect(source).not.toContain('data-entry-id');
+      expect(source).not.toMatch(/entryId\}<\/p>/u);
+    });
+
+    it('mounts the bounded authoring editor island so the draft is editable', () => {
+      expect(source).toContain('client:load');
+      expect(source).toMatch(/WorkbenchIsland/u);
+      expect(source).not.toContain('CMS_EDITORIAL_ENTRY_LOADER_BOUNDARY');
     });
   });
 });

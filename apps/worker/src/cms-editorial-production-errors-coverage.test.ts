@@ -45,6 +45,38 @@ describe('cms editorial error mapping', () => {
       expect(rpcNameFor(operationId)).toBe(rpc);
   });
 
+  it('[P2-S10-AC-092] [P2-S10-AC-098] [P2-S10-AC-104] binds the S10 read operations to their named RPCs', () => {
+    const names: readonly (readonly [string, string])[] = [
+      ['CMS-03B-12', 'cms_get_conflict_detail'],
+      ['CMS-03B-13', 'cms_list_entries'],
+      ['CMS-03B-14', 'cms_get_entry_authoring_context'],
+    ];
+    for (const [operationId, rpc] of names)
+      expect(
+        rpcNameFor(operationId as unknown as Parameters<typeof rpcNameFor>[0]),
+      ).toBe(rpc);
+  });
+
+  it('[P2-S10-AC-090] [P2-S10-AC-102] keeps a concealed read target an empty-detail 404 while 403 stays distinct', () => {
+    // The shared mapper the S10 reads inherit: a hidden/absent target is a 404
+    // with no dependency detail, while a visible-but-unassigned target is a
+    // distinct 403 that still forwards only its safe reason code.
+    expect(knownEditorialFailure('NOT_FOUND')).toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    expect(knownEditorialFailure('FORBIDDEN')).toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN',
+    });
+    expect(
+      safeDetails(404, { reasonCode: 'entry_not_assigned', ownerId: 'leak' }),
+    ).toEqual({});
+    expect(
+      safeDetails(403, { reasonCode: 'entry_not_assigned', ownerId: 'leak' }),
+    ).toEqual({ reasonCode: 'entry_not_assigned' });
+  });
+
   it('gates the statuses the contract can emit', () => {
     for (const status of [
       400, 401, 403, 404, 409, 415, 422, 429, 500, 502, 503, 504,

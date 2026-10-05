@@ -22,6 +22,7 @@ import {
   USER_ID,
   authenticationSession,
 } from './cms-editorial-production-session-test-support';
+import { validateCmsEditorialPortInput } from './cms-editorial-production-session';
 
 describe('cms editorial session resolution', () => {
   it('derives the RPC context from the server-side session cache', async () => {
@@ -170,5 +171,26 @@ describe('cms editorial session resolution', () => {
     expect(body.p_request.entryId).toBe(ENTRY_ID);
     expect(body.p_request.expectedVersion).toBe('1');
     expect(SCHEMA_VERSION_ID.length).toBeGreaterThan(0);
+  });
+
+  it('[P2-S10-AC-089] [P2-S10-AC-095] [P2-S10-AC-101] rejects an unsafe S10 read precondition before any transport call', () => {
+    // RED: no CMS-03B-12/13/14 read precondition branch exists, so the guard
+    // returns null even for input that must be refused (a read carrying a
+    // mutation header and body, an undeclared query key, and an extra path id).
+    const rejected = validateCmsEditorialPortInput(
+      portInput({
+        operationId: 'CMS-03B-12' as 'CMS-03B-11',
+        path: {
+          entryId: ENTRY_ID,
+          conflictId: '30000000-0000-4000-8000-0000000000ff',
+        },
+        query: { state: 'open' },
+        idempotencyKey: 'mutation-key',
+        ifMatch: '2',
+      }),
+      'CMS-03B-12' as 'CMS-03B-11',
+    );
+    expect(rejected).not.toBeNull();
+    expect(rejected).toMatchObject({ ok: false, status: 400 });
   });
 });

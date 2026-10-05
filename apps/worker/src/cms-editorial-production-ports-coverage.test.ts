@@ -1,5 +1,8 @@
 import { describe, it } from 'vitest';
-import type { RevisionHistoryPage } from '@wejammin/contracts';
+import {
+  cmsEditorialRoutePolicies,
+  type RevisionHistoryPage,
+} from '@wejammin/contracts';
 
 import {
   CMS_EDITORIAL_PORTS,
@@ -49,6 +52,13 @@ describe('cms editorial production ports', () => {
     expect(CMS_EDITORIAL_PORTS['CMS-03B-03']).toBe('listRevisions');
     expect(CMS_EDITORIAL_PORTS['CMS-03B-10']).toBe('createEntry');
     expect(CMS_EDITORIAL_PORTS['CMS-03B-11']).toBe('getEntryDraft');
+  });
+
+  it('[P2-S10-AC-092] [P2-S10-AC-098] [P2-S10-AC-104] binds the S10 reads to their port members', () => {
+    const members = CMS_EDITORIAL_PORTS as Readonly<Record<string, string>>;
+    expect(members['CMS-03B-12']).toBe('getConflictDetail');
+    expect(members['CMS-03B-13']).toBe('listEntries');
+    expect(members['CMS-03B-14']).toBe('getAuthoringContext');
   });
 
   it('accepts only a strict CMS-03B-03 history page from a read port', async () => {
@@ -282,5 +292,43 @@ describe('cms editorial production ports', () => {
     );
     const result = await port(portInput(), new AbortController().signal);
     expect(result).toMatchObject({ ok: true, value: revisionResource });
+  });
+
+  it('[P2-S10-AC-091] [P2-S10-AC-097] [P2-S10-AC-103] declares the S10 reads as strong no-store ETag reads over the shared read class', () => {
+    for (const operationId of [
+      'CMS-03B-12',
+      'CMS-03B-13',
+      'CMS-03B-14',
+    ] as const) {
+      const policy = cmsEditorialRoutePolicies.find(
+        (candidate) => candidate.operationId === operationId,
+      );
+      expect(policy).toBeDefined();
+      expect(policy?.method).toBe('GET');
+      expect(policy?.successStatus).toBe(200);
+      expect(policy?.etag).toBe('strong');
+      expect(policy?.cacheControl).toBe('no-store');
+      expect(policy?.location).toBe('none');
+      expect(policy?.rateClass).toBe('cms-entry-read');
+      expect(policy?.timeoutMs).toBe(8_000);
+      const errors = policy?.errors as Readonly<Record<string, number>>;
+      expect(errors.NOT_FOUND).toBe(404);
+      expect(errors.FORBIDDEN).toBe(403);
+      expect(errors.CONFLICT).toBeUndefined();
+    }
+  });
+
+  it('[P2-S10-AC-092] [P2-S10-AC-098] [P2-S10-AC-104] validates an S10 read payload through its resource port', async () => {
+    // RED: validateCmsEditorialResource has no branch for the S10 read
+    // contracts yet, so it fails closed and refuses even a valid payload.
+    const port = cmsEditorialResourcePort<unknown>(
+      async () => ({ ok: true, value: {} }),
+      'CMS-03B-12' as 'CMS-03B-11',
+    );
+    const result = await port(
+      portInput({ operationId: 'CMS-03B-12' }),
+      new AbortController().signal,
+    );
+    expect(result).toMatchObject({ ok: true });
   });
 });

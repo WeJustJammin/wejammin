@@ -14,6 +14,7 @@ import {
 
 const entryId = '30000000-0000-4000-8000-000000000003';
 const revisionId = '40000000-0000-4000-8000-000000000004';
+const schemaVersionId = '123e4567-e89b-42d3-a456-426614174099';
 const origin = 'https://cms-console.example.test';
 const path = `/api/v1/cms/entries/${entryId}`;
 const requestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -33,11 +34,14 @@ const draft: EntryDraftDetailResource = {
     createdAt: timestamp,
     updatedAt: timestamp,
   },
+  revisionNumber: '1',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash,
+  schemaVersionId,
   validationState: 'valid',
+  openConflict: null,
   fields: [],
   relations: [],
 };

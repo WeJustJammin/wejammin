@@ -28,8 +28,6 @@ describe('CMS-07 protected revision-history SSR page', () => {
       "Astro.response.headers.set('Cache-Control', 'no-store')",
     );
     expect(page).toContain('<CmsEditorialDocument');
-    // The shell is processed markup, so its scripts are bundled; the page never
-    // rebuilds a document as a runtime string that would ship unbuilt .ts URLs.
     expect(page).not.toContain('<script');
     expect(page).not.toContain('<!doctype');
     expect(page).not.toContain('new Response(');
@@ -46,13 +44,11 @@ describe('CMS-07 protected revision-history SSR page', () => {
     expect(shell).toContain('src="../../lib/auth-scope-sync.ts"');
   });
 
-  it('keeps history read-only, separates visible denial from concealment, and handles expired sessions', () => {
+  it('separates visible denial from concealment and handles expired sessions', () => {
     const page = source();
     expect(page).toContain('Astro.redirect');
-    expect(page).toMatch(/if \(upstream\.status === 403\)[\s\S]*?status: 403/u);
-    expect(page).toMatch(/if \(upstream\.status === 404\)[\s\S]*?status: 404/u);
-    expect(page).not.toContain('<form method="post"');
-    expect(page).not.toContain('restoreRevision');
+    expect(page).toMatch(/status === 403/u);
+    expect(page).toMatch(/status === 404/u);
     expect(page).not.toContain('dangerouslySetInnerHTML');
   });
 
@@ -69,5 +65,26 @@ describe('CMS-07 protected revision-history SSR page', () => {
     expect(page).toContain('id="history-list-title" tabindex="-1"');
     expect(page).toContain('id="history-compare-title" tabindex="-1"');
     expect(page).toContain('#history-compare-title');
+  });
+
+  it('groups the D5 comparison by domain for field, block, and relation changes', () => {
+    const page = source();
+    expect(page).toMatch(/change\.domain/u);
+    expect(page).toMatch(/\bblock\b/u);
+    expect(page).toMatch(/\brelation\b/u);
+    // Relation diffs expose a keyed token, never a resolvable target UUID.
+    expect(page).toMatch(/targetToken/u);
+  });
+
+  it('offers the D6 restore confirmation form gated on chain availability', () => {
+    const page = source();
+    expect(page).toContain('revisionId');
+    expect(page).toContain('migrationChainId');
+    expect(page).toContain('edgeCount');
+    expect(page).toMatch(/availability/u);
+    expect(page).toMatch(/chain_unavailable|transform_missing/u);
+    // The restore is a real mutation form, not a read-only summary.
+    expect(page).toContain('<form');
+    expect(page).toMatch(/Restore/u);
   });
 });
