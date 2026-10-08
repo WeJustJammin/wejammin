@@ -101,6 +101,26 @@ has NOT been run yet.
   (supabase / worker+contracts / web / tests+evidence / docs+specs+tracking+memory+CI), push branch codex/phase2-slice10, open PR,
   watch CI (no local DB work during CI DB job), merge when green.
 
+## Checkpoint 2026-10-08 ~10:20 UTC — PR open
+
+- `pnpm validate` exit 0 (09:53Z) and `pnpm db:verify` PASS on the final tree; 91/105 checked (88 verified, 3 contract-only); 14 partial
+  (12 pending DEC-147, AC056 taxonomy half under DEC-141, AC060 "same change" clause closes with this PR).
+- Committed as 0ff0cbe8, d6ee1540, 050a69b3, cceedef2, a7800c46 on `codex/phase2-slice10`; pushed; PR
+  https://github.com/WeJustJammin/wejammin/pull/126 (base main). Do not run local DB work while CI's database job runs.
+- Next: CI green → merge (established process; merge triggers the staging deploy; production stays disabled) → cleanup
+  (refs/backup/s10-*, orchestration dir, `wejammin_ev` stack: `supabase stop --workdir orchestration/altdb`) → Slice 11 setup with the
+  DEC-148 depth-floor cascade, on a fresh branch from the merged main.
+
+## Slice 11 preparation (2026-10-08)
+
+- Codex read-only brief: `orchestration/s11/s11-brief.md` (operations CMS-03B-05..09 and 15..20 with spec citations, existing-vs-missing
+  code, DEC-148 depth-floor cascade candidates, 5-lane decomposition, migration range after 20261005016999).
+- Its open items and the intended orchestrator resolutions (record as DECs at S11 start; owner may override): cascade is ADDITIVE like
+  the Slice 10 DEC-133 cascade (48 → 48 + 6 per cascaded operation); accessibility outcome vocabulary — pick the BE05c canonical enum and
+  amend the BE03b clause; FE03 gets explicit rows for CMS-03B-15..18 following BE03b; locale runtime per DEC-114/DEC-138 (amend FE03:536);
+  E11 universal review is already locked BE03b text; S11 AC035/AC038/AC041 punctuation defects → DEC-147-style wording record (owner);
+  pinned tzdb version + hash frozen as a code constant (architecture; present options to the owner if contract-visible).
+
 ## Remaining to close Slice 10 (in order)
 
 1. Finish in-flight lanes; regenerate DB types inside the lock (`flock /tmp/wejammin-supabase-ci.lock bash -c 'pnpm db:reset && pnpm db:types'`).

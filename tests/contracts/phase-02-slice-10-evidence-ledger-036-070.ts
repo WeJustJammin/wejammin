@@ -6818,7 +6818,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-closeout.test.ts',
             title:
-              'EB closeout: Slice 10 documentation and registry agreement EB closeout: the compiled specification graph is not older than the Slice 10 spec amendments',
+              'EB closeout: Slice 10 documentation and registry agreement EB closeout: the compiled specification graph equals the graph rebuilt from the committed Slice 10 spec text',
           },
           {
             tool: 'vitest',

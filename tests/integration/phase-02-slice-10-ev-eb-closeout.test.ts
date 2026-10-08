@@ -1,6 +1,17 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -205,19 +216,61 @@ describe('EB closeout: Slice 10 documentation and registry agreement', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('EB closeout: the compiled specification graph is not older than the Slice 10 spec amendments', () => {
-    const summary = JSON.parse(read('.memory/schema/summary.json')) as {
-      compiledAt: string;
-    };
-    const compiledAt = Date.parse(summary.compiledAt);
-    const newestSpec = [
-      '.memory/wiki/specs/be/03b-editorial-workflow-publication.md',
-      '.memory/wiki/specs/ia/03-cms-content-modeling.md',
-      '.memory/wiki/specs/fe/03-cms-content-modeling.md',
-    ]
-      .map((file) => statSync(resolve(ROOT, file)).mtimeMs)
-      .reduce((a, b) => Math.max(a, b), 0);
-    expect(compiledAt).toBeGreaterThanOrEqual(newestSpec);
+  // Content-based, not mtime-based: a fresh CI checkout gives every file the
+  // checkout time, so file ages prove nothing. The committed graph must equal
+  // the graph rebuilt from the committed spec text (built in a temporary copy so
+  // the repository is never written).
+  const rebuildSpecGraph = async (
+    mutate?: (specsRoot: string) => void,
+  ): Promise<Record<string, unknown>> => {
+    const tmp = mkdtempSync(join(tmpdir(), 's10-spec-graph-'));
+    try {
+      const specsRoot = join(tmp, '.memory/wiki/specs');
+      cpSync(resolve(ROOT, '.memory/wiki/specs'), specsRoot, {
+        recursive: true,
+      });
+      mutate?.(specsRoot);
+      const { buildSpecGraph } = (await import(
+        pathToFileURL(resolve(ROOT, '.memory/pipeline/spec-graph.mjs')).href
+      )) as {
+        buildSpecGraph: (options: {
+          projectRoot: string;
+          memoryRoot: string;
+        }) => unknown;
+      };
+      buildSpecGraph({ projectRoot: tmp, memoryRoot: join(tmp, '.memory') });
+      const graph = JSON.parse(
+        readFileSync(join(tmp, '.memory/schema/spec-graph.json'), 'utf8'),
+      ) as Record<string, unknown>;
+      delete graph['builtAt'];
+      return graph;
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  };
+  const committedSpecGraph = (): Record<string, unknown> => {
+    const graph = JSON.parse(read('.memory/schema/spec-graph.json')) as Record<
+      string,
+      unknown
+    >;
+    delete graph['builtAt'];
+    return graph;
+  };
+
+  it('EB closeout: the compiled specification graph equals the graph rebuilt from the committed Slice 10 spec text', async () => {
+    expect(await rebuildSpecGraph()).toEqual(committedSpecGraph());
+  });
+
+  it('EB closeout: a spec amendment that changes the graph is detected (negative control)', async () => {
+    const mutated = await rebuildSpecGraph((specsRoot) => {
+      // An amendment the committed graph has not seen: a new BE spec that links
+      // the editorial spec.
+      writeFileSync(
+        join(specsRoot, 'be/99-negative-control.md'),
+        '# Negative control — Backend Specification\n\nSee [BE03b](03b-editorial-workflow-publication.md).\n',
+      );
+    });
+    expect(mutated).not.toEqual(committedSpecGraph());
   });
 
   it('EB closeout tracking: all six Slice 10 gate lines are checked and the tracker carries the dated continuation and Depth Ratio', () => {
