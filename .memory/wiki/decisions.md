@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 132
-- **Unique decision titles**: 132
+- **Total decisions**: 148
+- **Unique decision titles**: 148
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -1931,6 +1931,230 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: AC1122 text in plan, tracker and ledger (erratum 2026-10-03).
 - **Reversibility**: High
 
+## DEC-132: Owner ratifies P2-S09-AC-261; Slice 09 active implementation closes at 1235/1235 (2026-10-04)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:32.463Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: P2-S09-AC-261 was the last open active Slice 09 criterion; its local receipts existed but owner ratification was required.
+- **Options considered**: (A) ratify AC261 on the existing 51 fresh passing receipts across ten cited marker files; (B) keep AC261 open pending more evidence.
+- **Decision**: Owner message "AC261 approve; O1 A" ratified AC261 exactly. Slice 09 active implementation is 1235/1235. This is local technical acceptance only; no hosted or production acceptance is claimed. AC209, AC211, AC265 and AC266 stay authored, unchecked, and mandatory on their own timelines.
+- **Downstream**: Slice 10 implementation is unblocked; Phase 2 9/17 slices.
+- **Reversibility**: Low
+
+## DEC-133: Slice 10 object field kind uses typed depth-1 properties[], maximum 32 (O1 Option A) (2026-10-04)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:32.464Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: The `object` field kind had no locked value structure, so BE03b could not validate object values.
+- **Options considered**: (A) typed depth-1 `properties[]` declaration, max 32; (B) free-form JSON object with byte bounds only; (C) defer object fields.
+- **Decision**: Owner selected O1 Option A ("AC261 approve; O1 A"). Each property has a stable key, a `scalar`/`enum`/`rich_text` kind, an explicit required flag and kind-specific constraints; the definition is compiled into the immutable SchemaArtifact/definition hash and validated by BE03b on create, append, conflict resolution, restore, draft read, preview and publication. Nested object/list property kinds are refused.
+- **Downstream**: Slice 10 criteria AC076–AC081 (+30 depth-floor cascade, Phase 2 3008 authored / 3004 active); BE03a, BE03b, FE03 native object editor.
+- **Reversibility**: Medium
+
+## DEC-134: Slice 11 builds the D25 code-owned accessibility checker as the first publication preflight provider (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:52.646Z
+- **Agents**: claude
+- **Sources**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: S11 publication (AC004/029/041) requires accessibility, settings, schema, template, block, media, relation, route, locale and privacy gates, but the accessibility gate is BE05c quality_gate_evaluate (Slice 16) and D19 fails closed when the frozen manifest references an unbuilt category, so S11 could never return a real publication success.
+- **Options considered**: (A) pull the D25 code-owned structural accessibility checker into S11 as the first D19 preflight provider; privacy/media/route categories pass only when the frozen manifest holds no reference of that kind (D19); (B) treat `checker` as the 03b rule-pack version only and leave AC004's accessibility clause open until S16; (C) reorder so S11 AC004/029/041 close after S16.
+- **Decision**: (A). More-work-now standing rule; keeps slice order and criteria; Slice 16 builds the CFG-05C-02 quality-gate API on the same checker. Orchestrator resolution — owner may override.
+- **Downstream**: S11 preflight registry, S16 CFG-05C-02, BE03b/BE05c spec cascade.
+- **Reversibility**: Medium
+
+## DEC-135: Taxonomy vocabularies declare the canonical domains they may overlap; only declared absent domains refuse (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:52.647Z
+- **Agents**: claude
+- **Sources**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: D10 says absent canonical domains return a typed "canonical source unavailable" refusal; only role_facet_assertion exists in Phase 2, so a blanket refusal leaves CMS-14 with no Phase 2 happy path (S12 AC016/046).
+- **Options considered**: (A) each vocabulary declares which canonical domains it may overlap; only those require a provider, and a declared-but-absent domain refuses; (B) record absent domains as unchecked and proceed; (C) fail closed for all.
+- **Decision**: (A) — the narrowest reading of D10 that keeps its fail-closed guarantee for any declared overlap and gives CMS-14 a real path. Orchestrator resolution — owner may override.
+- **Downstream**: BE03c taxonomy contracts, S12 SQL providers.
+- **Reversibility**: Medium
+
+## DEC-136: Editorial reviewer assignment mirrors CMS-03A-14 under owner-only cms.editorial_review.assign (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:52.648Z
+- **Agents**: claude
+- **Sources**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: CMS-03B-06 requires an assigned review and IA03 AC-CMS-08 says "assign eligible reviewers", but BE03b defines no assignment operation although BE03a already registers `cms.editorial_review.assign` as owner-only and "declared by BE03b".
+- **Options considered**: (A) owner assignment command mirroring CMS-03A-14 (per review, bounded expiry ≤7 days and ≤ grantor authority, step-up, audited) under `cms.editorial_review.assign`; (B) implicit eligibility from standing reviewer grants with no per-review assignment; (C) per-entry assignment rows created by editors.
+- **Decision**: (A) — completes the contract BE03a already declares, reuses the reviewed DEC-108 assignment pattern. Orchestrator resolution — owner may override.
+- **Downstream**: BE03b new assignment operation, FE03 review assignment surface, S11 SQL/Worker/web.
+- **Reversibility**: Medium
+
+## DEC-137: Generalized review machinery is one subject-polymorphic review/decision/assignment set (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:52.648Z
+- **Agents**: claude
+- **Sources**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: DEC-113 (templates/patterns), OD-1 (taxonomy versions) and DEC-115 (S13 navigation/route/metadata) all require the generalized DEC-108 review/decision/assignment machinery; its physical shape was unspecified.
+- **Options considered**: (A) one subject-polymorphic set keyed by (subject_kind, subject_id) reusing DEC-110 slot logic; (B) parallel tables per subject kind; (C) extend cms_schema_reviews with a subject kind.
+- **Decision**: (A) — one implementation of slot semantics, MFA, assignment and invalidation for every governed subject; DEC-108 schema review keeps its existing tables. Implementation-level ruling inside DEC-113/115. Owner may override.
+- **Downstream**: S12 L1 foundation, S13 DEC-115 approval.
+- **Reversibility**: Low once S12 lands
+
+## DEC-138: Slice 12 owns the shared no_fallback field-resolution helper and the S11 locale preflight provider (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T01:36:52.648Z
+- **Agents**: claude
+- **Sources**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: S12 AC051/052 cite BE03c Middleware & Policies, but BE03c:697/868 calls no_fallback resolution a CMS-15 delivery concern specified in 04c; DEC-121/122 lock the semantics.
+- **Options considered**: (A) S12 builds one shared SQL field-resolution helper plus the locale preflight provider used by S11 publication and S15 delivery, and BE03c:697 is amended; (B) move AC051/052 to S15 (needs owner ratification per DEC-122 precedent).
+- **Decision**: (A) — keeps every criterion in its planned slice and gives S15 a single resolver. Orchestrator resolution — owner may override.
+- **Downstream**: BE03c spec cascade, S12 L4, S11 locale preflight, S15 delivery.
+- **Reversibility**: Medium
+
+## DEC-139: CMS-03B-12 closed conflicts are an indistinguishable 404 (AC090 over BE03b:1166) (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.118Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: AC090 requires hidden, wrong-scope, closed and absent conflicts to be one 404; BE03b:1166 returned 200 metadata-only for closed conflicts.
+- **Options considered**: (A) follow AC090 and amend BE03b; (B) keep 200 and reword AC090.
+- **Decision**: (A). The locked criterion is the contract; a closed conflict has no resolvable preimages. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: SQL cms_get_conflict_detail, Worker, editor recovery after 409.
+- **Reversibility**: High
+
+## DEC-140: Signed-cursor fault classes and comparison refusal tokens (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.120Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: AC035/validation matrix say 400 for cursor faults while the error matrix says 409; AC020 says comparison-unavailable while the spec token for >512 changes is comparison_too_large.
+- **Options considered**: (A) structural cursor faults 400, well-formed but expired/tampered/foreign-bound cursors 409 for both CMS-03B-03 and CMS-03B-13, >512 = 422 comparison_too_large; (B) all cursor faults 400.
+- **Decision**: (A), matching the established Slice 09 history-cursor admission. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: Worker error mapping, list/history routes, AC020/035/097/098 evidence.
+- **Reversibility**: Medium
+
+## DEC-141: Slice 10 fails closed on taxonomy-version resolution and on restoring composition/term records; Slice 12 receives both (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.120Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: AC002/AC056 name taxonomy versions in compare/restore lineage and restore may meet composition instances and term assignments, but their authorities are Slice 12 scope.
+- **Options considered**: (A) carry/compare taxonomy-version ids by identity, fail closed with typed reasons when resolution or translation is needed, and give Slice 12 the receiving obligations; (B) treat the clauses as vacuous; (C) build Slice 12 authorities inside Slice 10.
+- **Decision**: (A). Restore takes template and taxonomy version ids from the source revision. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: Slice 12 tracker receiving obligations; restore and comparison SQL.
+- **Reversibility**: Medium
+
+## DEC-142: Autosave 409 carries conflict identity only; preimages come from CMS-03B-12 (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.121Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: IA03 CMS-05 said the 409 carries base/theirs/yours values; AC053 requires preimages only through CMS-03B-12.
+- **Options considered**: (A) follow AC053 and amend IA03; (B) embed preimages in the 409.
+- **Decision**: (A). Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: Worker 409 body, editor conflict flow.
+- **Reversibility**: High
+
+## DEC-143: Authority revocation revokes entry assignments with presence; renewal rides autosave (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.121Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: IA03 says authority revoked during autosave/review removes active presence AND assignment; no producer revoked assignments, and the 30 s renewal cadence had no endpoint.
+- **Options considered**: (A) revoke the affected person's active entry assignments in the same transaction as presence release; presence is renewed by each authorized autosave (≤30 s while dirty) and lapses after 2 minutes idle; add the renewal path and the expiry sweep RPC to BE03b Named RPCs; (B) leave assignments active and rely on the write gate.
+- **Decision**: (A). Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: 20261005010600 triggers, BE03b, AC051.
+- **Reversibility**: Medium
+
+## DEC-144: DEC-133 object-property constraints mirror the field-level members per kind (AC078) (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.121Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: AC078 requires strict kind-specific property constraints; BE03a/BE03b typed them as an open Record with only the enum enumValues rule.
+- **Options considered**: (A) mirror field-level members per property kind (scalar: minLength/maxLength/minimum/maximum by value type; enum: required enumValues + optional length bounds; rich_text: NFC length bounds), closed, identical in TS and PostgreSQL; (B) keep the open record and reword AC078; (C) close the five members on every kind without a per-kind table.
+- **Decision**: (A) — satisfies the locked criterion using only existing vocabulary. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: structured-values.ts, cms_object_structure_valid/value_valid, BE03a/BE03b text.
+- **Reversibility**: Medium
+
+## DEC-145: Slice 10 spec-text reconciliations (entry list item, contentHash, malformed ids, publication contract grammars) (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.121Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: Several BE03b/FE03 rows contradicted the locked criteria or each other.
+- **Options considered**: amend the prose to the enforced/criterion behavior vs reword criteria.
+- **Decision**: EntryList items = RevisionSummary + entryId + entryLifecycle + entryUpdatedAt; contentHash = JCS digest of the returned fields projection; structurally malformed ids are 400 INVALID_REQUEST at proxy and Worker and pages render the invalid-request state; publication contracts accept IANA zones incl. UTC and three-segment names, audience ^[a-z0-9_-]{1,48}$ (BE04c), one checker manifest entry and a 256-entry cap. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: BE03b, FE03, contracts, proxies.
+- **Reversibility**: High
+
+## DEC-146: rich_text.v1@1 becomes a hashed immutable validator artifact frozen into schema artifacts (AC085) (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T02:59:02.121Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: AC085 requires the protected validator's artifact reference and hash to be frozen into the schema artifact; no rich_text.v1 artifact or hash existed and a migration comment claimed one.
+- **Options considered**: (A) implement a canonical grammar descriptor with JCS SHA-256 hash in the TS and SQL protected registries, frozen into compiled artifacts and revalidated before every editorial transition; (B) reword AC085.
+- **Decision**: (A) — more work now. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: 03a compile pipeline, schema artifact hashes, validator registry, editorial transitions.
+- **Reversibility**: Low
+
+## DEC-148: S11/S12 plan rows name the operations the Slice 11/12 spec cascade added; full depth-floor cascade at slice start (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T03:21:16.062Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 integration (orchestrator; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: The Slice 11/12 spec cascade (DEC-134..138, E1–E17) added operations CMS-03B-15..20 and CMS-03C-06..21; the Slice 09 guard [P2-S09-AC-268] requires every registry-consuming operation to be owned by a later-slice criterion row, so the S10 integration branch failed it.
+- **Options considered**: (A) append operation-ownership sentences to the existing owning S11/S12 criterion rows now (no criterion added, counts and depth floors unchanged) and run the full per-operation depth-floor cascade when each slice starts; (B) run the S11/S12 depth-floor cascade inside the Slice 10 change; (C) leave the guard red.
+- **Decision**: (A). Rows edited: S11 AC035/AC038/AC041, S12 AC038/AC040/AC043/AC046/AC051 (plan + tracker mirrors). The S11/S12 depth-floor cascade (per-operation contract/validation/authority/concurrency/failure/consumer criteria) is mandatory at /implement-slice setup for those slices.
+- **Downstream**: Slice 11 and 12 setup; [P2-S09-AC-268] guard.
+- **Reversibility**: High
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -3725,4 +3949,212 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: correct the text to 400 INVALID_REQUEST; change the route to 422 against the BE00 error model.
 - **Decision**: Owner confirmed the correction: AC1122 reads that self-target gives 422 MFA_RESET_INVALID shown with the self-target copy and schema-invalid input gives 400 INVALID_REQUEST shown as field errors from the schema. DEC-130's per-branch decision stands.
 - **Downstream**: AC1122 text in plan, tracker and ledger (erratum 2026-10-03).
+- **Reversibility**: High
+
+### DEC-132: Owner ratifies P2-S09-AC-261; Slice 09 active implementation closes at 1235/1235 (2026-10-04)
+
+- **Timestamp**: 2026-10-07T01:36:32.463Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 (Claude orchestration)
+- **Tags**: decision, phase-2, owner
+
+- **Problem**: P2-S09-AC-261 was the last open active Slice 09 criterion; its local receipts existed but owner ratification was required.
+- **Options considered**: (A) ratify AC261 on the existing 51 fresh passing receipts across ten cited marker files; (B) keep AC261 open pending more evidence.
+- **Decision**: Owner message "AC261 approve; O1 A" ratified AC261 exactly. Slice 09 active implementation is 1235/1235. This is local technical acceptance only; no hosted or production acceptance is claimed. AC209, AC211, AC265 and AC266 stay authored, unchecked, and mandatory on their own timelines.
+- **Downstream**: Slice 10 implementation is unblocked; Phase 2 9/17 slices.
+- **Reversibility**: Low
+
+### DEC-133: Slice 10 object field kind uses typed depth-1 properties[], maximum 32 (O1 Option A) (2026-10-04)
+
+- **Timestamp**: 2026-10-07T01:36:32.464Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 (Claude orchestration)
+- **Tags**: decision, phase-2, owner
+
+- **Problem**: The `object` field kind had no locked value structure, so BE03b could not validate object values.
+- **Options considered**: (A) typed depth-1 `properties[]` declaration, max 32; (B) free-form JSON object with byte bounds only; (C) defer object fields.
+- **Decision**: Owner selected O1 Option A ("AC261 approve; O1 A"). Each property has a stable key, a `scalar`/`enum`/`rich_text` kind, an explicit required flag and kind-specific constraints; the definition is compiled into the immutable SchemaArtifact/definition hash and validated by BE03b on create, append, conflict resolution, restore, draft read, preview and publication. Nested object/list property kinds are refused.
+- **Downstream**: Slice 10 criteria AC076–AC081 (+30 depth-floor cascade, Phase 2 3008 authored / 3004 active); BE03a, BE03b, FE03 native object editor.
+- **Reversibility**: Medium
+
+### DEC-134: Slice 11 builds the D25 code-owned accessibility checker as the first publication preflight provider (2026-10-07)
+
+- **Timestamp**: 2026-10-07T01:36:52.646Z
+- **Agent**: claude
+- **Source**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, orchestrator-resolution
+
+- **Problem**: S11 publication (AC004/029/041) requires accessibility, settings, schema, template, block, media, relation, route, locale and privacy gates, but the accessibility gate is BE05c quality_gate_evaluate (Slice 16) and D19 fails closed when the frozen manifest references an unbuilt category, so S11 could never return a real publication success.
+- **Options considered**: (A) pull the D25 code-owned structural accessibility checker into S11 as the first D19 preflight provider; privacy/media/route categories pass only when the frozen manifest holds no reference of that kind (D19); (B) treat `checker` as the 03b rule-pack version only and leave AC004's accessibility clause open until S16; (C) reorder so S11 AC004/029/041 close after S16.
+- **Decision**: (A). More-work-now standing rule; keeps slice order and criteria; Slice 16 builds the CFG-05C-02 quality-gate API on the same checker. Orchestrator resolution — owner may override.
+- **Downstream**: S11 preflight registry, S16 CFG-05C-02, BE03b/BE05c spec cascade.
+- **Reversibility**: Medium
+
+### DEC-135: Taxonomy vocabularies declare the canonical domains they may overlap; only declared absent domains refuse (2026-10-07)
+
+- **Timestamp**: 2026-10-07T01:36:52.647Z
+- **Agent**: claude
+- **Source**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, orchestrator-resolution
+
+- **Problem**: D10 says absent canonical domains return a typed "canonical source unavailable" refusal; only role_facet_assertion exists in Phase 2, so a blanket refusal leaves CMS-14 with no Phase 2 happy path (S12 AC016/046).
+- **Options considered**: (A) each vocabulary declares which canonical domains it may overlap; only those require a provider, and a declared-but-absent domain refuses; (B) record absent domains as unchecked and proceed; (C) fail closed for all.
+- **Decision**: (A) — the narrowest reading of D10 that keeps its fail-closed guarantee for any declared overlap and gives CMS-14 a real path. Orchestrator resolution — owner may override.
+- **Downstream**: BE03c taxonomy contracts, S12 SQL providers.
+- **Reversibility**: Medium
+
+### DEC-136: Editorial reviewer assignment mirrors CMS-03A-14 under owner-only cms.editorial_review.assign (2026-10-07)
+
+- **Timestamp**: 2026-10-07T01:36:52.648Z
+- **Agent**: claude
+- **Source**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, orchestrator-resolution
+
+- **Problem**: CMS-03B-06 requires an assigned review and IA03 AC-CMS-08 says "assign eligible reviewers", but BE03b defines no assignment operation although BE03a already registers `cms.editorial_review.assign` as owner-only and "declared by BE03b".
+- **Options considered**: (A) owner assignment command mirroring CMS-03A-14 (per review, bounded expiry ≤7 days and ≤ grantor authority, step-up, audited) under `cms.editorial_review.assign`; (B) implicit eligibility from standing reviewer grants with no per-review assignment; (C) per-entry assignment rows created by editors.
+- **Decision**: (A) — completes the contract BE03a already declares, reuses the reviewed DEC-108 assignment pattern. Orchestrator resolution — owner may override.
+- **Downstream**: BE03b new assignment operation, FE03 review assignment surface, S11 SQL/Worker/web.
+- **Reversibility**: Medium
+
+### DEC-137: Generalized review machinery is one subject-polymorphic review/decision/assignment set (2026-10-07)
+
+- **Timestamp**: 2026-10-07T01:36:52.648Z
+- **Agent**: claude
+- **Source**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, orchestrator-resolution
+
+- **Problem**: DEC-113 (templates/patterns), OD-1 (taxonomy versions) and DEC-115 (S13 navigation/route/metadata) all require the generalized DEC-108 review/decision/assignment machinery; its physical shape was unspecified.
+- **Options considered**: (A) one subject-polymorphic set keyed by (subject_kind, subject_id) reusing DEC-110 slot logic; (B) parallel tables per subject kind; (C) extend cms_schema_reviews with a subject kind.
+- **Decision**: (A) — one implementation of slot semantics, MFA, assignment and invalidation for every governed subject; DEC-108 schema review keeps its existing tables. Implementation-level ruling inside DEC-113/115. Owner may override.
+- **Downstream**: S12 L1 foundation, S13 DEC-115 approval.
+- **Reversibility**: Low once S12 lands
+
+### DEC-138: Slice 12 owns the shared no_fallback field-resolution helper and the S11 locale preflight provider (2026-10-07)
+
+- **Timestamp**: 2026-10-07T01:36:52.648Z
+- **Agent**: claude
+- **Source**: phase-2 S11/S12 gap survey (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, orchestrator-resolution
+
+- **Problem**: S12 AC051/052 cite BE03c Middleware & Policies, but BE03c:697/868 calls no_fallback resolution a CMS-15 delivery concern specified in 04c; DEC-121/122 lock the semantics.
+- **Options considered**: (A) S12 builds one shared SQL field-resolution helper plus the locale preflight provider used by S11 publication and S15 delivery, and BE03c:697 is amended; (B) move AC051/052 to S15 (needs owner ratification per DEC-122 precedent).
+- **Decision**: (A) — keeps every criterion in its planned slice and gives S15 a single resolver. Orchestrator resolution — owner may override.
+- **Downstream**: BE03c spec cascade, S12 L4, S11 locale preflight, S15 delivery.
+- **Reversibility**: Medium
+
+### DEC-139: CMS-03B-12 closed conflicts are an indistinguishable 404 (AC090 over BE03b:1166) (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.118Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: AC090 requires hidden, wrong-scope, closed and absent conflicts to be one 404; BE03b:1166 returned 200 metadata-only for closed conflicts.
+- **Options considered**: (A) follow AC090 and amend BE03b; (B) keep 200 and reword AC090.
+- **Decision**: (A). The locked criterion is the contract; a closed conflict has no resolvable preimages. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: SQL cms_get_conflict_detail, Worker, editor recovery after 409.
+- **Reversibility**: High
+
+### DEC-140: Signed-cursor fault classes and comparison refusal tokens (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.120Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: AC035/validation matrix say 400 for cursor faults while the error matrix says 409; AC020 says comparison-unavailable while the spec token for >512 changes is comparison_too_large.
+- **Options considered**: (A) structural cursor faults 400, well-formed but expired/tampered/foreign-bound cursors 409 for both CMS-03B-03 and CMS-03B-13, >512 = 422 comparison_too_large; (B) all cursor faults 400.
+- **Decision**: (A), matching the established Slice 09 history-cursor admission. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: Worker error mapping, list/history routes, AC020/035/097/098 evidence.
+- **Reversibility**: Medium
+
+### DEC-141: Slice 10 fails closed on taxonomy-version resolution and on restoring composition/term records; Slice 12 receives both (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.120Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: AC002/AC056 name taxonomy versions in compare/restore lineage and restore may meet composition instances and term assignments, but their authorities are Slice 12 scope.
+- **Options considered**: (A) carry/compare taxonomy-version ids by identity, fail closed with typed reasons when resolution or translation is needed, and give Slice 12 the receiving obligations; (B) treat the clauses as vacuous; (C) build Slice 12 authorities inside Slice 10.
+- **Decision**: (A). Restore takes template and taxonomy version ids from the source revision. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: Slice 12 tracker receiving obligations; restore and comparison SQL.
+- **Reversibility**: Medium
+
+### DEC-142: Autosave 409 carries conflict identity only; preimages come from CMS-03B-12 (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.121Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: IA03 CMS-05 said the 409 carries base/theirs/yours values; AC053 requires preimages only through CMS-03B-12.
+- **Options considered**: (A) follow AC053 and amend IA03; (B) embed preimages in the 409.
+- **Decision**: (A). Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: Worker 409 body, editor conflict flow.
+- **Reversibility**: High
+
+### DEC-143: Authority revocation revokes entry assignments with presence; renewal rides autosave (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.121Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: IA03 says authority revoked during autosave/review removes active presence AND assignment; no producer revoked assignments, and the 30 s renewal cadence had no endpoint.
+- **Options considered**: (A) revoke the affected person's active entry assignments in the same transaction as presence release; presence is renewed by each authorized autosave (≤30 s while dirty) and lapses after 2 minutes idle; add the renewal path and the expiry sweep RPC to BE03b Named RPCs; (B) leave assignments active and rely on the write gate.
+- **Decision**: (A). Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: 20261005010600 triggers, BE03b, AC051.
+- **Reversibility**: Medium
+
+### DEC-144: DEC-133 object-property constraints mirror the field-level members per kind (AC078) (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.121Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: AC078 requires strict kind-specific property constraints; BE03a/BE03b typed them as an open Record with only the enum enumValues rule.
+- **Options considered**: (A) mirror field-level members per property kind (scalar: minLength/maxLength/minimum/maximum by value type; enum: required enumValues + optional length bounds; rich_text: NFC length bounds), closed, identical in TS and PostgreSQL; (B) keep the open record and reword AC078; (C) close the five members on every kind without a per-kind table.
+- **Decision**: (A) — satisfies the locked criterion using only existing vocabulary. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: structured-values.ts, cms_object_structure_valid/value_valid, BE03a/BE03b text.
+- **Reversibility**: Medium
+
+### DEC-145: Slice 10 spec-text reconciliations (entry list item, contentHash, malformed ids, publication contract grammars) (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.121Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: Several BE03b/FE03 rows contradicted the locked criteria or each other.
+- **Options considered**: amend the prose to the enforced/criterion behavior vs reword criteria.
+- **Decision**: EntryList items = RevisionSummary + entryId + entryLifecycle + entryUpdatedAt; contentHash = JCS digest of the returned fields projection; structurally malformed ids are 400 INVALID_REQUEST at proxy and Worker and pages render the invalid-request state; publication contracts accept IANA zones incl. UTC and three-segment names, audience ^[a-z0-9_-]{1,48}$ (BE04c), one checker manifest entry and a 256-entry cap. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: BE03b, FE03, contracts, proxies.
+- **Reversibility**: High
+
+### DEC-146: rich_text.v1@1 becomes a hashed immutable validator artifact frozen into schema artifacts (AC085) (2026-10-07)
+
+- **Timestamp**: 2026-10-07T02:59:02.121Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 gap audit (Claude orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-10, orchestrator-resolution
+
+- **Problem**: AC085 requires the protected validator's artifact reference and hash to be frozen into the schema artifact; no rich_text.v1 artifact or hash existed and a migration comment claimed one.
+- **Options considered**: (A) implement a canonical grammar descriptor with JCS SHA-256 hash in the TS and SQL protected registries, frozen into compiled artifacts and revalidated before every editorial transition; (B) reword AC085.
+- **Decision**: (A) — more work now. Full table: .memory/pipeline/progress/verification/2026-10-07-slice-10-gap-resolutions.md.
+- **Downstream**: 03a compile pipeline, schema artifact hashes, validator registry, editorial transitions.
+- **Reversibility**: Low
+
+### DEC-148: S11/S12 plan rows name the operations the Slice 11/12 spec cascade added; full depth-floor cascade at slice start (2026-10-08)
+
+- **Timestamp**: 2026-10-08T03:21:16.062Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 integration (orchestrator; owner may override)
+- **Tags**: decision, phase-2, orchestrator-resolution
+
+- **Problem**: The Slice 11/12 spec cascade (DEC-134..138, E1–E17) added operations CMS-03B-15..20 and CMS-03C-06..21; the Slice 09 guard [P2-S09-AC-268] requires every registry-consuming operation to be owned by a later-slice criterion row, so the S10 integration branch failed it.
+- **Options considered**: (A) append operation-ownership sentences to the existing owning S11/S12 criterion rows now (no criterion added, counts and depth floors unchanged) and run the full per-operation depth-floor cascade when each slice starts; (B) run the S11/S12 depth-floor cascade inside the Slice 10 change; (C) leave the guard red.
+- **Decision**: (A). Rows edited: S11 AC035/AC038/AC041, S12 AC038/AC040/AC043/AC046/AC051 (plan + tracker mirrors). The S11/S12 depth-floor cascade (per-operation contract/validation/authority/concurrency/failure/consumer criteria) is mandatory at /implement-slice setup for those slices.
+- **Downstream**: Slice 11 and 12 setup; [P2-S09-AC-268] guard.
 - **Reversibility**: High

@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 25
-- **Unique pattern titles**: 22
+- **Total patterns**: 27
+- **Unique pattern titles**: 24
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -337,6 +337,34 @@
 - **Context**: Local DB work on the machine hosting runners wejammin-2/-3
 - **Pattern**: A push triggers pnpm db:ci, which resets and then stops supabase_db_wejammin. Wrap local DB work in flock /tmp/wejammin-supabase-ci.lock and restart with pnpm db:start && pnpm db:reset afterwards.
 - **Source**: R14e, 2026-10-04
+
+## PAT-021: Route audits and reviews to Codex, not Opus subagents (2026-10-07)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-07T03:46:26.512Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 (user correction)
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Claude orchestration of Phase 2 slices on the Max plan with a 5-hour usage window
+- **Pattern**: Do not spend Claude quota on Opus audit/gap/refutation agents. Run audits and checkpoint reviews through the Codex plugin (ChatGPT quota, independent model family); Opus orchestrates and verifies findings against code before fixes go to Sonnet workers.
+- **Source**: Owner question 2026-10-07 after one Opus gap audit consumed ~25% of the 5-hour window
+
+## PAT-022: Evidence runs must keep Playwright out of shared report directories; self-referential receipt guards need a two-step refresh (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T09:22:52.150Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 closure
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Regenerating Slice 09 marker receipts and Slice 10 identity receipts from real runs
+- **Pattern**: Playwright empties its output directory (default test-results/) before every run, silently deleting vitest/pgTAP/race reports written there earlier. Give every Playwright run its own --output directory (the S10 runner now does) and keep intermediate reports outside test-results/. A receipts guard that cites its own test file records a failed receipt when the full run happens while receipts are stale; when the guard file is byte-identical to HEAD, restore its HEAD receipt rows, then re-verify the guard against the fresh set. Also: a config that selects no cited spec must run with --pass-with-no-tests.
+- **Source**: Slice 10 receipts refresh, 2026-10-08
 
 ## Full Log
 
@@ -689,3 +717,29 @@
 - **Context**: Local DB work on the machine hosting runners wejammin-2/-3
 - **Pattern**: A push triggers pnpm db:ci, which resets and then stops supabase_db_wejammin. Wrap local DB work in flock /tmp/wejammin-supabase-ci.lock and restart with pnpm db:start && pnpm db:reset afterwards.
 - **Source**: R14e, 2026-10-04
+
+### PAT-021: Route audits and reviews to Codex, not Opus subagents (2026-10-07)
+
+- **Timestamp**: 2026-10-07T03:46:26.512Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 (user correction)
+- **Tags**: pattern, anti-pattern, orchestration, codex
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Claude orchestration of Phase 2 slices on the Max plan with a 5-hour usage window
+- **Pattern**: Do not spend Claude quota on Opus audit/gap/refutation agents. Run audits and checkpoint reviews through the Codex plugin (ChatGPT quota, independent model family); Opus orchestrates and verifies findings against code before fixes go to Sonnet workers.
+- **Source**: Owner question 2026-10-07 after one Opus gap audit consumed ~25% of the 5-hour window
+
+### PAT-022: Evidence runs must keep Playwright out of shared report directories; self-referential receipt guards need a two-step refresh (2026-10-08)
+
+- **Timestamp**: 2026-10-08T09:22:52.150Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 closure
+- **Tags**: pattern, anti-pattern, evidence, playwright
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Regenerating Slice 09 marker receipts and Slice 10 identity receipts from real runs
+- **Pattern**: Playwright empties its output directory (default test-results/) before every run, silently deleting vitest/pgTAP/race reports written there earlier. Give every Playwright run its own --output directory (the S10 runner now does) and keep intermediate reports outside test-results/. A receipts guard that cites its own test file records a failed receipt when the full run happens while receipts are stale; when the guard file is byte-identical to HEAD, restore its HEAD receipt rows, then re-verify the guard against the fresh set. Also: a config that selects no cited spec must run with --pass-with-no-tests.
+- **Source**: Slice 10 receipts refresh, 2026-10-08
