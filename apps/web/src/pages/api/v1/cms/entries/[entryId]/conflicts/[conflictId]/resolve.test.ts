@@ -17,12 +17,13 @@ const body = {
   entryId,
   conflictId,
   baseRevision: '1',
-  choices: [{ path: '/fields/title', choice: 'theirs' }],
+  choices: [{ path: `/fields/${revisionId}`, choice: 'theirs' }],
   expectedVersion: '2',
 };
 const resource = {
   id: revisionId,
-  version: '3',
+  version: '1',
+  entryVersion: '3',
   createdAt: instant,
   updatedAt: instant,
   state: 'draft',

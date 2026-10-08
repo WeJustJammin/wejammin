@@ -29,11 +29,14 @@ const resource: EntryDraftDetailResource = {
     createdAt: instant,
     updatedAt: instant,
   },
+  revisionNumber: '1',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash: 'a'.repeat(64),
+  schemaVersionId: '70000000-0000-4000-8000-000000000007',
   validationState: 'valid',
+  openConflict: null,
   fields: [
     {
       fieldId: '50000000-0000-4000-8000-000000000005',

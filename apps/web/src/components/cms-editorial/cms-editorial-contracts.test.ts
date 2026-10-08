@@ -31,7 +31,7 @@ const I64_MAX = '9223372036854775807';
 const validRequest = () => ({
   entryId: uuid(),
   baseRevision: '3',
-  changedPaths: ['/values/' + uuid()],
+  changedPaths: ['/fields/' + uuid()],
   values: { [uuid()]: 'body text' },
   locale: 'en-US',
   expectedVersion: '12',
@@ -109,25 +109,50 @@ describe('CmsEditorialJsonPointerSchema', () => {
   });
 });
 
-describe('CmsEditorialChangedPathsSchema (BE03b:172 1-128 unique)', () => {
-  it('accepts a single pointer and a full set of 128', () => {
-    expect(CmsEditorialChangedPathsSchema.safeParse(['/a']).success).toBe(true);
-    const many = Array.from({ length: 128 }, (_, index) => '/p' + index);
-    expect(CmsEditorialChangedPathsSchema.safeParse(many).success).toBe(true);
+describe('CmsEditorialChangedPathsSchema (BE03b: 1-128 unique /fields/{stableFieldId})', () => {
+  const fieldPointers = (count: number): string[] =>
+    Array.from({ length: count }, () => '/fields/' + uuid());
+
+  it('accepts a single field pointer and a full set of 128', () => {
+    expect(
+      CmsEditorialChangedPathsSchema.safeParse(fieldPointers(1)).success,
+    ).toBe(true);
+    expect(
+      CmsEditorialChangedPathsSchema.safeParse(fieldPointers(128)).success,
+    ).toBe(true);
   });
 
   it('rejects an empty list and a list of 129', () => {
     expect(CmsEditorialChangedPathsSchema.safeParse([]).success).toBe(false);
-    const tooMany = Array.from({ length: 129 }, (_, index) => '/p' + index);
-    expect(CmsEditorialChangedPathsSchema.safeParse(tooMany).success).toBe(
-      false,
-    );
+    expect(
+      CmsEditorialChangedPathsSchema.safeParse(fieldPointers(129)).success,
+    ).toBe(false);
   });
 
   it('rejects duplicate pointers so a field is not saved twice', () => {
-    expect(CmsEditorialChangedPathsSchema.safeParse(['/a', '/a']).success).toBe(
-      false,
-    );
+    const pointer = '/fields/' + uuid();
+    expect(
+      CmsEditorialChangedPathsSchema.safeParse([pointer, pointer]).success,
+    ).toBe(false);
+  });
+
+  it('refuses every pointer that is not /fields/{lowercase stableFieldId}', () => {
+    // SQL accepts only ^/fields/<lowercase uuid>$ (BE03b "Pointers"); the
+    // browser contract must refuse what the database would, so a /values/ key
+    // (the former create form's shape), a block pointer, a display key or an
+    // uppercase id is refused before any request is sent.
+    for (const pointer of [
+      '/a',
+      '/values/' + uuid(),
+      '/blocks/hero',
+      '/fields/title',
+      '/fields/' + uuid().toUpperCase(),
+      '/fields/' + uuid() + '/x',
+    ])
+      expect(
+        CmsEditorialChangedPathsSchema.safeParse([pointer]).success,
+        pointer,
+      ).toBe(false);
   });
 });
 
@@ -208,7 +233,8 @@ describe('CmsEditorialEntryRevisionRequestSchema (CMS-03B-01 CAS body)', () => {
 describe('CmsEditorialEntryRevisionResourceSchema (201 response)', () => {
   const resource = () => ({
     id: uuid(),
-    version: '13',
+    version: '1',
+    entryVersion: '13',
     createdAt: '2026-09-26T12:00:00.000Z',
     updatedAt: '2026-09-26T12:00:00.000Z',
     state: 'draft',
@@ -297,24 +323,29 @@ describe('revision history query and page (CMS-03B-03)', () => {
   });
 
   it('bounds a comparison change list to 512 entries', () => {
-    const change = {
-      path: '/a',
-      kind: 'changed',
-      leftHash: null,
-      rightHash: null,
-    };
-    expect(
+    const compare = (count: number) => ({
+      leftRevisionId: uuid(),
+      rightRevisionId: uuid(),
+      restore: null,
+      changes: Array.from({ length: count }, () => ({
+        path: '/fields/' + uuid(),
+        kind: 'changed',
+        domain: 'field',
+        leftHash: null,
+        rightHash: null,
+      })),
+    });
+    const page = (count: number) =>
       CmsEditorialRevisionHistoryPageSchema.safeParse({
         items: [],
         nextCursor: null,
         pageVersion: '7',
-        compare: {
-          leftRevisionId: uuid(),
-          rightRevisionId: uuid(),
-          changes: Array.from({ length: 513 }, () => change),
-        },
-      }).success,
-    ).toBe(false);
+        compare: compare(count),
+      }).success;
+    // 512 passes and 513 fails, so the refusal is the bound and not a shape
+    // mismatch in the fixture.
+    expect(page(512)).toBe(true);
+    expect(page(513)).toBe(false);
   });
 });
 

@@ -1,0 +1,49 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialConflictResolveIsland from '../../../../../../components/cms-editorial/CmsEditorialConflictResolveIsland';
+import CmsEditorialDocument from '../../../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadConflictPage } from '../../../../../../components/cms-editorial-pages/load-conflict-page';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Protected three-way conflict resolution for CMS-03B-12 / CMS-03B-02. All
+ * behavior lives in the tested loader and island: the loader verifies the
+ * conflict (the only source of preimages) and the field definitions of its
+ * schema version, and returns one view, one closed state, or a sign-in
+ * redirect; the island resolves with explicit choices. The conflict preimages
+ * are never cached and never enter a URL.
+ */
+const outcome = await loadConflictPage({
+  request: Astro.request,
+  entryId: Astro.params.entryId ?? '',
+  conflictId: Astro.params.conflictId ?? '',
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Resolve a concurrent edit."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <CmsEditorialConflictResolveIsland init={outcome.view.init} client:load />
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

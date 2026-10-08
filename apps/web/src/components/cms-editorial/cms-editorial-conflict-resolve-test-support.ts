@@ -11,7 +11,7 @@ export const PARENT_B = '018f0c45-73fe-7dc2-9c09-68f7ecf132e1';
 export const INSTANT = '2026-09-26T12:00:00+00:00';
 
 export const theirsChoice = {
-  path: '/fields/title',
+  path: '/fields/018f0c45-73fe-7dc2-9c09-68f7ecf132e1',
   choice: 'theirs',
 } as const;
 
@@ -25,7 +25,8 @@ export const validRequest = {
 
 export const resolvedResource = {
   id: REVISION_ID,
-  version: '8',
+  version: '1',
+  entryVersion: '8',
   createdAt: INSTANT,
   updatedAt: INSTANT,
   state: 'draft',
@@ -54,13 +55,16 @@ export const resolveRequest = (): CmsEditorialConflictResolveRequest => ({
   entryId: ENTRY_ID,
   conflictId: CONFLICT_ID,
   baseRevision: '4',
-  choices: [{ path: '/fields/title', choice: 'theirs' }],
+  choices: [
+    { path: '/fields/018f0c45-73fe-7dc2-9c09-68f7ecf132e1', choice: 'theirs' },
+  ],
   expectedVersion: '7',
 });
 
 export const resolvedTransportResource = () => ({
   id: CREATED_REVISION_ID,
-  version: '8',
+  version: '1',
+  entryVersion: '8',
   createdAt: INSTANT,
   updatedAt: INSTANT,
   state: 'draft',

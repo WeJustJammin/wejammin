@@ -46,7 +46,8 @@ const validCreate = {
   contentTypeId: uuid,
   contentTypeVersionId: uuid2,
   locale: 'en-US',
-  changedPaths: ['/fields/title'],
+  // BE03b "Pointers": every field kind is addressed as /fields/{stableFieldId}.
+  changedPaths: [`/fields/${uuid2}`],
   values: { [uuid2]: { title: 'Hello' } },
   schemaArtifact,
   validatorRefs: [{ key: 'sanitize.rich_text', version: '3' }],
@@ -138,7 +139,7 @@ describe('cms-editorial entry create body (CMS-03B-10)', () => {
     expect(
       CmsEditorialEntryCreateRequestSchema.safeParse({
         ...validCreate,
-        changedPaths: ['/a', '/a'],
+        changedPaths: [`/fields/${uuid2}`, `/fields/${uuid2}`],
       }).success,
     ).toBe(false);
     const tooManyKeys = Object.fromEntries(

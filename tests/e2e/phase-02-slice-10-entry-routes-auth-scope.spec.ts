@@ -9,10 +9,18 @@ import { expect, test, type Page } from '@playwright/test';
  * answered without an upstream call (no database or API dependency): the
  * proof is that the cross-tab auth-scope guard actually executes there.
  */
+// A structurally malformed id is 400 "Invalid request" (DEC-145, BE03b:172),
+// never a not-found state, and is answered without an upstream call; the create
+// page needs its CMS-03B-14 preparation read, which has no upstream here and is
+// the 503 degraded state.
 const ROUTES: readonly (readonly [string, number])[] = [
   ['/app/cms-content-modeling/entries/new', 503],
-  ['/app/cms-content-modeling/entries/not-a-uuid', 404],
-  ['/app/cms-content-modeling/entries/not-a-uuid/revisions', 404],
+  ['/app/cms-content-modeling/entries/not-a-uuid', 400],
+  ['/app/cms-content-modeling/entries/not-a-uuid/revisions', 400],
+  [
+    '/app/cms-content-modeling/entries/not-a-uuid/conflicts/also-not-a-uuid',
+    400,
+  ],
 ];
 
 const SCOPE_A = 'A'.repeat(32);

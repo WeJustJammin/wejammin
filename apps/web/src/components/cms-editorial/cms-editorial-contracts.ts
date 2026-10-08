@@ -4,10 +4,15 @@ import {
   BoundedEntryValuesSchema,
   ChangedPathsSchema,
   CmsHashSchema,
-  CmsInstantSchema,
   CmsUuidSchema,
+  EntryRevisionRequestSchema,
+  EntryRevisionResourceSchema,
   EntryRevisionStateSchema,
   JsonPointerSchema,
+  entryRevisionResourceMetaShape,
+  RevisionHistoryPageSchema,
+  RevisionHistoryQuerySchema,
+  RevisionSummarySchema,
 } from '@wejammin/contracts';
 import { z } from 'zod';
 
@@ -34,8 +39,6 @@ import { z } from 'zod';
  *   BigInt conversion. Both layers now fail closed on exactly the same inputs;
  *   the local guard exists so a future change to the shared primitive cannot
  *   turn a validation failure into an uncaught error on the client.
- * - The revision history shapes (CMS-03B-03), which the shared module does not
- *   export yet.
  */
 
 export const CMS_EDITORIAL_CONTRACTS_SOURCE = {
@@ -79,77 +82,32 @@ export const CmsEditorialVersionSchema = z
   .regex(/^[1-9][0-9]{0,18}$/u)
   .refine(isCmsEditorialVersionWithinRange, 'version_out_of_range');
 
-export const CmsEditorialEntryRevisionRequestSchema = z.strictObject({
-  entryId: CmsEditorialUuidSchema,
-  baseRevision: CmsEditorialVersionSchema,
-  changedPaths: CmsEditorialChangedPathsSchema,
-  values: CmsEditorialBoundedEntryValuesSchema,
-  locale: CmsEditorialBcp47Schema,
-  expectedVersion: CmsEditorialVersionSchema,
-});
-
-export const CmsEditorialResourceMetaSchema = z.strictObject({
-  id: CmsEditorialUuidSchema,
-  version: CmsEditorialVersionSchema,
-  createdAt: CmsInstantSchema,
-  updatedAt: CmsInstantSchema,
-});
-
+/**
+ * The CMS-03B-01 request and the revision resource are the shared contracts.
+ * They were once mirrored here, and the mirror went stale the moment the
+ * resource gained `entryVersion` (a strict local copy would have refused every
+ * real 201). `entryVersion` is the committed entry aggregate version and the
+ * only valid next `If-Match`; `version` is the immutable snapshot's own
+ * version (always 1).
+ */
+export const CmsEditorialEntryRevisionRequestSchema =
+  EntryRevisionRequestSchema;
+export const CmsEditorialResourceMetaSchema = z.strictObject(
+  entryRevisionResourceMetaShape,
+);
 export const CmsEditorialEntryRevisionResourceSchema =
-  CmsEditorialResourceMetaSchema.extend({
-    state: CmsEditorialEntryRevisionStateSchema,
-    entryId: CmsEditorialUuidSchema,
-    revisionNumber: CmsEditorialVersionSchema,
-    schemaVersionId: CmsEditorialUuidSchema,
-    templateVersionId: CmsEditorialUuidSchema.nullable(),
-    taxonomyVersionIds: z.array(CmsEditorialUuidSchema).max(64),
-    locale: CmsEditorialBcp47Schema,
-    contentHash: CmsEditorialHashSchema,
-    parentRevisionIds: z.array(CmsEditorialUuidSchema).max(2),
-    validationState: z.enum(['valid', 'invalid', 'unknown']),
-    conflictId: CmsEditorialUuidSchema.nullable(),
-  });
+  EntryRevisionResourceSchema;
 
-export const CmsEditorialRevisionSummarySchema = z.strictObject({
-  id: CmsEditorialUuidSchema,
-  revisionNumber: CmsEditorialVersionSchema,
-  locale: CmsEditorialBcp47Schema,
-  state: CmsEditorialEntryRevisionStateSchema,
-  contentHash: CmsEditorialHashSchema,
-  createdAt: CmsInstantSchema,
-  authorClass: z.string().min(1).max(64),
-});
-
-export const CmsEditorialRevisionHistoryQuerySchema = z.strictObject({
-  entryId: CmsEditorialUuidSchema,
-  cursor: z.string().max(512).nullable().optional(),
-  limit: z.number().int().min(1).max(50).default(25),
-  state: CmsEditorialEntryRevisionStateSchema.optional(),
-  compareRevisionId: CmsEditorialUuidSchema.optional(),
-  locale: CmsEditorialBcp47Schema.optional(),
-});
-
-export const CmsEditorialRevisionHistoryPageSchema = z.strictObject({
-  items: z.array(CmsEditorialRevisionSummarySchema).max(50),
-  nextCursor: z.string().max(512).nullable(),
-  pageVersion: CmsEditorialVersionSchema,
-  compare: z
-    .strictObject({
-      leftRevisionId: CmsEditorialUuidSchema,
-      rightRevisionId: CmsEditorialUuidSchema,
-      changes: z
-        .array(
-          z.strictObject({
-            path: CmsEditorialJsonPointerSchema,
-            kind: z.enum(['added', 'removed', 'changed', 'unchanged']),
-            leftHash: CmsEditorialHashSchema.nullable(),
-            rightHash: CmsEditorialHashSchema.nullable(),
-          }),
-        )
-        .max(512),
-    })
-    .nullable(),
-});
+/**
+ * The CMS-03B-03 history shapes are the shared contracts, re-exported under the
+ * browser names. They were once mirrored here, which drifted (no comparison
+ * `domain`, no `restore` carrier); a copy is exactly what the shared module
+ * exists to prevent.
+ */
+export const CmsEditorialRevisionSummarySchema = RevisionSummarySchema;
+export const CmsEditorialRevisionHistoryQuerySchema =
+  RevisionHistoryQuerySchema;
+export const CmsEditorialRevisionHistoryPageSchema = RevisionHistoryPageSchema;
 
 export const CmsEditorialApiErrorSchema = ApiErrorSchema;
 

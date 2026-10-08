@@ -66,8 +66,8 @@ second domain-policy or persistence layer.
 These modules are first-party proxies over the private `PLATFORM_API` binding.
 The corresponding CMS-03B Worker routes are registered locally; each proxy
 relays only a bounded, contract-valid upstream result and never synthesizes
-editorial data. A missing owner-controlled policy or history signing key still
-fails closed.
+editorial data. A missing owner-controlled policy or cursor signing key still
+fails closed (`docs/runbooks/platform/cms-editorial.md`).
 
 - `cms-editorial-platform-shared.ts` — allowlisted cookie forwarding, the
   same-origin check, the CSRF cookie/header match, bounded printable tokens,
@@ -76,29 +76,57 @@ fails closed.
 - `cms-editorial-platform-bounded.ts` — the locked 256 KiB body cap for this
   command family plus declared-then-streamed byte reads that cancel their
   source on overflow, so no contract parse ever sees an unbounded buffer. It
-  also owns the upstream-error relay, which collapses anything that is not a
-  cap-bounded valid `ApiError`.
+  also owns the upstream-error relay: only a cap-bounded valid `ApiError` of a
+  declared code/status pair is relayed, and even then the message is the
+  route's canonical text and the details are rebuilt from
+  `cms-editorial-platform-error-details.ts` (Codex review M2); nothing the
+  upstream wrote is republished verbatim.
+- `cms-editorial-platform-error-details.ts` — the BE03b:1239 detail allowlists
+  per status and the per-operation typed reasons (`valueWrite`, `history`,
+  `restore`, `read`), plus the Worker-identical `details.violations` shape for
+  local Zod failures. A new typed reason is added here, in the Worker's
+  `cms-editorial/error-vocabulary.ts` and in BE03b together.
+- `cms-editorial-platform-write.ts` — the transport the four commands share:
+  admission, CSRF, JSON media, dispatch with the browser's `request.signal`,
+  and classification. Outcome-unknown contract: a transport loss, a
+  post-dispatch 5xx or an unverifiable 2xx carries
+  `x-cms-editorial-outcome: unknown`; the client keeps its `Idempotency-Key`
+  and replays the byte-identical request. A definite 4xx, or a refusal before
+  dispatch, never carries it and rotates the key.
 - `cms-editorial-platform-mutation.ts` — CMS-03B-10 create proxy: same-origin,
-  CSRF match, a bounded `Idempotency-Key`, a locally validated JSON body, no
+  CSRF match, a JSON media type (valid JSON under another type is a 415, never
+  re-stamped), a bounded `Idempotency-Key`, a locally validated JSON body, no
   `If-Match` (CMS-03B-10 declares none, and a supplied one is refused rather
   than dropped), a body read under the cap, and a 201 relayed only when it is
   the strict create resource and its bounded `Location` names that entry.
 - `cms-editorial-platform-reads.ts` — CMS-03B-11 protected draft read and
   CMS-03B-03 revision-history read. Both reject malformed addressing,
   write-only headers, and body/media claims before forwarding; a 415 explains
-  that protected reads have no request media. Both require bounded, strict
-  resources. Draft detail requires a canonical strong `ETag`; history
+  that protected reads have no request media. A structurally malformed id or
+  query value is a 400 INVALID_REQUEST with a violation pointer (DEC-145), the
+  Worker's own status. Both require bounded, strict resources. Draft detail requires a canonical strong `ETag`; history
   validates URL-owned filters, the locked 400 boundary for malformed
   cursor/limit/compare/locale values, a page-version `ETag`, and signed-cursor
   length before forwarding.
+- `cms-editorial-platform-reads-collection.ts` — the CMS-03B-13 entry-list,
+  CMS-03B-14 authoring-context, and CMS-03B-12 conflict-detail reads, re-exported
+  by `cms-editorial-platform-reads.ts` so callers keep one import. Each carries no
+  body or write header, forwards only its allowlisted query, and relays a bounded
+  strict resource bound to its strong `ETag`; the authoring-context read never
+  grants schema-registry read.
+- `cms-editorial-platform-read-admission.ts` — the admission shared by every
+  protected editorial read: no `Idempotency-Key`, `If-Match`, body, or media
+  type (a 400 or 415 before any upstream call), and the entry route prefix.
 - `cms-editorial-platform-revision.ts`, `cms-editorial-platform-conflict.ts`,
   and `cms-editorial-platform-restore.ts` — first-party CMS-03B-01/02/04
   mutation proxies. Each checks same-origin, CSRF, bounded strict input,
-  idempotency, and an exact strong `If-Match` before forwarding. A 201 is
-  returned only after the new revision, `ETag`, and `Location` agree. The
-  restore route remains unavailable in production until its protected
-  migration-chain RPC/port is implemented; the proxy itself grants no restore
-  capability.
+  idempotency, and an exact strong `If-Match` that agrees with the body's
+  `expectedVersion` (422 `/expectedVersion` otherwise) before forwarding. A 201
+  is returned only after the new revision, `Location` and the strong `ETag`
+  (`"{entryVersion}"`, the next valid `If-Match`) agree. The
+  restore route reaches the Worker's protected migration-chain RPC
+  (`CMS-03B-04`); the proxy itself grants no restore capability, and a chain the
+  database cannot prove is a typed 409 with nothing created.
 
 ## CMS composition map
 

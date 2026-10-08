@@ -27,6 +27,9 @@ const expected = [
   ],
   ['CMS-03B-10', 'POST', '/api/v1/cms/entries'],
   ['CMS-03B-11', 'GET', '/api/v1/cms/entries/{entryId}'],
+  ['CMS-03B-12', 'GET', '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}'],
+  ['CMS-03B-13', 'GET', '/api/v1/cms/entries'],
+  ['CMS-03B-14', 'GET', '/api/v1/cms/entries/authoring-context'],
 ] as const;
 
 const tier2Slo = {
@@ -59,7 +62,7 @@ const revisionErrors = {
 } as const;
 
 describe('cms editorial route registry', () => {
-  it('registers exactly the six locked operations and method/path pairs', () => {
+  it('registers exactly the nine locked operations and method/path pairs', () => {
     expect(
       cmsEditorialRoutePolicies.map(({ operationId, method, path }) => [
         operationId,
@@ -156,7 +159,7 @@ describe('cms editorial route registry', () => {
       ({ method }) => method === 'GET',
     );
     expect(commandRows).toHaveLength(4);
-    expect(readRows).toHaveLength(2);
+    expect(readRows).toHaveLength(5);
     for (const candidate of commandRows) {
       expect('headersSchema' in candidate).toBe(true);
       expect('querySchema' in candidate).toBe(false);
@@ -178,7 +181,7 @@ describe('cms editorial route registry', () => {
     expect(Object.keys(detailRoute.errors)).toHaveLength(11);
   });
 
-  it('enforces the six-operation discriminants', () => {
+  it('enforces the nine-operation discriminants', () => {
     for (const candidate of cmsEditorialRoutePolicies)
       expect(policyShapeSchema.safeParse(candidate).success).toBe(true);
     const readRow = {

@@ -17,8 +17,6 @@ import type {
   ValidatorEvidence,
 } from '@wejammin/contracts';
 
-import type { CmsEditorialAsyncState } from './cms-editorial-types';
-
 /**
  * Browser-facing projection of the locked BE03b CMS-03B-10 entry-create
  * contract for the CMS-05 entry workbench.
@@ -31,14 +29,13 @@ import type { CmsEditorialAsyncState } from './cms-editorial-types';
  * `packages/contracts/src/cms-editorial/` has landed and registers CMS-03B-10,
  * so every schema below is the shared contract re-exported instead of a
  * second, drift-prone copy. Only what the browser itself owns stays local: the
- * honest transport boundary and the fail-closed page resolver.
+ * description of the route it calls.
  */
 
 export const CMS_EDITORIAL_ENTRY_CREATE_SOURCE = {
   source: 'packages/contracts/src/cms-editorial/entry-create.ts',
   spec: '.memory/wiki/specs/be/03b-editorial-workflow-publication.md',
-  browserLocal:
-    'CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY and resolveCmsEditorialEntryCreatePageState',
+  browserLocal: 'CMS_EDITORIAL_ENTRY_CREATE_ROUTE',
 } as const;
 
 /** BE03b `SchemaArtifactEvidence`: exact compiled-artifact identity. */
@@ -86,18 +83,15 @@ export const CmsEditorialEntryCreateVerificationSchema =
   EntryCreateVerificationSchema;
 
 /**
- * Honest boundary for the browser. FE03 authorises CMS-03B-10, the shared
- * contract is implemented and registered, and the first-party proxy now exists
- * at apps/web/src/server/cms-editorial-platform-mutation.ts. The protected
- * Worker route is served, but the locked request requires a `workflowPolicy`
- * evidence object that no served response schema exposes: the 03a detail carries
- * `schemaArtifact` and `activationEvidence`, but never `workflowPolicy`.
- * Substituting one for the other, or synthesising a policy hash, would be
- * fabrication. The create surface therefore stays fail-closed until a
- * protected source for that exact evidence is defined.
+ * CMS-03B-10 as the browser uses it: a human form that POSTs the create under
+ * an `Idempotency-Key` with no `If-Match`, answered 201 with a strong ETag and
+ * a `Location`, never cached. The `workflowPolicy`, `schemaArtifact`,
+ * `validatorRefs` and `activationEvidence` members are prefilled from the
+ * CMS-03B-14 authoring-context projection and echoed back unmodified, so the
+ * create is fully served; `cms-editorial-route-constants.test.ts` pins every
+ * member to the registered route policy.
  */
-export const CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY = {
-  status: 'route-served-policy-evidence-unavailable',
+export const CMS_EDITORIAL_ENTRY_CREATE_ROUTE = {
   operationId: 'CMS-03B-10',
   method: 'POST',
   path: '/api/v1/cms/entries',
@@ -108,24 +102,9 @@ export const CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY = {
   locationRequired: true,
   etag: 'strong',
   cacheControl: 'no-store',
-  blocker:
-    'The CMS-03B-10 proxy and protected Worker route are served, but the locked request requires a workflowPolicy evidence object that no protected served response exposes. The private editorial-policy source is also unconfigured; the browser cannot obtain or invent that evidence, so creation remains unavailable.',
   owner: '03b-editorial-workflow-publication.md',
   spec: '.memory/wiki/specs/be/03b-editorial-workflow-publication.md',
 } as const;
-
-/**
- * Safe copy for the disabled create surface. Fixed and non-disclosing: it must
- * not hint whether any entry already exists.
- */
-export const CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON =
-  'Entry creation is unavailable, and no entry was created.';
-
-export const resolveCmsEditorialEntryCreatePageState =
-  (): CmsEditorialAsyncState<never> => ({
-    status: 'disabled',
-    reason: CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON,
-  });
 
 export type CmsEditorialSchemaArtifactEvidence = SchemaArtifactEvidence;
 export type CmsEditorialValidatorEvidence = ValidatorEvidence;

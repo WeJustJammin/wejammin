@@ -10,6 +10,18 @@ import {
   EntryDraftDetailApiRequestSchema,
   EntryDraftDetailResourceSchema,
 } from './cms-editorial/entry-draft-detail.ts';
+import {
+  ConflictDetailApiRequestSchema,
+  ConflictDetailResourceSchema,
+} from './cms-editorial/conflict-detail.ts';
+import {
+  EntryListApiRequestSchema,
+  EntryListPageSchema,
+} from './cms-editorial/entry-list.ts';
+import {
+  AuthoringContextApiRequestSchema,
+  AuthoringContextResourceSchema,
+} from './cms-editorial/authoring-context.ts';
 import { ConflictResolutionApiRequestSchema } from './cms-editorial/conflict-resolution.ts';
 import { EntryRevisionApiRequestSchema } from './cms-editorial/requests.ts';
 import {
@@ -201,6 +213,12 @@ const schemaContracts = {
   EntryCreateResourceSchema,
   EntryDraftDetailApiRequestSchema,
   EntryDraftDetailResourceSchema,
+  ConflictDetailApiRequestSchema,
+  ConflictDetailResourceSchema,
+  EntryListApiRequestSchema,
+  EntryListPageSchema,
+  AuthoringContextApiRequestSchema,
+  AuthoringContextResourceSchema,
   HealthResponseSchema,
   JobIdPathSchema,
   JobStatusSchema,
@@ -329,6 +347,9 @@ const schemaIo = {
   EndMembershipRequestSchema: 'input',
   EntryCreateApiRequestSchema: 'input',
   EntryDraftDetailApiRequestSchema: 'input',
+  ConflictDetailApiRequestSchema: 'input',
+  EntryListApiRequestSchema: 'input',
+  AuthoringContextApiRequestSchema: 'input',
   ConflictResolutionApiRequestSchema: 'input',
   EntryRevisionApiRequestSchema: 'input',
   RevisionHistoryApiRequestSchema: 'input',

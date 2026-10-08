@@ -20,6 +20,13 @@ do not own API policy, persistence, or provider credentials.
   submitted under the new session. A values-free BroadcastChannel signal and the
   cookie re-read on focus, pageshow, visibility and interaction drive it.
 
+- `cms-editorial-page-actions.ts` (the bundled self-installing entry) and
+  `cms-editorial-page-actions-core.ts` — the document-level handling the CMS
+  editorial pages need beyond their islands: the create type selector, the
+  CMS-03B-04 restore confirmation (sent as the real JSON command, then the app
+  route of the entry is opened), and `cms-editorial-restore-review.ts` for the
+  inline review's focus, Escape and Cancel behavior.
+
 ## Ownership
 
 This directory owns web transport adapters and presentation-facing helpers.

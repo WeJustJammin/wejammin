@@ -2,9 +2,9 @@
 
 **Project**: WeJammin
 **Last updated**: 2026-10-04
-**Overall**: IA 43/43 authored and independently ambiguity-passed (**fresh rerun PASS — 0/344 = 0.00%, 2026-08-28**); Phase 1 complete at 7/7 slices; Phase 2 at 9/17 complete with an active criteria denominator of 2,974 out of 2,978 authored and 2,448 active-checked. Slice 09 is 1235/1235 active with 1239 authored IDs under owner-ratified DEC-132. DEC-133 selects O1 Option A for Slice 10. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator on their declared external timelines.
+**Overall**: IA 43/43 authored and independently ambiguity-passed (**fresh rerun PASS — 0/344 = 0.00%, 2026-08-28**); Phase 1 complete at 7/7 slices; Phase 2 at 9/17 complete with an active criteria denominator of 3,004 out of 3,008 authored and 2,448 active-checked. Slice 09 is 1235/1235 active with 1239 authored IDs under owner-ratified DEC-132. DEC-133 selects O1 Option A for Slice 10. AC209, AC211, AC265, and AC266 remain authored and unchecked outside the active implementation denominator on their declared external timelines.
 **Activation reopen (2026-09-30)**: A read-only cross-layer activation re-audit found no production producer for the CMS-03A-04 `actingContextId` or CMS review/approval evidence, so 17 existing Slice 09 activation-chain criteria were reopened, and a separate truthfulness correction reopened AC250. Slice 09 is **261/279 active** (283 authored IDs) and Phase 2 is **8/17**. No criterion was waived and no synthetic or fixture evidence is counted; exact evidence is in the [Slice 09 tracker](slices/phase-02-slice-09.md).
-**Active implementation**: Slice 10 implementation is unblocked by Slice 09 active completion at 1235/1235 under DEC-132. Slice 10 remains 0/75 and begins with the DEC-133 typed object-field contract cascade. Independent Slice 12 is in progress at 0/53. Slices 11 and 13–17 remain behind their declared dependencies; no local contract test establishes hosted acceptance.
+**Active implementation**: Slice 10 implementation is unblocked by Slice 09 active completion at 1235/1235 under DEC-132. Slice 10 remains 0/105 and begins with the DEC-133 typed object-field contract cascade. Independent Slice 12 is in progress at 0/53. Slices 11 and 13–17 remain behind their declared dependencies; no local contract test establishes hosted acceptance.
 
 ## Legend
 
@@ -419,8 +419,8 @@ failed: malformed response`. The token still passes Workers Observability.
   issuer, hosted workflow, and an accepted 9-role/10-scenario report with signed
   exact artifact provenance. The staging-scope acceptance route exists, but
   no genuine hosted acceptance is claimed. Slice 09 is 1235/1235 active
-  (1239 authored IDs) and Phase 2 is 9/17 slices with 2,974 active criteria out
-  of 2,978 authored. Slice 10 implementation is unblocked. AC209,
+  (1239 authored IDs) and Phase 2 is 9/17 slices with 3,004 active criteria out
+  of 3,008 authored. Slice 10 implementation is unblocked. AC209,
   AC211, AC265, and AC266 remain authored and unchecked outside the active
   implementation denominator: AC265 and AC266 must pass before production
   readiness/release, AC209 must pass before alerting is declared ready, and

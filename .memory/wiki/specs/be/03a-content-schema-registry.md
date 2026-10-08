@@ -200,12 +200,13 @@ This table is the single authoritative route registry for 03a. CI must compare d
 | CMS-03A-09 | workflowKey / workflowVersion | optional pair (AC390), both null or absent (keep the source `workflowKey`/`workflowVersion`) or both present (replace them): `workflowKey` matches `/^[a-z][a-z0-9._-]{0,127}$/` and `workflowVersion` is a positive decimal string, and the pair must be a seeded member of the code-owned workflow policy registry (see Workflow policy registry) else the command is refused 422 `VALIDATION_FAILED` before any source row is read for cloning; one present without the other is refused with `workflowKey and workflowVersion must be both null or both present` at `['workflowVersion']`; a wrong type, a key outside the grammar or a non-canonical or zero version is 422 as well; the pair is part of the successor's definition hash, and a change of member never lowers review: the successor is reviewed under the strictest of the source version's bound member and its own new member (see Downgrade guard (strictest-of)), so a change from an ordinary to a protected member requires the protected review and a change from a protected to an ordinary member still requires it | 400/404/422; no partial insert |
 | CMS-03A-01                                   | workflowKey / workflowVersion                                          | a seeded member of the code-owned workflow policy registry (see Workflow policy registry): key plus positive decimal version; the member determines the review and approval requirements and an unseeded key or version is refused                                                                                                                                                                                                                                                                                                                                                                                                                                               | 422 VALIDATION_FAILED or 409 CONFLICT              |
 | CMS-03A-01 | defaultTemplateVersionId | JSON `null` only (DEC-123): a new content type is created without a template, because a compatible template lists the type id that this command generates; any UUID or other value is refused whole before any template row is read, so the refusal never discloses whether a template exists | 422 VALIDATION_FAILED; no partial insert |
-| CMS-03A-01                                   | fields                                                                 | array 0–128; each required stableFieldId UUID, FieldKey, kind closed registry, protected validator ref, default mode/value, localization mode, and strict editor config                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 422; no partial insert                             |
+| CMS-03A-01                                   | fields                                                                 | array 0–128; each required stableFieldId UUID, FieldKey, kind closed registry, a registered protected validator ref (the only member is `rich_text.v1` v1, DEC-112), default mode/value, localization mode, and strict editor config; an `object` field also requires the DEC-133 depth-1 `properties[]` structure                                                                                                                                                                                                                                                                                                                                                                 | 422; no partial insert                             |
 | CMS-03A-01 | relations / templateBindings / capabilityBindings | `relations` and `capabilityBindings` are bounded arrays of complete allowlisted relation and protected capability references, each committed in the same aggregate transaction; `templateBindings` is the empty array (DEC-123), and a non-empty array is refused whole before any template row is read | 422/404/409; no partial insert |
 | CMS-03A-02                                   | path IDs                                                               | contentTypeId and versionId UUID; version must belong to type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 400 INVALID_REQUEST or 404 NOT_FOUND               |
 | CMS-03A-02                                   | stableFieldId                                                          | UUID; existing field UUID for change/deprecation or omitted only for a new field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 422 VALIDATION_FAILED                              |
 | CMS-03A-02                                   | key / kind                                                             | key regex /^[a-z][a-z0-9_]{1,63}$/; kind enum short_text, long_text, rich_text, boolean, integer, decimal, date, datetime, enum, taxonomy, relation, media, object, list                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 422; key/kind change is 409 when immutable         |
-| CMS-03A-02                                   | constraints / validator                                                | strict kind-specific object, max 64 keys, depth 4, 8 KiB; validator key/version is protected and free-form pattern/expression/code is rejected                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | 422 VALIDATION_FAILED                              |
+| CMS-03A-02                                   | constraints / validator                                                | strict kind-specific object, max 64 keys, depth 4, 8 KiB; the validator key/version pair must name a registered protected validator member (only `rich_text.v1` v1 exists, DEC-112) and free-form pattern/expression/code is rejected                                                                                                                                                                                                                                                                                                                                                                                                                                              | 422 VALIDATION_FAILED                              |
+| CMS-03A-01 / CMS-03A-02                      | object / list / rich_text structure                                     | an `object` field requires a `constraints.objectStructure.properties[]` of 0–32 properties, each a unique stable `key` with a `scalar\|enum\|rich_text` kind, a `required` flag, and kind constraints, at exactly depth 1 (a property value is a scalar, an enum member, or a `rich_text.v1` AST, never a nested object or array; an `enum` property requires a nonempty `enumValues`); property `constraints` are the closed per-kind vocabulary of DEC-144 (`scalar`: `minLength`/`maxLength`/`minimum`/`maximum`; `enum`: required `enumValues` plus `minLength`/`maxLength`; `rich_text`: `minLength`/`maxLength`), so an unknown member, a member of another kind, a wrong type, or min > max is refused; a `list` field requires `constraints.itemKind` to be a scalar kind or `enum`, so a nested `list\|object\|relation\|media\|rich_text` item is refused at definition time; a `rich_text` field's values are the `rich_text.v1` AST and a present validator pair must be `rich_text.v1` v1. The structure is compiled into the SchemaArtifact and frozen in the definition hash                                                                                                                                                             | 422 VALIDATION_FAILED; no partial insert           |
 | CMS-03A-02                                   | required/default/localization                                          | required boolean, default mode/value with missing/null distinction, and localization mode `none\|localized\|no_fallback`; required cannot be added over populated data without proven migration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 422 or 409 CONFLICT                                |
 | CMS-03A-02                                   | migrationPlanId                                                        | UUID or null; required for conditional/breaking compatibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 422 or 409 CONFLICT                                |
 | CMS-03A-03                                   | fieldId                                                                | UUID of a relation-kind FieldDefinitionVersion in this type version                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 422/409                                            |
@@ -241,7 +242,7 @@ This table is the single authoritative route registry for 03a. CI must compare d
 | CMS-03A-06, CMS-03A-07, and CMS-03A-13       | read headers                                                           | Idempotency-Key and If-Match must be absent; no Content-Type is required because no body exists                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 400 INVALID_REQUEST                                |
 | CMS-03A-09 through CMS-03A-14                | browser response state/ownership                                       | ResourceMeta contains only id, version, contentHash, and timestamps; for the schema dry-run, review, review-decision, and review-assignment resources `contentHash` is the lowercase SHA-256 hex of the RFC 8785/JCS canonical JSON of the resource excluding the `contentHash` field itself; concrete resources use exact per-resource state enums; actor, person, party, private-binding, ownership, and release evidence are absent                                                                                                                                                                                                                                           | 422 response-contract failure                      |
 | CMS-03A-15                                   | subjectPersonId                                                        | UUID of an existing human who holds a confirmed, unended membership in the owner's organization and is real, active/claimed and not banned; an absent, ineligible or cross-organization person is an indistinguishable 404 and no identity, party, alias or membership is ever created                                                                                                                                                                                                                                                                                                                                                                                           | 404 NOT_FOUND or 422 VALIDATION_FAILED (malformed) |
-| CMS-03A-15                                   | capability                                                             | member of the closed grantable CMS capability registry (`GrantableCmsCapability`); `cms.schema_review`, `cms.schema_review.assign`, `cms.delivery_review`, `cms.delivery_review.assign`, any `admin.*` key, a wildcard or an unregistered key is refused; the owner may target itself for any grantable capability                                                                                                                                                                                                                                                                                                                                                               | 422 VALIDATION_FAILED                              |
+| CMS-03A-15                                   | capability                                                             | member of the closed grantable CMS capability registry (`GrantableCmsCapability`); `cms.schema_review`, `cms.schema_review.assign`, `cms.editorial_review`, `cms.editorial_review.assign`, `cms.definition_review`, `cms.definition_review.assign`, `cms.delivery_review`, `cms.delivery_review.assign`, any `admin.*` key, a wildcard or an unregistered key is refused; the owner may target itself for any grantable capability                                                                                                                                                                                                                                                                                                                                 | 422 VALIDATION_FAILED                              |
 | CMS-03A-15 and CMS-03A-16                    | validThrough                                                           | `YYYY-MM-DD` real calendar date read as a UTC date, not before the current UTC date and not after the current UTC date plus 89 days; the grant ends at the end of that UTC day and never spans more than 90 UTC days (DEC-120; a longer request is 422 `grant_term_spans_at_most_ninety_utc_days`)                                                                                                                                                                                                                                                                                                                                                                               | 422 VALIDATION_FAILED                              |
 | CMS-03A-15 through CMS-03A-17                | reason                                                                 | optional string 1–256 Unicode characters, normalized NFC                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 422 VALIDATION_FAILED                              |
 | CMS-03A-16 and CMS-03A-17                    | grantId / expectedVersion                                              | grantId UUID path; expectedVersion positive decimal string whose exact strong If-Match must match the grant aggregate version; renewal applies to an `active` aggregate (effective or lapsed) and revocation to an `active` aggregate, so a revoked aggregate is 409                                                                                                                                                                                                                                                                                                                                                                                                             | 400 INVALID_REQUEST, 404 NOT_FOUND or 409 CONFLICT |
@@ -328,6 +329,66 @@ CMS-03A-06 list rows exposes `supportedLocales`, `fallbackChains` and
 `localeConfigHash` to every caller that may read the version; the values are
 configuration, not PII, and carry no ownership identifier.
 
+### Field kind structure (DEC-112, DEC-133)
+
+An `object` field carries a compiled, typed depth-1 structure. `constraints.objectStructure.properties[]`
+holds 0–32 properties; each property is `{ key, kind, required, constraints }`
+with a unique stable `key` (`^[a-z][a-z0-9_]{1,63}$`), a `kind` of `scalar`,
+`enum`, or `rich_text`, a `required` flag, and kind-specific `constraints`
+that are a closed vocabulary mirroring the field-level members (DEC-144):
+`scalar` takes `minLength`/`maxLength` (checked against string values, counted in
+Unicode characters) and `minimum`/`maximum` (checked against number values);
+`enum` takes a required nonempty `enumValues` (1–256 strings of at most 160
+characters) plus optional `minLength`/`maxLength`; `rich_text` takes
+`minLength`/`maxLength` over the total NFC text. A length member is an integer
+`0..100000`, a bound member is a finite number, `min <= max`, and an unknown
+member, a member of another kind, a wrong type, or `min > max` is refused at
+definition time; a boolean value is constrained by neither family. Depth is exactly 1: a property value is a
+scalar, an enum member, or a `rich_text.v1` AST, never a nested object or array.
+The structure is stored inside the field `constraints`, is part of the frozen
+`definition_hash`, is compiled into the `SchemaArtifact`, and is the value
+contract that BE03b validates at write, restore, preview, and publication; an
+object value that does not satisfy it is refused, so there is no untyped
+pass-through.
+
+A `list` field carries `constraints.itemKind`, which must be a scalar kind
+(`short_text`, `long_text`, `boolean`, `integer`, `decimal`, `date`, `datetime`)
+or `enum`. A nested `list`/`object`/`relation`/`media`/`rich_text` item is
+refused at definition time.
+
+A `rich_text` field's values are the `rich_text.v1` AST (DEC-112). `rich_text.v1`
+is the only member of the code-owned protected validator registry (version 1),
+mirrored by the database validator `platform_private.cms_rich_text_v1_valid(jsonb)`;
+a field-level `validatorKey`/`validatorVersion` pair is optional and additive,
+and when present on a `rich_text` field it must name that member. The grammar,
+canonical form, unsafe-link-scheme refusal, and the typed renderer are defined by
+BE03b (which owns the value encoding); this shard owns only the field-kind
+structure, the registered validator identity, and the compile rule that freezes
+them into the artifact and the definition hash.
+
+Registry entry and freeze rule (DEC-146). Each registered member is a canonical
+immutable grammar descriptor: for `rich_text.v1` version 1 an ASCII/integer-only
+JSON document that pins the grammar the validators implement (format literal,
+block types, heading levels, list kinds and depths, mark order, link kinds,
+every bound, the NFC and merge canonical rules, and the Unicode-character unit).
+The descriptor's JCS (RFC 8785) SHA-256 is the validator's artifact hash
+(`4fe960667baa6d616e9fe00527d3e1a1d5740013b37f548eec74e20a244f2d15`) and its
+artifact reference is `cms/validators/rich_text.v1/v1`; any grammar change is a
+new validator version, never an edit. The registry entry is
+`{ key, version (JSON number), artifactRef, artifactHash }`, mirrored by
+`platform_private.cms_protected_validator_descriptor` and by the TypeScript
+registry. The compiler writes `editor_manifest.validators = [entry]` for every
+definition that uses the grammar (a `rich_text` field, an explicit
+`rich_text.v1` pair, or an `object` field with a `rich_text` property) and no
+`validators` key otherwise, so the entry is inside the artifact hash and the
+definition hash and an artifact that does not use the grammar keeps its hash.
+Activation refuses an artifact whose frozen validators differ from the
+registry's descriptors for the definition, and BE03b revalidates the frozen
+entry against the registry before every editorial transition (create, append,
+conflict resolution, and restore); a missing, extra, or stale frozen entry is
+503 `DEPENDENCY_UNAVAILABLE` with nothing written. A field-level pair must be
+the registered member and `rich_text.v1` pairs with a `rich_text` field only.
+
 ## Request/Response Contracts (Zod 4 schemas)
 
 The following are the normative runtime schemas. Zod 4 strict objects generate TypeScript and OpenAPI types; parsing occurs before authorization. The examples omit no required operation field.
@@ -342,6 +403,13 @@ const CapabilityKey = z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/);
 const ProjectionKey = z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/);
 const Locale = z.string().regex(/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/);
 const ValidatorKey = z.string().regex(/^[a-z][a-z0-9._-]{0,127}$/);
+// Code-owned protected validator registry (DEC-112). The only registered member
+// today is `rich_text.v1` version 1; a new member ships only as code plus a
+// forward migration, and a field-level `validatorKey`/`validatorVersion` must
+// resolve to a registered member (free-form patterns were already rejected).
+// `transformKey` keeps the broader grammar for the transform registry.
+const ProtectedValidatorKey = z.enum(['rich_text.v1']);
+const PROTECTED_VALIDATORS = { 'rich_text.v1': 1 } as const;
 const ArtifactRef = z
   .string()
   .regex(/^[a-z][a-z0-9._/-]{0,255}$/)
@@ -385,6 +453,71 @@ const FieldKind = z.enum([
   'object',
   'list',
 ]);
+// DEC-133 (O1 Option A): an `object` field declares a typed depth-1 structure.
+// Each property has a stable key, a scalar/enum/rich_text kind, a required flag
+// and kind-specific constraints; at most 32 properties and exactly depth 1 (a
+// property value is a scalar, an enum member, or a `rich_text.v1` AST, never a
+// nested object or array). `scalar` covers the scalar field kinds; `enum`
+// requires a nonempty `constraints.enumValues`; `rich_text` carries the
+// registered `rich_text.v1` validator. The structure is compiled into the
+// SchemaArtifact and frozen in the definition hash; the value is validated
+// against it by BE03b at write, restore, preview and publication.
+const ObjectPropertyKind = z.enum(['scalar', 'enum', 'rich_text']);
+// DEC-144: the constraint vocabulary is closed per property kind.
+const ObjectPropertyLength = z.number().int().nonnegative().max(100000);
+const ObjectPropertyBase = { key: FieldKey, required: z.boolean() };
+const ObjectProperty = z
+  .discriminatedUnion('kind', [
+    z.strictObject({
+      ...ObjectPropertyBase,
+      kind: z.literal('scalar'),
+      constraints: z.strictObject({
+        minLength: ObjectPropertyLength.optional(),
+        maxLength: ObjectPropertyLength.optional(),
+        minimum: z.number().finite().optional(),
+        maximum: z.number().finite().optional(),
+      }),
+    }),
+    z.strictObject({
+      ...ObjectPropertyBase,
+      kind: z.literal('enum'),
+      constraints: z.strictObject({
+        enumValues: z.array(z.string().max(160)).min(1).max(256),
+        minLength: ObjectPropertyLength.optional(),
+        maxLength: ObjectPropertyLength.optional(),
+      }),
+    }),
+    z.strictObject({
+      ...ObjectPropertyBase,
+      kind: z.literal('rich_text'),
+      constraints: z.strictObject({
+        minLength: ObjectPropertyLength.optional(),
+        maxLength: ObjectPropertyLength.optional(),
+      }),
+    }),
+  ])
+  .superRefine((property, ctx) => {
+    const { minLength, maxLength } = property.constraints;
+    if (minLength !== undefined && maxLength !== undefined && minLength > maxLength)
+      ctx.addIssue({ code: 'custom', path: ['constraints', 'minLength'], message: 'minLength exceeds maxLength' });
+    if ('minimum' in property.constraints && 'maximum' in property.constraints) {
+      const { minimum, maximum } = property.constraints;
+      if (minimum !== undefined && maximum !== undefined && minimum > maximum)
+        ctx.addIssue({ code: 'custom', path: ['constraints', 'minimum'], message: 'minimum exceeds maximum' });
+    }
+  });
+// A `list` field items a scalar kind or `enum`; a nested list/object/relation/
+// media/rich_text item is refused at definition time (DEC-133 / 03b).
+const SCALAR_LIST_ITEM_KINDS = new Set([
+  'short_text',
+  'long_text',
+  'boolean',
+  'integer',
+  'decimal',
+  'date',
+  'datetime',
+  'enum',
+]);
 const Constraints = z
   .strictObject({
     minLength: z.number().int().nonnegative().max(100000).optional(),
@@ -393,6 +526,11 @@ const Constraints = z
     maximum: z.number().finite().optional(),
     enumValues: z.array(z.string().max(160)).max(256).optional(),
     itemKind: FieldKind.optional(),
+    // DEC-133: the typed depth-1 structure of an `object` field, stored as
+    // `constraints.objectStructure` (the BE03b `ObjectStructure`).
+    objectStructure: z
+      .strictObject({ properties: z.array(ObjectProperty).max(32) })
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (
@@ -401,6 +539,16 @@ const Constraints = z
       value.minLength > value.maxLength
     ) {
       ctx.addIssue({ code: 'custom', message: 'minLength exceeds maxLength' });
+    }
+    if (value.objectStructure !== undefined) {
+      const keys = value.objectStructure.properties.map((property) => property.key);
+      if (new Set(keys).size !== keys.length) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['objectStructure', 'properties'],
+          message: 'object properties must have unique stable keys',
+        });
+      }
     }
   });
 const EditorConfig = z.strictObject({
@@ -414,7 +562,7 @@ const FieldDefinitionShape = {
   kind: FieldKind,
   constraints: Constraints,
   required: z.boolean(),
-  validatorKey: ValidatorKey.nullable(),
+  validatorKey: ProtectedValidatorKey.nullable(),
   validatorVersion: Version.nullable(),
   defaultMode: z.enum(['none', 'literal', 'inherited']),
   defaultValue: Json.nullable().optional(),
@@ -428,6 +576,74 @@ const validateFieldDefinition = (value, ctx) => {
       code: 'custom',
       path: ['validatorVersion'],
       message: 'validator key and version must be both null or both present',
+    });
+  }
+  // A present validator pair must name a registered protected validator member
+  // (the version is the member version bound by the code-owned registry).
+  if (
+    value.validatorKey !== null &&
+    PROTECTED_VALIDATORS[value.validatorKey] !== Number(value.validatorVersion)
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['validatorKey'],
+      message: 'validator key and version must name a registered validator',
+    });
+  }
+  // DEC-133 kind/structure agreement for `object`, `list` and `rich_text`.
+  if (value.kind === 'object' && value.constraints.objectStructure === undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['constraints', 'objectStructure'],
+      message: 'object field requires an objectStructure',
+    });
+  }
+  if (value.kind !== 'object' && value.constraints.objectStructure !== undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['constraints', 'objectStructure'],
+      message: 'objectStructure is only valid for an object field',
+    });
+  }
+  if (
+    value.kind === 'list' &&
+    (value.constraints.itemKind === undefined ||
+      !SCALAR_LIST_ITEM_KINDS.has(value.constraints.itemKind))
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['constraints', 'itemKind'],
+      message: 'list itemKind must be a scalar kind or enum',
+    });
+  }
+  if (
+    value.kind !== 'list' &&
+    value.constraints.itemKind !== undefined
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['constraints', 'itemKind'],
+      message: 'itemKind is only valid for a list field',
+    });
+  }
+  // `rich_text` values are the registered rich_text.v1 AST; the intrinsic
+  // format validation is code-owned and mirrored by the database validator.
+  if (value.kind === 'rich_text') {
+    const bound =
+      value.validatorKey === 'rich_text.v1' &&
+      Number(value.validatorVersion) === PROTECTED_VALIDATORS['rich_text.v1'];
+    if (value.validatorKey !== null && !bound) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['validatorKey'],
+        message: 'rich_text requires the rich_text.v1 validator when one is bound',
+      });
+    }
+  } else if (value.validatorKey === 'rich_text.v1') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['validatorKey'],
+      message: 'rich_text.v1 is only valid for a rich_text field',
     });
   }
   const hasDefault = value.defaultValue !== undefined;
@@ -567,7 +783,7 @@ const FieldSchemaChangeRequest = z
     kind: FieldKind,
     constraints: Constraints,
     required: z.boolean(),
-    validatorKey: ValidatorKey.nullable(),
+    validatorKey: ProtectedValidatorKey.nullable(),
     validatorVersion: Version.nullable(),
     defaultMode: z.enum(['none', 'literal', 'inherited']),
     defaultValue: Json.nullable().optional(),
@@ -779,7 +995,11 @@ const SchemaReviewAssignmentRequest = z.discriminatedUnion('action', [
 // DEC-119 owner CMS capability grants. The closed grantable registry is code-owned
 // (extended only by code plus a forward migration) and CI asserts this enum
 // equals it. cms.schema_review (assignment-only), cms.schema_review.assign
-// (owner-only), cms.delivery_review (assignment-only), cms.delivery_review.assign
+// (owner-only), cms.editorial_review (assignment-only) and
+// cms.editorial_review.assign (owner-only), both declared by BE03b (DEC-136),
+// cms.definition_review (assignment-only) and cms.definition_review.assign
+// (owner-only), both declared by BE03c (DEC-137), cms.delivery_review
+// (assignment-only), cms.delivery_review.assign
 // (owner-only), admin.* keys, wildcards and unregistered keys are not members.
 // Every member is also a member of the platform capability registry.
 const GrantableCmsCapability = z.enum([
@@ -1033,7 +1253,7 @@ const FieldDefinitionVersionResource = LifecycleResourceMeta.extend({
   key: FieldKey,
   kind: FieldKind,
   required: z.boolean(),
-  validatorKey: ValidatorKey.nullable(),
+  validatorKey: ProtectedValidatorKey.nullable(),
   validatorVersion: Version.nullable(),
   defaultMode: z.enum(['none', 'literal', 'inherited']),
   localizationMode: z.enum(['none', 'localized', 'no_fallback']),
@@ -1997,6 +2217,20 @@ carries only the reference, compiler version and hash, never a manifest body.
 Unknown definition members are rejected at CMS-03A-01 and CMS-03A-02 before the
 compiler runs, so an artifact is only ever the compiler's output.
 
+Compile rules for the structured kinds (DEC-112, DEC-133). The compiler emits,
+per field, the kind, the frozen `constraints` (including the DEC-133 depth-1
+`properties[]` of an `object` field and the `itemKind` of a `list` field),
+the registered `validatorKey`/`validatorVersion` for a `rich_text` field, and
+the editor/renderer manifest entries. An `object` compiles to a fixed set of at
+most 32 named properties, each a scalar, an enum with a nonempty value set, or a
+`rich_text.v1` AST, at exactly depth 1; a `list` compiles to a homogeneous array
+whose item is a scalar or an enum. A nested `list`/`object`/`relation`/`media`/
+`rich_text` item, an object property without a unique stable key, or a `list`
+without an `itemKind` is refused at definition time, so the compiled artifact
+never contains an untyped or recursively-shaped property. The definition hash
+composes the compiled structure, so a schema review, a dry run, an activation,
+and the BE03b value validator all bind the exact same structure.
+
 The three DEC-108 private review records are CMS-owned, never CFG
 setting-value candidates, and are the only authority for schema-review evidence.
 
@@ -2241,7 +2475,7 @@ A known resource is not disguised as 404 when policy permits existence disclosur
 - Step-up MFA is recent and bound to acting context for activation, review decision, and assignment. Approval IDs and the assignment `reviewerPersonId` cannot identify the acting submitter; decisions cannot repeat a human and are invalidated if the candidate hash, compiler version, dependency set, dry-run evidence, policy, or reviewer authority changes. Missing or stale MFA on CMS-03A-04, CMS-03A-12, or CMS-03A-14 returns exactly 401 `STEP_UP_REQUIRED` with `{ recoveryAction: 'step_up', allowedMethods: string[] }` (`allowedMethods` carries only configured allowlisted method identifiers), never collapsed to 400 or replaced with `reauthenticate`. The activator on CMS-03A-04 needs `cms.schema_designer` only; the required approvals come from the approve decisions of assigned reviewers, and the activator's own binding-bound MFA is the only MFA rechecked at activation.
 - The owner-only `cms.schema_review.assign` authority is server-derived: the caller must be the immutable `cms_owner_initialization` receipt identity (its `auth_user_id`/`person_id`/`organization_id`) and must hold current effective owner authority. Current effective owner authority means both the immutable owner initialization receipt identity and the owner's currently valid `cms.schema_designer` grant on the organization actor-grant table (active, `valid_from` reached and `valid_through` not passed). The grantor authority end that bounds an assignment is the end of that grant's `valid_through` UTC day; an assignment `ends_at` after that instant is refused. The receipt's `grant_ends_at` bounds only the grants created at owner initialization (at most seven days after bootstrap) and does not bound a grant renewed or re-established through CMS-03A-15 through CMS-03A-17. Those commands derive the owner from the receipt identity alone and do not require a currently valid grant, so an owner whose grants have lapsed renews its own authority through them without re-bootstrap (DEC-119). No party is ever re-bootstrapped, the four-capability initialization list is not widened or re-run, and CFG grant delegation is not used. The owner approves schema reviews as an approver only by holding a bounded assignment; owner status alone does not skip the assignment, decision-count, or MFA gates.
 - The assigned-reviewer path is deliberately not the owner-authority predicate. A reviewer independently authenticates its own session and acting-context binding; the frozen review's `owner_id` need not equal the reviewer's acting party, and the decision RPC must not reuse an owner-only authorization helper that requires the owner's acting context. The assignment binds the frozen review's owner scope to the reviewer's own person, and grants no part of the owner's acting context, session, or capability set. Eligibility and decision checks require only a real, active/claimed, non-banned existing human with a current binding; they never require `cms.schema_review` before assignment, `cms.schema_designer`, admin, or any pre-existing review capability. The owner's assign authority derives from the immutable initialization identity plus the current live scoped authority and is not transferable or broadenable through ordinary capability grants.
-- Owner CMS capability grants (DEC-119): CMS-03A-15 through CMS-03A-17 are available to the server-derived owner only. The caller must be the immutable `cms_owner_initialization` receipt identity (`auth_user_id`/`person_id`/`organization_id`) acting in that organization with a current acting-context binding and recent binding-bound MFA; missing or stale MFA returns exactly 401 `STEP_UP_REQUIRED` with `{ recoveryAction: 'step_up', allowedMethods: string[] }`, never collapsed to 400 or `reauthenticate`. No capability key names this authority and none is grantable. A command grants one capability from the closed grantable registry to one existing human who holds a confirmed, unended membership in the owner's organization and is real, active/claimed and not banned; it creates no identity, party, alias or membership, confers no admin, grant, delegation or purpose authority, never grants `cms.schema_review` or `cms.delivery_review` (assignment-only) or `cms.schema_review.assign` or `cms.delivery_review.assign` (owner-only), and never writes a non-CMS capability. The term is finite: `validThrough` is a UTC calendar date from the current UTC date through the current UTC date plus 89 days, so a grant ends at the end of that UTC day and never spans more than 90 UTC days (DEC-120); `valid_from` is the current UTC date at the command. The 90-day ceiling is owner decision DEC-120 (2026-10-02), which supersedes the seven-day figure DEC-119 reused from the DEC-108 assignment bound; CMS-03A-14 assignments remain at most seven days. Renewal restarts a fresh term from the current UTC date within the same 90-day ceiling, may shorten it, applies to an `active` aggregate whether effective or lapsed, and may repeat without a cumulative cap because every term is finite, step-up-gated, audited and revocable; a revoked aggregate is re-established only by a new grant command. Revocation takes effect in the same transaction. The owner may grant itself any capability in the grantable registry: author, editor, reviewer, the four specialist reviewers, template designer, taxonomy curator, schema designer, registry read, publisher, navigation editor, media contributor and media curator. The owner is the only human in the organization today, so a grant-time self-limit would deadlock authoring; separation of duties is enforced where it matters, at decision time (the submitter is never the reviewer, each counted decision is a distinct human, and each specialist slot of the frozen policy is held by a counted approver), and not at grant time. An absent, ineligible, banned, unclaimed or cross-organization subject, and an absent or cross-organization grant, are an indistinguishable 404. Authority changes take effect at each consumer's next recheck, and a counted approver who loses a specialist capability before activation is reviewer-authority drift. Concurrent grant commands are capped at 3 per actor, the definition-command cap, and the owner-grant commands are bounded to the owner alone.
+- Owner CMS capability grants (DEC-119): CMS-03A-15 through CMS-03A-17 are available to the server-derived owner only. The caller must be the immutable `cms_owner_initialization` receipt identity (`auth_user_id`/`person_id`/`organization_id`) acting in that organization with a current acting-context binding and recent binding-bound MFA; missing or stale MFA returns exactly 401 `STEP_UP_REQUIRED` with `{ recoveryAction: 'step_up', allowedMethods: string[] }`, never collapsed to 400 or `reauthenticate`. No capability key names this authority and none is grantable. A command grants one capability from the closed grantable registry to one existing human who holds a confirmed, unended membership in the owner's organization and is real, active/claimed and not banned; it creates no identity, party, alias or membership, confers no admin, grant, delegation or purpose authority, never grants `cms.schema_review` or `cms.delivery_review` (assignment-only) or `cms.schema_review.assign`, `cms.editorial_review.assign` or `cms.delivery_review.assign` (owner-only), and never writes a non-CMS capability. The term is finite: `validThrough` is a UTC calendar date from the current UTC date through the current UTC date plus 89 days, so a grant ends at the end of that UTC day and never spans more than 90 UTC days (DEC-120); `valid_from` is the current UTC date at the command. The 90-day ceiling is owner decision DEC-120 (2026-10-02), which supersedes the seven-day figure DEC-119 reused from the DEC-108 assignment bound; CMS-03A-14 assignments remain at most seven days. Renewal restarts a fresh term from the current UTC date within the same 90-day ceiling, may shorten it, applies to an `active` aggregate whether effective or lapsed, and may repeat without a cumulative cap because every term is finite, step-up-gated, audited and revocable; a revoked aggregate is re-established only by a new grant command. Revocation takes effect in the same transaction. The owner may grant itself any capability in the grantable registry: author, editor, reviewer, the four specialist reviewers, template designer, taxonomy curator, schema designer, registry read, publisher, navigation editor, media contributor and media curator. The owner is the only human in the organization today, so a grant-time self-limit would deadlock authoring; separation of duties is enforced where it matters, at decision time (the submitter is never the reviewer, each counted decision is a distinct human, and each specialist slot of the frozen policy is held by a counted approver), and not at grant time. An absent, ineligible, banned, unclaimed or cross-organization subject, and an absent or cross-organization grant, are an indistinguishable 404. Authority changes take effect at each consumer's next recheck, and a counted approver who loses a specialist capability before activation is reviewer-authority drift. Concurrent grant commands are capped at 3 per actor, the definition-command cap, and the owner-grant commands are bounded to the owner alone.
 - Grantable capability registry consistency (DEC-119): every `GrantableCmsCapability` member is a registered capability key, CI asserts that the grantable set is a subset of the platform capability registry, and a grantable key that is not yet registered (`cms.taxonomy_curator`, which BE03c names as the taxonomy curator scope, `cms.publisher`, which BE03b names, `cms.navigation_editor`, `cms.media_contributor` and `cms.media_curator`) is added to that registry by code plus a forward migration together with the grantable set. The navigation and media members declare the capabilities that BE04a calls the navigation editor and publisher scopes and that BE04b calls `media_contributor` and `media_curator`: the grant supplies the capability, and the owning operation continues to apply the assigned menu/location, publication/locale, owner-party upload-purpose and asset scopes that BE04a and BE04b already define, so a grant never widens a scope. `cms.delivery_review` and `cms.delivery_review.assign` follow the `cms.schema_review` pattern and are never grantable.
 - Rate limits use BE00 token buckets keyed by actor, acting party, and release principal. The rate class names `cms-definition-write`, `cms-definition-read`, and `cms-activation` group operations by kind; each operation keeps the per-route limits stated in its Route Registry row (for example 10/min/user and 20/min/party on CMS-03A-04 and CMS-03A-14, 30/min/user and 60/min/party on CMS-03A-12), and the bucket is keyed per operation ID, so operations of one class never share a bucket. Concurrent definition commands are capped at 3 per actor; activation, review decision, and assignment are separately capped, and assignment is bounded to the owner alone.
 - Definitions and manifests are safe to log only as IDs, hashes, operation, outcome, and size. No field labels, help text, renderer source, schema values, capability graph, or private projection is sent to logs or provider-native diagnostics.
@@ -2333,6 +2567,8 @@ switch. No entry or revision can therefore commit unscanned between the final
 unchanged check and the switch: a writer racing the switch either commits before
 the lock and is seen as drift, or waits and then targets the new active version.
 
+Lock order (lane H round 2 items 1, 2 and 4). The activation commands, authority revocation and review invalidation take locks in the single global order defined in 03b `Write-path lock order and authority fencing`: authority rows first (acting-context binding, person party, membership tenure, organization actor grants), then entry assignments and presence, then the candidate, its dependency graph, the active version, the review rows, the review assignments and the migration plan. The human activation (CMS-03A-04) and the Worker activation lock the activating organization's tenure and actor-grant rows `FOR UPDATE` before the candidate row (only for a candidate of the caller's own organization, so a request cannot lock a foreign organization's rows), re-prove the activator's `cms.schema_designer` under those locks, and hold them to commit, so an activation briefly serializes every authoring write of its organization (a delay, never a lost write). A revocation of an approver's or the activator's authority that commits first wins: the activation is refused 409 `VERSION_MISMATCH`, the review becomes `invalidated` and the candidate returns to `draft`; an activation that commits first makes the revocation wait and then commit. `deadlock_detected` or a lock failure outside the order is 409 `CONFLICT` (nothing committed; retry with the same Idempotency-Key) for CMS-03A-04, the Worker activation and CMS-03A-17. Activation always recomputes the live distinct qualifying approvals under the locks and refuses a short count, so a stored `approved` state that lags a revocation never activates a candidate.
+
 Activation is a compare-and-swap against candidate version and current active version. Approval, reference, compiler, allowlist, and migration evidence changes invalidate the candidate and force review again. A duplicate event or worker delivery is harmless because consumers apply exact version monotonicity and dedupe by event identity.
 
 ### Event schemas
@@ -2412,7 +2648,7 @@ The route registry is authoritative; each row below is keyed to every operation 
 | CMS-03A-01   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, UNSUPPORTED_MEDIA_TYPE, VALIDATION_FAILED, RATE_LIMITED                   | CONFLICT for key/idempotency/unique; DEPENDENCY_UNAVAILABLE on RPC/compiler timeout                                                                                                                                                                    | no async effect; audit is committed with complete draft or transaction is absent                                     | correct registry input, use fresh key, replay exact idempotency key                                                 |
 | CMS-03A-02   | same transport/auth errors plus reserved/key/kind/validator/lifecycle validation                                                  | CONFLICT for stale version, immutable identity, missing migration plan, or an `approved` (frozen) candidate                                                                                                                                                                                 | no event; prior draft remains                                                                                        | refetch draft, create valid migration plan, retry with new version                                                  |
 | CMS-03A-03   | same transport/auth errors plus projection/cardinality/bounds validation                                                          | CONFLICT for stale version/duplicate relation or an `approved` (frozen) candidate                                                                                                                                                                                                          | no event; prior schema remains                                                                                       | choose allowlisted projection and bounds, refetch, retry                                                            |
-| CMS-03A-04   | transport/auth/step-up/policy-approval/artifact/compatibility errors                                                              | CONFLICT for stale candidate, invalid transition, idempotency, or a candidate `localeConfigHash` that differs from the review's frozen evidence; DEPENDENCY_UNAVAILABLE for compiler/RPC                                                                                                                                                 | committed switch remains; queued migration is observed through BE00 JobStatus                                        | reconcile by idempotency/status; worker resumes cursor or enters failed_terminal; prior active remains until switch |
+| CMS-03A-04   | transport/auth/step-up/policy-approval/artifact/compatibility errors                                                              | CONFLICT for stale candidate, invalid transition, idempotency, a lock-order deadlock (retry with the same key), or a candidate `localeConfigHash` that differs from the review's frozen evidence; DEPENDENCY_UNAVAILABLE for compiler/RPC                                                                                                                                                 | committed switch remains; queued migration is observed through BE00 JobStatus                                        | reconcile by idempotency/status; worker resumes cursor or enters failed_terminal; prior active remains until switch |
 | CMS-03A-05   | signature, principal, manifest, props-ref/hash/snapshot, media, registry validation errors                                        | CONFLICT for key/version/digest/idempotency; DEPENDENCY_UNAVAILABLE for registry/RPC                                                                                                                                                                   | committed block is immutable; downstream template preflight may block                                                | replay exact digest; conflicting digest goes manual review; withdrawn version blocks new use                        |
 | CMS-03A-08   | signature, principal, path, lifecycle, and digest validation errors                                                               | CONFLICT for stale version/lifecycle, duplicate nonce, idempotency; DEPENDENCY_UNAVAILABLE for registry/RPC                                                                                                                                            | immutable lifecycle event/outbox remains committed; consumers refetch derived lifecycle                              | reconcile by idempotency/status; never update the version row; retry only with a fresh nonce                        |
 | CMS-03A-06   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, VALIDATION_FAILED, RATE_LIMITED                                                      | DEPENDENCY_UNAVAILABLE for projection/RPC timeout                                                                                                                                                                                                      | no mutation or async effect; no-store response                                                                       | correct query, restart without cursor, or retry 503/504                                                             |
@@ -2425,7 +2661,7 @@ The route registry is authoritative; each row below is keyed to every operation 
 | CMS-03A-14   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, NOT_FOUND, UNSUPPORTED_MEDIA_TYPE, VALIDATION_FAILED, RATE_LIMITED | CONFLICT for stale review version, invalid expiry, unknown/ineligible human, broad scope/delegation, self/submitter target, revoke of a non-existent assignment, or idempotency; DEPENDENCY_UNAVAILABLE for RPC; INTERNAL_ERROR for unexpected failure | assignment create/revoke commits with atomic audit/outbox; no identity is created                                    | correct the eligible-human reference or expiry, refetch review, or replay the exact key                             |
 | CMS-03A-15   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, NOT_FOUND, UNSUPPORTED_MEDIA_TYPE, VALIDATION_FAILED, RATE_LIMITED | CONFLICT for an existing active aggregate (`details.recoveryAction` is `renew`) or idempotency; DEPENDENCY_UNAVAILABLE for RPC; INTERNAL_ERROR for unexpected failure                                                                                                                        | aggregate, event row, actor-grant projection, audit and outbox commit together; no identity or membership is created | correct the subject, capability or term, renew the existing grant instead, or replay the exact key                  |
 | CMS-03A-16   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, NOT_FOUND, UNSUPPORTED_MEDIA_TYPE, VALIDATION_FAILED, RATE_LIMITED | CONFLICT for stale version, a revoked aggregate, or idempotency; DEPENDENCY_UNAVAILABLE for RPC; INTERNAL_ERROR for unexpected failure                                                                                                                 | renewal commits atomically with its event row, actor-grant projection, audit and outbox                              | refetch the grant, issue a new grant for a revoked aggregate, or replay the exact key                               |
-| CMS-03A-17   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, NOT_FOUND, UNSUPPORTED_MEDIA_TYPE, VALIDATION_FAILED, RATE_LIMITED | CONFLICT for stale version, an already revoked aggregate, or idempotency; DEPENDENCY_UNAVAILABLE for RPC; INTERNAL_ERROR for unexpected failure                                                                                                        | revocation commits atomically with its event row, actor-grant projection, audit and outbox                           | refetch the grant or replay the exact key                                                                           |
+| CMS-03A-17   | INVALID_REQUEST, UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN, NOT_FOUND, UNSUPPORTED_MEDIA_TYPE, VALIDATION_FAILED, RATE_LIMITED | CONFLICT for stale version, an already revoked aggregate, idempotency, or a lock-order deadlock (retry with the same key); DEPENDENCY_UNAVAILABLE for RPC; INTERNAL_ERROR for unexpected failure                                                                                                        | revocation commits atomically with its event row, actor-grant projection, audit and outbox                           | refetch the grant or replay the exact key                                                                           |
 | CMS-03A-18   | INVALID_REQUEST, UNAUTHENTICATED, FORBIDDEN, VALIDATION_FAILED, RATE_LIMITED                                                      | DEPENDENCY_UNAVAILABLE for projection/RPC timeout; INTERNAL_ERROR for unexpected failure                                                                                                                                                               | no mutation or async effect; no-store response                                                                       | correct the query, restart without the cursor, or retry 503/504                                                     |
 
 Retry rule: mutation clients may retry a 503/504 only with the same idempotency key after checking status; they must not blind-retry a possibly committed command. Protected reads retry the same canonical query/path without adding mutation-only headers. 502 invalid upstream data is not retried until the adapter or registry version changes. 429 honors Retry-After. Unknown state is surfaced as pending/degraded, never guessed as active.
@@ -2446,7 +2682,7 @@ SLOs: Tier 2 command p95 <1,200ms, protected RPC p95 <300ms, acceptance p99 <1,0
 
 - Generated OpenAPI, Hono route registry, and every Route Registry row match method/path, operation ID, request, success, error, CORS, auth, rate, timeout, cache, and SLO.
 - CMS-03A-01 tests every ContentTypeDraftRequest field, built-in/reserved/retired/colliding key, 0/128/129 fields, stable UUID, labels, workflow, and exact ContentTypeVersionResource. Locale configuration tests (OD-4) assert every row of the exact-refusal table with its `path` and `message` and the multi-defect issue order, the 0/1/32/33 `supportedLocales` and 0/1/16/17 chain bounds, non-canonical tags (`EN-us`, `en_US`, `zh-hans-cn`), duplicates, missing source/default, default-locale key, missing key, self reference, wrong chain end, a two-node cycle and a three-node cycle, `{}` accepted only for `[defaultLocale]`, storage sorted by UTF-8 byte order, `localeConfigHash` equal to the JCS recomputation and stable under request reordering of `supportedLocales`, and no row inserted on any refusal.
-- CMS-03A-02 tests new/add/deprecate/change, all 14 FieldKind values, constraints, unknown keys, required populated data, default/null distinction, migrationPlanId, stale If-Match, and exact FieldDefinitionVersionResource.
+- CMS-03A-02 tests new/add/deprecate/change, all 14 FieldKind values, constraints, unknown keys, required populated data, default/null distinction, migrationPlanId, stale If-Match, and exact FieldDefinitionVersionResource; a `rich_text` field carrying the registered `rich_text.v1` v1 validator, a non-member or mismatched validator pair refused, a `rich_text.v1` pair on a non-rich_text kind refused, the DEC-133 `object` structure accepted at 0..32 properties with unique stable keys and each `scalar`/`enum`/`rich_text` property kind and its constraints (an `enum` property without a nonempty `enumValues`, a duplicate key, or a 33rd property refused), a non-object kind carrying `objectStructure` refused, a `list` `itemKind` restricted to a scalar kind or `enum` (a nested list/object/relation/media/rich_text item refused) and an `itemKind` on a non-list kind refused, and the compiled artifact and definition hash carrying the frozen structure.
 - CMS-03A-03 tests field kind, all cardinalities and onUnavailable values, allowlisted/non-allowlisted targetKind/projection, duplicate relation, target authority non-escalation, and exact RelationDefinitionResource.
 - CMS-03A-04 tests `localeConfigHash` equality with the review's frozen evidence (a mismatch is 409 CONFLICT and mutates nothing) and its presence in `SchemaActivationResource` and the `cms.schema.activated.v1` payload, approval distinctness, recent MFA, dry-run/hash/compiler match, optional expectedActivationEvidenceHash equality and mismatch, additive/conditional/breaking gates, unresolved references, active immutability, queued 202, exact SchemaActivationResource, and cms.schema.activated.v1 payload.
 - CMS-03A-05 tests exact X-WeJammin-Release-* header mapping, rejection of aliases/JSON copies, signed raw-body verification, durable key+nonce receipt claim/replay window/ten-minute TTL, release principal, digest duplicate/conflict, block props/renderer/children/slot/data/a11y constraints, normalized RFC 8785/JCS props snapshot hash, trusted Ed25519 nested attestation bound to key/version/ref/hash/releaseDigest, withdrawn behavior, and exact BlockDefinitionVersionResource.
@@ -2537,6 +2773,10 @@ None.
 | 2026-10-03 | Spec consistency with BE00 (R14): the Hono middleware order bullet no longer restates an order. The earlier R12 bullet listed an order that contradicted BE00 §Hono Middleware Order (it ran Zod validation before CORS and the session and ran session-bound CSRF after capability and step-up, where BE00 puts the CORS allowlist and session-bound CSRF in the security/transport step before authentication and Zod validation before authorization); it now defers to BE00 §Hono Middleware Order exactly and defines no deviation. | R14 spec consistency | Middleware |
 | 2026-10-03 | DEC-129 (owner): the CMS-03A-05 "unknown release target is 404" clause is deleted from the route row, the error matrix and the authorization matrix. CMS-03A-05 creates the (blockKey, blockVersion) pair it registers and every datum it names is either a validation failure (registered references) or an invalid release principal (401 `WEBHOOK_REJECTED`), so no target can be unknown; CMS-03A-05 declares no 404. CMS-03A-08 names an existing block version and keeps its 404 for an unknown or unreadable version. | DEC-129 | Release routes |
 | 2026-10-03 | Slice 09 AC527 (orchestrator ruling, more-work-now): the CMS-03A-15 409 `CONFLICT` for an existing active aggregate carries `details.recoveryAction: 'renew'` (BE00 types `recoveryAction` as a string; the Worker's closed recovery lookup gains `renew` for this conflict only, and the browser routes it to the renew command through the grant console). The database signals it with DETAIL `ACTIVE_GRANT_EXISTS`; the wire stays `CONFLICT` / `INVALID_TRANSITION`. | AC527 | CMS-03A-15 |
+| 2026-10-04 | Slice 10 spec cascade (DEC-133, DEC-112, D2/D3/D5/D6/G3/D19/D20): added the code-owned protected validator registry with `rich_text.v1` v1 as its only member and a `ProtectedValidatorKey` field contract; added the DEC-133 typed depth-1 `object` `properties[]` (1–32 unique stable keys, `scalar`/`enum`/`rich_text` property kinds, `required`, kind constraints) to `Constraints` with compile and validation rules; restricted a `list` `itemKind` to a scalar kind or `enum`; defined the `object`/`list`/`rich_text` compensation in the route field validation matrix, the compile-rules text and the database constraints note; and added `cms.editorial_review.assign` to the owner-only non-grantable list. | /write-be-spec | Contracts, Route field validation matrix, Database Schema, Middleware & Policies, Testing, Changelog |
+| 2026-10-07 | Slice 10 gap resolutions (DEC-144, DEC-146, DEC-145; orchestrator, owner may override). DEC-144: an object property's `constraints` are a closed per-kind vocabulary mirroring the field-level members (scalar: `minLength`/`maxLength`/`minimum`/`maximum`; enum: required nonempty `enumValues` of 1–256 strings of at most 160 characters plus `minLength`/`maxLength`; rich_text: `minLength`/`maxLength`), checked against values; the BE03a object structure path is `constraints.objectStructure.properties[]` with 0–32 properties (the earlier `constraints.properties[]` 1–32 wording is superseded). DEC-146: the protected validator registry entry is a canonical immutable grammar descriptor with a JCS SHA-256 artifact hash and artifact reference, frozen into `editor_manifest.validators` of every artifact that uses the grammar (absent otherwise), checked at activation and revalidated before every editorial transition; a field-level validator pair must be the registered member and `rich_text.v1` pairs with a `rich_text` field only. |
+| 2026-10-07 | Slice 11/12 cascade (DEC-136, DEC-137; orchestrator, owner may override): the non-grantable capability keys now include `cms.editorial_review` (assignment-only, read/decide on one frozen editorial review) and `cms.editorial_review.assign` (owner-only; BE03b CMS-03B-18) and `cms.definition_review` (assignment-only) and `cms.definition_review.assign` (owner-only; BE03c governed reviews for template, pattern and taxonomy versions); the closed grantable set is unchanged and the platform capability registry gains the four keys by forward migration. | write-be-spec (Slice 11/12 cascade) | Capability keys (non-grantable), CMS-03A-14/15 rows |
+| 2026-10-07 | Slice 10 follow-up 2 (lane H round 2 items 1, 2 and 4; orchestrator, owner may override): added the activation lock order (authority rows first), the authority-fencing outcome of a revocation racing an activation and the typed retryable 409 `CONFLICT` for a deadlock outside the order in CMS-03A-04, the Worker activation and CMS-03A-17; the global order itself lives in 03b. | write-be-spec (follow-up 2) | Activation transaction rules, Operation error coverage |
 
 ## Dependency References
 

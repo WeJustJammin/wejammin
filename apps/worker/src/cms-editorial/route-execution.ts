@@ -63,6 +63,7 @@ export const rateCheck = async (
           signal,
         ),
       remainingMs,
+      request.signal,
     );
     if (!result.ok) return result;
     const decision = result.value;

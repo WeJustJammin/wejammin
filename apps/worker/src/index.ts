@@ -21,6 +21,7 @@ import {
   createProductionAsyncEntrypoint,
   runProductionOperationalAlerts,
 } from './production-async-entrypoint';
+import { runProductionCmsEditPresenceSweep } from './production-cms-edit-presence-sweep';
 import { runProductionCmsReviewAuthoritySweep } from './production-cms-review-authority-sweep';
 import { runProductionIdempotencyExpirySweep } from './production-idempotency-expiry-sweep';
 import {
@@ -205,18 +206,26 @@ const handler = {
     );
     const idempotencyExpirySweep = runProductionIdempotencyExpirySweep(env);
     const reviewAuthoritySweep = runProductionCmsReviewAuthoritySweep(env);
+    const editPresenceSweep = runProductionCmsEditPresenceSweep(env);
     const operationalAlerts = runProductionOperationalAlerts(controller, env);
-    const [sweepResult, expiryResult, reviewAuthorityResult, alertResult] =
-      await Promise.allSettled([
-        outboxSweep,
-        idempotencyExpirySweep,
-        reviewAuthoritySweep,
-        operationalAlerts,
-      ]);
+    const [
+      sweepResult,
+      expiryResult,
+      reviewAuthorityResult,
+      editPresenceResult,
+      alertResult,
+    ] = await Promise.allSettled([
+      outboxSweep,
+      idempotencyExpirySweep,
+      reviewAuthoritySweep,
+      editPresenceSweep,
+      operationalAlerts,
+    ]);
     const rejectedResults = [
       sweepResult,
       expiryResult,
       reviewAuthorityResult,
+      editPresenceResult,
       alertResult,
     ].filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
@@ -236,6 +245,8 @@ const handler = {
     if (expiryResult.status === 'rejected') throw expiryResult.reason;
     if (reviewAuthorityResult.status === 'rejected')
       throw reviewAuthorityResult.reason;
+    if (editPresenceResult.status === 'rejected')
+      throw editPresenceResult.reason;
     if (alertResult.status === 'rejected') throw alertResult.reason;
   },
 } satisfies ExportedHandler<AsyncWorkerBindings>;

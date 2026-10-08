@@ -30,7 +30,7 @@ const PATH = `/api/v1/cms/entries/${ENTRY_ID}/revisions`;
 const revisionBody = {
   entryId: ENTRY_ID,
   baseRevision: '1',
-  changedPaths: [`/fields/${FIELD_ID}/value`],
+  changedPaths: [`/fields/${FIELD_ID}`],
   values: { [FIELD_ID]: 'Hello' },
   locale: 'en-US',
   expectedVersion: '1',
@@ -38,7 +38,8 @@ const revisionBody = {
 
 const revisionResource: EntryRevisionResource = {
   id: REVISION_ID,
-  version: '2',
+  version: '1',
+  entryVersion: '2',
   createdAt: '2026-09-26T12:00:00.000Z',
   updatedAt: '2026-09-26T12:00:00.000Z',
   state: 'draft',

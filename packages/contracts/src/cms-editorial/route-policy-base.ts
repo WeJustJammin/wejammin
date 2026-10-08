@@ -7,6 +7,9 @@ export const CMS_EDITORIAL_OPERATION_IDS = [
   'CMS-03B-04',
   'CMS-03B-10',
   'CMS-03B-11',
+  'CMS-03B-12',
+  'CMS-03B-13',
+  'CMS-03B-14',
 ] as const;
 
 export type CmsEditorialOperationId =
@@ -30,7 +33,9 @@ export type CmsEditorialPath =
   | '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}/resolve'
   | '/api/v1/cms/entries/{entryId}/revisions/{revisionId}/restore'
   | '/api/v1/cms/entries'
-  | '/api/v1/cms/entries/{entryId}';
+  | '/api/v1/cms/entries/{entryId}'
+  | '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}'
+  | '/api/v1/cms/entries/authoring-context';
 
 export type CmsEditorialRequestSchemaName =
   | 'EntryRevisionRequestSchema'
@@ -38,20 +43,27 @@ export type CmsEditorialRequestSchemaName =
   | 'RevisionHistoryQuerySchema'
   | 'RevisionRestoreRequestSchema'
   | 'EntryCreateRequestSchema'
-  | 'EntryDraftDetailQuerySchema';
+  | 'EntryDraftDetailQuerySchema'
+  | 'ConflictDetailQuerySchema'
+  | 'EntryListQuerySchema'
+  | 'AuthoringContextQuerySchema';
 
 export type CmsEditorialSuccessSchemaName =
   | 'EntryRevisionResourceSchema'
   | 'RevisionHistoryPageSchema'
   | 'EntryCreateResourceSchema'
-  | 'EntryDraftDetailResourceSchema';
+  | 'EntryDraftDetailResourceSchema'
+  | 'ConflictDetailResourceSchema'
+  | 'EntryListPageSchema'
+  | 'AuthoringContextResourceSchema';
 
 export type CmsEditorialPathParamsSchemaName =
   | 'EntryRevisionPathParamsSchema'
   | 'ConflictResolutionPathParamsSchema'
   | 'RevisionHistoryPathParamsSchema'
   | 'RevisionRestorePathParamsSchema'
-  | 'EntryDraftDetailPathParamsSchema';
+  | 'EntryDraftDetailPathParamsSchema'
+  | 'ConflictDetailPathParamsSchema';
 
 export type CmsEditorialErrorCode =
   | 'INVALID_REQUEST'

@@ -307,6 +307,10 @@ filesystem and validation operations.
 - `verify-system-chrome.sh` fails closed unless the runner provides the
   installer-provided Google Chrome binary, so browser gates never silently fall
   back to the Playwright-bundled Chromium download.
+- `run-browser-gates.sh` runs `pnpm test:e2e` against the local Supabase stack
+  (start, reset to this checkout's migrations, always stop) while holding the
+  host lock `infra/verify-database.sh` takes, because the Slice 10 real-route
+  specs drive the production Worker, PostgREST and the newest SQL.
 - `verify-staging-artifacts.sh` validates the workflow-derived staging
   identity, origins, and downloaded artifact boundary.
 - `record-staging-artifacts.sh` records deterministic SHA-256 entries for the

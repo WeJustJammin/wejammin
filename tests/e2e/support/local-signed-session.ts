@@ -11,23 +11,32 @@ const SESSION_SIGNING_SECRET = 's09-real-route-session-secret';
 const base64Url = (value: Uint8Array | string): string =>
   Buffer.from(value).toString('base64url');
 
+type SessionOptions = Readonly<{
+  sessionId?: string;
+  expiresAt?: number;
+  forged?: boolean;
+  /** The subject; the legacy fixture user when omitted. */
+  userId?: string;
+  /** Extra signed claims (the S10 real stack carries the acting party here). */
+  claims?: Readonly<Record<string, unknown>>;
+}>;
+
 const accessToken = async ({
   sessionId = LOCAL_SESSION_ID,
   expiresAt = Math.floor(Date.now() / 1_000) + 3_600,
   forged = false,
-}: Readonly<{
-  sessionId?: string;
-  expiresAt?: number;
-  forged?: boolean;
-}> = {}): Promise<string> => {
+  userId = USER_ID,
+  claims = {},
+}: SessionOptions = {}): Promise<string> => {
   const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const payload = base64Url(
     JSON.stringify({
+      ...claims,
       aud: 'authenticated',
       exp: expiresAt,
       iss: `${SUPABASE_ORIGIN}/auth/v1`,
       session_id: sessionId,
-      sub: USER_ID,
+      sub: userId,
     }),
   );
   const signature = forged
@@ -52,6 +61,7 @@ const accessToken = async ({
 
 const sessionReference = async (
   sessionId = LOCAL_SESSION_ID,
+  userId = USER_ID,
 ): Promise<string> => {
   const keyMaterial = await webcrypto.subtle.digest(
     'SHA-256',
@@ -67,7 +77,7 @@ const sessionReference = async (
   const iv = webcrypto.getRandomValues(new Uint8Array(12));
   const flow = JSON.stringify({
     state: sessionId,
-    nonce: USER_ID,
+    nonce: userId,
     verifier: '',
     provider: 'session',
     intent: 'session',
@@ -84,12 +94,7 @@ const sessionReference = async (
 /** Only the loopback real-route harness accepts these test-owned credentials. */
 export const authenticateLocalSession = async (
   context: BrowserContext,
-  options: Readonly<{
-    sessionId?: string;
-    expiresAt?: number;
-    forged?: boolean;
-    csrfToken?: string;
-  }> = {},
+  options: SessionOptions & Readonly<{ csrfToken?: string }> = {},
 ): Promise<void> => {
   const sessionId = options.sessionId ?? LOCAL_SESSION_ID;
   await context.addCookies([
@@ -104,7 +109,7 @@ export const authenticateLocalSession = async (
     },
     {
       name: 'wj_session_ref',
-      value: await sessionReference(sessionId),
+      value: await sessionReference(sessionId, options.userId),
       domain: '127.0.0.1',
       path: '/',
       httpOnly: true,

@@ -28,8 +28,8 @@ import type {
  *
  * `packages/contracts/src/cms-editorial/` has landed, so every schema below is
  * the shared contract re-exported instead of a second, drift-prone copy. Only
- * what the browser itself owns stays local: the honest transport boundary and
- * the fail-closed page resolver. The read carries no body, no Idempotency-Key
+ * what the browser itself owns stays local: the description of the route it
+ * calls and the addressing resolver. The read carries no body, no Idempotency-Key
  * and no If-Match, and it never mutates on GET.
  */
 
@@ -37,7 +37,7 @@ export const CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_SOURCE = {
   source: 'packages/contracts/src/cms-editorial/entry-draft-detail.ts',
   spec: '.memory/wiki/specs/be/03b-editorial-workflow-publication.md',
   browserLocal:
-    'CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY and resolveCmsEditorialEntryDraftDetailPageState',
+    'CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_ROUTE and resolveCmsEditorialEntryDraftDetailPageState',
 } as const;
 
 /** BE03b CMS-03B-11 addressing: exactly one UUID path parameter. */
@@ -71,16 +71,15 @@ export const CmsEditorialEntryDraftDetailSchemaValidationSchema =
   EntryDraftDetailSchemaValidationSchema;
 
 /**
- * Honest browser boundary. FE03 authorises CMS-03B-11, the shared contract is
- * implemented and registered, and the first-party proxy now exists at
- * apps/web/src/server/cms-editorial-platform-reads.ts. The Worker serves the
- * protected GET route and named production getEntryDraft port. The private RPC
- * checks active-schema fields and content-relation visibility; unsupported
- * projections refuse. The page may render verified read metadata, but no
- * authoring editor is wired and no hosted read has been accepted.
+ * CMS-03B-11 as the browser uses it: a protected, read-only GET of the draft the
+ * caller may edit, answered 200 with a strong ETag, never cached. The Worker
+ * serves it through the named production `getEntryDraft` port (active-schema
+ * fields and content-relation visibility are checked by the private RPC), and
+ * the editor page loads it (`loadEntryEditPage`) into `CmsEditorialEntryEditorIsland`.
+ * `cms-editorial-route-constants.test.ts` pins every member to the registered
+ * route policy.
  */
-export const CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY = {
-  status: 'local-production-read-bound-hosted-unverified',
+export const CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_ROUTE = {
   operationId: 'CMS-03B-11',
   method: 'GET',
   path: '/api/v1/cms/entries/{entryId}',
@@ -91,18 +90,9 @@ export const CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY = {
   locationRequired: false,
   etag: 'strong',
   cacheControl: 'no-store',
-  blocker:
-    'The CMS-03B-11 proxy, protected Worker route, and named production RPC adapter are implemented locally; unsupported projections fail closed and hosted acceptance is unverified.',
   owner: '03b-editorial-workflow-publication.md',
   spec: '.memory/wiki/specs/be/03b-editorial-workflow-publication.md',
 } as const;
-
-/**
- * Safe copy for the disabled draft surface. Fixed and non-disclosing: it must
- * not hint whether any entry exists or whether the caller may read it.
- */
-export const CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_DISABLED_REASON =
-  'Draft detail is unavailable, and no entry values were loaded.';
 
 export type CmsEditorialEntryDraftDetailPageResolution =
   { readonly kind: 'not-found' } | { readonly kind: 'loadable' };

@@ -39,7 +39,13 @@ const exempt: Readonly<Record<string, string>> = {
   'components/cms-composition/cms-template-edit-reconcile.ts': NO_STEP_UP_ROW,
   'components/cms-editorial/cms-editorial-entry-draft-detail-transport.ts':
     NO_STEP_UP_ROW,
-  'components/cms-editorial/cms-editorial-runtime.ts': NO_STEP_UP_ROW,
+  'components/cms-editorial/cms-editorial-conflict-detail-transport.ts':
+    NO_STEP_UP_ROW,
+  'components/cms-editorial/cms-editorial-mutation-errors.ts': NO_STEP_UP_ROW,
+  'components/cms-editorial/cms-editorial-restore-response.ts': NO_STEP_UP_ROW,
+  'components/cms-editorial-pages/cms-editorial-page-outcome.ts':
+    NO_STEP_UP_ROW,
+  'components/cms-editorial-pages/load-entry-edit-page.ts': NO_STEP_UP_ROW,
   'components/content-schema-registry/content-schema-registry-canonical-read.ts':
     WORKER_READ,
   'components/content-schema-registry/content-schema-registry-runtime-dom-refetch.ts':
@@ -51,9 +57,6 @@ const exempt: Readonly<Record<string, string>> = {
   'components/platform-configuration/platform-configuration-state.ts':
     'status-only fallback after parsePlatformConfigurationError, which keeps a typed STEP_UP_REQUIRED code',
   'lib/infrastructure-jobs.ts': WORKER_READ,
-  'pages/app/cms-content-modeling/entries/[entryId]/revisions.astro':
-    NO_STEP_UP_ROW,
-  'pages/app/cms-content-modeling/entries/[entryId].astro': NO_STEP_UP_ROW,
   'pages/app/cms-content-modeling/templates/[templateKey].astro':
     NO_STEP_UP_ROW,
   'pages/app/cms-content-modeling/templates/new.astro': NO_STEP_UP_ROW,
@@ -67,6 +70,7 @@ const exempt: Readonly<Record<string, string>> = {
   'server/cms-composition-platform-mutation.ts': NO_STEP_UP_ROW,
   'server/cms-composition-platform-pattern.ts': NO_STEP_UP_ROW,
   'server/cms-composition-platform-related.ts': NO_STEP_UP_ROW,
+  'server/cms-editorial-platform-error-details.ts': NO_STEP_UP_ROW,
   'server/cms-editorial-platform-shared.ts': NO_STEP_UP_ROW,
   'server/content-schema-registry-platform-mutation-support.ts':
     'local fallback error only; a valid upstream ApiError keeps its STEP_UP_REQUIRED code',

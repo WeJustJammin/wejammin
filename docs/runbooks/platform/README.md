@@ -10,6 +10,7 @@ Safe operational endpoint, job/outbox reconciliation, retention, and SLO procedu
 - [Release and recovery gates](./release-recovery-gates.md) — promote immutable artifacts and keep protected writes closed while hosted PITR evidence is unavailable.
 - [Initial CMS owner](./initial-cms-owner.md) — initialize the sole approved staging owner once through the audited operator-only boundary.
 - [Sole administrator MFA lockout](./sole-admin-mfa-lockout.md) — recover the only administrator's authenticators through the Supabase dashboard with an audit note.
+- [CMS editorial entry authoring](./cms-editorial.md) — triage typed refusals, provision and rotate the signed-cursor Vault key, reconcile lost responses by idempotency key, and handle presence-sweep and restore-chain failures for the nine Slice 10 operations.
 
 ## Ownership
 

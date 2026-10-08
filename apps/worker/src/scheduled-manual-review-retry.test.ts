@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const schedulerMocks = vi.hoisted(() => ({
   createProductionAsyncEntrypoint: vi.fn(),
   outbox: vi.fn(),
+  runProductionCmsEditPresenceSweep: vi.fn(),
   runProductionCmsReviewAuthoritySweep: vi.fn(),
   runProductionIdempotencyExpirySweep: vi.fn(),
   runProductionOperationalAlerts: vi.fn(),
@@ -12,6 +13,10 @@ vi.mock('./production-async-entrypoint', () => ({
   createProductionAsyncEntrypoint:
     schedulerMocks.createProductionAsyncEntrypoint,
   runProductionOperationalAlerts: schedulerMocks.runProductionOperationalAlerts,
+}));
+vi.mock('./production-cms-edit-presence-sweep', () => ({
+  runProductionCmsEditPresenceSweep:
+    schedulerMocks.runProductionCmsEditPresenceSweep,
 }));
 vi.mock('./production-cms-review-authority-sweep', () => ({
   runProductionCmsReviewAuthoritySweep:
@@ -43,6 +48,7 @@ beforeEach(() => {
   schedulerMocks.runProductionCmsReviewAuthoritySweep.mockResolvedValue(
     undefined,
   );
+  schedulerMocks.runProductionCmsEditPresenceSweep.mockResolvedValue(undefined);
   schedulerMocks.runProductionOperationalAlerts.mockResolvedValue(undefined);
 });
 
@@ -115,6 +121,55 @@ describe('scheduled manual-review retry policy', () => {
     const controller = createController();
     const manualReview = new AsyncRpcManualReviewError('malformed_json');
     schedulerMocks.runProductionCmsReviewAuthoritySweep.mockRejectedValue(
+      manualReview,
+    );
+
+    await expect(
+      handler.scheduled(controller as never, {} as never, {} as never),
+    ).rejects.toBe(manualReview);
+
+    expect(controller.noRetry).toHaveBeenCalledOnce();
+  });
+  it('runs the BE03b edit-presence expiry sweep every tick and surfaces its failure after the higher-priority jobs', async () => {
+    const controller = createController();
+    const sweepFailure = new Error('CMS edit-presence sweep requested retry');
+    schedulerMocks.runProductionCmsEditPresenceSweep.mockRejectedValue(
+      sweepFailure,
+    );
+
+    await expect(
+      handler.scheduled(controller as never, {} as never, {} as never),
+    ).rejects.toBe(sweepFailure);
+
+    expect(
+      schedulerMocks.runProductionCmsEditPresenceSweep,
+    ).toHaveBeenCalledOnce();
+    expect(controller.noRetry).not.toHaveBeenCalled();
+    expect(schedulerMocks.outbox).toHaveBeenCalledOnce();
+    expect(
+      schedulerMocks.runProductionOperationalAlerts,
+    ).toHaveBeenCalledOnce();
+  });
+
+  it('ranks the edit-presence sweep failure after the reviewer-authority sweep failure', async () => {
+    const controller = createController();
+    const reviewFailure = new Error('review authority sweep requested retry');
+    schedulerMocks.runProductionCmsReviewAuthoritySweep.mockRejectedValue(
+      reviewFailure,
+    );
+    schedulerMocks.runProductionCmsEditPresenceSweep.mockRejectedValue(
+      new Error('CMS edit-presence sweep requested retry'),
+    );
+
+    await expect(
+      handler.scheduled(controller as never, {} as never, {} as never),
+    ).rejects.toBe(reviewFailure);
+  });
+
+  it('suppresses platform retries when only the edit-presence sweep needs manual review', async () => {
+    const controller = createController();
+    const manualReview = new AsyncRpcManualReviewError('malformed_json');
+    schedulerMocks.runProductionCmsEditPresenceSweep.mockRejectedValue(
       manualReview,
     );
 

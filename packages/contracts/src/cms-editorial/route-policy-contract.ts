@@ -11,9 +11,12 @@ import {
   type CmsEditorialSuccessSchemaName,
 } from './route-policy-base.ts';
 import type {
+  EditorialAuthoringContextErrors,
+  EditorialConflictDetailErrors,
   EditorialConflictResolutionErrors,
   EditorialDraftDetailErrors,
   EditorialEntryCreateErrors,
+  EditorialEntryListErrors,
   EditorialRestoreErrors,
   EditorialRevisionErrors,
   EditorialRevisionHistoryErrors,
@@ -32,7 +35,12 @@ export type CmsEditorialRouteContract = {
     | 'RevisionRestoreHeadersSchema'
     | 'EntryCreateHeadersSchema';
   /** Present only for safe reads whose input is a query string. */
-  querySchema?: 'EntryDraftDetailQuerySchema' | 'RevisionHistoryQuerySchema';
+  querySchema?:
+    | 'EntryDraftDetailQuerySchema'
+    | 'RevisionHistoryQuerySchema'
+    | 'ConflictDetailQuerySchema'
+    | 'EntryListQuerySchema'
+    | 'AuthoringContextQuerySchema';
   successSchema: CmsEditorialSuccessSchemaName;
   successStatus: 200 | 201;
   outcome: 'created' | 'read';
@@ -65,7 +73,10 @@ export type CmsEditorialRouteContract = {
     | EditorialRevisionHistoryErrors
     | EditorialRestoreErrors
     | EditorialEntryCreateErrors
-    | EditorialDraftDetailErrors;
+    | EditorialDraftDetailErrors
+    | EditorialConflictDetailErrors
+    | EditorialEntryListErrors
+    | EditorialAuthoringContextErrors;
 };
 
 /**
@@ -128,14 +139,23 @@ const readShapeSchema = z.object({
   path: z.literal([
     '/api/v1/cms/entries/{entryId}',
     '/api/v1/cms/entries/{entryId}/revisions',
+    '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}',
+    '/api/v1/cms/entries',
+    '/api/v1/cms/entries/authoring-context',
   ]),
   requestSchema: z.literal([
     'EntryDraftDetailQuerySchema',
     'RevisionHistoryQuerySchema',
+    'ConflictDetailQuerySchema',
+    'EntryListQuerySchema',
+    'AuthoringContextQuerySchema',
   ]),
   successSchema: z.literal([
     'EntryDraftDetailResourceSchema',
     'RevisionHistoryPageSchema',
+    'ConflictDetailResourceSchema',
+    'EntryListPageSchema',
+    'AuthoringContextResourceSchema',
   ]),
   successStatus: z.literal(200),
   outcome: z.literal('read'),

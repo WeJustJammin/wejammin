@@ -28,11 +28,14 @@ const draftDetail = (entryId = ENTRY_ID) => ({
     createdAt: INSTANT,
     updatedAt: INSTANT,
   },
+  revisionNumber: '7',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash: HASH,
+  schemaVersionId: FIELD_DEFINITION_ID,
   validationState: 'valid',
+  openConflict: null,
   fields: [
     {
       fieldId: FIELD_ID,

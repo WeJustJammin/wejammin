@@ -106,10 +106,10 @@ describe('cms-editorial draft-detail proxy bounded body (CMS-03B-11)', () => {
     expect(source.wasCancelled()).toBe(true);
   });
 
-  it('forwards the query verbatim without normalizing it', async () => {
+  it('forwards the allowlisted locale query and rejects unknown keys', async () => {
     let forwarded: Request | null = null;
     const response = await forwardCmsEditorialEntryDraftDetailRead(
-      get('?locale=en-US&unknownKey=1'),
+      get('?locale=en-US'),
       bindingWith(async (input) => {
         forwarded = input as Request;
         return jsonResponse(draftDetailWith('v'), {
@@ -122,7 +122,34 @@ describe('cms-editorial draft-detail proxy bounded body (CMS-03B-11)', () => {
     expect(response.status).toBe(200);
     const sent = forwarded as Request | null;
     expect(sent === null ? null : new URL(sent.url).search).toBe(
-      '?locale=en-US&unknownKey=1',
+      '?locale=en-US',
     );
+    const refused = await forwardCmsEditorialEntryDraftDetailRead(
+      get('?locale=en-US&unknownKey=1'),
+      bindingWith(async () =>
+        jsonResponse(draftDetailWith('v'), {
+          status: 200,
+          headers: { etag: draftDetailEtag },
+        }),
+      ),
+      uuid,
+    );
+    expect(refused.status).toBe(400);
+  });
+
+  it('rejects duplicate locale filters before the Worker is reached', async () => {
+    const upstream = bindingWith(async () =>
+      jsonResponse(draftDetailWith('v'), {
+        status: 200,
+        headers: { etag: draftDetailEtag },
+      }),
+    );
+    const response = await forwardCmsEditorialEntryDraftDetailRead(
+      get('?locale=en-US&locale=fr-FR'),
+      upstream,
+      uuid,
+    );
+    expect(response.status).toBe(400);
+    expect(upstream.fetch).not.toHaveBeenCalled();
   });
 });

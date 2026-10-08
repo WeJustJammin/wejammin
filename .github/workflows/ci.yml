@@ -36,7 +36,7 @@ jobs:
       - name: Verify system Google Chrome
         run: bash infra/workflows/verify-system-chrome.sh
       - name: Run browser and accessibility gates
-        run: pnpm test:e2e
+        run: bash infra/workflows/run-browser-gates.sh
       - name: Upload test evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

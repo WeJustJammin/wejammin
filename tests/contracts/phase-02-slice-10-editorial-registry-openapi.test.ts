@@ -332,3 +332,204 @@ describe('Slice 10 CMS-03B-01/02/03/04 canonical inventory authority', () => {
     );
   });
 });
+
+describe('Slice 10 CMS-03B-12/13/14 supplemental read authority', () => {
+  const readPolicy = {
+    authClass: 'editorial_reader',
+    capabilities: ['cms.author', 'cms.editor'],
+    capabilityMode: 'any_of',
+    csrf: 'none',
+    idempotency: 'none',
+    ifMatch: 'none',
+    rateClass: 'cms-entry-read',
+    rateLimit: 300,
+    partyRateLimit: 600,
+    rateWindowSeconds: 60,
+    rateScope: 'user',
+    timeoutMs: 8_000,
+    sloTier: 'tier_1',
+  };
+
+  const readStatuses = [
+    '200',
+    '400',
+    '401',
+    '403',
+    '404',
+    '415',
+    '422',
+    '429',
+    '500',
+    '502',
+    '503',
+    '504',
+  ];
+
+  it('registers the three supplemental reads with the safe-read policy shape', () => {
+    const rows = [
+      [
+        'CMS-03B-12',
+        'GET',
+        '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}',
+        'ConflictDetailApiRequestSchema',
+        'ConflictDetailResourceSchema',
+      ],
+      [
+        'CMS-03B-13',
+        'GET',
+        '/api/v1/cms/entries',
+        'EntryListApiRequestSchema',
+        'EntryListPageSchema',
+      ],
+      [
+        'CMS-03B-14',
+        'GET',
+        '/api/v1/cms/entries/authoring-context',
+        'AuthoringContextApiRequestSchema',
+        'AuthoringContextResourceSchema',
+      ],
+    ] as const;
+
+    for (const [
+      operationId,
+      method,
+      path,
+      requestSchema,
+      successSchema,
+    ] of rows) {
+      const row = platformRegistrySet.routes.find(
+        (route) => route.operationId === operationId,
+      );
+      expect(row).toEqual(
+        expect.objectContaining({
+          ...readPolicy,
+          method,
+          path,
+          requestSchema,
+          successSchema,
+        }),
+      );
+      expect(row).not.toHaveProperty('capability');
+      expect(row).not.toHaveProperty('headersSchema');
+    }
+  });
+
+  it('documents CMS-03B-12 with two path UUIDs, no query, and no body', () => {
+    const document = buildOpenApiDocument() as Document;
+    const operation =
+      document.paths['/api/v1/cms/entries/{entryId}/conflicts/{conflictId}']
+        ?.get;
+
+    expect(operation?.operationId).toBe('CMS-03B-12');
+    expect(operation?.['x-auth-class']).toBe('editorial_reader');
+    expect(operation?.['x-capability-mode']).toBe('any_of');
+    expect(operation?.['x-csrf']).toBe('none');
+    expect(operation?.['x-idempotency']).toBe('none');
+    expect(operation?.['x-if-match']).toBe('none');
+    expect(operation?.['x-timeout-ms']).toBe(8_000);
+    expect(operation?.['x-rate-limit']).toEqual({
+      class: 'cms-entry-read',
+      limit: 300,
+      partyLimit: 600,
+      windowSeconds: 60,
+      scope: 'user',
+    });
+    expect(operation?.requestBody).toBeUndefined();
+    expect(parameterNames(operation, 'path')).toEqual([
+      'entryId',
+      'conflictId',
+    ]);
+    expect(parameterNames(operation, 'header')).toEqual([]);
+    expect(parameterNames(operation, 'query')).toEqual([]);
+    expect(Object.keys(operation?.responses ?? {}).sort()).toEqual(
+      [...readStatuses].sort(),
+    );
+    expect(
+      operation?.responses['200']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/ConflictDetailResource' });
+    expect(
+      operation?.responses['404']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/ApiError' });
+    expect(operation?.responses['409']).toBeUndefined();
+  });
+
+  it('documents CMS-03B-13 with only the allowlisted query keys', () => {
+    const document = buildOpenApiDocument() as Document;
+    const operation = document.paths['/api/v1/cms/entries']?.get;
+
+    expect(operation?.operationId).toBe('CMS-03B-13');
+    expect(operation?.['x-auth-class']).toBe('editorial_reader');
+    expect(operation?.['x-csrf']).toBe('none');
+    expect(operation?.['x-idempotency']).toBe('none');
+    expect(operation?.['x-if-match']).toBe('none');
+    expect(operation?.['x-timeout-ms']).toBe(8_000);
+    expect(operation?.requestBody).toBeUndefined();
+    expect(parameterNames(operation, 'path')).toEqual([]);
+    expect(parameterNames(operation, 'header')).toEqual([]);
+    expect(parameterNames(operation, 'query')).toEqual([
+      'cursor',
+      'limit',
+      'state',
+      'contentTypeId',
+    ]);
+    expect(operation?.parameters?.every(({ required }) => !required)).toBe(
+      true,
+    );
+    expect(
+      operation?.responses['200']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/EntryListPage' });
+    expect(
+      operation?.responses['429']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/ApiError' });
+  });
+
+  it('documents CMS-03B-14 with only the version selector and no body', () => {
+    const document = buildOpenApiDocument() as Document;
+    const operation =
+      document.paths['/api/v1/cms/entries/authoring-context']?.get;
+
+    expect(operation?.operationId).toBe('CMS-03B-14');
+    expect(operation?.['x-auth-class']).toBe('editorial_reader');
+    expect(operation?.['x-csrf']).toBe('none');
+    expect(operation?.['x-idempotency']).toBe('none');
+    expect(operation?.['x-if-match']).toBe('none');
+    expect(operation?.['x-timeout-ms']).toBe(8_000);
+    expect(operation?.requestBody).toBeUndefined();
+    expect(parameterNames(operation, 'path')).toEqual([]);
+    expect(parameterNames(operation, 'header')).toEqual([]);
+    expect(parameterNames(operation, 'query')).toEqual([
+      'contentTypeVersionId',
+    ]);
+    expect(
+      operation?.responses['200']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/AuthoringContextResource' });
+    expect(
+      operation?.responses['400']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/ApiError' });
+  });
+
+  it('publishes the supplemental success and request components', () => {
+    const document = buildOpenApiDocument() as Document;
+    for (const component of [
+      'ConflictDetailResource',
+      'EntryListPage',
+      'AuthoringContextResource',
+      'ConflictDetailApiRequest',
+      'EntryListApiRequest',
+      'AuthoringContextApiRequest',
+    ])
+      expect(document.components.schemas).toHaveProperty(component);
+  });
+
+  it('publishes every registered operation exactly once', () => {
+    const document = buildOpenApiDocument() as Document;
+    const documented = Object.values(document.paths).flatMap((pathItem) =>
+      Object.values(pathItem).map(({ operationId }) => operationId),
+    );
+
+    expect(documented).toHaveLength(platformRegistrySet.routes.length);
+    expect(new Set(documented).size).toBe(documented.length);
+    for (const operationId of ['CMS-03B-12', 'CMS-03B-13', 'CMS-03B-14'])
+      expect(documented).toContain(operationId);
+  });
+});

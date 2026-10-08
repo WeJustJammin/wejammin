@@ -1,0 +1,313 @@
+-- CMS-03B-04 restore: typed refusals end to end.
+--
+-- Every refusal asserts BOTH the SQLSTATE and the exact contract token, and is
+-- paired with a positive control (a valid forgery that restores) in the next
+-- fragment, so a refusal can never pass because an unrelated gate fired first.
+-- Probes run inside rolled-back subtransactions; each forges its own source.
+
+-- Each forged source violates exactly one rule.
+select pg_temp.s10_rpc_probe(
+  'restore_invalid_rich_text',
+  $setup$select pg_temp.s10r_forge(jsonb_build_object(
+    'a9100000-0000-4000-8000-000000000601', 'Title',
+    'a9100000-0000-4000-8000-000000000602', jsonb_build_object(
+      'format', 'rich_text.v1', 'blocks', jsonb_build_array(
+        jsonb_build_object('type', 'scripture', 'text', 'not a block kind')))))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-rich-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_invalid_rich_text') || ':'
+    || pg_temp.s10_probe_message('restore_invalid_rich_text'),
+  'P0001:migration_chain_incomplete',
+  'a source value that violates rich_text.v1 refuses the restore as migration_chain_incomplete'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_invalid_object',
+  $setup$select pg_temp.s10r_forge(jsonb_build_object(
+    'a9100000-0000-4000-8000-000000000601', 'Title',
+    'a9100000-0000-4000-8000-000000000603', jsonb_build_object(
+      'nested', jsonb_build_object('tooDeep', true))))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-object-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_invalid_object') || ':'
+    || pg_temp.s10_probe_message('restore_invalid_object'),
+  'P0001:migration_chain_incomplete',
+  'a source object value outside its DEC-133 structure refuses the restore as migration_chain_incomplete'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_relation_value_unsafe',
+  $setup$select pg_temp.s10r_forge(jsonb_build_object(
+    'a9100000-0000-4000-8000-000000000601', 'Title',
+    'a9100000-0000-4000-8000-000000000604', jsonb_build_object(
+      'targets', jsonb_build_array(jsonb_build_object('targetId', 'not-a-uuid')))))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-relval-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_relation_value_unsafe') || ':'
+    || pg_temp.s10_probe_message('restore_relation_value_unsafe'),
+  'P0001:migration_chain_incomplete',
+  'a relation value with a malformed target identity refuses the restore as migration_chain_incomplete'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_relation_foreign_target',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'),
+    jsonb_build_array(jsonb_build_object(
+      'fieldId', 'a9100000-0000-4000-8000-000000000604',
+      'targetId', pg_temp.s10r_forge_target(8, true), 'position', 0)))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-relforeign-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_relation_foreign_target') || ':'
+    || pg_temp.s10_probe_message('restore_relation_foreign_target'),
+  'P0001:migration_chain_incomplete',
+  'a relation whose target belongs to another tenant refuses the restore instead of copying through'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_relation_absent_target',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'),
+    jsonb_build_array(jsonb_build_object(
+      'fieldId', 'a9100000-0000-4000-8000-000000000604',
+      'targetId', 'a9100000-0000-4000-8000-0000000079ff', 'position', 0)))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-relabsent-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_relation_absent_target') || ':'
+    || pg_temp.s10_probe_message('restore_relation_absent_target'),
+  'P0001:migration_chain_incomplete',
+  'a relation whose target no longer resolves refuses the restore'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_relation_stale_pin',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'),
+    jsonb_build_array(jsonb_build_object(
+      'fieldId', 'a9100000-0000-4000-8000-000000000604',
+      'targetId', 'a9100000-0000-4000-8000-000000000301',
+      'expectedTargetVersion', 99, 'position', 0)))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-relstale-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_relation_stale_pin') || ':'
+    || pg_temp.s10_probe_message('restore_relation_stale_pin'),
+  'P0001:migration_chain_incomplete',
+  'a relation pinned to a version its target no longer has refuses the restore'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_relation_over_bound',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'),
+    jsonb_build_array(
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000604',
+        'targetId', 'a9100000-0000-4000-8000-000000000301', 'position', 0),
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000604',
+        'targetId', pg_temp.s10r_forge_target(8), 'position', 1),
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000604',
+        'targetId', pg_temp.s10r_forge_target(9), 'position', 2)))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-relbound-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_relation_over_bound') || ':'
+    || pg_temp.s10_probe_message('restore_relation_over_bound'),
+  'P0001:migration_chain_incomplete',
+  'a relation count above the target RelationDefinition maximum refuses the restore'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_required_no_default',
+  $setup$select pg_temp.s10r_forge('{}'::jsonb)$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-required-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_required_no_default') || ':'
+    || pg_temp.s10_probe_message('restore_required_no_default'),
+  'P0001:migration_chain_incomplete',
+  'a required target field with neither a source value nor a literal default refuses rather than inventing one'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_taxonomy_content',
+  $setup$select pg_temp.s10r_forge(jsonb_build_object(
+    'a9100000-0000-4000-8000-000000000601', 'Title',
+    'a9100000-0000-4000-8000-000000000606', 'term-1'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-taxonomy-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_taxonomy_content') || ':'
+    || pg_temp.s10_probe_message('restore_taxonomy_content'),
+  'P0001:migration_chain_incomplete',
+  'a taxonomy value, which has no registered transform or term proof, refuses the restore'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_template_incompatible',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'),
+    '[]'::jsonb,
+    pg_temp.s10r_forge_template(
+      (select value::uuid from s10_ids where key = 'typeId')))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-template-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_template_incompatible') || ':'
+    || pg_temp.s10_probe_message('restore_template_incompatible'),
+  'P0001:template_incompatible',
+  'a source template that is not compatible with the active content type refuses as template_incompatible'
+);
+
+-- Request admission: nothing is read before a malformed request is refused.
+select pg_temp.s10_rpc_probe(
+  'restore_no_idem_key',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request(null))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_no_idem_key') || ':'
+    || pg_temp.s10_probe_message('restore_no_idem_key'),
+  'P0001:INVALID_REQUEST',
+  'a restore without an Idempotency-Key is refused before any read or write'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_short_idem_key',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('short'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_short_idem_key') || ':'
+    || pg_temp.s10_probe_message('restore_short_idem_key'),
+  'P0001:INVALID_REQUEST',
+  'an Idempotency-Key outside the 8..128 printable range is refused'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_unknown_member',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(
+    pg_temp.s10r_request('s10-restore-unknown-0001')
+      || jsonb_build_object('ownerId', 'a9100000-0000-4000-8000-000000000011'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_unknown_member') || ':'
+    || pg_temp.s10_probe_message('restore_unknown_member'),
+  'P0001:INVALID_REQUEST',
+  'an ownership or authority assertion has no request slot and is refused'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_if_match_disagrees',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(
+    pg_temp.s10r_request('s10-restore-ifmatch-0001')
+      || jsonb_build_object('ifMatch', '2'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_if_match_disagrees') || ':'
+    || pg_temp.s10_probe_message('restore_if_match_disagrees'),
+  'P0001:INVALID_REQUEST',
+  'an If-Match transport copy that disagrees with expectedVersion is refused'
+);
+
+-- Authority, concealment and lineage.
+select pg_temp.s10_rpc_probe(
+  'restore_stranger',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select pg_temp.s10_rpc_as(
+      (select value::uuid from s10_ids where key = 'strangerAuth'), null)$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-stranger-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_stranger') || ':'
+    || pg_temp.s10_probe_message('restore_stranger'),
+  'P0001:NOT_FOUND',
+  'an actor outside the owning tenant cannot tell the entry exists (NOT_FOUND)'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_member_without_edit',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select pg_temp.s10_rpc_as(
+      (select value::uuid from s10_ids where key = 'outsiderAuth'),
+      (select value::uuid from s10_ids where key = 'organization'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-noedit-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_member_without_edit') || ':'
+    || pg_temp.s10_probe_message('restore_member_without_edit'),
+  'P0001:FORBIDDEN',
+  'a tenant member without edit authority over the entry is refused (FORBIDDEN)'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_absent_revision',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request(
+    's10-restore-absent-0001', 0, null, null,
+    'a9100000-0000-4000-8000-0000000079fe'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_absent_revision') || ':'
+    || pg_temp.s10_probe_message('restore_absent_revision'),
+  'P0001:NOT_FOUND',
+  'an absent source revision is concealed as NOT_FOUND'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_foreign_entry_revision',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select pg_temp.s10r_forge(
+      jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Other'),
+      '[]'::jsonb, null, '{}'::jsonb, 1)$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request(
+    's10-restore-crossentry-0001', 0, null, null, pg_temp.s10r_id(1, 2)))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_foreign_entry_revision') || ':'
+    || pg_temp.s10_probe_message('restore_foreign_entry_revision'),
+  'P0001:NOT_FOUND',
+  'a revision that belongs to another entry is concealed as NOT_FOUND'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_chain_mismatch',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request(
+    's10-restore-mismatch-0001', 0, 'a9100000-0000-4000-8000-000000000903'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_chain_mismatch') || ':'
+    || pg_temp.s10_probe_message('restore_chain_mismatch'),
+  'P0001:migration_chain_mismatch',
+  'a request whose migrationChainId differs from the derived chain is migration_chain_mismatch'
+);
+
+select pg_temp.s10_rpc_probe(
+  'restore_stale_version',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request(
+    's10-restore-stale-0001', 0, null, 999))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_stale_version') || ':'
+    || pg_temp.s10_probe_message('restore_stale_version'),
+  'P0001:VERSION_MISMATCH',
+  'a stale expectedVersion fails the restore CAS with the typed VERSION_MISMATCH (P0001; cascade P2-S10-AC-025, was the 40001 serialization failure)'
+);

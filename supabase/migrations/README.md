@@ -459,6 +459,111 @@ table; 33 more definer functions created or redefined by Slice 09 migrations wer
   explicit legacy list `../tests/support/sec2-legacy-bypass-definers.sqlinc`, and behaviour of both reset
   functions under forged and foreign sessions).
 
+### Slice 10 editorial authoring migrations (`20261005010000`-`20261005012500`)
+
+Forward-only migrations for CMS-03B-01..04 and CMS-03B-10..14 (entry authoring, conflict resolution,
+history and comparison, restore, and the protected reads). They have not been released, so the first
+group was corrected in place during Slice 10 repair and later files are forward fixes. Every
+`platform_private` function stays ungranted to API roles and every `platform_api` wrapper is
+service-role only. pgTAP coverage is `../tests/phase_02_slice_10_*.sql`; the lock, authority and cap
+races are `../tests/phase_02_slice_10_races/`. Operations: `../../docs/runbooks/platform/cms-editorial.md`.
+
+- `010000` the `rich_text.v1` value grammar (DEC-112): a canonical flat bounded AST, its protected registry
+  membership and the total-text length bound; non-canonical input is refused, never canonicalised
+  (`../tests/phase_02_slice_10_rich_text_v1.sql`).
+- `010100` typed field-kind encodings (DEC-112, DEC-133): one shared kind gate for draft values and literal
+  defaults, the depth-1 typed object structure, relation targets, list item kind and strict taxonomy and
+  media shapes (`../tests/phase_02_slice_10_field_kind_shape.sql`, `../tests/phase_02_slice_10_value_encodings.sql`).
+- `010200` CMS-03B-11 draft detail carries `revisionNumber`, `schemaVersionId` and the bounded
+  `openConflict` identity; `contentHash` covers the returned projection
+  (`../tests/phase_02_slice_10_draft_detail_identity.sql`, `../tests/phase_02_slice_10_draft_detail_lineage.sql`).
+- `010300` CMS-03B-12 conflict detail: bounded three-way preimages of an open conflict with no ownership
+  identity (`../tests/phase_02_slice_10_conflict_detail.sql`).
+- `010400` CMS-03B-03 comparison over the field, block and relation domains with the keyed relation
+  `targetToken`, `comparison_too_large` above 512 changes, the safe restore descriptor, and the shared
+  Vault-signed cursor helpers (`../tests/phase_02_slice_10_comparison_domains.sql`,
+  `../tests/phase_02_slice_10_compare_chain_shared.sql`, `../tests/phase_02_slice_10_compare_lineage.sql`).
+- `010500` CMS-03B-04 restore: the immutable `cms_restore_chain_manifests`, chain re-derivation from
+  completed 03a plan edges, edge-by-edge translation with revalidation, a required idempotency key and the
+  `{ resource, restoreVerification }` answer (`../tests/phase_02_slice_10_restore_chain.sql`,
+  `../tests/phase_02_slice_10_restore_chain_rebind.sql`, `../tests/phase_02_slice_10_restore_transform_revalidation.sql`).
+- `010600` the advisory two-minute edit-presence lease: renewed inside CMS-03B-01, released by
+  authority-loss triggers and expired by the service-role sweep
+  (`../tests/phase_02_slice_10_presence_lease.sql`).
+- `010700` CMS-03B-13 entry list with a Vault-signed cursor under its own signature domain and the owning
+  `entryId` on each item (`../tests/phase_02_slice_10_entry_list.sql`, `../tests/phase_02_slice_10_cursor_signature.sql`).
+- `010800` CMS-03B-14 author-safe authoring-context read; the entry point is
+  `cms_get_entry_authoring_context` (`../tests/phase_02_slice_10_authoring_context.sql`).
+- `010900` the locked D12 `cms_localization_fanout` wrapper over the canonical stale-locale producer
+  (`../tests/phase_02_slice_10_locale_fanout_regression.sql`).
+- `011000` the write commands refuse a non-empty taxonomy or media value with the typed
+  `taxonomy_source_unavailable` / `media_source_unavailable` and admit the validated field kinds
+  (`../tests/phase_02_slice_10_value_source_refusal.sql`).
+- `011100` DEC-139: CMS-03B-12 answers a closed conflict with the same 404 as an absent one.
+- `011200` DEC-140: structural CMS-03B-13 cursor faults are `INVALID_REQUEST`; an expired, tampered or
+  foreign cursor stays `CONFLICT`.
+- `011300` DEC-143: revoking a capability grant or membership tenure also revokes the person's active entry
+  assignments in the same transaction (`../tests/phase_02_slice_10_presence_lease.sql`).
+- `011400` `rich_text.v1` link, `mailto:` and whitespace parity with the TypeScript validator
+  (`../tests/phase_02_slice_10_rich_text_link_parity.sql`).
+- `011500` DEC-144: the closed per-kind object-property constraint vocabulary
+  (`../tests/phase_02_slice_10_object_property_constraints.sql`).
+- `011600` the typed 422 reason classifier and the relation-authoring helpers
+  (`../tests/phase_02_slice_10_typed_reasons.sql`).
+- `011700` create, append and resolve emit the typed reasons and author relation values as normalized
+  `EntryRelation` rows (`../tests/phase_02_slice_10_relation_authoring.sql`).
+- `011800` CMS-03B-12 shows a relation field's conflict sides in the canonical relation form.
+- `011900` restore re-fetches the editorial workflow-policy evidence
+  (`../tests/phase_02_slice_10_restore_policy_evidence.sql`).
+- `012000` DEC-146: the protected `rich_text.v1`@1 registry entry (descriptor and JCS SHA-256 hash), frozen
+  into compiled artifacts and required equal at activation
+  (`../tests/phase_02_slice_10_protected_validator_freeze.sql`, `../tests/phase_02_slice_10_validator_registry_gate.sql`).
+- `012100` write-path lock helpers: `FOR SHARE` schema-version and authority locks, ordered relation-target
+  locks and the three-slot per-actor concurrent-write cap (`../tests/phase_02_slice_10_write_path_locks.sql`).
+- `012200` CMS-03B-13 reader driven from the caller's authorized assignments with `LIMIT limit + 1`; items add
+  `entryLifecycle` and `entryUpdatedAt` (`../tests/phase_02_slice_10_entry_list_authorized_keyset.sql`).
+- `012300` create, append and resolve hardening: the protected-validator gate, version and authority locks,
+  successor-version scalar binding, conflict supersession, safe `/fields/...` violation pointers,
+  `entryVersion` in responses and the `x-cms-idempotent-replay` marker
+  (`../tests/phase_02_slice_10_validation_pointers.sql`, `../tests/phase_02_slice_10_successor_create.sql`,
+  `../tests/phase_02_slice_10_conflict_lifecycle.sql`, `../tests/phase_02_slice_10_response_contracts.sql`).
+- `012400` restore hardening: the same gates, a typed `VERSION_MISMATCH` for a stale entry version, conflict
+  supersession, and the `cms.entry.revision-restored.v1` evidence event with its chain audit row
+  (`../tests/phase_02_slice_10_restore_evidence.sql`).
+- `012500` the presence sweep answers `{ expiredLeases, activeLeases }` for the `cms_presence_active` gauge
+  (`../tests/phase_02_slice_10_response_contracts.sql`).
+- `013000` ONE lock order for the writers, both schema activation commands and authority revocation (Codex SQL
+  review 3 findings 1 and 2): the identity authority rows (binding, tenure, grants) before the candidate, then the graph,
+  the active version and the review rows; `cms_invalidate_activation_reviews` locks the candidate before its reviews;
+  `cms_lock_activation_authority` is split into `cms_lock_activation_identity_authority` and
+  `cms_lock_activation_review_rows` (`../tests/phase_02_slice_10_activation_lock_order.sql`, race runners `010` and `014`).
+- `013100` a deadlock outside that order is the typed retryable `CONFLICT` for the four writers, both activation
+  commands and the CMS-03A-17 revocation (race runner `010`, S4).
+- `013200` the CMS-03B-13 cursor carries the collection epoch (`aheadDigest`), so an entry updated between two pages is a
+  `409 CONFLICT` restart, never a silent skip (`../tests/phase_02_slice_10_entry_list_epoch_cursor.sql`). The
+  `010900` fan-out wrapper's variables were renamed in place (`../tests/phase_02_slice_10_locale_fanout_branch.sql`).
+- `013300` `cms_create_entry` assigns the creator the capability they proved (`cms.editor` for an editor-only creator),
+  not a hard-coded `cms.author` (evidence gap EB-AC063; `../tests/phase_02_slice_10_create_entry_capability.sql`).
+- `014000` CMS-03B-01 refusals follow the BE03b validation matrix: a well-formed `baseRevision` that names no readable
+  revision is the 422 `VALIDATION_FAILED` at `/baseRevision` (was a 404), and an entry that is not active is the policy-safe
+  404 `NOT_FOUND` (was a 409 `INVALID_TRANSITION`) (`../tests/phase_02_slice_10_write_refusal_contract.sql`).
+- `014100` CMS-03B-03 comparison fails closed with `comparison_unavailable` on a non-empty recorded taxonomy-version list
+  (DEC-141) and on a recorded template version that no longer resolves
+  (`../tests/phase_02_slice_10_compare_lineage.sql`, `../tests/phase_02_slice_10_ev_ea_gaps.sql`).
+- `015000` `cms_create_entry` refuses a stored artifact whose hash is not the version definition hash (or that is not the
+  version's own artifact) as `DEPENDENCY_UNAVAILABLE` before any write, like every other schema consumer (evidence gap
+  EC-079-a; `../tests/phase_02_slice_10_activation_structure_binding.sql`, `../tests/phase_02_slice_10_ev_ec_r1_gaps.sql`).
+- `016000` the activation commands never acquire an authority row after the candidate and the active version: the human
+  switch locks only the review rows where it called the legacy composite (which rescanned the authority rows), the Worker
+  switch rechecks the approval through `cms_worker_human_approval_evidence_valid` (review rows only; the standalone
+  `cms_worker_human_approval_valid` delegates to it) (Codex final review HIGH; race runner `014` R3,
+  `../tests/phase_02_slice_10_activation_lock_order.sql`).
+- `016100` `cms_create_entry` requires the caller's SchemaArtifact evidence members to be JSON strings and compares them
+  null-safely, so JSON null no longer skips the AC-079 comparison (Codex final review MEDIUM;
+  `../tests/phase_02_slice_10_create_artifact_evidence_nulls.sql`).
+- `016200` the writers' relation-target lock takes the target entry and the caller's assignments over it only
+  (`cms_lock_entry_assignments_shared`), never rescanning the caller's person, tenure and grant rows after the active version.
+
 ## Related links
 
 - `../tests/README.md`

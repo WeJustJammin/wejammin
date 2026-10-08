@@ -1054,9 +1054,22 @@ finding never contains author text, alt text, link text, URLs or asset names.
   recomputed inputHash differs, or the checker version is no longer current.
   Staleness is evaluated on read and by consumers and persisted on first
   detection. A `failed` or `stale` run is never healthy.
+- Delivery slice (DEC-134): Slice 11 delivers the `cms.a11y.structural` version 1
+  checker module, its registry row and the in-process `quality_gate_evaluate` gate
+  call as the first Worker-resident provider of the BE03b preflight registry
+  (`Publication preflight registry`, category `accessibility`); Slice 16 builds the
+  CFG-05C-02 `quality_check` action, `quality_check_runs` persistence and the
+  CFG-05C-06/07 reads on the same module. Until Slice 16 a gate call persists
+  nothing: its outcome travels to the BE03b command as `PreflightEvidence`
+  (`providerKey`, `providerVersion`, `outcome`, `blockingCount`, `inputHash`,
+  `bindingHash`, `evaluatedAt`) and the command's audit record stores only the
+  checker key and version, outcome, blocking count and `inputHash`. Media
+  references cannot exist in Phase 2 (a media value fails closed at write), so
+  the media rules are inert until Slice 14 and the structure, heading, link and
+  landmark rules are the Phase 2 surface.
 - Gate use: the accessibility preflight of the BE03b preflight registry calls
   the in-process `quality_gate_evaluate` RPC at review submission, schedule
-  execution and publication for the exact revision. A gate call always runs
+  acceptance, schedule execution and publication for the exact revision. A gate call always runs
   the current checker version fresh and never reuses a stored run. Only
   `healthy` passes; `blocked` returns the typed BLOCKING_FINDING refusal with
   details { runId, blockingCount }; `failed` is an unresolved preflight and no
@@ -1478,6 +1491,7 @@ None.
 |---|---|---|---|
 | 2026-08-28 | Authored 05c backend contracts from approved Shard 05 IA and deep dive; reconciled 25.10.01 through 25.10.04 | /write-be-spec | All |
 | 2026-08-28 | Added strict portability branches, isolated restore proof, quality blockers, hold precedence and store-level lifecycle recovery | /write-be-spec-write | API, database, middleware, events, tests |
+| 2026-10-07 | Slice 11 cascade (DEC-134, D25): the accessibility checker, its registry row and the `quality_gate_evaluate` gate call are delivered by Slice 11 as the first BE03b preflight provider (the gate also runs at schedule acceptance); Slice 16 keeps the CFG-05C-02 action, `quality_check_runs` persistence and the CFG-05C-06/07 reads; the gate persists nothing until then and its evidence is the BE03b `PreflightEvidence`. | /propagate-decision | Accessibility and content-quality checker |
 | 2026-10-02 | Phase 2 scope (DEC-114): closed CFG-05C-01 import, export and restore gaps (object adapter and 50 MiB profile, mapper and resource registries, import commit/cancel, export revoke, encryption envelope, download claim, isolated restore verifier and eight-check set, Free-tier no-PITR boundary) and added CFG-05C-03 to CFG-05C-09; defined the D25 code-owned structural accessibility checker (cms.a11y.structural version 1) over rich_text.v1 and the block registry | /propagate-decision | Phase 2 scope, API, contracts, database, middleware, data flow, errors, observability, tests |
 
 ## Dependency References

@@ -25,7 +25,7 @@ const PATH = `/api/v1/cms/entries/${ENTRY_ID}/revisions`;
 const revisionBody = {
   entryId: ENTRY_ID,
   baseRevision: '1',
-  changedPaths: [`/fields/${FIELD_ID}/value`],
+  changedPaths: [`/fields/${FIELD_ID}`],
   values: { [FIELD_ID]: 'Hello' },
   locale: 'en-US',
   expectedVersion: '1',
@@ -33,7 +33,8 @@ const revisionBody = {
 
 const revisionResource: EntryRevisionResource = {
   id: REVISION_ID,
-  version: '2',
+  version: '1',
+  entryVersion: '2',
   createdAt: '2026-09-26T12:00:00.000Z',
   updatedAt: '2026-09-26T12:00:00.000Z',
   state: 'draft',
@@ -348,6 +349,31 @@ describe('cms-editorial CMS-03B-01 route', () => {
       '/api/v1/cms/entries/not-a-uuid/revisions',
     );
     expect(response.status).toBe(400);
+    expect(appendRevision).not.toHaveBeenCalled();
+  });
+
+  it('[P2-S10-AC-004] refuses an If-Match that disagrees with the body expectedVersion before the port, never overwriting either', async () => {
+    // CMS-03B-01 (BE03b:152, :230): the CAS is the exact strong If-Match, and
+    // the body states the version the caller read. Silently letting the header
+    // win let a client believe it wrote against a version it did not name.
+    const { app, appendRevision } = createHarness();
+    const response = await post(
+      app,
+      headersFor((headers) => {
+        headers['if-match'] = '"7"';
+      }),
+      { ...revisionBody, expectedVersion: '3' },
+    );
+    expect(response.status).toBe(422);
+    const body = await readJson(response);
+    expect(body.code).toBe('VALIDATION_FAILED');
+    expect(body.details.violations).toEqual([
+      {
+        path: '/expectedVersion',
+        code: 'mismatch',
+        message: 'The value is invalid.',
+      },
+    ]);
     expect(appendRevision).not.toHaveBeenCalled();
   });
 

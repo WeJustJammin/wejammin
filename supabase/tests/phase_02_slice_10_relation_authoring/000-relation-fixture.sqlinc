@@ -1,0 +1,345 @@
+-- Relation-authoring fixture for the Slice 10 relation suites (BE03b "Value
+-- encodings by field kind": relation).  Include AFTER
+-- phase_02_slice_10_rpc/000-helpers.sqlinc and phase_02_slice_10_rpc/001-fixtures.sqlinc.
+--
+-- Builds, inside the caller's rolled-back transaction, an ACTIVE content type
+-- `s10relation` through the real cms_create_type_draft RPC with
+--   title    short_text
+--   related  relation, many 0..3, ordered, content -> article (cms.article.card)
+--   primary  relation, one 0..1, content -> article
+--   people   relation, many 0..2, ordered, DOMAIN -> person (public.summary)
+-- writes the same terminal active state the 001 fixture writes, installs a
+-- transaction-local editorial workflow-policy projection (never an approved
+-- production policy), seeds four ARTICLE target entries and defines the request
+-- builders pg_temp.s10r_create_request / s10r_revision_request / s10r_values /
+-- s10r_fid / s10r_rel, the relation readers and the row-count fingerprint
+-- pg_temp.s10r_counts().
+--
+-- Targets (all of the article type, owned by the organization):
+--   T1 ...301  the 001 fixture entry: version 1, creator + editor assigned
+--   T2 ...321  seeded here: version 1, creator assigned           (resolvable)
+--   T3 ...331  seeded here: NO assignment for the creator          (invisible)
+--   T4 ...341  seeded here: creator assigned, lifecycle archived   (inactive)
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table s10r_type_created on commit drop as
+select platform_api.cms_create_type_draft(
+  request || jsonb_build_object(
+    'typeKey', 's10relation', 'label', 'Relation',
+    'idempotencyKey', 's10-relation-type-0001',
+    'fields', jsonb_build_array(
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000d21',
+        'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Title', 'order', 0), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000d22',
+        'key', 'related', 'kind', 'relation', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Related', 'order', 1), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000d23',
+        'key', 'primary_ref', 'kind', 'relation', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Primary', 'order', 2), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000d24',
+        'key', 'people', 'kind', 'relation', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'People', 'order', 3), 'lifecycle', 'active')
+    ),
+    'relations', jsonb_build_array(
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000d22',
+        'targetKind', 'content', 'targetType', 'article',
+        'projectionKey', 'cms.article.card', 'cardinality', 'many',
+        'min', 0, 'max', 3, 'ordered', true, 'onUnavailable', 'omit'),
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000d23',
+        'targetKind', 'content', 'targetType', 'article',
+        'projectionKey', 'cms.article.card', 'cardinality', 'one',
+        'min', 0, 'max', 1, 'ordered', false, 'onUnavailable', 'omit'),
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000d24',
+        'targetKind', 'domain', 'targetType', 'person',
+        'projectionKey', 'public.summary', 'cardinality', 'many',
+        'min', 0, 'max', 2, 'ordered', true, 'onUnavailable', 'omit'))
+  )
+) as response
+from s10_type_request;
+
+create temp table s10r_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from s10r_type_created
+union all select 'versionId', response->>'id' from s10r_type_created
+union all select 'artifactId', response->>'schemaArtifactId' from s10r_type_created
+union all select 'artifactHash', artifact.artifact_hash::text
+  from platform_private.cms_schema_artifacts artifact
+  join s10r_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid
+union all select 'compiler', artifact.compiler_version
+  from platform_private.cms_schema_artifacts artifact
+  join s10r_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid
+union all select 'zodRef', artifact.zod_contract_ref
+  from platform_private.cms_schema_artifacts artifact
+  join s10r_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid;
+
+select ok((select count(*) = 6 from s10r_ids),
+  'the relation type compiles with title, two content relations and one domain relation');
+
+-- The same terminal active state the 001 fixture writes.
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = 'cms.entry.author',
+    activation_workflow_policy_version = 1,
+    activation_workflow_policy_hash = repeat('a', 64),
+    activation_required_decision_count = 1,
+    activation_required_capabilities = jsonb_build_array('cms.author'),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from s10r_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from s10r_ids where key = 'typeId');
+
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select jsonb_build_object(
+    'key', 'editorial', 'version', '1',
+    'policyHash', repeat('c', 64), 'riskClass', 'ordinary',
+    'requiredDecisionCount', 1,
+    'requiredCapabilities', jsonb_build_array('cms.author'),
+    'approvalEvidenceHash', repeat('d', 64)
+  )
+  where p_version_id is not null
+$body$;
+
+-- Seeded article targets T2..T4 (T1 is the 001 fixture entry).
+create or replace function pg_temp.s10r_seed_article(
+  p_entry uuid, p_revision uuid, p_lifecycle text, p_assign boolean
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle,
+    current_draft_revision_id, version, created_by, created_at, updated_at
+  )
+  select p_entry, org.value::uuid, article.value::uuid, org.value::uuid, p_lifecycle,
+         null, 1, actor.value::uuid,
+         timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+  from s10_ids org, s10_ids article, s10_ids actor
+  where org.key = 'organization' and article.key = 'typeId' and actor.key = 'creatorAuth';
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id,
+    template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+    payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at
+  )
+  select p_revision, org.value::uuid, p_entry, 1, version_row.value::uuid,
+         null, '[]'::jsonb, '[]'::jsonb, 'en-US',
+         platform_private.cms_jcs_sha256('{}'::jsonb)::char(64),
+         person.value::uuid, org.value::uuid, 'draft', 1, 'valid', '{}'::jsonb,
+         timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+  from s10_ids org, s10_ids version_row, s10_ids person
+  where org.key = 'organization' and version_row.key = 'draftVersionId'
+    and person.key = 'creatorPerson';
+  update platform_private.cms_content_entries
+  set current_draft_revision_id = p_revision
+  where id = p_entry;
+  if p_assign then
+    insert into platform_private.cms_entry_assignments(
+      owner_id, entry_id, assignee_person_id, capability_key, state, version,
+      created_at, updated_at
+    )
+    select org.value::uuid, p_entry, person.value::uuid, 'cms.author', 'active', 1,
+           timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+    from s10_ids org, s10_ids person
+    where org.key = 'organization' and person.key = 'creatorPerson';
+  end if;
+end;
+$body$;
+
+select pg_temp.s10r_seed_article(
+  'a9100000-0000-4000-8000-000000000321', 'a9100000-0000-4000-8000-000000000322', 'active', true);
+select pg_temp.s10r_seed_article(
+  'a9100000-0000-4000-8000-000000000331', 'a9100000-0000-4000-8000-000000000332', 'active', false);
+select pg_temp.s10r_seed_article(
+  'a9100000-0000-4000-8000-000000000341', 'a9100000-0000-4000-8000-000000000342', 'archived', true);
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+-- Request builders.  Field ids are the fixed stable ids above.
+create or replace function pg_temp.s10r_fid(p_key text)
+returns text
+language sql
+immutable
+as $body$
+  select case p_key
+    when 'title' then 'a9100000-0000-4000-8000-000000000d21'
+    when 'related' then 'a9100000-0000-4000-8000-000000000d22'
+    when 'primary' then 'a9100000-0000-4000-8000-000000000d23'
+    when 'people' then 'a9100000-0000-4000-8000-000000000d24'
+  end
+$body$;
+
+-- A relation value over the given target ids (no version pins).
+create or replace function pg_temp.s10r_rel(variadic p_ids text[] default array[]::text[])
+returns jsonb
+language sql
+immutable
+as $body$
+  select jsonb_build_object('targets', coalesce(
+    (select jsonb_agg(jsonb_build_object('targetId', id) order by ord)
+     from unnest(p_ids) with ordinality as t(id, ord)), '[]'::jsonb))
+$body$;
+
+-- A relation value over one target pinned to p_pin (a Version string or null).
+create or replace function pg_temp.s10r_rel_pinned(p_id text, p_pin text)
+returns jsonb
+language sql
+immutable
+as $body$
+  select jsonb_build_object('targets', jsonb_build_array(jsonb_build_object(
+    'targetId', p_id, 'expectedTargetVersion', to_jsonb(p_pin))))
+$body$;
+
+create or replace function pg_temp.s10r_values(p_by_key jsonb)
+returns jsonb
+language sql
+stable
+as $body$
+  select coalesce(jsonb_object_agg(pg_temp.s10r_fid(entry.key), entry.value), '{}'::jsonb)
+  from jsonb_each(p_by_key) entry
+$body$;
+
+create or replace function pg_temp.s10r_create_request(p_by_key jsonb, p_key text)
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'contentTypeId', (select value from s10r_ids where key = 'typeId'),
+    'contentTypeVersionId', (select value from s10r_ids where key = 'versionId'),
+    'locale', 'en-US',
+    'changedPaths', (select jsonb_agg('/fields/' || pg_temp.s10r_fid(entry.key) order by entry.key)
+                     from jsonb_each(p_by_key) entry),
+    'values', pg_temp.s10r_values(p_by_key),
+    'schemaArtifact', jsonb_build_object(
+      'id', (select value from s10r_ids where key = 'artifactId'),
+      'contentTypeVersionId', (select value from s10r_ids where key = 'versionId'),
+      'artifactHash', (select value from s10r_ids where key = 'artifactHash'),
+      'compilerVersion', (select value from s10r_ids where key = 'compiler'),
+      'zodContractRef', (select value from s10r_ids where key = 'zodRef')),
+    'validatorRefs', '[]'::jsonb,
+    'workflowPolicy', jsonb_build_object(
+      'key', 'editorial', 'version', '1', 'policyHash', repeat('c', 64),
+      'riskClass', 'ordinary', 'requiredDecisionCount', 1,
+      'requiredCapabilities', jsonb_build_array('cms.author'),
+      'approvalEvidenceHash', repeat('d', 64)),
+    'activationEvidence', jsonb_build_object(
+      'key', 'cms.entry.author', 'version', '1', 'policyHash', repeat('a', 64),
+      'riskClass', 'ordinary', 'requiredDecisionCount', 1,
+      'requiredCapabilities', jsonb_build_array('cms.author'),
+      'approvalEvidenceHash', repeat('b', 64)),
+    'idempotencyKey', p_key,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000092',
+      'correlationId', 'a9100000-0000-4000-8000-000000000093'))
+$body$;
+
+create or replace function pg_temp.s10r_revision_request(
+  p_entry text, p_by_key jsonb, p_base text, p_expected text, p_key text
+)
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'entryId', p_entry,
+    'baseRevision', p_base,
+    'changedPaths', (select jsonb_agg('/fields/' || pg_temp.s10r_fid(entry.key) order by entry.key)
+                     from jsonb_each(p_by_key) entry),
+    'values', pg_temp.s10r_values(p_by_key),
+    'locale', 'en-US',
+    'expectedVersion', p_expected,
+    'ifMatch', p_expected,
+    'idempotencyKey', p_key,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+      'correlationId', 'a9100000-0000-4000-8000-000000000095'))
+$body$;
+
+-- SQL text of one create / revision call (for the probe helpers).
+create or replace function pg_temp.s10r_create_sql(p_by_key jsonb, p_key text)
+returns text
+language sql
+stable
+as $body$
+  select 'select platform_api.cms_create_entry('
+    || quote_literal(pg_temp.s10r_create_request(p_by_key, p_key)::text) || '::jsonb)'
+$body$;
+
+create or replace function pg_temp.s10r_revision_sql(
+  p_entry text, p_by_key jsonb, p_base text, p_expected text, p_key text
+)
+returns text
+language sql
+stable
+as $body$
+  select 'select platform_api.cms_create_revision('
+    || quote_literal(pg_temp.s10r_revision_request(
+         p_entry, p_by_key, p_base, p_expected, p_key)::text) || '::jsonb)'
+$body$;
+
+-- The ordered relation rows of one revision field: target ids, in position order.
+create or replace function pg_temp.s10r_targets(p_revision uuid, p_field_key text)
+returns text[]
+language sql
+stable
+as $body$
+  select coalesce(array_agg(relation.target_id::text order by relation.position), array[]::text[])
+  from platform_private.cms_entry_relations relation
+  where relation.revision_id = p_revision
+    and relation.field_id = pg_temp.s10r_fid(p_field_key)::uuid
+$body$;
+
+create or replace function pg_temp.s10r_positions(p_revision uuid, p_field_key text)
+returns integer[]
+language sql
+stable
+as $body$
+  select coalesce(array_agg(relation.position order by relation.position), array[]::integer[])
+  from platform_private.cms_entry_relations relation
+  where relation.revision_id = p_revision
+    and relation.field_id = pg_temp.s10r_fid(p_field_key)::uuid
+$body$;
+
+-- Row counts across every table a write command may touch.
+create or replace function pg_temp.s10r_counts()
+returns text
+language sql
+stable
+as $body$
+  select (select count(*) from platform_private.cms_content_entries)::text || '/'
+      || (select count(*) from platform_private.cms_entry_revisions)::text || '/'
+      || (select count(*) from platform_private.cms_entry_field_values)::text || '/'
+      || (select count(*) from platform_private.cms_entry_relations)::text || '/'
+      || (select count(*) from platform_private.cms_conflict_records)::text || '/'
+      || (select count(*) from platform_private.idempotency_records)::text || '/'
+      || (select count(*) from platform_private.outbox_events)::text || '/'
+      || (select count(*) from audit_private.audit_events)::text
+$body$;

@@ -24,6 +24,7 @@ const body = {
 const resource: EntryRevisionResource = {
   id: restoredRevisionId,
   version: '1',
+  entryVersion: '3',
   createdAt: '2026-09-26T12:00:00.000Z',
   updatedAt: '2026-09-26T12:00:00.000Z',
   state: 'draft',
@@ -154,7 +155,7 @@ describe('CMS-03B-04 protected revision-restore route', () => {
     const response = await post(app);
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(resource);
-    expect(response.headers.get('etag')).toBe('"1"');
+    expect(response.headers.get('etag')).toBe('"3"');
     expect(response.headers.get('location')).toBe(
       `/api/v1/cms/entries/${entryId}/revisions/${restoredRevisionId}`,
     );

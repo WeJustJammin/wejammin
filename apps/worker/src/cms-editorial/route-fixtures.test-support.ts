@@ -31,9 +31,11 @@ export const instant = '2026-09-26T12:00:00.000Z';
 export const resource = (
   id: string,
   revisionNumber: string,
+  entryVersion = '2',
 ): EntryRevisionResource => ({
   id,
-  version: '2',
+  version: '1',
+  entryVersion,
   createdAt: instant,
   updatedAt: instant,
   state: 'draft',
@@ -57,7 +59,7 @@ export const restorePath = `/api/v1/cms/entries/${entryId}/revisions/${baseRevis
 export const revisionBody = {
   entryId,
   baseRevision: '1',
-  changedPaths: [`/fields/${fieldId}/value`],
+  changedPaths: [`/fields/${fieldId}`],
   values: { [fieldId]: 'Hello' },
   locale: 'en-US',
   expectedVersion: '1',
@@ -189,7 +191,7 @@ export const harness = (overrides: HarnessOverrides = {}) => {
   const resolveConflict = vi.fn(async () => ({
     ok: true as const,
     value: {
-      ...resource(resolvedRevisionId, '3'),
+      ...resource(resolvedRevisionId, '3', '3'),
       parentRevisionIds: [baseRevisionId, theirsRevisionId],
       conflictId,
     },
@@ -202,7 +204,7 @@ export const harness = (overrides: HarnessOverrides = {}) => {
     ok: true as const,
     value: {
       resource: {
-        ...resource(resolvedRevisionId, '3'),
+        ...resource(resolvedRevisionId, '3', '3'),
         parentRevisionIds: [baseRevisionId],
       },
       restoreVerification,

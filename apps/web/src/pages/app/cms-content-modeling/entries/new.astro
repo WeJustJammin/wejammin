@@ -1,47 +1,59 @@
 ---
+import { env } from 'cloudflare:workers';
+
 import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
-import {
-  CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY,
-  CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON,
-} from '../../../../components/cms-editorial/cms-editorial-entry-create';
+import CmsEditorialEntryCreateForm from '../../../../components/cms-editorial/CmsEditorialEntryCreateForm.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadEntryCreatePage } from '../../../../components/cms-editorial-pages/load-entry-create-page';
 
 export const prerender = false;
 
 Astro.response.headers.set('Cache-Control', 'no-store');
-Astro.response.status = 503;
 
 /*
- * Fail-closed create surface for CMS-03B-10.
- *
- * FE03 authorises the protected create, packages/contracts/src/cms-editorial
- * registers it, and apps/web/src/server/cms-editorial-platform-mutation.ts now
- * provides a real first-party proxy, and the Worker serves the protected
- * create route. The locked request still requires workflowPolicy evidence
- * that no protected served response exposes, while the private policy source
- * is unconfigured. A browser cannot populate it without fabrication.
- *
- * Rendering a form now would let an author fill in a draft that cannot be
- * committed, so every method answers one honest 503 instead. The precise reason
- * comes from CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY below.
+ * Protected create surface for CMS-03B-10. All behavior lives in the tested
+ * loader: it reads the CMS-03B-14 AuthoringContext through the first-party
+ * proxy and returns a verified view, one closed state, or a sign-in redirect.
+ * The island echoes the frozen evidence back unmodified; the user never types
+ * schema, policy or evidence.
  */
-
-/*
- * Both the safe copy and the reason come from the owning module, so the message
- * stays traceable to the boundary rather than drifting into the page, and so a
- * future edit to the blocker propagates without a second copy. Nothing here
- * names an entry, so the page cannot disclose whether one already exists. Astro
- * escapes both strings when it renders them.
- */
-const reason = CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY.blocker;
-const copy = CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON;
+const outcome = await loadEntryCreatePage({
+  request: Astro.request,
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
 ---
 
 <CmsEditorialDocument
-  title="Create entry"
-  heading="Entry creation is unavailable"
-  description="Entry creation is unavailable."
+  title={title}
+  heading={heading}
+  description="Create an entry."
   systemStatusLink
 >
-  <p>{copy}</p>
-  <p>{reason}</p>
+  {
+    outcome.kind === 'view' ? (
+      <section aria-labelledby="entry-create-title">
+        <h2 id="entry-create-title" tabindex="-1">
+          New entry
+        </h2>
+        <p>
+          Choose an active content type, then author its fields. The server
+          revalidates every value and derives authority on submit.
+        </p>
+        <CmsEditorialEntryCreateForm
+          types={outcome.view.types}
+          selected={outcome.view.selected}
+          fields={outcome.view.fields}
+        />
+      </section>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
 </CmsEditorialDocument>

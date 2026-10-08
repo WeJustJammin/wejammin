@@ -2,8 +2,9 @@
 
 ## Contents
 
-This directory contains web-surface styles for infrastructure pages, jobs, and
-the release/recovery status projection.
+This directory contains web-surface styles for infrastructure pages, jobs, the
+release/recovery status projection, and the CMS editorial surfaces
+(`cms-editorial.css`, imported by the editorial document shell).
 
 ## Ownership
 

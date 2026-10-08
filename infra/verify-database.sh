@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-lock_file="${TMPDIR:-/tmp}/wejammin-supabase-ci.lock"
+lock_file="${WEJAMMIN_SUPABASE_CI_LOCK:-/tmp/wejammin-supabase-ci.lock}"
 
 exec 9>"${lock_file}"
 flock --wait 600 9

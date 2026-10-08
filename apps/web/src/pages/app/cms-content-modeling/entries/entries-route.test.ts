@@ -9,9 +9,14 @@ const fromHere = (relative: string): string =>
 /*
  * These routes are read as text, not rendered. The guarantees that matter
  * here are structural — a heading focus target, a skip link, an explicit
- * status code, a real protected proxy call, and the absence of any form — so
+ * status code, a real protected proxy call, and a native authoring form — so
  * asserting on the source keeps the test free of a Cloudflare runtime while
  * still failing if a route is weakened or starts fabricating data.
+ *
+ * Slice 10 WP-S10-2c rewrites this suite from the fail-closed create shell to
+ * the planned CMS-05 authoring surfaces: an active create form on new.astro and
+ * a protected draft-detail load plus editor island on [entryId].astro. It is
+ * expected to be RED until WP-S10-5 lands those surfaces.
  */
 const documentShell = readFileSync(
   fromHere('../../../../components/cms-editorial/CmsEditorialDocument.astro'),
@@ -19,10 +24,10 @@ const documentShell = readFileSync(
 );
 
 /*
- * The document shell is processed Astro markup, so its `<script src>` tags are
+ * The document shell is processed Astro markup, so its script tags are
  * bundled. A page that rebuilt the shell as a runtime HTML string would ship
- * unbuilt `.ts` URLs, so no entry route may carry a script tag or an HTML
- * string of its own.
+ * unbuilt .ts URLs, so no entry route may carry a script tag or an HTML string
+ * of its own.
  */
 const expectSharedBundledShell = (source: string): void => {
   expect(source).toContain('export const prerender = false');
@@ -43,74 +48,29 @@ const expectSharedBundledShell = (source: string): void => {
 };
 
 describe('cms editorial entries routes', () => {
-  describe('new.astro (CMS-03B-10 create surface)', () => {
-    const source = readFileSync(fromHere('./new.astro'), 'utf8');
+  /*
+   * Behavior lives in the tested page loaders and views (load-entry-*-page.test.ts,
+   * the island tests and the rendered-markup tests). What a text guard can still
+   * prove, and nothing else can, are the response invariants of the Astro file
+   * itself: it is never prerendered, never cached, uses the one bundled shell,
+   * and maps a sign-in outcome to the allowlisted 303.
+   */
+  describe.each([
+    ['new.astro', './new.astro'],
+    ['[entryId].astro', './[entryId].astro'],
+  ])('%s', (_name, relative) => {
+    const source = readFileSync(fromHere(relative), 'utf8');
 
     it('serves a no-store, non-prerendered shell with one accessible heading', () => {
       expectSharedBundledShell(source);
     });
 
-    it('stays fail-closed and fabricates no write path', () => {
-      expect(source).toContain('Astro.response.status = 503');
-      expect(source).not.toContain('<form');
-      expect(source).not.toContain('<input');
-      expect(source.toLowerCase()).not.toContain('idempotency');
-      // No submission can be attempted while the surface is disabled.
-      expect(source).not.toContain('forwardCmsEditorialEntryCreateMutation');
-    });
-
-    it('traces the disabled reason to the owning boundary', () => {
-      expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY');
-      expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_BOUNDARY.blocker');
-      expect(source).toContain('CMS_EDITORIAL_ENTRY_CREATE_DISABLED_REASON');
-      // Astro escapes the interpolated strings; no raw-HTML path is used.
-      expect(source).not.toContain('set:html');
-    });
-  });
-
-  describe('[entryId].astro (CMS-03B-11 draft-detail surface)', () => {
-    const source = readFileSync(fromHere('./[entryId].astro'), 'utf8');
-
-    it('serves a no-store, non-prerendered shell with one accessible heading', () => {
-      expectSharedBundledShell(source);
-    });
-
-    it('performs the real protected read through the first-party proxy', () => {
-      expect(source).toContain("from 'cloudflare:workers'");
-      expect(source).toContain('{ env }');
-      expect(source).toContain('forwardCmsEditorialEntryDraftDetailRead');
-      expect(source).toContain('env.PLATFORM_API');
-      expect(source).toContain('resolveCmsEditorialEntryDraftDetailPageState');
-    });
-
-    it('answers a malformed id with 404 without an upstream call', () => {
-      expect(source).toMatch(/kind === 'not-found'/u);
-      expect(source).toContain('status: 404');
-    });
-
-    it('preserves visible denial as 403 while concealing absent entries as 404', () => {
-      expect(source).toMatch(
-        /if \(upstream\.status === 403\)[\s\S]*?status: 403/u,
-      );
-      expect(source).toMatch(
-        /if \(upstream\.status === 404\)[\s\S]*?status: 404/u,
-      );
-      expect(source).toContain('This entry is not available.');
-    });
-
-    it('redirects an unauthenticated read to sign-in instead of erroring', () => {
-      expect(source).toContain('upstream.status === 401');
-      expect(source).toContain('Astro.redirect');
-    });
-
-    it('verifies the returned body against the shared resource schema', () => {
-      expect(source).toContain('CmsEditorialEntryDraftDetailResourceSchema');
-      expect(source).toContain('.safeParse(');
-      expect(source).toContain('status: 502');
+    it('turns a sign-in outcome into the allowlisted 303 redirect and nothing else', () => {
+      expect(source).toContain('Astro.redirect(outcome.location, 303)');
+      expect(source).not.toContain('Astro.redirect(`');
     });
 
     it('never echoes the requested entry id into the document', () => {
-      expect(source).not.toContain('${entryId}</');
       expect(source).not.toContain('data-entry-id');
     });
   });

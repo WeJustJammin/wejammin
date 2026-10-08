@@ -21,6 +21,7 @@ const body = {
 const resource: EntryRevisionResource = {
   id: resolvedId,
   version: '1',
+  entryVersion: '3',
   createdAt: '2026-09-26T12:00:00.000Z',
   updatedAt: '2026-09-26T12:00:00.000Z',
   state: 'draft',
@@ -120,7 +121,7 @@ describe('CMS-03B-02 protected conflict-resolution route', () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(resource);
     expect(response.headers.get('cache-control')).toBe('no-store');
-    expect(response.headers.get('etag')).toBe('"1"');
+    expect(response.headers.get('etag')).toBe('"3"');
     expect(response.headers.get('location')).toBe(
       `/api/v1/cms/entries/${entryId}/revisions/${resolvedId}`,
     );
@@ -232,6 +233,15 @@ describe('CMS-03B-02 protected conflict-resolution route', () => {
     const { app, resolveConflict } = harness();
     const response = await post(app, { ...body, expectedVersion: '3' });
     expect(response.status).toBe(422);
+    expect(
+      (
+        (await response.json()) as {
+          details: { violations: readonly { path: string }[] };
+        }
+      ).details.violations,
+    ).toEqual([
+      expect.objectContaining({ path: '/expectedVersion', code: 'mismatch' }),
+    ]);
     expect(resolveConflict).not.toHaveBeenCalled();
   });
 

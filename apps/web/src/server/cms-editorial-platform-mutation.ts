@@ -7,18 +7,24 @@ import {
 import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
-  cmsEditorialForwardedError,
 } from './cms-editorial-platform-bounded';
+import { CMS_EDITORIAL_DETAIL_POLICIES } from './cms-editorial-platform-error-details';
 import {
   CMS_EDITORIAL_PLATFORM_API_ORIGIN,
   cmsEditorialCopyResponseHeaders,
-  cmsEditorialCsrfCookie,
   cmsEditorialForwardHeaders,
   cmsEditorialLocalError,
   cmsEditorialPrintableToken,
-  cmsEditorialSameOriginRequest,
-  isCmsEditorialPlatformBinding,
+  cmsEditorialValidationError,
 } from './cms-editorial-platform-shared';
+import {
+  admitCmsEditorialWrite,
+  cmsEditorialCsrfToken,
+  cmsEditorialJsonMedia,
+  cmsEditorialUnverifiedSuccess,
+  dispatchCmsEditorialWrite,
+  relayCmsEditorialWriteFailure,
+} from './cms-editorial-platform-write';
 
 /**
  * Server-only first-party proxy for the locked CMS-03B-10 entry create.
@@ -40,26 +46,31 @@ import {
 
 export const CMS_EDITORIAL_ENTRY_CREATE_PATH = '/api/v1/cms/entries';
 
+const hasNoStore = (response: Response): boolean =>
+  response.headers
+    .get('cache-control')
+    ?.split(',')
+    .some((token) => token.trim().toLowerCase() === 'no-store') ?? false;
+
 export const forwardCmsEditorialEntryCreateMutation = async (
   request: Request,
   binding: unknown,
 ): Promise<Response> => {
-  if (!isCmsEditorialPlatformBinding(binding) || request.method !== 'POST')
-    return cmsEditorialLocalError(request, 503);
-  if (!cmsEditorialSameOriginRequest(request))
-    return cmsEditorialLocalError(request, 403);
+  const admitted = admitCmsEditorialWrite(request, binding);
+  if (admitted instanceof Response) return admitted;
 
   // CMS-03B-10 declares no query member, so an undeclared query is refused
   // here rather than dropped on the way to the protected Worker.
   if (new URL(request.url).search !== '')
     return cmsEditorialLocalError(request, 400);
 
-  const csrfToken = request.headers.get('x-csrf-token');
-  if (
-    !cmsEditorialPrintableToken(csrfToken, 512) ||
-    cmsEditorialCsrfCookie(request) !== csrfToken
-  )
-    return cmsEditorialLocalError(request, 403);
+  const csrfToken = cmsEditorialCsrfToken(request);
+  if (csrfToken instanceof Response) return csrfToken;
+  // The Worker answers valid JSON sent under another media type with a 415; the
+  // proxy re-stamps JSON on the way upstream, so it must refuse it here or the
+  // Worker's check would be bypassed (AC049).
+  const media = cmsEditorialJsonMedia(request);
+  if (media instanceof Response) return media;
 
   const idempotencyKey = request.headers.get('idempotency-key');
   // CMS-03B-10 requires no If-Match and does not include the header in its
@@ -73,56 +84,79 @@ export const forwardCmsEditorialEntryCreateMutation = async (
     !cmsEditorialPrintableToken(idempotencyKey, 128) ||
     (idempotencyKey?.length ?? 0) < 8
   )
-    return cmsEditorialLocalError(request, 400);
+    return cmsEditorialLocalError(request, 400, undefined, undefined, {
+      violations: [
+        {
+          path: '/idempotencyKey',
+          code: 'invalid_value',
+          message: 'The value is invalid.',
+        },
+      ],
+    });
 
   // The body is read under the locked 256 KiB cap before any contract parse,
   // so an oversize payload is refused without being buffered in full.
   const body = await cmsEditorialBoundedRequestJson(request);
   if (!body.ok) return cmsEditorialLocalError(request, 400);
   const parsed = EntryCreateRequestSchema.safeParse(body.value);
-  if (!parsed.success) return cmsEditorialLocalError(request, 422);
+  if (!parsed.success)
+    return cmsEditorialValidationError(request, 422, parsed.error.issues);
 
   const headers = cmsEditorialForwardHeaders(request);
   headers.set('content-type', 'application/json');
-  headers.set('x-csrf-token', csrfToken as string);
+  headers.set('x-csrf-token', csrfToken);
   headers.set('idempotency-key', idempotencyKey as string);
 
-  let upstream: Response;
-  try {
-    upstream = await binding.fetch(
-      new Request(
-        `${CMS_EDITORIAL_PLATFORM_API_ORIGIN}${CMS_EDITORIAL_ENTRY_CREATE_PATH}`,
-        { method: 'POST', headers, body: JSON.stringify(parsed.data) },
-      ),
-    );
-  } catch {
-    return cmsEditorialLocalError(request, 503);
-  }
-  if (!(upstream instanceof Response))
-    return cmsEditorialLocalError(request, 503);
+  const sent = await dispatchCmsEditorialWrite(
+    request,
+    admitted.binding,
+    CMS_EDITORIAL_ENTRY_CREATE_PATH,
+    headers,
+    JSON.stringify(parsed.data),
+  );
+  if (sent instanceof Response) return sent;
+  const { upstream } = sent;
 
   if (!upstream.ok)
-    return cmsEditorialForwardedError(
+    return relayCmsEditorialWriteFailure(
       request,
       upstream,
       editorialEntryCreateErrors,
+      CMS_EDITORIAL_DETAIL_POLICIES.valueWrite,
     );
 
   // A create is only a create at 201. The body must be the strict create
   // resource and the Location must resolve to the entry the resource itself
   // names; otherwise this is not the create the contract promises and it must
   // never be relayed as one.
-  if (upstream.status !== 201) return cmsEditorialLocalError(request, 502);
+  if (upstream.status !== 201) return cmsEditorialUnverifiedSuccess(request);
   const location = upstream.headers.get('location');
   if (location === null || location.length === 0 || location.length > 2_048)
-    return cmsEditorialLocalError(request, 502);
+    return cmsEditorialUnverifiedSuccess(request);
   const resource = await cmsEditorialBoundedResponseJson(upstream);
-  if (!resource.ok) return cmsEditorialLocalError(request, 502);
+  if (!resource.ok) return cmsEditorialUnverifiedSuccess(request);
   const parsedResource = EntryCreateResourceSchema.safeParse(resource.value);
-  if (!parsedResource.success) return cmsEditorialLocalError(request, 502);
-  const locationTarget = location.split('?')[0] ?? '';
-  if (!locationTarget.endsWith('/' + parsedResource.data.entry.id))
-    return cmsEditorialLocalError(request, 502);
+  if (!parsedResource.success) return cmsEditorialUnverifiedSuccess(request);
+  const expectedLocation = `${CMS_EDITORIAL_ENTRY_CREATE_PATH}/${parsedResource.data.entry.id}`;
+  const locationIsCanonical = (() => {
+    try {
+      const target = new URL(location, CMS_EDITORIAL_PLATFORM_API_ORIGIN);
+      return (
+        target.origin === CMS_EDITORIAL_PLATFORM_API_ORIGIN &&
+        target.pathname === expectedLocation &&
+        target.search === '' &&
+        target.hash === ''
+      );
+    } catch {
+      return false;
+    }
+  })();
+  if (
+    !locationIsCanonical ||
+    upstream.headers.get('etag') !== `"${parsedResource.data.entry.version}"` ||
+    !hasNoStore(upstream)
+  )
+    return cmsEditorialUnverifiedSuccess(request);
   return new Response(JSON.stringify(parsedResource.data), {
     status: 201,
     statusText: upstream.statusText,

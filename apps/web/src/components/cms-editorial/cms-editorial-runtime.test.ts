@@ -15,9 +15,13 @@ const REVISION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132df';
 const SCHEMA_VERSION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132de';
 const REQUEST_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132d9';
 
+// `version` is the immutable revision snapshot's own version (always '1');
+// `entryVersion` is the committed entry version and the only valid next
+// If-Match (lane G contract: EntryRevisionResource.entryVersion).
 const revisionResource = () => ({
   id: REVISION_ID,
-  version: '12',
+  version: '1',
+  entryVersion: '12',
   createdAt: '2026-09-26T12:00:00+00:00',
   updatedAt: '2026-09-26T12:00:00+00:00',
   state: 'draft',
@@ -247,6 +251,53 @@ describe('executeCmsEditorialRevisionMutation outcomes', () => {
     ]);
   });
 
+  it('keeps a typed reason token from the closed vocabulary and drops any other', async () => {
+    const withReason = (reasonCode: unknown) =>
+      submit(async () =>
+        jsonResponse(422, {
+          code: 'VALIDATION_FAILED',
+          message: 'Request failed validation.',
+          requestId: REQUEST_ID,
+          details: {
+            reasonCode,
+            violations: [{ path: '/values/' + FIELD_A, code: 'x' }],
+          },
+        }),
+      );
+    expect((await withReason('rich_text_not_canonical')).reasonCode).toBe(
+      'rich_text_not_canonical',
+    );
+    expect((await withReason('object_property_invalid')).reasonCode).toBe(
+      'object_property_invalid',
+    );
+    // A foreign token, a non-string and markup never reach the UI copy.
+    expect((await withReason('provider stack trace')).reasonCode).toBeNull();
+    expect((await withReason('<script>')).reasonCode).toBeNull();
+    expect((await withReason(42)).reasonCode).toBeNull();
+    expect((await withReason(undefined)).reasonCode).toBeNull();
+  });
+
+  it('reports an unverifiable body as unknown when the proxy marked the outcome unknown', async () => {
+    const marked = await submit(
+      async () =>
+        new Response('upstream exploded', {
+          status: 502,
+          headers: { 'x-cms-editorial-outcome': 'unknown' },
+        }),
+    );
+    expect(marked.outcome).toBe('unknown');
+    expect(marked.outcomeUnknown).toBe(true);
+    expect(marked.errorDetails).toEqual([]);
+    // A marker on any other value is not a marker.
+    const other = await submit(async () =>
+      jsonResponse(503, apiError('DEPENDENCY_UNAVAILABLE'), {
+        'x-cms-editorial-outcome': 'definite',
+      }),
+    );
+    expect(other.outcome).toBe('degraded');
+    expect(other.outcomeUnknown).toBe(false);
+  });
+
   it('ignores a non-ApiError body instead of echoing it to the UI', async () => {
     const result = await submit(async () =>
       jsonResponse(503, { message: 'upstream exploded' }),
@@ -328,12 +379,14 @@ describe('applyCmsEditorialAcceptedRevision', () => {
     fields: [],
   };
 
-  it('advances the base revision and expected version together', () => {
+  it('advances the base revision and the ENTRY version together, never the revision snapshot version', () => {
     const next = applyCmsEditorialAcceptedRevision(
       draft,
       revisionResource() as never,
     );
     expect(next.baseRevision).toBe('5');
+    // The resource's own `version` is '1'; adopting it would make the second
+    // autosave a stale-version 409.
     expect(next.expectedVersion).toBe('12');
     expect(next.entryId).toBe(ENTRY_ID);
   });

@@ -21,14 +21,26 @@ import {
 } from './models.ts';
 import {
   Bcp47Schema,
-  JsonPointerSchema,
+  FieldPointerSchema,
   cmsEditorialJsonDepth,
 } from './primitives.ts';
 
-/** BE03b `EntryRevisionResource`: strict meta plus the closed revision shape. */
+/**
+ * BE03b `EntryRevisionResource`: strict meta plus the closed revision shape.
+ *
+ * Two versions travel on this resource and they are never interchangeable.
+ * `version` is the revision snapshot's own envelope version: an immutable
+ * revision is created once, so it is always `1` and is NOT a CAS operand.
+ * `entryVersion` is the ContentEntry aggregate version this commit produced
+ * (the version the request's `expectedVersion` named, plus one): it is the ONLY
+ * value a client may send as the next `expectedVersion` / strong `If-Match`, and
+ * the strong `ETag` of the 201 response is exactly `"{entryVersion}"`. Adopting
+ * `version` as the next precondition would make every second autosave a 409.
+ */
 export const EntryRevisionResourceSchema = z
   .strictObject({
     ...entryRevisionResourceMetaShape,
+    entryVersion: CmsVersionSchema,
     state: EntryRevisionStateSchema,
     entryId: CmsUuidSchema,
     revisionNumber: CmsVersionSchema,
@@ -100,7 +112,7 @@ export const ConflictRecordResourceSchema = z
     yoursSource: ConflictYoursSourceSchema,
     proposedValues: ConflictRecordProposedValuesSchema.nullable(),
     proposedValuesHash: CmsHashSchema.nullable(),
-    changedPaths: z.array(JsonPointerSchema).min(1).max(128).readonly(),
+    changedPaths: z.array(FieldPointerSchema).min(1).max(128).readonly(),
     baseHash: CmsHashSchema,
     theirsHash: CmsHashSchema,
     yoursHash: CmsHashSchema,

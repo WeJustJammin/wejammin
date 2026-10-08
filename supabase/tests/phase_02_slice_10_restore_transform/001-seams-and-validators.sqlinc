@@ -1,0 +1,368 @@
+-- CMS-03B-04 restore: the observation helper, the revalidation seams and the
+-- per-kind source-side validation.
+--
+-- Every assertion about a seam is paired with a positive control, so a seam can
+-- never pass because an unrelated gate fired first.
+
+-- Calls the restore command, then reads the new draft back INSIDE the same
+-- rolled-back probe so a probe can assert persisted effects.  p_replays extra
+-- calls repeat p_replay_request (default: the same request) after the entry has
+-- advanced, to observe the replay disposition.  Counts, hashes and the forged
+-- test values are observed; this is test-only instrumentation, not an effect
+-- of the command.
+create or replace function pg_temp.s10r_observe(
+  p_request jsonb,
+  p_replays integer default 0,
+  p_replay_request jsonb default null
+)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  first_response jsonb;
+  replay_response jsonb;
+  new_revision uuid;
+  new_schema uuid;
+  observed_entry_id uuid := (p_request->>'entryId')::uuid;
+  source_id uuid := (p_request->>'revisionId')::uuid;
+begin
+  first_response := platform_api.cms_restore_revision(p_request);
+  new_revision := (first_response->'resource'->>'id')::uuid;
+  new_schema := (first_response->'resource'->>'schemaVersionId')::uuid;
+  if p_replays > 0 then
+    replay_response := platform_api.cms_restore_revision(
+      coalesce(p_replay_request, p_request)
+    );
+  end if;
+  return jsonb_build_object(
+    'response', first_response,
+    'replay', replay_response,
+    'replayEqual', replay_response is not distinct from first_response,
+    'newPayloadHash', (select pg_catalog.btrim(revision.payload_hash::text)
+      from platform_private.cms_entry_revisions revision
+      where revision.id = new_revision),
+    'recomputedPayloadHash', platform_private.cms_jcs_sha256((
+      select coalesce(jsonb_object_agg(stored.field_id::text, stored.value), '{}'::jsonb)
+      from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision)),
+    'copiedHashesRecomputed', (select coalesce(bool_and(
+        pg_catalog.btrim(stored.value_hash::text) is not distinct from case
+          when jsonb_typeof(stored.value) = 'null' then null
+          else platform_private.cms_jcs_sha256(stored.value) end), false)
+      from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision),
+    'copiedCount', (select count(*) from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision),
+    'values', (select coalesce(jsonb_object_agg(stored.field_id::text, stored.value), '{}'::jsonb)
+      from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision),
+    'provenance', (select coalesce(jsonb_object_agg(stored.field_id::text, stored.provenance), '{}'::jsonb)
+      from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision),
+    'valueHashes', (select coalesce(jsonb_object_agg(
+        stored.field_id::text, pg_catalog.btrim(stored.value_hash::text)), '{}'::jsonb)
+      from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision),
+    'valuesByDefinition', (select coalesce(bool_and(
+        definition.content_type_version_id = new_schema
+        and definition.stable_field_id = stored.field_id), false)
+      from platform_private.cms_entry_field_values stored
+      join platform_private.cms_field_definition_versions definition
+        on definition.id = stored.field_definition_id
+      where stored.revision_id = new_revision),
+    'relationCount', (select count(*) from platform_private.cms_entry_relations relation
+      where relation.revision_id = new_revision),
+    'relationsRebound', (select coalesce(bool_and(
+        definition.content_type_version_id = new_schema
+        and definition.stable_field_id = relation.field_id), false)
+      from platform_private.cms_entry_relations relation
+      join platform_private.cms_field_definition_versions definition
+        on definition.id = relation.field_definition_id
+      where relation.revision_id = new_revision),
+    'sourceUnchanged', (select revision.state = 'draft'
+        and revision.version = 1
+        and revision.updated_at = revision.created_at
+        and platform_private.cms_jcs_sha256((
+          select coalesce(jsonb_object_agg(stored.field_id::text, stored.value), '{}'::jsonb)
+          from platform_private.cms_entry_field_values stored
+          where stored.revision_id = revision.id)) = pg_catalog.btrim(revision.payload_hash::text)
+      from platform_private.cms_entry_revisions revision
+      where revision.id = source_id),
+    'revisionCount', (select count(*) from platform_private.cms_entry_revisions revision
+      where revision.entry_id = observed_entry_id),
+    'manifestCount', (select count(*) from platform_private.cms_restore_chain_manifests),
+    'outboxCount', pg_temp.s10_outbox_count('cms.entry.revision-created.v1', observed_entry_id),
+    'outboxPayload', pg_temp.s10_outbox_payload('cms.entry.revision-created.v1', observed_entry_id),
+    'auditCount', pg_temp.s10_audit_count('cms.entry.revision.restore', observed_entry_id),
+    'reservationCount', pg_temp.s10_reservation_count(
+      (select value::uuid from s10_ids where key = 'creatorAuth'), 'CMS-03B-04'),
+    'reservationState', pg_temp.s10_reservation_status(p_request->>'idempotencyKey'),
+    'storedResponseEqual', (select record.response_ref->'safeHeaders'->'response'
+        is not distinct from first_response
+      from platform_private.idempotency_records record
+      where record.key_hash = platform_private.cms_key_hash(p_request->>'idempotencyKey'))
+  );
+end;
+$body$;
+
+-- Stable field ids of the restore probe type.
+create or replace function pg_temp.s10r_field(p_number integer)
+returns uuid
+language sql
+immutable
+as $body$
+  select ('a9100000-0000-4000-8000-' || lpad(p_number::text, 12, '0'))::uuid
+$body$;
+
+-- Guarded call of the per-value revalidation seam: an absent function or a
+-- raising validator resolves to false instead of aborting the plan, so every
+-- negative assertion below is paired with a positive control.
+create or replace function pg_temp.s10r_seam_for(
+  p_version uuid,
+  p_field uuid,
+  p_value jsonb,
+  p_provenance text default 'authored'
+)
+returns boolean
+language plpgsql
+stable
+as $body$
+begin
+  return coalesce(platform_private.cms_restore_source_side_valid(
+    p_version, p_field, p_value, p_provenance
+  ), false);
+exception
+  when others then
+    return false;
+end;
+$body$;
+
+-- The same call against the restore probe type by field number.
+create or replace function pg_temp.s10r_seam(
+  p_field integer,
+  p_value jsonb,
+  p_provenance text default 'authored'
+)
+returns boolean
+language sql
+stable
+as $body$
+  select pg_temp.s10r_seam_for(
+    (select value::uuid from s10_ids where key = 'restoreVersionId'),
+    pg_temp.s10r_field(p_field), p_value, p_provenance)
+$body$;
+
+-- A forged same-tenant article entry to relate to, and a forged entry owned by
+-- another party, so relation re-resolution is tested against real rows.
+create or replace function pg_temp.s10r_forge_target(
+  p_slot integer,
+  p_foreign boolean default false
+)
+returns uuid
+language plpgsql
+as $body$
+declare
+  snapshot_time constant timestamptz := timestamptz '2026-09-26T12:00:00Z';
+  organization_id uuid := (select value::uuid from s10_ids where key = 'organization');
+  -- A foreign target keeps the owner of its content type (the entry/type owner
+  -- FK) but names another party, so only the tenant/party rule can refuse it.
+  owner_party uuid := case when p_foreign
+    then (select value::uuid from s10_ids where key = 'strangerPerson')
+    else organization_id end;
+  target_id uuid := pg_temp.s10r_id(p_slot, 1);
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle,
+    current_draft_revision_id, version, created_by, created_at, updated_at
+  ) values (
+    target_id, organization_id,
+    (select value::uuid from s10_ids where key = 'typeId'), owner_party,
+    'active', null, 1,
+    (select value::uuid from s10_ids where key = 'creatorAuth'),
+    snapshot_time, snapshot_time
+  );
+  return target_id;
+end;
+$body$;
+
+-- A forged template version declaring compatibility with one content type.
+create or replace function pg_temp.s10r_forge_template(p_compatible_type uuid)
+returns uuid
+language plpgsql
+as $body$
+declare
+  snapshot_time constant timestamptz := timestamptz '2026-09-26T12:00:00Z';
+  template_id uuid := 'a9100000-0000-4000-8000-000000007501';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_template_versions(
+    id, owner_id, state, version, created_at, updated_at, template_key,
+    compatible_type_ids, slots, reserved_regions, bindings, locale, audience,
+    content_hash, block_registry_digest, created_by
+  ) values (
+    template_id, (select value::uuid from s10_ids where key = 'organization'),
+    'draft', 1, snapshot_time, snapshot_time, 's10-restore-template',
+    jsonb_build_array(p_compatible_type::text), '[]'::jsonb,
+    jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+    '{}'::jsonb, 'en-US', 'public', repeat('a', 64), repeat('b', 64),
+    (select value::uuid from s10_ids where key = 'creatorAuth')
+  );
+  return template_id;
+end;
+$body$;
+
+-- ---------------------------------------------------------------------------
+-- Guards: the registry, the real template seam, and the revalidation seam.
+-- ---------------------------------------------------------------------------
+select ok(
+  exists (
+    select 1 from platform_private.cms_schema_transform_registry registry
+    where registry.transform_key = 'identity.revalidate'
+  ) and exists (
+    select 1 from platform_private.cms_schema_transform_registry registry
+    where registry.transform_key = 'default.fill_literal'
+  ),
+  'the transform registry is seeded with identity.revalidate and default.fill_literal'
+);
+
+-- The code/test guard once named a seam (cms_template_gate) that does not exist;
+-- the real private seam is cms_successor_template_gate, shared with the 03a
+-- successor flow, and the restore command must call exactly that one.
+select ok(
+  pg_temp.s10_fn_exists(
+    'platform_private', 'cms_successor_template_gate',
+    'uuid, uuid, uuid, uuid, uuid, jsonb'
+  )
+    and not exists (
+      select 1 from pg_proc proc_row
+      join pg_namespace ns on ns.oid = proc_row.pronamespace
+      where ns.nspname = 'platform_private'
+        and proc_row.proname = 'cms_template_gate'
+    )
+    and exists (
+      select 1 from pg_proc proc_row
+      join pg_namespace ns on ns.oid = proc_row.pronamespace
+      where ns.nspname = 'platform_private'
+        and proc_row.proname = 'cms_restore_revision'
+        and pg_get_functiondef(proc_row.oid) like '%cms_successor_template_gate(%'
+    ),
+  'the restore command re-resolves the template through the real private cms_successor_template_gate seam'
+);
+
+select ok(
+  pg_temp.s10_fn_exists(
+    'platform_private', 'cms_restore_source_side_valid', 'uuid, uuid, jsonb, text'
+  )
+    and not pg_temp.s10_fn_privilege(
+      'platform_private', 'cms_restore_source_side_valid',
+      'uuid, uuid, jsonb, text', 'authenticated'
+    )
+    and not pg_temp.s10_fn_privilege(
+      'platform_private', 'cms_restore_source_side_valid',
+      'uuid, uuid, jsonb, text', 'anon'
+    )
+    and not pg_temp.s10_fn_privilege(
+      'platform_private', 'cms_restore_source_side_valid',
+      'uuid, uuid, jsonb, text', 'service_role'
+    )
+    and not has_function_privilege(
+      'public',
+      to_regprocedure(
+        'platform_private.cms_restore_source_side_valid(uuid,uuid,jsonb,text)'
+      ), 'EXECUTE'
+    ),
+  'the restore source-side validator exists and is executable by no API role'
+);
+
+select ok(
+  (
+    select count(*) = 8
+      and bool_and(
+        owner_role.rolname = 'wejammin_cms_definer'
+        or proc_row.proname = 'cms_restore_chain_manifest_id'
+      )
+    from pg_proc proc_row
+    join pg_namespace ns on ns.oid = proc_row.pronamespace
+    join pg_roles owner_role on owner_role.oid = proc_row.proowner
+    where ns.nspname = 'platform_private'
+      and proc_row.proname in (
+        'cms_restore_revision', 'cms_restore_chain_derive',
+        'cms_restore_chain_manifest_id', 'cms_restore_chain_values',
+        'cms_restore_translate_values', 'cms_restore_relations_resolvable',
+        'cms_restore_active_schema_evidence_valid', 'cms_restore_source_side_valid'
+      )
+  )
+    and not exists (
+      select 1
+      from pg_proc proc_row
+      join pg_namespace ns on ns.oid = proc_row.pronamespace
+      cross join (values ('anon'), ('authenticated'), ('service_role'), ('public'))
+        roles(role_name)
+      where ns.nspname = 'platform_private'
+        and proc_row.proname like 'cms\_restore\_%'
+        and has_function_privilege(roles.role_name, proc_row.oid, 'EXECUTE')
+    ),
+  'the eight restore functions are executable by no API role and every one that reads forced-RLS rows is owned by the definer role'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_proc proc_row
+    join pg_namespace ns on ns.oid = proc_row.pronamespace
+    join pg_roles owner_role on owner_role.oid = proc_row.proowner
+    where ns.nspname = 'platform_private'
+      and proc_row.proname = 'cms_restore_revision'
+      and proc_row.prosecdef
+      and owner_role.rolname = 'wejammin_cms_definer'
+      and proc_row.proconfig @> array['search_path=""']
+  ),
+  'the restore command is a pinned-search-path definer owned by the non-BYPASSRLS definer role'
+);
+
+-- ---------------------------------------------------------------------------
+-- Per-kind revalidation through the source-side seam (target schema gate).
+-- ---------------------------------------------------------------------------
+select ok(
+  pg_temp.s10r_seam(602, '{"format":"rich_text.v1","blocks":[{"type":"paragraph","spans":[{"text":"Hello","marks":[]}]}]}'::jsonb)
+    and not pg_temp.s10r_seam(602, '{"format":"rich_text.v1","blocks":[{"type":"scripture","text":"x"}]}'::jsonb)
+    and not pg_temp.s10r_seam(602, to_jsonb('Hello'::text)),
+  'rich_text revalidates through rich_text.v1: a canonical AST passes, an unknown block kind and a raw string are refused'
+);
+
+select ok(
+  pg_temp.s10r_seam(603, '{"title":"Hero","status":"live"}'::jsonb)
+    and not pg_temp.s10r_seam(603, '{"title":"Hero","status":"live","extra":1}'::jsonb)
+    and not pg_temp.s10r_seam(603, '{"title":{"nested":true},"status":"live"}'::jsonb)
+    and not pg_temp.s10r_seam(603, '{"title":"Hero"}'::jsonb)
+    and not pg_temp.s10r_seam(603, '{"title":"Hero","status":"retired"}'::jsonb),
+  'object revalidates against its DEC-133 structure: closed keys, required properties, scalar depth and declared enum choices'
+);
+
+select ok(
+  pg_temp.s10r_seam(604, '{"targets":[{"targetId":"a9100000-0000-4000-8000-000000000301"}]}'::jsonb)
+    and not pg_temp.s10r_seam(604, '{"targets":[{"targetId":"not-a-uuid"}]}'::jsonb)
+    and not pg_temp.s10r_seam(604, to_jsonb('a9100000-0000-4000-8000-000000000301'::text)),
+  'a relation value revalidates as the ordered targets shape with canonical target identities'
+);
+
+select ok(
+  pg_temp.s10r_seam(601, to_jsonb('Title'::text))
+    and not pg_temp.s10r_seam(601, to_jsonb(7))
+    and pg_temp.s10r_seam(606, 'null'::jsonb, 'explicit_null')
+    and not pg_temp.s10r_seam(606, to_jsonb('term-1'::text)),
+  'a scalar keeps its primitive encoding and a taxonomy value, which has no value-level proof yet, fails closed'
+);
+
+select ok(
+  pg_temp.s10r_seam(601, to_jsonb('Title'::text))
+    and not pg_temp.s10r_seam_for(
+      (select value::uuid from s10_ids where key = 'restoreVersionId'),
+      (select value::uuid from s10_ids where key = 'typeFieldId'),
+      to_jsonb('Title'::text)
+    )
+    and not pg_temp.s10r_seam(601, to_jsonb('Title'::text), null),
+  'a field the target schema version does not declare, or a null provenance, is refused'
+);
+

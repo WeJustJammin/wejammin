@@ -57,7 +57,7 @@ const createRequest = (title: string) => ({
   contentTypeId: uuid,
   contentTypeVersionId: uuid2,
   locale: 'en-US',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${uuid2}`],
   values: { [uuid2]: { title } },
   schemaArtifact: {
     id: uuid,

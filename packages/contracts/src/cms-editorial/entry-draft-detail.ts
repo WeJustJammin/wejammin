@@ -109,16 +109,33 @@ export const EntryDraftRelationSchema = z.union([
 
 const draftDetailMetaSchema = z.strictObject(entryRevisionResourceMetaShape);
 
+/**
+ * BE03b `OpenConflict`: the safe pointer to the entry's currently open
+ * conflict.  It carries only the conflict identity, its version, and the
+ * divergence hash a reader compares against; the durable record's proposed
+ * values, resolver identity, and ownership stay server-side.
+ */
+const OpenConflictSchema = z
+  .strictObject({
+    conflictId: CmsUuidSchema,
+    version: CmsVersionSchema,
+    conflictHash: CmsHashSchema,
+  })
+  .readonly();
+
 /** BE03b `EntryDraftDetailResource`: the closed draft-detail envelope. */
 export const EntryDraftDetailResourceSchema = z
   .strictObject({
     entry: draftDetailMetaSchema,
     revision: draftDetailMetaSchema,
+    revisionNumber: CmsVersionSchema,
     lifecycle: EntryLifecycleSchema,
     state: EntryRevisionStateSchema,
     locale: Bcp47Schema,
     contentHash: CmsHashSchema,
+    schemaVersionId: CmsUuidSchema,
     validationState: EntryValidationStateSchema,
+    openConflict: OpenConflictSchema.nullable(),
     fields: z.array(EntryDraftFieldValueSchema).max(128).readonly(),
     relations: z.array(EntryDraftRelationSchema).max(512).readonly(),
   })

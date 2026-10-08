@@ -16,6 +16,25 @@ factor list, over AUTH-API-16 through AUTH-API-19). Shards 00, 03 and 05 treat
 [05-platform-configuration-admin.md](05-platform-configuration-admin.md) carries
 the admin MFA factor-reset form for BE05b CFG-05B-06.
 
+The 2026-10-07 Slice 11 and Slice 12 cascades (orchestrator resolutions, owner may
+override) extend [03-cms-content-modeling.md](03-cms-content-modeling.md) with the
+entry workflow page `/app/cms-content-modeling/entries/:entryId/workflow` (BE03b
+CMS-03B-15, with the review submit, schedule, preview and publish forms), the
+reviewer queue `/app/cms-content-modeling/reviews` and review detail
+`/app/cms-content-modeling/reviews/:reviewId` (CMS-03B-16 to CMS-03B-18), the
+template designer `/app/cms-content-modeling/templates/new` and
+`/app/cms-content-modeling/templates/:templateKey`, the pattern designer
+`/app/cms-content-modeling/patterns/new` and `/patterns/:patternKey`, the
+vocabulary pages `/app/cms-content-modeling/taxonomies/new` and
+`/taxonomies/:taxonomyId`, the governed review queue and detail
+`/app/cms-content-modeling/definition-reviews` and `/definition-reviews/:reviewId`
+(BE03c CMS-03C-06 to CMS-03C-11), and the entry pages `/composition`,
+`/locales/:locale` and `/related-content` under
+`/app/cms-content-modeling/entries/:entryId` (CMS-03C-02, CMS-03C-14, CMS-03C-15,
+CMS-03C-04, CMS-03C-05). CMS-03C-04 and CMS-03C-05 are no longer browser-deferred
+(DEC-114), and the schedule, publication, decision and reviewer-assignment forms
+route a missing or stale MFA to `/step-up?returnTo=` unconditionally.
+
 ## Conventions
 
 Every FE specification defines typed component props and named variants, complete IA-flow ownership, server/URL/local state, all async and error states, guarded routes with metadata, three-breakpoint behavior, WCAG 2.2 AA interaction rules, numeric performance budgets, form/auth security, exhaustive BE field/error ownership, and full source maps. Inheritance cites Shard 00 or the design system; implicit behavior is not accepted.
@@ -95,6 +114,8 @@ The next valid pipeline stage is `/plan-phase`.
 | 2026-10-02 | OD-4 for FE shard 03: locale configuration fields (supported-language tag list, source and default selects, per-language fallback order editors, successor keep/replace choice, review-changes step) with per-field validation, states and accessibility; locale variant form shows the active version's fallback chain read-only. |
 | 2026-10-02 | Slice 09 implementation reconciliation for FE shard 03: error lists use only the BE00 `DEPENDENCY_UNAVAILABLE` (502/503/504), and the DEC-108 review reconciliation covers editing a candidate in review (invalidates the review, returns to draft; approved is frozen, 409) and the `MIGRATION_SOURCE_DRIFT` recovery. |
 | 2026-10-02 | Slice 09 follow-ups reconciliation for FE shard 03: the `MIGRATION_SOURCE_DRIFT` conflict copy states that the refused action changed nothing and that a new dry run invalidates the review and returns the candidate to `draft`; `dryRunRef` is mapped with the six sealed-only members, rendered and announced only for a sealed report. |
+| 2026-10-07 | Slice 11 and Slice 12 cascade for FE shard 03: the workflow, review, queue, assignment, schedule, preview and publish surfaces; the governed review, activation, pattern, vocabulary, locale and related-content surfaces and their routes; CMS-03C-04 and CMS-03C-05 un-deferred (the CFG-05C-01 un-defer is already recorded for FE shard 05); unconditional step-up for decision, schedule, publication and assignment. |
+| 2026-10-07 | Slice 10 follow-up 2 (lane J request, DEC-139, DEC-140; orchestrator, owner may override): FE03 renders a resolved or superseded conflict as the identical not-found state and restarts the entry list from the first page on any cursor 409 including a changed collection. No route or component is added. |
 
 
 <!-- spec-graph: auto-generated -->

@@ -28,6 +28,9 @@ const operationalResponse = (url: string): Response | undefined => {
   // The [P2-S09-AC-1135] reviewer-authority sweep shares every scheduled tick.
   if (url.includes('/rest/v1/rpc/cms_sweep_expired_review_authority'))
     return Response.json({ invalidatedReviews: 0 });
+  // The BE03b advisory edit-presence expiry sweep also shares every tick.
+  if (url.includes('/rest/v1/rpc/cms_expire_edit_presence_leases'))
+    return Response.json({ expiredLeases: 0 });
   if (url.includes('/rest/v1/rpc/cms_get_operational_state_snapshot'))
     return Response.json({});
   if (url.endsWith('/graphql'))

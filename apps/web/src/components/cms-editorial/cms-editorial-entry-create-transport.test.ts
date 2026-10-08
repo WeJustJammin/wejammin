@@ -2,96 +2,17 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { cmsEditorialEntryCreateRetainsIdempotencyKey } from './cms-editorial-entry-create-transport';
 import {
-  cmsEditorialEntryCreateRetainsIdempotencyKey,
-  executeCmsEditorialEntryCreate,
-} from './cms-editorial-entry-create-transport';
-
-const CONTENT_TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
-const CONTENT_TYPE_VERSION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132db';
-const ENTRY_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dc';
-const REVISION_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dd';
-const REQUEST_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132de';
-const HASH = 'a'.repeat(64);
-const INSTANT = '2026-09-26T12:00:00+00:00';
-const PATH = '/api/v1/cms/entries';
-
-const workflowPolicy = {
-  key: 'editorial.standard',
-  version: '1',
-  policyHash: HASH,
-  riskClass: 'ordinary',
-  requiredDecisionCount: 1,
-  requiredCapabilities: [],
-  approvalEvidenceHash: HASH,
-};
-
-const createRequest = () => ({
-  contentTypeId: CONTENT_TYPE_ID,
-  contentTypeVersionId: CONTENT_TYPE_VERSION_ID,
-  locale: 'en-US',
-  changedPaths: ['/fields/' + CONTENT_TYPE_VERSION_ID],
-  values: { [CONTENT_TYPE_VERSION_ID]: { title: 'Hello' } },
-  schemaArtifact: {
-    id: CONTENT_TYPE_ID,
-    contentTypeVersionId: CONTENT_TYPE_VERSION_ID,
-    artifactHash: HASH,
-    compilerVersion: '1.0.0',
-    zodContractRef: '03a.content-type-version.v1',
-  },
-  validatorRefs: [{ key: 'sanitize.rich_text', version: '3' }],
-  workflowPolicy,
-  activationEvidence: workflowPolicy,
-});
-
-const createResource = () => ({
-  entry: { id: ENTRY_ID, version: '1', createdAt: INSTANT, updatedAt: INSTANT },
-  revision: {
-    id: REVISION_ID,
-    version: '1',
-    createdAt: INSTANT,
-    updatedAt: INSTANT,
-  },
-  revisionNumber: '1',
-  lifecycle: 'active',
-  state: 'draft',
-  locale: 'en-US',
-  contentHash: HASH,
-  validationState: 'valid',
-});
-
-const jsonResponse = (status: number, body: unknown, headers?: HeadersInit) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json', ...(headers ?? {}) },
-  });
-
-const apiError = (code: string) => ({
-  code,
-  message: 'Safe message',
-  requestId: REQUEST_ID,
-  details: {},
-});
-
-const submit = (
-  fetcher: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
-  overrides: {
-    readonly request?: unknown;
-    readonly csrfToken?: string;
-    readonly idempotencyKey?: string;
-    readonly createIdempotencyKey?: () => string;
-  } = {},
-) =>
-  executeCmsEditorialEntryCreate({
-    path: PATH,
-    request: (overrides.request ?? createRequest()) as never,
-    csrfToken: overrides.csrfToken ?? 'csrf-token',
-    idempotencyKey: overrides.idempotencyKey ?? 'idem-key-1',
-    ...(overrides.createIdempotencyKey === undefined
-      ? {}
-      : { createIdempotencyKey: overrides.createIdempotencyKey }),
-    fetcher,
-  });
+  ENTRY_ID,
+  REQUEST_ID,
+  PATH,
+  createRequest,
+  createResource,
+  jsonResponse,
+  apiError,
+  submit,
+} from './cms-editorial-entry-create-transport.test-support';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -169,6 +90,27 @@ describe('executeCmsEditorialEntryCreate verification', () => {
     );
     expect(result.outcome).toBe('unknown');
     expect(result.outcomeUnknown).toBe(true);
+  });
+
+  it('rejects a weak or missing create ETag as an unknown outcome', async () => {
+    const result = await submit(async () =>
+      jsonResponse(201, createResource(), {
+        location: '/api/v1/cms/entries/' + ENTRY_ID,
+        etag: 'W/"1"',
+      }),
+    );
+    expect(result.outcome).toBe('unknown');
+    expect(result.outcomeUnknown).toBe(true);
+  });
+
+  it('rejects an external create Location even when the body matches', async () => {
+    const result = await submit(async () =>
+      jsonResponse(201, createResource(), {
+        location: 'https://evil.example.test/api/v1/cms/entries/' + ENTRY_ID,
+      }),
+    );
+    expect(result.outcome).toBe('unknown');
+    expect(result.location).toBeNull();
   });
 
   it('rejects a 201 whose body is not a strict EntryCreateResource', async () => {

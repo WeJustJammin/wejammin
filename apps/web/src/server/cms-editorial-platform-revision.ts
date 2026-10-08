@@ -9,18 +9,23 @@ import {
 import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
-  cmsEditorialForwardedError,
 } from './cms-editorial-platform-bounded';
+import { CMS_EDITORIAL_DETAIL_POLICIES } from './cms-editorial-platform-error-details';
 import {
-  CMS_EDITORIAL_PLATFORM_API_ORIGIN,
   cmsEditorialCopyResponseHeaders,
-  cmsEditorialCsrfCookie,
   cmsEditorialForwardHeaders,
   cmsEditorialLocalError,
-  cmsEditorialPrintableToken,
-  cmsEditorialSameOriginRequest,
-  isCmsEditorialPlatformBinding,
+  cmsEditorialMismatchError,
+  cmsEditorialValidationError,
 } from './cms-editorial-platform-shared';
+import {
+  admitCmsEditorialWrite,
+  cmsEditorialCsrfToken,
+  cmsEditorialJsonMedia,
+  cmsEditorialUnverifiedSuccess,
+  dispatchCmsEditorialWrite,
+  relayCmsEditorialWriteFailure,
+} from './cms-editorial-platform-write';
 
 /** Browser-facing transport for CMS-03B-01; the Worker owns authorization. */
 export const forwardCmsEditorialRevisionMutation = async (
@@ -28,77 +33,71 @@ export const forwardCmsEditorialRevisionMutation = async (
   entryId: string | undefined,
   binding: unknown,
 ): Promise<Response> => {
-  if (!isCmsEditorialPlatformBinding(binding) || request.method !== 'POST')
-    return cmsEditorialLocalError(request, 503);
-  if (!cmsEditorialSameOriginRequest(request))
-    return cmsEditorialLocalError(request, 403);
+  const admitted = admitCmsEditorialWrite(request, binding);
+  if (admitted instanceof Response) return admitted;
 
   const path = EntryRevisionPathParamsSchema.safeParse({ entryId });
-  if (!path.success || new URL(request.url).search !== '')
+  if (!path.success)
+    return cmsEditorialValidationError(request, 400, path.error.issues);
+  if (new URL(request.url).search !== '')
     return cmsEditorialLocalError(request, 400);
-  const csrfToken = request.headers.get('x-csrf-token');
-  if (
-    !cmsEditorialPrintableToken(csrfToken, 512) ||
-    cmsEditorialCsrfCookie(request) !== csrfToken
-  )
-    return cmsEditorialLocalError(request, 403);
-
-  const media = request.headers.get('content-type')?.split(';')[0]?.trim();
-  if (media !== 'application/json') return cmsEditorialLocalError(request, 415);
+  const csrfToken = cmsEditorialCsrfToken(request);
+  if (csrfToken instanceof Response) return csrfToken;
+  const media = cmsEditorialJsonMedia(request);
+  if (media instanceof Response) return media;
   const headers = EntryRevisionHeadersSchema.safeParse({
     contentType: media,
     idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
     ifMatch: request.headers.get('if-match') ?? undefined,
   });
-  if (!headers.success) return cmsEditorialLocalError(request, 400);
+  if (!headers.success)
+    return cmsEditorialValidationError(request, 400, headers.error.issues);
 
   const body = await cmsEditorialBoundedRequestJson(request);
   if (!body.ok) return cmsEditorialLocalError(request, 400);
   const parsed = EntryRevisionRequestSchema.safeParse(body.value);
-  if (!parsed.success || parsed.data.entryId !== path.data.entryId)
-    return cmsEditorialLocalError(request, 422);
+  if (!parsed.success)
+    return cmsEditorialValidationError(request, 422, parsed.error.issues);
+  if (parsed.data.entryId !== path.data.entryId)
+    return cmsEditorialMismatchError(request, 'entryId');
   if (headers.data.ifMatch !== `"${parsed.data.expectedVersion}"`)
-    return cmsEditorialLocalError(request, 400);
+    return cmsEditorialMismatchError(request, 'expectedVersion');
 
   const route = `/api/v1/cms/entries/${path.data.entryId}/revisions`;
   const forwardedHeaders = cmsEditorialForwardHeaders(request);
   forwardedHeaders.set('content-type', 'application/json');
-  forwardedHeaders.set('x-csrf-token', csrfToken as string);
+  forwardedHeaders.set('x-csrf-token', csrfToken);
   forwardedHeaders.set('idempotency-key', headers.data.idempotencyKey);
   forwardedHeaders.set('if-match', headers.data.ifMatch);
 
-  let upstream: Response;
-  try {
-    upstream = await binding.fetch(
-      new Request(`${CMS_EDITORIAL_PLATFORM_API_ORIGIN}${route}`, {
-        method: 'POST',
-        headers: forwardedHeaders,
-        body: JSON.stringify(parsed.data),
-      }),
-    );
-  } catch {
-    return cmsEditorialLocalError(request, 503);
-  }
-  if (!(upstream instanceof Response))
-    return cmsEditorialLocalError(request, 503);
+  const sent = await dispatchCmsEditorialWrite(
+    request,
+    admitted.binding,
+    route,
+    forwardedHeaders,
+    JSON.stringify(parsed.data),
+  );
+  if (sent instanceof Response) return sent;
+  const { upstream } = sent;
   if (!upstream.ok)
-    return cmsEditorialForwardedError(
+    return relayCmsEditorialWriteFailure(
       request,
       upstream,
       editorialRevisionErrors,
+      CMS_EDITORIAL_DETAIL_POLICIES.valueWrite,
     );
 
-  if (upstream.status !== 201) return cmsEditorialLocalError(request, 502);
+  if (upstream.status !== 201) return cmsEditorialUnverifiedSuccess(request);
   const resource = await cmsEditorialBoundedResponseJson(upstream);
-  if (!resource.ok) return cmsEditorialLocalError(request, 502);
+  if (!resource.ok) return cmsEditorialUnverifiedSuccess(request);
   const validated = EntryRevisionResourceSchema.safeParse(resource.value);
   if (
     !validated.success ||
     validated.data.entryId !== path.data.entryId ||
-    upstream.headers.get('etag') !== `"${validated.data.version}"` ||
+    upstream.headers.get('etag') !== `"${validated.data.entryVersion}"` ||
     upstream.headers.get('location') !== `${route}/${validated.data.id}`
   )
-    return cmsEditorialLocalError(request, 502);
+    return cmsEditorialUnverifiedSuccess(request);
   return new Response(JSON.stringify(validated.data), {
     status: 201,
     statusText: upstream.statusText,

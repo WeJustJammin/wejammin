@@ -15,7 +15,18 @@ const field = {
   stableFieldId: uuid,
   key: 'display_name',
   kind: 'object' as const,
-  constraints: {},
+  constraints: {
+    objectStructure: {
+      properties: [
+        {
+          key: 'child',
+          kind: 'scalar' as const,
+          required: true,
+          constraints: {},
+        },
+      ],
+    },
+  },
   required: false,
   validatorKey: null,
   validatorVersion: null,
@@ -59,13 +70,13 @@ describe('bounded CMS JSON values', () => {
     expect(
       FieldDefinitionInputSchema.safeParse({
         ...field,
-        defaultValue: nested(8),
+        defaultValue: { child: 'safe' },
       }).success,
     ).toBe(true);
     expect(
       FieldDefinitionInputSchema.safeParse({
         ...field,
-        defaultValue: nested(9),
+        defaultValue: { child: { child: 'safe' } },
       }).success,
     ).toBe(false);
     expect(

@@ -1576,6 +1576,24 @@
 
 ## Structured Memory
 
+- pattern: PAT-022: Evidence runs must keep Playwright out of shared report directories; self-referential receipt guards need a two-step refresh (2026-10-08) — 2026-10-08T09:22:52.150Z
+- decision: DEC-148: S11/S12 plan rows name the operations the Slice 11/12 spec cascade added; full depth-floor cascade at slice start (2026-10-08) — 2026-10-08T03:21:16.062Z
+- pattern: PAT-021: Route audits and reviews to Codex, not Opus subagents (2026-10-07) — 2026-10-07T03:46:26.512Z
+- decision: DEC-142: Autosave 409 carries conflict identity only; preimages come from CMS-03B-12 (2026-10-07) — 2026-10-07T02:59:02.121Z
+- decision: DEC-143: Authority revocation revokes entry assignments with presence; renewal rides autosave (2026-10-07) — 2026-10-07T02:59:02.121Z
+- decision: DEC-144: DEC-133 object-property constraints mirror the field-level members per kind (AC078) (2026-10-07) — 2026-10-07T02:59:02.121Z
+- decision: DEC-145: Slice 10 spec-text reconciliations (entry list item, contentHash, malformed ids, publication contract grammars) (2026-10-07) — 2026-10-07T02:59:02.121Z
+- decision: DEC-146: rich_text.v1@1 becomes a hashed immutable validator artifact frozen into schema artifacts (AC085) (2026-10-07) — 2026-10-07T02:59:02.121Z
+- decision: DEC-140: Signed-cursor fault classes and comparison refusal tokens (2026-10-07) — 2026-10-07T02:59:02.120Z
+- decision: DEC-141: Slice 10 fails closed on taxonomy-version resolution and on restoring composition/term records; Slice 12 receives both (2026-10-07) — 2026-10-07T02:59:02.120Z
+- decision: DEC-139: CMS-03B-12 closed conflicts are an indistinguishable 404 (AC090 over BE03b:1166) (2026-10-07) — 2026-10-07T02:59:02.118Z
+- decision: DEC-136: Editorial reviewer assignment mirrors CMS-03A-14 under owner-only cms.editorial_review.assign (2026-10-07) — 2026-10-07T01:36:52.648Z
+- decision: DEC-137: Generalized review machinery is one subject-polymorphic review/decision/assignment set (2026-10-07) — 2026-10-07T01:36:52.648Z
+- decision: DEC-138: Slice 12 owns the shared no_fallback field-resolution helper and the S11 locale preflight provider (2026-10-07) — 2026-10-07T01:36:52.648Z
+- decision: DEC-135: Taxonomy vocabularies declare the canonical domains they may overlap; only declared absent domains refuse (2026-10-07) — 2026-10-07T01:36:52.647Z
+- decision: DEC-134: Slice 11 builds the D25 code-owned accessibility checker as the first publication preflight provider (2026-10-07) — 2026-10-07T01:36:52.646Z
+- decision: DEC-133: Slice 10 object field kind uses typed depth-1 properties[], maximum 32 (O1 Option A) (2026-10-04) — 2026-10-07T01:36:32.464Z
+- decision: DEC-132: Owner ratifies P2-S09-AC-261; Slice 09 active implementation closes at 1235/1235 (2026-10-04) — 2026-10-07T01:36:32.463Z
 - pattern: PAT-019: Never message a running Workflow agent (2026-10-03) — 2026-10-04T06:09:14.695Z
 - pattern: PAT-020: Self-hosted CI shares the local Supabase stack (2026-10-03) — 2026-10-04T06:09:14.695Z
 - pattern: PAT-018: Prove database authority through real PostgREST, never hand-set GUCs (2026-10-03) — 2026-10-04T06:09:14.694Z

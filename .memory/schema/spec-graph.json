@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-10-04T06:09:15.639Z",
-  "nodeCount": 1654,
-  "edgeCount": 10166,
+  "builtAt": "2026-10-08T10:07:28.127Z",
+  "nodeCount": 1655,
+  "edgeCount": 10175,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -10952,6 +10952,27 @@
       "shardId": null
     },
     {
+      "id": "decision:d-11",
+      "type": "decision",
+      "label": "D-11",
+      "path": ".memory/wiki/decisions.md#d-11",
+      "shardId": null
+    },
+    {
+      "id": "decision:d-3",
+      "type": "decision",
+      "label": "D-3",
+      "path": ".memory/wiki/decisions.md#d-3",
+      "shardId": null
+    },
+    {
+      "id": "decision:d-4",
+      "type": "decision",
+      "label": "D-4",
+      "path": ".memory/wiki/decisions.md#d-4",
+      "shardId": null
+    },
+    {
       "id": "decision:d-06",
       "type": "decision",
       "label": "D-06",
@@ -11012,13 +11033,6 @@
       "type": "decision",
       "label": "D-16",
       "path": ".memory/wiki/decisions.md#d-16",
-      "shardId": null
-    },
-    {
-      "id": "decision:d-11",
-      "type": "decision",
-      "label": "D-11",
-      "path": ".memory/wiki/decisions.md#d-11",
       "shardId": null
     },
     {
@@ -11271,13 +11285,6 @@
       "type": "decision",
       "label": "D-1",
       "path": ".memory/wiki/decisions.md#d-1",
-      "shardId": null
-    },
-    {
-      "id": "decision:d-3",
-      "type": "decision",
-      "label": "D-3",
-      "path": ".memory/wiki/decisions.md#d-3",
       "shardId": null
     },
     {
@@ -12462,6 +12469,48 @@
     {
       "from": "be-spec:be/02c-credentials-trader",
       "to": "be-spec:be/02b-profile-portfolio-epk",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "be-spec:be/03b-editorial-workflow-publication",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/03b-editorial-workflow-publication",
+      "to": "decision:d-11",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "be-spec:be/03b-editorial-workflow-publication",
+      "to": "decision:d-3",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "be-spec:be/03b-editorial-workflow-publication",
+      "to": "decision:d-4",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "be-spec:be/03b-editorial-workflow-publication",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "be-spec:be/03c-composition-taxonomy-localization",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/03c-composition-taxonomy-localization",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -14693,6 +14742,12 @@
     },
     {
       "from": "ia-spec:ia/03-cms-content-modeling",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "ia-spec:ia/03-cms-content-modeling",
       "to": "ia-spec:ia/00-infrastructure",
       "type": "references",
       "source": "wikilink"
@@ -14736,6 +14791,12 @@
     {
       "from": "ia-spec:ia/03-cms-content-modeling",
       "to": "ia-spec:ia/16-education-credentials-institutions",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "ia-spec:ia/03-cms-content-modeling",
+      "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
     },
@@ -72590,12 +72651,12 @@
       "ia-spec": 85,
       "ideation": 1186,
       "phase-plan": 4,
-      "decision": 97
+      "decision": 98
     },
     "byEdgeType": {
-      "phases_into": 113,
-      "constrained_by": 9042,
-      "references": 938,
+      "phases_into": 116,
+      "constrained_by": 9045,
+      "references": 941,
       "derives_from": 64,
       "implemented_by": 6,
       "split_from": 3

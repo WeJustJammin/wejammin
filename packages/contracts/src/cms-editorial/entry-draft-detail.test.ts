@@ -54,15 +54,26 @@ const placeholderRelation = {
 const validDetailResource = {
   entry: { id: uuid, version: '1', createdAt: instant, updatedAt: instant },
   revision: { id: uuid2, version: '1', createdAt: instant, updatedAt: instant },
+  revisionNumber: '1',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash: hash,
+  schemaVersionId: uuid2,
   validationState: 'valid',
+  openConflict: null,
   fields: [validFieldValue],
   relations: [validRelation],
 } as const;
 const validDetailEtag = `"${uuid}:1:${uuid2}:1:${hash}"`;
+
+// BE03b `openConflict`: the safe pointer to the entry's currently open
+// conflict, never the durable record's proposed values or resolver identity.
+const validOpenConflict = {
+  conflictId: uuid,
+  version: '3',
+  conflictHash: hash,
+} as const;
 
 // The active-schema facts a trusted server-side read resolves; callers have none.
 const registryEvidence = {
@@ -329,8 +340,11 @@ describe('cms draft detail resource', () => {
       'fields',
       'lifecycle',
       'locale',
+      'openConflict',
       'relations',
       'revision',
+      'revisionNumber',
+      'schemaVersionId',
       'state',
       'validationState',
     ]);
@@ -358,6 +372,102 @@ describe('cms draft detail resource', () => {
         unexpected: 1,
       }).success,
     ).toBe(false);
+  });
+
+  it('requires the revision number, active schema version, and a strict nullable open conflict', () => {
+    expect(validDetailResource.revisionNumber).toBe('1');
+    expect(validDetailResource.schemaVersionId).toBe(uuid2);
+    expect(validDetailResource.openConflict).toBeNull();
+
+    for (const omission of [
+      'revisionNumber',
+      'schemaVersionId',
+      'openConflict',
+    ] as const) {
+      const without: Record<string, unknown> = { ...validDetailResource };
+      delete without[omission];
+      expect(EntryDraftDetailResourceSchema.safeParse(without).success).toBe(
+        false,
+      );
+    }
+
+    expect(
+      EntryDraftDetailResourceSchema.safeParse({
+        ...validDetailResource,
+        revisionNumber: '0',
+      }).success,
+    ).toBe(false);
+    expect(
+      EntryDraftDetailResourceSchema.safeParse({
+        ...validDetailResource,
+        revisionNumber: Number(1),
+      }).success,
+    ).toBe(false);
+    expect(
+      EntryDraftDetailResourceSchema.safeParse({
+        ...validDetailResource,
+        schemaVersionId: 'not-a-uuid',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      EntryDraftDetailResourceSchema.safeParse({
+        ...validDetailResource,
+        openConflict: validOpenConflict,
+      }).success,
+    ).toBe(true);
+    expect(
+      Object.keys(
+        EntryDraftDetailResourceSchema.parse({
+          ...validDetailResource,
+          openConflict: validOpenConflict,
+        }).openConflict as object,
+      ).sort(),
+    ).toEqual(['conflictHash', 'conflictId', 'version']);
+
+    for (const member of [
+      {},
+      { conflictId: uuid, version: '3' },
+      { conflictId: uuid, conflictHash: hash },
+      { version: '3', conflictHash: hash },
+      { ...validOpenConflict, ownerId: uuid },
+    ])
+      expect(
+        EntryDraftDetailResourceSchema.safeParse({
+          ...validDetailResource,
+          openConflict: member,
+        }).success,
+      ).toBe(false);
+
+    for (const bad of [
+      { ...validOpenConflict, conflictId: 'not-a-uuid' },
+      { ...validOpenConflict, version: '0' },
+      { ...validOpenConflict, conflictHash: 'short' },
+      { ...validOpenConflict, extra: 1 },
+      { ...validOpenConflict, resolvedByPersonId: uuid },
+      { ...validOpenConflict, proposedValues: {} },
+    ])
+      expect(
+        EntryDraftDetailResourceSchema.safeParse({
+          ...validDetailResource,
+          openConflict: bad,
+        }).success,
+      ).toBe(false);
+  });
+
+  it('rejects private ownership identifiers anywhere in the envelope', () => {
+    for (const leaked of [
+      'ownerId',
+      'createdByPersonId',
+      'authorId',
+      'partyId',
+    ])
+      expect(
+        EntryDraftDetailResourceSchema.safeParse({
+          ...validDetailResource,
+          [leaked]: uuid,
+        }).success,
+      ).toBe(false);
   });
 });
 

@@ -60,7 +60,7 @@ const createHeaders = (extra: Record<string, string> = {}) => ({
 const revisionBody = JSON.stringify({
   entryId: uuid,
   baseRevision: '1',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${uuid2}`],
   values: { [uuid2]: { title: 'Hello' } },
   locale: 'en-US',
   expectedVersion: '1',
@@ -70,13 +70,14 @@ const conflictBody = JSON.stringify({
   entryId: uuid,
   conflictId: uuid2,
   baseRevision: '1',
-  choices: [{ path: '/fields/title', choice: 'theirs' }],
+  choices: [{ path: `/fields/${uuid2}`, choice: 'theirs' }],
   expectedVersion: '1',
 });
 
 const revisionResource = {
   id: uuid2,
   version: '1',
+  entryVersion: '2',
   createdAt: instant,
   updatedAt: instant,
   state: 'draft',
@@ -103,7 +104,7 @@ const revisionUpstream = async () =>
   jsonResponse(revisionResource, {
     status: 201,
     headers: {
-      etag: '"1"',
+      etag: '"2"',
       location: `/api/v1/cms/entries/${uuid}/revisions/${uuid2}`,
     },
   });
@@ -112,7 +113,7 @@ const conflictUpstream = async () =>
   jsonResponse(conflictRevisionResource, {
     status: 201,
     headers: {
-      etag: '"1"',
+      etag: '"2"',
       location: `/api/v1/cms/entries/${uuid}/revisions/${fourthUuid}`,
     },
   });

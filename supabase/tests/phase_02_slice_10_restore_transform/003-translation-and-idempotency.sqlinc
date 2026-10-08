@@ -1,0 +1,340 @@
+-- CMS-03B-04 restore: translation positives, server-side hash recomputation and
+-- the database-side idempotency disposition.
+--
+-- The positive probes read the new draft back inside the same rolled-back
+-- subtransaction (pg_temp.s10r_observe), so persisted effects are asserted
+-- without ever mutating the shared fixture.  The idempotency probes build every
+-- reservation through the REAL cms_reserve / cms_complete helpers (never a
+-- hand-inserted row), so each fixture is admissible against the table's own
+-- constraints and actually reaches the producer path it names.
+
+-- A valid source: title, a canonical rich_text.v1 body, a DEC-133 object and
+-- two resolvable relations.  The slug is absent so its literal default fills.
+create or replace function pg_temp.s10r_full_values()
+returns jsonb
+language sql
+immutable
+as $body$
+  select jsonb_build_object(
+    'a9100000-0000-4000-8000-000000000601', 'Source title',
+    'a9100000-0000-4000-8000-000000000602', jsonb_build_object(
+      'format', 'rich_text.v1', 'blocks', jsonb_build_array(
+        jsonb_build_object('type', 'paragraph', 'spans', jsonb_build_array(
+          jsonb_build_object('text', 'Hello', 'marks', jsonb_build_array()))))),
+    'a9100000-0000-4000-8000-000000000603', jsonb_build_object(
+      'title', 'Hero', 'status', 'live')
+  )
+$body$;
+
+-- The probe's response envelope, projected once so assertions stay short.
+create or replace function pg_temp.s10r_forge_full()
+returns void
+language sql
+as $body$
+  select pg_temp.s10r_forge(
+    pg_temp.s10r_full_values(),
+    jsonb_build_array(
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000604',
+        'targetId', 'a9100000-0000-4000-8000-000000000301',
+        'expectedTargetVersion', 1, 'position', 0),
+      jsonb_build_object('fieldId', 'a9100000-0000-4000-8000-000000000604',
+        'targetId', pg_temp.s10r_forge_target(8), 'position', 1))
+  )
+$body$;
+
+select pg_temp.s10_rpc_probe(
+  'restore_translate_full',
+  $setup$select pg_temp.s10r_forge_full()$setup$,
+  $sql$select pg_temp.s10r_observe(pg_temp.s10r_request('s10-restore-full-0001'))$sql$
+);
+
+select is(
+  pg_temp.s10_probe_state('restore_translate_full'), '00000',
+  'a source of rich_text, object and relation values restores onto the active schema'
+);
+
+select ok(
+  (pg_temp.s10_probe_response('restore_translate_full')->'response'->'resource'->'parentRevisionIds')
+    = jsonb_build_array(pg_temp.s10r_id(0, 3), pg_temp.s10r_id(0, 2))
+    and (pg_temp.s10_probe_response('restore_translate_full')->'response'->'resource'->>'revisionNumber') = '3'
+    and (pg_temp.s10_probe_response('restore_translate_full')->'response'->'resource'->>'schemaVersionId')
+      = (select value from s10_ids where key = 'restoreVersionId'),
+  'the new draft is revision 3 under the active schema with parents [currentDraftRevisionId, sourceRevisionId]'
+);
+
+select ok(
+  (pg_temp.s10_probe_response('restore_translate_full')->>'newPayloadHash')
+    = (pg_temp.s10_probe_response('restore_translate_full')->>'recomputedPayloadHash')
+    and (pg_temp.s10_probe_response('restore_translate_full')->'response'->'resource'->>'contentHash')
+      = (pg_temp.s10_probe_response('restore_translate_full')->>'newPayloadHash')
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'copiedHashesRecomputed')::boolean
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'valuesByDefinition')::boolean,
+  'every copied value hash and the payload hash are recomputed server-side and every value is bound to a target field definition'
+);
+
+select ok(
+  (pg_temp.s10_probe_response('restore_translate_full')->>'copiedCount')::integer = 4
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'relationCount')::integer = 2
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'relationsRebound')::boolean,
+  'the title, rich_text, object and defaulted slug are copied and both relations are rebound to the target definition'
+);
+
+select ok(
+  (pg_temp.s10_probe_response('restore_translate_full')->'provenance'
+     ->> 'a9100000-0000-4000-8000-000000000605') = 'default'
+    and (pg_temp.s10_probe_response('restore_translate_full')->'values'
+     ->> 'a9100000-0000-4000-8000-000000000605') = 'untitled'
+    and (pg_temp.s10_probe_response('restore_translate_full')->'provenance'
+     ->> 'a9100000-0000-4000-8000-000000000601') = 'authored',
+  'a required field absent from the source takes only its declared literal default, recorded as provenance default'
+);
+
+select ok(
+  platform_private.cms_exact_keys(
+    pg_temp.s10_probe_response('restore_translate_full')->'response',
+    array['resource', 'restoreVerification']::text[],
+    array['resource', 'restoreVerification']::text[]
+  )
+    and platform_private.cms_exact_keys(
+      pg_temp.s10_probe_response('restore_translate_full')->'response'->'restoreVerification',
+      array['request', 'registry', 'seams']::text[],
+      array['request', 'registry', 'seams']::text[]
+    )
+    and (pg_temp.s10_probe_response('restore_translate_full')
+      ->'response'->'restoreVerification'->'registry'->'chainSchemaVersionIds')
+      = jsonb_build_array((select value from s10_ids where key = 'restoreVersionId'))
+    and jsonb_array_length(pg_temp.s10_probe_response('restore_translate_full')
+      ->'response'->'restoreVerification'->'seams') = 8
+    and (pg_temp.s10_probe_response('restore_translate_full')
+      ->'response'->'restoreVerification'->'registry'->>'migrationChainId')
+      = (pg_temp.s10_probe_response('restore_translate_full')
+      ->'response'->'restoreVerification'->'request'->>'migrationChainId')
+    and (pg_temp.s10_probe_response('restore_translate_full')
+      ->'response'->'restoreVerification'->'registry'->>'entryVersion') = '1',
+  'the response carries the verified chain identity, the ordered schema versions and the eight restore seams'
+);
+
+select ok(
+  (pg_temp.s10_probe_response('restore_translate_full')->>'manifestCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'outboxCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'auditCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_translate_full')->'outboxPayload')
+      = jsonb_build_object(
+        'entryId', pg_temp.s10r_id(0, 1),
+        'revisionId', pg_temp.s10_probe_response('restore_translate_full')
+          ->'response'->'resource'->>'id'),
+  'one manifest, one revision-created outbox event carrying only identifiers and one audit record are written atomically'
+);
+
+select ok(
+  (pg_temp.s10_probe_response('restore_translate_full')->>'sourceUnchanged')::boolean
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'reservationCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'reservationState') = 'completed'
+    and (pg_temp.s10_probe_response('restore_translate_full')->>'storedResponseEqual')::boolean,
+  'the source revision is untouched and the completed reservation stores exactly the returned envelope'
+);
+
+-- A tampered stored per-value hash is never trusted: the value restores and the
+-- copy carries the hash recomputed from its own preimage.
+select pg_temp.s10_rpc_probe(
+  'restore_hash_recompute',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Recompute title'),
+    '[]'::jsonb, null,
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', repeat('9', 64)))$setup$,
+  $sql$select pg_temp.s10r_observe(pg_temp.s10r_request('s10-restore-hash-0001'))$sql$
+);
+
+select ok(
+  pg_temp.s10_probe_state('restore_hash_recompute') = '00000'
+    and (pg_temp.s10_probe_response('restore_hash_recompute')->>'copiedHashesRecomputed')::boolean
+    and (pg_temp.s10_probe_response('restore_hash_recompute')->'valueHashes'
+      ->> 'a9100000-0000-4000-8000-000000000601')
+      = platform_private.cms_jcs_sha256(to_jsonb('Recompute title'::text))
+    and (pg_temp.s10_probe_response('restore_hash_recompute')->'valueHashes'
+      ->> 'a9100000-0000-4000-8000-000000000601') <> repeat('9', 64),
+  'a valid source value with a tampered stored hash restores with the hash recomputed server-side'
+);
+
+-- A source revision whose stored values no longer hash to its payload hash is
+-- corrupt history; restore refuses to launder it into a fresh draft.
+select pg_temp.s10_rpc_probe(
+  'restore_corrupt_source',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select set_config('app.cms_rpc', 'true', true);
+    insert into platform_private.cms_entry_field_values(
+      owner_id, state, version, revision_id, field_id, field_definition_id,
+      locale, value, provenance, value_hash, created_at, updated_at
+    )
+    select source_row.owner_id, 'active', 1, source_row.id, definition.stable_field_id,
+           definition.id, 'en-US', to_jsonb('Smuggled'::text), 'authored',
+           platform_private.cms_jcs_sha256(to_jsonb('Smuggled'::text))::char(64),
+           timestamptz '2026-09-26T12:00:00Z', timestamptz '2026-09-26T12:00:00Z'
+    from platform_private.cms_entry_revisions source_row
+    join platform_private.cms_field_definition_versions definition
+      on definition.content_type_version_id = source_row.schema_version_id
+     and definition.stable_field_id = 'a9100000-0000-4000-8000-000000000605'
+    where source_row.id = pg_temp.s10r_id(0, 2)$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-corrupt-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_corrupt_source') || ':'
+    || pg_temp.s10_probe_message('restore_corrupt_source'),
+  'P0001:INTERNAL_ERROR',
+  'a source whose stored values no longer match its payload hash is refused as corrupt history'
+);
+
+-- A compatible template binding is carried onto the new draft.
+select pg_temp.s10_rpc_probe(
+  'restore_template_compatible',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'),
+    '[]'::jsonb,
+    pg_temp.s10r_forge_template(
+      (select value::uuid from s10_ids where key = 'restoreTypeId')))$setup$,
+  $sql$select pg_temp.s10r_observe(pg_temp.s10r_request(
+    's10-restore-tplok-0001') || jsonb_build_object('ifMatch', '1'))$sql$
+);
+select ok(
+  pg_temp.s10_probe_state('restore_template_compatible') = '00000'
+    and (pg_temp.s10_probe_response('restore_template_compatible')
+      ->'response'->'resource'->>'templateVersionId')
+      = 'a9100000-0000-4000-8000-000000007501',
+  'a source template that stays compatible is re-resolved and carried, and a matching If-Match copy is admitted'
+);
+
+-- ---------------------------------------------------------------------------
+-- Database-side idempotency disposition.
+-- ---------------------------------------------------------------------------
+-- A replay returns the exact first envelope after the entry has advanced, with
+-- no second revision, outbox event, audit record or reservation.
+select pg_temp.s10_rpc_probe(
+  'restore_replay',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'))$setup$,
+  $sql$select pg_temp.s10r_observe(
+    pg_temp.s10r_request('s10-restore-replay-0001'), 1)$sql$
+);
+select ok(
+  pg_temp.s10_probe_state('restore_replay') = '00000'
+    and (pg_temp.s10_probe_response('restore_replay')->>'replayEqual')::boolean
+    and (pg_temp.s10_probe_response('restore_replay')->>'revisionCount')::integer = 3
+    and (pg_temp.s10_probe_response('restore_replay')->>'outboxCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_replay')->>'auditCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_replay')->>'reservationCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_replay')->>'manifestCount')::integer = 1,
+  'a lost-response replay returns the first envelope after the entry advanced, with no second revision, event, audit row or reservation'
+);
+
+-- The same key with a different migration chain is a different business hash.
+select pg_temp.s10_rpc_probe(
+  'restore_key_other_chain',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-reuse-0001'))$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request(
+    's10-restore-reuse-0001', 0, 'a9100000-0000-4000-8000-000000000903', 2))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_key_other_chain') || ':'
+    || pg_temp.s10_probe_message('restore_key_other_chain'),
+  'P0001:IDEMPOTENCY_MISMATCH',
+  'the idempotency business hash binds the migration chain: the same key with another chain is IDEMPOTENCY_MISMATCH'
+);
+
+-- A completed reservation that stores no response envelope cannot be replayed.
+-- The row is built with the real reserve + complete helpers (a bare completion
+-- carries no safeHeaders envelope), so it is admissible and reaches the replay
+-- branch of the producer instead of tripping a table constraint first.
+select pg_temp.s10_rpc_probe(
+  'restore_completed_without_response',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select platform_private.cms_complete(
+      (platform_private.cms_reserve(
+        pg_temp.s10r_request('s10-restore-nores-0001'),
+        (select value::uuid from s10_ids where key = 'creatorAuth'),
+        'CMS-03B-04')).id,
+      pg_temp.s10r_id(0, 3), 201)$setup$,
+  $sql$select platform_api.cms_restore_revision(pg_temp.s10r_request('s10-restore-nores-0001'))$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_completed_without_response') || ':'
+    || pg_temp.s10_probe_message('restore_completed_without_response'),
+  'P0001:INTERNAL_ERROR',
+  'a completed reservation without a stored response envelope is refused instead of replayed or re-executed'
+);
+
+-- A reserved-but-never-completed reservation (a lost first attempt) re-enters
+-- the command body, which completes it and writes exactly one revision.
+select pg_temp.s10_rpc_probe(
+  'restore_reserved_recovery',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select platform_private.cms_reserve(
+      pg_temp.s10r_request('s10-restore-reserved-0001'),
+      (select value::uuid from s10_ids where key = 'creatorAuth'),
+      'CMS-03B-04')$setup$,
+  $sql$select pg_temp.s10r_observe(pg_temp.s10r_request('s10-restore-reserved-0001'))$sql$
+);
+select ok(
+  pg_temp.s10_probe_state('restore_reserved_recovery') = '00000'
+    and (pg_temp.s10_probe_response('restore_reserved_recovery')->>'revisionCount')::integer = 3
+    and (pg_temp.s10_probe_response('restore_reserved_recovery')->>'reservationCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_reserved_recovery')->>'reservationState') = 'completed'
+    and (pg_temp.s10_probe_response('restore_reserved_recovery')->>'outboxCount')::integer = 1,
+  'a reserved reservation re-enters the command once, completes it and writes exactly one revision, event and reservation'
+);
+
+-- A failed_retryable reservation re-opens exactly once for the same request.
+-- The state is reached through a real reserve and the table's own allowed
+-- transition (reserved -> failed_retryable with a response reference).
+select pg_temp.s10_rpc_probe(
+  'restore_failed_retryable',
+  $setup$select pg_temp.s10r_forge(
+    jsonb_build_object('a9100000-0000-4000-8000-000000000601', 'Title'));
+    select platform_private.cms_reserve(
+      pg_temp.s10r_request('s10-restore-retry-0001'),
+      (select value::uuid from s10_ids where key = 'creatorAuth'),
+      'CMS-03B-04');
+    update platform_private.idempotency_records
+    set state = 'failed_retryable'::platform_private.idempotency_state,
+        response_ref = jsonb_build_object('status', 503)
+    where key_hash = platform_private.cms_key_hash('s10-restore-retry-0001')$setup$,
+  $sql$select pg_temp.s10r_observe(pg_temp.s10r_request('s10-restore-retry-0001'))$sql$
+);
+select ok(
+  pg_temp.s10_probe_state('restore_failed_retryable') = '00000'
+    and (pg_temp.s10_probe_response('restore_failed_retryable')->>'revisionCount')::integer = 3
+    and (pg_temp.s10_probe_response('restore_failed_retryable')->>'reservationCount')::integer = 1
+    and (pg_temp.s10_probe_response('restore_failed_retryable')->>'reservationState') = 'completed',
+  'a failed_retryable reservation re-opens once for the same request and completes with one revision'
+);
+
+-- The manifest insert is guarded: a direct hand-inserted chain identity row is
+-- refused DB-side, never trusted.
+select pg_temp.s10_rpc_probe(
+  'restore_manifest_insert_guard',
+  $setup$select set_config('app.cms_rpc', '', true)$setup$,
+  $sql$insert into platform_private.cms_restore_chain_manifests(
+    owner_id, content_type_id, source_schema_version_id, target_schema_version_id,
+    plan_ids, edge_count, manifest_hash
+  )
+  select ids_org.value::uuid, ids_type.value::uuid, ids_ver.value::uuid,
+         ids_ver.value::uuid, '[]'::jsonb, 0, repeat('c', 64)
+  from s10_ids ids_org, s10_ids ids_type, s10_ids ids_ver
+  where ids_org.key = 'organization'
+    and ids_type.key = 'typeId'
+    and ids_ver.key = 'draftVersionId' returning 1$sql$
+);
+select is(
+  pg_temp.s10_probe_state('restore_manifest_insert_guard'), 'P0001',
+  'a hand-inserted restore-chain manifest row is refused DB-side'
+);
+
+-- Every probe above rolled back: the shared fixture holds no restore manifest.
+select ok(
+  not exists (select 1 from platform_private.cms_restore_chain_manifests),
+  'the rolled-back probes left no restore-chain manifest in the shared fixture'
+);

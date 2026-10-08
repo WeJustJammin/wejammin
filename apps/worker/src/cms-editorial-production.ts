@@ -7,12 +7,16 @@ import {
   configuredOriginList,
   createCmsEditorialSessionResolver,
   validateOriginList,
+  type CmsEditorialPortInput,
 } from './cms-editorial-production-session';
 import { createRateLimiter } from './cms-editorial-production-rate';
 import {
   createCmsEditorialRpcCaller,
+  cmsEditorialRestorePort,
   cmsEditorialResourcePort,
+  type CmsEditorialRestorePortValue,
 } from './cms-editorial-production-ports';
+import { errorResult } from './cms-editorial-production-errors';
 import {
   defaultCmsEditorialLogger,
   productionCmsEditorialTelemetry,
@@ -23,54 +27,79 @@ import {
   MAX_DEFAULT_RESPONSE_BYTES,
   CmsEditorialProductionConfigurationError,
   type CmsEditorialProductionConfiguration,
+  type CmsEditorialProductionOperationId,
   type CmsEditorialProductionOptions,
+  type CmsEditorialProductionResult,
+  type CmsEditorialRateLimitDecision,
   type CmsEditorialRateLimitInput,
   type CmsEditorialSession,
   type CmsEditorialServerSessionContext,
   type CmsEditorialTelemetryEvent,
 } from './cms-editorial-production-types';
 import type {
+  AuthoringContextResource,
+  ConflictDetailResource,
   EntryCreateResource,
   EntryDraftDetailResource,
+  EntryListPage,
   EntryRevisionResource,
   RevisionHistoryPage,
 } from '@wejammin/contracts';
+
+/**
+ * BE03b line 1300: concurrent revision writes cap at three per actor. The
+ * fourth in-flight write for one actor is refused before any RPC call, and the
+ * count is per acting user so one actor cannot exhaust another's budget.
+ */
+const MAX_CONCURRENT_REVISION_WRITES = 3;
+
+/** One protected editorial port: a server-derived input in, a typed result out. */
+type CmsEditorialPort<T> = (
+  input: CmsEditorialPortInput,
+  signal: AbortSignal,
+) => Promise<CmsEditorialProductionResult<T>>;
+
+/** Wrap a revision-write port with a deterministic per-actor concurrency cap. */
+const withActorConcurrencyCap = <T>(
+  port: CmsEditorialPort<T>,
+): CmsEditorialPort<T> => {
+  const inFlightByActor = new Map<string, number>();
+  return async (input, signal) => {
+    const actor = input.session?.userId ?? 'anonymous';
+    const inFlight = inFlightByActor.get(actor) ?? 0;
+    if (inFlight >= MAX_CONCURRENT_REVISION_WRITES)
+      return errorResult(
+        429,
+        'RATE_LIMITED',
+        'Too many concurrent CMS editorial requests.',
+        { limit: MAX_CONCURRENT_REVISION_WRITES },
+      );
+    inFlightByActor.set(actor, inFlight + 1);
+    try {
+      return await port(input, signal);
+    } finally {
+      // The slot was counted before the call, so it is always present here.
+      const remaining = (inFlightByActor.get(actor) as number) - 1;
+      if (remaining <= 0) inFlightByActor.delete(actor);
+      else inFlightByActor.set(actor, remaining);
+    }
+  };
+};
 
 export { CMS_EDITORIAL_RPC } from './cms-editorial-production-types';
 export type { CmsEditorialProductionOperationId } from './cms-editorial-production-types';
 
 /** Port map the route layer consumes; one member per declared operation. */
 export type CmsEditorialPorts = Readonly<{
-  appendRevision: (
-    input: import('./cms-editorial-production-session').CmsEditorialPortInput,
-    signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<EntryRevisionResource>
-  >;
-  resolveConflict: (
-    input: import('./cms-editorial-production-session').CmsEditorialPortInput,
-    signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<EntryRevisionResource>
-  >;
-  createEntry: (
-    input: import('./cms-editorial-production-session').CmsEditorialPortInput,
-    signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<EntryCreateResource>
-  >;
-  getEntryDraft: (
-    input: import('./cms-editorial-production-session').CmsEditorialPortInput,
-    signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<EntryDraftDetailResource>
-  >;
-  listRevisions: (
-    input: import('./cms-editorial-production-session').CmsEditorialPortInput,
-    signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<RevisionHistoryPage>
-  >;
+  appendRevision: CmsEditorialPort<EntryRevisionResource>;
+  resolveConflict: CmsEditorialPort<EntryRevisionResource>;
+  createEntry: CmsEditorialPort<EntryCreateResource>;
+  getEntryDraft: CmsEditorialPort<EntryDraftDetailResource>;
+  listRevisions: CmsEditorialPort<RevisionHistoryPage>;
+  restoreRevision: CmsEditorialPort<CmsEditorialRestorePortValue>;
+  getConflictDetail: CmsEditorialPort<ConflictDetailResource>;
+  listEntries: CmsEditorialPort<EntryListPage>;
+  getAuthoringContext: CmsEditorialPort<AuthoringContextResource>;
 }>;
 
 /**
@@ -84,17 +113,11 @@ export type CmsEditorialProductionDependencies = Readonly<{
   resolveSession: (
     request: Request,
     signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<CmsEditorialSession>
-  >;
+  ) => Promise<CmsEditorialProductionResult<CmsEditorialSession>>;
   rateLimit: (
     input: CmsEditorialRateLimitInput,
     signal: AbortSignal,
-  ) => Promise<
-    import('./cms-editorial-production-types').CmsEditorialProductionResult<
-      import('./cms-editorial-production-types').CmsEditorialRateLimitDecision
-    >
-  >;
+  ) => Promise<CmsEditorialProductionResult<CmsEditorialRateLimitDecision>>;
   humanOrigins: readonly string[];
   now?: () => number;
   deadlineMs?: number;
@@ -168,51 +191,49 @@ export const createProductionCmsEditorialDependencies = (
     sessionContexts,
   );
   const rateLimit = createRateLimiter(options);
-  const appendRevision = cmsEditorialResourcePort<EntryRevisionResource>(
+  // One RPC caller per declared operation; the deadline is the smaller of the
+  // configured ceiling and the operation's own budget.
+  const callerFor = (operationId: CmsEditorialProductionOperationId) =>
     createCmsEditorialRpcCaller(
       configuration,
       sessionContexts,
-      'CMS-03B-01',
-      Math.min(deadlineMs, CMS_EDITORIAL_DEADLINE_MS['CMS-03B-01']),
-    ),
+      operationId,
+      Math.min(deadlineMs, CMS_EDITORIAL_DEADLINE_MS[operationId]),
+    );
+  const appendRevision = cmsEditorialResourcePort<EntryRevisionResource>(
+    withActorConcurrencyCap(callerFor('CMS-03B-01')),
     'CMS-03B-01',
   );
   const resolveConflict = cmsEditorialResourcePort<EntryRevisionResource>(
-    createCmsEditorialRpcCaller(
-      configuration,
-      sessionContexts,
-      'CMS-03B-02',
-      Math.min(deadlineMs, CMS_EDITORIAL_DEADLINE_MS['CMS-03B-02']),
-    ),
+    callerFor('CMS-03B-02'),
     'CMS-03B-02',
   );
   const createEntry = cmsEditorialResourcePort<EntryCreateResource>(
-    createCmsEditorialRpcCaller(
-      configuration,
-      sessionContexts,
-      'CMS-03B-10',
-      Math.min(deadlineMs, CMS_EDITORIAL_DEADLINE_MS['CMS-03B-10']),
-    ),
+    callerFor('CMS-03B-10'),
     'CMS-03B-10',
   );
   const getEntryDraft = cmsEditorialResourcePort<EntryDraftDetailResource>(
-    createCmsEditorialRpcCaller(
-      configuration,
-      sessionContexts,
-      'CMS-03B-11',
-      Math.min(deadlineMs, CMS_EDITORIAL_DEADLINE_MS['CMS-03B-11']),
-    ),
+    callerFor('CMS-03B-11'),
     'CMS-03B-11',
   );
   const listRevisions = cmsEditorialResourcePort<RevisionHistoryPage>(
-    createCmsEditorialRpcCaller(
-      configuration,
-      sessionContexts,
-      'CMS-03B-03',
-      Math.min(deadlineMs, CMS_EDITORIAL_DEADLINE_MS['CMS-03B-03']),
-    ),
+    callerFor('CMS-03B-03'),
     'CMS-03B-03',
   );
+  const restoreRevision = cmsEditorialRestorePort(callerFor('CMS-03B-04'));
+  const getConflictDetail = cmsEditorialResourcePort<ConflictDetailResource>(
+    callerFor('CMS-03B-12'),
+    'CMS-03B-12',
+  );
+  const listEntries = cmsEditorialResourcePort<EntryListPage>(
+    callerFor('CMS-03B-13'),
+    'CMS-03B-13',
+  );
+  const getAuthoringContext =
+    cmsEditorialResourcePort<AuthoringContextResource>(
+      callerFor('CMS-03B-14'),
+      'CMS-03B-14',
+    );
 
   return {
     ports: {
@@ -221,6 +242,10 @@ export const createProductionCmsEditorialDependencies = (
       createEntry,
       getEntryDraft,
       listRevisions,
+      restoreRevision,
+      getConflictDetail,
+      listEntries,
+      getAuthoringContext,
     },
     resolveSession,
     rateLimit,

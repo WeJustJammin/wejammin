@@ -141,23 +141,41 @@ select is(pg_temp.p_run('f:dupkey', pg_temp.p_base('p240_f_dupkey', jsonb_build_
   'two fields with one key are refused whole [P2-S09-AC-046]');
 
 -- ============================================== AC047 each initial field ====
+-- DEC-112 / BE03a Protected Validator Registry: the only protected validator is
+-- rich_text.v1 version 1 and it is valid only on a rich_text field, so the
+-- validator pair of the all-attributes control rides on a rich_text field (the
+-- legacy cms.decimal pair is no longer a registry member).  The decimal field
+-- keeps its own constraints, required flag and literal default, which a literal
+-- default must satisfy (BE03a: a default is never a looser encoding than its field).
 select is(pg_temp.p_run('fe:ok', pg_temp.p_base('p240_fe_ok', jsonb_build_object('fields', jsonb_build_array(
     pg_temp.p_field('amount', 'decimal', jsonb_build_object('constraints', '{"minimum":0,"maximum":100}'::jsonb, 'required', true,
-      'validatorKey', 'cms.decimal', 'validatorVersion', 1, 'defaultMode', 'literal', 'defaultValue', 5, 'localizationMode', 'none')),
+      'defaultMode', 'literal', 'defaultValue', 5, 'localizationMode', 'none')),
     pg_temp.p_field('body', 'long_text', jsonb_build_object('localizationMode', 'localized', 'defaultMode', 'inherited')),
     pg_temp.p_field('only', 'short_text', jsonb_build_object('localizationMode', 'no_fallback', 'lifecycle', 'deprecated',
-      'editorConfig', jsonb_build_object('label', 'Only', 'helpText', 'Help', 'order', 10000)))))), 'OK'), 'ok',
+      'editorConfig', jsonb_build_object('label', 'Only', 'helpText', 'Help', 'order', 10000))),
+    pg_temp.p_field('rich', 'rich_text', jsonb_build_object('constraints', '{"minLength":1,"maxLength":200}'::jsonb, 'required', true,
+      'validatorKey', 'rich_text.v1', 'validatorVersion', 1, 'defaultMode', 'literal',
+      'defaultValue', '{"format":"rich_text.v1","blocks":[{"type":"paragraph","spans":[{"text":"Draft","marks":[]}]}]}'::jsonb,
+      'localizationMode', 'localized', 'editorConfig', jsonb_build_object('label', 'Rich', 'helpText', 'Rich help', 'order', 7)))))), 'OK'), 'ok',
   'control: a field carrying every declared attribute (validator pair, literal default, localization modes, lifecycle, editorConfig) is accepted [P2-S09-AC-047]');
-select ok((select f.constraints = '{"minimum":0,"maximum":100}'::jsonb and f.validator_key = 'cms.decimal' and f.validator_version = 1 and f.required
+select ok((select f.constraints = '{"minimum":0,"maximum":100}'::jsonb and f.validator_key is null and f.validator_version is null and f.required
       and f.default_mode = 'literal' and f.default_value = '5'::jsonb and f.localization_mode = 'none' and f.state = 'active'
       and f.editor_config = '{"label":"Amount","order":0}'::jsonb and f.stable_field_id = f.id and f.kind = 'decimal'
     from platform_private.cms_field_definition_versions f join platform_private.cms_content_type_versions v on v.id = f.content_type_version_id
     join platform_private.cms_content_types t on t.id = v.content_type_id where t.type_key = 'p240_fe_ok' and f.field_key = 'amount'),
-  'every declared attribute of the initial field is persisted exactly: stable id, key, kind, constraints, validator pair, required, default, localization, editor config, lifecycle [P2-S09-AC-047]');
+  'every declared attribute of the initial decimal field is persisted exactly: stable id, key, kind, constraints, no validator pair, required, default, localization, editor config, lifecycle [P2-S09-AC-047]');
+select ok((select f.constraints = '{"minLength":1,"maxLength":200}'::jsonb and f.validator_key = 'rich_text.v1' and f.validator_version = 1 and f.required
+      and f.default_mode = 'literal'
+      and f.default_value = '{"format":"rich_text.v1","blocks":[{"type":"paragraph","spans":[{"text":"Draft","marks":[]}]}]}'::jsonb
+      and f.localization_mode = 'localized' and f.state = 'active'
+      and f.editor_config = '{"label":"Rich","helpText":"Rich help","order":7}'::jsonb and f.stable_field_id = f.id and f.kind = 'rich_text'
+    from platform_private.cms_field_definition_versions f join platform_private.cms_content_type_versions v on v.id = f.content_type_version_id
+    join platform_private.cms_content_types t on t.id = v.content_type_id where t.type_key = 'p240_fe_ok' and f.field_key = 'rich'),
+  'every declared attribute of the initial rich_text field is persisted exactly, including the protected rich_text.v1 v1 validator pair and its rich_text.v1 literal default [P2-S09-AC-047]');
 select is((select string_agg(f.field_key || ':' || f.localization_mode || ':' || f.state, ',' order by f.field_key)
     from platform_private.cms_field_definition_versions f join platform_private.cms_content_type_versions v on v.id = f.content_type_version_id
     join platform_private.cms_content_types t on t.id = v.content_type_id where t.type_key = 'p240_fe_ok'),
-  'amount:none:active,body:localized:active,only:no_fallback:deprecated', 'the three localization modes and the lifecycle are stored as declared [P2-S09-AC-047]');
+  'amount:none:active,body:localized:active,only:no_fallback:deprecated,rich:localized:active', 'the three localization modes and the lifecycle are stored as declared [P2-S09-AC-047]');
 select is(pg_temp.p_run('fe:' || c.n, pg_temp.p_base(pg_temp.p_key('fe' || c.n), jsonb_build_object('fields', jsonb_build_array(c.f))), c.e), 'ok',
   'an initial field with ' || c.n || ' is refused with ' || c.e || ' and nothing is committed [P2-S09-AC-047]')
 from (values
@@ -173,10 +191,12 @@ from (values
   ('a constraint key outside the closed set', pg_temp.p_field('a8', 'short_text', '{"constraints":{"pattern":"^a+$"}}'), 'VALIDATION_FAILED'),
   ('minLength above maxLength', pg_temp.p_field('a9', 'short_text', '{"constraints":{"minLength":5,"maxLength":2}}'), 'VALIDATION_FAILED'),
   ('minimum above maximum', pg_temp.p_field('b1', 'integer', '{"constraints":{"minimum":9,"maximum":1}}'), 'VALIDATION_FAILED'),
-  ('a validatorKey without a version', pg_temp.p_field('b2', 'short_text', '{"validatorKey":"cms.text"}'), 'VALIDATION_FAILED'),
-  ('a validatorVersion without a key', pg_temp.p_field('b3', 'short_text', '{"validatorVersion":1}'), 'VALIDATION_FAILED'),
-  ('an unregistered validator pair', pg_temp.p_field('b4', 'short_text', '{"validatorKey":"cms.custom","validatorVersion":1}'), 'VALIDATION_FAILED'),
-  ('a registered validator at an unregistered version', pg_temp.p_field('b5', 'short_text', '{"validatorKey":"cms.text","validatorVersion":9}'), 'VALIDATION_FAILED'),
+  ('a validatorKey without a version', pg_temp.p_field('b2', 'rich_text', '{"validatorKey":"rich_text.v1"}'), 'VALIDATION_FAILED'),
+  ('a validatorVersion without a key', pg_temp.p_field('b3', 'rich_text', '{"validatorVersion":1}'), 'VALIDATION_FAILED'),
+  ('an unregistered validator pair', pg_temp.p_field('b4', 'rich_text', '{"validatorKey":"cms.custom","validatorVersion":1}'), 'VALIDATION_FAILED'),
+  ('a legacy validator key that is no longer a protected registry member (DEC-112)', pg_temp.p_field('b4b', 'rich_text', '{"validatorKey":"cms.text","validatorVersion":1}'), 'VALIDATION_FAILED'),
+  ('the registered rich_text.v1 validator at an unregistered version', pg_temp.p_field('b5', 'rich_text', '{"validatorKey":"rich_text.v1","validatorVersion":9}'), 'VALIDATION_FAILED'),
+  ('the registered rich_text.v1 validator on a field kind other than rich_text', pg_temp.p_field('b5b', 'short_text', '{"validatorKey":"rich_text.v1","validatorVersion":1}'), 'VALIDATION_FAILED'),
   ('literal default mode without a value', pg_temp.p_field('b6', 'short_text', '{"defaultMode":"literal"}'), 'VALIDATION_FAILED'),
   ('none default mode with an explicit null value (a present key is a default)', pg_temp.p_field('b7', 'short_text', '{"defaultMode":"none","defaultValue":null}'), 'VALIDATION_FAILED'),
   ('none default mode with a value', pg_temp.p_field('b8', 'short_text', '{"defaultMode":"none","defaultValue":"x"}'), 'VALIDATION_FAILED'),
@@ -194,7 +214,12 @@ from (values
   ('a 121 character editorConfig label', pg_temp.p_field('c8', 'short_text', jsonb_build_object('editorConfig', jsonb_build_object('label', repeat('x', 121), 'order', 0))), 'VALIDATION_FAILED'),
   ('a 501 character editorConfig helpText', pg_temp.p_field('c9', 'short_text', jsonb_build_object('editorConfig', jsonb_build_object('label', 'X', 'helpText', repeat('x', 501), 'order', 0))), 'VALIDATION_FAILED'),
   ('an unknown attribute on the field', pg_temp.p_field('d1', 'short_text', '{"script":"alert(1)"}'), 'VALIDATION_FAILED'),
-  ('an executable expression in place of a validator', pg_temp.p_field('d2', 'short_text', '{"validatorKey":"return 1","validatorVersion":1}'), 'VALIDATION_FAILED')
+  ('an executable expression in place of a validator', pg_temp.p_field('d2', 'rich_text', '{"validatorKey":"return 1","validatorVersion":1}'), 'VALIDATION_FAILED'),
+  ('a literal default whose type does not match its short_text field', pg_temp.p_field('d3', 'short_text', '{"defaultMode":"literal","defaultValue":5}'), 'VALIDATION_FAILED'),
+  ('a literal default over the maxLength of its field', pg_temp.p_field('d4', 'short_text', '{"constraints":{"maxLength":3},"defaultMode":"literal","defaultValue":"abcd"}'), 'VALIDATION_FAILED'),
+  ('a literal default outside the maximum of its integer field', pg_temp.p_field('d5', 'integer', '{"constraints":{"maximum":5},"defaultMode":"literal","defaultValue":6}'), 'VALIDATION_FAILED'),
+  ('a literal default that is not a rich_text.v1 document on a rich_text field', pg_temp.p_field('d6', 'rich_text', '{"defaultMode":"literal","defaultValue":"plain"}'), 'VALIDATION_FAILED'),
+  ('an itemKind on a field that is not a list', pg_temp.p_field('d7', 'short_text', '{"constraints":{"itemKind":"short_text"}}'), 'VALIDATION_FAILED')
 ) c(n, f, e);
 
 -- BE03a types defaultValue as Json.nullable().optional() and derives hasDefault from the key being

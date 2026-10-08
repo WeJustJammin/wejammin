@@ -13,8 +13,9 @@ review records; [03b-editorial-workflow-publication.md](03b-editorial-workflow-p
 attributes the minimum Slice 09 source-row prerequisite; and
 [03c-composition-taxonomy-localization.md](03c-composition-taxonomy-localization.md)
 adds the reciprocal immutable template-draft/compatibility-resolver contract.
-Public template activation remains a separate 03c gap, and no new acceptance is
-claimed by this amendment.
+Public template activation was a separate 03c gap at that point and is specified
+by the 2026-10-07 Slice 12 cascade below; no new acceptance is claimed by this
+amendment.
 
 DEC-111 (owner-approved 2026-10-02) adds server-mediated step-up MFA and TOTP
 enrollment to [01a-auth-account-linking.md](01a-auth-account-linking.md):
@@ -26,6 +27,33 @@ TOTP management lives at `/settings/security/mfa`, and the administrative
 factor reset for a lost factor is CFG-05B-06 in
 [05b-admin-workspace-operations.md](05b-admin-workspace-operations.md).
 
+The 2026-10-07 Slice 11 and Slice 12 cascades (orchestrator resolutions, owner
+may override) extend the CMS shard set without renumbering existing operations.
+[03b-editorial-workflow-publication.md](03b-editorial-workflow-publication.md) adds
+CMS-03B-15 `GET /api/v1/cms/entries/{entryId}/workflow` (entry workflow and
+submission preparation), CMS-03B-16 `GET /api/v1/cms/reviews/{reviewId}` (review
+detail), CMS-03B-17 `GET /api/v1/cms/reviews` (reviewer queue) and CMS-03B-18
+`POST /api/v1/cms/reviews/{reviewId}/assignments` (owner reviewer assignment,
+DEC-136), and the internal RPC operations CMS-03B-19 (preview-token verifier for
+Shard 04, aligned in [04c-public-delivery-cache.md](04c-public-delivery-cache.md))
+and CMS-03B-20 (publication-schedule claim and execute).
+[03c-composition-taxonomy-localization.md](03c-composition-taxonomy-localization.md)
+adds the governed review machinery CMS-03C-06 `POST /api/v1/cms/governed-reviews`,
+CMS-03C-07 `POST /api/v1/cms/governed-reviews/{reviewId}/decision`, CMS-03C-08
+`POST .../assignments`, CMS-03C-09 `POST .../activation`, CMS-03C-10 and CMS-03C-11
+(`GET` detail and queue), the pattern operations CMS-03C-12 `POST
+/api/v1/cms/patterns/versions`, CMS-03C-13 `GET /api/v1/cms/patterns/selector`,
+CMS-03C-14 `GET /api/v1/cms/compositions/instances/{instanceId}/update-diff` and
+CMS-03C-15 `POST /api/v1/cms/compositions/pattern-updates`, the taxonomy
+operations CMS-03C-16 `POST /api/v1/cms/taxonomies/versions` and CMS-03C-17 `GET
+/api/v1/cms/taxonomies/selector`, the supporting reads `cmsTemplateLatestRead`
+(`GET /api/v1/cms/templates/{templateKey}`), `cmsPatternLatestRead`
+(`GET /api/v1/cms/patterns/{patternKey}`), `cmsTaxonomyVersionsRead` and
+`cmsTaxonomyTermsRead` (`GET /api/v1/cms/taxonomies/{taxonomyId}/versions` and
+`/terms`), and the internal operations CMS-03C-18 through CMS-03C-21.
+[05c-portability-quality-lifecycle.md](05c-portability-quality-lifecycle.md)
+records that the accessibility checker and its gate call are delivered by Slice 11.
+
 ## Changelog
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -36,6 +64,8 @@ factor reset for a lost factor is CFG-05B-06 in
 | 2026-10-02 | OD-4: 03a `ContentTypeVersion` gains an immutable locale configuration (`supportedLocales`, `fallbackChains`, `localeConfigHash`) carried by CMS-03A-01 and replaceable only through the CMS-03A-09 successor under DEC-108 review, with exact 422 messages, definition-hash and activation-evidence freezing and protected-detail exposure; 03c CMS-03C-04 `fallbackChain` becomes an equality expectation (409 `FALLBACK_CHAIN_MISMATCH`, 422 for an unsupported locale); the active schema locale set of 03b CMS-03B-10 is `supportedLocales`. OD-6: schema versions have no schedule action, `scheduled` is unreachable by design. |
 | 2026-10-02 | Slice 09 implementation reconciliation: 03a records the edit-on-review invalidation rule, the Migration scan protocol (multi-field source-read and `rowEvidence` batch RPCs, retired-field and retire-only semantics, DB-recomputed hashes, Worker-side validator-key checks), the private `cms_schema_migration_target_rows` store, source-drift invalidation with 409 detail `MIGRATION_SOURCE_DRIFT`, the error detail codes and the `FOR SHARE` activation lock; 03b points to that lock and defines the active schema locale set as `supportedLocales`; 03b/03c/FE 03 use only the BE00 `DEPENDENCY_UNAVAILABLE` (502/503/504); 01a settles step-up and enrollment verification and rotates the session in one transaction with fail-closed failed-attempt accounting. |
 | 2026-10-02 | Slice 09 follow-ups reconciliation: 03a records that source-drift refusals change nothing (recovery is a new dry run that atomically invalidates the review; the verify verdict invalidates eagerly), the plan's provisional `dry_run_report` fingerprint versus the sealed report authority, the six sealed-only `activationPreparation.dryRunRef` members, field-neutral (locale-only) plans and locale-variant scan rows, and the review-open-past-window and denial-spike alerts; 01a records that the AUTH-API-18 `enrollment_expired` refusal persists nothing (the registry sweep persists the expiry) and that security notifications use the in-app notification intent boundary; 03c carries only the CMS-15 `no_fallback` delivery pointer. |
+| 2026-10-07 | Slice 11 and Slice 12 specification cascade for BE shards 03b and 03c with the 04c verifier alignment, the 05c checker delivery note and the 03a non-grantable capability keys: CMS-03B-15 to CMS-03B-20, CMS-03C-06 to CMS-03C-21, the latest and vocabulary supporting reads, the derived revision state, the append-only publication lineage, the seventeen-category preflight registry, the settings snapshot, the pinned-tzdb Time authority, the DEC-137 governed review set, the DEC-135 canonical overlap domains, the DEC-138 locale resolver and the DEC-141 receiving obligations. |
+| 2026-10-07 | Slice 10 follow-up 2 (lane H rounds 1-2, EB-AC063, DEC-139, DEC-140; orchestrator, owner may override): BE03b gains the global write-path lock order and authority fencing, the CMS-03B-13 collection-epoch cursor and authorized keyset, the restore chain evidence event `cms.entry.revision-restored.v1`, the conflict supersede-on-advance lifecycle and the editor-only creator assignment; BE03a gains the activation lock order and the typed retryable deadlock refusal. No operation ID is added. |
 
 ## Quality Gate
 

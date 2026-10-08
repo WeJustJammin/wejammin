@@ -1,0 +1,99 @@
+-- Second authorised entry (newer updated_at) and a second revision on the
+-- seeded entry, both visible to the creator, so a limit-1 first page has a next
+-- page for both CMS-03B-13 and CMS-03B-03.  The rows mirror the shared
+-- fixture's seeded draft (rpc/001-fixtures.sqlinc) and live in the entrypoint's
+-- rolled-back transaction.  Requires the rpc helpers and fixtures.
+select set_config('app.cms_rpc', 'true', true);
+
+insert into platform_private.cms_content_entries(
+  id, owner_id, content_type_id, owner_party_id, lifecycle,
+  current_draft_revision_id, version, created_by, created_at, updated_at
+)
+select 'a9100000-0000-4000-8000-000000000311', owner_id, content_type_id,
+       owner_party_id, lifecycle, null, 1, created_by,
+       created_at + interval '5 minutes', updated_at + interval '5 minutes'
+from platform_private.cms_content_entries
+where id = 'a9100000-0000-4000-8000-000000000301';
+
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id,
+  template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+  payload_hash, author_person_id, acting_party_id, state, version,
+  validation_state, validation_report, created_at, updated_at
+)
+select 'a9100000-0000-4000-8000-000000000312', owner_id,
+       'a9100000-0000-4000-8000-000000000311', 1, schema_version_id,
+       template_version_id, taxonomy_version_ids, '[]'::jsonb, locale,
+       platform_private.cms_jcs_sha256(
+         jsonb_build_object(
+           (select value from s10_ids where key = 'typeFieldId'),
+           'Second entry title'
+         )
+       )::char(64),
+       author_person_id, acting_party_id, state, 1, validation_state,
+       validation_report, created_at + interval '5 minutes',
+       updated_at + interval '5 minutes'
+from platform_private.cms_entry_revisions
+where id = 'a9100000-0000-4000-8000-000000000302';
+
+insert into platform_private.cms_entry_field_values(
+  owner_id, state, version, revision_id, field_id, field_definition_id,
+  locale, value, provenance, value_hash, created_at, updated_at
+)
+select owner_id, state, 1, 'a9100000-0000-4000-8000-000000000312', field_id,
+       field_definition_id, locale, to_jsonb('Second entry title'::text),
+       provenance,
+       platform_private.cms_jcs_sha256(
+         to_jsonb('Second entry title'::text)
+       )::char(64),
+       created_at + interval '5 minutes', updated_at + interval '5 minutes'
+from platform_private.cms_entry_field_values
+where revision_id = 'a9100000-0000-4000-8000-000000000302';
+
+update platform_private.cms_content_entries
+set current_draft_revision_id = 'a9100000-0000-4000-8000-000000000312'
+where id = 'a9100000-0000-4000-8000-000000000311';
+
+insert into platform_private.cms_entry_assignments(
+  owner_id, entry_id, assignee_person_id, capability_key, state, version,
+  created_at, updated_at
+)
+select owner_id, 'a9100000-0000-4000-8000-000000000311', assignee_person_id,
+       capability_key, state, version, created_at, updated_at
+from platform_private.cms_entry_assignments
+where entry_id = 'a9100000-0000-4000-8000-000000000301';
+
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id,
+  template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+  payload_hash, author_person_id, acting_party_id, state, version,
+  validation_state, validation_report, created_at, updated_at
+)
+select 'a9100000-0000-4000-8000-000000000303', owner_id, entry_id, 2,
+       schema_version_id, template_version_id, taxonomy_version_ids,
+       jsonb_build_array(id), locale,
+       platform_private.cms_jcs_sha256(
+         jsonb_build_object(
+           (select value from s10_ids where key = 'typeFieldId'),
+           'Updated draft title'
+         )
+       )::char(64),
+       author_person_id, acting_party_id, state, 1, validation_state,
+       validation_report, created_at + interval '1 minute',
+       updated_at + interval '1 minute'
+from platform_private.cms_entry_revisions
+where id = 'a9100000-0000-4000-8000-000000000302';
+
+insert into platform_private.cms_entry_field_values(
+  owner_id, state, version, revision_id, field_id, field_definition_id,
+  locale, value, provenance, value_hash, created_at, updated_at
+)
+select owner_id, state, 1, 'a9100000-0000-4000-8000-000000000303', field_id,
+       field_definition_id, locale, to_jsonb('Updated draft title'::text),
+       provenance,
+       platform_private.cms_jcs_sha256(
+         to_jsonb('Updated draft title'::text)
+       )::char(64),
+       created_at + interval '1 minute', updated_at + interval '1 minute'
+from platform_private.cms_entry_field_values
+where revision_id = 'a9100000-0000-4000-8000-000000000302';
