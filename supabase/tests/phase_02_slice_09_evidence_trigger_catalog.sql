@@ -141,7 +141,7 @@ select is((select count(distinct table_name)::integer from s09t_generic where ou
      'cms_content_type_capability_bindings')), 6,
   'the entry, assignment, field-value, revision, locale-variant and capability-binding tables all held rows and were proved [P2-S09-AC-215]');
 select is((select string_agg(distinct table_name, ',' order by table_name) from s09t_generic where outcome = 'EMPTY'),
-  'cms_block_definition_lifecycle_events,cms_block_definition_versions,cms_composition_instances,cms_conflict_records,cms_content_type_template_bindings,cms_edit_presence,cms_editorial_decisions,cms_editorial_reviews,cms_entry_relations,cms_pattern_versions,cms_preview_tokens,cms_publication_schedules,cms_publication_versions,cms_related_content_rules,cms_relation_definitions,cms_release_nonce_receipts,cms_taxonomy_versions,cms_term_assignments,cms_term_labels,cms_terms',
+  'cms_block_definition_lifecycle_events,cms_block_definition_versions,cms_composition_instances,cms_conflict_records,cms_content_type_template_bindings,cms_edit_presence,cms_editorial_decisions,cms_editorial_reviews,cms_entry_relations,cms_pattern_versions,cms_preview_tokens,cms_publication_schedules,cms_publication_versions,cms_related_content_rules,cms_relation_definitions,cms_release_nonce_receipts,cms_restore_chain_manifests,cms_taxonomy_versions,cms_term_assignments,cms_term_labels,cms_terms',
   'the tables empty in this state are exactly the listed ones, proved in the schema entrypoint or owned by Slice 10-16 producers [P2-S09-AC-215]');
 
 select is(pg_temp.s09t_probe_stmt('cms_content_type_capability_bindings', 'cms_content_type_capability_bindings_no_delete', true,

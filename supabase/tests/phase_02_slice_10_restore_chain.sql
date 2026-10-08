@@ -24,7 +24,74 @@ select plan(23);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
+\ir phase_02_slice_09_dec108/00-helpers.sqlinc
+\ir phase_02_slice_09_dec108/01-actors.sqlinc
+\ir phase_02_slice_09_dec108/02-chain.sqlinc
+\ir phase_02_slice_09_dec108/03-support.sqlinc
+\ir phase_02_slice_09_dec108/04-worker.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir phase_02_slice_10_rpc/009-restore-policy-binding.sqlinc
+
+-- Multi-edge producer setup (D6).  The zero-edge and refusal cases run entirely
+-- on the s10 fixture entry; the multi-edge success needs a real chain of
+-- consecutive COMPLETED 03a plan edges.  That chain is built here through the
+-- real Slice 09 producers only -- successor drafts, review, an independent
+-- decision, the worker dry-run/verify/complete protocol, and activation -- and
+-- the single source entry is created through the real CMS-03B-10 create
+-- command while the source version is active.  No plan, review, decision,
+-- completed-plan, approved-state or chain row is inserted by hand.  The dec108
+-- owner receipt (platform_private.initialize_cms_owner) refuses once any cms.%
+-- grant exists, so 01-actors provisioned above runs before the s10 fixture
+-- inserted its own grants, and the owner gains cms.author through the real
+-- CMS-03A-15 grant command.
+select pg_temp.s09d_grant_via_rpc('owner', 'cms.author', 1);
+
+select pg_temp.s09d_guc_save();
+select pg_temp.s09d_create_type('s10src', 'articlesrc');
+select pg_temp.s09d_to_active('s10src', array['rev1']);
+select pg_temp.s09d_grant_via_rpc('owner', 'cms.author', 1);
+select pg_temp.s09w_entry('s10e', 's10src', 'Seed title');
+select pg_temp.s09d_successor('s10mid', 's10src');
+select pg_temp.s09d_dry_run('s10mid');
+select pg_temp.s09w_dry_run('s10mid');
+select pg_temp.s09d_submit('s10mid');
+select pg_temp.s09d_assign('s10mid', 'rev2');
+select pg_temp.s09d_decide('s10mid', 'rev2');
+select pg_temp.s09w_backfill('s10mid');
+select pg_temp.s09d_activate('s10mid');
+select pg_temp.s09d_successor('s10tgt', 's10mid');
+select pg_temp.s09d_dry_run('s10tgt');
+select pg_temp.s09w_dry_run('s10tgt');
+select pg_temp.s09d_submit('s10tgt');
+select pg_temp.s09d_assign('s10tgt', 'rev3');
+select pg_temp.s09d_decide('s10tgt', 'rev3');
+select pg_temp.s09w_backfill('s10tgt');
+select pg_temp.s09d_activate('s10tgt');
+select pg_temp.s09d_guc_restore();
+
+create temp table s10_chain on commit drop as
+select entry.id as entry_id,
+       entry.version as entry_version,
+       (
+         select revision.id
+         from platform_private.cms_entry_revisions revision
+         where revision.entry_id = entry.id
+         order by revision.revision_number
+         limit 1
+       ) as revision_id,
+       pg_temp.s09d_id('s10src:type') as type_id,
+       pg_temp.s09d_id('s10src:version') as source_version_id,
+       pg_temp.s09d_id('s10tgt:version') as target_version_id
+from platform_private.cms_content_entries entry
+where entry.content_type_id = pg_temp.s09d_id('s10src:type');
+
+-- The producer chain above selected the dec108 owner worker sessions; restore
+-- the s10 fixture creator/organization session so every zero-edge and refusal
+-- probe below runs against the fixture entry exactly as before.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
 
 -- Evaluates a boolean query through EXECUTE so a read of the not-yet-existing
 -- restore-chain manifest is an evidence-backed false instead of a parse-time
@@ -130,14 +197,22 @@ select ok(
 
 -- Zero-edge: a same-schema restore still records a manifest whose edge count is
 -- 0 and whose plan id list is empty.
-select pg_temp.s10_rpc_probe(
+select pg_temp.s10_rpc_probe_persist(
   'restore_zero_edge',
   null,
   $sql$select platform_api.cms_restore_revision(jsonb_build_object(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
-    'migrationChainId', 'a9100000-0000-4000-8000-000000000901',
-    'expectedVersion', 1))$sql$
+    'migrationChainId', platform_private.cms_restore_chain_manifest_id(
+      platform_private.cms_restore_chain_derive(
+        (select value::uuid from s10_ids where key = 'typeId'),
+        (select value::uuid from s10_ids where key = 'draftVersionId'),
+        (select value::uuid from s10_ids where key = 'draftVersionId')
+      )->>'hash')::text,
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-zero-0001'))$sql$
 );
 
 select is(
@@ -155,16 +230,36 @@ select ok(
   'a zero-edge restore records a manifest with no plan edges'
 );
 
--- Multi-edge: a chain of consecutive completed plans records its ordered edge
--- count and hash-consistent plan id list.
-select pg_temp.s10_rpc_probe(
+-- Multi-edge: the source revision sits on the first chain version and the
+-- active target is two completed plans ahead, so the re-derived chain carries
+-- two ordered edges.  The request is a NEW owner worker request of its own
+-- (isolated idempotency key) against the real chain entry captured above.
+select pg_temp.s09d_session('owner', 'service_role');
+select set_config('app.cms_rpc', 'true', true);
+
+select pg_temp.s10_rpc_probe_persist(
   'restore_multi_edge',
   null,
   $sql$select platform_api.cms_restore_revision(jsonb_build_object(
-    'entryId', (select value from s10_ids where key = 'entryId'),
-    'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
-    'migrationChainId', 'a9100000-0000-4000-8000-000000000902',
-    'expectedVersion', 1))$sql$
+    'entryId', (select entry_id::text from s10_chain),
+    'revisionId', (select revision_id::text from s10_chain),
+    'migrationChainId', platform_private.cms_restore_chain_manifest_id(
+      platform_private.cms_restore_chain_derive(
+        (select type_id from s10_chain),
+        (select source_version_id from s10_chain),
+        (select target_version_id from s10_chain)
+      )->>'hash')::text,
+    'expectedVersion', (select entry_version::text from s10_chain),
+    'idempotencyKey', 's10-restore-multi-0001'))$sql$
+);
+
+select set_config('app.cms_rpc', '', true);
+
+-- Restore the s10 fixture session so the CAS and identity assertions below run
+-- against the fixture entry exactly as before.
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
 );
 
 select is(
@@ -198,7 +293,10 @@ select pg_temp.s10_rpc_probe(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
     'migrationChainId', 'a9100000-0000-4000-8000-000000000903',
-    'expectedVersion', 1))$sql$
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-ambig-0001'))$sql$
 );
 
 select is(
@@ -215,7 +313,10 @@ select pg_temp.s10_rpc_probe(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
     'migrationChainId', 'a9100000-0000-4000-8000-000000000904',
-    'expectedVersion', 1))$sql$
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-over64-0001'))$sql$
 );
 
 select is(
@@ -242,7 +343,10 @@ select pg_temp.s10_rpc_probe(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
     'migrationChainId', 'a9100000-0000-4000-8000-000000000905',
-    'expectedVersion', 1))$sql$
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-missing-0001'))$sql$
 );
 
 select is(
@@ -258,7 +362,10 @@ select pg_temp.s10_rpc_probe(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
     'migrationChainId', 'a9100000-0000-4000-8000-000000000906',
-    'expectedVersion', 1))$sql$
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-reqnodef-0001'))$sql$
 );
 
 select is(
@@ -274,7 +381,10 @@ select pg_temp.s10_rpc_probe(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
     'migrationChainId', 'a9100000-0000-4000-8000-000000000907',
-    'expectedVersion', 1))$sql$
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-tplinc-0001'))$sql$
 );
 
 select is(
@@ -286,20 +396,28 @@ select is(
 -- another revision or outbox event, so a lost response is reconciled.
 select pg_temp.s10_rpc_probe(
   'restore_replay',
-  $setup$select set_config('app.idempotency_key_hash', repeat('7a', 32), true)$setup$,
+  null,
   $sql$select platform_api.cms_restore_revision(jsonb_build_object(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
-    'migrationChainId', 'a9100000-0000-4000-8000-000000000908',
-    'expectedVersion', 1))$sql$
+    'migrationChainId', platform_private.cms_restore_chain_manifest_id(
+      platform_private.cms_restore_chain_derive(
+        (select value::uuid from s10_ids where key = 'typeId'),
+        (select value::uuid from s10_ids where key = 'draftVersionId'),
+        (select value::uuid from s10_ids where key = 'draftVersionId')
+      )->>'hash')::text,
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = (select value::uuid from s10_ids where key = 'entryId')),
+    'idempotencyKey', 's10-restore-replay-0001'))$sql$
 );
 
 select ok(
   pg_temp.s10_probe_state('restore_replay') = '00000'
     and pg_temp.s10_reservation_count(
       (select value::uuid from s10_ids where key = 'creatorAuth'),
-      'cms_restore_revision'
-    ) <= 1,
+      'CMS-03B-04'
+    ) = 1,
   'a replayed restore key returns the original revision without duplicate effects'
 );
 
@@ -311,12 +429,14 @@ select pg_temp.s10_rpc_probe(
     'entryId', (select value from s10_ids where key = 'entryId'),
     'revisionId', (select value from s10_ids where key = 'entryRevisionId'),
     'migrationChainId', 'a9100000-0000-4000-8000-000000000909',
-    'expectedVersion', 999))$sql$
+    'expectedVersion', 999,
+    'idempotencyKey', 's10-restore-cas-0001'))$sql$
 );
 
 select is(
-  pg_temp.s10_probe_state('restore_cas_stale'), '40001',
-  'a stale entry version fails the restore CAS'
+  pg_temp.s10_probe_state('restore_cas_stale') || ':' || pg_temp.s10_probe_message('restore_cas_stale'),
+  'P0001:VERSION_MISMATCH',
+  'a stale entry version fails the restore CAS with the typed VERSION_MISMATCH path (P0001, as append and resolve; cascade: write-path audit P2-S10-AC-025, was SQLSTATE 40001)'
 );
 
 -- The new draft records its parent chain as [current draft, source revision].

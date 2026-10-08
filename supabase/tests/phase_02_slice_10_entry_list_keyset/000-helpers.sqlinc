@@ -1,0 +1,108 @@
+-- Shared helpers of the CMS-03B-13 keyset suites (authorized keyset, collection epoch).
+-- Include AFTER phase_02_slice_10_rpc/000-helpers.sqlinc and 001-fixtures.sqlinc, as the
+-- fixture creator (pg_temp.s10_rpc_as).  Everything lives in the caller's rolled-back
+-- transaction.
+--   s10k_entry_reads()  entry-table tuples this transaction has read so far
+--   s10k_calls          one captured reader call per label (response, reads, message)
+--   s10k_list(label, request)   calls platform_private.cms_list_entries and captures it
+--   s10k_ids(label)     the entry ids of a captured page, in order
+--   s10k_seed(...)      one seeded entry + revision (+ the creator's assignment)
+
+-- Work counter: tuples the entry table served to this transaction so far.
+create or replace function pg_temp.s10k_entry_reads()
+returns bigint
+language sql
+volatile
+as $body$
+  select coalesce(sum(stats.seq_tup_read + stats.idx_tup_fetch), 0)::bigint
+  from pg_stat_xact_user_tables stats
+  where stats.relid = 'platform_private.cms_content_entries'::regclass
+$body$;
+
+-- One reader call as the current actor: the response and the entry-table work it cost.
+create temp table s10k_calls(label text primary key, response jsonb, reads bigint, message text)
+  on commit drop;
+create or replace function pg_temp.s10k_list(p_label text, p_request jsonb)
+returns void
+language plpgsql
+as $body$
+declare
+  before_reads bigint;
+  result jsonb;
+begin
+  before_reads := pg_temp.s10k_entry_reads();
+  begin
+    select platform_private.cms_list_entries(
+      p_request || jsonb_build_object('context', jsonb_build_object(
+        'actingPartyId', (select value from s10_ids where key = 'organization'),
+        'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+        'correlationId', 'a9100000-0000-4000-8000-000000000095'))
+    ) into result;
+    insert into s10k_calls values (p_label, result, pg_temp.s10k_entry_reads() - before_reads, null)
+    on conflict (label) do update set response = excluded.response, reads = excluded.reads, message = null;
+  exception when others then
+    insert into s10k_calls values (p_label, null, pg_temp.s10k_entry_reads() - before_reads, sqlerrm)
+    on conflict (label) do update set response = null, reads = excluded.reads, message = excluded.message;
+  end;
+end;
+$body$;
+
+create or replace function pg_temp.s10k_ids(p_label text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(item->>'entryId', ',' order by ord), '')
+  from s10k_calls call,
+       jsonb_array_elements(coalesce(call.response->'items', '[]'::jsonb)) with ordinality as t(item, ord)
+  where call.label = p_label
+$body$;
+
+-- ---------------------------------------------------------------- fixture ----
+-- Authorized entries of the creator, newest first by updated_at:
+--   K1 (newest), K2, K3 author assignment | K4 editor assignment | K5 revoked assignment
+--   K6 archived | K7 approved-state revision | the 001 entry 301 (oldest)
+-- plus the hidden population created below.
+create or replace function pg_temp.s10k_seed(
+  p_entry uuid, p_revision uuid, p_updated timestamptz, p_capability text,
+  p_assignment_state text, p_lifecycle text, p_revision_state text
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle,
+    current_draft_revision_id, version, created_by, created_at, updated_at
+  )
+  select p_entry, org.value::uuid, article.value::uuid, org.value::uuid, p_lifecycle,
+         null, 1, actor.value::uuid, p_updated, p_updated
+  from s10_ids org, s10_ids article, s10_ids actor
+  where org.key = 'organization' and article.key = 'typeId' and actor.key = 'creatorAuth';
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id,
+    template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+    payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at
+  )
+  select p_revision, org.value::uuid, p_entry, 1, version_row.value::uuid,
+         null, '[]'::jsonb, '[]'::jsonb, 'en-US',
+         platform_private.cms_jcs_sha256('{}'::jsonb)::char(64),
+         person.value::uuid, org.value::uuid, p_revision_state, 1, 'valid', '{}'::jsonb,
+         p_updated, p_updated
+  from s10_ids org, s10_ids version_row, s10_ids person
+  where org.key = 'organization' and version_row.key = 'draftVersionId'
+    and person.key = 'creatorPerson';
+  update platform_private.cms_content_entries set current_draft_revision_id = p_revision where id = p_entry;
+  if p_capability is not null then
+    insert into platform_private.cms_entry_assignments(
+      owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at
+    )
+    select org.value::uuid, p_entry, person.value::uuid, p_capability, p_assignment_state, 1, p_updated, p_updated
+    from s10_ids org, s10_ids person
+    where org.key = 'organization' and person.key = 'creatorPerson';
+  end if;
+end;
+$body$;
+

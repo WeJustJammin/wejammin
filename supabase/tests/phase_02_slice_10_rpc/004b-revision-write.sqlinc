@@ -121,8 +121,8 @@ select pg_temp.s10_rpc_probe(
     )::text) || '::jsonb)'
 );
 select is(
-  pg_temp.s10_probe_message('revision-relation-unlocked'), 'DEPENDENCY_UNAVAILABLE',
-  'CMS-03B-01 does not persist an unapproved relation-value encoding'
+  pg_temp.s10_probe_message('revision-relation-unlocked'), 'VALIDATION_FAILED',
+  'CMS-03B-01 refuses a malformed relation-value encoding (an array of targets, not the ordered { targets } object) as VALIDATION_FAILED [BE03b:1049, AC-073]'
 );
 
 create temp table s10_revision_result on commit drop as

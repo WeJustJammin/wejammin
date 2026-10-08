@@ -1,0 +1,186 @@
+-- Shared pg_temp helpers of the lane-EB evidence entrypoints (supabase/tests/phase_02_slice_10_ev_eb_*.sql).
+-- No assertion lives here: an include with assertions would give the same identity to every entrypoint that
+-- includes it.  Include AFTER phase_02_slice_10_rpc/000-helpers.sqlinc and 001-fixtures.sqlinc.
+
+-- Fingerprint of every table a command or a read could touch: row counts, the sum of the entry
+-- versions and a digest of the assignment states.
+create or replace function pg_temp.eb_fingerprint()
+returns text
+language sql
+stable
+as $body$
+  select concat_ws('/',
+    (select count(*) from platform_private.cms_content_entries),
+    (select coalesce(sum(version), 0) from platform_private.cms_content_entries),
+    (select count(*) from platform_private.cms_entry_revisions),
+    (select count(*) from platform_private.cms_entry_field_values),
+    (select count(*) from platform_private.cms_entry_relations),
+    (select count(*) from platform_private.cms_conflict_records),
+    (select coalesce(md5(string_agg(conflict.id::text || conflict.state || conflict.version::text,
+       ',' order by conflict.id)), '-') from platform_private.cms_conflict_records conflict),
+    (select count(*) from platform_private.idempotency_records),
+    (select count(*) from platform_private.outbox_events),
+    (select count(*) from audit_private.audit_events),
+    (select coalesce(md5(string_agg(assignment.id::text || assignment.state || assignment.version::text,
+       ',' order by assignment.id)), '-') from platform_private.cms_entry_assignments assignment))
+$body$;
+
+-- Calls one statement and returns { state, message, detail, hint, response, before, after }.  The
+-- fingerprint is taken immediately before and after the call, so a refusal that wrote anything
+-- would show as a difference.
+create or replace function pg_temp.eb_observe(p_sql text)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  fingerprint_before text := pg_temp.eb_fingerprint();
+  observed_state text := '00000';
+  observed_message text;
+  observed_detail text;
+  observed_hint text;
+  observed_response jsonb;
+begin
+  begin
+    execute p_sql into observed_response;
+  exception
+    when others then
+      get stacked diagnostics
+        observed_detail = pg_exception_detail,
+        observed_hint = pg_exception_hint;
+      observed_state := sqlstate;
+      observed_message := sqlerrm;
+      observed_response := null;
+  end;
+  return jsonb_build_object(
+    'state', observed_state, 'message', observed_message,
+    'detail', observed_detail, 'hint', observed_hint,
+    'response', observed_response,
+    'before', fingerprint_before, 'after', pg_temp.eb_fingerprint());
+end;
+$body$;
+
+-- 'P0001|NOT_FOUND|-|-' : the closed shape of one refusal (SQLSTATE, token, DETAIL, HINT).
+create or replace function pg_temp.eb_shape(p_observed jsonb)
+returns text
+language sql
+immutable
+as $body$
+  select concat_ws('|', p_observed->>'state', coalesce(nullif(p_observed->>'message', ''), '-'),
+    coalesce(nullif(p_observed->>'detail', ''), '-'), coalesce(nullif(p_observed->>'hint', ''), '-'))
+$body$;
+
+-- The probe wrapper: setup and call in a rolled-back subtransaction, with the observation stored.
+create or replace function pg_temp.eb_probe(p_label text, p_setup text, p_sql text)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.s10_rpc_probe(
+    p_label, p_setup,
+    'select pg_temp.eb_observe(' || quote_literal(p_sql) || ')');
+end;
+$body$;
+
+create or replace function pg_temp.eb_obs(p_label text)
+returns jsonb
+language sql
+stable
+as $body$
+  select pg_temp.s10_probe_response(p_label)
+$body$;
+
+-- Setup text: the actor and acting party of one fixture person.
+create or replace function pg_temp.eb_as_sql(p_auth_key text)
+returns text
+language sql
+stable
+as $body$
+  select format('select pg_temp.s10_rpc_as(%L::uuid, %L::uuid)',
+    (select value from s10_ids where key = p_auth_key),
+    (select value from s10_ids where key = 'organization'))
+$body$;
+
+
+-- ---------------------------------------------------------------------------------------
+-- Request builders (the shapes the Worker sends to the named RPCs).
+-- ---------------------------------------------------------------------------------------
+
+-- The acting-party context the Worker projects for every command.
+create or replace function pg_temp.eb_context()
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'actingPartyId', (select value from s10_ids where key = 'organization'),
+    'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+    'correlationId', 'a9100000-0000-4000-8000-000000000095')
+$body$;
+
+-- One CMS-03B-10 body for the fixture content type; p_patch replaces top-level members.
+create or replace function pg_temp.eb_create_request(p_key text, p_patch jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'contentTypeId', (select value from s10_ids where key = 'typeId'),
+    'contentTypeVersionId', (select value from s10_ids where key = 'draftVersionId'),
+    'locale', 'en-US',
+    'changedPaths', jsonb_build_array('/fields/' || (select value from s10_ids where key = 'typeFieldId')),
+    'values', jsonb_build_object((select value from s10_ids where key = 'typeFieldId'), 'EB first draft title'),
+    'schemaArtifact', jsonb_build_object(
+      'id', (select value from s10_ids where key = 'typeArtifactId'),
+      'contentTypeVersionId', (select value from s10_ids where key = 'draftVersionId'),
+      'artifactHash', (select value from s10_ids where key = 'typeArtifactHash'),
+      'compilerVersion', (select value from s10_ids where key = 'typeArtifactCompiler'),
+      'zodContractRef', (select value from s10_ids where key = 'typeArtifactZodRef')),
+    'validatorRefs', jsonb_build_array(jsonb_build_object('key', 'cms.text', 'version', '1')),
+    'workflowPolicy', jsonb_build_object(
+      'key', 'editorial', 'version', '1', 'policyHash', repeat('c', 64), 'riskClass', 'ordinary',
+      'requiredDecisionCount', 1, 'requiredCapabilities', jsonb_build_array('cms.author'),
+      'approvalEvidenceHash', repeat('d', 64)),
+    'activationEvidence', jsonb_build_object(
+      'key', 'cms.entry.author', 'version', '1', 'policyHash', repeat('a', 64), 'riskClass', 'ordinary',
+      'requiredDecisionCount', 1, 'requiredCapabilities', jsonb_build_array('cms.author'),
+      'approvalEvidenceHash', repeat('b', 64)),
+    'idempotencyKey', p_key,
+    'context', pg_temp.eb_context()) || p_patch
+$body$;
+
+create or replace function pg_temp.eb_create_sql(p_key text, p_patch jsonb default '{}'::jsonb)
+returns text
+language sql
+stable
+as $body$
+  select 'select platform_api.cms_create_entry(' || quote_literal(pg_temp.eb_create_request(p_key, p_patch)::text) || '::jsonb)'
+$body$;
+
+-- One CMS-03B-01 body appending to p_entry (the seeded entry by default).
+create or replace function pg_temp.eb_append_sql(p_key text, p_patch jsonb default '{}'::jsonb, p_entry text default null)
+returns text
+language sql
+stable
+as $body$
+  select 'select platform_api.cms_create_revision(' || quote_literal((jsonb_build_object(
+    'entryId', coalesce(p_entry, (select value from s10_ids where key = 'entryId')),
+    'baseRevision', '1',
+    'changedPaths', jsonb_build_array('/fields/' || (select value from s10_ids where key = 'typeFieldId')),
+    'values', jsonb_build_object((select value from s10_ids where key = 'typeFieldId'), 'EB second draft title'),
+    'locale', 'en-US',
+    'expectedVersion', '1',
+    'ifMatch', '1',
+    'idempotencyKey', p_key,
+    'context', pg_temp.eb_context()) || p_patch)::text) || '::jsonb)'
+$body$;
+
+-- Runs one DML statement for a probe whose call must be a SELECT returning jsonb.
+create or replace function pg_temp.eb_exec(p_sql text)
+returns jsonb
+language plpgsql
+as $body$
+begin
+  execute p_sql;
+  return jsonb_build_object('executed', true);
+end;
+$body$;

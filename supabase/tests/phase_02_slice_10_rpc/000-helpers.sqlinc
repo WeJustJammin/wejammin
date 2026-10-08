@@ -441,3 +441,43 @@ as $body$
     'MISSING'
   )
 $body$;
+
+-- Effect-preserving success probe: records the same label/state/message/
+-- response envelope as s10_rpc_probe, but when the call SUCCEEDS its writes
+-- stay in the enclosing transaction.  The rolled-back probe above is the right
+-- tool for a violation, whose side effects must never survive; it is the wrong
+-- tool for asserting persisted state (a lease row, an advanced version), since
+-- the sentinel rollback erases exactly the effect under test.  A failed call is
+-- still confined to a subtransaction so its abort does not poison the suite.
+create or replace function pg_temp.s10_rpc_probe_persist(
+  p_label text,
+  p_setup text,
+  p_call text
+)
+returns void
+language plpgsql
+as $body$
+declare
+  observed_state text;
+  observed_message text;
+  observed_response jsonb;
+begin
+  begin
+    if p_setup is not null then execute p_setup; end if;
+    execute p_call into observed_response;
+    observed_state := '00000';
+  exception
+    when others then
+      observed_state := sqlstate;
+      observed_message := sqlerrm;
+      observed_response := null;
+  end;
+
+  insert into pg_temp.s10_probe_capture(label, state, message, response)
+  values (p_label, observed_state, observed_message, observed_response)
+  on conflict (label) do update
+    set state = excluded.state,
+        message = excluded.message,
+        response = excluded.response;
+end;
+$body$;

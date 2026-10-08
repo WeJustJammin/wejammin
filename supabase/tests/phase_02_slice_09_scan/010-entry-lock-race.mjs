@@ -316,11 +316,24 @@ assert(
   versionState(ids.c) === 'superseded' && versionState(ids.d) === 'active',
   'S2: the successor is active and the source superseded',
 );
+// Cascade (lane H, Slice 10 write-path hardening, BE03b "Entry and revision writes
+// serialize with schema activation" + the IA03 authority fence): cms_create_entry now takes
+// FOR SHARE locks on the actor's authority rows (person, tenure, grants) BEFORE its
+// capability check and on the target version row before its schema evidence.  The
+// activation switch holds FOR UPDATE on every tenure and grant row of the owner for its
+// whole transaction, so the waiting entry queues behind it on those rows first; once the
+// switch committed, the entry is refused: either by the early version lock / the
+// insert-time guard (CONFLICT) or, when it re-reads the now-superseded version before
+// either lock, by the stale-version check (VALIDATION_FAILED at /contentTypeVersionId).
+// What this scenario proves is unchanged: the entry never commits on the switched-away
+// version.  The insert-time guard itself is proven by its own waiting probe in
+// phase_02_slice_10_races/010-activation-serialization.mjs (S3).
 assert(
   entryResult2.code !== 0 &&
-    /CONFLICT/.test(entryResult2.stderr) &&
-    /cms_entry_version_lock_guard/.test(entryResult2.stderr),
-  `S2: the waiting entry was refused with CONFLICT by the version-lock guard after the switch committed (${entryResult2.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
+    (/CONFLICT/.test(entryResult2.stderr) ||
+      (/VALIDATION_FAILED/.test(entryResult2.stderr) &&
+        /contentTypeVersionId/.test(entryResult2.stderr))),
+  `S2: the waiting entry was refused after the switch committed (CONFLICT from the version lock or guard, or the stale-version VALIDATION_FAILED) (${entryResult2.stderr.trim().split('\n').slice(0, 2).join(' ')})`,
 );
 assert(
   revisionCount(ids.c) === 0,

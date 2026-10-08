@@ -1,0 +1,135 @@
+-- Helpers for the restore-chain rebind suite.  Included after the chain and the
+-- s10b_chain temp table exist: the request builder and the observation helper
+-- read the chain entry and the version ids from it.
+
+-- Evaluates a boolean query through EXECUTE (house style of the restore suites).
+create or replace function pg_temp.s10_sql_bool(p_sql text)
+returns boolean
+language plpgsql
+as $body$
+declare
+  result boolean;
+begin
+  begin
+    execute 'select (' || p_sql || ')' into result;
+    return coalesce(result, false);
+  exception
+    when others then
+      return false;
+  end;
+end;
+$body$;
+
+-- The restore request of the chain entry; the chain identity is derived between
+-- the named versions (default: the full source -> active chain).  The derivation
+-- reads forced-RLS plan rows as the definer role, so it needs the same
+-- transaction-local RPC context the command itself establishes.
+create or replace function pg_temp.s10b_request(
+  p_key text,
+  p_revision uuid default null,
+  p_from uuid default null,
+  p_to uuid default null,
+  p_chain uuid default null
+)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  chain s10b_chain%rowtype;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select * into chain from s10b_chain;
+  return jsonb_build_object(
+    'entryId', chain.entry_id,
+    'revisionId', coalesce(p_revision, chain.revision_id),
+    'migrationChainId', coalesce(p_chain, platform_private.cms_restore_chain_manifest_id(
+      platform_private.cms_restore_chain_derive(
+        chain.type_id,
+        coalesce(p_from, chain.source_version_id),
+        coalesce(p_to, chain.target_version_id)
+      )->>'hash')),
+    'expectedVersion', (select entry_row.version::text
+      from platform_private.cms_content_entries entry_row
+      where entry_row.id = chain.entry_id),
+    'idempotencyKey', p_key
+  );
+end;
+$body$;
+
+-- Calls the command as the owner, then reads the new draft back inside the same
+-- subtransaction (test-only instrumentation).
+create or replace function pg_temp.s10b_observe(p_request jsonb, p_replays integer default 0)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  first_response jsonb;
+  replay_response jsonb;
+  new_revision uuid;
+  new_schema uuid;
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  first_response := platform_api.cms_restore_revision(p_request);
+  new_revision := (first_response->'resource'->>'id')::uuid;
+  new_schema := (first_response->'resource'->>'schemaVersionId')::uuid;
+  if p_replays > 0 then
+    replay_response := platform_api.cms_restore_revision(p_request);
+  end if;
+  -- The read-back below derives the chain through definer functions over
+  -- forced-RLS rows, so it needs the same RPC context the command establishes.
+  perform set_config('app.cms_rpc', 'true', true);
+  return jsonb_build_object(
+    'response', first_response,
+    'replayEqual', replay_response is not distinct from first_response,
+    'revisionCount', (select count(*) from platform_private.cms_entry_revisions revision
+      where revision.entry_id = (p_request->>'entryId')::uuid),
+    'outboxCount', (select count(*) from platform_private.outbox_events outbox_row
+      where outbox_row.event_type = 'cms.entry.revision-created.v1'
+        and outbox_row.aggregate_id = (p_request->>'entryId')::uuid
+        and outbox_row.payload->>'revisionId' = new_revision::text),
+    'auditCount', pg_temp.s10_audit_count(
+      'cms.entry.revision.restore', (p_request->>'entryId')::uuid),
+    'values', (select coalesce(jsonb_object_agg(definition.field_key, stored.value), '{}'::jsonb)
+      from platform_private.cms_entry_field_values stored
+      join platform_private.cms_field_definition_versions definition
+        on definition.id = stored.field_definition_id
+      where stored.revision_id = new_revision),
+    'boundToTarget', (select coalesce(bool_and(
+        definition.content_type_version_id = new_schema
+        and definition.stable_field_id = stored.field_id), false)
+      from platform_private.cms_entry_field_values stored
+      join platform_private.cms_field_definition_versions definition
+        on definition.id = stored.field_definition_id
+      where stored.revision_id = new_revision),
+    'sharesSourceDefinition', exists (
+      select 1
+      from platform_private.cms_entry_field_values stored
+      join platform_private.cms_entry_field_values source_value
+        on source_value.revision_id = (p_request->>'revisionId')::uuid
+       and source_value.field_definition_id = stored.field_definition_id
+      where stored.revision_id = new_revision),
+    'hashesRecomputed', (select coalesce(bool_and(
+        pg_catalog.btrim(stored.value_hash::text)
+          = platform_private.cms_jcs_sha256(stored.value)), false)
+      from platform_private.cms_entry_field_values stored
+      where stored.revision_id = new_revision),
+    'payloadRecomputed', (select pg_catalog.btrim(revision.payload_hash::text)
+        = platform_private.cms_jcs_sha256((
+          select coalesce(jsonb_object_agg(stored.field_id::text, stored.value), '{}'::jsonb)
+          from platform_private.cms_entry_field_values stored
+          where stored.revision_id = revision.id))
+      from platform_private.cms_entry_revisions revision
+      where revision.id = new_revision),
+    'manifest', (select jsonb_build_object(
+        'edgeCount', manifest.edge_count, 'planIds', manifest.plan_ids,
+        'source', manifest.source_schema_version_id,
+        'target', manifest.target_schema_version_id)
+      from platform_private.cms_restore_chain_manifests manifest
+      where manifest.manifest_hash = platform_private.cms_restore_chain_derive(
+        (select type_id from s10b_chain),
+        (select version.schema_version_id from platform_private.cms_entry_revisions version
+         where version.id = (p_request->>'revisionId')::uuid),
+        new_schema)->>'hash')
+  );
+end;
+$body$;

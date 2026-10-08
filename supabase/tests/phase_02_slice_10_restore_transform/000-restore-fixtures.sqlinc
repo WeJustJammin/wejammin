@@ -1,0 +1,301 @@
+-- Fixtures and helpers for the CMS-03B-04 restore transform/revalidation suite.
+--
+-- The shared Slice 10 fixture type is a flat scalar article.  Restore must also
+-- be proven against the kinds BE03b names (rich_text.v1, the DEC-133 object
+-- structure, relations, declared literal defaults and a fail-closed kind), so
+-- this fragment compiles a SECOND content type through the real 03a authoring
+-- RPC, lands it active exactly as the shared fixture does, and provides
+-- rolled-back FORGERY helpers.  A forged source revision is built inside the
+-- rolled-back probe that needs it, so the shared fixture stays pristine and
+-- no probe state can leak into another assertion.
+--
+-- Every forged row carries ONE stable snapshot timestamp (a single constant,
+-- never two independent clock_timestamp() calls), because every snapshot table
+-- checks updated_at = created_at.
+
+-- Evaluates a boolean query through EXECUTE so a read of a not-yet-existing
+-- object is an evidence-backed false instead of a parse-time relation error that
+-- would abort the single-transaction plan.
+create or replace function pg_temp.s10_sql_bool(p_sql text)
+returns boolean
+language plpgsql
+as $body$
+declare
+  result boolean;
+begin
+  begin
+    execute 'select (' || p_sql || ')' into result;
+    return coalesce(result, false);
+  exception
+    when others then
+      return false;
+  end;
+end;
+$body$;
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+-- Second content type: title (required, no default), body (rich_text),
+-- hero (DEC-133 object), related (relation, 0..2 targets), slug (a required
+-- enum with a literal default) and topic (taxonomy: no value-level proof exists
+-- yet).  The defaulted field is an enum so this fixture does not depend on the
+-- primitive-kind default shape gate owned by the field-encoding migration.
+create temp table s10r_type_request on commit drop as
+select request || jsonb_build_object(
+  'typeKey', 's10restore', 'label', 'Restore Probe',
+  'idempotencyKey', 's10-restore-type-0001',
+  'fields', jsonb_build_array(
+    (request->'fields'->0) || jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000601',
+      'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+      'required', true
+    ),
+    (request->'fields'->0) || jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000602',
+      'key', 'body', 'kind', 'rich_text', 'constraints', '{}'::jsonb,
+      'required', false
+    ),
+    (request->'fields'->0) || jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000603',
+      'key', 'hero', 'kind', 'object', 'required', false,
+      'constraints', jsonb_build_object('objectStructure', jsonb_build_object(
+        'properties', jsonb_build_array(
+          jsonb_build_object('key', 'title', 'kind', 'scalar', 'required', true,
+            'constraints', '{}'::jsonb),
+          jsonb_build_object('key', 'status', 'kind', 'enum', 'required', true,
+            'constraints', jsonb_build_object(
+              'enumValues', jsonb_build_array('draft', 'live'))),
+          jsonb_build_object('key', 'note', 'kind', 'rich_text', 'required', false,
+            'constraints', '{}'::jsonb)
+        )
+      ))
+    ),
+    (request->'fields'->0) || jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000604',
+      'key', 'related', 'kind', 'relation', 'constraints', '{}'::jsonb,
+      'required', false
+    ),
+    (request->'fields'->0) || jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000605',
+      'key', 'slug', 'kind', 'enum',
+      'constraints', jsonb_build_object(
+        'enumValues', jsonb_build_array('untitled', 'custom')),
+      'required', true, 'defaultMode', 'literal',
+      'defaultValue', to_jsonb('untitled'::text)
+    ),
+    (request->'fields'->0) || jsonb_build_object(
+      'stableFieldId', 'a9100000-0000-4000-8000-000000000606',
+      'key', 'topic', 'kind', 'taxonomy', 'constraints', '{}'::jsonb,
+      'required', false
+    )
+  ),
+  'relations', jsonb_build_array(jsonb_build_object(
+    'fieldId', 'a9100000-0000-4000-8000-000000000604',
+    'targetKind', 'content', 'targetType', 'article',
+    'projectionKey', 'cms.article.card', 'cardinality', 'many',
+    'min', 0, 'max', 2, 'ordered', true, 'onUnavailable', 'omit'
+  ))
+) as request
+from s10_type_request;
+
+create temp table s10r_type_created on commit drop as
+select platform_api.cms_create_type_draft(request) as response
+from s10r_type_request;
+
+insert into s10_ids(key, value)
+select 'restoreTypeId', response->>'contentTypeId' from s10r_type_created
+union all select 'restoreVersionId', response->>'id' from s10r_type_created;
+
+-- Land the version active with the same activation envelope the shared fixture
+-- uses (the 03a activation RPC chain is exercised by the Slice 09 suite).
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_type_versions
+set state = 'active',
+    version = version + 1,
+    activation_workflow_policy_key = 'cms.entry.author',
+    activation_workflow_policy_version = 1,
+    activation_workflow_policy_hash = repeat('a', 64),
+    activation_required_decision_count = 1,
+    activation_required_capabilities = jsonb_build_array('cms.author'),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from s10_ids where key = 'restoreVersionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from s10_ids where key = 'restoreTypeId');
+select set_config('app.cms_rpc', '', true);
+
+select ok(
+  (select value is not null from s10_ids where key = 'restoreVersionId')
+    and (
+      select count(*) = 6
+      from platform_private.cms_field_definition_versions definition
+      where definition.content_type_version_id
+        = (select value::uuid from s10_ids where key = 'restoreVersionId')
+    ),
+  'fixture: the restore probe type compiles rich_text, object, relation, default and taxonomy fields through 03a'
+);
+
+-- The deterministic ids of one forged slot: entry, source revision, current
+-- draft.  Slot 0 is the default; a second slot lets one probe name a revision
+-- that belongs to another entry.
+create or replace function pg_temp.s10r_id(p_slot integer, p_part integer)
+returns uuid
+language sql
+immutable
+as $body$
+  select ('a9100000-0000-4000-8000-'
+    || lpad((7000 + p_slot * 10 + p_part)::text, 12, '0'))::uuid
+$body$;
+
+-- Forges one entry whose SOURCE revision (number 1, schema = the active restore
+-- type version) carries p_values (stable field id -> value; a JSON null is an
+-- explicit null), p_relations ([{fieldId, targetId, expectedTargetVersion,
+-- position}]) and optionally a template binding, beside a distinct CURRENT draft
+-- (number 2).  Stored value hashes are the JCS hash of each value unless
+-- p_stored_hashes overrides one, so a tampered per-value hash is constructible
+-- without breaking the payload hash (which is derived from the values).  The
+-- caller runs it inside a rolled-back probe.
+create or replace function pg_temp.s10r_forge(
+  p_values jsonb,
+  p_relations jsonb default '[]'::jsonb,
+  p_template uuid default null,
+  p_stored_hashes jsonb default '{}'::jsonb,
+  p_slot integer default 0
+)
+returns void
+language plpgsql
+as $body$
+declare
+  snapshot_time constant timestamptz := timestamptz '2026-09-26T12:00:00Z';
+  organization_id uuid := (select value::uuid from s10_ids where key = 'organization');
+  type_id uuid := (select value::uuid from s10_ids where key = 'restoreTypeId');
+  version_id uuid := (select value::uuid from s10_ids where key = 'restoreVersionId');
+  creator_auth uuid := (select value::uuid from s10_ids where key = 'creatorAuth');
+  creator_person uuid := (select value::uuid from s10_ids where key = 'creatorPerson');
+  editor_person uuid := (select value::uuid from s10_ids where key = 'editorPerson');
+  entry_id uuid := pg_temp.s10r_id(p_slot, 1);
+  source_id uuid := pg_temp.s10r_id(p_slot, 2);
+  current_id uuid := pg_temp.s10r_id(p_slot, 3);
+  title_field uuid := 'a9100000-0000-4000-8000-000000000601';
+  current_values jsonb := jsonb_build_object(
+    'a9100000-0000-4000-8000-000000000601', 'Current draft title');
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle,
+    current_draft_revision_id, version, created_by, created_at, updated_at
+  ) values (
+    entry_id, organization_id, type_id, organization_id, 'active', null, 1,
+    creator_auth, snapshot_time, snapshot_time
+  );
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id,
+    template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+    payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at
+  ) values
+  (
+    source_id, organization_id, entry_id, 1, version_id, p_template, '[]'::jsonb,
+    '[]'::jsonb, 'en-US', platform_private.cms_jcs_sha256(p_values)::char(64),
+    creator_person, organization_id, 'draft', 1, 'valid', '{}'::jsonb,
+    snapshot_time, snapshot_time
+  ),
+  (
+    current_id, organization_id, entry_id, 2, version_id, null, '[]'::jsonb,
+    jsonb_build_array(source_id), 'en-US',
+    platform_private.cms_jcs_sha256(current_values)::char(64),
+    creator_person, organization_id, 'draft', 1, 'valid', '{}'::jsonb,
+    snapshot_time, snapshot_time
+  );
+  insert into platform_private.cms_entry_field_values(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    locale, value, provenance, value_hash, created_at, updated_at
+  )
+  select organization_id, 'active', 1, source_id, definition.stable_field_id,
+         definition.id, 'en-US', stored.value,
+         case when jsonb_typeof(stored.value) = 'null'
+           then 'explicit_null' else 'authored' end,
+         coalesce(
+           (p_stored_hashes ->> stored.key)::char(64),
+           case when jsonb_typeof(stored.value) = 'null' then null
+             else platform_private.cms_jcs_sha256(stored.value)::char(64) end
+         ),
+         snapshot_time, snapshot_time
+  from jsonb_each(p_values) stored(key, value)
+  join platform_private.cms_field_definition_versions definition
+    on definition.content_type_version_id = version_id
+   and definition.stable_field_id = stored.key::uuid;
+  insert into platform_private.cms_entry_field_values(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    locale, value, provenance, value_hash, created_at, updated_at
+  )
+  select organization_id, 'active', 1, current_id, definition.stable_field_id,
+         definition.id, 'en-US', to_jsonb('Current draft title'::text),
+         'authored',
+         platform_private.cms_jcs_sha256(to_jsonb('Current draft title'::text))::char(64),
+         snapshot_time, snapshot_time
+  from platform_private.cms_field_definition_versions definition
+  where definition.content_type_version_id = version_id
+    and definition.stable_field_id = title_field;
+  insert into platform_private.cms_entry_relations(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    target_kind, target_id, expected_target_version, position, on_unavailable,
+    created_at, updated_at
+  )
+  select organization_id, 'active', 1, source_id, definition.stable_field_id,
+         definition.id, 'content', (relation.value->>'targetId')::uuid,
+         nullif(relation.value->>'expectedTargetVersion', '')::bigint,
+         (relation.value->>'position')::integer, 'omit',
+         snapshot_time, snapshot_time
+  from jsonb_array_elements(p_relations) relation(value)
+  join platform_private.cms_field_definition_versions definition
+    on definition.content_type_version_id = version_id
+   and definition.stable_field_id = (relation.value->>'fieldId')::uuid;
+  update platform_private.cms_content_entries
+  set current_draft_revision_id = current_id
+  where id = entry_id;
+  insert into platform_private.cms_entry_assignments(
+    owner_id, entry_id, assignee_person_id, capability_key, state, version,
+    created_at, updated_at
+  ) values
+    (organization_id, entry_id, creator_person, 'cms.author', 'active', 1,
+     snapshot_time, snapshot_time),
+    (organization_id, entry_id, editor_person, 'cms.editor', 'active', 1,
+     snapshot_time, snapshot_time);
+end;
+$body$;
+
+-- Builds the restore request of one forged slot.  The chain identity is the one
+-- the command derives (same-schema, zero edges) unless p_chain overrides it, the
+-- expected version is the live entry version unless overridden, and the
+-- idempotency key is mandatory (a NULL key omits the member entirely).
+create or replace function pg_temp.s10r_request(
+  p_key text,
+  p_slot integer default 0,
+  p_chain uuid default null,
+  p_version bigint default null,
+  p_revision uuid default null
+)
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_strip_nulls(jsonb_build_object(
+    'entryId', pg_temp.s10r_id(p_slot, 1),
+    'revisionId', coalesce(p_revision, pg_temp.s10r_id(p_slot, 2)),
+    'migrationChainId', coalesce(p_chain, platform_private.cms_restore_chain_manifest_id(
+      platform_private.cms_restore_chain_derive(
+        (select value::uuid from s10_ids where key = 'restoreTypeId'),
+        (select value::uuid from s10_ids where key = 'restoreVersionId'),
+        (select value::uuid from s10_ids where key = 'restoreVersionId')
+      )->>'hash')),
+    'expectedVersion', coalesce(p_version, (
+      select entry_row.version from platform_private.cms_content_entries entry_row
+      where entry_row.id = pg_temp.s10r_id(p_slot, 1)))::text,
+    'idempotencyKey', p_key
+  ))
+$body$;

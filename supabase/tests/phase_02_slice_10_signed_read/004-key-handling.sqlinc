@@ -1,0 +1,78 @@
+-- Signing-key handling probes shared by both cursors (section 10 of
+-- ../phase_02_slice_10_cursor_signature.sql).  Included after
+-- 003-history-cursor.sqlinc: relies on the s10_cursor_list_page and
+-- s10_cursor_history_page temp tables the entrypoint creates.
+
+-- 10. Key handling shared by both cursors.  A Vault secret that is neither the
+-- active key nor a freshly retired one never verifies a cursor, even when the
+-- envelope names it and the MAC is correct under its material: an unnamed
+-- 64-hex secret, or one named outside the active/retired set.
+create temp table s10_cursor_unnamed_key on commit drop as
+select vault.create_secret(
+  repeat('c3', 32), null, 'pgTAP transaction-only unnamed secret'
+) as id;
+select is(
+  pg_temp.s10_cursor_refusal(pg_temp.s10_list_sql(pg_temp.s10_cursor_forge(
+    (select response->>'nextCursor' from s10_cursor_list_page),
+    jsonb_build_object('keyId', (select id from s10_cursor_unnamed_key)),
+    array[]::text[], 'cms-03b-13', repeat('c3', 32)
+  ))), 'CONFLICT',
+  'CMS-03B-13 a cursor signed by an unnamed Vault secret is the conflict token'
+);
+
+select is(
+  pg_temp.s10_cursor_refusal(pg_temp.s10_history_sql(pg_temp.s10_cursor_forge(
+    (select response->>'nextCursor' from s10_cursor_history_page),
+    jsonb_build_object('keyId', (select id from s10_cursor_unnamed_key)),
+    array[]::text[], 'cms-03b-03', repeat('c3', 32)
+  ))), 'CONFLICT',
+  'CMS-03B-03 a cursor signed by an unnamed Vault secret is the conflict token'
+);
+
+-- Rotation: the previous key stays verifiable for one cursor lifetime under a
+-- retired name and a fresh active key signs new pages.  (The 24-hour retirement
+-- bound itself cannot be aged here: Vault stamps updated_at with the
+-- transaction clock and the suite role cannot write vault.secrets.)  Each probe
+-- rotates inside its own rolled-back subtransaction.
+select pg_temp.s10_rpc_probe(
+  'rotate-list-old-cursor',
+  pg_temp.s10_sql_rotate_key('cms_editorial_history_cursor_retired_test'),
+  pg_temp.s10_list_sql((select response->>'nextCursor' from s10_cursor_list_page))
+);
+select is(
+  pg_temp.s10_probe_state('rotate-list-old-cursor'), '00000',
+  'CMS-03B-13 accepts a signed cursor from a freshly retired Vault key'
+);
+select pg_temp.s10_rpc_probe(
+  'rotate-history-old-cursor',
+  pg_temp.s10_sql_rotate_key('cms_editorial_history_cursor_retired_test'),
+  pg_temp.s10_history_sql((select response->>'nextCursor' from s10_cursor_history_page))
+);
+select is(
+  pg_temp.s10_probe_state('rotate-history-old-cursor'), '00000',
+  'CMS-03B-03 accepts a signed cursor from a freshly retired Vault key'
+);
+select pg_temp.s10_rpc_probe(
+  'rotate-new-page',
+  pg_temp.s10_sql_rotate_key('cms_editorial_history_cursor_retired_test'),
+  $sql$select jsonb_build_object(
+    'page', platform_api.cms_list_entries('{"limit":1}'::jsonb),
+    'activeKeyId', (select id from vault.secrets
+                    where name = 'cms_editorial_history_cursor_active'))$sql$
+);
+select ok(
+  (select (convert_from(decode(response->'page'->>'nextCursor', 'base64'), 'utf8')
+             ::jsonb->>'keyId') = response->>'activeKeyId'
+   from (select pg_temp.s10_probe_response('rotate-new-page') as response) probe),
+  'CMS-03B-13 signs new pages with the freshly rotated active key'
+);
+select pg_temp.s10_rpc_probe(
+  'rotate-misnamed-old-key',
+  pg_temp.s10_sql_rotate_key('previous_cms_editorial_history_cursor_retired_test'),
+  pg_temp.s10_list_sql((select response->>'nextCursor' from s10_cursor_list_page))
+);
+select is(
+  pg_temp.s10_probe_message('rotate-misnamed-old-key'), 'CONFLICT',
+  'CMS-03B-13 a signing secret outside the active/retired name set is the conflict token'
+);
+

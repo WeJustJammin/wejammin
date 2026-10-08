@@ -1,0 +1,110 @@
+-- Shared signed-cursor probes for the CMS-03B-03 / CMS-03B-13 suites.  Every
+-- helper runs its statement through pg_temp.s10_rpc_call (a plpgsql
+-- subtransaction), so a refusing or absent RPC is a captured outcome instead of
+-- an aborted suite transaction.  Requires phase_02_slice_10_rpc/000-helpers.
+
+-- Returns the contract token a statement was refused with, or 'accepted' when
+-- it succeeded, so a set of probes can be asserted in one aggregate expression
+-- without depending on the evaluation order of two separate calls.
+create or replace function pg_temp.s10_cursor_refusal(p_sql text)
+returns text
+language plpgsql
+as $body$
+begin
+  if pg_temp.s10_rpc_call(p_sql) then
+    return pg_temp.s10_last_error_message();
+  end if;
+  return 'accepted';
+end;
+$body$;
+
+-- Re-encodes a signed cursor envelope after editing it: p_patch overwrites or
+-- adds keys, p_remove drops keys, and when p_domain is given the signature is
+-- recomputed over the edited payload with the hex key p_key_hex under that
+-- signature domain (a correctly signed forgery).  Without p_domain the edited
+-- envelope keeps its original signature (a tampered cursor).
+create or replace function pg_temp.s10_cursor_forge(
+  p_cursor text,
+  p_patch jsonb default '{}'::jsonb,
+  p_remove text[] default array[]::text[],
+  p_domain text default null,
+  p_key_hex text default null
+)
+returns text
+language plpgsql
+as $body$
+declare
+  envelope jsonb := convert_from(decode(p_cursor, 'base64'), 'utf8')::jsonb;
+begin
+  envelope := (envelope || p_patch) - p_remove;
+  if p_domain is not null then
+    envelope := (envelope - 'signature') || jsonb_build_object(
+      'signature', encode(extensions.hmac(
+        convert_to(
+          p_domain || ':v1:' || (envelope->>'keyId') || ':' ||
+            platform_private.cms_jcs(envelope - 'keyId' - 'signature'),
+          'utf8'
+        ),
+        decode(p_key_hex, 'hex'),
+        'sha256'
+      ), 'hex')
+    );
+  end if;
+  return replace(encode(
+    convert_to(platform_private.cms_jcs(envelope), 'utf8'), 'base64'
+  ), E'\n', '');
+end;
+$body$;
+
+-- SQL text of one CMS-03B-13 list call (cursor omitted when null).
+create or replace function pg_temp.s10_list_sql(
+  p_cursor text default null,
+  p_limit integer default 1
+)
+returns text
+language sql
+as $body$
+  select 'select platform_api.cms_list_entries('
+    || quote_literal(jsonb_strip_nulls(jsonb_build_object(
+         'limit', p_limit, 'cursor', p_cursor
+       ))::text)
+    || '::jsonb)'
+$body$;
+
+-- SQL text of one CMS-03B-03 history call for the seeded entry.  p_extra adds
+-- request keys (compareRevisionId, state, locale, ...).
+create or replace function pg_temp.s10_history_sql(
+  p_cursor text default null,
+  p_limit integer default 1,
+  p_extra jsonb default '{}'::jsonb
+)
+returns text
+language sql
+as $body$
+  select 'select platform_api.cms_list_revisions('
+    || quote_literal((jsonb_strip_nulls(jsonb_build_object(
+         'entryId', (select value from s10_ids where key = 'entryId'),
+         'limit', p_limit,
+         'cursor', p_cursor
+       )) || p_extra)::text)
+    || '::jsonb)'
+$body$;
+
+-- SQL that rotates the Vault signing key: the active secret is renamed to
+-- p_retired_name and a fresh active secret is created.  Run inside a probe so
+-- the rotation never outlives it.
+create or replace function pg_temp.s10_sql_rotate_key(p_retired_name text)
+returns text
+language sql
+as $body$
+  select format(
+    $s$select vault.update_secret(
+         (select id from vault.secrets
+          where name = 'cms_editorial_history_cursor_active'),
+         new_name => %L);
+       select vault.create_secret(
+         repeat('b2', 32), 'cms_editorial_history_cursor_active',
+         'pgTAP transaction-only rotated CMS-03B-03/13 test key');$s$,
+    p_retired_name
+  )
+$body$;

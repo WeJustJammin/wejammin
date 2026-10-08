@@ -3,8 +3,8 @@
 --
 -- The detail read is a bounded, write-free projection of one conflict that
 -- belongs to the resolved readable entry.  Preimages (`paths`) are carried
--- only while the conflict is `open`; a `resolved` or `superseded` record is
--- metadata-only.  Authority never leaks: the envelope carries no ownership,
+-- only while the conflict is `open`; a `resolved` or `superseded` record is a
+-- concealed 404 NOT_FOUND identical to an absent one (DEC-139, AC-090).  Authority never leaks: the envelope carries no ownership,
 -- acting-party, assignment, or resolution-person identifier, and a hidden or
 -- absent entry/conflict, or a caller outside the owner tenant, are all
 -- concealed as NOT_FOUND while a visible entry without read scope is
@@ -187,8 +187,10 @@ select ok(
   'CMS-03B-12 open conflict reports no resolved revision'
 );
 
--- State precedence: a resolved conflict is metadata only.  The write is rolled
--- back so the shared open fixture stays pristine for later assertions.
+-- DEC-139 (P2-S10-AC-090): a closed conflict is indistinguishable from an
+-- absent or hidden one.  A resolved conflict is a 404 NOT_FOUND, never a 200
+-- metadata record.  The write is rolled back so the shared open fixture stays
+-- pristine for later assertions.
 savepoint s10_cd_resolved;
 update platform_private.cms_conflict_records
 set state = 'resolved',
@@ -200,64 +202,39 @@ set state = 'resolved',
     updated_at = clock_timestamp()
 where id = (select value::uuid from s10_ids where key = 'conflictId');
 
-create temp table s10_cd_resolved_result on commit drop as
-select pg_temp.s10_rpc_exec(
-  'select platform_api.cms_get_conflict_detail('
-    || quote_literal((select request::text from s10_cd_request))
-    || '::jsonb)'
-) as response;
-select is(
-  pg_temp.s10_last_error_state(), '00000',
-  'CMS-03B-12 reads a resolved conflict'
-);
-select is(
-  (select jsonb_array_length(response->'paths') from s10_cd_resolved_result),
-  0,
-  'CMS-03B-12 resolved conflict returns metadata only with no preimages'
-);
-select is(
-  (select response->'conflict'->>'state' from s10_cd_resolved_result),
-  'resolved',
-  'CMS-03B-12 reports the resolved conflict state'
-);
-select is(
-  (select response->>'resolvedRevisionId' from s10_cd_resolved_result),
-  'a9100000-0000-4000-8000-000000000302',
-  'CMS-03B-12 carries the resolved revision id instead of preimages'
-);
 select ok(
-  (select position(
-     (select value from s10_ids where key = 'creatorPerson')
-     in response::text) = 0
-   from s10_cd_resolved_result),
-  'CMS-03B-12 never serializes the resolving person identifier'
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_get_conflict_detail('
+      || quote_literal((select request::text from s10_cd_request))
+      || '::jsonb)'
+  ),
+  'CMS-03B-12 refuses a resolved conflict [DEC-139, AC-090]'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'NOT_FOUND',
+  'CMS-03B-12 conceals a resolved conflict as NOT_FOUND, identical to an absent one [DEC-139, AC-090]'
 );
 rollback to savepoint s10_cd_resolved;
 release savepoint s10_cd_resolved;
 
--- State precedence: a superseded conflict is likewise metadata only and must
--- not fabricate a resolved revision.
+-- A superseded conflict is closed as well and is the same concealed 404.
 savepoint s10_cd_superseded;
 update platform_private.cms_conflict_records
 set state = 'superseded',
     version = version + 1,
     updated_at = clock_timestamp()
 where id = (select value::uuid from s10_ids where key = 'conflictId');
-create temp table s10_cd_superseded_result on commit drop as
-select pg_temp.s10_rpc_exec(
-  'select platform_api.cms_get_conflict_detail('
-    || quote_literal((select request::text from s10_cd_request))
-    || '::jsonb)'
-) as response;
-select is(
-  (select jsonb_array_length(response->'paths') from s10_cd_superseded_result),
-  0,
-  'CMS-03B-12 superseded conflict returns metadata only with no preimages'
-);
 select ok(
-  (select jsonb_typeof(response->'resolvedRevisionId') = 'null'
-   from s10_cd_superseded_result),
-  'CMS-03B-12 superseded conflict never fabricates a resolved revision'
+  pg_temp.s10_rpc_call(
+    'select platform_api.cms_get_conflict_detail('
+      || quote_literal((select request::text from s10_cd_request))
+      || '::jsonb)'
+  ),
+  'CMS-03B-12 refuses a superseded conflict [DEC-139, AC-090]'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'NOT_FOUND',
+  'CMS-03B-12 conceals a superseded conflict as NOT_FOUND, identical to an absent one [DEC-139, AC-090]'
 );
 rollback to savepoint s10_cd_superseded;
 release savepoint s10_cd_superseded;
@@ -310,15 +287,27 @@ select is(
   'CMS-03B-12 non-member conceals the entry and conflict as NOT_FOUND'
 );
 
--- Tenant isolation: the same entry read while acting in an unresolved party is
--- concealed, never served from the wrong tenancy.
+-- Tenant isolation: the same entry read while acting in a party other than the
+-- entry owner is concealed, never served from the wrong tenancy.  The acting
+-- party rides in the request context -- the channel the Worker fills from the
+-- resolved session and the one every slice read is scoped by -- so the
+-- override is applied there rather than to the session setting alone.
 select pg_temp.s10_rpc_as(
   (select value::uuid from s10_ids where key = 'creatorAuth'),
   'a9100000-0000-4000-8000-0000000009f1'::uuid
 );
 select pg_temp.s10_rpc_call(
   'select platform_api.cms_get_conflict_detail('
-    || quote_literal((select request::text from s10_cd_request))
+    || quote_literal((
+         (select request from s10_cd_request)
+           || jsonb_build_object(
+                'context',
+                (select request->'context' from s10_cd_request)
+                  || jsonb_build_object(
+                       'actingPartyId',
+                       'a9100000-0000-4000-8000-0000000009f1')
+              )
+       )::text)
     || '::jsonb)'
 );
 select ok(

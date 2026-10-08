@@ -1,0 +1,214 @@
+-- Gallery fixture for the Slice 10 value-source refusal suites (BE03b "Value
+-- encodings by field kind").  Include AFTER phase_02_slice_10_rpc/000-helpers.sqlinc
+-- and phase_02_slice_10_rpc/001-fixtures.sqlinc.
+--
+-- Builds, inside the caller's rolled-back transaction, an ACTIVE content type with
+-- one field of every kind whose value encoding matters to the write commands
+-- (short_text, taxonomy, media, rich_text, a DEC-133 object and a list) through the
+-- real cms_create_type_draft RPC, writes the same terminal active state the
+-- 001 fixture writes, installs a transaction-local editorial workflow-policy
+-- projection (never an approved production policy), and defines the request
+-- builders pg_temp.s10g_create_request / s10g_revision_request / s10g_values /
+-- s10g_fid and the row-count fingerprint pg_temp.s10g_counts() (entries, revisions, values,
+-- conflicts, idempotency reservations, outbox events and audit events).
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table s10g_type_created on commit drop as
+select platform_api.cms_create_type_draft(
+  request || jsonb_build_object(
+    'typeKey', 's10gallery', 'label', 'Gallery',
+    'idempotencyKey', 's10-gallery-type-0001',
+    'fields', jsonb_build_array(
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000c21',
+        'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Title', 'order', 0), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000c22',
+        'key', 'tags', 'kind', 'taxonomy', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Tags', 'order', 1), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000c23',
+        'key', 'hero', 'kind', 'media', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Hero', 'order', 2), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000c24',
+        'key', 'body', 'kind', 'rich_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Body', 'order', 3), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000c25',
+        'key', 'meta', 'kind', 'object',
+        'constraints', '{"objectStructure":{"properties":[{"key":"label","kind":"scalar","required":true,"constraints":{}}]}}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Meta', 'order', 4), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9100000-0000-4000-8000-000000000c26',
+        'key', 'keywords', 'kind', 'list', 'constraints', '{"itemKind":"short_text"}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Keywords', 'order', 5), 'lifecycle', 'active')
+    ),
+    'relations', '[]'::jsonb)
+) as response
+from s10_type_request;
+
+create temp table s10g_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from s10g_type_created
+union all select 'versionId', response->>'id' from s10g_type_created
+union all select 'artifactId', response->>'schemaArtifactId' from s10g_type_created
+union all select 'artifactHash', artifact.artifact_hash::text
+  from platform_private.cms_schema_artifacts artifact
+  join s10g_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid
+union all select 'compiler', artifact.compiler_version
+  from platform_private.cms_schema_artifacts artifact
+  join s10g_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid
+union all select 'zodRef', artifact.zod_contract_ref
+  from platform_private.cms_schema_artifacts artifact
+  join s10g_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid;
+
+select ok((select count(*) = 6 from s10g_ids),
+  'the gallery type compiles with title, taxonomy, media, rich_text, object and list fields');
+
+-- The same terminal active state the fixture writes (see 001-fixtures.sqlinc).
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = 'cms.entry.author',
+    activation_workflow_policy_version = 1,
+    activation_workflow_policy_hash = repeat('a', 64),
+    activation_required_decision_count = 1,
+    activation_required_capabilities = jsonb_build_array('cms.author'),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from s10g_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from s10g_ids where key = 'typeId');
+
+create or replace function platform_private.cms_editorial_workflow_policy_evidence(p_version_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select jsonb_build_object(
+    'key', 'editorial', 'version', '1',
+    'policyHash', repeat('c', 64), 'riskClass', 'ordinary',
+    'requiredDecisionCount', 1,
+    'requiredCapabilities', jsonb_build_array('cms.author'),
+    'approvalEvidenceHash', repeat('d', 64)
+  )
+  where p_version_id is not null
+$body$;
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+-- Request builders.  Field ids are the fixed stable ids above.
+create or replace function pg_temp.s10g_fid(p_key text)
+returns text
+language sql
+immutable
+as $body$
+  select case p_key
+    when 'title' then 'a9100000-0000-4000-8000-000000000c21'
+    when 'tags' then 'a9100000-0000-4000-8000-000000000c22'
+    when 'hero' then 'a9100000-0000-4000-8000-000000000c23'
+    when 'body' then 'a9100000-0000-4000-8000-000000000c24'
+    when 'meta' then 'a9100000-0000-4000-8000-000000000c25'
+    when 'keywords' then 'a9100000-0000-4000-8000-000000000c26'
+  end
+$body$;
+
+-- A values object keyed by display key, rekeyed to stable field ids.
+create or replace function pg_temp.s10g_values(p_by_key jsonb)
+returns jsonb
+language sql
+stable
+as $body$
+  select coalesce(jsonb_object_agg(pg_temp.s10g_fid(entry.key), entry.value), '{}'::jsonb)
+  from jsonb_each(p_by_key) entry
+$body$;
+
+create or replace function pg_temp.s10g_create_request(p_by_key jsonb, p_key text)
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'contentTypeId', (select value from s10g_ids where key = 'typeId'),
+    'contentTypeVersionId', (select value from s10g_ids where key = 'versionId'),
+    'locale', 'en-US',
+    'changedPaths', (select jsonb_agg('/fields/' || pg_temp.s10g_fid(entry.key) order by entry.key)
+                     from jsonb_each(p_by_key) entry),
+    'values', pg_temp.s10g_values(p_by_key),
+    'schemaArtifact', jsonb_build_object(
+      'id', (select value from s10g_ids where key = 'artifactId'),
+      'contentTypeVersionId', (select value from s10g_ids where key = 'versionId'),
+      'artifactHash', (select value from s10g_ids where key = 'artifactHash'),
+      'compilerVersion', (select value from s10g_ids where key = 'compiler'),
+      'zodContractRef', (select value from s10g_ids where key = 'zodRef')),
+    'validatorRefs', '[]'::jsonb,
+    'workflowPolicy', jsonb_build_object(
+      'key', 'editorial', 'version', '1', 'policyHash', repeat('c', 64),
+      'riskClass', 'ordinary', 'requiredDecisionCount', 1,
+      'requiredCapabilities', jsonb_build_array('cms.author'),
+      'approvalEvidenceHash', repeat('d', 64)),
+    'activationEvidence', jsonb_build_object(
+      'key', 'cms.entry.author', 'version', '1', 'policyHash', repeat('a', 64),
+      'riskClass', 'ordinary', 'requiredDecisionCount', 1,
+      'requiredCapabilities', jsonb_build_array('cms.author'),
+      'approvalEvidenceHash', repeat('b', 64)),
+    'idempotencyKey', p_key,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000092',
+      'correlationId', 'a9100000-0000-4000-8000-000000000093'))
+$body$;
+
+create or replace function pg_temp.s10g_revision_request(
+  p_entry text, p_by_key jsonb, p_base text, p_expected text, p_key text
+)
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'entryId', p_entry,
+    'baseRevision', p_base,
+    'changedPaths', (select jsonb_agg('/fields/' || pg_temp.s10g_fid(entry.key) order by entry.key)
+                     from jsonb_each(p_by_key) entry),
+    'values', pg_temp.s10g_values(p_by_key),
+    'locale', 'en-US',
+    'expectedVersion', p_expected,
+    'ifMatch', p_expected,
+    'idempotencyKey', p_key,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+      'correlationId', 'a9100000-0000-4000-8000-000000000095'))
+$body$;
+
+create or replace function pg_temp.s10g_counts()
+returns text
+language sql
+stable
+as $body$
+  select (select count(*) from platform_private.cms_content_entries)::text || '/'
+      || (select count(*) from platform_private.cms_entry_revisions)::text || '/'
+      || (select count(*) from platform_private.cms_entry_field_values)::text || '/'
+      || (select count(*) from platform_private.cms_conflict_records)::text || '/'
+      || (select count(*) from platform_private.idempotency_records)::text || '/'
+      || (select count(*) from platform_private.outbox_events)::text || '/'
+      || (select count(*) from audit_private.audit_events)::text
+$body$;

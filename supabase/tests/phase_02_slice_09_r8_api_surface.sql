@@ -26,6 +26,15 @@ select no_plan();
 --                the SECURITY DEFINER functions that use them still can.
 -- The enumerated allowed set below is exact, so a new executable cms_ RPC
 -- (or a Worker call dropped from the list) fails here until it is reviewed.
+-- Slice 10 adds five protected editorial RPCs to the supporting set: the
+-- CMS-03B-04 restore chain (cms_restore_revision), the CMS-03B-11/12/13/14
+-- safe reads (cms_get_entry_draft, cms_get_conflict_detail, cms_list_entries,
+-- cms_get_entry_authoring_context), and the advisory edit-presence expiry
+-- sweep (cms_expire_edit_presence_leases) the scheduled Worker calls. Lease
+-- renewal rides cms_create_revision and release rides authority revocation,
+-- so neither has an API wrapper. Each is Worker-bound (the Worker is the
+-- only browser-facing boundary caller) and service-role only by migration
+-- grant.
 
 create temp table r8a_original(fn text primary key, human boolean) on commit drop;
 insert into r8a_original values
@@ -48,12 +57,14 @@ create temp table r8a_supporting(fn text primary key) on commit drop;
 insert into r8a_supporting values
   ('cms_acknowledge_schema_migration_event'),
   ('cms_activate_schema_migration'),
+  ('cms_get_entry_authoring_context'),
   ('cms_author_locale_variant'),
   ('cms_begin_schema_migration_verification'),
   ('cms_capability_grant_read_current'),
   ('cms_claim_operational_alert'),
   ('cms_claim_schema_migration_event'),
   ('cms_claim_schema_migration_lease'),
+  ('cms_expire_edit_presence_leases'),
   ('cms_complete_operational_alert'),
   ('cms_complete_schema_migration'),
   ('cms_create_entry'),
@@ -61,11 +72,13 @@ insert into r8a_supporting values
   ('cms_dead_letter_schema_migration_event'),
   ('cms_define_template'),
   ('cms_finalize_schema_migration_dry_run'),
+  ('cms_get_conflict_detail'),
   ('cms_get_entry_draft'),
   ('cms_get_operational_alert_exercise_eligibility'),
   ('cms_get_operational_state_snapshot'),
   ('cms_get_schema_migration_plan'),
   ('cms_heartbeat_schema_migration_lease'),
+  ('cms_list_entries'),
   ('cms_list_revisions'),
   ('cms_process_schema_migration_batch'),
   ('cms_process_schema_migration_dry_run_batch'),
@@ -75,6 +88,7 @@ insert into r8a_supporting values
   ('cms_resolve_conflict'),
   ('cms_rollback_schema_migration'),
   ('cms_sweep_expired_review_authority'),
+  ('cms_restore_revision'),
   ('cms_template_context'),
   ('cms_template_latest'),
   ('cms_verify_operational_alert_delivery'),
@@ -146,7 +160,7 @@ select is((select count(distinct p.proname)::integer
      where p.pronamespace = 'platform_api'::regnamespace and p.proname like 'cms\_%'
        and (has_function_privilege('service_role', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   (select count(*)::integer from (select fn from r8a_original union all select fn from r8a_amendment union all select fn from r8a_supporting) e),
-  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 33 [P2-S09-AC-180]');
+  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 38 [P2-S09-AC-180]');
 
 select * from finish();
 rollback;

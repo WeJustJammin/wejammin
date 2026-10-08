@@ -22,6 +22,16 @@ select plan(14);
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
 
+-- CMS-03B-13 signs its keyset cursor with the per-environment Vault key that no
+-- migration provisions (BE03b CMS-03B-13 signed cursor; the same secret the
+-- history cursor uses, see rpc/005-history.sqlinc).  This fixed key exists only
+-- inside the rolled-back pgTAP transaction and is never an operational value.
+select vault.create_secret(
+  repeat('a1', 32),
+  'cms_editorial_history_cursor_active',
+  'pgTAP transaction-only CMS-03B-13 test key'
+);
+
 select ok(
   pg_temp.s10_fn_exists('platform_api', 'cms_list_entries', 'jsonb')
     and pg_temp.s10_fn_exists('platform_private', 'cms_list_entries', 'jsonb'),

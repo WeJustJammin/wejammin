@@ -1,0 +1,117 @@
+-- Shared comparison probes for the CMS-03B-03 compare suites.  Requires the rpc
+-- helpers and fixtures; all SQL builders return statement text for
+-- pg_temp.s10_rpc_probe so each corruption is written and read inside one
+-- rolled-back subtransaction.
+
+-- Returns the rendered definition of one exact function overload, or '' when
+-- the function is absent. The empty fallback keeps a missing producer a clean
+-- RED instead of a parse-time error.
+create or replace function pg_temp.s10_fn_body(
+  p_schema text,
+  p_name text,
+  p_args text
+)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(
+    (
+      select pg_catalog.pg_get_functiondef(p.oid)
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = p_schema
+        and p.proname = p_name
+        and pg_catalog.oidvectortypes(p.proargtypes) = p_args
+    ),
+    ''
+  )
+$body$;
+
+-- SQL text of one comparison read of the seeded entry against its seeded
+-- revision; p_extra adds request keys, p_context appends the verified server
+-- context envelope a service-role Worker call carries.
+create or replace function pg_temp.s10_compare_sql(
+  p_extra jsonb default '{}'::jsonb,
+  p_context jsonb default null
+)
+returns text
+language sql
+as $body$
+  select 'select platform_api.cms_list_revisions('
+    || quote_literal((jsonb_build_object(
+         'entryId', (select value from s10_ids where key = 'entryId'),
+         'compareRevisionId',
+           (select value from s10_ids where key = 'entryRevisionId')
+       ) || p_extra || coalesce(
+         jsonb_build_object('context', p_context), '{}'::jsonb
+       ))::text)
+    || '::jsonb)'
+$body$;
+
+-- Wraps fixture-corrupting SQL in the replica role so row triggers (immutability
+-- guards and foreign keys) are skipped, the convention the draft-detail lineage
+-- suite uses; the guards stay in force for every real caller.
+create or replace function pg_temp.s10_sql_replica(p_sql text)
+returns text
+language sql
+as $body$
+  select 'set local session_replication_role = replica; ' || p_sql
+    || ' set local session_replication_role = origin;'
+$body$;
+
+-- Registers the profile.header block definition version (a local rolled-back
+-- fixture row, not a claim of signed hosted release provenance).
+create or replace function pg_temp.s10_sql_block_definition()
+returns text
+language sql
+as $body$
+  select $s$
+    insert into platform_private.cms_block_definition_versions(
+      id, owner_id, block_key, block_version, props_schema_ref,
+      props_schema_hash, props_schema_snapshot, props_snapshot_hash,
+      props_snapshot_attestation, props_attestation_key_id,
+      props_attestation_signature_hash, props_attestation_verified_at,
+      renderer_ref, allowed_children, slot_rules, data_source_permissions,
+      accessibility_contract, compatibility_range, release_digest,
+      release_principal_id, release_key_id, release_raw_body_hash,
+      release_signature_hash, release_nonce_hash, release_verified_at
+    )
+    select 'a9100000-0000-4000-8000-000000000511', owner.value::uuid,
+           'profile.header', 1, 'cms/s10/profile-header',
+           repeat('2', 64), '{}'::jsonb, repeat('4', 64),
+           '{}'::jsonb, 's10-test-key', repeat('5', 64), clock_timestamp(),
+           'cms.profile.header', '[]'::jsonb, '{}'::jsonb, '[]'::jsonb,
+           '{}'::jsonb, '{}'::jsonb, repeat('3', 64),
+           'a9100000-0000-4000-8000-000000000512', 's10-release-key',
+           repeat('6', 64), repeat('7', 64), repeat('8', 64), clock_timestamp()
+    from s10_ids owner where owner.key = 'organization';
+  $s$
+$body$;
+
+-- Inserts p_count active profile.header composition instances on the seeded
+-- revision.  p_path_expr is a SQL expression for the path (it may use the
+-- generate_series column n); p_distinct_versions numbers the instance versions
+-- 1..n so several active instances can share one path.
+create or replace function pg_temp.s10_sql_instances(
+  p_path_expr text,
+  p_count integer default 1,
+  p_distinct_versions boolean default false
+)
+returns text
+language sql
+as $body$
+  select format($s$
+    insert into platform_private.cms_composition_instances(
+      owner_id, state, version, revision_id, path, slot_key, block_key,
+      block_version, block_registry_digest, link_mode, created_by
+    )
+    select owner.value::uuid, 'active', %s, revision.value::uuid, %s,
+           'primary', 'profile.header', 1, repeat('a', 64), 'detached',
+           creator.value::uuid
+    from s10_ids owner, s10_ids revision, s10_ids creator,
+         generate_series(1, %s) as n
+    where owner.key = 'organization' and revision.key = 'entryRevisionId'
+      and creator.key = 'creatorAuth';
+  $s$, case when p_distinct_versions then 'n' else '1' end, p_path_expr, p_count)
+$body$;

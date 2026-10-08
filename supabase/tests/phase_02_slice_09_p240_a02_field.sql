@@ -114,8 +114,19 @@ select throws_ok(format('update platform_private.cms_field_definition_versions s
   'P0001', null, 'a direct UPDATE of a field key is rejected by the identity guard [P2-S09-AC-059]');
 
 -- ======================================================== AC060 kind ====
-select is(pg_temp.p_expect('kind:' || k, 'a', pg_temp.p_efield('k_' || k, k), 'OK'), 'ok', 'kind ' || k || ' is accepted [P2-S09-AC-060]')
+-- DEC-133 / BE03a "Field kind structure": a list field requires an itemKind that is a scalar kind or enum
+-- (a nested item kind is refused at definition time), so the kind list is accepted with one.
+select is(pg_temp.p_expect('kind:' || k, 'a', pg_temp.p_efield('k_' || k, k,
+    case when k = 'list' then '{"constraints":{"itemKind":"short_text"}}'::jsonb else '{}'::jsonb end), 'OK'), 'ok', 'kind ' || k || ' is accepted [P2-S09-AC-060]')
 from unnest(array['short_text', 'long_text', 'rich_text', 'boolean', 'integer', 'decimal', 'date', 'datetime', 'enum', 'taxonomy', 'relation', 'media', 'object', 'list']) k;
+-- DEC-133 / BE03a (validation matrix CMS-03A-01/-02, 422 VALIDATION_FAILED, no partial insert): a list field with no usable
+-- scalar-or-enum itemKind is refused on the incremental path too.  This replaces the old bare `list` + `{}` acceptance.
+select is(pg_temp.p_expect('kind:list:' || c.n, 'a', pg_temp.p_efield('kl_' || c.n, 'list', jsonb_build_object('constraints', c.cons)), 'INVALID_REQUEST'), 'ok',
+  'a list field ' || c.l || ' is refused and nothing changes [P2-S10-AC-080]')
+from (values ('bare', 'with no itemKind', '{}'::jsonb), ('obj', 'of object items', '{"itemKind":"object"}'::jsonb),
+  ('lst', 'of list items', '{"itemKind":"list"}'::jsonb), ('rel', 'of relation items', '{"itemKind":"relation"}'::jsonb),
+  ('med', 'of media items', '{"itemKind":"media"}'::jsonb), ('rich', 'of rich_text items', '{"itemKind":"rich_text"}'::jsonb),
+  ('tax', 'of taxonomy items', '{"itemKind":"taxonomy"}'::jsonb), ('nul', 'with a JSON-null itemKind', '{"itemKind":null}'::jsonb)) c(n, l, cons);
 select is((select count(distinct kind)::integer from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version')), 14,
   'the fourteen declared kinds were each stored on this draft [P2-S09-AC-060]');
 select is(pg_temp.p_expect('kind:bad:' || c.k, 'a', pg_temp.p_efield('kb_' || md5(c.k), c.k), 'INVALID_REQUEST'), 'ok', 'kind ' || c.k || ' is refused and nothing changes [P2-S09-AC-060]')
@@ -125,52 +136,78 @@ select is((select count(*)::integer from pg_constraint c where c.conrelid = 'pla
   'the storage CHECK pins the same closed fourteen-kind set [P2-S09-AC-060]');
 
 -- ========================================================= AC061 constraints ====
-select is(pg_temp.p_expect('con:ok', 'a', pg_temp.p_efield('c_ok', 'short_text', '{"constraints":{"minLength":1,"maxLength":10,"enumValues":["a","b"],"itemKind":"short_text","minimum":0,"maximum":5}}'), 'OK'), 'ok',
-  'control: the six refinements minLength, maxLength, minimum, maximum, enumValues and itemKind are accepted with min at most max [P2-S09-AC-061]');
-select is(pg_temp.p_expect('con:' || c.n, 'a', pg_temp.p_efield('cx_' || substr(md5(c.n), 1, 10), 'short_text', jsonb_build_object('constraints', c.v)), c.e), 'ok',
+-- DEC-133 / BE03a (Constraints refine: "itemKind is only valid for a list field"):
+-- itemKind is a list-only constraint.  The six refinements are therefore accepted
+-- together on a list field (where itemKind names the item encoding and the other
+-- five bound its items), the five non-itemKind refinements are accepted together
+-- on a short_text field, and itemKind on any other kind is refused.
+select is(pg_temp.p_expect('con:ok', 'a', pg_temp.p_efield('c_ok', 'list', '{"constraints":{"minLength":1,"maxLength":10,"enumValues":["a","b"],"itemKind":"short_text","minimum":0,"maximum":5}}'), 'OK'), 'ok',
+  'control: the six refinements minLength, maxLength, minimum, maximum, enumValues and itemKind are accepted on a list field with min at most max [P2-S09-AC-061]');
+select is(pg_temp.p_expect('con:ok5', 'a', pg_temp.p_efield('c_ok5', 'short_text', '{"constraints":{"minLength":1,"maxLength":10,"enumValues":["a","b"],"minimum":0,"maximum":5}}'), 'OK'), 'ok',
+  'control: the five refinements other than itemKind are accepted on a short_text field with min at most max [P2-S09-AC-061]');
+select is(pg_temp.p_expect('con:itemkind:text', 'a', pg_temp.p_efield('cx_item_text', 'short_text', '{"constraints":{"itemKind":"short_text"}}'), 'INVALID_REQUEST'), 'ok',
+  'itemKind is list-only: a short_text field carrying a valid itemKind is refused with INVALID_REQUEST and nothing changes [P2-S09-AC-061]');
+select is(pg_temp.p_expect('con:itemkind:' || k, 'a', pg_temp.p_efield('cx_item_' || k, k, '{"constraints":{"itemKind":"short_text"}}'), 'INVALID_REQUEST'), 'ok',
+  'itemKind is list-only: a ' || k || ' field carrying an itemKind is refused and nothing changes [P2-S09-AC-061]')
+from unnest(array['integer', 'enum', 'rich_text', 'relation']) k;
+select is(pg_temp.p_expect('con:' || c.n, 'a', pg_temp.p_efield('cx_' || substr(md5(c.n), 1, 10), c.k, jsonb_build_object('constraints', c.v)), c.e), 'ok',
   'constraints ' || c.n || ' are refused with ' || c.e || ' and nothing changes [P2-S09-AC-061]')
 from (values
-  ('with a key outside the closed refinement set', '{"pattern":"^x$"}'::jsonb, 'INVALID_REQUEST'),
-  ('with minLength above maxLength', '{"minLength":9,"maxLength":3}', 'INVALID_REQUEST'),
-  ('with minimum above maximum', '{"minimum":9,"maximum":3}', 'INVALID_REQUEST'),
-  ('with a non-numeric minLength', '{"minLength":"3"}', 'INVALID_REQUEST'),
-  ('with a negative minLength', '{"minLength":-1}', 'INVALID_REQUEST'),
-  ('with a fractional maxLength', '{"maxLength":2.5}', 'INVALID_REQUEST'),
-  ('with enumValues that is not an array', '{"enumValues":"a"}', 'INVALID_REQUEST'),
-  ('with a non-string enum member', '{"enumValues":[1]}', 'INVALID_REQUEST'),
-  ('with a 161 character enum member', jsonb_build_object('enumValues', jsonb_build_array(repeat('x', 161))), 'INVALID_REQUEST'),
-  ('with 257 enum members', jsonb_build_object('enumValues', (select jsonb_agg('v' || g) from generate_series(1, 257) g)), 'INVALID_REQUEST'),
-  ('with an unknown itemKind', '{"itemKind":"blob"}', 'INVALID_REQUEST'),
-  ('larger than 8 KiB', jsonb_build_object('enumValues', (select jsonb_agg(repeat('x', 100) || g) from generate_series(1, 90) g)), 'INVALID_REQUEST'),
-  ('that are an array instead of an object', '[]', 'INVALID_REQUEST'),
-  ('that are null', 'null', 'INVALID_REQUEST')) c(n, v, e);
-select is(pg_temp.p_expect('con:keys', 'a', pg_temp.p_efield('c_keys', 'short_text', jsonb_build_object('constraints', jsonb_build_object('minLength', 1, 'maxLength', 2, 'minimum', 0, 'maximum', 1, 'enumValues', '[]'::jsonb,
+  ('with a key outside the closed refinement set', 'short_text', '{"pattern":"^x$"}'::jsonb, 'INVALID_REQUEST'),
+  ('with minLength above maxLength', 'short_text', '{"minLength":9,"maxLength":3}', 'INVALID_REQUEST'),
+  ('with minimum above maximum', 'short_text', '{"minimum":9,"maximum":3}', 'INVALID_REQUEST'),
+  ('with a non-numeric minLength', 'short_text', '{"minLength":"3"}', 'INVALID_REQUEST'),
+  ('with a negative minLength', 'short_text', '{"minLength":-1}', 'INVALID_REQUEST'),
+  ('with a fractional maxLength', 'short_text', '{"maxLength":2.5}', 'INVALID_REQUEST'),
+  ('with enumValues that is not an array', 'short_text', '{"enumValues":"a"}', 'INVALID_REQUEST'),
+  ('with a non-string enum member', 'short_text', '{"enumValues":[1]}', 'INVALID_REQUEST'),
+  ('with a 161 character enum member', 'short_text', jsonb_build_object('enumValues', jsonb_build_array(repeat('x', 161))), 'INVALID_REQUEST'),
+  ('with 257 enum members', 'short_text', jsonb_build_object('enumValues', (select jsonb_agg('v' || g) from generate_series(1, 257) g)), 'INVALID_REQUEST'),
+  ('with an unknown itemKind on a list field', 'list', '{"itemKind":"blob"}', 'INVALID_REQUEST'),
+  ('larger than 8 KiB', 'short_text', jsonb_build_object('enumValues', (select jsonb_agg(repeat('x', 100) || g) from generate_series(1, 90) g)), 'INVALID_REQUEST'),
+  ('that are an array instead of an object', 'short_text', '[]', 'INVALID_REQUEST'),
+  ('that are null', 'short_text', 'null', 'INVALID_REQUEST')) c(n, k, v, e);
+select is(pg_temp.p_expect('con:keys', 'a', pg_temp.p_efield('c_keys', 'list', jsonb_build_object('constraints', jsonb_build_object('minLength', 1, 'maxLength', 2, 'minimum', 0, 'maximum', 1, 'enumValues', '[]'::jsonb,
     'itemKind', 'short_text', 'extra1', 1))), 'INVALID_REQUEST'), 'ok', 'a seventh constraint key is outside the closed set and refused [P2-S09-AC-061]');
 select is((select (constraints = '{"minLength":1,"maxLength":10,"enumValues":["a","b"],"itemKind":"short_text","minimum":0,"maximum":5}'::jsonb)::text
     from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version') and field_key = 'c_ok'), 'true',
   'the accepted constraints are stored exactly as sent [P2-S09-AC-061]');
 
 -- ========================================================= AC062 validators ====
-select is(pg_temp.p_expect('val:ok', 'a', pg_temp.p_efield('v_ok', 'short_text', '{"validatorKey":"cms.slug","validatorVersion":1}'), 'OK'), 'ok',
-  'control: a registered validator key and version pair is accepted [P2-S09-AC-062]');
+-- DEC-112 / BE03a Protected Validator Registry: rich_text.v1 version 1 is the only
+-- registry member and it is valid only on a rich_text field.  The legacy cms.slug
+-- control is therefore stale: the accepted pair is rich_text.v1@1 on a rich_text
+-- field, and cms.slug, any other key or version, and the member on any other kind
+-- are refused.
+select is(pg_temp.p_expect('val:ok', 'a', pg_temp.p_efield('v_ok', 'rich_text', '{"validatorKey":"rich_text.v1","validatorVersion":1}'), 'OK'), 'ok',
+  'control: the registered rich_text.v1 key and version 1 pair is accepted on a rich_text field [P2-S09-AC-062]');
 select is(pg_temp.p_expect('val:null', 'a', pg_temp.p_efield('v_null', 'short_text', '{"validatorKey":null,"validatorVersion":null}'), 'OK'), 'ok',
   'both null is accepted [P2-S09-AC-062]');
-select is(pg_temp.p_expect('val:' || c.n, 'a', pg_temp.p_efield('vx_' || substr(md5(c.n), 1, 10), 'short_text', c.o), 'INVALID_REQUEST'), 'ok',
+select is(pg_temp.p_expect('val:' || c.n, 'a', pg_temp.p_efield('vx_' || substr(md5(c.n), 1, 10), c.k, c.o), 'INVALID_REQUEST'), 'ok',
   'validator ' || c.n || ' is refused and nothing changes [P2-S09-AC-062]')
-from (values ('key without version', '{"validatorKey":"cms.slug"}'::jsonb), ('version without key', '{"validatorVersion":1}'),
-  ('pair outside the protected registry', '{"validatorKey":"caller.regex","validatorVersion":1}'),
-  ('registered key at an unregistered version', '{"validatorKey":"cms.slug","validatorVersion":2}'),
-  ('free-form regular expression in the key', '{"validatorKey":"^[a-z]+$","validatorVersion":1}'),
-  ('executable expression in the key', '{"validatorKey":"return true","validatorVersion":1}'),
-  ('pattern constraint instead of a registry reference', '{"constraints":{"pattern":"^[a-z]+$"}}'),
-  ('expression constraint', '{"constraints":{"expression":"value.length > 3"}}'),
-  ('code constraint', '{"constraints":{"code":"function(v){return v}"}}')) c(n, o);
+from (values ('key without version', 'rich_text', '{"validatorKey":"rich_text.v1"}'::jsonb), ('version without key', 'rich_text', '{"validatorVersion":1}'),
+  ('pair outside the protected registry', 'rich_text', '{"validatorKey":"caller.regex","validatorVersion":1}'),
+  ('legacy key that is no longer a registry member', 'rich_text', '{"validatorKey":"cms.slug","validatorVersion":1}'),
+  ('registered key at an unregistered version', 'rich_text', '{"validatorKey":"rich_text.v1","validatorVersion":2}'),
+  ('registered pair on a short_text field', 'short_text', '{"validatorKey":"rich_text.v1","validatorVersion":1}'),
+  ('registered pair on a decimal field', 'decimal', '{"validatorKey":"rich_text.v1","validatorVersion":1}'),
+  ('free-form regular expression in the key', 'rich_text', '{"validatorKey":"^[a-z]+$","validatorVersion":1}'),
+  ('executable expression in the key', 'rich_text', '{"validatorKey":"return true","validatorVersion":1}'),
+  ('pattern constraint instead of a registry reference', 'short_text', '{"constraints":{"pattern":"^[a-z]+$"}}'),
+  ('expression constraint', 'short_text', '{"constraints":{"expression":"value.length > 3"}}'),
+  ('code constraint', 'short_text', '{"constraints":{"code":"function(v){return v}"}}')) c(n, k, o);
 
 -- ================================================= AC064 / AC065 / AC066 ====
-select is(pg_temp.p_expect('def:' || c.n, 'a', pg_temp.p_efield('d_' || substr(md5(c.n), 1, 10), 'integer', c.o), 'OK'), 'ok', 'default ' || c.n || ' is accepted [P2-S09-AC-064]')
-from (values ('none without a value', '{}'::jsonb), ('inherited without a value', '{"defaultMode":"inherited"}'), ('literal zero', '{"defaultMode":"literal","defaultValue":0}'),
-  ('literal false', '{"defaultMode":"literal","defaultValue":false}'), ('literal empty string', '{"defaultMode":"literal","defaultValue":""}'),
-  ('literal JSON null (an explicit null is a value; only a missing key is not)', '{"defaultMode":"literal","defaultValue":null}')) c(n, o);
+-- A literal default must match the kind of its field (BE03a: a default is never a looser
+-- encoding than its field), so each falsy literal rides on the kind it belongs to: zero on
+-- integer, false on boolean, the empty string on short_text.  An explicit JSON null is a
+-- literal default of any kind and keeps its own integer-field control.
+select is(pg_temp.p_expect('def:' || c.n, 'a', pg_temp.p_efield('d_' || substr(md5(c.n), 1, 10), c.k, c.o), 'OK'), 'ok', 'default ' || c.n || ' is accepted [P2-S09-AC-064]')
+from (values ('none without a value', 'integer', '{}'::jsonb), ('inherited without a value', 'integer', '{"defaultMode":"inherited"}'),
+  ('literal zero on an integer field', 'integer', '{"defaultMode":"literal","defaultValue":0}'),
+  ('literal false on a boolean field', 'boolean', '{"defaultMode":"literal","defaultValue":false}'),
+  ('literal empty string on a short_text field', 'short_text', '{"defaultMode":"literal","defaultValue":""}'),
+  ('literal JSON null (an explicit null is a value; only a missing key is not)', 'integer', '{"defaultMode":"literal","defaultValue":null}')) c(n, k, o);
 select is((select count(*)::integer from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version') and field_key like 'd\_%'
       and ((default_mode in ('none', 'inherited') and default_value is null) or (default_mode = 'literal' and default_value is not null))), 6,
   'none and inherited store SQL NULL while a literal stores the exact JSON value, falsy values and JSON null included: missing and null stay distinct [P2-S09-AC-064]');
@@ -180,12 +217,21 @@ select is((select string_agg(default_value::text, ',' order by default_value::te
 select is((select count(*)::integer from platform_private.cms_field_definition_versions where content_type_version_id = pg_temp.s09d_id('a:version') and field_key like 'd\_%'
       and default_mode = 'literal' and default_value = 'null'::jsonb and default_value is not null), 1,
   'the stored literal null is the JSON null value, not SQL NULL, so a literal null and a missing default never collide [P2-S09-AC-064]');
-select is(pg_temp.p_expect('def:bad:' || c.n, 'a', pg_temp.p_efield('db_' || substr(md5(c.n), 1, 10), 'integer', c.o), 'INVALID_REQUEST'), 'ok',
+select is(pg_temp.p_expect('def:bad:' || c.n, 'a', pg_temp.p_efield('db_' || substr(md5(c.n), 1, 10), c.k, c.o), 'INVALID_REQUEST'), 'ok',
   'default ' || c.n || ' is refused and nothing changes [P2-S09-AC-064]')
-from (values ('literal without a value', '{"defaultMode":"literal"}'::jsonb),
-  ('none with a value', '{"defaultMode":"none","defaultValue":1}'), ('inherited with a value', '{"defaultMode":"inherited","defaultValue":1}'),
-  ('none with an explicit JSON null (a present key is a default)', '{"defaultMode":"none","defaultValue":null}'), ('inherited with an explicit JSON null', '{"defaultMode":"inherited","defaultValue":null}'),
-  ('unknown mode', '{"defaultMode":"computed"}'), ('null mode', '{"defaultMode":null}')) c(n, o);
+from (values ('literal without a value', 'integer', '{"defaultMode":"literal"}'::jsonb),
+  ('none with a value', 'integer', '{"defaultMode":"none","defaultValue":1}'), ('inherited with a value', 'integer', '{"defaultMode":"inherited","defaultValue":1}'),
+  ('none with an explicit JSON null (a present key is a default)', 'integer', '{"defaultMode":"none","defaultValue":null}'), ('inherited with an explicit JSON null', 'integer', '{"defaultMode":"inherited","defaultValue":null}'),
+  ('unknown mode', 'integer', '{"defaultMode":"computed"}'), ('null mode', 'integer', '{"defaultMode":null}'),
+  ('literal string on an integer field', 'integer', '{"defaultMode":"literal","defaultValue":"0"}'),
+  ('literal fraction on an integer field', 'integer', '{"defaultMode":"literal","defaultValue":1.5}'),
+  ('literal zero on a boolean field', 'boolean', '{"defaultMode":"literal","defaultValue":0}'),
+  ('literal number on a short_text field', 'short_text', '{"defaultMode":"literal","defaultValue":5}'),
+  ('literal string on a decimal field', 'decimal', '{"defaultMode":"literal","defaultValue":"1.5"}'),
+  ('literal non-calendar date on a date field', 'date', '{"defaultMode":"literal","defaultValue":"2026-02-30"}'),
+  ('literal choice outside the enumValues of an enum field', 'enum', '{"constraints":{"enumValues":["a","b"]},"defaultMode":"literal","defaultValue":"c"}'),
+  ('literal over the maxLength of its field', 'short_text', '{"constraints":{"maxLength":3},"defaultMode":"literal","defaultValue":"abcd"}'),
+  ('literal outside the maximum of its field', 'integer', '{"constraints":{"maximum":5},"defaultMode":"literal","defaultValue":6}')) c(n, k, o);
 select is(pg_temp.p_expect('loc:' || m, 'a', pg_temp.p_efield('l_' || m, 'short_text', jsonb_build_object('localizationMode', m)), 'OK'), 'ok', 'localization mode ' || m || ' is accepted [P2-S09-AC-065]')
 from unnest(array['none', 'localized', 'no_fallback']) m;
 select is(pg_temp.p_expect('loc:bad:' || m, 'a', pg_temp.p_efield('lb_' || substr(md5(m), 1, 10), 'short_text', jsonb_build_object('localizationMode', m)), 'INVALID_REQUEST'), 'ok',

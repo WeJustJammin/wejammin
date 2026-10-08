@@ -1,0 +1,110 @@
+-- CMS-03B-03 history cursor probes (sections 7-9 of
+-- ../phase_02_slice_10_cursor_signature.sql).  Included by that entrypoint after
+-- the list probes: relies on its transaction-local Vault key, the seeded second
+-- revision (001-cursor-fixtures.sqlinc), the cursor helpers (000) and the
+-- s10_cursor_list_page temp table it creates.
+
+-- 7. History (CMS-03B-03): the compare/history cursor carries the same
+-- canonical six-key envelope.
+create temp table s10_cursor_history_page on commit drop as
+select pg_temp.s10_rpc_exec(pg_temp.s10_history_sql()) as response;
+
+select is(
+  pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 first history page succeeds'
+);
+
+select ok(
+  (
+    select response is not null
+       and platform_private.cms_exact_keys(
+             convert_from(decode(response->>'nextCursor', 'base64'), 'utf8')::jsonb,
+             array[
+               'queryHash', 'lastRevisionNumber', 'lastRevisionId', 'expiresAt',
+               'keyId', 'signature'
+             ]::text[],
+             array[
+               'queryHash', 'lastRevisionNumber', 'lastRevisionId', 'expiresAt',
+               'keyId', 'signature'
+             ]::text[]
+           )
+   from s10_cursor_history_page
+  ),
+  'CMS-03B-03 nextCursor is the canonical six-key signed envelope'
+);
+
+select ok(
+  (select response->>'nextCursor' is not null
+      and octet_length(response->>'nextCursor') <= 512
+   from s10_cursor_history_page),
+  'CMS-03B-03 signed cursor stays within the 512-char contract'
+);
+
+-- The signed history cursor continues the keyset walk, and a signed cursor
+-- keeps the new comparison output intact across pages: page two of a compare
+-- read still carries the field/block/relation comparison and restore descriptor.
+create temp table s10_cursor_history_page_two on commit drop as
+select pg_temp.s10_rpc_exec(pg_temp.s10_history_sql(
+  (select response->>'nextCursor' from s10_cursor_history_page)
+)) as response;
+select is(
+  pg_temp.s10_last_error_state(), '00000',
+  'CMS-03B-03 accepts its own signed cursor on the continuation page'
+);
+select ok(
+  (select response->'items'->0->>'revisionNumber' = '1'
+      and response->'nextCursor' = 'null'::jsonb
+   from s10_cursor_history_page_two),
+  'CMS-03B-03 signed continuation returns the older revision and no further cursor'
+);
+
+create temp table s10_cursor_compare_page_one on commit drop as
+select pg_temp.s10_rpc_exec(pg_temp.s10_history_sql(
+  null, 1, '{"compareRevisionId":"a9100000-0000-4000-8000-000000000302"}'
+)) as response;
+create temp table s10_cursor_compare_page_two on commit drop as
+select pg_temp.s10_rpc_exec(pg_temp.s10_history_sql(
+  (select response->>'nextCursor' from s10_cursor_compare_page_one), 1,
+  '{"compareRevisionId":"a9100000-0000-4000-8000-000000000302"}'
+)) as response;
+select ok(
+  (select page_one.response->'compare'->'changes' is not null
+      and page_one.response->'compare'->'changes'
+        = page_two.response->'compare'->'changes'
+      and page_one.response->'compare'->'restore' is not null
+      and page_one.response->'compare'->'restore'
+        = page_two.response->'compare'->'restore'
+      and page_two.response->'items'->0->>'revisionNumber' = '1'
+   from s10_cursor_compare_page_one page_one,
+        s10_cursor_compare_page_two page_two),
+  'CMS-03B-03 a signed cursor keeps the comparison and restore descriptor stable across pages'
+);
+
+-- 8. Tampered history cursor refused.
+select ok(
+  pg_temp.s10_rpc_call(pg_temp.s10_history_sql(pg_temp.s10_cursor_forge(
+    (select response->>'nextCursor' from s10_cursor_history_page),
+    '{"lastRevisionNumber":"999"}'
+  ))),
+  'CMS-03B-03 refuses a tampered signed history cursor'
+);
+select is(
+  pg_temp.s10_last_error_message(), 'CONFLICT',
+  'CMS-03B-03 tampered history cursor is the conflict token'
+);
+
+-- 9. A history cursor is not an entry-list cursor and vice versa: the exact
+-- key set of each envelope is part of its contract.
+select is(
+  pg_temp.s10_cursor_refusal(pg_temp.s10_list_sql(
+    (select response->>'nextCursor' from s10_cursor_history_page)
+  )), 'INVALID_REQUEST',
+  'CMS-03B-13 a history-shaped envelope is the malformed-query token'
+);
+select is(
+  pg_temp.s10_cursor_refusal(pg_temp.s10_history_sql(
+    (select response->>'nextCursor' from s10_cursor_list_page)
+  )), 'INVALID_REQUEST',
+  'CMS-03B-03 a list-shaped envelope is the malformed-query token'
+);
+

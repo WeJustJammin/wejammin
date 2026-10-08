@@ -17,25 +17,25 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(16);
+select plan(20);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
 
 select ok(
-  pg_temp.s10_fn_exists('platform_api', 'cms_authoring_context', 'jsonb')
-    and pg_temp.s10_fn_exists('platform_private', 'cms_authoring_context', 'jsonb'),
+  pg_temp.s10_fn_exists('platform_api', 'cms_get_entry_authoring_context', 'jsonb')
+    and pg_temp.s10_fn_exists('platform_private', 'cms_get_entry_authoring_context', 'jsonb'),
   'CMS-03B-14 authoring-context read has a named worker RPC and wrapper'
 );
 
 select ok(
-  pg_temp.s10_fn_exists('platform_api', 'cms_authoring_context', 'jsonb')
+  pg_temp.s10_fn_exists('platform_api', 'cms_get_entry_authoring_context', 'jsonb')
     and not pg_temp.s10_fn_privilege(
-      'platform_api', 'cms_authoring_context', 'jsonb', 'authenticated'
+      'platform_api', 'cms_get_entry_authoring_context', 'jsonb', 'authenticated'
     )
     and not pg_temp.s10_fn_privilege(
-      'platform_api', 'cms_authoring_context', 'jsonb', 'anon'
+      'platform_api', 'cms_get_entry_authoring_context', 'jsonb', 'anon'
     ),
   'the authoring-context read is service-role only, never browser-callable'
 );
@@ -52,7 +52,7 @@ select pg_temp.s10_rpc_as(
 select pg_temp.s10_rpc_probe(
   'context_non_uuid',
   null,
-  $sql$select platform_api.cms_authoring_context(
+  $sql$select platform_api.cms_get_entry_authoring_context(
     '{"contentTypeVersionId":"authoring-context"}'::jsonb
   )$sql$
 );
@@ -62,11 +62,24 @@ select is(
   'a non-UUID authoring-context selector is a structural refusal, never an entry id'
 );
 
+select pg_temp.s10_rpc_probe(
+  'context_null_selector',
+  null,
+  $sql$select platform_api.cms_get_entry_authoring_context(
+    jsonb_build_object('contentTypeVersionId', null)
+  )$sql$
+);
+
+select is(
+  pg_temp.s10_probe_state('context_null_selector'), 'P0001',
+  'an explicit JSON null selector is a structural refusal, not an omitted query'
+);
+
 -- No query version: creatable active types, no selection, no fields.
 select pg_temp.s10_rpc_probe(
   'context_list',
   null,
-  $sql$select platform_api.cms_authoring_context('{}'::jsonb)$sql$
+  $sql$select platform_api.cms_get_entry_authoring_context('{}'::jsonb)$sql$
 );
 
 select ok(
@@ -93,7 +106,7 @@ select ok(
 select pg_temp.s10_rpc_probe(
   'context_selected',
   null,
-  $sql$select platform_api.cms_authoring_context(jsonb_build_object(
+  $sql$select platform_api.cms_get_entry_authoring_context(jsonb_build_object(
     'contentTypeVersionId', (select value from s10_ids where key = 'draftVersionId')))$sql$
 );
 
@@ -129,7 +142,7 @@ select ok(
 select pg_temp.s10_rpc_probe(
   'context_unknown_version',
   null,
-  $sql$select platform_api.cms_authoring_context(jsonb_build_object(
+  $sql$select platform_api.cms_get_entry_authoring_context(jsonb_build_object(
     'contentTypeVersionId', 'a9100000-0000-4000-8000-00000000ffff'))$sql$
 );
 
@@ -143,7 +156,7 @@ select is(
 select pg_temp.s10_rpc_probe(
   'context_smuggled_schema',
   null,
-  $sql$select platform_api.cms_authoring_context(jsonb_build_object(
+  $sql$select platform_api.cms_get_entry_authoring_context(jsonb_build_object(
     'contentTypeVersionId', (select value from s10_ids where key = 'draftVersionId'),
     'schemaVersionId', 'a9100000-0000-4000-8000-00000000eeee'))$sql$
 );
@@ -163,7 +176,7 @@ select pg_temp.s10_rpc_as(
 select pg_temp.s10_rpc_probe(
   'context_no_scope',
   null,
-  $sql$select platform_api.cms_authoring_context('{}'::jsonb)$sql$
+  $sql$select platform_api.cms_get_entry_authoring_context('{}'::jsonb)$sql$
 );
 
 select is(
@@ -205,13 +218,43 @@ select ok(
 select pg_temp.s10_rpc_probe(
   'context_cross_party',
   $setup$select set_config('app.acting_party_id', '', true)$setup$,
-  $sql$select platform_api.cms_authoring_context(jsonb_build_object(
+  $sql$select platform_api.cms_get_entry_authoring_context(jsonb_build_object(
     'contentTypeVersionId', (select value from s10_ids where key = 'draftVersionId')))$sql$
 );
 
 select is(
   pg_temp.s10_probe_state('context_cross_party'), 'P0001',
   'a selection without an acting context is refused'
+);
+
+select ok(
+  coalesce((select pg_catalog.strpos(
+    pg_catalog.lower(pg_catalog.pg_get_functiondef(proc.oid)), 'limit 32'
+  ) = 0 from pg_proc proc
+   where proc.oid = to_regprocedure('platform_private.cms_get_entry_authoring_context(jsonb)')),
+  false),
+  'creatable type overflow is rejected before projection rather than truncated'
+);
+
+select ok(
+  coalesce((select pg_catalog.strpos(
+    pg_catalog.lower(pg_catalog.pg_get_functiondef(proc.oid)), 'limit 128'
+  ) = 0 from pg_proc proc
+   where proc.oid = to_regprocedure('platform_private.cms_get_entry_authoring_context(jsonb)')),
+  false),
+  'field overflow is rejected before projection rather than truncated'
+);
+
+select ok(
+  coalesce((select
+    pg_catalog.pg_get_functiondef(proc.oid) ~* 'artifact[[:space:]]*\.[[:space:]]*content_type_version_id[[:space:]]*=[[:space:]]*version_row\.id'
+    and pg_catalog.pg_get_functiondef(proc.oid) ~* 'artifact[[:space:]]*\.[[:space:]]*owner_id[[:space:]]*=[[:space:]]*version_row\.owner_id'
+    and pg_catalog.pg_get_functiondef(proc.oid) ~* 'artifact[[:space:]]*\.[[:space:]]*artifact_hash[[:space:]]*=[[:space:]]*version_row\.definition_hash'
+    and pg_catalog.pg_get_functiondef(proc.oid) ~* 'field_candidate[[:space:]]*\.[[:space:]]*state[[:space:]]*=[[:space:]]*''active'''
+   from pg_proc proc
+   where proc.oid = to_regprocedure('platform_private.cms_get_entry_authoring_context(jsonb)')),
+  false),
+  'authoring context binds artifact identity and projects active fields only'
 );
 
 select finish();
