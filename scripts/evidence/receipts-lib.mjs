@@ -1,11 +1,19 @@
-// Slice 09 evidence receipts: pure parsers and the receipt builder.
+// Phase 2 evidence receipts: pure parsers and the receipt builder.
 //
-// A receipt is one row per (criterion marker x executed test):
+// Slice 09 mode (the default, and the only mode `evaluateReceipts` reads): a
+// receipt is one row per (criterion marker x executed test):
 //   { criterion, tool, granularity, file, title, status, fileSha256 }
 // Every field is derived from machine output (a vitest JSON report, pgTAP TAP
 // output, Playwright JSON reports, db:races output) plus the SHA-256 of the test
 // file as it is on disk. Nothing is typed by hand, and a receipt goes stale the
 // moment its test file changes.
+//
+// The marker grammar is generic: P2-S(\d\d)-AC-(\d{3,4}). `markersIn`,
+// `buildReceipts` and `parsePgtapTap` take the slice whose markers they read
+// (default `09`, so Slice 09 behaviour and output are unchanged). Slice 10 and
+// later do NOT use markers as evidence: see identity-receipts-lib.mjs, where a
+// ledger citation names one exact test and a receipt is keyed by that test's
+// identity, never by a marker in its title.
 //
 // Race-runner JSON lines (the format the db:races gate emits with --jsonl):
 //   {"marker":"P2-S09-AC-052","title":"<assertion text>","status":"passed","file":"supabase/tests/.../x.mjs"}
@@ -21,17 +29,60 @@ import { dirname, posix, relative, resolve, sep } from 'node:path';
 export const TOOLS = ['vitest', 'pgtap', 'playwright', 'race'];
 export const STATUSES = ['passed', 'failed', 'skipped', 'flaky', 'stale'];
 
-/** Criterion IDs a title names, including grouped forms such as [P2-S09-AC-219, AC-242, 243]. */
-export const markersIn = (text) => {
-  const ids = new Set();
-  const pad = (n) => `P2-S09-AC-${String(Number(n)).padStart(3, '0')}`;
-  for (const [, id] of text.matchAll(/P2-S09-AC-(\d{3,4})(?!\d)/gu)) {
-    ids.add(pad(id));
+/** Phase 2 has slices 01..17. */
+const FIRST_SLICE = 1;
+const LAST_SLICE = 17;
+
+/** A slice as two digits ("9" and 9 become "09"); anything outside 01..17 throws. */
+export const normaliseSlice = (slice) => {
+  const text = String(slice);
+  if (!/^\d{1,2}$/u.test(text)) {
+    throw new RangeError(`slice must be one or two digits, got "${text}"`);
   }
-  for (const [group] of text.matchAll(/\[P2-S09-AC-[^\]\n]{0,300}\]/gu)) {
+  const number = Number(text);
+  if (number < FIRST_SLICE || number > LAST_SLICE) {
+    throw new RangeError(
+      `slice must be within 01..${String(LAST_SLICE)}, got "${text}"`,
+    );
+  }
+  return String(number).padStart(2, '0');
+};
+
+/** The generated receipts file of a slice, relative to the repository root. */
+export const receiptsPathFor = (slice) =>
+  `tests/contracts/phase-02-slice-${normaliseSlice(slice)}-receipts.generated.jsonl`;
+
+const MARKER = /P2-S(\d\d)-AC-(\d{3,4})(?!\d)/gu;
+const GROUPED_MARKER = /\[P2-S(\d\d)-AC-[^\]\n]{0,300}\]/gu;
+
+/**
+ * Criterion IDs of ONE slice (default 09) a title names, including grouped forms
+ * such as [P2-S09-AC-219, AC-242, 243]. A marker of another slice is ignored.
+ */
+export const markersIn = (text, slice = '09') => {
+  const digits = normaliseSlice(slice);
+  const ids = new Set();
+  const pad = (n) => `P2-S${digits}-AC-${String(Number(n)).padStart(3, '0')}`;
+  for (const [, owner, id] of text.matchAll(MARKER)) {
+    if (owner === digits) ids.add(pad(id));
+  }
+  for (const [group, owner] of text.matchAll(GROUPED_MARKER)) {
+    if (owner !== digits) continue;
     for (const [, id] of group.matchAll(/(?:AC-?|,\s*)(\d{3,4})(?!\d)/gu)) {
       ids.add(pad(id));
     }
+  }
+  return [...ids].sort();
+};
+
+/** Every criterion ID of every slice a title names, once and sorted. */
+export const allMarkersIn = (text) => {
+  const ids = new Set();
+  for (const [, owner] of text.matchAll(MARKER)) {
+    for (const id of markersIn(text, owner)) ids.add(id);
+  }
+  for (const [, owner] of text.matchAll(GROUPED_MARKER)) {
+    for (const id of markersIn(text, owner)) ids.add(id);
   }
   return [...ids].sort();
 };
@@ -62,13 +113,22 @@ export const relativise = (root, path) => {
  * on the in-memory result only, so merging can tell two runs of one test apart,
  * and is never written into a receipt.
  */
-const row = (tool, granularity, file, title, status, invocation = '') => ({
+const row = (
+  tool,
+  granularity,
+  file,
+  title,
+  status,
+  invocation = '',
+  extra = {},
+) => ({
   tool,
   granularity,
   file,
   title,
   status,
   ...(invocation === '' ? {} : { invocation }),
+  ...extra,
 });
 
 /**
@@ -132,6 +192,10 @@ export const parsePlaywrightJson = (
             full,
             playwrightStatus(test),
             invocationOf(test),
+            {
+              project:
+                typeof test.projectName === 'string' ? test.projectName : '',
+            },
           ),
         );
       }
@@ -175,14 +239,16 @@ const PLAN_LINE = /^1\.\.(\d+)\b/u;
 const TAP_LINE = /^(not ok|ok) (\d+)(?: - (.*?))?(?: # (SKIP|TODO)\b.*)?$/iu;
 
 /** Marker-bearing descriptions in an entrypoint's source closure (for unattributable SKIP/TODO). */
-const closureMarkerDescriptions = (root, entrypoint) => {
+const closureMarkerDescriptions = (root, entrypoint, slice) => {
   const found = [];
+  const description = new RegExp(
+    `'((?:[^']|'')*\\[P2-S${slice}-AC-[^\\]\\n]{0,300}\\](?:[^']|'')*)'`,
+    'gu',
+  );
   for (const file of pgtapClosure(root, entrypoint)) {
     const source = readFileSync(resolve(root, file), 'utf8');
-    for (const [, description] of source.matchAll(
-      /'((?:[^']|'')*\[P2-S09-AC-[^\]\n]{0,300}\](?:[^']|'')*)'/gu,
-    )) {
-      found.push({ file, title: compact(description ?? '') });
+    for (const [, text] of source.matchAll(description)) {
+      found.push({ file, title: compact(text ?? '') });
     }
   }
   return found;
@@ -202,8 +268,17 @@ const closureMarkerDescriptions = (root, entrypoint) => {
  * never a passed receipt. A SKIP or TODO with no marker-bearing description
  * cannot be attributed to a criterion, so every marker description the file's
  * source holds gets a `skipped` file-level row, which the guard rejects.
+ *
+ * `options.identity` (Slice 10 and later) keys results by test identity instead
+ * of markers: an assertion belongs to the closure file whose source holds its
+ * description as a whole SQL string literal (the entrypoint when none does, and
+ * for an undescribed assertion); each result carries its `entrypoint`; and a
+ * SKIP or TODO with no description yields a skipped file-level row for every
+ * file of the closure, because the file it came from cannot be told.
  */
-export const parsePgtapTap = (text, root) => {
+export const parsePgtapTap = (text, root, options = {}) => {
+  const slice = normaliseSlice(options.slice ?? '09');
+  const byIdentity = options.identity === true;
   const results = [];
   const unverified = [];
   let current = null;
@@ -228,18 +303,46 @@ export const parsePgtapTap = (text, root) => {
           : assertion.status;
       if (
         assertion.directive !== null &&
-        markersIn(assertion.title).length === 0
+        (byIdentity
+          ? assertion.title === ''
+          : markersIn(assertion.title, slice).length === 0)
       ) {
         unattributed = true;
       }
-      for (const owner of pgtapOwners(root, current.file, assertion.title)) {
+      if (byIdentity) {
+        const owners = literalOwners(root, current.file, assertion.title);
+        for (const owner of owners) {
+          results.push(
+            row('pgtap', 'assertion', owner, assertion.title, status, '', {
+              entrypoint: current.file,
+              ownerCount: owners.length,
+            }),
+          );
+        }
+        continue;
+      }
+      for (const owner of pgtapOwners(
+        root,
+        current.file,
+        assertion.title,
+        slice,
+      )) {
         results.push(row('pgtap', 'assertion', owner, assertion.title, status));
       }
     }
-    if (unattributed) {
+    if (unattributed && byIdentity) {
+      for (const file of pgtapClosure(root, current.file)) {
+        results.push(
+          row('pgtap', 'file', file, UNATTRIBUTED_PGTAP_TITLE, 'skipped', '', {
+            entrypoint: current.file,
+          }),
+        );
+      }
+    } else if (unattributed) {
       for (const { file, title } of closureMarkerDescriptions(
         root,
         current.file,
+        slice,
       )) {
         results.push(row('pgtap', 'file', file, title, 'skipped'));
       }
@@ -281,14 +384,34 @@ export const parsePgtapTap = (text, root) => {
   return { results, verbose: sawAssertions, unverified };
 };
 
+/** Title of the file-level row an undescribed SKIP or TODO assertion produces in identity mode. */
+export const UNATTRIBUTED_PGTAP_TITLE =
+  'SKIP or TODO assertion without a description';
+
+/**
+ * Identity mode owner: the closure file(s) whose source holds `title` as a whole
+ * SQL string literal (whitespace-collapsed, quotes doubled); the entrypoint when
+ * no file does (a computed description) and for an undescribed assertion.
+ */
+const literalOwners = (root, entrypoint, title) => {
+  if (title === '') return [entrypoint];
+  const needle = `'${title.replaceAll("'", "''")}'`;
+  const owners = pgtapClosure(root, entrypoint).filter((file) =>
+    readFileSync(resolve(root, file), 'utf8')
+      .replace(/\s+/gu, ' ')
+      .includes(needle),
+  );
+  return owners.length > 0 ? owners : [entrypoint];
+};
+
 /** The closure file(s) whose source holds the assertion text; the entrypoint when none does. */
-const pgtapOwners = (root, entrypoint, title) => {
+const pgtapOwners = (root, entrypoint, title, slice) => {
   const closure = pgtapClosure(root, entrypoint);
   const owners = closure.filter((file) =>
     compact(readFileSync(resolve(root, file), 'utf8')).includes(title),
   );
   if (owners.length > 0) return owners;
-  const ids = markersIn(title);
+  const ids = markersIn(title, slice);
   const byMarker = closure.filter((file) => {
     const source = readFileSync(resolve(root, file), 'utf8');
     return ids.some((id) => source.includes(id));
@@ -301,7 +424,8 @@ const pgtapOwners = (root, entrypoint, title) => {
  * runner output where `ok - ...` assertion lines precede that runner's
  * `PASS|FAIL <runner> exit=...` verdict line.
  */
-export const parseRaceOutput = (text) => {
+export const parseRaceOutput = (text, options = {}) => {
+  const byIdentity = options.identity === true;
   const results = [];
   let pending = [];
   for (const line of text.split(/\r?\n/u)) {
@@ -314,7 +438,7 @@ export const parseRaceOutput = (text) => {
           'race',
           'assertion',
           String(record.file),
-          `${record.marker} ${title}`.trim(),
+          byIdentity ? title : `${record.marker} ${title}`.trim(),
           status,
         ),
       });
@@ -322,22 +446,24 @@ export const parseRaceOutput = (text) => {
     }
     const verdict = /^(PASS|FAIL) (\S+\.mjs) exit=/u.exec(line);
     if (verdict !== null) {
-      for (const title of pending) {
+      for (const { title, ok } of pending) {
         results.push(
           row(
             'race',
             'assertion',
             verdict[2] ?? '',
             title,
-            verdict[1] === 'PASS' ? 'passed' : 'failed',
+            verdict[1] === 'PASS' && (ok || !byIdentity) ? 'passed' : 'failed',
           ),
         );
       }
       pending = [];
       continue;
     }
-    const ok = /^(ok|not ok) - (.*)$/u.exec(line);
-    if (ok !== null) pending.push(ok[2] ?? '');
+    const assertion = /^(ok|not ok) - (.*)$/u.exec(line);
+    if (assertion !== null) {
+      pending.push({ title: assertion[2] ?? '', ok: assertion[1] === 'ok' });
+    }
   }
   return results;
 };
@@ -350,9 +476,16 @@ export const parseRaceOutput = (text) => {
  */
 export const markStale = (results, root, reportMtimeMs) =>
   results.map((result) => {
-    const path = resolve(root, result.file);
-    if (!existsSync(path) || result.status === 'stale') return result;
-    return statSync(path).mtimeMs > reportMtimeMs + 1000
+    if (result.status === 'stale') return result;
+    // A pgTAP result that names its entrypoint depends on the whole closure.
+    const files =
+      typeof result.entrypoint === 'string'
+        ? [result.file, ...pgtapClosure(root, result.entrypoint)]
+        : [result.file];
+    return files.some((file) => {
+      const path = resolve(root, file);
+      return existsSync(path) && statSync(path).mtimeMs > reportMtimeMs + 1000;
+    })
       ? { ...result, status: 'stale' }
       : result;
   });
@@ -389,8 +522,8 @@ export const SKIP_REPLACEMENTS = Object.freeze([
   }),
 ]);
 
-const replaceableSkip = (skipped, executed) =>
-  SKIP_REPLACEMENTS.some(
+const replaceableSkip = (skipped, executed, replacements) =>
+  replacements.some(
     (entry) =>
       entry.tool === skipped.tool &&
       entry.file === skipped.file &&
@@ -414,7 +547,7 @@ const replaceableSkip = (skipped, executed) =>
  * hides a skip. pgTAP and race results are never merged: a SKIP there is never
  * evidence, whatever else passed.
  */
-export const mergeReports = (reports) => {
+export const mergeReports = (reports, replacements = SKIP_REPLACEMENTS) => {
   const key = (result) =>
     [result.tool, result.file, result.title].join('\u0000');
   const executedIn = new Map();
@@ -431,17 +564,21 @@ export const mergeReports = (reports) => {
       if (result.status !== 'skipped') return true;
       return !(executedIn.get(key(result)) ?? []).some(
         (other) =>
-          other.index !== index && replaceableSkip(result, other.result),
+          other.index !== index &&
+          replaceableSkip(result, other.result, replacements),
       );
     }),
   );
 };
 
-/** One receipt per (marker x test) with the SHA-256 of the test file. */
-export const buildReceipts = (results, root) => {
+/**
+ * One receipt per (marker of `slice` x test) with the SHA-256 of the test file.
+ * `slice` defaults to 09: the Slice 09 output is byte-identical to before.
+ */
+export const buildReceipts = (results, root, slice = '09') => {
   const receipts = [];
   for (const result of results) {
-    for (const criterion of markersIn(result.title)) {
+    for (const criterion of markersIn(result.title, slice)) {
       receipts.push({
         criterion,
         tool: result.tool,

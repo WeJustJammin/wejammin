@@ -1,12 +1,20 @@
 #!/usr/bin/env node
-// Collect Slice 09 evidence receipts from machine-generated test output.
+// Collect Phase 2 evidence receipts from machine-generated test output.
 //
 //   node scripts/evidence/collect-receipts.mjs \
 //     --vitest report.json [--vitest more.json] \
 //     --pgtap db-test.tap \
 //     --playwright e2e-functional.json [--playwright e2e-s09-real.json] \
 //     --races db-races.out \
-//     [--root DIR] [--out tests/contracts/phase-02-slice-09-receipts.generated.jsonl]
+//     [--slice NN] [--root DIR] [--out tests/contracts/phase-02-slice-NN-receipts.generated.jsonl]
+//
+// --slice NN (01..17, default 09) selects the default output file
+//   tests/contracts/phase-02-slice-NN-receipts.generated.jsonl. Slice 09 (no --slice,
+//   or --slice 09) builds receipts for criterion markers P2-S09-AC-NNN, unchanged.
+//   Any other slice with a ledger (tests/contracts/phase-02-slice-NN-evidence-ledger.ts)
+//   is collected by TEST IDENTITY: one receipt per executed test the ledger cites,
+//   plus every non-passing or duplicated test of a cited file; markers in titles are
+//   never read (identity-receipts-lib.mjs). --markers forces marker mode for a slice.
 //
 // vitest: `vitest run --reporter=json --outputFile=report.json <files>`; also pass the dedicated
 //   gate report test-results/vitest-evidence-s09.json (`pnpm test:evidence:s09`): the AC-269
@@ -29,19 +37,22 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
+import { buildIdentityReceipts } from './identity-receipts-lib.mjs';
+import { citationsOf, loadLedger } from './ledger-lib.mjs';
 import {
   buildReceipts,
   markStale,
   mergeReports,
+  normaliseSlice,
   parsePgtapTap,
   parsePlaywrightJson,
   parseRaceOutput,
   parseVitestJson,
+  receiptsPathFor,
   serialiseReceipts,
 } from './receipts-lib.mjs';
 
-export const DEFAULT_OUT =
-  'tests/contracts/phase-02-slice-09-receipts.generated.jsonl';
+export const DEFAULT_OUT = receiptsPathFor('09');
 
 const take = (args, flag) => {
   const values = [];
@@ -51,16 +62,33 @@ const take = (args, flag) => {
   return values.filter((value) => value !== undefined);
 };
 
-export const collect = ({
+/** The slice and the absolute output path a command line selects. */
+export const parseCollectorArgs = (argv, cwd) => {
+  const root = resolve(take(argv, '--root')[0] ?? cwd);
+  const slice = normaliseSlice(take(argv, '--slice')[0] ?? '09');
+  return {
+    slice,
+    out: resolve(root, take(argv, '--out')[0] ?? receiptsPathFor(slice)),
+  };
+};
+
+/**
+ * Parse every input into per-invocation result lists (stale results marked) and
+ * collect input errors. `byIdentity` selects the Slice 10+ parsers (see
+ * identity-receipts-lib.mjs); `slice` selects the markers of marker mode.
+ */
+export const readReports = ({
   root,
   vitest,
   pgtap,
   playwright,
   races,
   testDir,
+  slice = '09',
+  byIdentity = false,
 }) => {
+  const digits = normaliseSlice(slice);
   const reports = [];
-  const notes = [];
   const errors = [];
   const addResults = (path, parsed) =>
     reports.push(markStale(parsed, root, statSync(path).mtimeMs));
@@ -75,7 +103,10 @@ export const collect = ({
     );
   }
   for (const path of pgtap) {
-    const parsed = parsePgtapTap(readFileSync(path, 'utf8'), root);
+    const parsed = parsePgtapTap(readFileSync(path, 'utf8'), root, {
+      slice: digits,
+      identity: byIdentity,
+    });
     addResults(path, parsed.results);
     for (const file of parsed.unverified) {
       errors.push(
@@ -94,22 +125,65 @@ export const collect = ({
     );
   }
   for (const path of races) {
-    addResults(path, parseRaceOutput(readFileSync(path, 'utf8')));
+    addResults(
+      path,
+      parseRaceOutput(readFileSync(path, 'utf8'), { identity: byIdentity }),
+    );
   }
+  return { reports, errors };
+};
+
+export const collect = (input) => {
+  const { root, slice = '09', identity = null } = input;
+  const digits = normaliseSlice(slice);
+  const byIdentity = identity !== null;
+  const { reports, errors } = readReports({ ...input, byIdentity });
   return {
-    receipts: buildReceipts(mergeReports(reports), root),
-    notes,
+    receipts: byIdentity
+      ? buildIdentityReceipts(
+          mergeReports(reports, []),
+          root,
+          identity.citations,
+        )
+      : buildReceipts(mergeReports(reports), root, digits),
+    notes: [],
     errors,
   };
 };
 
-const main = () => {
+const main = async () => {
   const args = process.argv.slice(2);
   const root = resolve(take(args, '--root')[0] ?? process.cwd());
-  const out = resolve(root, take(args, '--out')[0] ?? DEFAULT_OUT);
+  let slice;
+  let out;
+  try {
+    ({ slice, out } = parseCollectorArgs(args, process.cwd()));
+  } catch (error) {
+    console.error(`invalid arguments: ${error.message}`);
+    process.exit(2);
+  }
+  // Slice 09 (and --markers) read criterion markers. Any other slice that has a
+  // ledger is collected by test identity: only cited tests are receipted.
+  let identity = null;
+  if (slice !== '09' && !args.includes('--markers')) {
+    try {
+      const entries = await loadLedger(root, slice);
+      if (entries !== null) identity = { citations: citationsOf(entries) };
+    } catch (error) {
+      console.error(`cannot read the Slice ${slice} ledger: ${error.message}`);
+      process.exit(2);
+    }
+  }
+  if (identity !== null && identity.citations.length === 0) {
+    writeFileSync(out, '');
+    console.log(`ledger cites no test; wrote 0 receipts to ${out}`);
+    return;
+  }
   let collected;
   try {
     collected = collect({
+      slice,
+      identity,
       root,
       vitest: take(args, '--vitest'),
       pgtap: take(args, '--pgtap'),
@@ -129,7 +203,11 @@ const main = () => {
     process.exit(3);
   }
   if (collected.receipts.length === 0) {
-    console.error('no receipt: the inputs carry no [P2-S09-AC-NNN] test');
+    console.error(
+      identity === null
+        ? `no receipt: the inputs carry no [P2-S${slice}-AC-NNN] test`
+        : `no receipt: none of the ${String(identity.citations.length)} cited test(s) is in the inputs`,
+    );
     process.exit(1);
   }
   writeFileSync(out, serialiseReceipts(collected.receipts));
@@ -149,4 +227,4 @@ const main = () => {
   );
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (import.meta.url === `file://${process.argv[1]}`) await main();

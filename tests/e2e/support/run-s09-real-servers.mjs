@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -38,7 +38,91 @@ const runtimeConfigDirectory = await mkdtemp(
   join(tmpdir(), 'wejammin-s09-real-'),
 );
 const webConfig = join(runtimeConfigDirectory, 'wrangler.jsonc');
+// The service key never goes on a command line: it travels in a 0600 file inside
+// the 0700 runtime directory, which the exit hook removes with the web config.
+const apiEnvironmentFile = join(runtimeConfigDirectory, 'api.env');
 let shuttingDown = false;
+
+/**
+ * The Slice 10 editorial routes run against the REAL local Supabase stack
+ * (Kong -> PostgREST -> the newest SQL), never a stub. The Worker credential is
+ * the stack's own opaque service key; it is read here at run time and handed to
+ * the API Worker through a private env file, so no secret lives in source.
+ *
+ * A missing stack must not take the Slice 09 and Slice 12 real-route specs down
+ * with it (they need no database), and it must never be papered over with a
+ * fixture: the launcher says so loudly and leaves the editorial routes
+ * unregistered (the Worker answers 404), and every Slice 10 spec refuses to run
+ * against that (s10-real-world.ts probes the route before it seeds anything).
+ */
+const supabaseApiUrl = () => {
+  try {
+    const output = execFileSync(
+      'pnpm',
+      ['exec', 'supabase', 'status', '-o', 'env'],
+      {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    );
+    const match = /^API_URL="([^"]+)"$/mu.exec(output);
+    if (match?.[1] !== undefined) return match[1];
+  } catch {
+    // fall through to the documented local default
+  }
+  return 'http://127.0.0.1:54321';
+};
+
+const supabaseServiceKey = () => {
+  try {
+    const key = execFileSync(
+      'docker',
+      [
+        'exec',
+        process.env.POSTGREST_API_KONG_CONTAINER ?? 'supabase_kong_wejammin',
+        'sh',
+        '-c',
+        "grep -o 'sb_secret_[A-Za-z0-9_-]*' /home/kong/kong.yml | head -1",
+      ],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+    if (key.startsWith('sb_secret_')) return key;
+  } catch {
+    // reported by the caller with the remedy
+  }
+  return null;
+};
+
+const resolveSupabaseStack = async () => {
+  const url = supabaseApiUrl();
+  const secret = supabaseServiceKey();
+  if (secret === null) {
+    console.error(
+      'S10 real-route launcher: cannot read the local Supabase service key; the Slice 10 editorial routes stay unregistered and the Slice 10 specs will refuse to run. Start the stack: pnpm db:start && pnpm db:reset.',
+    );
+    return null;
+  }
+  // A database reset restarts the stack under the shared lock; give a reset that
+  // is already in flight time to finish before concluding the stack is absent.
+  let lastError = 'not attempted';
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    try {
+      const response = await fetch(`${url}/rest/v1/`, {
+        headers: { apikey: secret },
+      });
+      if (response.status === 200) return { url, secret };
+      lastError = `HTTP ${response.status}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await sleep(1_000);
+  }
+  console.error(
+    `S10 real-route launcher: the local Supabase API at ${url} is not answering (${lastError}); the Slice 10 editorial routes stay unregistered and the Slice 10 specs will refuse to run. Start it: pnpm db:start && pnpm db:reset.`,
+  );
+  return null;
+};
 
 const processGroupId = () => {
   try {
@@ -160,6 +244,14 @@ const waitFor = async (url, expectedStatus) => {
 };
 
 try {
+  const supabase = await resolveSupabaseStack();
+  await writeFile(
+    apiEnvironmentFile,
+    supabase === null
+      ? ''
+      : `SUPABASE_URL=${supabase.url}\nSUPABASE_SECRET_KEY=${supabase.secret}\n`,
+    { encoding: 'utf8', mode: 0o600 },
+  );
   await runChecked('pnpm', ['--filter', '@wejammin/web', 'build']);
   const template = await readFile(webConfigTemplate, 'utf8');
   await writeFile(
@@ -196,6 +288,10 @@ try {
       '--port',
       String(apiPort),
       '--show-interactive-dev-session=false',
+      '--env-file',
+      apiEnvironmentFile,
+      '--var',
+      `S10_HUMAN_ORIGINS:http://127.0.0.1:${String(webPort)},https://platform-api.internal`,
     ],
     true,
     true,

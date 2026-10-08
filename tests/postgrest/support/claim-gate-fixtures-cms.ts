@@ -56,6 +56,13 @@ export const CMS_ACTOR_FIXTURES: FixtureTable = {
     },
     real: PERSON_NOT_FOUND,
   },
+  cms_get_entry_authoring_context: {
+    // contentTypeVersionId is optional; a present JSON null is a structural
+    // INVALID_REQUEST (BE03b CMS-03B-14 row), so the valid probe omits it.
+    request: {},
+    real: PERSON_NOT_FOUND,
+    svcReal: '400:FORBIDDEN',
+  },
   cms_bind_relation: {
     request: {
       contentTypeId: id(1),
@@ -149,6 +156,10 @@ export const CMS_ACTOR_FIXTURES: FixtureTable = {
     request: { entryId: id(7) },
     real: '400:NOT_FOUND',
   },
+  cms_get_conflict_detail: {
+    request: { entryId: id(7), conflictId: id(11) },
+    real: '400:NOT_FOUND',
+  },
   cms_get_schema_review: {
     request: { reviewId: id(5) },
     real: PERSON_NOT_FOUND,
@@ -163,6 +174,13 @@ export const CMS_ACTOR_FIXTURES: FixtureTable = {
   },
   cms_list_capability_grants: { request: {}, real: PERSON_NOT_FOUND },
   cms_list_content_types: { request: {}, real: PERSON_NOT_FOUND },
+  cms_list_entries: {
+    request: {},
+    real: PERSON_NOT_FOUND,
+    // The list conceals every row the caller has no proven grant over, so a
+    // real service-role caller with no person gets an empty page, not a refusal.
+    svcReal: '200:',
+  },
   cms_list_revisions: {
     request: { entryId: id(7) },
     real: '400:NOT_FOUND',
@@ -194,6 +212,16 @@ export const CMS_ACTOR_FIXTURES: FixtureTable = {
   cms_revoke_capability_grant: {
     request: { grantId: id(10), expectedVersion: '1' },
     real: '400:INVALID_REQUEST',
+  },
+  cms_restore_revision: {
+    request: {
+      entryId: id(7),
+      revisionId: id(8),
+      migrationChainId: id(20),
+      expectedVersion: '1',
+      idempotencyKey: IDEMPOTENCY_KEY,
+    },
+    real: PERSON_NOT_FOUND,
   },
   cms_start_schema_dry_run: {
     request: {

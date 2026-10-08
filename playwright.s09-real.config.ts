@@ -37,6 +37,10 @@ export default defineConfig({
     'phase-02-slice-10-authoring-real-route.spec.ts',
     'phase-02-slice-10-rich-text-real-route.spec.ts',
     'phase-02-slice-10-entry-list-real-route.spec.ts',
+    'phase-02-slice-10-draft-detail-real-route.spec.ts',
+    'phase-02-slice-10-keyboard-real-route.spec.ts',
+    'phase-02-slice-10-rich-text-toolbar-real-route.spec.ts',
+    'phase-02-slice-10-surfaces-real-route.spec.ts',
     'phase-02-slice-12-template-real-route.spec.ts',
     'phase-02-slice-12-template-uncertain-real-route.spec.ts',
     'phase-02-slice-12-locale-real-route.spec.ts',
@@ -64,10 +68,17 @@ export default defineConfig({
     // after the device descriptor so the channel always wins.
     channel: 'chrome',
   },
+  // One named project so evidence receipts can cite a real-route test by
+  // file, title and project (scripts/evidence identity receipts).
+  projects: [{ name: 'real-route-chrome' }],
   webServer: {
     command: `node ${JSON.stringify(serverLauncher)}`,
     gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
-    reuseExistingServer: false,
+    // Local iteration only: S09_REUSE_SERVERS=1 attaches to a launcher already
+    // serving the web origin (node tests/e2e/support/run-s09-real-servers.mjs)
+    // instead of building and starting a new one. CI and `pnpm test:e2e` never
+    // set it, so a real run always owns its servers.
+    reuseExistingServer: process.env.S09_REUSE_SERVERS === '1',
     timeout: realRouteServerTimeout,
     url: webOrigin,
   },

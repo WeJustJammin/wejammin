@@ -21,8 +21,9 @@ export const prepareGateWorld = (): GateWorld => {
   const principal = createAuthUser(randomUUID());
   psql(`insert into platform_private.cfg_release_principals(principal_id, key_id)
         values ('${principal}', '${RELEASE_KEY}') on conflict do nothing`);
-  // Test-only signing key for the history cursor: CMS-03B-03 answers
-  // DEPENDENCY_UNAVAILABLE before it resolves the caller while the Vault has none.
+  // Test-only signing key for the signed editorial cursors: CMS-03B-03
+  // history and CMS-03B-13 entry list answer DEPENDENCY_UNAVAILABLE before they
+  // resolve the caller while the Vault has none.
   psql(`select vault.create_secret(repeat('a1', 32), 'cms_editorial_history_cursor_active',
           'api gate suite key') where not exists (
           select 1 from vault.secrets where name = 'cms_editorial_history_cursor_active')`);

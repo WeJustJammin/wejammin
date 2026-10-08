@@ -33,17 +33,20 @@ export type LocalSessionClaim = Readonly<{
   sessionId: string;
 }>;
 
+/** A verified local session together with every claim its signed token carries. */
+export type LocalSessionPayload = LocalSessionClaim &
+  Readonly<{ claims: Readonly<Record<string, unknown>> }>;
+
 /**
- * Verify a signed local-only session request and return the claim, or null.
- * The reference cookie, HS256 signature, expiry, and revocation checks are
- * identical to the boolean verifier; only a post-verification profile lookup
- * is added by callers that need the session identity.
+ * Verify a signed local-only session request for ANY subject and return the
+ * claim with the full signed payload, or null. The reference cookie, HS256
+ * signature, expiry, session-ID shape, and revocation checks are the ones every
+ * local verifier needs; callers decide which subjects they accept.
  */
-export const verifyLocalSessionRequest = async (
-  expectedUserId: string,
+export const verifyLocalSessionPayload = async (
   revokedSessionIds: ReadonlySet<string>,
   request: Request,
-): Promise<LocalSessionClaim | null> => {
+): Promise<LocalSessionPayload | null> => {
   const signingKey = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(SESSION_SIGNING_SECRET),
@@ -75,10 +78,10 @@ export const verifyLocalSessionRequest = async (
       exp?: unknown;
       session_id?: unknown;
       sub?: unknown;
-    };
+    } & Record<string, unknown>;
     if (header.alg !== 'HS256' || header.typ !== 'JWT') return null;
     if (
-      payload.sub !== expectedUserId ||
+      typeof payload.sub !== 'string' ||
       !isLocalSessionId(payload.session_id) ||
       typeof payload.exp !== 'number' ||
       !Number.isSafeInteger(payload.exp) ||
@@ -93,10 +96,30 @@ export const verifyLocalSessionRequest = async (
       new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
     );
     if (!signatureValid) return null;
-    return { userId: payload.sub, sessionId: payload.session_id };
+    return {
+      userId: payload.sub,
+      sessionId: payload.session_id,
+      claims: payload,
+    };
   } catch {
     return null;
   }
+};
+
+/**
+ * Verify a signed local-only session request for one expected subject and
+ * return the claim, or null. Identical to the boolean verifier; only a
+ * post-verification profile lookup is added by callers that need the identity.
+ */
+export const verifyLocalSessionRequest = async (
+  expectedUserId: string,
+  revokedSessionIds: ReadonlySet<string>,
+  request: Request,
+): Promise<LocalSessionClaim | null> => {
+  const verified = await verifyLocalSessionPayload(revokedSessionIds, request);
+  return verified !== null && verified.userId === expectedUserId
+    ? { userId: verified.userId, sessionId: verified.sessionId }
+    : null;
 };
 
 /** Create a local-only authority verifier for the production-route harness. */

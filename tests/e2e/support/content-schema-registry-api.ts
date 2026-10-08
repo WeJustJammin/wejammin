@@ -25,7 +25,10 @@ import {
 import { revokeLaneSession } from './s09-lane-auth';
 import { createCmsTemplateFixture } from './cms-template-fixture';
 import { createCmsLocaleFixture } from './cms-locale-fixture';
-import { createCmsEditorialHistoryFixture } from './cms-editorial-history-fixture';
+import {
+  createS10RealCmsEditorial,
+  type S10RealBindings,
+} from './s10-real-editorial';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';
@@ -322,7 +325,7 @@ const legacyDependencies = {
   identityAuthority: s09.identityAuthority,
 };
 
-const dependencies = {
+const baseDependencies = {
   captureException: () => undefined,
   createLogger: () => logger,
   now: Date.now,
@@ -331,11 +334,30 @@ const dependencies = {
   contentSchemaRegistry: registry,
   cmsTemplate: createCmsTemplateFixture(hasValidSession),
   cmsLocale: createCmsLocaleFixture(hasValidSession),
-  cmsEditorial: createCmsEditorialHistoryFixture(hasValidSession),
   ...laneDependencies(legacyDependencies),
-} as unknown as WorkerDependencies;
+};
 
-const app = createWorkerApp(dependencies);
+// The editorial dependency is the PRODUCTION composition over the local
+// Supabase stack (s10-real-editorial.ts), so it needs the Worker bindings the
+// launcher passes; the app is therefore built from the first request's env.
+// When the launcher found no stack the dependency is left out and the editorial
+// routes stay unregistered, a 404 (never a fixture); the Slice 10 specs probe for
+// exactly that.
+let app: ReturnType<typeof createWorkerApp> | null = null;
+const appFor = (env: unknown): ReturnType<typeof createWorkerApp> => {
+  if (app !== null) return app;
+  const bindings = env as S10RealBindings;
+  const editorial =
+    bindings.SUPABASE_URL !== undefined &&
+    bindings.SUPABASE_SECRET_KEY !== undefined
+      ? { cmsEditorial: createS10RealCmsEditorial(bindings, revokedSessionIds) }
+      : {};
+  app = createWorkerApp({
+    ...baseDependencies,
+    ...editorial,
+  } as unknown as WorkerDependencies);
+  return app;
+};
 
 export default {
   fetch: async (request: Request, env: unknown, context: ExecutionContext) => {
@@ -354,6 +376,6 @@ export default {
     }
     const laneControl = await handleLaneControl(request);
     if (laneControl !== null) return laneControl;
-    return app.fetch(request, env, context);
+    return appFor(env).fetch(request, env, context);
   },
 };

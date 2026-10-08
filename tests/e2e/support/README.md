@@ -46,9 +46,14 @@ or a deployed Worker.
   in-memory registry projection, Slice 10 history and Slice 12 template
   fixtures, HMAC-validated session authority, and a test-only revocation
   control.
-- `cms-editorial-history-fixture.ts` — in-memory, owner-bound revision summaries
-  and comparison for the production-built CMS-07 read route; it cannot prove
-  Supabase authorization, tamper-evident keyset cursors, or persistence.
+- `s10-real-editorial.ts` — the Slice 10 editorial dependency of this Worker:
+  the PRODUCTION composition (production RPC adapter -> Kong -> PostgREST -> the
+  newest SQL of the local Supabase stack) with only two seams supplied, as the
+  `tests/postgrest` real-API gate suites do: the verified session (the signed
+  local cookie names the actor, the acting party and the capability claims, see
+  `s10-session-claims.ts`) and an always-allow rate limiter. It replaces the old
+  test-owned history port, which answered a fixed page for one entry and so could
+  only ever prove itself. Every non-2xx RPC answer is logged as `[s10-rpc]`.
 - `cms-template-fixture.ts` — in-memory latest-version/CAS behavior for the
   production-built CMS-11 browser route; it is not a Supabase implementation.
 - `s09-session-authority.ts` — local HMAC signature, expiry, session-ID, and
@@ -73,11 +78,28 @@ Astro route and the real Worker route with `cms-template-fixture.ts` as its
 port. Its 201/409/rebase proof covers browser transport and reconciliation,
 not Supabase persistence, provider authorization, or hosted acceptance.
 
-The Slice 10 history tests cover signed-session admission, safe summary
-escaping, native filters and comparison, stale-cursor recovery, and non-owned
-entry disclosure through the production-built Astro and Worker routes. The
-history port remains test-owned, so these tests are not hosted or database
-acceptance evidence.
+The Slice 10 real-route specs (`phase-02-slice-10-*-real-route.spec.ts`) run
+through the REAL composition: the built web app, the first-party proxy, the
+production editorial Worker routes and adapter, Kong, PostgREST and the newest
+SQL. They therefore need the local Supabase stack at the newest migrations
+(`pnpm db:start && pnpm db:reset`); `run-s09-real-servers.mjs` fails loudly when
+it is not answering and hands the API Worker the stack's service key through a
+0600 file (never a command line). Support for these specs:
+
+- `s10-real-world.ts` — the committed world: the operator-bootstrapped owner, an
+  active content type made through the production registry app (the 03a
+  activation envelope carries the real workflow-policy member, exactly as
+  `tests/postgrest/support/cms-editorial-world.ts` does), and fresh authors, a
+  confirmed member without a grant and an outsider per run. Entries, revisions,
+  conflicts and restores are never seeded by SQL.
+- `s10-real-api.ts` — first-party requests through the same proxy chain, used for
+  preconditions (an entry with history, a second author's entry).
+- `s10-real-browser.ts` — signed-in contexts, the axe gate and the scroll gate.
+
+Local iteration: start `node tests/e2e/support/run-s09-real-servers.mjs` once and
+run Playwright with `S09_REUSE_SERVERS=1`; CI never sets it.
+
+These tests are loopback-only local evidence, not hosted acceptance.
 
 The web-side test adapter lives at `apps/web/content-schema-registry-web.mjs`
 and delegates all non-test paths to the production server entry. Its temporary

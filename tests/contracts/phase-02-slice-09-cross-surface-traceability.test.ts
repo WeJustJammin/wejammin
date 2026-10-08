@@ -52,7 +52,18 @@ const implementationFiles = [
   ...migrationFiles,
 ];
 const contractSurface = [...contractFiles, ...workerFiles];
+// Slice 10 forward migrations start at 20261005010000 (rich_text.v1 validator). They
+// redefine or wrap S09 and Slice 10 objects and may name CMS-03A in a comment (the
+// deadlock wrappers of 20261005013100 do), which this content filter would otherwise
+// sweep into the Slice 09 closed-world RPC and table sets even though they define the
+// Slice 10 entry writers (cms_create_entry and its siblings). The S09 migration source
+// is the S09-era migrations that precede that boundary.
+const SLICE_10_FIRST_MIGRATION = '20261005010000';
 const s09MigrationSource = migrationFiles
+  .filter(
+    ({ path }) =>
+      (path.split('/').at(-1) ?? '') < `${SLICE_10_FIRST_MIGRATION}_`,
+  )
   .filter(({ source }) => /CMS-03A|P2-S09|cms_create_type_draft/iu.test(source))
   .map(({ source }) => source)
   .join('\n');
