@@ -111,6 +111,18 @@ has NOT been run yet.
   (refs/backup/s10-*, orchestration dir, `wejammin_ev` stack: `supabase stop --workdir orchestration/altdb`) → Slice 11 setup with the
   DEC-148 depth-floor cascade, on a fresh branch from the merged main.
 
+## Checkpoint 2026-10-08 12:10 UTC — Slice 10 merged
+
+- PR #126 merged (squash 3640b506, 12:07Z) after CI passed (two CI-only defects fixed: mtime-based spec-graph check → content-based;
+  DOM test roots not unmounted → autosave timers fired after jsdom teardown). Staging deploy follows main per the established process.
+- Cleanup done: Slice 10 worktree removed (clean, tree identical to main), local + remote `codex/phase2-slice10` deleted, all
+  `refs/backup/s10-*` deleted. Orchestration workspace kept at `/home/rob/.codex/worktrees/phase2-slice10/orchestration/` (tools now
+  point at the Slice 11 checkout; second DB stack `wejammin_ev` still running for evidence runs).
+- Slice 10 tracker: 91/105 checked; 14 partial pending the owner's DEC-147 ruling (12), DEC-141 (AC056 → Slice 12) and AC060's
+  same-change clause (now satisfied by the merge — re-cite in the S11 branch evidence pass or record in the tracker).
+- Slice 11 active checkout: `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`, branch `claude/phase2-slice11` rebased on main
+  (1dc3969b: 122 criteria, DEC-149..155, PAT-023). Next: S11 implementation lanes from `orchestration/s11/s11-brief.md` §4.
+
 ## Slice 11 preparation (2026-10-08)
 
 - Codex read-only brief: `orchestration/s11/s11-brief.md` (operations CMS-03B-05..09 and 15..20 with spec citations, existing-vs-missing
