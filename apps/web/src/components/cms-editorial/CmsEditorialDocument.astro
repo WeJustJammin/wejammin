@@ -1,4 +1,7 @@
 ---
+import '@wejammin/ui/styles.css';
+import '../../styles/cms-editorial.css';
+
 /*
  * The one document shell for the CMS editorial entry routes (new, draft detail,
  * revision history). It lives in processed Astro markup on purpose: Astro only
@@ -47,5 +50,6 @@ const { title, heading, description, systemStatusLink = false } = Astro.props;
     </main>
     <script src="../../lib/route-heading-focus.ts"></script>
     <script src="../../lib/auth-scope-sync.ts"></script>
+    <script src="../../lib/cms-editorial-page-actions.ts"></script>
   </body>
 </html>

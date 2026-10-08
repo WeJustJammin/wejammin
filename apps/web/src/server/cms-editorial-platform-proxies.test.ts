@@ -34,6 +34,9 @@ const post = (body: string, headers: Record<string, string> = {}): Request =>
       cookie: 'wj_csrf=' + csrf,
       'x-csrf-token': csrf,
       'idempotency-key': idempotencyKey,
+      // A string body would otherwise default to text/plain, which the create
+      // proxy now refuses (AC049); the browser always declares JSON.
+      'content-type': 'application/json',
       ...headers,
     },
   });
@@ -57,7 +60,7 @@ const validCreateBody = JSON.stringify({
   contentTypeId: uuid,
   contentTypeVersionId: uuid2,
   locale: 'en-US',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${uuid2}`],
   values: { [uuid2]: { title: 'Hello' } },
   schemaArtifact: {
     id: uuid,
@@ -74,11 +77,14 @@ const validCreateBody = JSON.stringify({
 const validDraftDetail = {
   entry: { id: uuid, version: '1', createdAt: instant, updatedAt: instant },
   revision: { id: uuid2, version: '1', createdAt: instant, updatedAt: instant },
+  revisionNumber: '1',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash: hash,
+  schemaVersionId: uuid2,
   validationState: 'valid',
+  openConflict: null,
   fields: [],
   relations: [],
 } as const;
@@ -97,7 +103,12 @@ const validCreateResource = {
 const jsonResponse = (body: unknown, init: ResponseInit): Response =>
   new Response(JSON.stringify(body), {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      etag: '"1"',
+      ...(init.headers ?? {}),
+    },
   });
 
 const errorCode = async (response: Response): Promise<unknown> =>
@@ -268,7 +279,7 @@ describe('cms-editorial draft-detail read proxy (CMS-03B-11)', () => {
     expect(response.status).toBe(503);
   });
 
-  it('answers a malformed entry id as not-found without upstream', async () => {
+  it('answers a malformed entry id as 400 INVALID_REQUEST without upstream (DEC-145)', async () => {
     const handler = vi.fn(async () =>
       jsonResponse(validDraftDetail, { status: 200 }),
     );
@@ -277,7 +288,8 @@ describe('cms-editorial draft-detail read proxy (CMS-03B-11)', () => {
       bindingWith(handler),
       'not-a-uuid',
     );
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(400);
+    expect(await errorCode(response)).toBe('INVALID_REQUEST');
     expect(handler).not.toHaveBeenCalled();
   });
 

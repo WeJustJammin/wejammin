@@ -100,7 +100,7 @@ export const createRequest = (title: string) => ({
   contentTypeId: uuid,
   contentTypeVersionId: uuid2,
   locale: 'en-US',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${uuid2}`],
   values: { [uuid2]: { title } },
   schemaArtifact: {
     id: uuid,
@@ -134,11 +134,14 @@ export const validCreateResource = {
 export const draftDetailWith = (value: string) => ({
   entry: { id: uuid, version: '1', createdAt: instant, updatedAt: instant },
   revision: { id: uuid2, version: '1', createdAt: instant, updatedAt: instant },
+  revisionNumber: '1',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash: hash,
+  schemaVersionId: uuid2,
   validationState: 'valid',
+  openConflict: null,
   fields: [
     {
       fieldId: uuid,
@@ -155,7 +158,12 @@ export const draftDetailWith = (value: string) => ({
 export const jsonResponse = (body: unknown, init: ResponseInit): Response =>
   new Response(JSON.stringify(body), {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      etag: '"1"',
+      ...(init.headers ?? {}),
+    },
   });
 
 export const streamedResponse = (

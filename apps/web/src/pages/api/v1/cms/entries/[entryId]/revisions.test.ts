@@ -15,14 +15,15 @@ const instant = '2026-09-26T00:00:00Z';
 const body = {
   entryId,
   baseRevision: '1',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${revisionId}`],
   values: { [revisionId]: { title: 'Updated' } },
   locale: 'en-US',
   expectedVersion: '2',
 };
 const resource = {
   id: revisionId,
-  version: '3',
+  version: '1',
+  entryVersion: '3',
   createdAt: instant,
   updatedAt: instant,
   state: 'draft',
@@ -119,7 +120,8 @@ describe('first-party CMS revision endpoint (CMS-03B-01)', () => {
 
   it('rejects an If-Match that disagrees with expectedVersion', async () => {
     fetchMock.mockReset();
-    expect((await post(request(body, { 'if-match': '"3"' }))).status).toBe(400);
+    // Same status as the Worker's version disagreement (BE03b:230): 422.
+    expect((await post(request(body, { 'if-match': '"3"' }))).status).toBe(422);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

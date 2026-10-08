@@ -69,6 +69,8 @@ export type CmsEditorialConflictResolveRequest = {
 export type CmsEditorialConflictResolveResource = {
   readonly id: string;
   readonly version: string;
+  /** The committed entry version: the next `If-Match`. */
+  readonly entryVersion: string;
   readonly state: string;
   readonly entryId: string;
   readonly revisionNumber: string;
@@ -96,6 +98,8 @@ export interface CmsEditorialConflictResolveTransportResult {
   readonly resource: CmsEditorialConflictResolveResource | null;
   readonly errorCode: string | null;
   readonly errorDetails: readonly string[];
+  /** A verified typed reason token (closed vocabulary), else null. */
+  readonly reasonCode: string | null;
   readonly retryAfterSeconds: number | null;
   /**
    * The caller-supplied request, returned by reference and never mutated, so
@@ -184,6 +188,7 @@ export const executeCmsEditorialConflictResolve = async (
       resource: null,
       errorCode: 'VALIDATION_FAILED',
       errorDetails: local.error.issues.map((issue) => issue.path.join('/')),
+      reasonCode: null,
       retryAfterSeconds: null,
       ...base,
       idempotencyKey: nextKey(),
@@ -215,6 +220,7 @@ export const executeCmsEditorialConflictResolve = async (
       resource: null,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       ...base,
       idempotencyKey: input.idempotencyKey,
@@ -234,6 +240,7 @@ export const executeCmsEditorialConflictResolve = async (
       resource,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       ...base,
       idempotencyKey: nextKey(),
@@ -247,6 +254,7 @@ export const executeCmsEditorialConflictResolve = async (
       resource: null,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       ...base,
       idempotencyKey: input.idempotencyKey,
@@ -261,6 +269,7 @@ export const executeCmsEditorialConflictResolve = async (
       resource: null,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       ...base,
       idempotencyKey: input.idempotencyKey,
@@ -273,6 +282,7 @@ export const executeCmsEditorialConflictResolve = async (
     resource: null,
     errorCode: mapped.errorCode,
     errorDetails: mapped.errorDetails,
+    reasonCode: mapped.reasonCode,
     retryAfterSeconds: mapped.retryAfterSeconds,
     ...base,
     idempotencyKey: cmsEditorialConflictResolveRetainsIdempotencyKey(

@@ -10,16 +10,22 @@ from the route, ownership and step-up stay with the API Worker.
 `schema-reviews/[reviewId]/decisions.ts` and `assignments.ts` carry CMS-03A-12
 (reviewer decision) and CMS-03A-14 (owner assignment create or revoke) with the
 review id bound from the route.
-`entries/index.ts` owns the CMS-03B-10 initial-entry create transport. It
-calls the server-only proxy; it does not enable the create form or supply a
-workflow policy.
+`entries/index.ts` owns the CMS-03B-10 initial-entry create and CMS-03B-13
+entry-list transports, `entries/[entryId].ts` the CMS-03B-11 draft refetch and
+`entries/authoring-context.ts` the CMS-03B-14 read (see `entries/README.md`).
+They call server-only proxies; workflow-policy evidence and authority are
+resolved by the Worker and the database, never supplied here.
 `entries/[entryId]/revisions.ts` owns CMS-03B-01 revision-save transport. It
 requires a matching strong If-Match, idempotency key, CSRF token, and bounded
-contract body before forwarding to the private Worker binding.
+contract body before forwarding to the private Worker binding. The CMS-03B-03
+history read has no API route: the revisions page reads it server-side.
 `entries/[entryId]/conflicts/[conflictId]/resolve.ts` owns CMS-03B-02 explicit
 conflict-resolution transport. Its server proxy requires exact IDs, explicit
 choices, a strong CAS tuple, and a two-parent result. It does not infer a
-conflict choice or provide a browser form.
+conflict choice. `entries/[entryId]/conflicts/[conflictId].ts` serves the
+CMS-03B-12 open-conflict read and `entries/[entryId]/revisions/[revisionId]/restore.ts`
+the CMS-03B-04 restore transport. The browser forms are under
+`apps/web/src/components/cms-editorial/`.
 
 ## Ownership
 

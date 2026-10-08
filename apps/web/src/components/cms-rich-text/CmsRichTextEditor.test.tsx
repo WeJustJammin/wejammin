@@ -11,6 +11,7 @@ type EditorModule = {
   CmsRichTextEditor: (props: {
     value: unknown;
     onChange?: (value: unknown) => void;
+    label?: string;
   }) => React.ReactElement;
 };
 const editorModule = async (): Promise<EditorModule | null> => {
@@ -31,7 +32,10 @@ const initial = {
   blocks: [
     {
       type: 'paragraph',
-      spans: [{ text: 'plain ' }, { text: 'bold', marks: ['bold'] }],
+      spans: [
+        { text: 'plain ', marks: [] },
+        { text: 'bold', marks: ['bold'] },
+      ],
     },
   ],
 };
@@ -68,7 +72,7 @@ afterEach(() => {
 });
 
 describe('[P2-S10] CmsRichTextEditor', () => {
-  it('[P2-S10-AC-2221] parses constrained markup to a canonical AST and offers native block controls', async () => {
+  it('[P2-S10-AC-086] parses constrained markup to a canonical AST and offers native block controls', async () => {
     let submitted: unknown = null;
     const { container, root } = await mount({
       value: initial,
@@ -88,12 +92,15 @@ describe('[P2-S10] CmsRichTextEditor', () => {
     const doc = submitted as {
       blocks: { spans: { text: string; marks: string[] }[] }[];
     };
+    // Markers toggle (Codex review s10-ts-2, H3): the closing `**` ends bold, so
+    // the span list stays expressible in markup and loads back byte-identically.
     expect(doc?.blocks?.[0]?.spans).toEqual([
-      { text: 'bold text', marks: ['bold'] },
+      { text: 'bold', marks: ['bold'] },
+      { text: ' text', marks: [] },
     ]);
   });
 
-  it('[P2-S10-AC-2222] refuses non-canonical markup inline before submit', async () => {
+  it('[P2-S10-AC-086] refuses non-canonical markup inline before submit', async () => {
     let submitted: unknown = null;
     const { container, root } = await mount({
       value: initial,
@@ -106,7 +113,7 @@ describe('[P2-S10] CmsRichTextEditor', () => {
     expect(container!.textContent).toContain('rich_text_not_canonical');
   });
 
-  it('[P2-S10-AC-2223] rejects unsafe link schemes inline before submit', async () => {
+  it('[P2-S10-AC-086] rejects unsafe link schemes inline before submit', async () => {
     let submitted: unknown = null;
     const { container, root } = await mount({
       value: initial,
@@ -117,5 +124,105 @@ describe('[P2-S10] CmsRichTextEditor', () => {
     await typeTextarea(container!, root!, 'text [link](javascript:alert(1))');
     expect(submitted).toBeNull();
     expect(container!.textContent).toContain('javascript:');
+  });
+
+  it('[P2-S10-AC-086] round-trips supported mailto and internal links', async () => {
+    let submitted: unknown = null;
+    const { container, root } = await mount({
+      value: {
+        format: 'rich_text.v1',
+        blocks: [
+          {
+            type: 'paragraph',
+            spans: [
+              {
+                text: 'Email',
+                marks: [],
+                link: { kind: 'mailto', address: 'team@example.com' },
+              },
+              {
+                text: 'Home',
+                marks: [],
+                link: { kind: 'internal', route: '/app/home' },
+              },
+            ],
+          },
+        ],
+      },
+      onChange: (next: unknown) => {
+        submitted = next;
+      },
+    });
+    await typeTextarea(
+      container!,
+      root!,
+      '[Email](mailto:team@example.com) [Home](/app/home)',
+    );
+    expect(submitted).toEqual({
+      format: 'rich_text.v1',
+      blocks: [
+        {
+          type: 'paragraph',
+          spans: [
+            {
+              text: 'Email',
+              marks: [],
+              link: { kind: 'mailto', address: 'team@example.com' },
+            },
+            { text: ' ', marks: [] },
+            {
+              text: 'Home',
+              marks: [],
+              link: { kind: 'internal', route: '/app/home' },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('[P2-S10-AC-086] refuses an invalid initial document without editing it', async () => {
+    let submitted: unknown = null;
+    const { container } = await mount({
+      value: {
+        format: 'rich_text.v1',
+        blocks: [{ type: 'paragraph', spans: [{ text: 'missing marks' }] }],
+      },
+      onChange: (next: unknown) => {
+        submitted = next;
+      },
+    });
+    expect(container!.querySelector('[role="alert"]')?.textContent).toContain(
+      'could not be edited',
+    );
+    expect(container!.querySelector('textarea')).toBeNull();
+    expect(submitted).toBeNull();
+  });
+
+  it('[P2-S10-AC-086] names each preview region after its own editor, so several editors on one page keep unique landmarks', async () => {
+    const mod = await editorModule();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() =>
+      root.render(
+        React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(mod!.CmsRichTextEditor, {
+            value: initial,
+            label: 'Body',
+          }),
+          React.createElement(mod!.CmsRichTextEditor, {
+            value: initial,
+            label: 'Summary',
+          }),
+        ),
+      ),
+    );
+    const names = Array.from(container.querySelectorAll('[role="region"]')).map(
+      (region) => region.getAttribute('aria-label'),
+    );
+    expect(names).toEqual(['Body preview', 'Summary preview']);
   });
 });

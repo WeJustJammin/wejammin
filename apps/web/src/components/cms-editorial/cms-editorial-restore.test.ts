@@ -17,7 +17,7 @@ const restoreModule = async (): Promise<RestoreModule | null> => {
 };
 
 describe('[P2-S10] CMS-03B-04 restore projection', () => {
-  it('[P2-S10-AC-2234] validates the compare.restore carrier and refuses unavailable commit', async () => {
+  it('[P2-S10-AC-058] validates the compare.restore carrier and refuses unavailable commit', async () => {
     const mod = await restoreModule();
     expect(mod).not.toBeNull();
     const restore = {

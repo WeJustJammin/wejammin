@@ -1,0 +1,265 @@
+/*
+ * CMS editorial surfaces (entry list, create, draft editor, conflict resolution,
+ * revision history and restore). Presentation only: tokens come from
+ * @wejammin/ui, semantics and state live in the components. Breakpoints follow
+ * FE03 (mobile <= 768px stacked, tablet 769-1024px, desktop >= 1025px), every
+ * control is at least 44x44px, and the page reflows at 320 CSS pixels and 200%
+ * zoom without horizontal scroll.
+ */
+@layer components {
+  :root {
+    --cms-danger: oklch(45% 0.18 25);
+    --cms-target: 44px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  header[aria-label='Application navigation'] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    padding-inline: var(--space-2);
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  header[aria-label='Application navigation'] nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  #cms-editorial-main {
+    inline-size: min(72rem, 100%);
+    margin-inline: auto;
+    padding: var(--space-3) var(--space-2);
+    overflow-wrap: anywhere;
+  }
+
+  #cms-editorial-main > * + * {
+    margin-block-start: var(--space-2);
+  }
+
+  /* Standalone links and navigation are controls: a 44px target. Inline links in
+     running text keep their text flow. */
+  header a,
+  nav a,
+  .skip-link,
+  #cms-editorial-main li > a:first-child,
+  #cms-editorial-main p > a:only-child {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--cms-target);
+  }
+
+  #cms-editorial-main
+    :is(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+    font: inherit;
+    inline-size: min(100%, 40rem);
+    min-block-size: var(--cms-target);
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-panel);
+    color: inherit;
+  }
+
+  #cms-editorial-main textarea {
+    min-block-size: 8rem;
+    resize: vertical;
+  }
+
+  #cms-editorial-main input[type='checkbox'],
+  #cms-editorial-main input[type='radio'] {
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+  }
+
+  #cms-editorial-main label {
+    display: block;
+    font-weight: 650;
+    margin-block-end: 0.25rem;
+  }
+
+  /* A radio or checkbox and its text are one 44px target. */
+  #cms-editorial-main label:has(> input[type='radio']),
+  #cms-editorial-main label:has(> input[type='checkbox']) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-block-size: var(--cms-target);
+    font-weight: 400;
+  }
+
+  #cms-editorial-main
+    div[data-cms-editorial-field]
+    > input[type='checkbox']
+    + label {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--cms-target);
+    margin-inline-start: 0.5rem;
+  }
+
+  #cms-editorial-main button {
+    font: inherit;
+    font-weight: 650;
+    min-block-size: var(--cms-target);
+    min-inline-size: var(--cms-target);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-ink);
+    border-radius: 6px;
+    background: var(--color-ink);
+    color: var(--color-panel);
+    cursor: pointer;
+  }
+
+  #cms-editorial-main button[type='button'] {
+    background: var(--color-panel);
+    color: var(--color-ink);
+  }
+
+  #cms-editorial-main button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #cms-editorial-main summary {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--cms-target);
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  #cms-editorial-main fieldset {
+    min-inline-size: 0;
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+  }
+
+  #cms-editorial-main fieldset + fieldset,
+  #cms-editorial-main fieldset > * + * {
+    margin-block-start: var(--space-2);
+  }
+
+  #cms-editorial-main legend {
+    padding-inline: 0.25rem;
+    font-weight: 650;
+  }
+
+  #cms-editorial-main code {
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  #cms-editorial-main ol,
+  #cms-editorial-main ul {
+    padding-inline-start: 1.25rem;
+  }
+
+  #cms-editorial-main fieldset ol {
+    padding: 0;
+    list-style: none;
+  }
+
+  #cms-editorial-main fieldset ol > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-block-end: 0.5rem;
+  }
+
+  /* Errors say so in words and carry a rule on the inline start, never colour alone. */
+  .cms-field-errors {
+    margin-block: 0.25rem 0;
+    padding-inline-start: 1rem;
+    border-inline-start: 4px solid var(--cms-danger);
+    color: var(--cms-danger);
+  }
+
+  #cms-editorial-main [aria-invalid='true'] {
+    border-color: var(--cms-danger);
+    border-width: 2px;
+  }
+
+  [data-cms-editorial-validation-summary],
+  [data-cms-editorial-sync-conflict],
+  #cms-editorial-main section[aria-labelledby='cms-editorial-open-conflict'],
+  #cms-editorial-main [role='alert'] {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-inline-start: 4px solid var(--cms-danger);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  [data-cms-editorial-status] {
+    min-block-size: 1.5rem;
+  }
+
+  .cms-value-multiline {
+    white-space: pre-wrap;
+  }
+
+  .cms-value-none {
+    color: var(--color-muted);
+    font-style: italic;
+  }
+
+  /* Conflict preimages stack on mobile and sit side by side from tablet up. */
+  .cms-conflict-sides {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .cms-conflict-sides > [role='group'] {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  .cms-conflict-side-name {
+    font-weight: 650;
+  }
+
+  @media (min-width: 48rem) {
+    .cms-conflict-sides {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* Rich text: the preview sits beside the editor on desktop. */
+  .cms-rich-text-editor {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  @media (min-width: 64rem) {
+    .cms-rich-text-editor {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #cms-editorial-main * {
+      transition-duration: 0.01ms;
+      animation-duration: 0.01ms;
+    }
+  }
+}

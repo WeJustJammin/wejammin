@@ -5,7 +5,12 @@
 `revisions.ts` owns CMS-03B-01 revision-save transport with a strong
 `If-Match`, idempotency key, CSRF token, and bounded contract body.
 `conflicts/[conflictId]/resolve.ts` owns CMS-03B-02 explicit
-conflict-resolution transport.
+conflict-resolution transport, `conflicts/[conflictId].ts` the CMS-03B-12 open
+conflict read, and `revisions/[revisionId]/restore.ts` the CMS-03B-04 restore
+transport. Every command here follows the outcome-unknown contract in
+`apps/web/src/server/README.md`: a response carrying
+`x-cms-editorial-outcome: unknown` means the command may have committed, so the
+client replays the identical request with the same `Idempotency-Key`.
 `related-content.ts` owns CMS-03C related-content create transport for a
 bounded entry target and relation payload.
 

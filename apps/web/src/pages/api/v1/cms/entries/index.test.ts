@@ -25,7 +25,7 @@ const body = {
   contentTypeId: entryId,
   contentTypeVersionId: revisionId,
   locale: 'en-US',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${revisionId}`],
   values: { [revisionId]: { title: 'Hello' } },
   schemaArtifact: {
     id: entryId,
@@ -77,6 +77,7 @@ describe('first-party CMS entry-create endpoint', () => {
           'content-type': 'application/json',
           location: `/api/v1/cms/entries/${entryId}`,
           etag: '"1"',
+          'cache-control': 'no-store',
         },
       }),
     );

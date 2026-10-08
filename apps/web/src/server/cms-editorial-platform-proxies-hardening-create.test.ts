@@ -126,6 +126,37 @@ describe('cms-editorial create proxy 201 validation (CMS-03B-10)', () => {
     expect(response.status).toBe(502);
   });
 
+  it('refuses a weak create ETag instead of relaying an unverifiable 201', async () => {
+    const response = await forwardCmsEditorialEntryCreateMutation(
+      post(validCreateBody),
+      bindingWith(async () =>
+        jsonResponse(validCreateResource, {
+          status: 201,
+          headers: {
+            location: '/api/v1/cms/entries/' + uuid,
+            etag: 'W/"1"',
+          },
+        }),
+      ),
+    );
+    expect(response.status).toBe(502);
+  });
+
+  it('refuses a cross-origin create Location', async () => {
+    const response = await forwardCmsEditorialEntryCreateMutation(
+      post(validCreateBody),
+      bindingWith(async () =>
+        jsonResponse(validCreateResource, {
+          status: 201,
+          headers: {
+            location: 'https://evil.example.test/api/v1/cms/entries/' + uuid,
+          },
+        }),
+      ),
+    );
+    expect(response.status).toBe(502);
+  });
+
   it('refuses a 201 whose body is not the strict create resource', async () => {
     const response = await forwardCmsEditorialEntryCreateMutation(
       post(validCreateBody),

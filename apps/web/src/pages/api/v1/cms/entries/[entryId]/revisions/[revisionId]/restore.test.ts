@@ -21,7 +21,8 @@ const body = {
 };
 const resource = {
   id: restoredRevisionId,
-  version: '3',
+  version: '1',
+  entryVersion: '3',
   createdAt: '2026-09-27T00:00:00Z',
   updatedAt: '2026-09-27T00:00:00Z',
   state: 'draft',
@@ -122,7 +123,7 @@ describe('first-party CMS revision restore endpoint (CMS-03B-04)', () => {
     expect((await post(request({ ...body, ownerId: entryId }))).status).toBe(
       422,
     );
-    expect((await post(request(body, { 'if-match': '"3"' }))).status).toBe(400);
+    expect((await post(request(body, { 'if-match': '"3"' }))).status).toBe(422);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

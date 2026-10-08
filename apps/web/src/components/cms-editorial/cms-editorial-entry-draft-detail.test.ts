@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY,
+  CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_ROUTE,
   CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_SCHEMA_VALIDATION_SEAMS,
   CmsEditorialEntryDraftDetailPathParamsSchema,
   CmsEditorialEntryDraftDetailQuerySchema,
@@ -49,11 +49,14 @@ const placeholderRelation = {
 const validDetailResource = {
   entry: { id: uuid, version: '1', createdAt: instant, updatedAt: instant },
   revision: { id: uuid2, version: '1', createdAt: instant, updatedAt: instant },
+  revisionNumber: '1',
   lifecycle: 'active',
   state: 'draft',
   locale: 'en-US',
   contentHash: hash,
+  schemaVersionId: uuid2,
   validationState: 'valid',
+  openConflict: null,
   fields: [validFieldValue],
   relations: [validRelation],
 } as const;
@@ -278,8 +281,11 @@ describe('cms-editorial draft detail resource', () => {
       'fields',
       'lifecycle',
       'locale',
+      'openConflict',
       'relations',
       'revision',
+      'revisionNumber',
+      'schemaVersionId',
       'state',
       'validationState',
     ]);
@@ -366,15 +372,13 @@ describe('cms-editorial draft detail runtime schema-validation seam', () => {
   });
 });
 
-describe('cms-editorial draft detail fail-closed boundary', () => {
-  it('declares itself unimplemented pending the shared contract', () => {
-    expect(CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY.operationId).toBe(
+describe('cms-editorial draft detail route and addressing', () => {
+  it('describes the read-only CMS-03B-11 route with no mutation preconditions', () => {
+    expect(CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_ROUTE.operationId).toBe(
       'CMS-03B-11',
     );
-    expect(CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY.ifMatchRequired).toBe(
-      false,
-    );
-    expect(CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_BOUNDARY.idempotencyRequired).toBe(
+    expect(CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_ROUTE.ifMatchRequired).toBe(false);
+    expect(CMS_EDITORIAL_ENTRY_DRAFT_DETAIL_ROUTE.idempotencyRequired).toBe(
       false,
     );
   });

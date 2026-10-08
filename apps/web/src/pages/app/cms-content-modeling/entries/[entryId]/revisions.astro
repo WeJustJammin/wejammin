@@ -1,180 +1,66 @@
 ---
 import { env } from 'cloudflare:workers';
-import {
-  CmsUuidSchema,
-  RevisionHistoryPageSchema,
-  type RevisionHistoryPage,
-} from '@wejammin/contracts';
 
 import CmsEditorialDocument from '../../../../../components/cms-editorial/CmsEditorialDocument.astro';
-import { forwardCmsEditorialRevisionHistoryRead } from '../../../../../server/cms-editorial-platform-reads';
+import CmsEditorialRevisionCompare from '../../../../../components/cms-editorial/CmsEditorialRevisionCompare';
+import CmsEditorialRevisionHistory from '../../../../../components/cms-editorial/CmsEditorialRevisionHistory';
+import { cmsEditorialAppEntryPath } from '../../../../../components/cms-editorial/cms-editorial-app-routes';
+import CmsEditorialPageNotice from '../../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadRevisionHistoryPage } from '../../../../../components/cms-editorial-pages/load-revision-history-page';
 
 export const prerender = false;
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 
-const escapeHtml = (value: string): string =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-
-const entryId = Astro.params.entryId ?? '';
-const routePath = `/app/cms-content-modeling/entries/${encodeURIComponent(entryId)}/revisions`;
-
 /*
- * One shared view shape feeds one shared document (CmsEditorialDocument), so
- * every state loads the bundled heading-focus and auth-scope scripts. Astro
- * escapes title, heading and message; `content` is built below from values that
- * all pass through escapeHtml, and renders as trusted markup.
+ * Protected revision history and comparison for CMS-03B-03 / CMS-03B-04. All
+ * behavior lives in the tested loader and views: the loader verifies the page,
+ * turns a typed comparison refusal into a state beside the list and reads the
+ * entry version a restore needs; the views render safe summaries, the
+ * domain-grouped comparison and the inline restore review. No draft value is
+ * read or rendered here.
  */
-type HistoryView = {
-  readonly status: number;
-  readonly title: string;
-  readonly heading: string;
-  readonly message: string;
-  readonly content?: string;
-};
-
-const renderHistory = (page: RevisionHistoryPage): string => {
-  const current = new URL(Astro.request.url).searchParams;
-  const selectedState = current.get('state') ?? '';
-  const selectedLimit = current.get('limit') ?? '25';
-  const selectedLocale = current.get('locale') ?? '';
-  const stateOptions = [
-    '',
-    'draft',
-    'submitted',
-    'approved',
-    'rejected',
-    'scheduled',
-    'published',
-  ]
-    .map(
-      (state) =>
-        `<option value="${state}"${state === selectedState ? ' selected' : ''}>${state === '' ? 'All states' : state}</option>`,
-    )
-    .join('');
-  const filters = `<form method="get" action="${routePath}#history-list-title">
-    <label for="history-state">State</label><select id="history-state" name="state">${stateOptions}</select>
-    <label for="history-limit">Rows per page</label><input id="history-limit" name="limit" type="number" min="1" max="50" value="${escapeHtml(selectedLimit)}" />
-    <label for="history-locale">Locale</label><input id="history-locale" name="locale" value="${escapeHtml(selectedLocale)}" />
-    <button type="submit">Filter history</button>
-  </form>`;
-  const compareHref = (item: RevisionHistoryPage['items'][number]): string => {
-    const selection = new URLSearchParams(current);
-    // The filter/compare selection changes the signed cursor's query binding,
-    // so start that comparison at the first page instead of replaying it.
-    selection.delete('cursor');
-    selection.set('compareRevisionId', item.id);
-    return `${routePath}?${selection.toString()}#history-compare-title`;
-  };
-  const items =
-    page.items.length === 0
-      ? '<p>No revisions match these filters.</p>'
-      : `<ol>${page.items
-          .map(
-            (item) =>
-              `<li>Revision ${escapeHtml(item.revisionNumber)} · ${escapeHtml(item.state)} · Locale: ${escapeHtml(item.locale)} · <time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(item.createdAt)}</time> · ${escapeHtml(item.authorClass)} · Content hash: <code>${escapeHtml(item.contentHash)}</code> · <a href="${escapeHtml(compareHref(item))}">Compare with latest</a></li>`,
-          )
-          .join('')}</ol>`;
-  const compare =
-    page.compare === null
-      ? ''
-      : `<section aria-labelledby="history-compare-title"><h2 id="history-compare-title" tabindex="-1">Comparison</h2><ol>${page.compare.changes
-          .map(
-            (change) =>
-              `<li>${escapeHtml(change.path)}: ${escapeHtml(change.kind)} · Before hash: <code>${change.leftHash === null ? 'none' : escapeHtml(change.leftHash)}</code> · After hash: <code>${change.rightHash === null ? 'none' : escapeHtml(change.rightHash)}</code></li>`,
-          )
-          .join('')}</ol></section>`;
-  const next = new URLSearchParams(current);
-  if (page.nextCursor !== null) next.set('cursor', page.nextCursor);
-  const continuation =
-    page.nextCursor === null
-      ? ''
-      : `<a href="${escapeHtml(`${routePath}?${next.toString()}#history-list-title`)}">Next page</a>`;
-  return `${filters}<section aria-labelledby="history-list-title"><h2 id="history-list-title" tabindex="-1">Revisions</h2>${items}</section>${compare}${continuation}`;
-};
-
-const view = async (): Promise<HistoryView | Response> => {
-  if (!CmsUuidSchema.safeParse(entryId).success)
-    return {
-      status: 404,
-      title: 'Not found',
-      heading: 'Not found',
-      message: 'This entry is not available.',
-    };
-
-  const upstream = await forwardCmsEditorialRevisionHistoryRead(
-    Astro.request,
-    env.PLATFORM_API,
-    entryId,
-  );
-
-  if (upstream.status === 401)
-    return Astro.redirect(
-      `/auth/sign-in?returnTo=${encodeURIComponent(`${routePath}${new URL(Astro.request.url).search}`)}`,
-      303,
-    );
-
-  if (upstream.status === 403)
-    return {
-      status: 403,
-      title: 'Access denied',
-      heading: 'Access denied',
-      message: 'This entry is not available.',
-    };
-
-  if (upstream.status === 404)
-    return {
-      status: 404,
-      title: 'Not found',
-      heading: 'Not found',
-      message: 'This entry is not available.',
-    };
-
-  if (upstream.status === 200) {
-    const parsed = RevisionHistoryPageSchema.safeParse(await upstream.json());
-    if (parsed.success)
-      return {
-        status: 200,
-        title: 'Revision history',
-        heading: 'Revision history',
-        message:
-          'Authorized revision summaries and changes, without draft values.',
-        content: renderHistory(parsed.data),
-      };
-    return {
-      status: 502,
-      title: 'Revision history',
-      heading: 'Revision history unavailable',
-      message:
-        'The history response could not be verified. Nothing was loaded.',
-    };
-  }
-
-  return {
-    status: upstream.status,
-    title: 'Revision history',
-    heading: 'Revision history unavailable',
-    message:
-      upstream.status === 400 || upstream.status === 422
-        ? 'The history query is invalid. Clear the filters and try again.'
-        : upstream.status === 409
-          ? 'This history cursor is no longer valid. Start from the first page.'
-          : 'The protected history read could not be completed. Nothing was loaded.',
-    content: `<a href="${routePath}">Start from the first page</a>`,
-  };
-};
-
-const resolved = await view();
-if (resolved instanceof Response) return resolved;
-Astro.response.status = resolved.status;
+const entryId = Astro.params.entryId ?? '';
+const outcome = await loadRevisionHistoryPage({
+  request: Astro.request,
+  entryId,
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+const draftPath = cmsEditorialAppEntryPath(entryId);
 ---
 
-<CmsEditorialDocument title={resolved.title} heading={resolved.heading}>
-  <p>{resolved.message}</p>
-  <Fragment set:html={resolved.content ?? ''} />
+<CmsEditorialDocument title={title} heading={heading}>
+  {
+    outcome.kind === 'view' ? (
+      <>
+        <p>Authorized revision summaries and changes, without draft values.</p>
+        {draftPath !== null && (
+          <p>
+            <a href={draftPath}>Back to the draft</a>
+          </p>
+        )}
+        <CmsEditorialRevisionHistory
+          page={outcome.view.page}
+          entryId={outcome.view.entryId}
+          routePath={outcome.view.routePath}
+          query={outcome.view.query}
+        />
+        <CmsEditorialRevisionCompare
+          compare={outcome.view.page.compare}
+          refusal={outcome.view.refusal}
+          entryId={outcome.view.entryId}
+          expectedVersion={outcome.view.expectedVersion}
+        />
+      </>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
 </CmsEditorialDocument>

@@ -177,8 +177,9 @@ export interface CmsEditorialDraftField {
 }
 
 /**
- * The editable draft the workbench renders. It is supplied by an authorised
- * loader boundary; the browser never reads protected values directly.
+ * The editable draft the workbench renders. It is supplied by the authorised
+ * server loader (`loadEntryEditPage` over CMS-03B-11); the browser never reads
+ * protected values directly.
  */
 export interface CmsEditorialEntryDraft {
   readonly entryId: string;

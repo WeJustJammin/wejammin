@@ -51,7 +51,13 @@ describe('executeCmsEditorialConflictResolve', () => {
   it('refuses locally when a choice smuggles a value or the list is empty', async () => {
     const smuggled = {
       ...resolveRequest(),
-      choices: [{ path: '/fields/title', choice: 'theirs', value: 'x' }],
+      choices: [
+        {
+          path: '/fields/018f0c45-73fe-7dc2-9c09-68f7ecf132e1',
+          choice: 'theirs',
+          value: 'x',
+        },
+      ],
     };
     const smuggledResult = await submitResolve(
       async () => jsonResponse(201, resolvedTransportResource()),

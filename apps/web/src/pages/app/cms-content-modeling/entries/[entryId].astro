@@ -2,132 +2,49 @@
 import { env } from 'cloudflare:workers';
 
 import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
-import {
-  CmsEditorialEntryDraftDetailResourceSchema,
-  resolveCmsEditorialEntryDraftDetailPageState,
-} from '../../../../components/cms-editorial/cms-editorial-entry-draft-detail';
-import { forwardCmsEditorialEntryDraftDetailRead } from '../../../../server/cms-editorial-platform-reads';
+import CmsEditorialEntryEditorIsland from '../../../../components/cms-editorial/CmsEditorialEntryEditorIsland';
+import CmsEditorialEntryEditUnavailable from '../../../../components/cms-editorial-pages/CmsEditorialEntryEditUnavailable';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadEntryEditPage } from '../../../../components/cms-editorial-pages/load-entry-edit-page';
 
 export const prerender = false;
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 
 /*
- * Protected draft-detail surface for CMS-03B-11.
- *
- * The page owns addressing, not data. A non-UUID id addresses no entry and is
- * answered as not-found without an upstream call, so a malformed probe never
- * reaches the API. A well-formed id is forwarded through the first-party
- * proxy, which relays whatever the authenticated API actually answers:
- *
- *   401 -> 303 to sign-in, so an expired session is a flow rather than an error;
- *   403 -> visible entry without read scope, with no draft values disclosed;
- *   404 -> concealed or absent entry, with no existence confirmation;
- *   503 / 502 / other -> the degraded document at the upstream status.
- *
- * A 200 becomes a loaded draft. No draft is fabricated, no entry value is read
- * in the browser, and no id is ever echoed into the document.
+ * Protected draft-editing surface for CMS-03B-11 / CMS-03B-14 / CMS-03B-01. All
+ * behavior lives in the tested loader and island: the loader verifies the draft
+ * and the field definitions of its schema version and returns one view, one
+ * closed state, or a sign-in redirect; the island edits with autosave. No
+ * entry id or value is echoed into the document outside the island's data.
  */
-
-const entryId = Astro.params.entryId ?? '';
-const resolution = resolveCmsEditorialEntryDraftDetailPageState({ entryId });
-
-/*
- * One shared view shape feeds one shared document (CmsEditorialDocument), so no
- * state can drift from another and every document loads its bundled scripts.
- * Astro escapes every interpolated value.
- */
-type DraftDetailView = {
-  readonly title: string;
-  readonly heading: string;
-  readonly message: string;
-  readonly status: number;
-};
-
-const view = async (): Promise<DraftDetailView | Response> => {
-  if (resolution.kind === 'not-found')
-    return {
-      title: 'Not found',
-      heading: 'Not found',
-      message: 'This entry is not available.',
-      status: 404,
-    };
-
-  const upstream = await forwardCmsEditorialEntryDraftDetailRead(
-    Astro.request,
-    env.PLATFORM_API,
-    entryId,
-  );
-
-  if (upstream.status === 401) {
-    const returnTo = `/app/cms-content-modeling/entries/${encodeURIComponent(entryId)}`;
-    return Astro.redirect(
-      `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`,
-      303,
-    );
-  }
-
-  if (upstream.status === 403)
-    return {
-      title: 'Access denied',
-      heading: 'Access denied',
-      message: 'This entry is not available.',
-      status: 403,
-    };
-
-  if (upstream.status === 404)
-    return {
-      title: 'Not found',
-      heading: 'Not found',
-      message: 'This entry is not available.',
-      status: 404,
-    };
-
-  if (upstream.status === 200) {
-    /*
-     * The proxy already parsed the body against the locked resource schema and
-     * proved the returned entry matches the requested id, so this is a verified
-     * draft rather than an unchecked pass-through. Only non-disclosing metadata
-     * is rendered: the entry id is not echoed and no field value is inlined.
-     */
-    const parsed = CmsEditorialEntryDraftDetailResourceSchema.safeParse(
-      await upstream.json(),
-    );
-    if (parsed.success)
-      return {
-        title: 'Draft detail',
-        heading: 'Draft detail',
-        message: `Lifecycle ${parsed.data.lifecycle}; state ${parsed.data.state}; locale ${parsed.data.locale}; validation ${parsed.data.validationState}; ${parsed.data.fields.length} field(s), ${parsed.data.relations.length} relation(s).`,
-        status: 200,
-      };
-    return {
-      title: 'Draft detail',
-      heading: 'Draft detail is unavailable',
-      message:
-        'The entry service returned data that could not be verified. Nothing was loaded.',
-      status: 502,
-    };
-  }
-
-  return {
-    title: 'Draft detail',
-    heading: 'Draft detail is unavailable',
-    message:
-      'The protected entry read could not be completed. Nothing was loaded.',
-    status: upstream.status,
-  };
-};
-
-const resolved = await view();
-if (resolved instanceof Response) return resolved;
-Astro.response.status = resolved.status;
+const outcome = await loadEntryEditPage({
+  request: Astro.request,
+  entryId: Astro.params.entryId ?? '',
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
 ---
 
 <CmsEditorialDocument
-  title={resolved.title}
-  heading={resolved.heading}
-  description="Draft detail."
+  title={title}
+  heading={heading}
+  description="Edit an entry draft."
   systemStatusLink
 >
-  <p>{resolved.message}</p>
+  {
+    outcome.kind === 'notice' ? (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    ) : outcome.view.kind === 'editor' ? (
+      <CmsEditorialEntryEditorIsland init={outcome.view.init} client:load />
+    ) : (
+      <CmsEditorialEntryEditUnavailable view={outcome.view} />
+    )
+  }
 </CmsEditorialDocument>

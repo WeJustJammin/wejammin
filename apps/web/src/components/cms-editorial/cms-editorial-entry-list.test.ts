@@ -1,48 +1,62 @@
 import { describe, expect, it } from 'vitest';
 
-// Runtime-computed specifier: the planned module is authored by the next slice.
-const ENTRY_LIST = String('./cms-editorial-entry-list');
-type EntryListModule = {
-  CmsEditorialEntryListPageSchema: {
-    safeParse(value: unknown): { success: boolean };
-  };
-};
-const listModule = async (): Promise<EntryListModule | null> => {
-  try {
-    return (await import(ENTRY_LIST)) as EntryListModule;
-  } catch {
-    return null;
-  }
-};
+import {
+  CmsEditorialEntryListPageSchema,
+  CmsEditorialEntryListRowSchema,
+} from './cms-editorial-entry-list';
 
-const revisionSummary = () => ({
-  revisionId: '11111111-1111-4111-8111-111111111111',
-  revisionNumber: 3,
-  lifecycle: 'draft',
+const row = () => ({
+  id: '11111111-1111-4111-8111-111111111111',
+  entryId: '11111111-1111-4111-8111-111111111112',
+  revisionNumber: '3',
+  locale: 'en-US',
   state: 'draft',
-  updatedAt: '2026-10-05T00:00:00Z',
+  contentHash: 'a'.repeat(64),
+  createdAt: '2026-10-05T00:00:00Z',
+  authorClass: 'author',
+  entryLifecycle: 'active',
+  entryUpdatedAt: '2026-10-05T01:00:00Z',
 });
 
-describe('[P2-S10] CmsEditorialEntryList projection', () => {
-  it('[P2-S10-AC-2231] validates a page of RevisionSummary rows with a signed cursor', async () => {
-    const mod = await listModule();
-    expect(mod).not.toBeNull();
+describe('CmsEditorialEntryList projection (DEC-145)', () => {
+  it('is the shared EntryListPage contract, so a row carries the lifecycle and updated time FE03 renders', () => {
     const page = {
-      items: [revisionSummary(), revisionSummary()],
+      items: [row(), row()],
       nextCursor: 'cursor-1',
+      pageVersion: '1',
     };
-    expect(mod!.CmsEditorialEntryListPageSchema.safeParse(page).success).toBe(
-      true,
-    );
+    const parsed = CmsEditorialEntryListPageSchema.safeParse(page);
+    expect(parsed.success).toBe(true);
+    expect(CmsEditorialEntryListRowSchema.safeParse(row()).success).toBe(true);
   });
 
-  it('[P2-S10-AC-2232] refuses unknown fields on list rows', async () => {
-    const mod = await listModule();
-    const row = { ...revisionSummary(), ownerId: 'p_123' };
+  it('refuses a row that leaks an owner or assignment identifier', () => {
+    for (const leak of ['ownerId', 'assigneeId', 'actingPartyId'])
+      expect(
+        CmsEditorialEntryListRowSchema.safeParse({ ...row(), [leak]: 'p_123' })
+          .success,
+        leak,
+      ).toBe(false);
+  });
+
+  it.each(['entryLifecycle', 'entryUpdatedAt'])(
+    'refuses a row without %s',
+    (member) => {
+      const incomplete: Record<string, unknown> = { ...row() };
+      delete incomplete[member];
+      expect(CmsEditorialEntryListRowSchema.safeParse(incomplete).success).toBe(
+        false,
+      );
+    },
+  );
+
+  it('bounds a page at 50 rows', () => {
+    const items = Array.from({ length: 51 }, row);
     expect(
-      mod!.CmsEditorialEntryListPageSchema.safeParse({
-        items: [row],
+      CmsEditorialEntryListPageSchema.safeParse({
+        items,
         nextCursor: null,
+        pageVersion: '1',
       }).success,
     ).toBe(false);
   });

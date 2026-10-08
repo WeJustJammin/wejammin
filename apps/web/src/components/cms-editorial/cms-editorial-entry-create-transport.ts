@@ -17,9 +17,12 @@ import {
  * (135 and 824 idempotency/atomicity; 906 rollback row; 938-950 test rows) and
  * .memory/wiki/specs/fe/03-cms-content-modeling.md:544,749,822-823,902.
  *
- * The protected Worker route and first-party proxy exist locally. The create
- * page remains fail-closed because no approved served workflow-policy source
- * can populate the locked request; this transport is not hosted acceptance.
+ * The protected Worker route and first-party proxy serve the create. The create
+ * form (`CmsEditorialEntryCreateIsland`) prefills the `workflowPolicy`,
+ * `schemaArtifact`, `validatorRefs` and `activationEvidence` members from the
+ * CMS-03B-14 authoring-context projection and echoes them back unmodified, so
+ * the locked request is fully populated by a served source. This transport is
+ * local proof only, not hosted acceptance.
  */
 
 type Fetcher = (
@@ -49,6 +52,8 @@ export interface CmsEditorialEntryCreateTransportResult {
   readonly location: string | null;
   readonly errorCode: string | null;
   readonly errorDetails: readonly string[];
+  /** A verified typed reason token (closed vocabulary), else null. */
+  readonly reasonCode: string | null;
   readonly retryAfterSeconds: number | null;
   /**
    * The caller-supplied request, returned by reference and never mutated, so a
@@ -83,6 +88,12 @@ const defaultIdempotencyKey = (): string | null => {
   }
 };
 
+const hasNoStore = (response: Response): boolean =>
+  response.headers
+    .get('cache-control')
+    ?.split(',')
+    .some((token) => token.trim().toLowerCase() === 'no-store') ?? false;
+
 /**
  * A `201` is authoritative only when the body is a strict
  * `EntryCreateResourceSchema` AND the response advertises the required
@@ -91,6 +102,7 @@ const defaultIdempotencyKey = (): string | null => {
  */
 const authoritativeCreateFrom = async (
   response: Response,
+  path: string,
 ): Promise<{
   readonly resource: CmsEditorialEntryCreateResource;
   readonly location: string;
@@ -106,8 +118,30 @@ const authoritativeCreateFrom = async (
   }
   const resource = CmsEditorialEntryCreateResourceSchema.safeParse(parsed);
   if (!resource.success) return null;
-  const target = rawLocation.split('?')[0] ?? '';
-  if (!target.endsWith('/' + resource.data.entry.id)) return null;
+  const baseOrigin =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://cms.invalid';
+  try {
+    const route = new URL(path, baseOrigin);
+    const target = new URL(rawLocation, baseOrigin);
+    if (
+      route.origin !== baseOrigin ||
+      target.origin !== baseOrigin ||
+      route.search !== '' ||
+      route.hash !== '' ||
+      target.search !== '' ||
+      target.hash !== '' ||
+      target.pathname !==
+        `${route.pathname.replace(/\/$/u, '')}/${resource.data.entry.id}`
+    )
+      return null;
+  } catch {
+    return null;
+  }
+  const etag = response.headers.get('etag');
+  if (etag !== `"${resource.data.entry.version}"` || !hasNoStore(response))
+    return null;
   return { resource: resource.data, location: rawLocation };
 };
 
@@ -136,6 +170,7 @@ export const executeCmsEditorialEntryCreate = async (
       location: null,
       errorCode: 'VALIDATION_FAILED',
       errorDetails: local.error.issues.map((issue) => issue.path.join('/')),
+      reasonCode: null,
       retryAfterSeconds: null,
       request: input.request,
       idempotencyKey: nextKey(),
@@ -167,12 +202,13 @@ export const executeCmsEditorialEntryCreate = async (
       location: null,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       request: input.request,
       idempotencyKey: input.idempotencyKey,
     };
   }
-  const authoritative = await authoritativeCreateFrom(response);
+  const authoritative = await authoritativeCreateFrom(response, input.path);
   if (authoritative !== null)
     return {
       outcome: 'success',
@@ -183,6 +219,7 @@ export const executeCmsEditorialEntryCreate = async (
       location: authoritative.location,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       request: input.request,
       idempotencyKey: nextKey(),
@@ -197,6 +234,7 @@ export const executeCmsEditorialEntryCreate = async (
       location: null,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       request: input.request,
       idempotencyKey: input.idempotencyKey,
@@ -212,6 +250,7 @@ export const executeCmsEditorialEntryCreate = async (
       location: null,
       errorCode: null,
       errorDetails: [],
+      reasonCode: null,
       retryAfterSeconds: null,
       request: input.request,
       idempotencyKey: input.idempotencyKey,
@@ -225,6 +264,7 @@ export const executeCmsEditorialEntryCreate = async (
     location: null,
     errorCode: mapped.errorCode,
     errorDetails: mapped.errorDetails,
+    reasonCode: mapped.reasonCode,
     retryAfterSeconds: mapped.retryAfterSeconds,
     request: input.request,
     idempotencyKey: cmsEditorialEntryCreateRetainsIdempotencyKey(mapped.outcome)

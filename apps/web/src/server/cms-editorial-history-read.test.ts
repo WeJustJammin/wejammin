@@ -79,13 +79,13 @@ describe('CMS-03B-03 first-party revision-history read', () => {
   it('rejects malformed addressing, query, or mutation headers before fetch', async () => {
     const upstream = binding(json(page));
     for (const [request, id, status] of [
-      [get(), 'not-a-uuid', 404],
+      [get(), 'not-a-uuid', 400],
       [get('?other=1'), entryId, 400],
       [get('?limit=1&limit=2'), entryId, 400],
       [get('?state=&state=draft'), entryId, 400],
       [get('?limit=0'), entryId, 400],
       [get('?limit=51'), entryId, 400],
-      [get('?state=other'), entryId, 422],
+      [get('?state=other'), entryId, 400],
       [get('?cursor='), entryId, 400],
       [get(`?cursor=${'a'.repeat(513)}`), entryId, 400],
       [get('?compareRevisionId=not-a-uuid'), entryId, 400],
@@ -192,7 +192,12 @@ describe('CMS-03B-03 first-party revision-history read', () => {
       entryId,
     );
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual(refusal);
+    // The code and status are relayed; the message is the route's canonical
+    // text and the details are rebuilt from the allowlist (Codex review M2).
+    expect(await response.json()).toEqual({
+      ...refusal,
+      message: 'The entry service is temporarily unavailable.',
+    });
     const malformed = await forwardCmsEditorialRevisionHistoryRead(
       get(),
       binding(json({ private: 'leak' }, 503)),

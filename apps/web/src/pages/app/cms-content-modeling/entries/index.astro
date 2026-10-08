@@ -1,0 +1,51 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialEntryList from '../../../../components/cms-editorial/CmsEditorialEntryList';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadEntryListPage } from '../../../../components/cms-editorial-pages/load-entry-list-page';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Protected entry list for CMS-03B-13. All behavior lives in the tested loader
+ * and view: the URL owns the filters, limit and signed cursor, the loader
+ * verifies the strict page and returns one view, one closed state, or a
+ * sign-in redirect, and the view renders native links with lifecycle, draft
+ * revision, state and update time as text. No mutation exists on this surface.
+ */
+const outcome = await loadEntryListPage({
+  request: Astro.request,
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Review the entries assigned to you."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <CmsEditorialEntryList
+        page={outcome.view.page}
+        routePath={outcome.view.routePath}
+        query={outcome.view.query}
+        announcement={outcome.view.announcement}
+      />
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

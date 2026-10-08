@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import * as React from 'react';
+import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -23,18 +24,26 @@ const mount = async (value: unknown) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
-  root.render(React.createElement(mod.CmsRichTextRenderer, { value }));
+  await act(async () => {
+    root.render(React.createElement(mod.CmsRichTextRenderer, { value }));
+  });
   return { container, mod };
 };
 
+const reactActGlobal = globalThis as typeof globalThis & {
+  IS_REACT_ACT_ENVIRONMENT?: boolean;
+};
+reactActGlobal.IS_REACT_ACT_ENVIRONMENT = true;
+
 afterEach(() => {
   document.body.replaceChildren();
+  delete reactActGlobal.IS_REACT_ACT_ENVIRONMENT;
 });
 
 const value = {
   format: 'rich_text.v1',
   blocks: [
-    { type: 'paragraph', spans: [{ text: 'plain' }] },
+    { type: 'paragraph', spans: [{ text: 'plain', marks: [] }] },
     {
       type: 'heading',
       level: 2,
@@ -51,7 +60,7 @@ const value = {
 };
 
 describe('[P2-S10] CmsRichTextRenderer', () => {
-  it('[P2-S10-AC-2211] renders typed elements without dangerouslySetInnerHTML', async () => {
+  it('[P2-S10-AC-087] renders typed elements without dangerouslySetInnerHTML', async () => {
     const { container } = await mount(value);
     expect(container).not.toBeNull();
     const html = container!.innerHTML;
@@ -66,7 +75,7 @@ describe('[P2-S10] CmsRichTextRenderer', () => {
     expect(html.includes('dangerouslySetInnerHTML')).toBe(false);
   });
 
-  it('[P2-S10-AC-2212] renders https links with noopener noreferrer and non-empty text', async () => {
+  it('[P2-S10-AC-087] renders https links with noopener noreferrer and non-empty text', async () => {
     const { container } = await mount({
       format: 'rich_text.v1',
       blocks: [
@@ -75,6 +84,7 @@ describe('[P2-S10] CmsRichTextRenderer', () => {
           spans: [
             {
               text: 'Read',
+              marks: [],
               link: { kind: 'https', href: 'https://example.com/page' },
             },
           ],
@@ -86,5 +96,22 @@ describe('[P2-S10] CmsRichTextRenderer', () => {
     expect(anchor?.getAttribute('rel')).toBe('noopener noreferrer');
     expect(anchor?.getAttribute('href')).toBe('https://example.com/page');
     expect((anchor?.textContent ?? '').length).toBeGreaterThan(0);
+  });
+
+  it('[P2-S10-AC-087] fails closed for an invalid span instead of repairing marks', async () => {
+    const { container } = await mount({
+      format: 'rich_text.v1',
+      blocks: [
+        {
+          type: 'paragraph',
+          spans: [{ text: '<img src=x onerror=alert(1)>' }],
+        },
+      ],
+    });
+    expect(container?.querySelector('[role="note"]')?.textContent).toContain(
+      'could not be displayed',
+    );
+    expect(container?.querySelector('img')).toBeNull();
+    expect(container?.querySelector('p')).toBeNull();
   });
 });

@@ -1,5 +1,7 @@
 import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 
+import { cmsEditorialZodViolations } from './cms-editorial-platform-error-details';
+
 /**
  * Shared primitives for the CMS editorial web boundary (CMS-03B-10 create and
  * CMS-03B-11 protected draft read).
@@ -142,6 +144,7 @@ export const cmsEditorialLocalError = (
   status: number,
   code = cmsEditorialErrorCodeForStatus(status),
   message = cmsEditorialErrorMessage(code),
+  details: Readonly<Record<string, unknown>> = {},
 ): Response => {
   const requestId = createRequestId(
     request.headers.get('x-request-id') ?? undefined,
@@ -153,9 +156,67 @@ export const cmsEditorialLocalError = (
   if (status === 429 || status === 503 || status === 504)
     headers.set('retry-after', '5');
   return Response.json(
-    ApiErrorSchema.parse({ code, details: {}, message, requestId }),
+    ApiErrorSchema.parse({ code, details, message, requestId }),
     { status, headers },
   );
+};
+
+/**
+ * A local validation refusal in the Worker's exact shape: a bounded
+ * `details.violations` list of `{ path, code, message }` over safe JSON
+ * pointers, never an echoed value.
+ */
+export const cmsEditorialValidationError = (
+  request: Request,
+  status: 400 | 422,
+  issues: Parameters<typeof cmsEditorialZodViolations>[0],
+): Response =>
+  cmsEditorialLocalError(request, status, undefined, undefined, {
+    violations: cmsEditorialZodViolations(issues),
+  });
+
+/** The Worker's 422 for a path/body or header/body disagreement: `/member`. */
+export const cmsEditorialMismatchError = (
+  request: Request,
+  member: string,
+): Response =>
+  cmsEditorialLocalError(request, 422, undefined, undefined, {
+    violations: [
+      {
+        path: `/${member}`,
+        code: 'mismatch',
+        message: 'The value is invalid.',
+      },
+    ],
+  });
+
+/** A malformed path identifier: 400 INVALID_REQUEST naming the parameter. */
+export const cmsEditorialPathError = (
+  request: Request,
+  parameter: string,
+): Response =>
+  cmsEditorialLocalError(request, 400, undefined, undefined, {
+    violations: [
+      {
+        path: `/${parameter}`,
+        code: 'invalid_uuid',
+        message: 'The value is invalid.',
+      },
+    ],
+  });
+
+/**
+ * Marks a write response whose effect on the server is not known: the command
+ * may have committed even though the browser did not receive a verified
+ * success. The browser keeps its Idempotency-Key and replays the identical
+ * request; the same key returns the first outcome without a second effect
+ * (BE03b:1427). A definite refusal never carries the marker.
+ */
+export const CMS_EDITORIAL_OUTCOME_HEADER = 'x-cms-editorial-outcome';
+
+export const cmsEditorialOutcomeUnknown = (response: Response): Response => {
+  response.headers.set(CMS_EDITORIAL_OUTCOME_HEADER, 'unknown');
+  return response;
 };
 
 const FORWARD_REQUEST_HEADER_NAMES = [

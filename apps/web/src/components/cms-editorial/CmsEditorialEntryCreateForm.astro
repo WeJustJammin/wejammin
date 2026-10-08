@@ -1,0 +1,69 @@
+---
+import type {
+  AuthoringContextField,
+  AuthoringContextType,
+} from '@wejammin/contracts';
+
+import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
+
+/*
+ * Presentation of the CMS-03B-10 create surface: the native GET type selector
+ * and, once a compiled version is selected, the create form island. The page
+ * owns the protected CMS-03B-14 preparation read and its verification; this
+ * component only renders what that verified projection carries. The island
+ * echoes the frozen evidence (schema artifact, validator references, workflow
+ * policy, activation evidence) back unmodified and never renders it as an
+ * input. Owner, assignee, acting party and capability are server-derived and
+ * absent here.
+ */
+interface Props {
+  readonly types: readonly AuthoringContextType[];
+  readonly selected: AuthoringContextType | null;
+  readonly fields: readonly AuthoringContextField[];
+}
+
+const { types, selected, fields } = Astro.props;
+---
+
+{
+  types.length === 0 ? (
+    <p>
+      No content type is available for you to author yet. Creating an entry
+      needs an active content type and author access to it.
+    </p>
+  ) : (
+    <form method="get" data-cms-editorial-create-type-selector>
+      <label for="contentTypeVersionId">Content type</label>
+      <select id="contentTypeVersionId" name="contentTypeVersionId">
+        <option value="">Select a type</option>
+        {types.map((type) => (
+          <option
+            value={type.contentTypeVersionId}
+            selected={
+              selected?.contentTypeVersionId === type.contentTypeVersionId
+            }
+          >
+            {type.label}
+          </option>
+        ))}
+      </select>
+      <button type="submit">Load fields</button>
+    </form>
+  )
+}
+
+{
+  types.length > 0 && selected === null && (
+    <p>Select an active content type to load its fields.</p>
+  )
+}
+
+{
+  selected !== null && (
+    <CmsEditorialEntryCreateIsland
+      type={selected}
+      fields={fields}
+      client:load
+    />
+  )
+}
