@@ -10,24 +10,22 @@ import { Hono, type Env } from 'hono';
 import { decodeJsonBody, jsonBodyPreflight, readBytes } from './admission-body';
 import { invalid, issues, rejectCommandQuery } from './admission-common';
 import {
-  dependencyDeadline,
-  dependencyTimedOut,
   dependencyUnavailable,
+  createRouteDeadline,
 } from './admission-deadline';
 import { checkOrigin, csrfErrorIfCookie } from './admission-headers';
 import {
   requireEditorialCapability,
   validHumanSession,
 } from './admission-identity';
-import { emitTelemetry, rateCheck } from './route-execution';
-import { commonHeaders, errorResponse } from './routes';
+import { rateCheck } from './route-execution';
+import { createRouteFinish, entryFacts } from './route-telemetry';
+import { commonHeaders, errorResponse, publishedError } from './routes';
 import {
   CMS_EDITORIAL_CREATE_OPERATION_ID,
-  CMS_EDITORIAL_RUNBOOK,
   type CmsEditorialCreatePortInput,
   type CmsEditorialDependencies,
   type CmsEditorialError,
-  type CmsEditorialResult,
 } from './types';
 
 const PATH = '/api/v1/cms/entries';
@@ -72,39 +70,23 @@ export const registerCmsEditorialCreateRoutes = <E extends Env>(
     const requestId = createRequestId(
       request.headers.get('x-request-id') ?? undefined,
     );
-    const deadlineAt =
-      performance.now() + (dependencies.deadlineMs ?? policy.timeoutMs);
-    const withinDeadline = <T>(
-      invoke: (signal: AbortSignal) => Promise<CmsEditorialResult<T>>,
-    ): Promise<CmsEditorialResult<T>> => {
-      const remainingMs = Math.ceil(deadlineAt - performance.now());
-      return remainingMs <= 0
-        ? Promise.resolve(dependencyTimedOut())
-        : dependencyDeadline(invoke, remainingMs);
-    };
+    const { deadlineAt, withinDeadline } = createRouteDeadline(
+      request,
+      dependencies.deadlineMs,
+      policy.timeoutMs,
+    );
     const startedAt = dependencies.now?.() ?? Date.now();
-    const finish = async (response: Response): Promise<Response> => {
-      void emitTelemetry(dependencies, {
-        operationId: CMS_EDITORIAL_CREATE_OPERATION_ID,
-        requestId,
-        outcome:
-          response.status < 400
-            ? 'success'
-            : response.status < 500
-              ? 'rejected'
-              : 'failure',
-        status: response.status,
-        durationMs: Math.max(
-          0,
-          (dependencies.now?.() ?? Date.now()) - startedAt,
-        ),
-        actorClass: 'human',
-        runbook: CMS_EDITORIAL_RUNBOOK,
-      });
-      return response;
-    };
+    const finish = createRouteFinish(
+      dependencies,
+      request,
+      requestId,
+      policy,
+      startedAt,
+    );
     const fail = (error: CmsEditorialError, headers?: Headers) =>
-      finish(errorResponse(request, dependencies, requestId, error, headers));
+      finish(errorResponse(request, dependencies, requestId, error, headers), {
+        error: publishedError(error),
+      });
 
     // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
@@ -199,6 +181,14 @@ export const registerCmsEditorialCreateRoutes = <E extends Env>(
     headers.set('location', `/api/v1/cms/entries/${parsed.data.entry.id}`);
     return finish(
       new Response(JSON.stringify(parsed.data), { status: 201, headers }),
+      {
+        counts: { changed_paths: body.value.changedPaths.length },
+        entry: await entryFacts(
+          parsed.data.entry.id,
+          parsed.data.entry.version,
+        ),
+        replayed: result.replayed === true,
+      },
     );
   });
 };

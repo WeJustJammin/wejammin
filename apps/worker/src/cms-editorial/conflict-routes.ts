@@ -18,25 +18,24 @@ import {
   checkOrigin,
   csrfErrorIfCookie,
   parseEditorialHeaders,
+  versionDisagreement,
 } from './admission-headers';
 import {
   requireEditorialCapability,
   validHumanSession,
 } from './admission-identity';
 import {
-  dependencyDeadline,
-  dependencyTimedOut,
   dependencyUnavailable,
+  createRouteDeadline,
 } from './admission-deadline';
-import { emitTelemetry, rateCheck } from './route-execution';
-import { commonHeaders, errorResponse } from './routes';
+import { rateCheck } from './route-execution';
+import { createRouteFinish, entryFacts } from './route-telemetry';
+import { commonHeaders, errorResponse, publishedError } from './routes';
 import {
   CMS_EDITORIAL_CONFLICT_OPERATION_ID,
-  CMS_EDITORIAL_RUNBOOK,
   type CmsEditorialConflictPortInput,
   type CmsEditorialDependencies,
   type CmsEditorialError,
-  type CmsEditorialResult,
 } from './types';
 
 const PATH = '/api/v1/cms/entries/:entryId/conflicts/:conflictId/resolve';
@@ -80,39 +79,23 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
     const requestId = createRequestId(
       request.headers.get('x-request-id') ?? undefined,
     );
-    const deadlineAt =
-      performance.now() + (dependencies.deadlineMs ?? policy.timeoutMs);
-    const withinDeadline = <T>(
-      invoke: (signal: AbortSignal) => Promise<CmsEditorialResult<T>>,
-    ): Promise<CmsEditorialResult<T>> => {
-      const remainingMs = Math.ceil(deadlineAt - performance.now());
-      return remainingMs <= 0
-        ? Promise.resolve(dependencyTimedOut())
-        : dependencyDeadline(invoke, remainingMs);
-    };
+    const { deadlineAt, withinDeadline } = createRouteDeadline(
+      request,
+      dependencies.deadlineMs,
+      policy.timeoutMs,
+    );
     const startedAt = dependencies.now?.() ?? Date.now();
-    const finish = async (response: Response): Promise<Response> => {
-      void emitTelemetry(dependencies, {
-        operationId: CMS_EDITORIAL_CONFLICT_OPERATION_ID,
-        requestId,
-        outcome:
-          response.status < 400
-            ? 'success'
-            : response.status < 500
-              ? 'rejected'
-              : 'failure',
-        status: response.status,
-        durationMs: Math.max(
-          0,
-          (dependencies.now?.() ?? Date.now()) - startedAt,
-        ),
-        actorClass: 'human',
-        runbook: CMS_EDITORIAL_RUNBOOK,
-      });
-      return response;
-    };
+    const finish = createRouteFinish(
+      dependencies,
+      request,
+      requestId,
+      policy,
+      startedAt,
+    );
     const fail = (error: CmsEditorialError, headers?: Headers) =>
-      finish(errorResponse(request, dependencies, requestId, error, headers));
+      finish(errorResponse(request, dependencies, requestId, error, headers), {
+        error: publishedError(error),
+      });
 
     // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
@@ -191,10 +174,11 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
       ConflictResolutionHeadersSchema,
     );
     if (!headers.ok) return fail(headers);
-    if (body.value.expectedVersion !== headers.value.ifMatch)
-      return fail(
-        invalid('The expected version does not match If-Match.', {}, 422),
-      );
+    const disagreement = versionDisagreement(
+      body.value.expectedVersion,
+      headers.value.ifMatch,
+    );
+    if (disagreement !== null) return fail(disagreement);
     const resolveConflict = dependencies.ports.resolveConflict;
     if (typeof resolveConflict !== 'function')
       return fail(dependencyUnavailable());
@@ -229,7 +213,7 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
 
     const responseHeaders = commonHeaders(request, dependencies, requestId);
     responseHeaders.set('content-type', 'application/json; charset=UTF-8');
-    responseHeaders.set('etag', `"${parsed.data.version}"`);
+    responseHeaders.set('etag', `"${parsed.data.entryVersion}"`);
     responseHeaders.set(
       'location',
       `/api/v1/cms/entries/${entryId.value}/revisions/${parsed.data.id}`,
@@ -239,6 +223,11 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
         status: 201,
         headers: responseHeaders,
       }),
+      {
+        counts: { choices: body.value.choices.length },
+        entry: await entryFacts(entryId.value, parsed.data.entryVersion),
+        replayed: result.replayed === true,
+      },
     );
   });
 };

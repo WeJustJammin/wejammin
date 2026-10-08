@@ -48,6 +48,7 @@ const IDEMPOTENCY_KEY = 'restore-slice10-0001';
 const restoredResource = {
   id: RESTORED_REVISION_ID,
   version: '1',
+  entryVersion: '3',
   createdAt: '2026-09-26T00:00:00Z',
   updatedAt: '2026-09-26T00:00:00Z',
   state: 'draft',
@@ -191,7 +192,7 @@ describe('CMS-03B-04 production restore port (RED: seam still returns 503)', () 
     );
     expect(response.status).toBe(201);
     expect(response.headers.get('cache-control')).toBe('no-store');
-    expect(response.headers.get('etag')).toBe('"1"');
+    expect(response.headers.get('etag')).toBe('"3"');
     expect(response.headers.get('location')).toBe(
       '/api/v1/cms/entries/' + ENTRY_ID + '/revisions/' + RESTORED_REVISION_ID,
     );

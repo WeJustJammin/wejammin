@@ -29,6 +29,10 @@ describe('Worker scheduled operational boundaries', () => {
           )
         )
           return Response.json({ invalidatedReviews: 0 });
+        if (
+          String(input).includes('/rest/v1/rpc/cms_expire_edit_presence_leases')
+        )
+          return Response.json({ expiredLeases: 0 });
         return Response.json([], { status: 200 });
       },
     );
@@ -56,9 +60,10 @@ describe('Worker scheduled operational boundaries', () => {
       executionContext,
     );
     // The outbox sweep, the idempotency expiry sweep, the [P2-S09-AC-1135]
-    // reviewer-authority expiry sweep and the [P2-S09-AC-908] reconciling-age
-    // gauge sample each make one protected RPC per tick.
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    // reviewer-authority expiry sweep, the BE03b advisory edit-presence expiry
+    // sweep and the [P2-S09-AC-908] reconciling-age gauge sample each make one
+    // protected RPC per tick.
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
     expect(
       fetchImpl.mock.calls
         .map(([input]) => String(input).split('/rest/v1/rpc/')[1])
@@ -66,6 +71,7 @@ describe('Worker scheduled operational boundaries', () => {
     ).toEqual([
       'auth_mfa_reconciling_age',
       'claim_outbox_batch',
+      'cms_expire_edit_presence_leases',
       'cms_sweep_expired_review_authority',
       'idempotency_expiry_sweep',
     ]);
@@ -156,6 +162,9 @@ describe('Worker scheduled operational boundaries', () => {
         ) {
           return Response.json({ invalidatedReviews: 0 });
         }
+        if (target.includes('/rest/v1/rpc/cms_expire_edit_presence_leases')) {
+          return Response.json({ expiredLeases: 0 });
+        }
         if (
           target.includes('/rest/v1/rpc/cms_get_operational_state_snapshot')
         ) {
@@ -210,6 +219,6 @@ describe('Worker scheduled operational boundaries', () => {
         String(input).includes('/rest/v1/rpc/auth_mfa_reconciling_age'),
       ),
     ).toHaveLength(1);
-    expect(fetchImpl).toHaveBeenCalledTimes(5);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
   });
 });

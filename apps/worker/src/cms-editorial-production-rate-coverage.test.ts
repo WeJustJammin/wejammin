@@ -163,8 +163,11 @@ describe('cms editorial production rate limiter', () => {
       windowSeconds: number;
     };
     expect(userForwarded.identifierDigest).toMatch(/^[a-f0-9]{64}$/u);
+    // BE03b:1351: the user bucket is the actor alone, named by an explicit
+    // scope, so it never inherits the acting party or the client address.
+    expect((userForwarded as { scope?: string }).scope).toBe('user');
     expect(userForwarded.authUserId).toBe(USER_ID);
-    expect(userForwarded.actingPartyId).toBe(PARTY_ID);
+    expect(userForwarded.actingPartyId).toBeNull();
     expect(userForwarded.limit).toBe(120);
     expect(userForwarded.windowSeconds).toBe(60);
 
@@ -184,6 +187,7 @@ describe('cms editorial production rate limiter', () => {
       limit: number;
     };
     // The party id is the bucket identity; the user id is never substituted.
+    expect((partyForwarded as { scope?: string }).scope).toBe('party');
     expect(partyForwarded.authUserId).toBeNull();
     expect(partyForwarded.actingPartyId).toBe(PARTY_ID);
     expect(partyForwarded.limit).toBe(240);

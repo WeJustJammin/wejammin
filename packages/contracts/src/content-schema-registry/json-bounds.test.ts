@@ -18,7 +18,12 @@ const field = {
   constraints: {
     objectStructure: {
       properties: [
-        { key: 'child', kind: 'scalar' as const, required: true, constraints: {} },
+        {
+          key: 'child',
+          kind: 'scalar' as const,
+          required: true,
+          constraints: {},
+        },
       ],
     },
   },

@@ -10,7 +10,7 @@ const path = `/api/v1/cms/entries/${entryId}/revisions`;
 const body = {
   entryId,
   baseRevision: '1',
-  changedPaths: [`/fields/${fieldId}/value`],
+  changedPaths: [`/fields/${fieldId}`],
   values: { [fieldId]: 'Hello' },
   locale: 'en-US',
   expectedVersion: '1',

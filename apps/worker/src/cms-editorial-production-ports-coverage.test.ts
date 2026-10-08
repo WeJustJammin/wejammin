@@ -314,7 +314,10 @@ describe('cms editorial production ports', () => {
       const errors = policy?.errors as Readonly<Record<string, number>>;
       expect(errors.NOT_FOUND).toBe(404);
       expect(errors.FORBIDDEN).toBe(403);
-      expect(errors.CONFLICT).toBeUndefined();
+      // DEC-140 / BE03b error matrix: only the entry list owns a 409 (a
+      // well-formed signed cursor that is expired, tampered or foreign-bound).
+      if (operationId === 'CMS-03B-13') expect(errors.CONFLICT).toBe(409);
+      else expect(errors.CONFLICT).toBeUndefined();
     }
   });
 

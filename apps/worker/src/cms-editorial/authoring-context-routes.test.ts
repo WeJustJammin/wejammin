@@ -193,6 +193,58 @@ describe('CMS-03B-14 protected authoring-context route', () => {
     ).toBe(versionId);
   });
 
+  it('[P1-S10-API] binds selectedType to the creatable type projection and refuses registry-read authority', async () => {
+    const notCreatable = {
+      ...selected,
+      selectedType: {
+        ...selectedType,
+        contentTypeVersionId: '71000000-0000-4000-8000-000000000017',
+        schemaArtifact: {
+          ...selectedType.schemaArtifact,
+          contentTypeVersionId: '71000000-0000-4000-8000-000000000017',
+        },
+      },
+    };
+    const first = harness({
+      port: async () => ({ ok: true, value: notCreatable }),
+    });
+    expect(
+      (await get(first.app, `?contentTypeVersionId=${versionId}`)).status,
+    ).toBe(502);
+
+    const authority = {
+      ...selected,
+      selectedType: {
+        ...selectedType,
+        workflowPolicy: {
+          ...selectedType.workflowPolicy,
+          requiredCapabilities: ['cms.schema_registry.read'],
+        },
+      },
+    };
+    const second = harness({
+      port: async () => ({ ok: true, value: authority }),
+    });
+    expect(
+      (await get(second.app, `?contentTypeVersionId=${versionId}`)).status,
+    ).toBe(502);
+  });
+
+  it('[P1-S10-API] hashes the complete authoring representation in the strong ETag', async () => {
+    let resource = unselected;
+    const { app } = harness({
+      port: async () => ({ ok: true, value: resource }),
+    });
+    const before = await get(app);
+    resource = {
+      ...unselected,
+      creatableTypes: [{ ...selectedType, label: 'Renamed article' }],
+    };
+    const after = await get(app);
+    expect(before.headers.get('etag')).not.toBe(after.headers.get('etag'));
+    expect(after.headers.get('etag')).toMatch(/^"sha256:[0-9a-f]{64}"$/u);
+  });
+
   it('[P2-S10-AC-103] matches the literal authoring-context segment before the entry UUID route', async () => {
     const { app, getAuthoringContext, getEntryDraft } = harness();
     const response = await get(app);
@@ -222,9 +274,27 @@ describe('CMS-03B-14 protected authoring-context route', () => {
     expect(getAuthoringContext).not.toHaveBeenCalled();
   });
 
+  it('[P1-S10-API] rejects malformed query before session resolution', async () => {
+    const resolveSession = vi.fn(async () => ({
+      ok: true as const,
+      value: {
+        userId,
+        actingPartyId: partyId,
+        capabilities: ['cms.author'],
+        mfaFresh: true,
+      },
+    }));
+    const { app } = harness({ resolveSession });
+    expect((await get(app, '?schemaArtifact=private')).status).toBe(400);
+    expect(resolveSession).not.toHaveBeenCalled();
+  });
+
   it('[P2-S10-AC-101] rejects request bodies and mutation headers on the read', async () => {
     const { app, getAuthoringContext } = harness();
     expect((await get(app)).status).toBe(200);
+    // The bare read above is the only admitted call; clear it so the refusals
+    // below are proven to skip the dependency read entirely.
+    getAuthoringContext.mockClear();
     expect((await get(app, '?', { 'idempotency-key': 'key' })).status).toBe(
       400,
     );

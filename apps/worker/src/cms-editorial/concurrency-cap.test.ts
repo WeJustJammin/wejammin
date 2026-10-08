@@ -129,4 +129,30 @@ describe('CMS-03B-01 deterministic per-actor concurrency cap (RED)', () => {
     void aInFlight;
     void bInFlight;
   });
+  it('releases the actor slot as each in-flight write settles', async () => {
+    const fetchImpl = stalledFetch();
+    const dependencies = composeCap(fetchImpl as unknown as typeof fetch);
+    const append = dependencies.ports.appendRevision;
+    const input = portInput();
+
+    // Two writes stay in flight until the deadline settles them. The first to
+    // settle leaves one slot still held; the second leaves none.
+    const settled = await Promise.all(
+      [0, 1].map(() => append(input, new AbortController().signal)),
+    );
+    expect(settled).toEqual([
+      expect.objectContaining({ ok: false, status: 504 }),
+      expect.objectContaining({ ok: false, status: 504 }),
+    ]);
+
+    // Every slot is free again: three further writes are admitted and only the
+    // fourth is refused, so settled writes never leak a slot.
+    const again = [0, 1, 2].map(() =>
+      append(input, new AbortController().signal),
+    );
+    const fourth = await append(input, new AbortController().signal);
+    expect(fourth).toMatchObject({ ok: false, status: 429 });
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+    await Promise.all(again);
+  });
 });

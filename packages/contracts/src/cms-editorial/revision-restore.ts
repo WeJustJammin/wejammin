@@ -89,7 +89,9 @@ const revisionRestoreRegistryEvidenceSchema = z
     migrationChainId: CmsUuidSchema,
     sourceSchemaVersionId: CmsUuidSchema,
     activeSchemaVersionId: CmsUuidSchema,
-    chainSchemaVersionIds: z.array(CmsUuidSchema).min(1).max(64).readonly(),
+    // A chain of at most 64 completed plan edges (BE03b D6) names the source schema
+    // version plus one version per edge: at most 65 versions.
+    chainSchemaVersionIds: z.array(CmsUuidSchema).min(1).max(65).readonly(),
     entryVersion: CmsVersionSchema,
   })
   .readonly();

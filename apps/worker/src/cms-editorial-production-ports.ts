@@ -44,8 +44,12 @@ export const CMS_EDITORIAL_PORTS = {
   'CMS-03B-01': 'appendRevision',
   'CMS-03B-02': 'resolveConflict',
   'CMS-03B-03': 'listRevisions',
+  'CMS-03B-04': 'restoreRevision',
   'CMS-03B-10': 'createEntry',
   'CMS-03B-11': 'getEntryDraft',
+  'CMS-03B-12': 'getConflictDetail',
+  'CMS-03B-13': 'listEntries',
+  'CMS-03B-14': 'getAuthoringContext',
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, string>
 >;
@@ -77,6 +81,13 @@ const validateCmsEditorialResource = (
     return RevisionHistoryPageSchema.safeParse(value).success;
   if (operationId === 'CMS-03B-11')
     return EntryDraftDetailResourceSchema.safeParse(value).success;
+  // The S10 safe reads are narrowed to their declared JSON object envelope
+  // here. Each route re-parses the identical strict success contract before it
+  // can publish, so a non-object or contract-violating payload still fails
+  // closed as a 502 rather than reaching a success or concealment projection.
+  if (operationId === 'CMS-03B-12') return isRecord(value);
+  if (operationId === 'CMS-03B-13') return isRecord(value);
+  if (operationId === 'CMS-03B-14') return isRecord(value);
   return false;
 };
 
@@ -121,6 +132,13 @@ const committedRevisionConflict = (
     },
   );
 };
+
+/**
+ * Private SQL -> Worker marker (PostgREST `response.headers`): the command was
+ * answered from its stored idempotent outcome. Only the exact value `true`
+ * counts, and it is never forwarded to a browser.
+ */
+const REPLAY_HEADER = 'x-cms-idempotent-replay';
 
 export type CmsEditorialAppendRevisionPort = (
   input: CmsEditorialPortInput,
@@ -219,7 +237,9 @@ export const createCmsEditorialRpcCaller = (
         const conflict = committedRevisionConflict(parsed.value);
         if (conflict !== null) return conflict;
       }
-      return parsed;
+      return parsed.ok && response.value.headers.get(REPLAY_HEADER) === 'true'
+        ? { ...parsed, replayed: true as const }
+        : parsed;
     } catch {
       return internalError();
     } finally {
@@ -248,7 +268,15 @@ export const cmsEditorialResourcePort =
     if (!result.ok) return result;
     if (!validateCmsEditorialResource(operationId, result.value))
       return invalidResponse();
-    return { ok: true, value: result.value as T };
+    return {
+      ok: true,
+      value: result.value as T,
+      ...(result.replayed === true ? { replayed: true as const } : {}),
+    };
   };
 
+export {
+  cmsEditorialRestorePort,
+  type CmsEditorialRestorePortValue,
+} from './cms-editorial-production-restore-port';
 export { unavailable };

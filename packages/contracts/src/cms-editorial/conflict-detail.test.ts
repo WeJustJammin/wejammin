@@ -31,7 +31,7 @@ const validPath = {
   path: pointer,
   base: authoredSide,
   theirs: missingSide,
-  yours: { value: 1, provenance: 'explicit_null', valueHash: hash },
+  yours: { value: null, provenance: 'explicit_null', valueHash: hash },
 } as const;
 
 const validResource = {
@@ -69,16 +69,19 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 const cloneResource = (): Record<string, unknown> =>
   JSON.parse(JSON.stringify(validResource)) as Record<string, unknown>;
 
-const pathAt = (resource: Record<string, unknown>, index: number): Record<
-  string,
-  unknown
-> => asRecord((resource.paths as unknown[])[index]);
+const pathAt = (
+  resource: Record<string, unknown>,
+  index: number,
+): Record<string, unknown> => asRecord((resource.paths as unknown[])[index]);
 
 /** N complete divergent-path rows, so only the count bound is under test. */
-const manyPaths = (count: number): typeof validPath[] =>
+const fieldPointer = (index: number): string =>
+  `/fields/123e4567-e89b-42d3-a456-${String(index).padStart(12, '0')}`;
+
+const manyPaths = (count: number): (typeof validPath)[] =>
   Array.from({ length: count }, (_, index) => ({
     ...validPath,
-    path: `/p/${index}`,
+    path: fieldPointer(index),
   }));
 
 describe('conflict detail addressing', () => {
@@ -131,8 +134,13 @@ describe('conflict detail side', () => {
       'missing',
     ])
       expect(
-        ConflictDetailSideSchema.safeParse({ ...authoredSide, provenance })
-          .success,
+        ConflictDetailSideSchema.safeParse(
+          provenance === 'missing'
+            ? missingSide
+            : provenance === 'explicit_null'
+              ? { value: null, provenance, valueHash: null }
+              : { ...authoredSide, provenance },
+        ).success,
       ).toBe(true);
     expect(
       ConflictDetailSideSchema.safeParse({
@@ -272,26 +280,49 @@ describe('conflict detail resource envelope', () => {
     const atBound = cloneResource();
     asRecord(atBound.conflict).changedPaths = Array.from(
       { length: 128 },
-      (_, index) => `/fields/${index}`,
+      (_, index) => fieldPointer(index),
     );
+    atBound.paths = manyPaths(128);
     expect(ConflictDetailResourceSchema.safeParse(atBound).success).toBe(true);
 
     const overBound = cloneResource();
     asRecord(overBound.conflict).changedPaths = Array.from(
       { length: 129 },
-      (_, index) => `/fields/${index}`,
+      (_, index) => fieldPointer(index),
     );
+    overBound.paths = manyPaths(128);
     expect(ConflictDetailResourceSchema.safeParse(overBound).success).toBe(
       false,
     );
   });
 
+  it('addresses every path and changed path as /fields/{stableFieldId}', () => {
+    for (const bad of ['/p/1', '/fields/title', '/blocks/hero', '/fields/']) {
+      const badChanged = cloneResource();
+      asRecord(badChanged.conflict).changedPaths = [bad];
+      expect(ConflictDetailResourceSchema.safeParse(badChanged).success).toBe(
+        false,
+      );
+      const badPath = cloneResource();
+      badPath.paths = [{ ...validPath, path: bad }];
+      expect(ConflictDetailResourceSchema.safeParse(badPath).success).toBe(
+        false,
+      );
+    }
+  });
+
   it('caps paths at 128 entries', () => {
     const atBound = cloneResource();
+    asRecord(atBound.conflict).changedPaths = manyPaths(128).map(
+      (path) => path.path,
+    );
     atBound.paths = manyPaths(128);
     expect(ConflictDetailResourceSchema.safeParse(atBound).success).toBe(true);
 
     const overBound = cloneResource();
+    asRecord(overBound.conflict).changedPaths = manyPaths(128).map(
+      (path) => path.path,
+    );
     overBound.paths = manyPaths(129);
     expect(ConflictDetailResourceSchema.safeParse(overBound).success).toBe(
       false,
@@ -299,36 +330,56 @@ describe('conflict detail resource envelope', () => {
   });
 });
 
-describe('conflict detail state rule', () => {
-  it('permits paths while the conflict is open', () => {
-    const withPaths = cloneResource();
-    withPaths.paths = manyPaths(3);
-    expect(ConflictDetailResourceSchema.safeParse(withPaths).success).toBe(true);
+/**
+ * BE03b DEC-139 (spec lines 1139-1142, 1686, 2038): CMS-03B-12 serves a conflict
+ * only while it is `open`, so every served resource has `conflict.state`
+ * `open`, `resolvedRevisionId` null and a non-empty `paths`. A resolved or
+ * superseded conflict is the same 404 as an absent one, so a payload carrying a
+ * closed state is a server contract violation, never rendered as metadata.
+ */
+describe('conflict detail open-only rule (DEC-139)', () => {
+  const issuesOf = (value: unknown): string[] => {
+    const result = ConflictDetailResourceSchema.safeParse(value);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
 
-    const withoutPaths = cloneResource();
-    withoutPaths.paths = [];
-    expect(ConflictDetailResourceSchema.safeParse(withoutPaths).success).toBe(
+  it('accepts only an open conflict with divergent paths and no resolved revision', () => {
+    const withPaths = cloneResource();
+    asRecord(withPaths.conflict).changedPaths = manyPaths(3).map(
+      (path) => path.path,
+    );
+    withPaths.paths = manyPaths(3);
+    expect(ConflictDetailResourceSchema.safeParse(withPaths).success).toBe(
       true,
     );
   });
 
-  it('requires empty paths once the conflict is resolved or superseded', () => {
+  it('refuses a resolved or superseded conflict, with or without paths', () => {
     for (const state of ['resolved', 'superseded'] as const) {
-      const closed = cloneResource();
-      asRecord(closed.conflict).state = state;
-      closed.paths = [];
-      expect(ConflictDetailResourceSchema.safeParse(closed).success).toBe(true);
-
-      const divergent = cloneResource();
-      asRecord(divergent.conflict).state = state;
-      divergent.paths = [validPath];
-      const result = ConflictDetailResourceSchema.safeParse(divergent);
-      expect(result.success).toBe(false);
-      if (!result.success)
-        expect(result.error.issues.map((issue) => issue.message)).toContain(
-          'conflict_detail_closed_state_requires_empty_paths',
+      for (const paths of [[], [validPath]]) {
+        const closed = cloneResource();
+        asRecord(closed.conflict).state = state;
+        closed.paths = paths;
+        expect(issuesOf(closed), `${state} ${paths.length}`).toContain(
+          'conflict_detail_requires_open_state',
         );
+      }
     }
+  });
+
+  it('refuses an open conflict that names a resolved revision', () => {
+    const resolved = cloneResource();
+    asRecord(resolved).resolvedRevisionId =
+      '70000000-0000-4000-8000-000000000007';
+    expect(issuesOf(resolved)).toContain(
+      'conflict_detail_open_requires_null_resolved_revision',
+    );
+  });
+
+  it('refuses an open conflict with no divergent paths', () => {
+    const empty = cloneResource();
+    empty.paths = [];
+    expect(issuesOf(empty)).toContain('conflict_detail_open_requires_paths');
   });
 });
 
@@ -339,7 +390,9 @@ describe('conflict detail privacy', () => {
     for (const key of forbidden) {
       const atRoot = cloneResource();
       atRoot[key] = uuid;
-      expect(ConflictDetailResourceSchema.safeParse(atRoot).success).toBe(false);
+      expect(ConflictDetailResourceSchema.safeParse(atRoot).success).toBe(
+        false,
+      );
 
       const inConflict = cloneResource();
       asRecord(inConflict.conflict)[key] = uuid;
@@ -378,5 +431,98 @@ describe('conflict detail privacy', () => {
           .success,
       ).toBe(false);
     }
+  });
+});
+
+/**
+ * Codex final review (s10-final-4): the read envelope must be internally consistent, or an upstream
+ * inconsistency becomes a disclosure or an ambiguous resolution.
+ */
+describe('conflict detail consistency (provenance/value, unique and equivalent paths)', () => {
+  const issuesOf = (value: unknown): string[] => {
+    const result = ConflictDetailResourceSchema.safeParse(value);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+  const sideIssues = (side: unknown): string[] => {
+    const result = ConflictDetailSideSchema.safeParse(side);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+
+  it('a missing side carries neither value nor hash', () => {
+    expect(
+      sideIssues({ value: 'hidden', provenance: 'missing', valueHash: null }),
+    ).toContain('conflict_detail_side_absent_requires_null_value');
+    expect(
+      sideIssues({ value: null, provenance: 'missing', valueHash: hash }),
+    ).toContain('conflict_detail_side_missing_requires_null_hash');
+    expect(sideIssues(missingSide)).toEqual([]);
+  });
+
+  it('an explicit-null side carries a null value', () => {
+    expect(
+      sideIssues({ value: 1, provenance: 'explicit_null', valueHash: hash }),
+    ).toContain('conflict_detail_side_absent_requires_null_value');
+    expect(
+      sideIssues({ value: null, provenance: 'explicit_null', valueHash: null }),
+    ).toEqual([]);
+    expect(
+      sideIssues({ value: null, provenance: 'explicit_null', valueHash: hash }),
+    ).toEqual([]);
+  });
+
+  it.each(['authored', 'default', 'inherited', 'localized_fallback'])(
+    'a %s side carries a value (a JSON null is explicit_null)',
+    (provenance) => {
+      expect(
+        sideIssues({ value: null, provenance, valueHash: hash }),
+      ).toContain('conflict_detail_side_valued_requires_value');
+      expect(
+        sideIssues({ value: { a: 1 }, provenance, valueHash: hash }),
+      ).toEqual([]);
+    },
+  );
+
+  const withPaths = (changed: string[], paths: string[]) => {
+    const resource = cloneResource();
+    asRecord(resource.conflict).changedPaths = changed;
+    resource.paths = paths.map((path) => ({
+      ...validPath,
+      path,
+      yours: { value: null, provenance: 'explicit_null', valueHash: null },
+    }));
+    return resource;
+  };
+
+  it('requires unique paths and unique changed paths', () => {
+    expect(
+      issuesOf(
+        withPaths([fieldPointer(1)], [fieldPointer(1), fieldPointer(1)]),
+      ),
+    ).toContain('conflict_detail_paths_must_be_unique');
+    expect(
+      issuesOf(
+        withPaths([fieldPointer(1), fieldPointer(1)], [fieldPointer(1)]),
+      ),
+    ).toContain('conflict_detail_changed_paths_must_be_unique');
+  });
+
+  it('requires the paths to be exactly the changed paths', () => {
+    expect(
+      issuesOf(
+        withPaths([fieldPointer(1), fieldPointer(2)], [fieldPointer(1)]),
+      ),
+    ).toContain('conflict_detail_paths_must_equal_changed_paths');
+    expect(issuesOf(withPaths([fieldPointer(1)], [fieldPointer(2)]))).toContain(
+      'conflict_detail_paths_must_equal_changed_paths',
+    );
+    // Order is the server's; equality is of the sets.
+    expect(
+      issuesOf(
+        withPaths(
+          [fieldPointer(1), fieldPointer(2)],
+          [fieldPointer(2), fieldPointer(1)],
+        ),
+      ),
+    ).toEqual([]);
   });
 });

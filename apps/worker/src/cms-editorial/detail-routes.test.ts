@@ -754,3 +754,83 @@ describe('CMS-03B-11 protected draft-detail route', () => {
     expect(getEntryDraft).not.toHaveBeenCalled();
   });
 });
+
+describe('Codex s10-ts-2 M1: CMS-03B-11 publishes the read-specific error projection', () => {
+  const failing = (failure: Record<string, unknown>) =>
+    harness({
+      ports: {
+        appendRevision: unavailable,
+        getEntryDraft: async () => ({ ok: false, ...failure }) as never,
+      },
+    });
+
+  it('keeps only a registered read reasonCode on a visible 403 and drops every write-path member', async () => {
+    const { app } = failing({
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'Missing private assignment 123.',
+      details: {
+        reasonCode: 'ASSIGNMENT_REQUIRED',
+        currentVersion: '9',
+        expectedVersion: '8',
+        dependencyClass: 'cms_rpc_private',
+        conflict: 'VERSION_MISMATCH',
+        recoveryAction: 'reload',
+      },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(403);
+    const payload = ApiErrorSchema.parse(await response.json());
+    expect(payload.details).toEqual({ reasonCode: 'ASSIGNMENT_REQUIRED' });
+  });
+
+  it('drops an unregistered reasonCode from a 403', async () => {
+    const { app } = failing({
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'Denied.',
+      details: { reasonCode: 'private_assignment_row_123' },
+    });
+    const payload = ApiErrorSchema.parse(await (await get(app)).json());
+    expect(payload.details).toEqual({});
+  });
+
+  it('fails closed as a scrubbed 500 on a 409, which the bounded read does not declare', async () => {
+    const { app } = failing({
+      status: 409,
+      code: 'CONFLICT',
+      message: 'Version moved.',
+      details: {
+        conflict: 'VERSION_MISMATCH',
+        expectedVersion: '1',
+        currentVersion: '2',
+      },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(500);
+    const text = await response.text();
+    expect(text).not.toContain('currentVersion');
+    expect(text).not.toContain('VERSION_MISMATCH');
+  });
+
+  it('publishes a 503 with only the route dependency class and retryability', async () => {
+    const { app } = failing({
+      status: 503,
+      code: 'DEPENDENCY_UNAVAILABLE',
+      message: 'rpc cms_get_entry_draft failed',
+      details: {
+        dependencyClass: 'cms_get_entry_draft_rpc',
+        retryable: true,
+        reasonCode: 'x',
+      },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(503);
+    const payload = ApiErrorSchema.parse(await response.json());
+    expect(payload.message).not.toContain('cms_get_entry_draft');
+    expect(payload.details).toEqual({
+      dependencyClass: 'cms_editorial',
+      retryable: true,
+    });
+  });
+});

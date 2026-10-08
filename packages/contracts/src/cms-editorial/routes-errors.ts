@@ -118,12 +118,19 @@ export const editorialConflictDetailErrors = {
   INTERNAL_ERROR: 500,
 } as const;
 
-/** CMS-03B-13 entry-list envelope: bounded read, no CONFLICT, 415 kept. */
+/**
+ * CMS-03B-13 entry-list envelope: bounded read, 415 kept.  DEC-140: a
+ * well-formed signed cursor that is expired, tampered, signed by an unknown or
+ * stale key, or bound to another actor, context or filter is 409 CONFLICT (the
+ * BE03b error-matrix row "cursor/context mismatch"), while a structurally
+ * malformed cursor stays 400 INVALID_REQUEST.
+ */
 export const editorialEntryListErrors = {
   INVALID_REQUEST: 400,
   UNAUTHENTICATED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  CONFLICT: 409,
   UNSUPPORTED_MEDIA_TYPE: 415,
   VALIDATION_FAILED: 422,
   RATE_LIMITED: 429,

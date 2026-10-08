@@ -1,5 +1,8 @@
 import {
+  AuthoringContextQuerySchema,
+  ConflictDetailQuerySchema,
   EntryDraftDetailQuerySchema,
+  EntryListQuerySchema,
   RevisionHistoryQuerySchema,
 } from '@wejammin/contracts';
 
@@ -24,7 +27,11 @@ import {
  * only, never by echoed value.
  */
 export const authorityRejection = (keys: readonly string[]) => {
-  const violations = keys.map((key) => `body.${key}`);
+  const violations = keys.map((key) => ({
+    path: `/${key}`,
+    code: 'caller_authority_rejected',
+    message: 'The value is invalid.',
+  }));
   return errorResult(
     422,
     'VALIDATION_FAILED',
@@ -140,26 +147,129 @@ export const validateCmsEditorialPortInput = (
         { reasonCode: 'draft_read_precondition_invalid' },
       );
   }
+  if (expectedOperationId === 'CMS-03B-12') {
+    const pathEntryId = input.path?.entryId;
+    const pathConflictId = input.path?.conflictId;
+    const query = ConflictDetailQuerySchema.safeParse(input.query ?? {});
+    if (
+      typeof pathEntryId !== 'string' ||
+      !UUID_PATTERN.test(pathEntryId) ||
+      typeof pathConflictId !== 'string' ||
+      !UUID_PATTERN.test(pathConflictId) ||
+      Object.keys(input.path ?? {}).length !== 2 ||
+      !query.success ||
+      input.body !== undefined ||
+      input.idempotencyKey !== undefined ||
+      input.ifMatch !== undefined ||
+      input.request.method !== 'GET' ||
+      input.request.body !== null
+    )
+      return errorResult(
+        400,
+        'INVALID_REQUEST',
+        'The CMS editorial read request is invalid.',
+        { reasonCode: 'conflict_detail_precondition_invalid' },
+      );
+  }
+  if (expectedOperationId === 'CMS-03B-13') {
+    const query = EntryListQuerySchema.safeParse(input.query ?? {});
+    if (
+      input.path !== undefined ||
+      !query.success ||
+      input.body !== undefined ||
+      input.idempotencyKey !== undefined ||
+      input.ifMatch !== undefined ||
+      input.request.method !== 'GET' ||
+      input.request.body !== null
+    )
+      return errorResult(
+        400,
+        'INVALID_REQUEST',
+        'The CMS editorial read request is invalid.',
+        { reasonCode: 'entry_list_precondition_invalid' },
+      );
+  }
+  if (expectedOperationId === 'CMS-03B-14') {
+    const query = AuthoringContextQuerySchema.safeParse(input.query ?? {});
+    if (
+      input.path !== undefined ||
+      !query.success ||
+      input.body !== undefined ||
+      input.idempotencyKey !== undefined ||
+      input.ifMatch !== undefined ||
+      input.request.method !== 'GET' ||
+      input.request.body !== null
+    )
+      return errorResult(
+        400,
+        'INVALID_REQUEST',
+        'The CMS editorial read request is invalid.',
+        { reasonCode: 'authoring_context_precondition_invalid' },
+      );
+  }
   if (input.ifMatch !== undefined && !BARE_VERSION_PATTERN.test(input.ifMatch))
     return errorResult(
       400,
       'INVALID_REQUEST',
       'The CMS editorial request is invalid.',
-      { reasonCode: 'if_match_invalid', violations: ['header.if-match'] },
+      { reasonCode: 'if_match_invalid' },
+    );
+  // The body names the entry version the caller read and If-Match is the CAS
+  // validator: one value, never a silent header-wins overwrite.
+  const bodyExpectedVersion = (
+    input.body as Readonly<Record<string, unknown>> | undefined
+  )?.expectedVersion;
+  if (
+    input.ifMatch !== undefined &&
+    bodyExpectedVersion !== undefined &&
+    bodyExpectedVersion !== input.ifMatch
+  )
+    return errorResult(
+      422,
+      'VALIDATION_FAILED',
+      'The CMS editorial request failed validation.',
+      {
+        reasonCode: 'expected_version_mismatch',
+        violations: [
+          {
+            path: '/expectedVersion',
+            code: 'mismatch',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
     );
   if (!entryIdMatches(input))
     return errorResult(
       422,
       'VALIDATION_FAILED',
       'The CMS editorial request failed validation.',
-      { reasonCode: 'entry_id_mismatch', violations: ['body.entryId'] },
+      {
+        reasonCode: 'entry_id_mismatch',
+        violations: [
+          {
+            path: '/entryId',
+            code: 'mismatch',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
     );
   if (expectedOperationId === 'CMS-03B-02' && !conflictIdMatches(input))
     return errorResult(
       422,
       'VALIDATION_FAILED',
       'The CMS editorial request failed validation.',
-      { reasonCode: 'conflict_id_mismatch', violations: ['body.conflictId'] },
+      {
+        reasonCode: 'conflict_id_mismatch',
+        violations: [
+          {
+            path: '/conflictId',
+            code: 'mismatch',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
     );
   return null;
 };
@@ -201,8 +311,8 @@ export const cmsEditorialRpcBodyFor = (
   const projected = projectEditorialBody(input.body);
   if (!projected.ok) return projected;
   let expectedVersion: string | undefined;
-  // The guard above proved an exact strong bare decimal, so the header value
-  // is adopted verbatim and the body's own expectedVersion is overwritten.
+  // The guard above proved an exact strong bare decimal that agrees with any
+  // body expectedVersion, so the header value is adopted verbatim.
   if (input.ifMatch !== undefined) expectedVersion = input.ifMatch;
   return {
     ok: true,

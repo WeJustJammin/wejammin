@@ -8,24 +8,27 @@ import {
   CmsVersionSchema,
 } from './primitives.ts';
 import {
+  CMS_LIST_ITEM_KINDS,
   CmsDefaultModeSchema,
   CmsFieldKindSchema,
   CmsFieldLifecycleSchema,
   CmsLocalizationModeSchema,
 } from './models-enums.ts';
+import { isProtectedValidatorPairing } from './protected-validators.ts';
 import {
   type ObjectStructure,
   ObjectStructureSchema,
   isObjectValueForStructure,
   isRichTextV1,
+  richTextTotalCharacters,
 } from './structured-values.ts';
 
 /**
  * BE03a CMS-03A-02: constraints are capped at 8 KiB. The key set is the closed
- * six-member list (so the 64-key and depth-4 caps hold by construction); only
- * the size of `enumValues` can grow, so the cap is measured on the compact
- * UTF-8 JSON of the whole object. The database applies the same cap to the
- * stored form (`cms_json_bounded(constraints, 8192, 4, 64, 256)`).
+ * seven-member list (so the 64-key cap holds by construction); the DEC-133
+ * `objectStructure` is the only member that nests, so the cap is measured on
+ * the compact UTF-8 JSON of the whole object. The database applies the same
+ * cap to the stored form (`cms_json_bounded(constraints, 8192, 8, 64, 256)`).
  */
 export const FIELD_CONSTRAINTS_MAX_BYTES = 8192;
 const utf8Length = (value: unknown): number =>
@@ -100,6 +103,8 @@ const refineField = (
     constraints: {
       objectStructure?: ObjectStructure | undefined;
       itemKind?: string | undefined;
+      minLength?: number | undefined;
+      maxLength?: number | undefined;
     };
     validatorKey: string | null;
     validatorVersion: string | null;
@@ -114,18 +119,58 @@ const refineField = (
       path: ['validatorKey'],
       message: 'validator_key_version_pair_required',
     });
+  // DEC-112 / DEC-146 (AC-085): a present pair must name the registered
+  // protected member, and `rich_text.v1` pairs with a rich_text field only,
+  // exactly as `cms_valid_field_input` enforces it.
+  else if (
+    !isProtectedValidatorPairing(
+      value.kind,
+      value.validatorKey,
+      value.validatorVersion,
+    )
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['validatorKey'],
+      message: 'validator_must_be_registered_protected_member_for_kind',
+    });
   // DEC-133 kind/structure agreement for the object field kind.
-  if (value.kind === 'object' && value.constraints.objectStructure === undefined)
+  if (
+    value.kind === 'object' &&
+    value.constraints.objectStructure === undefined
+  )
     context.addIssue({
       code: 'custom',
       path: ['constraints', 'objectStructure'],
       message: 'object_field_requires_object_structure',
     });
-  if (value.kind !== 'object' && value.constraints.objectStructure !== undefined)
+  if (
+    value.kind !== 'object' &&
+    value.constraints.objectStructure !== undefined
+  )
     context.addIssue({
       code: 'custom',
       path: ['constraints', 'objectStructure'],
       message: 'object_structure_only_for_object_field',
+    });
+  // DEC-133 / BE03a "Field kind structure": a list field requires an itemKind
+  // that is a scalar kind or enum (a nested item kind is refused at definition
+  // time), and itemKind is only valid for a list field.
+  if (
+    value.kind === 'list' &&
+    (value.constraints.itemKind === undefined ||
+      !CMS_LIST_ITEM_KINDS.has(value.constraints.itemKind))
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['constraints', 'itemKind'],
+      message: 'list_item_kind_must_be_scalar_or_enum',
+    });
+  if (value.kind !== 'list' && value.constraints.itemKind !== undefined)
+    context.addIssue({
+      code: 'custom',
+      path: ['constraints', 'itemKind'],
+      message: 'item_kind_only_for_list_field',
     });
   const hasDefault = Object.hasOwn(value, 'defaultValue');
   if (
@@ -153,6 +198,23 @@ const refineField = (
         path: ['defaultValue'],
         message: 'rich_text_default_must_be_rich_text_v1',
       });
+    // BE03b: the 03a minLength/maxLength bind the total NFC text of a rich_text
+    // value, so a default must honour them exactly as the database does
+    // (`cms_rich_text_length_in_bounds`).
+    else if (value.kind === 'rich_text') {
+      const total = richTextTotalCharacters(value.defaultValue);
+      if (
+        (value.constraints.minLength !== undefined &&
+          total < value.constraints.minLength) ||
+        (value.constraints.maxLength !== undefined &&
+          total > value.constraints.maxLength)
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['defaultValue'],
+          message: 'rich_text_default_length_out_of_bounds',
+        });
+    }
     const structure = value.constraints.objectStructure;
     if (
       value.kind === 'object' &&

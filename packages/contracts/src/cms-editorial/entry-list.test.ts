@@ -8,7 +8,10 @@ const hash = 'a'.repeat(64);
 const instant = '2026-09-26T00:00:00Z';
 
 const validSummary = {
-  id: uuid,
+  id: uuid2,
+  entryId: uuid,
+  entryLifecycle: 'active',
+  entryUpdatedAt: instant,
   revisionNumber: '4',
   locale: 'en-US',
   state: 'draft',
@@ -94,9 +97,9 @@ describe('CMS-03B-02 entry list query', () => {
     for (const state of ['archived', 'active', 'deleted', ''])
       expect(EntryListQuerySchema.safeParse({ state }).success).toBe(false);
 
-    expect(EntryListQuerySchema.safeParse({ contentTypeId: uuid }).success).toBe(
-      true,
-    );
+    expect(
+      EntryListQuerySchema.safeParse({ contentTypeId: uuid }).success,
+    ).toBe(true);
     expect(
       EntryListQuerySchema.safeParse({ contentTypeId: 'nope' }).success,
     ).toBe(false);
@@ -183,21 +186,76 @@ describe('CMS-03B-02 entry list page', () => {
       ).toBe(false);
   });
 
+  it('carries a required canonical entryId on every item so the UI links entries, not revision ids', () => {
+    expect(
+      EntryListPageSchema.safeParse({
+        ...validPage,
+        items: [{ ...validSummary, entryId: uuid2 }],
+      }).success,
+    ).toBe(true);
+    const { entryId: _entryId, ...withoutEntryId } = {
+      ...validSummary,
+      entryId: uuid2,
+    };
+    void _entryId;
+    expect(
+      EntryListPageSchema.safeParse({ ...validPage, items: [withoutEntryId] })
+        .success,
+    ).toBe(false);
+    expect(
+      EntryListPageSchema.safeParse({
+        ...validPage,
+        items: [{ ...validSummary, entryId: 'not-a-uuid' }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('carries the server-derived entry lifecycle and last-update instant on every item (DEC-145)', () => {
+    for (const entryLifecycle of [
+      'active',
+      'archived',
+      'deletion_pending',
+      'held',
+    ])
+      expect(
+        EntryListPageSchema.safeParse({
+          ...validPage,
+          items: [{ ...validSummary, entryLifecycle }],
+        }).success,
+        entryLifecycle,
+      ).toBe(true);
+    const { entryLifecycle: _lifecycle, ...withoutLifecycle } = validSummary;
+    const { entryUpdatedAt: _updatedAt, ...withoutUpdatedAt } = validSummary;
+    void _lifecycle;
+    void _updatedAt;
+    for (const bad of [
+      withoutLifecycle,
+      withoutUpdatedAt,
+      { ...validSummary, entryLifecycle: 'published' },
+      { ...validSummary, entryLifecycle: null },
+      { ...validSummary, entryUpdatedAt: 'yesterday' },
+      { ...validSummary, entryUpdatedAt: '2026-09-26' },
+      { ...validSummary, entryUpdatedAt: null },
+    ])
+      expect(
+        EntryListPageSchema.safeParse({ ...validPage, items: [bad] }).success,
+      ).toBe(false);
+  });
+
   it('rejects unknown keys and ownership identifiers on the summary and page', () => {
     expect(
       EntryListPageSchema.safeParse({ ...validPage, extra: 1 }).success,
     ).toBe(false);
-    for (const leaked of ['ownerId', 'entryId', 'partyId', 'createdByPersonId'])
+    for (const leaked of ['ownerId', 'partyId', 'createdByPersonId'])
       expect(
         EntryListPageSchema.safeParse({ ...validPage, [leaked]: uuid }).success,
       ).toBe(false);
-    for (const leaked of ['ownerId', 'entryId', 'partyId'])
+    for (const leaked of ['ownerId', 'partyId'])
       expect(
         EntryListPageSchema.safeParse({
           ...validPage,
-          items: [{ ...validSummary, [leaked]: uuid }],
+          items: [{ ...validSummary, entryId: uuid2, [leaked]: uuid }],
         }).success,
       ).toBe(false);
   });
 });
-

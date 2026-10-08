@@ -10,8 +10,30 @@ and `detail-routes.ts` the CMS-03B-11 draft-detail read. The
 admission helpers enforce bounded JSON, strong validators, browser origin and
 CSRF rules for mutations, capability checks, dual rate buckets, dependency
 deadlines, and canonical responses. `route-execution.ts` contains the rate and
-redacted telemetry seams; `types.ts` defines the injected session, rate, and
-persistence ports. Co-located tests cover those boundaries.
+redacted telemetry seams; `types.ts` defines the injected rate, persistence,
+and dependency ports and `port-inputs.ts` the trusted session and the typed
+per-operation port inputs. `route-errors.ts` owns the common no-store headers,
+the safe-read error boundary, and the single `ApiError` response builder every
+route uses; `route-error-details.ts` owns the allowlisted detail projection
+behind it, and `routes.ts` re-exports `commonHeaders`, `errorResponse`, and
+`sanitizeReadError` so route modules keep one import. Co-located tests cover
+those boundaries.
+
+Slice 10 adds three safe reads: `conflict-detail-routes.ts` registers the
+CMS-03B-12 three-way conflict detail, `list-routes.ts` the CMS-03B-13
+assigned-entry keyset list, and `authoring-context-routes.ts` the CMS-03B-14
+authoring-context preparation read. All three share the empty-media read
+admission, the numbered path/header/body/query refusal, the closed capability
+and rate gates, and the strong no-store ETag. Their read-error envelope
+(`sanitizeReadError`) replaces every dependency message with the canonical
+route text, conceals an absent or hidden target as an empty-detail 404, and
+keeps a visible-but-unassigned target a bounded 403.
+
+The CMS-03B-14 authoring-context ETag is a strong representation validator:
+`"sha256:<lowercase hexadecimal SHA-256 of the exact UTF-8 JSON response
+bytes>"`. The response bytes are `JSON.stringify` of the strict parsed
+resource, with no actor or acting-party preimage, so a first-party proxy can
+recompute the validator from the body without private scope inputs.
 
 ## Ownership
 
@@ -26,28 +48,55 @@ An in-isolate replay cache must never bypass those database checks.
 Add each new BE03b operation by first extending the strict contracts and RED
 route tests, then injecting a named port and registering the route here. Keep
 new operations fail-closed until their production adapter, RPC, and policy
-source are available. CMS-03B-10 create has its protected Worker route and
-production RPC adapter, but its human form remains disabled because no served
-source supplies the required workflow-policy evidence and the private policy
-source is unconfigured.
-CMS-03B-03 history now binds its named production RPC port to the signed
-service-role wrapper. Without an owner-controlled, per-environment Vault key,
-that RPC returns a typed 503 and no history; the local fixed test key is not an
-operational secret. The private database reader remains unsigned internally;
-only its service-role API wrapper signs outward cursors. Hosted composition and
-key rotation are not yet verified. Its read route rejects body/media claims
-before session lookup and reports the locked 400 field violations for malformed
-cursor, limit, comparison ID, and locale; signed context mismatches remain
-distinct private-RPC conflicts. CMS-03B-11 draft
-detail now has a named production RPC adapter. Its private read verifies active
-schema fields and currently resolves authorized content-relation targets;
-unsupported or opaque non-omit projections still fail closed rather than
-returning partially verified values. This local wiring is not hosted acceptance.
-CMS-03B-04 restore is registered with a missing production port until the
-private RPC proves source readability and the ordered migration chain; the
-POST returns a typed 503 without creating a revision.
-CMS-03B-02 has a protected route and production RPC adapter, but the missing
-real editorial-policy source still makes database resolution fail closed.
+source are available. All nine operations have a protected route and a named
+production RPC adapter. CMS-03B-10, -01, -02 and -04 re-fetch the editorial
+workflow-policy evidence, the activation evidence, the compiled artifact and the
+frozen protected `rich_text.v1` validator in the database; when any is absent or
+stale the RPC answers a typed 503 and writes nothing. CMS-03B-03 history and
+CMS-03B-13 list bind to signed service-role wrappers. Without an
+owner-provisioned, per-environment Vault key (`cms_editorial_history_cursor_active`)
+their first page is a typed 503 and no data; the local fixed test key is not an
+operational secret. The private database readers stay unsigned internally; only
+the service-role API wrappers sign outward cursors. Their read routes reject
+body/media claims before session lookup; a structurally malformed cursor, limit,
+comparison ID or locale is a 400 with safe violation pointers, and an expired,
+tampered or foreign-bound cursor is a restartable 409 (DEC-140). CMS-03B-11 draft
+detail verifies the active schema fields and returns only authorized,
+schema-typed values and bounded relations; an unavailable relation target
+follows its RelationDefinition (`omit` disappears, `placeholder` is opaque,
+`block` refuses). CMS-03B-04 restore binds the protected migration-chain RPC
+(`cms-editorial-production-restore-port.ts`) and answers
+`{ resource, restoreVerification }`; a 65-version chain is accepted and a
+66-version evidence list is refused as an invalid response. Hosted composition,
+key rotation and drills are not yet verified; this local wiring is not hosted
+acceptance. The operator procedure is `docs/runbooks/platform/cms-editorial.md`.
+
+## Errors, deadlines and telemetry (Slice 10)
+
+- `error-vocabulary.ts` is the closed set of typed `reasonCode` tokens, recovery
+  actions and conflict kinds a 409/422 may publish, plus the safe JSON-pointer
+  grammar of `details.violations`. A new typed reason is added there, in
+  `apps/worker/src/cms-editorial-production-error-tokens.ts` (the whole-token
+  RPC table) and in BE03b together; nothing outside the sets reaches a client.
+- `createRouteDeadline` (admission-deadline.ts) gives every route one cumulative
+  budget clamped to the operation's declared timeout, with `request.signal` as
+  the parent of every dependency call.
+- `route-stages.ts` wraps the injected seams once so telemetry reports only the
+  stages (authority, rate limit, RPC) a request really entered.
+  `route-telemetry.ts` builds the single redacted event per request: the BE03b
+  `cms_*` metrics with closed labels, safe counts, retryability derived from the
+  published ApiError, and a hash of the entry id. No identifier, value or
+  credential is ever added; extend `RouteFacts`, not the event, for new counts.
+- A command answered from its stored idempotent outcome may carry the private
+  `x-cms-idempotent-replay: true` response header from the database; it only
+  affects telemetry and is never forwarded.
+- The Worker's in-isolate counter of three concurrent CMS-03B-01 writes per actor
+  (`cms-editorial-production.ts`) is only a cheap pre-filter; the authority is
+  the database's three per-actor transaction slots, which answer `RATE_LIMITED`
+  (429) across isolates before any insert.
+- Edit-presence expiry is not an HTTP route: it is the scheduled
+  `apps/worker/src/production-cms-edit-presence-sweep.ts`, which logs the
+  `cms_presence_active` gauge.
 
 ## Conventions
 
@@ -59,4 +108,5 @@ Keep source and test files within the project 400-line limit.
 ## Related links
 
 See the locked BE03b editorial specification, the CMS editorial contracts
-README, and `apps/web/src/server/README.md` for the browser proxy boundary.
+README, `apps/web/src/server/README.md` for the browser proxy boundary, and
+`docs/runbooks/platform/cms-editorial.md` for operations.

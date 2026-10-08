@@ -60,19 +60,27 @@ const literal = (over: Record<string, unknown> = {}): Record<string, unknown> =>
 const objectField = (
   over: Record<string, unknown> = {},
 ): Record<string, unknown> =>
-  baseField({ key: 'hero', kind: 'object', constraints: { objectStructure: heroStructure }, ...over });
+  baseField({
+    key: 'hero',
+    kind: 'object',
+    constraints: { objectStructure: heroStructure },
+    ...over,
+  });
 
 type StructureGuard = (structure: unknown, value: unknown) => boolean;
 const structureGuard = (
   structuredValues as { isObjectValueForStructure?: StructureGuard }
 ).isObjectValueForStructure;
 const acceptsObjectValue = (structure: unknown, value: unknown): boolean =>
-  typeof structureGuard === 'function' ? structureGuard(structure, value) : false;
+  typeof structureGuard === 'function'
+    ? structureGuard(structure, value)
+    : false;
 
 describe('[P2-S10-1a] FieldConstraintsSchema carries the optional objectStructure', () => {
   it('accepts an objectStructure and leaves it optional for legacy constraints', () => {
     expect(
-      FieldConstraintsSchema.safeParse({ objectStructure: heroStructure }).success,
+      FieldConstraintsSchema.safeParse({ objectStructure: heroStructure })
+        .success,
     ).toBe(true);
     expect(
       FieldConstraintsSchema.safeParse({
@@ -81,7 +89,12 @@ describe('[P2-S10-1a] FieldConstraintsSchema carries the optional objectStructur
         objectStructure: heroStructure,
       }).success,
     ).toBe(true);
-    for (const legacy of [{}, { minLength: 1 }, { enumValues: ['a'] }, { itemKind: 'short_text' }])
+    for (const legacy of [
+      {},
+      { minLength: 1 },
+      { enumValues: ['a'] },
+      { itemKind: 'short_text' },
+    ])
       expect(FieldConstraintsSchema.safeParse(legacy).success).toBe(true);
   });
 
@@ -104,7 +117,9 @@ describe('[P2-S10-1a] FieldConstraintsSchema carries the optional objectStructur
     expect(
       FieldConstraintsSchema.safeParse({
         objectStructure: {
-          properties: [{ key: 'status', kind: 'enum', required: true, constraints: {} }],
+          properties: [
+            { key: 'status', kind: 'enum', required: true, constraints: {} },
+          ],
         },
       }).success,
     ).toBe(false);
@@ -125,7 +140,9 @@ describe('[P2-S10-1a] FieldConstraintsSchema carries the optional objectStructur
 
 describe('[P2-S10-1a] FieldDefinitionInputSchema kind/structure agreement', () => {
   it('requires an objectStructure on the object kind', () => {
-    expect(FieldDefinitionInputSchema.safeParse(objectField()).success).toBe(true);
+    expect(FieldDefinitionInputSchema.safeParse(objectField()).success).toBe(
+      true,
+    );
     expect(
       FieldDefinitionInputSchema.safeParse(
         baseField({ key: 'hero', kind: 'object', constraints: {} }),
@@ -134,7 +151,21 @@ describe('[P2-S10-1a] FieldDefinitionInputSchema kind/structure agreement', () =
   });
 
   it('forbids an objectStructure on every non-object kind', () => {
-    for (const kind of ['short_text', 'long_text', 'rich_text', 'boolean', 'integer', 'decimal', 'date', 'datetime', 'enum', 'taxonomy', 'relation', 'media', 'list']) {
+    for (const kind of [
+      'short_text',
+      'long_text',
+      'rich_text',
+      'boolean',
+      'integer',
+      'decimal',
+      'date',
+      'datetime',
+      'enum',
+      'taxonomy',
+      'relation',
+      'media',
+      'list',
+    ]) {
       expect(
         FieldDefinitionInputSchema.safeParse(
           baseField({ kind, constraints: { objectStructure: heroStructure } }),
@@ -181,14 +212,22 @@ describe('[P2-S10-1a] object literal defaults must satisfy the declared structur
   it('accepts minimal and fully-populated values', () => {
     expect(
       FieldDefinitionInputSchema.safeParse(
-        objectField({ defaultMode: 'literal', defaultValue: { title: 'Hello', status: 'draft' } }),
+        objectField({
+          defaultMode: 'literal',
+          defaultValue: { title: 'Hello', status: 'draft' },
+        }),
       ).success,
     ).toBe(true);
     expect(
       FieldDefinitionInputSchema.safeParse(
         objectField({
           defaultMode: 'literal',
-          defaultValue: { title: 'Hello', subtitle: 'world', status: 'live', body: richDoc },
+          defaultValue: {
+            title: 'Hello',
+            subtitle: 'world',
+            status: 'live',
+            body: richDoc,
+          },
         }),
       ).success,
     ).toBe(true);
@@ -197,7 +236,10 @@ describe('[P2-S10-1a] object literal defaults must satisfy the declared structur
   it('allows optional properties to be missing but not invalid when present', () => {
     expect(
       FieldDefinitionInputSchema.safeParse(
-        objectField({ defaultMode: 'literal', defaultValue: { title: 'Hello', status: 'draft' } }),
+        objectField({
+          defaultMode: 'literal',
+          defaultValue: { title: 'Hello', status: 'draft' },
+        }),
       ).success,
     ).toBe(true);
     expect(
@@ -221,7 +263,10 @@ describe('[P2-S10-1a] object literal defaults must satisfy the declared structur
     ).toBe(false);
     expect(
       FieldDefinitionInputSchema.safeParse(
-        objectField({ defaultMode: 'literal', defaultValue: { status: 'draft' } }),
+        objectField({
+          defaultMode: 'literal',
+          defaultValue: { status: 'draft' },
+        }),
       ).success,
     ).toBe(false);
   });
@@ -242,12 +287,18 @@ describe('[P2-S10-1a] object literal defaults must satisfy the declared structur
   it('bounds enum values to the declared set of strings', () => {
     expect(
       FieldDefinitionInputSchema.safeParse(
-        objectField({ defaultMode: 'literal', defaultValue: { title: 'Hello', status: 'archived' } }),
+        objectField({
+          defaultMode: 'literal',
+          defaultValue: { title: 'Hello', status: 'archived' },
+        }),
       ).success,
     ).toBe(false);
     expect(
       FieldDefinitionInputSchema.safeParse(
-        objectField({ defaultMode: 'literal', defaultValue: { title: 'Hello', status: 1 } }),
+        objectField({
+          defaultMode: 'literal',
+          defaultValue: { title: 'Hello', status: 1 },
+        }),
       ).success,
     ).toBe(false);
   });
@@ -257,7 +308,11 @@ describe('[P2-S10-1a] object literal defaults must satisfy the declared structur
       FieldDefinitionInputSchema.safeParse(
         objectField({
           defaultMode: 'literal',
-          defaultValue: { title: 'Hello', status: 'draft', body: 'not a document' },
+          defaultValue: {
+            title: 'Hello',
+            status: 'draft',
+            body: 'not a document',
+          },
         }),
       ).success,
     ).toBe(false);
@@ -283,8 +338,9 @@ describe('[P2-S10-1a] object literal defaults must satisfy the declared structur
 
   it('still requires a literal default when the mode is literal', () => {
     expect(
-      FieldDefinitionInputSchema.safeParse(objectField({ defaultMode: 'literal' }))
-        .success,
+      FieldDefinitionInputSchema.safeParse(
+        objectField({ defaultMode: 'literal' }),
+      ).success,
     ).toBe(false);
   });
 });
@@ -308,13 +364,19 @@ describe('[P2-S10-1a] legacy nonstructured fields still parse', () => {
     ).toBe(true);
     expect(
       FieldDefinitionInputSchema.safeParse(
-        literal({ kind: 'enum', constraints: { enumValues: ['a', 'b'] }, defaultValue: 'a' }),
+        literal({
+          kind: 'enum',
+          constraints: { enumValues: ['a', 'b'] },
+          defaultValue: 'a',
+        }),
       ).success,
     ).toBe(true);
   });
 
   it('keeps none/inherited fields and the validator pair rule unchanged', () => {
-    expect(FieldDefinitionInputSchema.safeParse(baseField()).success).toBe(true);
+    expect(FieldDefinitionInputSchema.safeParse(baseField()).success).toBe(
+      true,
+    );
     expect(
       FieldDefinitionInputSchema.safeParse(
         baseField({ defaultMode: 'inherited', defaultValue: 'x' }),
@@ -330,7 +392,9 @@ describe('[P2-S10-1a] legacy nonstructured fields still parse', () => {
 
 describe('[P2-S10-1a] isObjectValueForStructure implements the exact rules', () => {
   it('accepts values that match the declared structure', () => {
-    expect(acceptsObjectValue(heroStructure, { title: 'Hello', status: 'draft' })).toBe(true);
+    expect(
+      acceptsObjectValue(heroStructure, { title: 'Hello', status: 'draft' }),
+    ).toBe(true);
     expect(
       acceptsObjectValue(heroStructure, {
         title: 'Hello',
@@ -339,7 +403,12 @@ describe('[P2-S10-1a] isObjectValueForStructure implements the exact rules', () 
         body: richDoc,
       }),
     ).toBe(true);
-    expect(acceptsObjectValue({ properties: heroStructure.properties.slice(1, 2) }, {})).toBe(true);
+    expect(
+      acceptsObjectValue(
+        { properties: heroStructure.properties.slice(1, 2) },
+        {},
+      ),
+    ).toBe(true);
   });
 
   it('refuses unknown, missing, nested and out-of-set values', () => {
@@ -358,7 +427,10 @@ describe('[P2-S10-1a] isObjectValueForStructure implements the exact rules', () 
       { title: 'Hello', status: 'draft', subtitle: [] },
     ];
     for (const value of cases)
-      expect(acceptsObjectValue(heroStructure, value), JSON.stringify(value)).toBe(false);
+      expect(
+        acceptsObjectValue(heroStructure, value),
+        JSON.stringify(value),
+      ).toBe(false);
   });
 
   it('agrees with the schema over a corpus', () => {
@@ -372,13 +444,13 @@ describe('[P2-S10-1a] isObjectValueForStructure implements the exact rules', () 
       null,
     ];
     for (const value of corpus) {
-      const viaSchema =
-        FieldDefinitionInputSchema.safeParse(
-          objectField({ defaultMode: 'literal', defaultValue: value }),
-        ).success;
-      expect(acceptsObjectValue(heroStructure, value), JSON.stringify(value)).toBe(
-        viaSchema,
-      );
+      const viaSchema = FieldDefinitionInputSchema.safeParse(
+        objectField({ defaultMode: 'literal', defaultValue: value }),
+      ).success;
+      expect(
+        acceptsObjectValue(heroStructure, value),
+        JSON.stringify(value),
+      ).toBe(viaSchema);
     }
     expect(ObjectStructureSchema.safeParse(heroStructure).success).toBe(true);
   });

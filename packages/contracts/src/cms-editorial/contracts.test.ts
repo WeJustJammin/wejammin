@@ -10,8 +10,10 @@ import {
   EntryRevisionRequestSchema,
   EntryRevisionResourceSchema,
   EntryRevisionStateSchema,
+  FieldPointerSchema,
   JsonPointerSchema,
   cmsEditorialCapabilitiesSatisfied,
+  fieldIdOfPointer,
 } from './index';
 
 const uuid = '123e4567-e89b-42d3-a456-426614174000';
@@ -26,7 +28,7 @@ const nest = (levels: number): Record<string, unknown> =>
 const validRequest = {
   entryId: uuid,
   baseRevision: '3',
-  changedPaths: ['/fields/title'],
+  changedPaths: [`/fields/${uuid2}`],
   values: { [uuid2]: nest(6) },
   locale: 'en-US',
   expectedVersion: '7',
@@ -35,6 +37,7 @@ const validRequest = {
 const validResource = {
   id: uuid,
   version: '4',
+  entryVersion: '9',
   createdAt: instant,
   updatedAt: instant,
   state: 'draft',
@@ -102,21 +105,68 @@ describe('cms editorial primitives', () => {
     expect(Bcp47Schema.safeParse('english-').success).toBe(false);
   });
 
-  it('requires 1-128 unique JSON Pointers', () => {
-    expect(ChangedPathsSchema.safeParse(['/a', '/b']).success).toBe(true);
+  it('bounds an editorial locale at 35 characters: 35 is accepted and 36 refused', () => {
+    // en + three 8-letter subtags + one 5-letter subtag = 2 + 27 + 6 = 35.
+    const at35 = 'en' + '-abcdefgh'.repeat(3) + '-abcde';
+    expect(at35).toHaveLength(35);
+    expect(Bcp47Schema.safeParse(at35).success).toBe(true);
+    expect(Bcp47Schema.safeParse(at35 + 'f').success).toBe(false);
+    expect(
+      EntryRevisionRequestSchema.safeParse({
+        ...validRequest,
+        locale: at35 + 'f',
+      }).success,
+    ).toBe(false);
+    expect(
+      EntryRevisionRequestSchema.safeParse({ ...validRequest, locale: at35 })
+        .success,
+    ).toBe(true);
+  });
+
+  const fieldPointer = (index: number): string =>
+    `/fields/123e4567-e89b-42d3-a456-${String(index).padStart(12, '0')}`;
+
+  it('requires 1-128 unique /fields/{stableFieldId} pointers', () => {
+    expect(
+      ChangedPathsSchema.safeParse([fieldPointer(1), fieldPointer(2)]).success,
+    ).toBe(true);
     expect(ChangedPathsSchema.safeParse([]).success).toBe(false);
-    expect(ChangedPathsSchema.safeParse(['/a', '/a']).success).toBe(false);
+    expect(
+      ChangedPathsSchema.safeParse([fieldPointer(1), fieldPointer(1)]).success,
+    ).toBe(false);
     expect(ChangedPathsSchema.safeParse(['not-a-pointer']).success).toBe(false);
     expect(
       ChangedPathsSchema.safeParse(
-        Array.from({ length: 128 }, (_, index) => `/p/${index}`),
+        Array.from({ length: 128 }, (_, index) => fieldPointer(index)),
       ).success,
     ).toBe(true);
     expect(
       ChangedPathsSchema.safeParse(
-        Array.from({ length: 129 }, (_, index) => `/p/${index}`),
+        Array.from({ length: 129 }, (_, index) => fieldPointer(index)),
       ).success,
     ).toBe(false);
+  });
+
+  it('refuses every pointer that is not /fields/{lowercase uuid}, as SQL does', () => {
+    for (const bad of [
+      '/a',
+      '/fields/title',
+      '/fields/',
+      '/fields',
+      '/blocks/hero',
+      '/relations/123e4567-e89b-42d3-a456-426614174000/' + 'a'.repeat(64),
+      '/fields/123E4567-E89B-42D3-A456-426614174000',
+      '/fields/123e4567-e89b-42d3-a456-42661417400',
+      '/fields/123e4567-e89b-42d3-a456-426614174000/extra',
+      '/fields/123e4567-e89b-42d3-a456-426614174000 ',
+      '/fields/123e4567-e89b-12d3-c456-426614174000',
+      'fields/123e4567-e89b-42d3-a456-426614174000',
+    ])
+      expect(ChangedPathsSchema.safeParse([bad]).success, bad).toBe(false);
+    expect(FieldPointerSchema.safeParse(fieldPointer(7)).success).toBe(true);
+    expect(fieldIdOfPointer(fieldPointer(7))).toBe(
+      '123e4567-e89b-42d3-a456-000000000007',
+    );
   });
 
   it('bounds entry values by UUID keys, key count, and JSON depth', () => {
@@ -375,6 +425,33 @@ describe('cms editorial success resource', () => {
     ).toBe(false);
   });
 
+  it('carries the committed entry version beside the revision version: entryVersion is the only next CAS', () => {
+    // `version` is the immutable revision snapshot's own envelope version; the
+    // aggregate version a client must send next is `entryVersion`, so the two are
+    // distinct members and entryVersion is mandatory (the audit's CAS ambiguity).
+    const { entryVersion: _entryVersion, ...withoutEntryVersion } =
+      validResource;
+    void _entryVersion;
+    expect(
+      EntryRevisionResourceSchema.safeParse(withoutEntryVersion).success,
+    ).toBe(false);
+    expect(
+      EntryRevisionResourceSchema.safeParse({
+        ...validResource,
+        entryVersion: '0',
+      }).success,
+    ).toBe(false);
+    expect(
+      EntryRevisionResourceSchema.safeParse({
+        ...validResource,
+        entryVersion: '01',
+      }).success,
+    ).toBe(false);
+    const parsed = EntryRevisionResourceSchema.parse(validResource);
+    expect(parsed.version).toBe('4');
+    expect(parsed.entryVersion).toBe('9');
+  });
+
   it('carries one strict resource meta with no duplicated contentHash', () => {
     expect(
       Object.keys(EntryRevisionResourceSchema.parse(validResource)).sort(),
@@ -383,6 +460,7 @@ describe('cms editorial success resource', () => {
       'contentHash',
       'createdAt',
       'entryId',
+      'entryVersion',
       'id',
       'locale',
       'parentRevisionIds',

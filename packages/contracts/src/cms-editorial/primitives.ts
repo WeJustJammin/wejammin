@@ -7,10 +7,14 @@ import {
 } from '../content-schema-registry/primitives.ts';
 
 /**
- * BE03b `Bcp47`.  The registry locks the identical grammar, so this is a
- * re-export instead of a second, drift-prone copy.
+ * BE03b `Bcp47`: the registry's locked grammar plus the 2-35 character length
+ * bound the BE03b validation matrix states for every editorial locale (the
+ * 03a locale configuration bounds a tag at 35 characters too), so a structurally
+ * valid tag of 36 or more characters is refused at the proxy and the Worker.
+ * The grammar itself stays the registry's, not a second drift-prone copy.
  */
-export const Bcp47Schema = CmsLocaleSchema;
+export const CMS_LOCALE_MAX_CHARACTERS = 35;
+export const Bcp47Schema = CmsLocaleSchema.max(CMS_LOCALE_MAX_CHARACTERS);
 
 /**
  * BE03b `JsonPointer`: a leading slash plus 1-256 non-control characters.
@@ -53,9 +57,30 @@ export const cmsEditorialJsonDepth = (value: unknown): number => {
   return 0;
 };
 
-/** BE03b `ChangedPaths`: 1-128 unique JSON Pointers. */
+const FIELD_POINTER_PREFIX = '/fields/';
+
+/**
+ * BE03b "Pointers" (normative): a command addresses a field as
+ * `/fields/{stableFieldId}` for every field kind (a relation is a field), where
+ * the id is a lowercase UUID, so the pointer is at most 44 characters. A
+ * `/blocks/...` or any other pointer is refused by CMS-03B-01 and CMS-03B-10
+ * until a composition write path exists, exactly as the database refuses it
+ * (`^/fields/<lowercase uuid>$`), so the proxy and Worker never accept a shape
+ * SQL will reject.
+ */
+export const FieldPointerSchema = z.string().refine((value) => {
+  if (!value.startsWith(FIELD_POINTER_PREFIX)) return false;
+  const id = value.slice(FIELD_POINTER_PREFIX.length);
+  return id === id.toLowerCase() && CmsUuidSchema.safeParse(id).success;
+}, 'field_pointer_invalid');
+
+/** The stable field id a validated field pointer names. */
+export const fieldIdOfPointer = (pointer: string): string =>
+  pointer.slice(FIELD_POINTER_PREFIX.length);
+
+/** BE03b `ChangedPaths`: 1-128 unique `/fields/{stableFieldId}` pointers. */
 export const ChangedPathsSchema = z
-  .array(JsonPointerSchema)
+  .array(FieldPointerSchema)
   .min(1, 'changed_paths_min')
   .max(128, 'changed_paths_max')
   .superRefine((paths, context) => {

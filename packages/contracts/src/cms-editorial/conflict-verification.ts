@@ -10,7 +10,7 @@ import {
   ConflictResolutionRequestSchema,
 } from './conflict-resolution.ts';
 import { ConflictYoursSourceSchema } from './models.ts';
-import { JsonPointerSchema } from './primitives.ts';
+import { FieldPointerSchema } from './primitives.ts';
 
 /** The revision branch: the yours side became a real revision, referenced by id. */
 const conflictRevisionSourceEvidenceSchema = z.strictObject({
@@ -61,7 +61,7 @@ const conflictResolutionRegistryEvidenceSchema = z
     baseRevisionId: CmsUuidSchema,
     theirsRevisionId: CmsUuidSchema,
     entryVersion: CmsVersionSchema,
-    changedPaths: z.array(JsonPointerSchema).min(1).max(128).readonly(),
+    changedPaths: z.array(FieldPointerSchema).min(1).max(128).readonly(),
     yours: ConflictYoursSourceEvidenceSchema,
   })
   .readonly();

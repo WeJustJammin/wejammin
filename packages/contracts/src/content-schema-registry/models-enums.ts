@@ -16,6 +16,21 @@ export const CmsFieldKindSchema = z.enum([
   'object',
   'list',
 ]);
+/**
+ * BE03a "Field kind structure" (DEC-133): a `list` field's `itemKind` is a
+ * scalar kind or `enum`; a nested list/object/relation/media/rich_text item is
+ * refused at definition time. Mirrors `platform_private.cms_list_item_kind_valid`.
+ */
+export const CMS_LIST_ITEM_KINDS: ReadonlySet<string> = new Set([
+  'short_text',
+  'long_text',
+  'boolean',
+  'integer',
+  'decimal',
+  'date',
+  'datetime',
+  'enum',
+]);
 export const CmsDefinitionStateSchema = z.enum([
   'draft',
   'review',

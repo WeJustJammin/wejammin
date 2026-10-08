@@ -1,6 +1,9 @@
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
-import type { CmsEditorialOperationId } from '@wejammin/contracts';
+import type {
+  CmsEditorialOperationId,
+  CmsEditorialRoutePolicy,
+} from '@wejammin/contracts';
 
 import type { Logger } from '@wejammin/observability/logging';
 
@@ -11,8 +14,12 @@ export const CMS_EDITORIAL_PRODUCTION_OPERATION_IDS = [
   'CMS-03B-01',
   'CMS-03B-02',
   'CMS-03B-03',
+  'CMS-03B-04',
   'CMS-03B-10',
   'CMS-03B-11',
+  'CMS-03B-12',
+  'CMS-03B-13',
+  'CMS-03B-14',
 ] as const;
 
 export type CmsEditorialProductionOperationId =
@@ -26,8 +33,12 @@ export const CMS_EDITORIAL_RPC = {
   'CMS-03B-01': 'cms_create_revision',
   'CMS-03B-02': 'cms_resolve_conflict',
   'CMS-03B-03': 'cms_list_revisions',
+  'CMS-03B-04': 'cms_restore_revision',
   'CMS-03B-10': 'cms_create_entry',
   'CMS-03B-11': 'cms_get_entry_draft',
+  'CMS-03B-12': 'cms_get_conflict_detail',
+  'CMS-03B-13': 'cms_list_entries',
+  'CMS-03B-14': 'cms_get_entry_authoring_context',
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, string>
 >;
@@ -44,8 +55,12 @@ export const CMS_EDITORIAL_DEADLINE_MS = {
   'CMS-03B-01': 15_000,
   'CMS-03B-02': 15_000,
   'CMS-03B-03': 8_000,
+  'CMS-03B-04': 15_000,
   'CMS-03B-10': 15_000,
   'CMS-03B-11': 8_000,
+  'CMS-03B-12': 8_000,
+  'CMS-03B-13': 8_000,
+  'CMS-03B-14': 8_000,
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, number>
 >;
@@ -54,8 +69,12 @@ export const CMS_EDITORIAL_RATE_LIMIT = {
   'CMS-03B-01': { limit: 120, partyLimit: 240, windowSeconds: 60 },
   'CMS-03B-02': { limit: 60, partyLimit: 120, windowSeconds: 60 },
   'CMS-03B-03': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-04': { limit: 30, partyLimit: 60, windowSeconds: 60 },
   'CMS-03B-10': { limit: 120, partyLimit: 240, windowSeconds: 60 },
   'CMS-03B-11': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-12': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-13': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-14': { limit: 300, partyLimit: 600, windowSeconds: 60 },
 } as const;
 
 /** BE03b abuse-control classes; a read shares no bucket with an entry write. */
@@ -63,8 +82,12 @@ export const CMS_EDITORIAL_RATE_CLASS = {
   'CMS-03B-01': 'cms-entry-write',
   'CMS-03B-02': 'cms-entry-conflict',
   'CMS-03B-03': 'cms-entry-read',
+  'CMS-03B-04': 'cms-entry-write',
   'CMS-03B-10': 'cms-entry-write',
   'CMS-03B-11': 'cms-entry-read',
+  'CMS-03B-12': 'cms-entry-read',
+  'CMS-03B-13': 'cms-entry-read',
+  'CMS-03B-14': 'cms-entry-read',
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, string>
 >;
@@ -150,7 +173,6 @@ export type CmsEditorialRateLimitInput = Readonly<{
   // Restore consumes a quota before its migration-chain RPC is wired.
   operationId:
     | CmsEditorialProductionOperationId
-    | 'CMS-03B-04'
     | 'CMS-03C-01'
     | 'CMS-03C-02'
     | 'CMS-03C-03'
@@ -188,8 +210,15 @@ export type CmsEditorialProductionError = Readonly<{
   retryAfterSeconds?: number;
 }>;
 
+/**
+ * A success may carry `replayed`: the database answered an exact-key replay
+ * with the original committed outcome (response header
+ * `x-cms-idempotent-replay: true`). It never reaches a client; telemetry uses
+ * it so a replay is not counted as a second creation.
+ */
 export type CmsEditorialProductionResult<T> =
-  Readonly<{ ok: true; value: T }> | CmsEditorialProductionError;
+  | Readonly<{ ok: true; value: T; replayed?: true }>
+  | CmsEditorialProductionError;
 
 export type CmsEditorialProductionConfiguration = Readonly<{
   baseUrl: string;
@@ -266,6 +295,15 @@ export type CmsEditorialTelemetryEvent = Readonly<{
   runbook: string;
   traceSteps?: readonly string[];
   metrics?: Readonly<Record<string, number>>;
+  /** Route-built context; optional so any sink stays assignable. */
+  eventType?: string;
+  slo?: CmsEditorialRoutePolicy['slo'];
+  traceId?: string;
+  actingContextClass?: 'none' | 'party';
+  retryable?: boolean;
+  dependency?: string;
+  entityIdHash?: string;
+  entityVersion?: string;
 }>;
 
 export class CmsEditorialProductionConfigurationError extends Error {

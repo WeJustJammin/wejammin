@@ -16,27 +16,26 @@ import {
 } from './admission-body';
 import { invalid, rejectCommandQuery } from './admission-common';
 import {
-  dependencyDeadline,
-  dependencyTimedOut,
   dependencyUnavailable,
+  createRouteDeadline,
 } from './admission-deadline';
 import {
   checkOrigin,
   csrfErrorIfCookie,
   parseEditorialHeaders,
+  versionDisagreement,
 } from './admission-headers';
 import {
   requireEditorialCapability,
   validHumanSession,
 } from './admission-identity';
-import { emitTelemetry, rateCheck } from './route-execution';
-import { commonHeaders, errorResponse } from './routes';
+import { rateCheck } from './route-execution';
+import { createRouteFinish, entryFacts } from './route-telemetry';
+import { commonHeaders, errorResponse, publishedError } from './routes';
 import {
   CMS_EDITORIAL_RESTORE_OPERATION_ID,
-  CMS_EDITORIAL_RUNBOOK,
   type CmsEditorialDependencies,
   type CmsEditorialError,
-  type CmsEditorialResult,
   type CmsEditorialRestorePortInput,
 } from './types';
 
@@ -81,38 +80,22 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
       request.headers.get('x-request-id') ?? undefined,
     );
     const startedAt = dependencies.now?.() ?? Date.now();
-    const deadlineAt =
-      performance.now() + (dependencies.deadlineMs ?? policy.timeoutMs);
-    const withinDeadline = <T>(
-      invoke: (signal: AbortSignal) => Promise<CmsEditorialResult<T>>,
-    ): Promise<CmsEditorialResult<T>> => {
-      const remainingMs = Math.ceil(deadlineAt - performance.now());
-      return remainingMs <= 0
-        ? Promise.resolve(dependencyTimedOut())
-        : dependencyDeadline(invoke, remainingMs);
-    };
-    const finish = (response: Response): Response => {
-      void emitTelemetry(dependencies, {
-        operationId: CMS_EDITORIAL_RESTORE_OPERATION_ID,
-        requestId,
-        outcome:
-          response.status < 400
-            ? 'success'
-            : response.status < 500
-              ? 'rejected'
-              : 'failure',
-        status: response.status,
-        durationMs: Math.max(
-          0,
-          (dependencies.now?.() ?? Date.now()) - startedAt,
-        ),
-        actorClass: 'human',
-        runbook: CMS_EDITORIAL_RUNBOOK,
-      });
-      return response;
-    };
+    const { deadlineAt, withinDeadline } = createRouteDeadline(
+      request,
+      dependencies.deadlineMs,
+      policy.timeoutMs,
+    );
+    const finish = createRouteFinish(
+      dependencies,
+      request,
+      requestId,
+      policy,
+      startedAt,
+    );
     const fail = (error: CmsEditorialError, headers?: Headers) =>
-      finish(errorResponse(request, dependencies, requestId, error, headers));
+      finish(errorResponse(request, dependencies, requestId, error, headers), {
+        error: publishedError(error),
+      });
 
     // BE00 step 2: CORS origin, body ceiling, content type, session-bound CSRF.
     const originError = checkOrigin(request, dependencies.humanOrigins);
@@ -191,10 +174,11 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
       RevisionRestoreHeadersSchema,
     );
     if (!headers.ok) return fail(headers);
-    if (body.value.expectedVersion !== headers.value.ifMatch)
-      return fail(
-        invalid('The expected version does not match If-Match.', {}, 422),
-      );
+    const disagreement = versionDisagreement(
+      body.value.expectedVersion,
+      headers.value.ifMatch,
+    );
+    if (disagreement !== null) return fail(disagreement);
 
     const restoreRevision = dependencies.ports.restoreRevision;
     if (typeof restoreRevision !== 'function')
@@ -241,7 +225,7 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
       });
     const responseHeaders = commonHeaders(request, dependencies, requestId);
     responseHeaders.set('content-type', 'application/json; charset=UTF-8');
-    responseHeaders.set('etag', `"${parsed.data.version}"`);
+    responseHeaders.set('etag', `"${parsed.data.entryVersion}"`);
     responseHeaders.set(
       'location',
       `/api/v1/cms/entries/${entryId.value}/revisions/${parsed.data.id}`,
@@ -251,6 +235,14 @@ export const registerCmsEditorialRestoreRoutes = <E extends Env>(
         status: 201,
         headers: responseHeaders,
       }),
+      {
+        counts: {
+          restore_edge_count:
+            evidence.data.registry.chainSchemaVersionIds.length - 1,
+        },
+        entry: await entryFacts(entryId.value, parsed.data.entryVersion),
+        replayed: result.replayed === true,
+      },
     );
   });
 };

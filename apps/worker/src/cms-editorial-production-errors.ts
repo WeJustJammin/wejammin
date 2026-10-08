@@ -4,11 +4,24 @@ import type {
   CmsEditorialProductionOperationId,
 } from './cms-editorial-production-types';
 import { CMS_EDITORIAL_RPC } from './cms-editorial-production-types';
+import {
+  SERIALIZATION_TOKENS,
+  STRUCTURED_TOKENS,
+  failureForToken,
+  type FailureMapping,
+} from './cms-editorial-production-error-tokens';
+import {
+  isRecord,
+  safeDetails,
+  violationsFromDetailText,
+} from './cms-editorial-production-error-details';
 
-export const isRecord = (
-  value: unknown,
-): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+export {
+  isRecord,
+  safeDetails,
+  violationsFromDetailText,
+  type SafeViolation,
+} from './cms-editorial-production-error-details';
 
 export const isAbortError = (value: unknown): boolean =>
   (typeof DOMException !== 'undefined' &&
@@ -30,54 +43,6 @@ export const errorResult = (
   details,
   ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
 });
-
-/**
- * BE00 details allowlist. A 404 must stay indistinguishable from absence and a
- * 500 must stay scrubbed, so neither ever carries dependency detail.
- */
-const DETAIL_KEYS = [
-  'dependencyClass',
-  'retryable',
-  'recoveryAction',
-  'reasonCode',
-  'expectedVersion',
-  'currentVersion',
-  'limit',
-  'resetAt',
-  'retryAfterSeconds',
-  'conflict',
-  'expectedHash',
-  'currentHash',
-] as const;
-
-const MAX_DETAIL_VIOLATIONS = 50;
-
-const MAX_DETAIL_KEYS = 16;
-
-export const safeDetails = (
-  status: number,
-  value: unknown,
-): Readonly<Record<string, unknown>> => {
-  if (status === 404 || status === 500) return {};
-  if (!isRecord(value)) return {};
-  const source = isRecord(value.details) ? value.details : value;
-  const details: Record<string, unknown> = {};
-  for (const key of DETAIL_KEYS) {
-    const candidate = source[key];
-    if (
-      typeof candidate === 'string' ||
-      typeof candidate === 'number' ||
-      typeof candidate === 'boolean'
-    )
-      details[key] = candidate;
-  }
-  const violations = source.violations;
-  if (Array.isArray(violations))
-    details.violations = violations
-      .filter((entry) => typeof entry === 'string')
-      .slice(0, MAX_DETAIL_VIOLATIONS);
-  return Object.fromEntries(Object.entries(details).slice(0, MAX_DETAIL_KEYS));
-};
 
 export const unavailable = (dependencyClass = 'cms_editorial') =>
   errorResult(
@@ -121,100 +86,25 @@ export const statusIsSupported = (
 ): value is CmsEditorialProductionError['status'] =>
   (SUPPORTED_STATUSES as readonly number[]).includes(value);
 
-type FailureMapping = Readonly<{
-  status: CmsEditorialProductionError['status'];
-  code: string;
-  message: string;
-}>;
-
 /** Stable RPC-to-ApiError mapping for the 03b editorial surface. */
-export const knownEditorialFailure = (code: string): FailureMapping | null => {
-  const failures: Readonly<Record<string, FailureMapping>> = {
-    INVALID_REQUEST: {
-      status: 400,
-      code: 'INVALID_REQUEST',
-      message: 'The CMS editorial request is invalid.',
-    },
-    UNSUPPORTED_MEDIA_TYPE: {
-      status: 415,
-      code: 'UNSUPPORTED_MEDIA_TYPE',
-      message: 'The CMS editorial request media type is unsupported.',
-    },
-    UNAUTHENTICATED: {
-      status: 401,
-      code: 'UNAUTHENTICATED',
-      message: 'The authentication session is invalid.',
-    },
-    FORBIDDEN: {
-      status: 403,
-      code: 'FORBIDDEN',
-      message: 'The action is not allowed.',
-    },
-    NOT_FOUND: {
-      status: 404,
-      code: 'NOT_FOUND',
-      message: 'The requested CMS editorial resource was not found.',
-    },
-    IDEMPOTENCY_MISMATCH: {
-      status: 409,
-      code: 'CONFLICT',
-      message: 'The idempotency key was used for another request.',
-    },
-    IDEMPOTENCY_CONFLICT: {
-      status: 409,
-      code: 'CONFLICT',
-      message: 'The idempotency key was used for another request.',
-    },
-    VERSION_MISMATCH: {
-      status: 409,
-      code: 'CONFLICT',
-      message: 'The CMS editorial resource changed; reload and try again.',
-    },
-    CONFLICT: {
-      status: 409,
-      code: 'CONFLICT',
-      message: 'The CMS editorial operation conflicts with current state.',
-    },
-    VALIDATION_FAILED: {
-      status: 422,
-      code: 'VALIDATION_FAILED',
-      message: 'The CMS editorial request failed validation.',
-    },
-    RATE_LIMITED: {
-      status: 429,
-      code: 'RATE_LIMITED',
-      message: 'Too many CMS editorial requests.',
-    },
-    DEPENDENCY_UNAVAILABLE: {
-      status: 503,
-      code: 'DEPENDENCY_UNAVAILABLE',
-      message: 'The CMS editorial dependency is temporarily unavailable.',
-    },
-  };
-  return failures[code] ?? null;
-};
-
-const RPC_FAILURE_CODES = [
-  'INVALID_REQUEST',
-  'UNSUPPORTED_MEDIA_TYPE',
-  'UNAUTHENTICATED',
-  'FORBIDDEN',
-  'NOT_FOUND',
-  'IDEMPOTENCY_MISMATCH',
-  'IDEMPOTENCY_CONFLICT',
-  'VERSION_MISMATCH',
-  'CONFLICT',
-  'VALIDATION_FAILED',
-  'RATE_LIMITED',
-  'DEPENDENCY_UNAVAILABLE',
-] as const;
+export const knownEditorialFailure = (code: string): FailureMapping | null =>
+  failureForToken(code);
 
 /**
- * The SQLSTATE PostgREST reports for a plain `RAISE EXCEPTION '<TOKEN>' USING
- * ERRCODE='P0001'`. It is generic, so it is never trusted as the failure token
- * itself; it only licences reading the exact machine token from `message`.
+ * The SQLSTATEs PostgREST reports for `RAISE EXCEPTION '<token>' USING
+ * ERRCODE=...`. `P0001` is the platform's plain raise; `40001` is a CAS
+ * refusal (restore entry version, presence pointer) that PostgREST would
+ * otherwise surface as an HTTP 500. Both are generic, so neither is trusted as
+ * the failure token itself; each only licences reading the exact machine token
+ * from `message`.
  */
 const POSTGREST_RAISE_SQLSTATE = 'P0001';
+const POSTGREST_SERIALIZATION_SQLSTATE = '40001';
+
+const sqlstateOf = (value: unknown): string =>
+  isRecord(value) && typeof value.code === 'string'
+    ? value.code.trim().toUpperCase()
+    : '';
 
 /**
  * Extract the failure token from an RPC error payload.
@@ -223,31 +113,31 @@ const POSTGREST_RAISE_SQLSTATE = 'P0001';
  * message/detail. Only the exact structured token is trusted here: a substring
  * search across the prose would let a caller-influenced detail (for example a
  * 409 conflict whose detail merely mentions a missing record) remap the status
- * or un-conceal a 404. A token that is not an exact allowlisted value is treated
- * as absent, and the caller falls back to the status table, which is fail closed.
+ * or un-conceal a 404. A token that is not an exact table value is treated as
+ * absent, and the caller falls back to the status table, which is fail closed.
  *
  * The platform RPCs raise `EXCEPTION '<TOKEN>' USING ERRCODE='P0001'`, so
  * PostgREST surfaces the generic SQLSTATE in `code` and the machine token in
- * `message`. For that SQLSTATE alone an exact uppercase allowlisted `message`
- * token is adopted, because the alternative is silently collapsing a real
- * 404/409/422 onto the generic 400 fallback. The message is matched whole and
- * case-sensitively, never searched, so prose or an injected detail cannot
- * influence it.
+ * `message`. For that SQLSTATE the `message` is adopted only when it is, whole
+ * and case-sensitively, a key of the closed token table (uppercase BE00 codes
+ * and the lowercase BE03b reasons); for `40001` only the two CAS tokens. The
+ * message is never searched, so prose or an injected detail cannot influence it.
  */
 export const codeFromRpcError = (value: unknown): string => {
   if (!isRecord(value)) return '';
-  const token = value.code;
-  if (typeof token !== 'string') return '';
-  const normalized = token.trim().toUpperCase();
-  if ((RPC_FAILURE_CODES as readonly string[]).includes(normalized))
-    return normalized;
-  if (normalized !== POSTGREST_RAISE_SQLSTATE) return '';
+  const normalized = sqlstateOf(value);
+  if (STRUCTURED_TOKENS.has(normalized)) return normalized;
+  if (
+    normalized !== POSTGREST_RAISE_SQLSTATE &&
+    normalized !== POSTGREST_SERIALIZATION_SQLSTATE
+  )
+    return '';
   const message = value.message;
   if (typeof message !== 'string') return '';
   const messageToken = message.trim();
-  return (RPC_FAILURE_CODES as readonly string[]).includes(messageToken)
-    ? messageToken
-    : '';
+  if (normalized === POSTGREST_SERIALIZATION_SQLSTATE)
+    return SERIALIZATION_TOKENS.has(messageToken) ? messageToken : '';
+  return failureForToken(messageToken) === null ? '' : messageToken;
 };
 
 const statusFallback = (
@@ -268,20 +158,53 @@ const statusFallback = (
   return { status: 503, code: 'DEPENDENCY_UNAVAILABLE' };
 };
 
+/**
+ * Mapper-owned details are a closed lookup: they replace any payload-supplied
+ * `conflict`, `recoveryAction` or `reasonCode`, so the database can name a
+ * reason only through its token, never through free text.
+ */
+const mappedDetails = (
+  mapped: FailureMapping,
+  payload: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> => {
+  const details: Record<string, unknown> = {
+    ...safeDetails(mapped.status, payload),
+    ...mapped.details,
+  };
+  if (mapped.status === 400 || mapped.status === 422) {
+    const pointers = violationsFromDetailText(
+      payload.details,
+      mapped.details?.reasonCode,
+    );
+    if (pointers.length > 0) details.violations = pointers;
+  }
+  return details;
+};
+
 export const mapCmsEditorialRpcFailure = (
   status: number,
   payload: unknown,
 ): CmsEditorialProductionError => {
   const code = codeFromRpcError(payload);
   const mapped = code === '' ? null : knownEditorialFailure(code);
-  if (mapped !== null)
+  if (mapped !== null) {
+    // The database's own INTERNAL_ERROR is a server fault: scrubbed, never
+    // reworded as a caller error.
+    if (mapped.status === 500) return internalError();
     return errorResult(
       mapped.status,
       mapped.code,
       mapped.message,
-      safeDetails(mapped.status, payload),
+      // `mapped` exists only when `codeFromRpcError` found a token, and it
+      // finds one only in a record payload (it returns '' for anything else).
+      mappedDetails(mapped, payload as Readonly<Record<string, unknown>>),
       mapped.status === 429 ? 60 : undefined,
     );
+  }
+  // A plain RAISE the platform did not register (PostgREST answers it 4xx) is
+  // an inconsistency in the database contract, not something the caller did.
+  if (sqlstateOf(payload) === POSTGREST_RAISE_SQLSTATE && status < 500)
+    return internalError();
   if (status === 504) return deadlineExceeded();
   if (status === 502) return invalidResponse();
   if (status >= 500) return unavailable();

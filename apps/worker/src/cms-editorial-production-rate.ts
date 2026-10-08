@@ -52,9 +52,13 @@ const authRateLimiter = (
       {
         operationId: input.operationId,
         request: input.request,
+        // BE03b:1351: an explicit scope keys the user bucket by actor alone and
+        // the party bucket by acting party alone. Without it the shared limiter
+        // falls back to its client-address bucket and the two quotas bleed into
+        // each other and into the caller's IP.
+        scope: input.rateScope,
         authUserId: input.rateScope === 'user' ? input.actorId : null,
-        actingPartyId:
-          input.rateScope === 'party' ? input.actorId : input.actingPartyId,
+        actingPartyId: input.rateScope === 'party' ? input.actorId : null,
         identifierDigest,
         limit: input.limit,
         windowSeconds: input.windowSeconds,

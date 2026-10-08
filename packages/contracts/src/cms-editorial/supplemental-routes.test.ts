@@ -180,13 +180,12 @@ describe('supplemental cms editorial route registry', () => {
     }
   });
 
-  it('uses bounded safe read errors with no CONFLICT on every new row', () => {
+  it('uses bounded safe read errors with no CONFLICT on the conflict-detail and authoring-context rows', () => {
     expect(conflictDetailRoute.errors).toBe(editorialConflictDetailErrors);
     expect(entryListRoute.errors).toBe(editorialEntryListErrors);
     expect(authoringContextRoute.errors).toBe(editorialAuthoringContextErrors);
     for (const errors of [
       editorialConflictDetailErrors,
-      editorialEntryListErrors,
       editorialAuthoringContextErrors,
     ]) {
       expect(errors).toEqual(readErrorShape);
@@ -195,6 +194,21 @@ describe('supplemental cms editorial route registry', () => {
       expect(Object.keys(errors)).toHaveLength(11);
       expect(errors.UNSUPPORTED_MEDIA_TYPE).toBe(415);
     }
+  });
+
+  it('gives the entry list the bounded read codes plus the DEC-140 signed-cursor CONFLICT', () => {
+    // DEC-140: a well-formed signed cursor that is expired, tampered,
+    // foreign-bound or signed by an unknown or stale key is 409 CONFLICT
+    // (BE03b error matrix: cursor/context mismatch); a structurally malformed
+    // cursor stays 400 INVALID_REQUEST.
+    expect(editorialEntryListErrors).toEqual({
+      ...readErrorShape,
+      CONFLICT: 409,
+    });
+    expect(Object.keys(editorialEntryListErrors)).toHaveLength(12);
+    expect(editorialEntryListErrors.CONFLICT).toBe(409);
+    expect(editorialEntryListErrors.INVALID_REQUEST).toBe(400);
+    expect(editorialEntryListErrors.UNSUPPORTED_MEDIA_TYPE).toBe(415);
   });
 
   it('passes the read discriminants and the full policy shape guard', () => {

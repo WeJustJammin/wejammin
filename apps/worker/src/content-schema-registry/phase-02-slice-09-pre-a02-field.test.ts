@@ -45,6 +45,31 @@ const KINDS = [
   'object',
   'list',
 ] as const;
+/**
+ * The structured kinds carry what their locked definition requires (BE03a
+ * CMS-03A-01/02): a `rich_text` field binds the registered protected validator
+ * `rich_text.v1` v1 (DEC-112), an `object` field declares its depth-1 property
+ * structure (DEC-133) and a `list` field names a scalar item kind. Every other
+ * kind is valid on the bare control field.
+ */
+const structuredKindPatch = (
+  kind: (typeof KINDS)[number],
+): Record<string, unknown> => {
+  if (kind === 'rich_text')
+    return { validatorKey: 'rich_text.v1', validatorVersion: '1' };
+  if (kind === 'object')
+    return {
+      constraints: {
+        objectStructure: {
+          properties: [
+            { key: 'label', kind: 'scalar', required: true, constraints: {} },
+          ],
+        },
+      },
+    };
+  if (kind === 'list') return { constraints: { itemKind: 'short_text' } };
+  return {};
+};
 
 describe('CMS-03A-02 field schema change through the real route', () => {
   it('[P2-S09-AC-056] is a strict object of the exact field members plus a required migrationPlanId and refuses unknown keys', async () => {
@@ -165,7 +190,11 @@ describe('CMS-03A-02 field schema change through the real route', () => {
   });
 
   it('[P2-S09-AC-060] accepts exactly the fourteen field kinds', async () => {
-    for (const kind of KINDS) await freshAccepted(A02, fieldWith({ kind }));
+    for (const kind of KINDS)
+      await freshAccepted(
+        A02,
+        fieldWith({ kind, ...structuredKindPatch(kind) }),
+      );
     for (const kind of [
       'string',
       'text',
@@ -179,9 +208,12 @@ describe('CMS-03A-02 field schema change through the real route', () => {
   });
 
   it('[P2-S09-AC-061] constrains with a strict closed key set, min <= max and at most 8 KiB of constraints', async () => {
+    // DEC-133 / BE03a "Field kind structure": itemKind is a list-only
+    // constraint, so the six-member closed set is exercised on a list field.
     const accepted = await freshAccepted(
       A02,
       fieldWith({
+        kind: 'list',
         constraints: {
           minLength: 1,
           maxLength: 80,
@@ -255,9 +287,25 @@ describe('CMS-03A-02 field schema change through the real route', () => {
   });
 
   it('[P2-S09-AC-062] requires validatorKey and validatorVersion both null or both protected references and refuses executable validators', async () => {
+    // DEC-112 / DEC-146 (AC-085): the only registered protected validator is
+    // rich_text.v1 version 1, and it pairs with a rich_text field only.
     await freshAccepted(
       A02,
+      fieldWith({
+        kind: 'rich_text',
+        validatorKey: 'rich_text.v1',
+        validatorVersion: '1',
+      }),
+    );
+    await freshInvalid(
+      A02,
       fieldWith({ validatorKey: 'slug.safe', validatorVersion: '1' }),
+      '/validatorKey',
+    );
+    await freshInvalid(
+      A02,
+      fieldWith({ validatorKey: 'rich_text.v1', validatorVersion: '1' }),
+      '/validatorKey',
     );
     await freshInvalid(
       A02,
@@ -295,7 +343,8 @@ describe('CMS-03A-02 field schema change through the real route', () => {
     await freshInvalid(
       A02,
       fieldWith({
-        validatorKey: 'slug.safe',
+        kind: 'rich_text',
+        validatorKey: 'rich_text.v1',
         validatorVersion: '1',
         validator: 'function(){}',
       }),

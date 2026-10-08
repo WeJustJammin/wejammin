@@ -193,4 +193,30 @@ describe('CMS-03B-04 revision restore verification', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('admits a 64-edge chain (65 named schema versions) and refuses a 66th', () => {
+    // A chain of at most 64 completed plan edges (BE03b D6) names the source
+    // schema version plus one version per edge: 65 versions at the bound.
+    const chain = (count: number): string[] => [
+      uuid,
+      ...Array.from(
+        { length: count - 2 },
+        (_unused, index) =>
+          `123e4567-e89b-42d3-a456-${String(index + 1).padStart(12, '0')}`,
+      ),
+      uuid4,
+    ];
+    expect(
+      RevisionRestoreVerificationSchema.safeParse({
+        ...validVerification,
+        registry: { ...validRegistry, chainSchemaVersionIds: chain(65) },
+      }).success,
+    ).toBe(true);
+    expect(
+      RevisionRestoreVerificationSchema.safeParse({
+        ...validVerification,
+        registry: { ...validRegistry, chainSchemaVersionIds: chain(66) },
+      }).success,
+    ).toBe(false);
+  });
 });

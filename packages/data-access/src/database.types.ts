@@ -744,11 +744,20 @@ export type Database = {
       }
       cms_decide_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_define_template: { Args: { p_request: Json }; Returns: Json }
+      cms_expire_edit_presence_leases: {
+        Args: { p_batch: number }
+        Returns: Json
+      }
       cms_finalize_schema_migration_dry_run: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_get_conflict_detail: { Args: { p_request: Json }; Returns: Json }
       cms_get_content_type_version: { Args: { p_request: Json }; Returns: Json }
+      cms_get_entry_authoring_context: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_get_entry_draft: { Args: { p_request: Json }; Returns: Json }
       cms_get_operational_alert_exercise_eligibility: {
         Args: { p_request: Json }
@@ -770,6 +779,7 @@ export type Database = {
       }
       cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
+      cms_list_entries: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_process_schema_migration_batch: {
         Args: { p_request: Json }
@@ -798,6 +808,7 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_restore_revision: { Args: { p_request: Json }; Returns: Json }
       cms_revoke_capability_grant: { Args: { p_request: Json }; Returns: Json }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
@@ -6426,6 +6437,73 @@ export type Database = {
         }
         Relationships: []
       }
+      cms_restore_chain_manifests: {
+        Row: {
+          content_type_id: string
+          created_at: string
+          edge_count: number
+          id: string
+          manifest_hash: string
+          owner_id: string
+          plan_ids: Json
+          source_schema_version_id: string
+          state: string
+          target_schema_version_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content_type_id: string
+          created_at?: string
+          edge_count: number
+          id?: string
+          manifest_hash: string
+          owner_id: string
+          plan_ids: Json
+          source_schema_version_id: string
+          state?: string
+          target_schema_version_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          content_type_id?: string
+          created_at?: string
+          edge_count?: number
+          id?: string
+          manifest_hash?: string
+          owner_id?: string
+          plan_ids?: Json
+          source_schema_version_id?: string
+          state?: string
+          target_schema_version_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_restore_chain_manifests_content_type_id_fkey"
+            columns: ["content_type_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_restore_chain_manifests_source_schema_version_id_fkey"
+            columns: ["source_schema_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_restore_chain_manifests_target_schema_version_id_fkey"
+            columns: ["target_schema_version_id"]
+            isOneToOne: false
+            referencedRelation: "cms_content_type_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cms_schema_artifacts: {
         Row: {
           artifact_hash: string
@@ -9245,6 +9323,10 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_acquire_revision_write_slot: {
+        Args: { p_actor_id: string }
+        Returns: undefined
+      }
       cms_acting_party: {
         Args: { p_actor_id: string; p_request: Json }
         Returns: string
@@ -9288,6 +9370,18 @@ export type Database = {
       }
       cms_assign_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
+      cms_authored_value_kind_supported: {
+        Args: { p_kind: string }
+        Returns: boolean
+      }
+      cms_authoring_context_field: {
+        Args: { p_field_id: string }
+        Returns: Json
+      }
+      cms_authoring_context_type: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       cms_authority_origin: {
         Args: {
           p_acting_party_id: string
@@ -9369,6 +9463,25 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_compare_relation_token: {
+        Args: {
+          p_domain: string
+          p_entry_id: string
+          p_field_id: string
+          p_key: string
+          p_target_id: string
+          p_target_kind: string
+        }
+        Returns: string
+      }
+      cms_compare_revision_resolvable: {
+        Args: { p_entry_id: string; p_revision_id: string }
+        Returns: boolean
+      }
+      cms_compare_version_resolvable: {
+        Args: { p_entry_id: string; p_version_id: string }
+        Returns: boolean
+      }
       cms_compile_candidate: { Args: { p_version_id: string }; Returns: string }
       cms_compiled_editor_manifest: { Args: { p_request: Json }; Returns: Json }
       cms_compiled_manifest_bounded: {
@@ -9435,6 +9548,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      cms_draft_value_refusal: {
+        Args: {
+          p_field_id: string
+          p_provenance: string
+          p_schema_version_id: string
+          p_value: Json
+        }
+        Returns: string
+      }
       cms_dry_run_report_valid: {
         Args: {
           p_classification: string
@@ -9453,6 +9575,10 @@ export type Database = {
         Args: { p_version_id: string }
         Returns: Json
       }
+      cms_editorial_workflow_policy_valid: {
+        Args: { p_version_id: string }
+        Returns: boolean
+      }
       cms_emit_event: {
         Args: {
           p_acting_party_id: string
@@ -9470,6 +9596,10 @@ export type Database = {
         }
         Returns: string
       }
+      cms_entry_list_epoch: {
+        Args: { p_entry_count: number; p_entry_xor: number }
+        Returns: string
+      }
       cms_entry_tenant_visible: {
         Args: { p_actor_id: string; p_owner_party_id: string }
         Returns: boolean
@@ -9479,11 +9609,24 @@ export type Database = {
         Returns: boolean
       }
       cms_expected_version: { Args: { p_request: Json }; Returns: number }
+      cms_expire_edit_presence_leases: {
+        Args: { p_batch: number }
+        Returns: Json
+      }
+      cms_field_kind_value_shape: {
+        Args: { p_constraints: Json; p_kind: string; p_value: Json }
+        Returns: boolean
+      }
       cms_finalize_schema_migration_dry_run: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_get_conflict_detail: { Args: { p_request: Json }; Returns: Json }
       cms_get_content_type_version: { Args: { p_request: Json }; Returns: Json }
+      cms_get_entry_authoring_context: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_get_entry_draft: { Args: { p_request: Json }; Returns: Json }
       cms_get_schema_migration_plan: {
         Args: { p_request: Json }
@@ -9540,6 +9683,16 @@ export type Database = {
       cms_key_hash: { Args: { p_key: string }; Returns: string }
       cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
+      cms_list_entries: { Args: { p_request: Json }; Returns: Json }
+      cms_list_entries_signed: { Args: { p_request: Json }; Returns: Json }
+      cms_list_item_kind_valid: {
+        Args: { p_item_kind: string }
+        Returns: boolean
+      }
+      cms_list_item_value_valid: {
+        Args: { p_constraints: Json; p_item: Json; p_item_kind: string }
+        Returns: boolean
+      }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions_signed: { Args: { p_request: Json }; Returns: Json }
       cms_locale_canonical_valid: { Args: { p_tag: string }; Returns: boolean }
@@ -9567,6 +9720,14 @@ export type Database = {
       }
       cms_locale_sorted: { Args: { p_supported: Json }; Returns: Json }
       cms_locale_violation_detail: { Args: { p_issues: Json }; Returns: string }
+      cms_localization_fanout: {
+        Args: {
+          p_entry_id: string
+          p_limit: number
+          p_source_revision_id: string
+        }
+        Returns: number
+      }
       cms_lock_activation_authority: {
         Args: {
           p_actor_id: string
@@ -9578,6 +9739,50 @@ export type Database = {
       cms_lock_activation_graph: {
         Args: { p_version_id: string }
         Returns: undefined
+      }
+      cms_lock_activation_identity_authority: {
+        Args: { p_actor_id: string; p_context_id?: string; p_owner_id: string }
+        Returns: undefined
+      }
+      cms_lock_activation_review_rows: {
+        Args: { p_candidate_id: string }
+        Returns: undefined
+      }
+      cms_lock_entry_assignments_shared: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_entry_id: string
+        }
+        Returns: undefined
+      }
+      cms_lock_entry_authority: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_entry_id: string
+        }
+        Returns: undefined
+      }
+      cms_lock_entry_rows_shared: {
+        Args: { p_entry_ids: string[] }
+        Returns: undefined
+      }
+      cms_lock_relation_target: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_target_id: string
+        }
+        Returns: undefined
+      }
+      cms_lock_schema_version_shared: {
+        Args: { p_version_id: string }
+        Returns: undefined
+      }
+      cms_media_reference_valid: {
+        Args: { p_reference: Json }
+        Returns: boolean
       }
       cms_migration_affected_variants: {
         Args: { p_from_version_id: string; p_to_version_id: string }
@@ -9695,6 +9900,18 @@ export type Database = {
         }
         Returns: string
       }
+      cms_object_property_constraints_valid: {
+        Args: { p_constraints: Json; p_kind: string }
+        Returns: boolean
+      }
+      cms_object_structure_valid: {
+        Args: { p_structure: Json }
+        Returns: boolean
+      }
+      cms_object_value_valid: {
+        Args: { p_structure: Json; p_value: Json }
+        Returns: boolean
+      }
       cms_pattern_tree_keys_valid: { Args: { p_tree: Json }; Returns: boolean }
       cms_persisted_dry_run_report_valid: {
         Args: {
@@ -9741,6 +9958,18 @@ export type Database = {
         Args: { p_request: Json }
         Returns: string
       }
+      cms_protected_validator_descriptor: {
+        Args: { p_key: string; p_version: number }
+        Returns: Json
+      }
+      cms_protected_validator_descriptor_body: {
+        Args: { p_key: string; p_version: number }
+        Returns: Json
+      }
+      cms_protected_validator_ref: {
+        Args: { p_key: string; p_version: number }
+        Returns: boolean
+      }
       cms_publish_session: {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: undefined
@@ -9778,6 +10007,28 @@ export type Database = {
         Args: { p_now_at: string; p_request: Json }
         Returns: Json
       }
+      cms_relation_target_visible: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: boolean
+      }
+      cms_relation_value_canonical: {
+        Args: { p_entry_id: string; p_value: Json }
+        Returns: Json
+      }
+      cms_relation_value_visible: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_field_definition_id: string
+          p_value: Json
+        }
+        Returns: Json
+      }
       cms_release_actor: { Args: { p_request: Json }; Returns: string }
       cms_release_nonce_claim: {
         Args: { p_actor_id: string; p_operation_id: string; p_request: Json }
@@ -9812,7 +10063,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      cms_require_draft_value_valid: {
+        Args: {
+          p_field_id: string
+          p_provenance: string
+          p_schema_version_id: string
+          p_value: Json
+        }
+        Returns: undefined
+      }
       cms_require_entry_capability: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_capabilities: string[]
+          p_entry_id: string
+        }
+        Returns: string
+      }
+      cms_require_entry_capability_locked: {
         Args: {
           p_acting_party_id: string
           p_actor_id: string
@@ -9829,6 +10098,14 @@ export type Database = {
       cms_require_scope_member: {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: undefined
+      }
+      cms_require_value_source_available: {
+        Args: { p_field_id: string; p_schema_version_id: string; p_value: Json }
+        Returns: undefined
+      }
+      cms_required_protected_validators: {
+        Args: { p_definition: Json }
+        Returns: Json
       }
       cms_reserve: {
         Args: { p_actor_id: string; p_operation: string; p_request: Json }
@@ -9884,12 +10161,69 @@ export type Database = {
         Returns: string
       }
       cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
+      cms_resolve_relation_targets: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_entry_id: string
+          p_entry_version: number
+          p_field_definition_id: string
+          p_value: Json
+        }
+        Returns: Json
+      }
       cms_resolve_review_policy: {
         Args: { p_version_id: string }
         Returns: Json
       }
       cms_resolve_template_compatibility: {
         Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_restore_active_schema_evidence_valid: {
+        Args: { p_version_id: string }
+        Returns: boolean
+      }
+      cms_restore_chain_derive: {
+        Args: {
+          p_content_type_id: string
+          p_source_version_id: string
+          p_target_version_id: string
+        }
+        Returns: Json
+      }
+      cms_restore_chain_manifest_id: {
+        Args: { p_hash: string }
+        Returns: string
+      }
+      cms_restore_chain_values: {
+        Args: { p_plan_ids: Json; p_revision_id: string }
+        Returns: Json
+      }
+      cms_restore_relations_resolvable: {
+        Args: {
+          p_entry_id: string
+          p_source_revision_id: string
+          p_target_version_id: string
+        }
+        Returns: boolean
+      }
+      cms_restore_revision: { Args: { p_request: Json }; Returns: Json }
+      cms_restore_source_side_valid: {
+        Args: {
+          p_field_id: string
+          p_provenance: string
+          p_schema_version_id: string
+          p_value: Json
+        }
+        Returns: boolean
+      }
+      cms_restore_translate_values: {
+        Args: {
+          p_chain_values: Json
+          p_source_revision_id: string
+          p_target_version_id: string
+        }
         Returns: Json
       }
       cms_review_assignment_effective: {
@@ -9984,7 +10318,24 @@ export type Database = {
         Returns: string
       }
       cms_revision_reader_capabilities: { Args: never; Returns: string[] }
+      cms_revision_relation_values: {
+        Args: { p_revision_id: string }
+        Returns: Json
+      }
       cms_revoke_capability_grant: { Args: { p_request: Json }; Returns: Json }
+      cms_revoke_edit_presence_without_authority: {
+        Args: {
+          p_acting_party_id: string
+          p_entry_id: string
+          p_person_id: string
+        }
+        Returns: number
+      }
+      cms_rich_text_length_in_bounds: {
+        Args: { p_constraints: Json; p_value: Json }
+        Returns: boolean
+      }
+      cms_rich_text_v1_valid: { Args: { p_value: Json }; Returns: boolean }
       cms_rollback_schema_migration: {
         Args: { p_request: Json }
         Returns: Json
@@ -10043,6 +10394,15 @@ export type Database = {
       cms_session_scope_ok_system: { Args: never; Returns: boolean }
       cms_session_system_scope: { Args: never; Returns: boolean }
       cms_session_uuid: { Args: { p_name: string }; Returns: string }
+      cms_signed_cursor_open: {
+        Args: { p_cursor: Json; p_domain: string; p_payload_keys: string[] }
+        Returns: string
+      }
+      cms_signed_cursor_require_key: { Args: never; Returns: undefined }
+      cms_signed_cursor_seal_page: {
+        Args: { p_domain: string; p_page: Json; p_payload_keys: string[] }
+        Returns: Json
+      }
       cms_stale_locale_dependents: {
         Args: { p_backfill: boolean; p_source_revision_id: string }
         Returns: number
@@ -10087,6 +10447,7 @@ export type Database = {
         Returns: boolean
       }
       cms_template_registry_valid: { Args: { p_id: string }; Returns: boolean }
+      cms_touch_edit_presence: { Args: { p_request: Json }; Returns: Json }
       cms_transform_registry_digest: {
         Args: {
           p_accepted_field_kinds: Json
@@ -10124,6 +10485,14 @@ export type Database = {
         Args: { p_key: string; p_version: number }
         Returns: boolean
       }
+      cms_validators_frozen_current: {
+        Args: { p_version_id: string }
+        Returns: boolean
+      }
+      cms_value_source_refusal: {
+        Args: { p_kind: string; p_value: Json }
+        Returns: string
+      }
       cms_verify_props_attestation: {
         Args: { p_actor_id: string; p_request: Json }
         Returns: Json
@@ -10136,6 +10505,10 @@ export type Database = {
         Returns: number
       }
       cms_worker_hash: { Args: { p_value: string }; Returns: undefined }
+      cms_worker_human_approval_evidence_valid: {
+        Args: { p_candidate_id: string }
+        Returns: boolean
+      }
       cms_worker_human_approval_valid: {
         Args: { p_candidate_id: string }
         Returns: boolean

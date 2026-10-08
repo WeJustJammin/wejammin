@@ -18,6 +18,7 @@ const origin = 'https://cms-console.example.test';
 const requestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const userId = '10000000-0000-4000-8000-000000000001';
 const partyId = '20000000-0000-4000-8000-000000000002';
+const entryId = '30000000-0000-4000-8000-000000000003';
 const contentTypeId = '60000000-0000-4000-8000-000000000006';
 const revisionId = '40000000-0000-4000-8000-000000000004';
 const hash = 'a'.repeat(64);
@@ -28,6 +29,9 @@ const page: EntryListPage = {
   items: [
     {
       id: revisionId,
+      entryId,
+      entryLifecycle: 'active',
+      entryUpdatedAt: instant,
       revisionNumber: '3',
       locale: 'en-US',
       state: 'draft',
@@ -194,21 +198,90 @@ describe('CMS-03B-13 protected assigned-entry list route', () => {
     expect(response.headers.get('cache-control')).toBe('no-store');
   });
 
-  it('[P2-S10-AC-098] maps a malformed or expired cursor to a safe 400 or 409 without upstream text', async () => {
+  it('[P1-S10-API] rejects an empty dependency cursor at the Worker boundary', async () => {
+    const { app } = harness({
+      port: async () => ({ ok: true, value: { ...page, nextCursor: '' } }),
+    });
+    const response = await get(app);
+    expect(response.status).toBe(502);
+    expect(ApiErrorSchema.parse(await response.json()).code).toBe(
+      'BAD_GATEWAY',
+    );
+  });
+
+  it('[P2-S10-AC-098] publishes a well-formed expired or foreign cursor as the declared 409 with a safe restart and no upstream text', async () => {
+    // DEC-140 / BE03b error matrix row CMS-03B-13: 409 = cursor/context
+    // mismatch. The Worker must not rewrite it to 400 (Codex review M1).
     const { app } = harness({
       port: async () => ({
         ok: false,
         status: 409,
         code: 'CONFLICT',
         message: 'cursor signature mismatch (private detail)',
-        details: { reasonCode: 'cursor_context_mismatch' },
+        details: {
+          conflict: 'INVALID_TRANSITION',
+          recoveryAction: 'refresh',
+          reasonCode: 'private reason',
+          ownerId: partyId,
+        },
       }),
     });
     const response = await get(app, '?cursor=stale');
     expect(response.status).toBe(409);
     const text = await response.text();
     expect(text).not.toContain('signature mismatch');
-    expect(text).not.toContain('private detail');
+    expect(text).not.toContain('private');
+    expect(text).not.toContain(partyId);
+    const payload = JSON.parse(text) as {
+      code: string;
+      message: string;
+      details: unknown;
+    };
+    expect(payload.code).toBe('CONFLICT');
+    expect(payload.message).toBe(
+      'The CMS editorial resource changed; reload and try again.',
+    );
+    expect(payload.details).toEqual({
+      conflict: 'INVALID_TRANSITION',
+      recoveryAction: 'refresh',
+    });
+  });
+
+  it('[P2-S10-AC-098] keeps a structurally malformed cursor a 400 INVALID_REQUEST', async () => {
+    const { app } = harness({
+      port: async () => ({
+        ok: false,
+        status: 400,
+        code: 'INVALID_REQUEST',
+        message: 'cursor envelope is not base64url (private detail)',
+        details: {
+          violations: [{ path: '/cursor', code: 'cursor_malformed' }],
+        },
+      }),
+    });
+    const response = await get(app, '?cursor=%25%25');
+    expect(response.status).toBe(400);
+    const payload = JSON.parse(await response.text()) as {
+      code: string;
+      message: string;
+    };
+    expect(payload.code).toBe('INVALID_REQUEST');
+    expect(payload.message).not.toContain('private');
+  });
+
+  it('[P1-S10-API] rejects malformed query before session resolution', async () => {
+    const resolveSession = vi.fn(async () => ({
+      ok: true as const,
+      value: {
+        userId,
+        actingPartyId: partyId,
+        capabilities: ['cms.author'],
+        mfaFresh: true,
+      },
+    }));
+    const { app } = harness({ resolveSession });
+    expect((await get(app, '?ownerId=private')).status).toBe(400);
+    expect(resolveSession).not.toHaveBeenCalled();
   });
 
   it('[P2-S10-AC-096] answers an anonymous caller 401 and a reviewer-only session 403 before reads', async () => {

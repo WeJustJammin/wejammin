@@ -2,33 +2,42 @@
 
 Runtime Zod 4 contracts for the editorial workflow and publication shard. These
 schemas are the single source for TypeScript types, Hono validation, OpenAPI,
-tests, and JSONB checks in Shard 03b. The registry currently locks six
+tests, and JSONB checks in Shard 03b. The registry currently locks nine
 operations: CMS-03B-01 (existing-entry revision), CMS-03B-02 (conflict
 resolution), CMS-03B-03 (revision history read), CMS-03B-04 (revision restore),
-CMS-03B-10 (entry create), and CMS-03B-11 (draft-detail read).
+CMS-03B-10 (entry create), CMS-03B-11 (draft-detail read), CMS-03B-12 (conflict
+detail read), CMS-03B-13 (authorized entry list), and CMS-03B-14 (authoring
+context read). The review, schedule, preview and publication schemas in
+`publication-contracts.ts` and `publication-schedule-contracts.ts` are
+contract-only until Slice 11.
 
 ## Contents
 
-| File                       | Owns                                                                                                                           |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `primitives.ts`            | `Bcp47Schema`, `JsonPointerSchema`, `ChangedPathsSchema`, `BoundedEntryValuesSchema`, `cmsEditorialJsonDepth`                  |
-| `models.ts`                | Entry revision and conflict state vocabularies, plus the shared revision meta shape                                            |
-| `resources.ts`             | `EntryRevisionResourceSchema`, `ConflictRecordResourceSchema`, and the bounded proposed-values envelope                        |
-| `requests.ts`              | `EntryRevisionRequestSchema` plus its path-parameter and header schemas, and the CMS-03B-01 `*ApiRequestSchema` transport view |
-| `schema-evidence.ts`       | `SchemaArtifactEvidenceSchema`, `ValidatorEvidenceSchema`                                                                      |
-| `entry-create.ts`          | CMS-03B-10 request/headers/resource plus the create seam checklist                                                             |
-| `entry-draft-detail.ts`    | CMS-03B-11 path/query/resource plus the draft-detail seam checklist                                                            |
-| `conflict-resolution.ts`   | CMS-03B-02 request/path/headers, the caller-authority guard, and the seam names                                                |
-| `conflict-choice.ts`       | `ConflictChoiceSchema` and the bounded `ConflictChoiceValueSchema`                                                             |
-| `conflict-verification.ts` | `ConflictYoursSourceEvidenceSchema`; the canonical yours-source enum lives in `models.ts`                                      |
-| `revision-history.ts`      | CMS-03B-03 page, compare, path, and query schemas                                                                              |
-| `revision-restore.ts`      | CMS-03B-04 request/path/headers plus the restore registry attestation                                                          |
-| `route-policy-base.ts`     | Operation/path/schema vocabularies, capability predicate, telemetry header constants                                           |
-| `route-policy-contract.ts` | `CmsEditorialRouteContract`, the Tier 1/2 SLO union, and `policyShapeSchema`                                                   |
-| `route-policy-errors.ts`   | `CmsEditorialErrorMap` and the six per-operation error envelopes                                                               |
-| `route-policy.ts`          | `assertCmsEditorialRouteRegistry` runtime guard                                                                                |
-| `routes-errors.ts`         | The six `as const` error envelopes the registry rows reference                                                                 |
-| `routes.ts`                | `cmsEditorialRoutePolicies` — the six registry rows                                                                            |
+| File                                | Owns                                                                                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `primitives.ts`                     | `Bcp47Schema`, `JsonPointerSchema`, `FieldPointerSchema`, `ChangedPathsSchema`, `BoundedEntryValuesSchema`, `cmsEditorialJsonDepth` |
+| `models.ts`                         | Entry revision and conflict state vocabularies, plus the shared revision meta shape                                                 |
+| `resources.ts`                      | `EntryRevisionResourceSchema`, `ConflictRecordResourceSchema`, and the bounded proposed-values envelope                             |
+| `requests.ts`                       | `EntryRevisionRequestSchema` plus its path-parameter and header schemas, and the CMS-03B-01 `*ApiRequestSchema` transport view      |
+| `schema-evidence.ts`                | `SchemaArtifactEvidenceSchema`, `ValidatorEvidenceSchema`                                                                           |
+| `entry-create.ts`                   | CMS-03B-10 request/headers/resource plus the create seam checklist                                                                  |
+| `entry-draft-detail.ts`             | CMS-03B-11 path/query/resource plus the draft-detail seam checklist                                                                 |
+| `conflict-detail.ts`                | CMS-03B-12 path/query/resource: the bounded three-way preimages of an open conflict                                                 |
+| `entry-list.ts`                     | CMS-03B-13 query/item/page; each item carries `entryId`, `entryLifecycle` and `entryUpdatedAt` (no owner or assignee identity)      |
+| `authoring-context.ts`              | CMS-03B-14 query, creatable types, author-safe field definitions and the combined read                                              |
+| `conflict-resolution.ts`            | CMS-03B-02 request/path/headers, the caller-authority guard, and the seam names                                                     |
+| `conflict-choice.ts`                | `ConflictChoiceSchema` and the bounded `ConflictChoiceValueSchema`                                                                  |
+| `conflict-verification.ts`          | `ConflictYoursSourceEvidenceSchema`; the canonical yours-source enum lives in `models.ts`                                           |
+| `revision-history.ts`               | CMS-03B-03 page, compare, path, and query schemas                                                                                   |
+| `revision-restore.ts`               | CMS-03B-04 request/path/headers plus the restore registry attestation                                                               |
+| `publication-contracts.ts`          | `VersionSet` and `DependencyManifest` frozen evidence plus the CMS-03B-05 review-submission and CMS-03B-06 decision contracts       |
+| `publication-schedule-contracts.ts` | CMS-03B-07 schedule, CMS-03B-08 preview and CMS-03B-09 publication bodies with their key-plus-If-Match headers                      |
+| `route-policy-base.ts`              | Operation/path/schema vocabularies, capability predicate, telemetry header constants                                                |
+| `route-policy-contract.ts`          | `CmsEditorialRouteContract`, the Tier 1/2 SLO union, and `policyShapeSchema`                                                        |
+| `route-policy-errors.ts`            | `CmsEditorialErrorMap` and the per-operation error envelopes                                                                        |
+| `route-policy.ts`                   | `assertCmsEditorialRouteRegistry` runtime guard                                                                                     |
+| `routes-errors.ts`                  | The nine `as const` error envelopes the registry rows reference                                                                     |
+| `routes.ts`                         | `cmsEditorialRoutePolicies` — the nine registry rows                                                                                |
 
 ## Ownership
 
@@ -72,8 +81,8 @@ verification evidence can never leak unpublished draft content.
   registry row in `routes.ts`; the assert helper fails closed on a missing or
   extra operation.
 - Declare capabilities as `capabilities` plus `capabilityMode`; never add a
-  singular `capability` field. BE03b grants CMS-03B-01, -02, -04, -10, and -11
-  to "cms.author **or** cms.editor", so those rows stay
+  singular `capability` field. BE03b grants CMS-03B-01, -02, -04, -10, -11, -12,
+  -13 and -14 to "cms.author **or** cms.editor", so those rows stay
   `['cms.author', 'cms.editor']` + `any_of`; CMS-03B-03 adds read-only
   `cms.reviewer` to the same any-of gate.
 - Add schema names to the unions in `route-policy-base.ts` and the literal sets
@@ -84,8 +93,8 @@ verification evidence can never leak unpublished draft content.
 
 ## SLO Tiers
 
-Tier 1 is the read budget (`commandP95Ms: 750`) used by CMS-03B-03 and
-CMS-03B-11; Tier 2 is the command budget (`commandP95Ms: 1_200`) used by
+Tier 1 is the read budget (`commandP95Ms: 750`) used by CMS-03B-03, -11, -12,
+-13 and -14; Tier 2 is the command budget (`commandP95Ms: 1_200`) used by
 CMS-03B-01, -02, -04, and -10. Both share `protectedRpcP95Ms: 300` and
 `acceptanceP99Ms: 1_000`. 03b has no 2s acceptance-target row yet, so every
 command row keeps a `responseTargetMs: 2_000` documentation value while the

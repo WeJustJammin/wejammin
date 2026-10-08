@@ -19,3 +19,5 @@ export * from './entry-list.ts';
 export * from './authoring-context.ts';
 export * from './revision-restore.ts';
 export * from './schema-evidence.ts';
+export * from './publication-contracts.ts';
+export * from './publication-schedule-contracts.ts';

@@ -19537,7 +19537,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "EntryRevisionApiRequestSchema",
         "x-success-schema": "EntryRevisionResourceSchema",
         "x-error-schemas": [
@@ -19622,6 +19622,7 @@
                   },
                   "locale": {
                     "type": "string",
+                    "maxLength": 35,
                     "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                   },
                   "expectedVersion": {
@@ -19871,7 +19872,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "RevisionHistoryApiRequestSchema",
         "x-success-schema": "RevisionHistoryPageSchema",
         "x-error-schemas": [
@@ -19948,6 +19949,7 @@
             "required": false,
             "schema": {
               "type": "string",
+              "maxLength": 35,
               "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
             }
           }
@@ -20175,7 +20177,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "ConflictResolutionApiRequestSchema",
         "x-success-schema": "EntryRevisionResourceSchema",
         "x-error-schemas": [
@@ -20531,7 +20533,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "RevisionRestoreApiRequestSchema",
         "x-success-schema": "EntryRevisionResourceSchema",
         "x-error-schemas": [
@@ -20851,7 +20853,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "EntryCreateApiRequestSchema",
         "x-success-schema": "EntryCreateResourceSchema",
         "x-error-schemas": [
@@ -20891,6 +20893,7 @@
                   },
                   "locale": {
                     "type": "string",
+                    "maxLength": 35,
                     "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                   },
                   "changedPaths": {
@@ -21331,7 +21334,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "EntryListApiRequestSchema",
         "x-success-schema": "EntryListPageSchema",
         "x-error-schemas": [
@@ -21606,7 +21609,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "EntryDraftDetailApiRequestSchema",
         "x-success-schema": "EntryDraftDetailResourceSchema",
         "x-error-schemas": [
@@ -21630,6 +21633,7 @@
             "required": false,
             "schema": {
               "type": "string",
+              "maxLength": 35,
               "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
             }
           }
@@ -21847,7 +21851,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "ConflictDetailApiRequestSchema",
         "x-success-schema": "ConflictDetailResourceSchema",
         "x-error-schemas": [
@@ -22089,7 +22093,7 @@
         "x-raw-body-signature": "none",
         "x-criticality": "high",
         "x-owner": "Editorial",
-        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-runbook": "docs/runbooks/platform/cms-editorial.md",
         "x-request-schema": "AuthoringContextApiRequestSchema",
         "x-success-schema": "AuthoringContextResourceSchema",
         "x-error-schemas": [
@@ -26415,6 +26419,7 @@
               },
               "locale": {
                 "type": "string",
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
               },
               "expectedVersion": {
@@ -26497,6 +26502,10 @@
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           },
+          "entryVersion": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -26546,6 +26555,7 @@
           },
           "locale": {
             "type": "string",
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
           },
           "contentHash": {
@@ -26588,6 +26598,7 @@
           "version",
           "createdAt",
           "updatedAt",
+          "entryVersion",
           "state",
           "entryId",
           "revisionNumber",
@@ -26642,6 +26653,7 @@
               },
               "locale": {
                 "type": "string",
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
               },
               "changedPaths": {
@@ -26984,6 +26996,7 @@
           },
           "locale": {
             "type": "string",
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
           },
           "contentHash": {
@@ -27025,6 +27038,7 @@
             "properties": {
               "locale": {
                 "type": "string",
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
               }
             },
@@ -27130,6 +27144,7 @@
           },
           "locale": {
             "type": "string",
+            "maxLength": 35,
             "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
           },
           "contentHash": {
@@ -27201,6 +27216,7 @@
                 },
                 "locale": {
                   "type": "string",
+                  "maxLength": 35,
                   "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                 },
                 "value": {
@@ -27937,6 +27953,7 @@
                 },
                 "locale": {
                   "type": "string",
+                  "maxLength": 35,
                   "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                 },
                 "state": {
@@ -27963,6 +27980,25 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 64
+                },
+                "entryId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "entryLifecycle": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "archived",
+                    "deletion_pending",
+                    "held"
+                  ]
+                },
+                "entryUpdatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                 }
               },
               "required": [
@@ -27972,7 +28008,10 @@
                 "state",
                 "contentHash",
                 "createdAt",
-                "authorClass"
+                "authorClass",
+                "entryId",
+                "entryLifecycle",
+                "entryUpdatedAt"
               ],
               "additionalProperties": false
             }
@@ -28051,10 +28090,12 @@
                 },
                 "sourceLocale": {
                   "type": "string",
+                  "maxLength": 35,
                   "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                 },
                 "defaultLocale": {
                   "type": "string",
+                  "maxLength": 35,
                   "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                 },
                 "supportedLocales": {
@@ -28064,6 +28105,7 @@
                   "type": "array",
                   "items": {
                     "type": "string",
+                    "maxLength": 35,
                     "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                   }
                 },
@@ -28274,10 +28316,12 @@
                   },
                   "sourceLocale": {
                     "type": "string",
+                    "maxLength": 35,
                     "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                   },
                   "defaultLocale": {
                     "type": "string",
+                    "maxLength": 35,
                     "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                   },
                   "supportedLocales": {
@@ -28287,6 +28331,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
+                      "maxLength": 35,
                       "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                     }
                   },
@@ -32926,6 +32971,7 @@
               },
               "locale": {
                 "type": "string",
+                "maxLength": 35,
                 "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
               }
             },
@@ -32962,6 +33008,7 @@
                 },
                 "locale": {
                   "type": "string",
+                  "maxLength": 35,
                   "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
                 },
                 "state": {
@@ -35865,13 +35912,7 @@
                       "propertyNames": {
                         "type": "string"
                       },
-                      "additionalProperties": {
-                        "allOf": [
-                          {
-                            "$ref": "#/components/schemas/FieldConstraints/definitions/__schema0"
-                          }
-                        ]
-                      }
+                      "additionalProperties": {}
                     }
                   },
                   "required": [
@@ -35890,40 +35931,7 @@
             "additionalProperties": false
           }
         },
-        "additionalProperties": false,
-        "definitions": {
-          "__schema0": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/FieldConstraints/definitions/__schema0"
-                }
-              },
-              {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/FieldConstraints/definitions/__schema0"
-                }
-              }
-            ]
-          }
-        }
+        "additionalProperties": false
       },
       "FieldDefinitionInput": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -36034,13 +36042,7 @@
                           "propertyNames": {
                             "type": "string"
                           },
-                          "additionalProperties": {
-                            "allOf": [
-                              {
-                                "$ref": "#/components/schemas/FieldDefinitionInput/definitions/__schema0"
-                              }
-                            ]
-                          }
+                          "additionalProperties": {}
                         }
                       },
                       "required": [
@@ -37433,13 +37435,7 @@
                                 "propertyNames": {
                                   "type": "string"
                                 },
-                                "additionalProperties": {
-                                  "allOf": [
-                                    {
-                                      "$ref": "#/components/schemas/ContentTypeDraftRequest/definitions/__schema0"
-                                    }
-                                  ]
-                                }
+                                "additionalProperties": {}
                               }
                             },
                             "required": [
@@ -37841,13 +37837,7 @@
                           "propertyNames": {
                             "type": "string"
                           },
-                          "additionalProperties": {
-                            "allOf": [
-                              {
-                                "$ref": "#/components/schemas/FieldSchemaChangeRequest/definitions/__schema0"
-                              }
-                            ]
-                          }
+                          "additionalProperties": {}
                         }
                       },
                       "required": [

@@ -115,6 +115,15 @@ const editorialRouteDefaults = {
   runbook: 'docs/runbooks/platform/operational-endpoints.md',
 } as const;
 
+/**
+ * The nine Slice 10 entry-authoring routes (CMS-03B-01..04, 10..14) share the
+ * `cms-editorial` runbook that every Slice 10 editorial telemetry event names.
+ */
+const slice10EditorialRoute = {
+  ...editorialRouteDefaults,
+  runbook: 'docs/runbooks/platform/cms-editorial.md',
+} as const;
+
 export const platformRegistrySet = createRegistrySet({
   routes: [
     {
@@ -1225,7 +1234,7 @@ export const platformRegistrySet = createRegistrySet({
         'receipt-derived owner lists only grants in its own organization',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'POST',
       path: '/api/v1/cms/entries/{entryId}/revisions',
       operationId: 'CMS-03B-01',
@@ -1250,7 +1259,7 @@ export const platformRegistrySet = createRegistrySet({
       bolaTest: 'caller may revise only its assigned readable entry',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'POST',
       path: '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}/resolve',
       operationId: 'CMS-03B-02',
@@ -1276,7 +1285,7 @@ export const platformRegistrySet = createRegistrySet({
         'caller may resolve only the open conflict on its assigned entry',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'GET',
       path: '/api/v1/cms/entries/{entryId}/revisions',
       operationId: 'CMS-03B-03',
@@ -1301,7 +1310,7 @@ export const platformRegistrySet = createRegistrySet({
       bolaTest: 'caller reads only revisions of its authorized entry',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'POST',
       path: '/api/v1/cms/entries/{entryId}/revisions/{revisionId}/restore',
       operationId: 'CMS-03B-04',
@@ -1327,7 +1336,7 @@ export const platformRegistrySet = createRegistrySet({
         'caller may restore only a readable revision of its assigned entry',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'POST',
       path: '/api/v1/cms/entries',
       operationId: 'CMS-03B-10',
@@ -1352,7 +1361,7 @@ export const platformRegistrySet = createRegistrySet({
       bolaTest: 'caller may create only within its authorized CMS owner scope',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'GET',
       path: '/api/v1/cms/entries/{entryId}',
       operationId: 'CMS-03B-11',
@@ -1377,7 +1386,7 @@ export const platformRegistrySet = createRegistrySet({
       bolaTest: 'caller reads only its authorized current draft projection',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'GET',
       path: '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}',
       operationId: 'CMS-03B-12',
@@ -1403,7 +1412,7 @@ export const platformRegistrySet = createRegistrySet({
         'caller reads only the open conflict on its assigned or editable entry; hidden entry/conflict is 404',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'GET',
       path: '/api/v1/cms/entries',
       operationId: 'CMS-03B-13',
@@ -1429,7 +1438,7 @@ export const platformRegistrySet = createRegistrySet({
         'caller lists only entries it is assigned or owns in the acting context; cursor is context-bound',
     },
     {
-      ...editorialRouteDefaults,
+      ...slice10EditorialRoute,
       method: 'GET',
       path: '/api/v1/cms/entries/authoring-context',
       operationId: 'CMS-03B-14',

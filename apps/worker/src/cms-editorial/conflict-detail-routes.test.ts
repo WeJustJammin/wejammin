@@ -24,6 +24,7 @@ const conflictId = '31000000-0000-4000-8000-000000000003';
 const baseRevisionId = '40000000-0000-4000-8000-000000000004';
 const theirsRevisionId = '41000000-0000-4000-8000-000000000004';
 const schemaVersionId = '50000000-0000-4000-8000-000000000005';
+const fieldId = '60000000-0000-4000-8000-000000000006';
 const hash = 'a'.repeat(64);
 const instant = '2026-09-26T12:00:00.000Z';
 const path = `/api/v1/cms/entries/${entryId}/conflicts/${conflictId}`;
@@ -42,7 +43,7 @@ const openConflict: ConflictDetailResource = {
     createdAt: instant,
     updatedAt: instant,
     state: 'open',
-    changedPaths: ['/fields/title'],
+    changedPaths: [`/fields/${fieldId}`],
     conflictHash: hash,
   },
   entry: { id: entryId, version: '3', createdAt: instant, updatedAt: instant },
@@ -61,7 +62,7 @@ const openConflict: ConflictDetailResource = {
   yours: { source: 'proposed', revisionId: null, contentHash: hash },
   paths: [
     {
-      path: '/fields/title',
+      path: `/fields/${fieldId}`,
       base: side('Mine'),
       theirs: side('Theirs'),
       yours: side('Yours'),
@@ -192,16 +193,78 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
     expect(after.headers.get('cache-control')).toBe('no-store');
   });
 
-  it('[P2-S10-AC-088] serves a resolved conflict without any divergent paths', async () => {
-    const { app } = harness({
-      port: async () => ({ ok: true, value: resolvedConflict }),
-    });
-    const response = await get(app);
-    expect(response.status).toBe(200);
-    const body = ConflictDetailResourceSchema.parse(await response.json());
-    expect(body.conflict.state).toBe('resolved');
-    expect(body.paths).toEqual([]);
-    expect(body.resolvedRevisionId).toBe(baseRevisionId);
+  it('[P2-S10-AC-088] treats a resolved or superseded payload as a dependency fault (DEC-139: only an open conflict is served)', async () => {
+    const closedPayloads = [
+      resolvedConflict,
+      {
+        ...resolvedConflict,
+        conflict: { ...openConflict.conflict, state: 'superseded' },
+        resolvedRevisionId: null,
+      },
+      // A closed state is refused whatever else the payload carries.
+      {
+        ...openConflict,
+        conflict: { ...openConflict.conflict, state: 'resolved' },
+      },
+      { ...openConflict, resolvedRevisionId: baseRevisionId },
+      // An internally inconsistent open payload is a dependency fault too.
+      {
+        ...openConflict,
+        paths: [
+          {
+            ...openConflict.paths[0],
+            base: { value: 'hidden', provenance: 'missing', valueHash: null },
+          },
+        ],
+      },
+      {
+        ...openConflict,
+        paths: [openConflict.paths[0], openConflict.paths[0]],
+      },
+      {
+        ...openConflict,
+        conflict: {
+          ...openConflict.conflict,
+          changedPaths: ['/fields/60000000-0000-4000-8000-000000000099'],
+        },
+      },
+    ] as unknown as readonly ConflictDetailResource[];
+    for (const value of closedPayloads) {
+      const { app } = harness({ port: async () => ({ ok: true, value }) });
+      const response = await get(app);
+      expect(response.status).toBe(502);
+      expect(response.headers.get('etag')).toBeNull();
+      const text = await response.text();
+      expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe('BAD_GATEWAY');
+      expect(text).not.toContain('resolved');
+      expect(text).not.toContain('superseded');
+      expect(text).not.toContain('hidden');
+    }
+  });
+
+  it('[P1-S10-API] rejects a dependency resource whose entry or conflict id is not bound to the request', async () => {
+    const mismatchedEntry = {
+      ...openConflict,
+      entry: {
+        ...openConflict.entry,
+        id: '30000000-0000-4000-8000-000000000013',
+      },
+    };
+    const mismatchedConflict = {
+      ...openConflict,
+      conflict: {
+        ...openConflict.conflict,
+        id: '31000000-0000-4000-8000-000000000013',
+      },
+    };
+    for (const value of [mismatchedEntry, mismatchedConflict]) {
+      const { app } = harness({ port: async () => ({ ok: true, value }) });
+      const response = await get(app);
+      expect(response.status).toBe(502);
+      expect(ApiErrorSchema.parse(await response.json()).code).toBe(
+        'BAD_GATEWAY',
+      );
+    }
   });
 
   it('[P2-S10-AC-092] refuses an open record with no paths and a closed record that still carries paths', async () => {
@@ -276,7 +339,16 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
   });
 
   it('[P2-S10-AC-089] rejects a malformed entry or conflict UUID as 400 before any dependency work', async () => {
-    const { app, getConflictDetail } = harness();
+    const resolveSession = vi.fn(async () => ({
+      ok: true as const,
+      value: {
+        userId,
+        actingPartyId: partyId,
+        capabilities: ['cms.author'],
+        mfaFresh: true,
+      },
+    }));
+    const { app, getConflictDetail } = harness({ resolveSession });
     const badEntry = await app.request(
       `/api/v1/cms/entries/not-a-uuid/conflicts/${conflictId}`,
       { method: 'GET', headers: { origin, 'x-request-id': requestId } },
@@ -287,6 +359,7 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
       { method: 'GET', headers: { origin, 'x-request-id': requestId } },
     );
     expect(badConflict.status).toBe(400);
+    expect(resolveSession).not.toHaveBeenCalled();
     expect(getConflictDetail).not.toHaveBeenCalled();
   });
 
@@ -367,6 +440,56 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
       port: async () => ({ ok: true, value: { conflict: {} } }),
     });
     expect((await get(broken.app)).status).toBe(502);
+  });
+
+  it('[P1-S10-API] normalizes undeclared dependency errors (409 is not declared for CMS-03B-12) to a scrubbed 500 and drops private details', async () => {
+    const { app } = harness({
+      port: async () => ({
+        ok: false,
+        status: 409,
+        code: 'CONFLICT',
+        message: 'private SQL detail',
+        retryAfterSeconds: Number.POSITIVE_INFINITY,
+        details: {
+          reasonCode: 'private reason',
+          ownerId: partyId,
+          retryAfterSeconds: 999_999,
+        },
+      }),
+    });
+    const response = await get(app);
+    // BE03b matrix row CMS-03B-12: 409 is "not applicable to bounded read", so
+    // an upstream 409 is an undeclared cell and fails closed, never as a
+    // user-blamed 400.
+    expect(response.status).toBe(500);
+    expect(response.headers.get('retry-after')).toBeNull();
+    const payload = ApiErrorSchema.parse(await response.json());
+    expect(payload.code).toBe('INTERNAL_ERROR');
+    expect(payload.message).not.toContain('private SQL detail');
+    expect(payload.details).toEqual({});
+  });
+
+  it('[P1-S10-API] composes request cancellation with the bounded dependency signal', async () => {
+    const controller = new AbortController();
+    let dependencySignal: AbortSignal | undefined;
+    const { app, getConflictDetail } = harness({
+      port: async (_input, signal) => {
+        dependencySignal = signal;
+        return new Promise<never>(() => undefined);
+      },
+    });
+    const pending = app.fetch(
+      new Request(`https://worker.example.test${path}`, {
+        method: 'GET',
+        headers: { origin, 'x-request-id': requestId },
+        signal: controller.signal,
+      }),
+    );
+    await vi.waitFor(() => expect(getConflictDetail).toHaveBeenCalledTimes(1));
+    controller.abort();
+    const response = await pending;
+    expect(response.status).toBe(504);
+    expect(dependencySignal?.aborted).toBe(true);
   });
 
   it('[P2-S10-AC-093] emits redacted telemetry carrying only the CMS-03B-12 operation id', async () => {

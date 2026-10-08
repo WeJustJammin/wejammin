@@ -238,16 +238,38 @@ describe('cms editorial error mapping', () => {
     expect(safeDetails(422, { retryable: true })).toEqual({ retryable: true });
   });
 
-  it('caps validation violations at the contract bound and drops non-strings', () => {
+  it('caps validation violations at the contract bound and publishes only safe pointer objects', () => {
+    // BE00 details.violations is `{ path, code, message }` over a safe JSON
+    // pointer; a bare string never survived the route boundary, so the
+    // production mapper now emits the published shape and drops anything that
+    // is not a safe pointer.
     const violations = [
       ...Array.from({ length: 60 }, (_value, index) => `/field/${index}`),
       17,
       null,
+      'not a pointer',
+      { path: '/fields/a', code: 'Bad Code', secret: 'leak' },
     ];
     const details = safeDetails(422, { violations });
-    const kept = details.violations as readonly string[];
+    const kept = details.violations as readonly {
+      path: string;
+      code: string;
+      message: string;
+    }[];
     expect(kept).toHaveLength(50);
-    expect(kept.every((entry) => typeof entry === 'string')).toBe(true);
+    expect(kept[0]).toEqual({
+      path: '/field/0',
+      code: 'invalid',
+      message: 'The value is invalid.',
+    });
+    expect(JSON.stringify(kept)).not.toContain('leak');
+    expect(
+      safeDetails(422, {
+        violations: [{ path: '/fields/a', code: 'Bad Code', secret: 'leak' }],
+      }).violations,
+    ).toEqual([
+      { path: '/fields/a', code: 'invalid', message: 'The value is invalid.' },
+    ]);
     expect(
       safeDetails(422, { violations: 'not-an-array' }).violations,
     ).toBeUndefined();

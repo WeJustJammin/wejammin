@@ -11,7 +11,7 @@ import {
   ConflictYoursSourceSchema,
   entryRevisionResourceMetaShape,
 } from './models.ts';
-import { JsonPointerSchema } from './primitives.ts';
+import { FieldPointerSchema } from './primitives.ts';
 
 /**
  * BE03b CMS-03B-12 read addressing: the entry and the open conflict, no filter
@@ -55,12 +55,40 @@ export const ConflictDetailSideSchema = z
     ]),
     valueHash: CmsHashSchema.nullable(),
   })
+  .superRefine((side, context) => {
+    // A value is exposed only where provenance says one exists: a side the
+    // draft holds no value for (`missing`) or holds an explicit null for
+    // (`explicit_null`) carries a null value, so an upstream inconsistency can
+    // never turn into a disclosure; every other provenance carries a value (a
+    // written JSON null is `explicit_null`, never `authored`). `missing` has
+    // nothing to hash either.
+    const absent =
+      side.provenance === 'missing' || side.provenance === 'explicit_null';
+    if (absent && side.value !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['value'],
+        message: 'conflict_detail_side_absent_requires_null_value',
+      });
+    if (side.provenance === 'missing' && side.valueHash !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['valueHash'],
+        message: 'conflict_detail_side_missing_requires_null_hash',
+      });
+    if (!absent && side.value === null)
+      context.addIssue({
+        code: 'custom',
+        path: ['value'],
+        message: 'conflict_detail_side_valued_requires_value',
+      });
+  })
   .readonly();
 
 /** BE03b one divergent pointer and its three resolved sides. */
 export const ConflictDetailPathSchema = z
   .strictObject({
-    path: JsonPointerSchema,
+    path: FieldPointerSchema,
     base: ConflictDetailSideSchema,
     theirs: ConflictDetailSideSchema,
     yours: ConflictDetailSideSchema,
@@ -97,18 +125,23 @@ const conflictDetailConflictSchema = z
   .strictObject({
     ...entryRevisionResourceMetaShape,
     state: ConflictRecordStateSchema,
-    changedPaths: z.array(JsonPointerSchema).min(1).max(128).readonly(),
+    changedPaths: z.array(FieldPointerSchema).min(1).max(128).readonly(),
     conflictHash: CmsHashSchema,
   })
   .readonly();
 
 /**
- * BE03b conflict detail read envelope.  A conflict is open while the entry is
- * divergent, so only then may it carry the resolved per-path sides; a resolved
- * or superseded record has no divergent paths left, so paths must be empty.
- * Private identity and ownership (resolvedByPersonId, ownerId, assigneeId) are
- * deliberately absent at every level, and every nested object is strict so any
- * attempt to add them is refused rather than ignored.
+ * BE03b conflict detail read envelope (DEC-139). CMS-03B-12 serves a conflict
+ * only while it is `open`: a resolved or superseded conflict is concealed as the
+ * same 404 as an absent one. So every served resource has `conflict.state`
+ * `open`, `resolvedRevisionId` null and a non-empty `paths`; a payload with a
+ * closed state is a server contract violation that the Worker, the web proxy and
+ * the browser refuse as a dependency fault, never render as metadata. The closed
+ * members stay in `ConflictRecordStateSchema` only because that vocabulary is
+ * shared with the durable record. Private identity and ownership
+ * (resolvedByPersonId, ownerId, assigneeId) are deliberately absent at every
+ * level, and every nested object is strict so any attempt to add them is
+ * refused rather than ignored.
  */
 export const ConflictDetailResourceSchema = z
   .strictObject({
@@ -121,11 +154,51 @@ export const ConflictDetailResourceSchema = z
     resolvedRevisionId: CmsUuidSchema.nullable(),
   })
   .superRefine((value, context) => {
-    if (value.conflict.state !== 'open' && value.paths.length !== 0)
+    if (value.conflict.state !== 'open')
+      context.addIssue({
+        code: 'custom',
+        path: ['conflict', 'state'],
+        message: 'conflict_detail_requires_open_state',
+      });
+    if (value.resolvedRevisionId !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['resolvedRevisionId'],
+        message: 'conflict_detail_open_requires_null_resolved_revision',
+      });
+    if (value.paths.length === 0)
       context.addIssue({
         code: 'custom',
         path: ['paths'],
-        message: 'conflict_detail_closed_state_requires_empty_paths',
+        message: 'conflict_detail_open_requires_paths',
+      });
+    // Each divergent field is shown once: the pointers are unique in both
+    // arrays and `paths` is exactly `changedPaths` (the server emits one path
+    // per changed path), or the resolution would be ambiguous.
+    const changed = value.conflict.changedPaths;
+    const shown = value.paths.map((path) => path.path);
+    if (new Set(changed).size !== changed.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['conflict', 'changedPaths'],
+        message: 'conflict_detail_changed_paths_must_be_unique',
+      });
+    if (new Set(shown).size !== shown.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['paths'],
+        message: 'conflict_detail_paths_must_be_unique',
+      });
+    const changedSet = new Set(changed);
+    if (
+      shown.length > 0 &&
+      (shown.some((pointer) => !changedSet.has(pointer)) ||
+        changed.some((pointer) => !shown.includes(pointer)))
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['paths'],
+        message: 'conflict_detail_paths_must_equal_changed_paths',
       });
   })
   .readonly();

@@ -2,18 +2,41 @@ import type {
   CmsEditorialErrorStatus,
   CmsEditorialOperationId,
   CmsEditorialRoutePolicy,
-  ConflictResolutionRequest,
-  EntryCreateRequest,
+  AuthoringContextResource,
+  ConflictDetailResource,
   EntryCreateResource,
-  EntryDraftDetailQuery,
   EntryDraftDetailResource,
-  EntryRevisionRequest,
+  EntryListPage,
   EntryRevisionResource,
   RevisionHistoryPage,
-  RevisionHistoryQuery,
-  RevisionRestoreRequest,
   RevisionRestoreVerification,
 } from '@wejammin/contracts';
+
+import type {
+  CmsEditorialAuthoringContextPortInput,
+  CmsEditorialConflictDetailPortInput,
+  CmsEditorialConflictPortInput,
+  CmsEditorialCreatePortInput,
+  CmsEditorialDraftPortInput,
+  CmsEditorialEntryListPortInput,
+  CmsEditorialHistoryPortInput,
+  CmsEditorialPortInput,
+  CmsEditorialRestorePortInput,
+  CmsEditorialSession,
+} from './port-inputs';
+
+export type {
+  CmsEditorialAuthoringContextPortInput,
+  CmsEditorialConflictDetailPortInput,
+  CmsEditorialConflictPortInput,
+  CmsEditorialCreatePortInput,
+  CmsEditorialDraftPortInput,
+  CmsEditorialEntryListPortInput,
+  CmsEditorialHistoryPortInput,
+  CmsEditorialPortInput,
+  CmsEditorialRestorePortInput,
+  CmsEditorialSession,
+} from './port-inputs';
 
 /**
  * CMS editorial workbench dependency surface (BE03b 03b-01).
@@ -45,13 +68,16 @@ export const CMS_EDITORIAL_RESTORE_OPERATION_ID =
 export const CMS_EDITORIAL_DRAFT_DETAIL_OPERATION_ID =
   'CMS-03B-11' as const satisfies CmsEditorialOperationId;
 
-/** Trusted, server-derived session facts. Never read from browser input. */
-export type CmsEditorialSession = Readonly<{
-  userId: string;
-  actingPartyId: string | null;
-  capabilities: readonly string[];
-  mfaFresh: boolean;
-}>;
+/** Slice 10 safe reads: three-way conflict detail, assigned-entry list, and
+ * authoring-context preparation. */
+export const CMS_EDITORIAL_CONFLICT_DETAIL_OPERATION_ID =
+  'CMS-03B-12' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_ENTRY_LIST_OPERATION_ID =
+  'CMS-03B-13' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_AUTHORING_CONTEXT_OPERATION_ID =
+  'CMS-03B-14' as const satisfies CmsEditorialOperationId;
 
 /** Canonical dependency failure shape consumed by the route error mapper. */
 export type CmsEditorialError = Readonly<{
@@ -64,72 +90,7 @@ export type CmsEditorialError = Readonly<{
 }>;
 
 export type CmsEditorialResult<T> =
-  Readonly<{ ok: true; value: T }> | CmsEditorialError;
-
-/**
- * Canonical port input. `entryId` is bound from the path, so `body` stays the
- * exact validated `EntryRevisionRequest` (including its `entryId`) and `ifMatch`
- * carries the bare decimal version with the strong-ETag quotes already stripped.
- */
-export type CmsEditorialPortInput = Readonly<{
-  operationId: 'CMS-03B-01';
-  requestId: string;
-  request: Request;
-  session: CmsEditorialSession;
-  path: Readonly<{ entryId: string }>;
-  body: EntryRevisionRequest;
-  idempotencyKey: string;
-  ifMatch: string;
-}>;
-
-export type CmsEditorialHistoryPortInput = Readonly<{
-  operationId: 'CMS-03B-03';
-  requestId: string;
-  request: Request;
-  session: CmsEditorialSession;
-  path: Readonly<{ entryId: string }>;
-  query: RevisionHistoryQuery;
-}>;
-
-export type CmsEditorialConflictPortInput = Readonly<{
-  operationId: 'CMS-03B-02';
-  requestId: string;
-  request: Request;
-  session: CmsEditorialSession;
-  path: Readonly<{ entryId: string; conflictId: string }>;
-  body: ConflictResolutionRequest;
-  idempotencyKey: string;
-  ifMatch: string;
-}>;
-
-export type CmsEditorialDraftPortInput = Readonly<{
-  operationId: 'CMS-03B-11';
-  requestId: string;
-  request: Request;
-  session: CmsEditorialSession;
-  path: Readonly<{ entryId: string }>;
-  query: EntryDraftDetailQuery;
-}>;
-
-export type CmsEditorialCreatePortInput = Readonly<{
-  operationId: 'CMS-03B-10';
-  requestId: string;
-  request: Request;
-  session: CmsEditorialSession;
-  body: EntryCreateRequest;
-  idempotencyKey: string;
-}>;
-
-export type CmsEditorialRestorePortInput = Readonly<{
-  operationId: 'CMS-03B-04';
-  requestId: string;
-  request: Request;
-  session: CmsEditorialSession;
-  path: Readonly<{ entryId: string; revisionId: string }>;
-  body: RevisionRestoreRequest;
-  idempotencyKey: string;
-  ifMatch: string;
-}>;
+  Readonly<{ ok: true; value: T; replayed?: true }> | CmsEditorialError;
 
 /**
  * Internal-only restore result. The restored EntryRevisionResource stays the
@@ -173,6 +134,18 @@ export type CmsEditorialPorts = Readonly<{
     input: CmsEditorialDraftPortInput,
     signal: AbortSignal,
   ) => Promise<CmsEditorialResult<EntryDraftDetailResource>>;
+  getConflictDetail?: (
+    input: CmsEditorialConflictDetailPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<ConflictDetailResource>>;
+  listEntries?: (
+    input: CmsEditorialEntryListPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<EntryListPage>>;
+  getAuthoringContext?: (
+    input: CmsEditorialAuthoringContextPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<AuthoringContextResource>>;
 }>;
 
 export type CmsEditorialRateLimitDecision = Readonly<{
@@ -189,7 +162,10 @@ export type CmsEditorialRateLimitInput = Readonly<{
     | 'CMS-03B-03'
     | 'CMS-03B-04'
     | 'CMS-03B-10'
-    | 'CMS-03B-11';
+    | 'CMS-03B-11'
+    | 'CMS-03B-12'
+    | 'CMS-03B-13'
+    | 'CMS-03B-14';
   request: Request;
   /**
    * The bucket identity. For `rateScope: 'user'` this is the acting user; for
@@ -244,6 +220,17 @@ export type CmsEditorialTelemetryEvent = Readonly<{
   runbook: string;
   traceSteps?: readonly string[];
   metrics?: Readonly<Record<string, number>>;
+  /** Trace correlation: the W3C trace id when supplied, else the request id. */
+  traceId?: string;
+  /** Acting-context class of the verified session, never an identifier. */
+  actingContextClass?: 'none' | 'party';
+  /** Derived from the published ApiError policy (429/503/504 only). */
+  retryable?: boolean;
+  /** Registered dependency class of a 502/503/504. */
+  dependency?: string;
+  /** `sha256:<hex>` of the entry id the response is about. */
+  entityIdHash?: string;
+  entityVersion?: string;
 }>;
 
 export type CmsEditorialTelemetry = (

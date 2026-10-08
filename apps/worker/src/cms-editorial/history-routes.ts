@@ -9,23 +9,26 @@ import { type Env, Hono } from 'hono';
 import { invalid, issues, unsupportedMediaType } from './admission-common';
 import { parseRequestPathId } from './admission-body';
 import {
-  dependencyDeadline,
-  dependencyTimedOut,
   dependencyUnavailable,
+  createRouteDeadline,
 } from './admission-deadline';
 import { checkOrigin } from './admission-headers';
 import {
   requireEditorialCapability,
   validHumanSession,
 } from './admission-identity';
-import { emitTelemetry, rateCheck } from './route-execution';
-import { commonHeaders, errorResponse } from './routes';
+import { rateCheck } from './route-execution';
+import { createRouteFinish, entryFacts } from './route-telemetry';
+import {
+  commonHeaders,
+  errorResponse,
+  publishedError,
+  sanitizeReadError,
+} from './routes';
 import {
   CMS_EDITORIAL_HISTORY_OPERATION_ID,
-  CMS_EDITORIAL_RUNBOOK,
   type CmsEditorialDependencies,
   type CmsEditorialError,
-  type CmsEditorialResult,
   type CmsEditorialHistoryPortInput,
 } from './types';
 
@@ -125,38 +128,23 @@ export const registerCmsEditorialHistoryRoutes = <E extends Env>(
       request.headers.get('x-request-id') ?? undefined,
     );
     const startedAt = dependencies.now?.() ?? Date.now();
-    const deadlineAt =
-      performance.now() + (dependencies.deadlineMs ?? policy.timeoutMs);
-    const withinDeadline = <T>(
-      invoke: (signal: AbortSignal) => Promise<CmsEditorialResult<T>>,
-    ): Promise<CmsEditorialResult<T>> => {
-      const remainingMs = Math.ceil(deadlineAt - performance.now());
-      return remainingMs <= 0
-        ? Promise.resolve(dependencyTimedOut())
-        : dependencyDeadline(invoke, remainingMs);
-    };
-    const finish = (response: Response): Response => {
-      void emitTelemetry(dependencies, {
-        operationId: CMS_EDITORIAL_HISTORY_OPERATION_ID,
-        requestId,
-        outcome:
-          response.status < 400
-            ? 'success'
-            : response.status < 500
-              ? 'rejected'
-              : 'failure',
-        status: response.status,
-        durationMs: Math.max(
-          0,
-          (dependencies.now?.() ?? Date.now()) - startedAt,
-        ),
-        actorClass: 'human',
-        runbook: CMS_EDITORIAL_RUNBOOK,
-      });
-      return response;
-    };
+    const { deadlineAt, withinDeadline } = createRouteDeadline(
+      request,
+      dependencies.deadlineMs,
+      policy.timeoutMs,
+    );
+    const finish = createRouteFinish(
+      dependencies,
+      request,
+      requestId,
+      policy,
+      startedAt,
+    );
     const fail = (error: CmsEditorialError, headers?: Headers) =>
-      finish(errorResponse(request, dependencies, requestId, error, headers));
+      finish(
+        errorResponse(request, dependencies, requestId, error, headers, policy),
+        { error: publishedError(error, policy) },
+      );
 
     // BE00 step 2: CORS origin and request media.
     const originError = checkOrigin(request, dependencies.humanOrigins);
@@ -218,7 +206,7 @@ export const registerCmsEditorialHistoryRoutes = <E extends Env>(
     const result = await withinDeadline((signal) =>
       listRevisions(input, signal),
     );
-    if (!result.ok) return fail(result);
+    if (!result.ok) return fail(sanitizeReadError(result, policy));
     const parsed = RevisionHistoryPageSchema.safeParse(result.value);
     if (!parsed.success)
       return fail({
@@ -232,6 +220,13 @@ export const registerCmsEditorialHistoryRoutes = <E extends Env>(
     headers.set('etag', `"${parsed.data.pageVersion}"`);
     return finish(
       new Response(JSON.stringify(parsed.data), { status: 200, headers }),
+      {
+        counts: {
+          items_returned: parsed.data.items.length,
+          changes_returned: parsed.data.compare?.changes.length ?? 0,
+        },
+        entry: await entryFacts(path.value),
+      },
     );
   });
 };

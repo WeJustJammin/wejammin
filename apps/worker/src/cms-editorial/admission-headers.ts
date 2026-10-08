@@ -77,3 +77,28 @@ export const csrfErrorIfCookie = (
         details: {},
       };
 };
+
+/**
+ * The body names the entry version the caller read and the strong If-Match is
+ * the CAS validator. They must be the same value: a disagreement is refused
+ * before any dependency call rather than letting either one silently win.
+ */
+export const versionDisagreement = (
+  expectedVersion: string,
+  ifMatch: string,
+): CmsEditorialError | null =>
+  expectedVersion === ifMatch
+    ? null
+    : invalid(
+        'The expected version does not match If-Match.',
+        {
+          violations: [
+            {
+              path: '/expectedVersion',
+              code: 'mismatch',
+              message: 'The value is invalid.',
+            },
+          ],
+        },
+        422,
+      );

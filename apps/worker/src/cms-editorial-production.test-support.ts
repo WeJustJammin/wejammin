@@ -25,6 +25,7 @@ export const HASH = 'a'.repeat(64);
 export const revisionResource = {
   id: REVISION_ID,
   version: '1',
+  entryVersion: '2',
   createdAt: '2026-09-26T00:00:00Z',
   updatedAt: '2026-09-26T00:00:00Z',
   state: 'draft',
@@ -74,7 +75,7 @@ export const portInput = (
   body: {
     entryId: ENTRY_ID,
     baseRevision: '1',
-    changedPaths: ['/title'],
+    changedPaths: [`/fields/${SCHEMA_VERSION_ID}`],
     values: { [SCHEMA_VERSION_ID]: 'hello' },
     locale: 'en-US',
     expectedVersion: '1',

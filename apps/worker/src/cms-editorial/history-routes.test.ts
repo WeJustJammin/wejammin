@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { type RevisionHistoryPage } from '@wejammin/contracts';
+import { ApiErrorSchema, type RevisionHistoryPage } from '@wejammin/contracts';
 
 import {
   createCmsEditorialApp,
@@ -481,5 +481,73 @@ describe('CMS-03B-03 protected revision-history route', () => {
     const concealed = await get(missing.app);
     expect(concealed.status).toBe(404);
     expect(await concealed.text()).not.toContain('Hidden.');
+  });
+});
+
+describe('Codex s10-ts-2 M1: CMS-03B-03 publishes the read-specific error projection', () => {
+  const failing = (failure: Record<string, unknown>) =>
+    harness({
+      ports: {
+        appendRevision: async () => ({
+          ok: false,
+          status: 503,
+          code: 'DEPENDENCY_UNAVAILABLE',
+          message: 'Unavailable.',
+        }),
+        listRevisions: async () => ({ ok: false, ...failure }) as never,
+      },
+    });
+
+  it('keeps only a registered read reasonCode on a visible 403 and drops every write-path member', async () => {
+    const { app } = failing({
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'Missing private assignment 123.',
+      details: {
+        reasonCode: 'CAPABILITY_REQUIRED',
+        currentVersion: '9',
+        expectedVersion: '8',
+        dependencyClass: 'cms_rpc_private',
+      },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(403);
+    const payload = ApiErrorSchema.parse(await response.json());
+    expect(payload.details).toEqual({ reasonCode: 'CAPABILITY_REQUIRED' });
+  });
+
+  it('publishes the declared cursor/context 409 with only conflict and recoveryAction', async () => {
+    const { app } = failing({
+      status: 409,
+      code: 'CONFLICT',
+      message: 'Cursor bound to another actor 123.',
+      details: {
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
+        expectedVersion: '1',
+        currentVersion: '2',
+        reasonCode: 'cursor_context_mismatch',
+      },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(409);
+    const text = await response.text();
+    expect(JSON.parse(text).details).toEqual({
+      conflict: 'INVALID_TRANSITION',
+      recoveryAction: 'refresh',
+    });
+    expect(text).not.toContain('actor 123');
+  });
+
+  it('conceals a 404 to empty details even when the dependency supplied some', async () => {
+    const { app } = failing({
+      status: 404,
+      code: 'NOT_FOUND',
+      message: 'Hidden.',
+      details: { reasonCode: 'concealed', currentVersion: '4' },
+    });
+    const response = await get(app);
+    expect(response.status).toBe(404);
+    expect(ApiErrorSchema.parse(await response.json()).details).toEqual({});
   });
 });

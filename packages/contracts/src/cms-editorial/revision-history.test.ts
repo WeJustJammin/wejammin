@@ -15,6 +15,15 @@ const uuid3 = '123e4567-e89b-42d3-a456-426614174002';
 const hash = 'a'.repeat(64);
 const instant = '2026-09-26T00:00:00Z';
 const pointer = '/fields/' + uuid3;
+const fieldPointer = (index: number): string =>
+  `/fields/123e4567-e89b-42d3-a456-${String(index).padStart(12, '0')}`;
+const relationPointer = `/relations/${uuid3}/${'b'.repeat(64)}`;
+const blockPointer = '/blocks/hero/0/body';
+const pointerOf = {
+  field: pointer,
+  block: blockPointer,
+  relation: relationPointer,
+} as const;
 
 const validSummary = {
   id: uuid,
@@ -124,7 +133,7 @@ describe('CMS-03B-03 revision summary and page', () => {
       RevisionHistoryCompareSchema.safeParse({
         ...validCompare,
         changes: Array.from({ length: 513 }, (_, index) => ({
-          path: '/p/' + String(index),
+          path: fieldPointer(index),
           kind: 'unchanged',
           domain: 'field',
         })),
@@ -136,7 +145,7 @@ describe('CMS-03B-03 revision summary and page', () => {
     for (const domain of ['field', 'block', 'relation'] as const) {
       expect(
         RevisionHistoryChangeSchema.safeParse({
-          path: pointer,
+          path: pointerOf[domain],
           kind: 'changed',
           domain,
           leftHash: hash,
@@ -177,7 +186,7 @@ describe('CMS-03B-03 revision summary and page', () => {
 
   it('keeps the 512-change bound while accepting the exact boundary', () => {
     const changes = Array.from({ length: 512 }, (_, index) => ({
-      path: '/p/' + String(index),
+      path: fieldPointer(index),
       kind: 'unchanged' as const,
       domain: 'field' as const,
       leftHash: hash,
@@ -210,12 +219,7 @@ describe('CMS-03B-03 revision summary and page', () => {
           restore: validRestore,
         }).restore as object,
       ).sort(),
-    ).toEqual([
-      'availability',
-      'chainHash',
-      'edgeCount',
-      'migrationChainId',
-    ]);
+    ).toEqual(['availability', 'chainHash', 'edgeCount', 'migrationChainId']);
 
     expect(
       RevisionHistoryCompareSchema.safeParse({
@@ -345,5 +349,74 @@ describe('CMS-03B-03 revision history query', () => {
       RevisionHistoryPathParamsSchema.safeParse({ entryId: uuid, extra: 1 })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('[P2-S10-AC-016] CMS-03B-03 change pointers follow the D5 grammar of their domain', () => {
+  const change = (domain: string, path: string) => ({
+    path,
+    kind: 'changed',
+    domain,
+    leftHash: hash,
+    rightHash: hash,
+  });
+  const accepts = (domain: string, path: string): boolean =>
+    RevisionHistoryChangeSchema.safeParse(change(domain, path)).success;
+
+  it('accepts exactly the three D5 pointer grammars for their own domain', () => {
+    expect(accepts('field', `/fields/${uuid3}`)).toBe(true);
+    expect(accepts('block', '/blocks/hero/0/body')).toBe(true);
+    expect(accepts('block', '/blocks/a')).toBe(true);
+    expect(accepts('relation', `/relations/${uuid3}/${'0'.repeat(64)}`)).toBe(
+      true,
+    );
+  });
+
+  it('refuses a path that belongs to another domain', () => {
+    expect(accepts('field', blockPointer)).toBe(false);
+    expect(accepts('field', relationPointer)).toBe(false);
+    expect(accepts('block', pointer)).toBe(false);
+    expect(accepts('block', relationPointer)).toBe(false);
+    expect(accepts('relation', pointer)).toBe(false);
+    expect(accepts('relation', blockPointer)).toBe(false);
+  });
+
+  it('refuses a malformed field pointer', () => {
+    for (const path of [
+      '/fields/title',
+      '/fields/',
+      `/fields/${uuid3.toUpperCase()}`,
+      `/fields/${uuid3}/extra`,
+      '/p/1',
+    ])
+      expect(accepts('field', path), path).toBe(false);
+  });
+
+  it('refuses a relation pointer that is not a keyed token or a field uuid', () => {
+    for (const path of [
+      `/relations/${uuid3}`,
+      `/relations/${uuid3}/`,
+      `/relations/${uuid3}/${'b'.repeat(63)}`,
+      `/relations/${uuid3}/${'b'.repeat(65)}`,
+      `/relations/${uuid3}/${'B'.repeat(64)}`,
+      `/relations/${uuid3}/${'g'.repeat(64)}`,
+      // a bare target id would let a reader confirm a guessed hidden target
+      `/relations/${uuid3}/${uuid}`,
+      `/relations/not-a-uuid/${'b'.repeat(64)}`,
+      `/relations/${uuid3}/${'b'.repeat(64)}/extra`,
+    ])
+      expect(accepts('relation', path), path).toBe(false);
+  });
+
+  it('refuses an empty, control-bearing, query, fragment or backslash block path', () => {
+    for (const path of [
+      '/blocks/',
+      '/blocks',
+      '/blocks/a?b',
+      '/blocks/a#b',
+      '/blocks/a\\b',
+      '/blocks/a\u0000b',
+    ])
+      expect(accepts('block', path), JSON.stringify(path)).toBe(false);
   });
 });

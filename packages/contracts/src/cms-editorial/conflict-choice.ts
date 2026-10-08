@@ -6,7 +6,7 @@ import {
   JsonValueSchema,
   type JsonValue,
 } from '../api-error.ts';
-import { JsonPointerSchema, cmsEditorialJsonDepth } from './primitives.ts';
+import { FieldPointerSchema, cmsEditorialJsonDepth } from './primitives.ts';
 
 const conflictChoiceValueBytes = (value: JsonValue): number =>
   new TextEncoder().encode(JSON.stringify(value)).byteLength;
@@ -36,7 +36,7 @@ export const ConflictChoiceValueSchema = JsonValueSchema.refine(
  */
 export const ConflictChoiceSchema = z
   .strictObject({
-    path: JsonPointerSchema,
+    path: FieldPointerSchema,
     choice: z.enum(['base', 'theirs', 'yours', 'explicit']),
     value: ConflictChoiceValueSchema.optional(),
   })

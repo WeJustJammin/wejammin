@@ -98,11 +98,14 @@ export type EditorialConflictDetailErrors =
   CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;
 
 /**
- * CMS-03B-13 entry-list envelope.  An opaque signed cursor carries no
- * mutating state, so CONFLICT is absent while 415 stays.
+ * CMS-03B-13 entry-list envelope.  The read mutates nothing, but DEC-140 makes
+ * a well-formed signed cursor that is expired, tampered, foreign-bound or
+ * signed by an unknown or stale key a 409 CONFLICT (cursor/context mismatch),
+ * so CONFLICT is present beside the bounded read codes; 415 stays.
  */
-export type EditorialEntryListErrors =
-  CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;
+export type EditorialEntryListErrors = CmsEditorialErrorMap<
+  EditorialBoundedReadErrorCodes | 'CONFLICT'
+>;
 
 /**
  * CMS-03B-14 authoring-context envelope.  The read never grants a registry
