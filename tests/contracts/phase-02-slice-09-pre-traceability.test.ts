@@ -356,7 +356,7 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
       [
         [
           11,
-          48,
+          122,
           [
             [
               46,

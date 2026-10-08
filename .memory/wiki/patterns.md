@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 27
-- **Unique pattern titles**: 24
+- **Total patterns**: 28
+- **Unique pattern titles**: 25
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -365,6 +365,20 @@
 - **Context**: Regenerating Slice 09 marker receipts and Slice 10 identity receipts from real runs
 - **Pattern**: Playwright empties its output directory (default test-results/) before every run, silently deleting vitest/pgTAP/race reports written there earlier. Give every Playwright run its own --output directory (the S10 runner now does) and keep intermediate reports outside test-results/. A receipts guard that cites its own test file records a failed receipt when the full run happens while receipts are stale; when the guard file is byte-identical to HEAD, restore its HEAD receipt rows, then re-verify the guard against the fresh set. Also: a config that selects no cited spec must run with --pass-with-no-tests.
 - **Source**: Slice 10 receipts refresh, 2026-10-08
+
+## PAT-023: Never assert freshness with file modification times; CI checkouts reset them (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:35:35.642Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-10 CI
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Contract/integration tests that check a generated artifact is current (spec graph, receipts, compiled memory)
+- **Pattern**: A fresh CI checkout gives every file the checkout time, so an mtime comparison passes locally and fails in CI (PR #126). Compare content instead: rebuild the artifact from the committed sources in a temporary copy (never writing the repository) and require equality, with a negative control. Calling a builder in place can rewrite tracked files.
+- **Source**: PR #126 quality job, 2026-10-08
 
 ## Full Log
 
@@ -743,3 +757,16 @@
 - **Context**: Regenerating Slice 09 marker receipts and Slice 10 identity receipts from real runs
 - **Pattern**: Playwright empties its output directory (default test-results/) before every run, silently deleting vitest/pgTAP/race reports written there earlier. Give every Playwright run its own --output directory (the S10 runner now does) and keep intermediate reports outside test-results/. A receipts guard that cites its own test file records a failed receipt when the full run happens while receipts are stale; when the guard file is byte-identical to HEAD, restore its HEAD receipt rows, then re-verify the guard against the fresh set. Also: a config that selects no cited spec must run with --pass-with-no-tests.
 - **Source**: Slice 10 receipts refresh, 2026-10-08
+
+### PAT-023: Never assert freshness with file modification times; CI checkouts reset them (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:35:35.642Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-10 CI
+- **Tags**: pattern, anti-pattern, ci, testing
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Contract/integration tests that check a generated artifact is current (spec graph, receipts, compiled memory)
+- **Pattern**: A fresh CI checkout gives every file the checkout time, so an mtime comparison passes locally and fails in CI (PR #126). Compare content instead: rebuild the artifact from the committed sources in a temporary copy (never writing the repository) and require equality, with a negative control. Calling a builder in place can rewrite tracked files.
+- **Source**: PR #126 quality job, 2026-10-08

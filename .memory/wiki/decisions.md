@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 148
-- **Unique decision titles**: 148
+- **Total decisions**: 155
+- **Unique decision titles**: 155
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2155,6 +2155,104 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: Slice 11 and 12 setup; [P2-S09-AC-268] guard.
 - **Reversibility**: High
 
+## DEC-149: Slice 11 depth-floor cascade for CMS-03B-15..20 is additive, six obligations per operation (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:29:38.939Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: DEC-148 deferred the full per-operation cascade for the operations the Slice 11 spec cascade added (CMS-03B-15 workflow read, 16 review detail, 17 reviewer queue, 18 reviewer assignment, 19 internal preview-token verifier, 20 internal schedule claim/execute) to Slice 11 setup, but did not say whether the new obligations nest under the three owner rows (AC035, AC038, AC041; the count stays 48) or are added criteria.
+- **Options considered**: (A) additive, following the Slice 10 DEC-133 precedent (5 operations x 6 classes = 30 added criteria): six independently testable obligations per cascaded operation (contract/shape, validation, authority/privacy, runtime bounds, safe failure, consumer/verification) = 36 new criteria P2-S11-AC-049 through AC-084; (B) nest them under AC035/AC038/AC041 and keep 48 (rejected: each owner row owns one IA flow and cannot carry two or three operations x six obligations as separately verifiable items, and nesting hides unverified obligations behind one checkbox).
+- **Decision**: (A). Slice 11 floor 48 -> 84; Phase 2 3008 authored / 3004 active -> 3044 / 3040. Existing criterion text (AC001-AC048) is unchanged. An obligation class that an operation genuinely lacks is omitted and justified in the depth-floor ledger, never padded (enum-padding failure mode). Ledger: .memory/pipeline/progress/verification/2026-10-08-slice-11-depth-floor.md.
+- **Downstream**: phase-2.md Slice 11 section, inventory, completion policy; slice-11 tracker; phase-02.md, index.md, spec-pipeline.md totals; scripts/check-progress-consistency.mjs and the Slice 09 completion-policy test denominators; Slice 11 evidence ledger and implementation lanes.
+- **Reversibility**: High
+
+## DEC-150: Accessibility preflight evidence uses the BE05c run-state vocabulary healthy|blocked|failed; BE03b amended (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:29:38.940Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: BE03b reused the per-category PreflightOutcome enum passed|failed|unavailable (BE03b:1256) for PreflightEvidence.outcome (BE03b:1285-1296) and said the RPC accepts evidence only when `outcome` is `passed` (BE03b:1789; line numbers here are of the pre-amendment file at commit a7800c46), while the same file (BE03b:1775, registry row 11: "only a healthy run passes") and BE05c (BE05c:1048-1056 run state, 1063-1066 PreflightEvidence members, 1073-1076 "Only healthy passes; blocked returns BLOCKING_FINDING; failed is an unresolved preflight") define the checker result as the run state healthy|blocked|failed. Two vocabularies for one value would make contracts and SQL diverge.
+- **Options considered**: (A) adopt the BE05c run-state vocabulary for the evidence member (healthy | blocked | failed; a fresh gate call never yields requested, running or stale) and keep PreflightOutcome only for the per-category PreflightResult, with a stated mapping: healthy -> passed; blocked -> failed with reasonCode blocking_finding; failed (checker timeout, dependency failure or unreadable target, BE05c:1049-1052) -> unavailable with reasonCode checker_failed, because BE03b already defines unavailable as "a provider dependency failed or timed out" and BE05c calls a failed run an "unresolved preflight"; (B) change BE05c to passed|failed|unavailable (rejected: quality_check_runs.state CHECK, CFG-05C-02/06/07 contracts and Slice 16 persistence expose healthy|blocked|failed, so the ripple is larger and later).
+- **Decision**: (A). BE03b PreflightEvidence.outcome becomes z.enum([healthy, blocked, failed]); the RPC accepts only `healthy` evidence with the existing provider-key/version, 60-second freshness and bindingHash rules; the stated mapping is added beside the Aggregation paragraph. The mapping is derived from the two quoted clauses; the owner may override it. BE03b changelog row added.
+- **Downstream**: BE03b Request/Response Contracts and Publication preflight registry; Slice 11 cms.a11y.structural checker module, Worker preflight adapter and RPC evidence verification; Slice 16 reuses the module unchanged.
+- **Reversibility**: High
+
+## DEC-151: FE03 already carries explicit CMS-03B-15..18 route and component rows; Slice 11 criteria bind to them (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:29:38.940Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: The Codex Slice 11 digest said the FE03 workbench union enumerates CMS-03B-05..09 but not the DEC-148 routes 15..18 (FE03:320-363) and asked whether FE03 receives explicit rows rather than BE03b alone altering a locked FE layer.
+- **Options considered**: (A) FE03 gains explicit route and component rows for CMS-03B-15..18 consistent with BE03b (BE03b stays upstream; FE03 follows it); (B) leave FE03 unchanged and cite only BE03b.
+- **Decision**: (A) is the rule, and verification against the current file shows it is already satisfied: the 2026-10-07 Slice 11/12 cascade added them (FE03 changelog row 2818). FE03 already types and routes 15..18: resource union 361-364 and 377-392, operation union 521-555, components 592-598, page rows 1095-1096, 1495-1498, state rows 1547-1550, operation metadata 1676-1679, contract fields 1803-1806 and 1851-1854, error mapping 2578 and 2619-2625, tests 2760. Every row was compared with BE03b and matches. No FE03 text change was needed; the Slice 11 consumer/verification criteria cite these exact FE03 sections.
+- **Downstream**: Slice 11 criteria AC-049..AC-084 consumer/verification rows; web lane component and route work.
+- **Reversibility**: High
+
+## DEC-152: FE03 locale runtime follows DEC-114 and DEC-138; no FE03 deferral text exists to amend (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:29:38.940Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: The Codex Slice 11 digest said FE03:536 still describes CMS-15 locale runtime as deferred while DEC-114 and DEC-138 place the locale provider in Phase 2 / Slice 12, and asked for an amendment.
+- **Options considered**: (A) the decision-led reading governs and FE03 is amended wherever it defers CMS-15 runtime; (B) leave the deferral.
+- **Decision**: (A) is the rule. Verification: FE03:536 is `browserPolicy: protected-read-only` of CMS-03B-16, and no FE03 text defers CMS-15 or locale runtime; FE03:863 states DEC-114 un-defers CMS-03C-04 and CMS-03C-05, FE03:1289 calls the locale variant form "a Phase 2 runtime form, DEC-114", FE03:2661 carries the DEC-121/DEC-138 no_fallback behavior, and BE03c:1315-1317 and :1415 already carry the shared resolver and the cms.locale.no_fallback_gate provider. The Slice 11 locale preflight category fails closed with provider_unbuilt_reference until Slice 12 registers that provider (BE03b registry row 14, pre-amendment line 1778). No spec text change was needed.
+- **Downstream**: Slice 11 preflight criteria (category 14 locale); Slice 12 provider registration.
+- **Reversibility**: High
+
+## DEC-153: The pinned IANA tz release is an implementation choice; the Slice 11 contract lane pins the newest stable release and records it here (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:54:13.220Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 follow-up (orchestrator ruling; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: BE03b E8 (Time authority) locks the mechanism (a content-addressed snapshot generated from one IANA tarball, exported as CMS_TZDB_VERSION and CMS_TZDB_SHA256, hash verified at module load, mirrored by cms_tzdb_version(), stored per schedule as the tag) but names no release (it says "such as 2025b"), and the tag is contract-visible (PublicationScheduleRequest.tzdbVersion, 422 tzdb_version_mismatch details.pinnedVersion, PublicationScheduleResource). Two questions: which release (Q-TZ-1) and whether each schedule also stores the snapshot hash (Q-TZ-2).
+- **Options considered**: Q-TZ-1: (A) the owner names the tag now; (B) the lane proposes and the owner ratifies before schedule RED tests; (C) the lane pins the newest stable release as an implementation constant, owner may override. Q-TZ-2: (A) tag only, as specified; (B) add a tzdb_sha256 column to cms_publication_schedules.
+- **Decision**: Q-TZ-1: (C). The mechanism is locked by E8, so the release pin is an implementation choice like any dependency version: the Slice 11 contract lane pins the newest stable IANA tz release available when it starts and appends the concrete tag, the SHA-256 of the generated snapshot and the generation command to this record. Concrete pin: not yet recorded (the contract lane appends it). The owner may override by forward migration; stored schedules keep the version and instant they were accepted with. Q-TZ-2: (A), follow the spec: the schedule records the tag only and there is no schedule hash column.
+- **Downstream**: P2-S11-AC-103 (Time authority pin), AC-104, AC-105, AC-106; CMS-03B-07 schedule RED tests and fixtures; the shared Time authority module.
+- **Reversibility**: High
+
+## DEC-154: DEC-149 additive rule extends to every Slice 11 cascade obligation no criterion owned; Slice 11 floor 122 (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:54:13.221Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 follow-up (orchestrator ruling; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: DEC-149 added six obligations for each of CMS-03B-15..20 (AC049-AC084) but the lane found Slice 11 specification-cascade obligations that no criterion owns (BE03b E1-E3, E7, E8, E11, D19, D25, DEC-136, DEC-134, the review invalidation and persistence rows, BE05c checker rules).
+- **Options considered**: (A) add one criterion per unowned obligation under the same additive rule; (B) leave them to the generic per-operation rows and AC001-AC004 (rejected: those rows cite sections at heading level and do not name the obligations, so they would be unverifiable).
+- **Decision**: (A). 38 criteria AC085-AC122, one obligation each with exact section citations and verified line anchors: derived revision state 2, frozen manifest 4, settings snapshot 2, preflight registry 5, accessibility checker 5, time authority 4, publisher authority and separation of duties 1, reviewer decision 3, review invalidation 3, publication lineage 3, preview token 2, persistence 4. Slice 11 floor 84 -> 122 (48 + 36 + 38); Phase 2 3044 authored / 3040 active -> 3082 / 3078. The ledger records the count change. DEC-149 remains the per-operation rule.
+- **Downstream**: phase-2.md and the Slice 11 tracker, progress index/phase/spec-pipeline totals, scripts/check-progress-consistency.mjs, the Slice 09 completion-policy and pre-traceability tests, Slice 11 evidence ledger.
+- **Reversibility**: High
+
+## DEC-155: AC035, AC038 and AC041 wording defects stay unapplied and join the owner DEC-147 wording batch (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T10:54:13.221Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 setup, lane S11-0 follow-up (orchestrator ruling; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: P2-S11-AC-035, AC-038 and AC-041 contain punctuation breaks or truncation (".,", "revocation sta,") and lag IA03 AC-CMS-08/09/13 on E6 (MFA is unconditional) and E11 (the publisher and the reviewer are never the author or the submitter).
+- **Options considered**: (A) apply the corrected text now; (B) leave the existing criterion text and add the corrected wording to the owner DEC-147 wording batch.
+- **Decision**: (B). Existing criterion text AC001-AC048 is not changed; the owner ratifies the corrected wording together with the Slice 10 wording defects (DEC-147 class) before the Slice 11 evidence ledger freezes these rows. Proposed corrected text is listed in the lane S11-0 report section 7.
+- **Downstream**: Slice 11 evidence ledger; DEC-147 wording batch.
+- **Reversibility**: High
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -4157,4 +4255,95 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: (A) append operation-ownership sentences to the existing owning S11/S12 criterion rows now (no criterion added, counts and depth floors unchanged) and run the full per-operation depth-floor cascade when each slice starts; (B) run the S11/S12 depth-floor cascade inside the Slice 10 change; (C) leave the guard red.
 - **Decision**: (A). Rows edited: S11 AC035/AC038/AC041, S12 AC038/AC040/AC043/AC046/AC051 (plan + tracker mirrors). The S11/S12 depth-floor cascade (per-operation contract/validation/authority/concurrency/failure/consumer criteria) is mandatory at /implement-slice setup for those slices.
 - **Downstream**: Slice 11 and 12 setup; [P2-S09-AC-268] guard.
+- **Reversibility**: High
+
+### DEC-149: Slice 11 depth-floor cascade for CMS-03B-15..20 is additive, six obligations per operation (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:29:38.939Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: DEC-148 deferred the full per-operation cascade for the operations the Slice 11 spec cascade added (CMS-03B-15 workflow read, 16 review detail, 17 reviewer queue, 18 reviewer assignment, 19 internal preview-token verifier, 20 internal schedule claim/execute) to Slice 11 setup, but did not say whether the new obligations nest under the three owner rows (AC035, AC038, AC041; the count stays 48) or are added criteria.
+- **Options considered**: (A) additive, following the Slice 10 DEC-133 precedent (5 operations x 6 classes = 30 added criteria): six independently testable obligations per cascaded operation (contract/shape, validation, authority/privacy, runtime bounds, safe failure, consumer/verification) = 36 new criteria P2-S11-AC-049 through AC-084; (B) nest them under AC035/AC038/AC041 and keep 48 (rejected: each owner row owns one IA flow and cannot carry two or three operations x six obligations as separately verifiable items, and nesting hides unverified obligations behind one checkbox).
+- **Decision**: (A). Slice 11 floor 48 -> 84; Phase 2 3008 authored / 3004 active -> 3044 / 3040. Existing criterion text (AC001-AC048) is unchanged. An obligation class that an operation genuinely lacks is omitted and justified in the depth-floor ledger, never padded (enum-padding failure mode). Ledger: .memory/pipeline/progress/verification/2026-10-08-slice-11-depth-floor.md.
+- **Downstream**: phase-2.md Slice 11 section, inventory, completion policy; slice-11 tracker; phase-02.md, index.md, spec-pipeline.md totals; scripts/check-progress-consistency.mjs and the Slice 09 completion-policy test denominators; Slice 11 evidence ledger and implementation lanes.
+- **Reversibility**: High
+
+### DEC-150: Accessibility preflight evidence uses the BE05c run-state vocabulary healthy|blocked|failed; BE03b amended (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:29:38.940Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: BE03b reused the per-category PreflightOutcome enum passed|failed|unavailable (BE03b:1256) for PreflightEvidence.outcome (BE03b:1285-1296) and said the RPC accepts evidence only when `outcome` is `passed` (BE03b:1789; line numbers here are of the pre-amendment file at commit a7800c46), while the same file (BE03b:1775, registry row 11: "only a healthy run passes") and BE05c (BE05c:1048-1056 run state, 1063-1066 PreflightEvidence members, 1073-1076 "Only healthy passes; blocked returns BLOCKING_FINDING; failed is an unresolved preflight") define the checker result as the run state healthy|blocked|failed. Two vocabularies for one value would make contracts and SQL diverge.
+- **Options considered**: (A) adopt the BE05c run-state vocabulary for the evidence member (healthy | blocked | failed; a fresh gate call never yields requested, running or stale) and keep PreflightOutcome only for the per-category PreflightResult, with a stated mapping: healthy -> passed; blocked -> failed with reasonCode blocking_finding; failed (checker timeout, dependency failure or unreadable target, BE05c:1049-1052) -> unavailable with reasonCode checker_failed, because BE03b already defines unavailable as "a provider dependency failed or timed out" and BE05c calls a failed run an "unresolved preflight"; (B) change BE05c to passed|failed|unavailable (rejected: quality_check_runs.state CHECK, CFG-05C-02/06/07 contracts and Slice 16 persistence expose healthy|blocked|failed, so the ripple is larger and later).
+- **Decision**: (A). BE03b PreflightEvidence.outcome becomes z.enum([healthy, blocked, failed]); the RPC accepts only `healthy` evidence with the existing provider-key/version, 60-second freshness and bindingHash rules; the stated mapping is added beside the Aggregation paragraph. The mapping is derived from the two quoted clauses; the owner may override it. BE03b changelog row added.
+- **Downstream**: BE03b Request/Response Contracts and Publication preflight registry; Slice 11 cms.a11y.structural checker module, Worker preflight adapter and RPC evidence verification; Slice 16 reuses the module unchanged.
+- **Reversibility**: High
+
+### DEC-151: FE03 already carries explicit CMS-03B-15..18 route and component rows; Slice 11 criteria bind to them (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:29:38.940Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: The Codex Slice 11 digest said the FE03 workbench union enumerates CMS-03B-05..09 but not the DEC-148 routes 15..18 (FE03:320-363) and asked whether FE03 receives explicit rows rather than BE03b alone altering a locked FE layer.
+- **Options considered**: (A) FE03 gains explicit route and component rows for CMS-03B-15..18 consistent with BE03b (BE03b stays upstream; FE03 follows it); (B) leave FE03 unchanged and cite only BE03b.
+- **Decision**: (A) is the rule, and verification against the current file shows it is already satisfied: the 2026-10-07 Slice 11/12 cascade added them (FE03 changelog row 2818). FE03 already types and routes 15..18: resource union 361-364 and 377-392, operation union 521-555, components 592-598, page rows 1095-1096, 1495-1498, state rows 1547-1550, operation metadata 1676-1679, contract fields 1803-1806 and 1851-1854, error mapping 2578 and 2619-2625, tests 2760. Every row was compared with BE03b and matches. No FE03 text change was needed; the Slice 11 consumer/verification criteria cite these exact FE03 sections.
+- **Downstream**: Slice 11 criteria AC-049..AC-084 consumer/verification rows; web lane component and route work.
+- **Reversibility**: High
+
+### DEC-152: FE03 locale runtime follows DEC-114 and DEC-138; no FE03 deferral text exists to amend (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:29:38.940Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 (orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: The Codex Slice 11 digest said FE03:536 still describes CMS-15 locale runtime as deferred while DEC-114 and DEC-138 place the locale provider in Phase 2 / Slice 12, and asked for an amendment.
+- **Options considered**: (A) the decision-led reading governs and FE03 is amended wherever it defers CMS-15 runtime; (B) leave the deferral.
+- **Decision**: (A) is the rule. Verification: FE03:536 is `browserPolicy: protected-read-only` of CMS-03B-16, and no FE03 text defers CMS-15 or locale runtime; FE03:863 states DEC-114 un-defers CMS-03C-04 and CMS-03C-05, FE03:1289 calls the locale variant form "a Phase 2 runtime form, DEC-114", FE03:2661 carries the DEC-121/DEC-138 no_fallback behavior, and BE03c:1315-1317 and :1415 already carry the shared resolver and the cms.locale.no_fallback_gate provider. The Slice 11 locale preflight category fails closed with provider_unbuilt_reference until Slice 12 registers that provider (BE03b registry row 14, pre-amendment line 1778). No spec text change was needed.
+- **Downstream**: Slice 11 preflight criteria (category 14 locale); Slice 12 provider registration.
+- **Reversibility**: High
+
+### DEC-153: The pinned IANA tz release is an implementation choice; the Slice 11 contract lane pins the newest stable release and records it here (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:54:13.220Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 follow-up (orchestrator ruling; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: BE03b E8 (Time authority) locks the mechanism (a content-addressed snapshot generated from one IANA tarball, exported as CMS_TZDB_VERSION and CMS_TZDB_SHA256, hash verified at module load, mirrored by cms_tzdb_version(), stored per schedule as the tag) but names no release (it says "such as 2025b"), and the tag is contract-visible (PublicationScheduleRequest.tzdbVersion, 422 tzdb_version_mismatch details.pinnedVersion, PublicationScheduleResource). Two questions: which release (Q-TZ-1) and whether each schedule also stores the snapshot hash (Q-TZ-2).
+- **Options considered**: Q-TZ-1: (A) the owner names the tag now; (B) the lane proposes and the owner ratifies before schedule RED tests; (C) the lane pins the newest stable release as an implementation constant, owner may override. Q-TZ-2: (A) tag only, as specified; (B) add a tzdb_sha256 column to cms_publication_schedules.
+- **Decision**: Q-TZ-1: (C). The mechanism is locked by E8, so the release pin is an implementation choice like any dependency version: the Slice 11 contract lane pins the newest stable IANA tz release available when it starts and appends the concrete tag, the SHA-256 of the generated snapshot and the generation command to this record. Concrete pin: not yet recorded (the contract lane appends it). The owner may override by forward migration; stored schedules keep the version and instant they were accepted with. Q-TZ-2: (A), follow the spec: the schedule records the tag only and there is no schedule hash column.
+- **Downstream**: P2-S11-AC-103 (Time authority pin), AC-104, AC-105, AC-106; CMS-03B-07 schedule RED tests and fixtures; the shared Time authority module.
+- **Reversibility**: High
+
+### DEC-154: DEC-149 additive rule extends to every Slice 11 cascade obligation no criterion owned; Slice 11 floor 122 (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:54:13.221Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 follow-up (orchestrator ruling; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: DEC-149 added six obligations for each of CMS-03B-15..20 (AC049-AC084) but the lane found Slice 11 specification-cascade obligations that no criterion owns (BE03b E1-E3, E7, E8, E11, D19, D25, DEC-136, DEC-134, the review invalidation and persistence rows, BE05c checker rules).
+- **Options considered**: (A) add one criterion per unowned obligation under the same additive rule; (B) leave them to the generic per-operation rows and AC001-AC004 (rejected: those rows cite sections at heading level and do not name the obligations, so they would be unverifiable).
+- **Decision**: (A). 38 criteria AC085-AC122, one obligation each with exact section citations and verified line anchors: derived revision state 2, frozen manifest 4, settings snapshot 2, preflight registry 5, accessibility checker 5, time authority 4, publisher authority and separation of duties 1, reviewer decision 3, review invalidation 3, publication lineage 3, preview token 2, persistence 4. Slice 11 floor 84 -> 122 (48 + 36 + 38); Phase 2 3044 authored / 3040 active -> 3082 / 3078. The ledger records the count change. DEC-149 remains the per-operation rule.
+- **Downstream**: phase-2.md and the Slice 11 tracker, progress index/phase/spec-pipeline totals, scripts/check-progress-consistency.mjs, the Slice 09 completion-policy and pre-traceability tests, Slice 11 evidence ledger.
+- **Reversibility**: High
+
+### DEC-155: AC035, AC038 and AC041 wording defects stay unapplied and join the owner DEC-147 wording batch (2026-10-08)
+
+- **Timestamp**: 2026-10-08T10:54:13.221Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 setup, lane S11-0 follow-up (orchestrator ruling; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: P2-S11-AC-035, AC-038 and AC-041 contain punctuation breaks or truncation (".,", "revocation sta,") and lag IA03 AC-CMS-08/09/13 on E6 (MFA is unconditional) and E11 (the publisher and the reviewer are never the author or the submitter).
+- **Options considered**: (A) apply the corrected text now; (B) leave the existing criterion text and add the corrected wording to the owner DEC-147 wording batch.
+- **Decision**: (B). Existing criterion text AC001-AC048 is not changed; the owner ratifies the corrected wording together with the Slice 10 wording defects (DEC-147 class) before the Slice 11 evidence ledger freezes these rows. Proposed corrected text is listed in the lane S11-0 report section 7.
+- **Downstream**: Slice 11 evidence ledger; DEC-147 wording batch.
 - **Reversibility**: High

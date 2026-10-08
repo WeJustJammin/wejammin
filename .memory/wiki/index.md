@@ -1576,6 +1576,14 @@
 
 ## Structured Memory
 
+- decision: DEC-154: DEC-149 additive rule extends to every Slice 11 cascade obligation no criterion owned; Slice 11 floor 122 (2026-10-08) — 2026-10-08T10:54:13.221Z
+- decision: DEC-155: AC035, AC038 and AC041 wording defects stay unapplied and join the owner DEC-147 wording batch (2026-10-08) — 2026-10-08T10:54:13.221Z
+- decision: DEC-153: The pinned IANA tz release is an implementation choice; the Slice 11 contract lane pins the newest stable release and records it here (2026-10-08) — 2026-10-08T10:54:13.220Z
+- pattern: PAT-023: Never assert freshness with file modification times; CI checkouts reset them (2026-10-08) — 2026-10-08T10:35:35.642Z
+- decision: DEC-150: Accessibility preflight evidence uses the BE05c run-state vocabulary healthy|blocked|failed; BE03b amended (2026-10-08) — 2026-10-08T10:29:38.940Z
+- decision: DEC-151: FE03 already carries explicit CMS-03B-15..18 route and component rows; Slice 11 criteria bind to them (2026-10-08) — 2026-10-08T10:29:38.940Z
+- decision: DEC-152: FE03 locale runtime follows DEC-114 and DEC-138; no FE03 deferral text exists to amend (2026-10-08) — 2026-10-08T10:29:38.940Z
+- decision: DEC-149: Slice 11 depth-floor cascade for CMS-03B-15..20 is additive, six obligations per operation (2026-10-08) — 2026-10-08T10:29:38.939Z
 - pattern: PAT-022: Evidence runs must keep Playwright out of shared report directories; self-referential receipt guards need a two-step refresh (2026-10-08) — 2026-10-08T09:22:52.150Z
 - decision: DEC-148: S11/S12 plan rows name the operations the Slice 11/12 spec cascade added; full depth-floor cascade at slice start (2026-10-08) — 2026-10-08T03:21:16.062Z
 - pattern: PAT-021: Route audits and reviews to Codex, not Opus subagents (2026-10-07) — 2026-10-07T03:46:26.512Z
