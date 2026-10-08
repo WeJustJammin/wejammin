@@ -1,6 +1,7 @@
 import type * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { afterEach } from 'vitest';
 
 /**
  * Minimal DOM driver for React components under jsdom. It exercises real
@@ -27,18 +28,40 @@ export interface Mounted {
   readonly unmount: () => void;
 }
 
+const liveMounts = new Set<Mounted>();
+
 export const mountElement = (element: React.ReactElement): Mounted => {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
   act(() => root.render(element));
-  return {
+  const mounted: Mounted = {
     container,
     root,
     rerender: (next) => act(() => root.render(next)),
-    unmount: () => act(() => root.unmount()),
+    unmount: () => {
+      liveMounts.delete(mounted);
+      act(() => root.unmount());
+    },
   };
+  liveMounts.add(mounted);
+  return mounted;
 };
+
+/**
+ * Unmounts every root `mountElement` created that its test did not unmount, so
+ * a component's timers, window listeners and pending effects end with the test
+ * that mounted it. A root removed from the document is still a live React
+ * root: left alone, an autosave timer can fire after the jsdom environment is
+ * gone and React then reads a missing `window` (an unhandled error that fails
+ * the whole run, not the test). Registered once for every file that imports
+ * this driver, after that file's own hooks, so it needs no per-file wiring.
+ */
+export const unmountEveryMountedRoot = (): void => {
+  for (const mounted of [...liveMounts]) mounted.unmount();
+};
+
+afterEach(unmountEveryMountedRoot);
 
 export const flush = async (): Promise<void> => {
   await act(async () => {
