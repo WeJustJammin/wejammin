@@ -1,5 +1,25 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Guard8 frozen; automatic earned Codex resets authorized
+
+Final sole sourceCount row frozen250; parent8:1failed/7passed, format/ESLint0,
+freshCI0/flock. Prior7 source bytes unchanged. Combined QA49:18failed/31passed;
+only intended private-purpose/early-switch/empty-stage/completion-state RED.
+All QA/support frozen and claims released; six-file core claim remains pending
+independent confirmation and checkpoint/push/exact-origin verification.
+
+Human explicitly authorized "automatically use CODEX resets" on2026-10-09.
+This supersedes the old no-reset limit, NOT the no-purchase/no-new-provider rules.
+Installed codex-cli0.162.0 protocol and official app-server docs support
+account/rateLimitResetCredit/consume, using a fresh UUID idempotencyKey per
+logical redemption and retaining that same key on uncertain retry. Read limits
+first; use available earned/free reset when quota requires it, then read limits
+again. Current native app-server read:92% weekly used,8% remaining,1 available,
+no reached limit; NO reset consumed yet. Do not redeem unrelated DB/context
+reset tools, purchase credits, or read/expose credentials. No persistent reset
+automation created. Official source:https://learn.chatgpt.com/docs/app-server.
+No producer change/DB handle/acceptance;0/122/genuine7RED/allholds unchanged.
+
 ## Guard7 actual RED; sourceCount-only final operand amendment
 
 Frozen guard249, parent7:1failed/6passed, format/ESLint0. Schema-valid wrong

@@ -1,5 +1,15 @@
 # Native QA — completion-state and every empty-discriminator operand
 
+## Final8 frozen receipt
+
+Sole sourceCount row added; all prior7 source bytes unchanged. Parent freshCI0 /
+flock format/ESLint0;250lines,8cases1failed/7passed. Only schema-valid verifying
+completion still adds forbidden privateactivation. Independent6.1 no falseoracle:
+each of all eight listed empty predicates has an isolated mutation-sensitive
+witness with the frozen BtargetCount control. Static/controlled dependency proof
+only, not SQL legal states/census/race/authority. QA claim released; all source
+frozen. Core six-file GREEN may dispatch after parent pushed checkpoint.
+
 ## Frozen7 receipt and sole-row source-count amendment
 
 Parent format/ESLint0;249lines,7 cases1 failed/6 passed. Failure exactly strict-

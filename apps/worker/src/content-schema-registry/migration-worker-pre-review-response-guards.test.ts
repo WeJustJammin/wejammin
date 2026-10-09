@@ -159,6 +159,7 @@ describe('pre-review completion state and empty response guards', () => {
   // Defensive dependency responses, not legal sealed SQL states or evidence
   // of an empty census, lease authority, races, approval or persisted dispatch.
   it.each([
+    { label: 'source count one', overrides: { sourceCount: '1' } },
     { label: 'cursor one', overrides: { cursor: '1' } },
     { label: 'row error count one', overrides: { rowErrorCount: '1' } },
     { label: 'migrated count one', overrides: { migratedCount: '1' } },

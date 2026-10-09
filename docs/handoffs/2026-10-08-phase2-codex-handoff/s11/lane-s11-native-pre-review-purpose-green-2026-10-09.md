@@ -1,8 +1,9 @@
 # Native core GREEN — DEC-108 preparation without an early active switch
 
-NOT DISPATCHED. Parent witnessed replacement QA41:17 failed/24 passed, intended
-purpose binding/private switch/empty stage boundaries, format/ESLint0. A29:13/16,
-B12:4/8; test388/support220 and test364/support237. No import/setup failure.
+NOT DISPATCHED. Parent witnessed replacement QA49:18 failed/31 passed, intended
+purpose binding/private switch/empty stage/completion-state boundaries, format/ESLint0.
+A29:13/16, B12:4/8, C8:1/7; test388/support220, test364/support237, guard250.
+No import/setup failure; every QA/support source frozen and QA claims released.
 Independent oracle review and checkpoint/push/exact origin verification still
 required BEFORE dispatch. Root Slice11 worktree only, native author
 gpt-6-astra/high, parent/review gpt-6.1-sol/ultra. Source-only PURE ctx JS fs/path
@@ -11,9 +12,9 @@ child_process/scripts/tests/DB/network/format/lint/TSC/git/packages/commits/
 nested agents. All tests/support, README/tracking, SQL and production factories
 are frozen. Exact prospective writes (all modified utilities <=300 formatted):
 
-Independent6.1 finds two prospective guard/oracle gaps: schema-valid noncompleted
-complete response and individually omitted empty operands. Initial guard7:
-1failed/6passed; sourceCount-only eighth control still required before dispatch.
+Independent6.1 requested schema-valid noncompleted completion and individually
+omitted empty operands. Guard8 now parent1failed/7passed; sourceCount-only row
+completes independent controls for all eight discriminator operands, prior7 unchanged.
 Dry_run completion success must check
 current.state===completed after strict parse; otherwise use existing terminal
 DEPENDENCY_INVALID_RESPONSE failureResult with truthful metadata, no activation
