@@ -56,7 +56,7 @@ Lane reports are in `docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-
 | S11-4 | Worker routes, adapters, a11y checker, verifier adapter, sweep | done at unit level |
 | S11-4R | real-composition apispecs (production adapters → real PostgREST) | 4 apispecs + 5 support modules written, never green on the repo migrations (run 3 used `S11_DIAG_OVERLAY=1`, a diagnostic overlay that is never evidence — remove it); rerun after the two SQL fixes |
 | S11-5 | web surfaces; real-route Playwright | unit/a11y done; real-route 05/06/18 green only on a patched copy (now fixed in the repo — rerun); 07/09 specs never green; no real-route spec yet for 08, 16, 17; `build` + `bundle:check` unrun |
-| S11-G | guard cascades (r8, sec2, ev_eb_publication_scope, S10 publication-boundary integration test), DB types, READMEs, full run | guards 53/53 pass; types regenerated + db:types:check; db:lint 0 errors; full pgTAP 329 files / 12,563 assertions: 321 green, reds = the 7 e2-fixture aborts + bench128 p95 under host load; races were running at the refresh (log `s11/lane-s11-g-races.log`) |
+| S11-G | guard cascades (r8, sec2, ev_eb_publication_scope, S10 publication-boundary integration test), DB types, READMEs, full run | guards 53/53 pass; types regenerated + db:types:check; db:lint 0 errors; full pgTAP 329 files / 12,563 assertions: 321 green, reds = the 7 e2-fixture aborts + bench128 p95 under host load; `pnpm db:races` 19/19; S10 boundary vitest cascade 28/28 |
 
 ## Slice 11 — integration steps (orchestrator-owned, in order)
 
