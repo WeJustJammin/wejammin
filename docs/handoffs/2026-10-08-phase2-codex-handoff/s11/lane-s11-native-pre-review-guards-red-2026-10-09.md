@@ -1,5 +1,17 @@
 # Native QA — completion-state and every empty-discriminator operand
 
+## Frozen7 receipt and sole-row source-count amendment
+
+Parent format/ESLint0;249lines,7 cases1 failed/6 passed. Failure exactly strict-
+valid verifying completion's extra activation RPC; six independent guard controls
+pass. Root read full source and found one more missing operand witness: sourceCount
+alone. After parent checkpoint/push, edit ONLY this test's existing anomaly array,
+add `{ label: 'source count one', overrides: { sourceCount: '1' } }`. Keep all
+other counts/cursor0 and lease owner/token null via existing strict-valid successor
+fixture. Preserve all prior7 cases/assertions/bodies, no helper/producer edits.
+New total8; parent RED again. This completes EACH listed empty predicate rather
+than relying on nonzero source+target+cursor coupled in the positive full case.
+
 Parent checkpoint/push/exact origin verification BEFORE dispatch. Root only
 `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`; native gpt-6-astra/high,
 parent/review gpt-6.1-sol/ultra. Source-only PURE ctx JS fs/path reads and native

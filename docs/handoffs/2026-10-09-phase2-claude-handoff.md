@@ -1,5 +1,15 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Guard7 actual RED; sourceCount-only final operand amendment
+
+Frozen guard249, parent7:1failed/6passed, format/ESLint0. Schema-valid wrong
+complete state triggers unwanted activation; six individual counter/cursor/lease
+denial controls pass. Root found sourceCount-alone missing: sole-row eighth
+anomaly amendment claimed, existing7 and every other file frozen. Checkpoint/push
+before native correction; parent8 RED/review before core. No production change.
+Fresh quota91used/9remaining ordinary access allowed; no reset/credit purchase.
+One author plus bounded read-only review, checkpoints retained.0/122/allholds.
+
 ## Additional defensive guards before core implementation
 
 Independent6.1 finds no false oracle in41, but prospective guard gaps remain:
