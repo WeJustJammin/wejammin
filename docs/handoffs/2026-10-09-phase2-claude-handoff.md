@@ -1,23 +1,23 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
-**Status:** live document, refreshed at every Codex checkpoint. Initial refresh: 2026-10-09. Implementation has not resumed yet; this checkpoint records the verified starting state before the first execution wave.
+**Status:** live document, refreshed at every Codex checkpoint. Refreshed 2026-10-09; the first Slice 11 fixture repair has fresh RED/GREEN and independent verification. Next action is submit-review idempotency. Full DB verification, full validation, Slice 11 closure and Slices 12–17 remain open.
 **Goal:** finish WeJammin Phase 2 Slices 11–17 through `/implement-slice` and `/validate-phase`, with complete evidence, independent reviews, depth checks, tracking, architecture/runbook updates, session capture and canonical memory flush/compile. Keep AC209, AC211, AC265 and AC266 unchecked on their approved external timelines.
-**Model routing:** current orchestration session verified as `gpt-6.1-sol` with `ultra`; execution selection is `Phils-Charm/deepseek-v4.1-flash` with `high`. The model catalog advertises the execution model; its first execution invocation is still pending. Stop on a requested-model availability failure; do not substitute.
+**Model routing:** current orchestration session verified as `gpt-6.1-sol` with `ultra`; live execution agent `/root/s11_e2_fixture` is verified as `Phils-Charm/deepseek-v4.1-flash` with `high`. Independent reviewer `/root/s11_sql2_refutation_exact` is explicitly selected and verified as `gpt-6.1-sol` with `ultra`. An earlier inherited-model reviewer unexpectedly ran as `gpt-5.6-luna`/`max`; it was interrupted and its output excluded. Explicitly select and verify every new agent model; do not rely on inheritance or silently substitute.
 **Claude availability:** weekly usage resets 2026-10-13 23:00 UTC.
 
-| Item                         | Verified starting value                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| Repository                   | `WeJustJammin/wejammin`                                                        |
-| Active worktree              | `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`                           |
-| Branch                       | `claude/phase2-slice11`                                                        |
-| Baseline HEAD                | `8edf4af9884d311553d1b29a6f2c5b6a11380c6e`                                     |
-| Remote branch baseline       | Same SHA, verified with `git ls-remote` on 2026-10-09                          |
-| Remote main baseline         | `3640b506c314e8622d84cd3e4caeebcff718b2a5`                                     |
-| Starting working tree        | Clean; stash list empty                                                        |
-| Fresh verification           | Pinned `pnpm progress:check` exit 0; no fresh DB or full validation result yet |
-| Source handoff               | `docs/handoffs/2026-10-08-phase2-codex-handoff.md`                             |
-| Context                      | `docs/handoffs/2026-10-08-phase2-codex-handoff/`                               |
-| Live orchestration originals | `/home/rob/.codex/worktrees/phase2-slice10/orchestration/`                     |
+| Item                         | Verified starting value                                              |
+| ---------------------------- | -------------------------------------------------------------------- |
+| Repository                   | `WeJustJammin/wejammin`                                              |
+| Active worktree              | `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`                 |
+| Branch                       | `claude/phase2-slice11`                                              |
+| Baseline HEAD                | `8edf4af9884d311553d1b29a6f2c5b6a11380c6e`                           |
+| Remote branch baseline       | Same SHA, verified with `git ls-remote` on 2026-10-09                |
+| Remote main baseline         | `3640b506c314e8622d84cd3e4caeebcff718b2a5`                           |
+| Starting working tree        | Clean; stash list empty                                              |
+| Fresh verification           | E2 parent rerun: 9 files / 180 assertions; full gates remain pending |
+| Source handoff               | `docs/handoffs/2026-10-08-phase2-codex-handoff.md`                   |
+| Context                      | `docs/handoffs/2026-10-08-phase2-codex-handoff/`                     |
+| Live orchestration originals | `/home/rob/.codex/worktrees/phase2-slice10/orchestration/`           |
 
 ## Start here
 
@@ -58,13 +58,23 @@ The following is historical lane evidence. Re-run gates on the current repositor
 
 ## First actions for the next agent
 
-1. Repair `supabase/tests/phase_02_slice_11_e2/000-derived-evidence.sqlinc`, `pg_temp.e2_review`: insert real qualified decision rows before advancing the review. Do not bypass the review guard. Observe RED, then rerun the seven affected files.
+1. **Completed in this continuation:** repair `supabase/tests/phase_02_slice_11_e2/000-derived-evidence.sqlinc`, `pg_temp.e2_review`, with real qualified decision rows before advancing the review. Review guard remains enabled. Fresh failing-first and independently verified GREEN recorded below.
 2. Reproduce and repair the `cms_submit_review` idempotency hash defect in migration `20261005017640`; check 07/09 for parity. Browser request identity excludes server-built evidence.
 3. Remove `S11_DIAG_OVERLAY` from real-composition support modules. Run all four Slice 11 apispecs through `lanes/lane-api.sh` on repository migrations and complete the operation coverage named in the S11-4R brief.
 4. Complete real-route Playwright for CMS-03B-05–09 and 15–18, then run `pnpm build && pnpm bundle:check`.
 5. Re-point changed Slice 10 ledger test titles, then refresh Slice 09/10 receipts with the existing runner.
 6. Rerun bench128 on a quiet host; preserve measured latency and load with the result.
 7. Verify and repair `codex/s11-review-sql2.md` findings, using fresh failing tests.
+
+## Current execution and fresh evidence
+
+- Checkpoint `4dea833b8d78849721295cb18cfb4f0c5631481f` is pushed to `origin/claude/phase2-slice11`.
+- E2 fixture execution changed only `supabase/tests/phase_02_slice_11_e2/000-derived-evidence.sqlinc` and the explicitly approved new regression `supabase/tests/phase_02_slice_11_e2_review_evidence.sql`. Parent owns tracking/handoff integration; no overlapping file edits. No existing test titles changed; the new regression adds 11 AC085 assertions alongside four included fixture assertions.
+- E2 agent GREEN: `.lane-logs/tap-021240.tap`, 8 files / 171 assertions, exit 0. Parent inspected the complete diff and new regression, then reset and independently reran all nine dependent SQL suites, including `phase_02_slice_12_composition_instance_guards.sql`: `.lane-logs/tap-021528.tap`, 9 files / 180 assertions, exit 0. Its preflight found no active GitHub runs and a free shared lock. Both runners used the main stack, repository migrations, and `/tmp/wejammin-supabase-ci.lock`; all handles are finished and the lock released.
+- Fresh RED: the runner reset repository migrations successfully, then all seven affected SQL files aborted with `CONFLICT` in `cms_review_cas_guard()` through `e2_review()`. `Files=7, Tests=28, Failed=0` is **not** a pass: each file had no TAP plan and process status 768; runner exit 1. Logs: `.lane-logs/reset-020551.log`, `.lane-logs/tap-020551.tap`. The agent observed RED before editing the fixture. Session 15215 has finished; do not relaunch that handle.
+- Independent SQL2 review is complete: 14 UPHELD, 1 OWNER-CONTRADICTION, none already fixed. [Reverification report](2026-10-08-phase2-codex-handoff/codex/s11-sql2-reverification-2026-10-09.md). This was static and read-only, with no tests, DB, Docker, network, or file writes. It narrowed findings 12/15: nonpublish scheduling must remain available, and the assignment table's independent cap guard refutes the inherited single-guard cap-bypass mutant. The report is not runtime acceptance evidence. First-evaluation settings persistence versus non-mutating reads needs a compatible preexisting-entry bootstrap policy; no new owner ruling has been made.
+- Next planned execution lane: `/root/s11_submit_hash`, `Phils-Charm/deepseek-v4.1-flash`/`high`, only `supabase/migrations/20261005017640_cms_submit_review.sql` and new `supabase/tests/phase_02_slice_11_rpc_review_submit_evidence_replay.sql`. It must observe a fresh same-key/new-evidence RED before fixing the hash, preserve browser-payload and acting-context identity, and check schedule/publish parity without editing them. Dispatch occurs only after this checkpoint is pushed and live model routing is verified.
+- No acceptance checkbox, full DB gate, full validation, PR, merge, deployment, or cleanup has been claimed in this continuation.
 
 ## Slice 11 — integration and closure
 
@@ -82,4 +92,4 @@ Only after Slice 11 merges, verify ownership, clean state, merged commits and re
 
 ## Commit state
 
-Baseline implementation and handoff commits through `8edf4af9` are pushed. This initial continuation checkpoint adds only this live Claude handoff. Implementation changes, RED/GREEN results, PR status and subsequent checkpoint commits must be recorded here as they occur.
+Baseline implementation and handoff commits through `8edf4af9` are pushed, followed by live-handoff checkpoint `4dea833b`. This checkpoint includes the verified fixture repair, new regression, static SQL2 report and honest in-progress tracking, with every Slice 11 acceptance checkbox still open. Read `git log` for its exact commit SHA. No PR has been created by this continuation.
