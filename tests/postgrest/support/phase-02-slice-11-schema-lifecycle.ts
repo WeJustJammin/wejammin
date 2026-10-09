@@ -7,6 +7,7 @@ import { expect } from 'vitest';
 import { createProductionSchemaMigrationWorker } from '../../../apps/worker/src/production-worker-runtime-cms';
 import { type CmsApp, draftTypeBody } from './cms-app';
 import type { EditorialWorld } from './cms-editorial-world';
+import { createS11MigrationDiagnostics } from './phase-02-slice-11-migration-diagnostics';
 import { type CmsOwner, psql } from './stack';
 import {
   createS11SchemaReviewer,
@@ -83,6 +84,7 @@ const grantAuthoring = async (owner: CmsOwner, app: CmsApp): Promise<void> => {
 
 /** Real worker reads/scans source rows and submits its own bounded row evidence. */
 const sealDryRun = async (schemaVersionId: string, migrationPlanId: string) => {
+  const diagnostics = createS11MigrationDiagnostics();
   const calls: string[] = [];
   const failures: Readonly<{ rpc: string; status: number }>[] = [];
   const transport: typeof fetch = async (input, init) => {
@@ -92,6 +94,7 @@ const sealDryRun = async (schemaVersionId: string, migrationPlanId: string) => {
     if (rpc !== undefined) calls.push(rpc);
     if (rpc !== undefined && !response.ok)
       failures.push({ rpc, status: response.status });
+    await diagnostics.observe(rpc, response);
     return response;
   };
   const worker = createProductionSchemaMigrationWorker(
@@ -107,8 +110,11 @@ const sealDryRun = async (schemaVersionId: string, migrationPlanId: string) => {
     correlationId: randomUUID(),
     causationId: null,
   });
-  expect(calls).toContain('cms_process_schema_migration_dry_run_batch');
-  expect(calls).toContain('cms_finalize_schema_migration_dry_run');
+  const diagnostic = diagnostics.describe(result);
+  expect(calls, diagnostic).toContain(
+    'cms_process_schema_migration_dry_run_batch',
+  );
+  expect(calls, diagnostic).toContain('cms_finalize_schema_migration_dry_run');
   expect(
     failures,
     'production migration transport must complete without refused RPCs',
