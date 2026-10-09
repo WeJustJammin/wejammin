@@ -1,5 +1,31 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Registry bounded GREEN; genuine dry-run boundary RED
+
+Native recovery348 frozen: targeted2/2, format/ESLint0; parent registry149 suites
+2512/2512 (54.54s), type/contracts/progress0. Root confirms both literal titles and
+cursor-regression body unchanged, assertion sites4→10. Independent6.1 finds one
+remaining narrow assertion gap: complete beginVerification version6/cursor100/
+counts/fingerprints/signal body. Native sole-test final amendment remains claimed.
+
+Genuine lifecycle after lease/detail repairs: freshCI0/flock/main reset0 and test
+7/7 RED (8.46s), all preserved no-refused-RPC assertions now show private activate,
+reconcile and rollback400. Old numeric decoder/detail-version exceptions are no
+longer the failure boundary. Closing freshCI0/flock/main reset0; no DB handle.
+Status-only diagnostics do not establish exact SQL reason or approval bypass.
+
+Independent6.1 normative trace confirms dry-run CMS03A10 must seal before human
+review/decision/public activation; full Worker currently falls through into
+backfill/verification/privateactivation. Persisted trusted BE00 cms.schema.dry_run
+purpose is not wired to a production seal-only executor. Next disjoint native QA
+claim covers new core dry-run-purpose behavioral tests/support; constructor
+configuration proposed, NEVER a wire flag. No production implementation until
+frozen parent RED. Named production factory/trusted job dispatch and nonzero
+activation-job handoff remain later wiring; zero-source approved public advance
+already exists. Checkpoint/push/remote verify before both native source-only
+continuations.0/122, seal fences, DEC-163, DB lint/full/browser/owner/external holds
+and Slices12–17 remain open. Earlier notes below historical.
+
 ## Lease targeted GREEN; one legacy recovery fixture regression
 
 Native dry-run sole-line canonical token return frozen114; parent8/8 +118/118

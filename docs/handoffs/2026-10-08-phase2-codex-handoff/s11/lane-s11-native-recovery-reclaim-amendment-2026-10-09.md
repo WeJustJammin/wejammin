@@ -1,5 +1,18 @@
 # Native QA amendment — recovery fixture models canonical reclaim
 
+## Final bounded assertion amendment
+
+Current native recovery source is frozen348 lines, parent format/ESLint0 and
+targeted2/2; registry149 suites2512/2512 plus type/contracts/progress0. Root verified
+both literal titles identical and cursor-regression case byte-identical; assertion
+sites4→10. Independent6.1 found one narrow remaining gap: beginVerification
+handler ignores its request. Keep every existing assertion and add call#11's
+complete beginVerification body with expectedVersion6 (NOT old job3), cursor100,
+all canonical counts/fingerprints/plan identity and exact signal. This detects a
+stale-version mutation at backfill.ts133. Sole-file scope remains unchanged;
+parent checkpoint/push before continuation, native source-only restrictions
+below remain binding. Freeze; parent targeted and regression reruns again.
+
 Root `/home/rob/.codex/worktrees/phase2-slice11/WeJammin` only. Native author
 gpt-6-astra/high, parent/review6.1/ultra. Parent checkpoint/push/remote verification
 before dispatch. Edit ONLY

@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-lease-green-and-dry-run-boundary-red|Slice 11 lease GREEN and dry run boundary RED]] — knowledge — 2026-10-09T21:36:55.473Z
 - [[knowledge/2026-10-09-slice-11-first-empty-bounded-green-and-next-lease-red|Slice 11 first empty bounded GREEN and next lease RED]] — event — 2026-10-09T20:55:58.478Z
 - [[knowledge/2026-10-09-slice-11-first-empty-parent-red-and-native-green-claim|Slice 11 first empty parent RED and native GREEN claim]] — event — 2026-10-09T20:33:24.778Z
 - [[knowledge/2026-10-09-slice-11-approved-dec162-163-cascade-and-native-red-claim|Slice 11 approved DEC162/163 cascade and native RED claim]] — event — 2026-10-09T20:17:27.103Z
