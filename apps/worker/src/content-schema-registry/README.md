@@ -23,6 +23,8 @@ Database RPCs remain the transaction and audit authority.
 - `migration-worker-plan-schemas.ts` is the stable facade over plan types,
   plan-record, batch, and plan-record output modules; `schema-core.ts` and
   `validation.ts` own shared parsing and validation.
+  The plan-record parser/output preserve DEC-162's narrow first-empty null ID
+  pairs; the producer must independently prove firstness and actual emptiness.
 - `migration-worker-results.ts` owns result and rollback mapping.
 - `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
   shape and completed read-only replay; provisional zeros are not SQL eligibility

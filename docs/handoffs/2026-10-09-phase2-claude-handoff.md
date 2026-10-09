@@ -1,5 +1,11 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## First-empty bounded GREEN; two next lease QA-RED claims
+
+Native DEC-162 parser/output and private census repairs are frozen and parent-verified: new65/65 plus registry147 suites2386/2386; private helper20/20 and SEC2 54/54; restricted owner/ACL/no CREATE verified; root type/contracts/progress and serialized DB types0. Independent6.1 bounded no findings. DB lint CLI0 is NOT clean:100 issues/39 functions, one existing manifest pg_temp relation error; helper no reported issue. [Exact receipts/limits](2026-10-08-phase2-codex-handoff/codex/s11-first-empty-green-and-lease-red-2026-10-09.md).
+
+FreshCI0/flock/main reset0 then genuine lifecycle7/7 RED now has two paths: five numeric-leading UUID lease tokens rejected at claim200 by letter-leading decoder; two plans reach sealed ready, with lease-expired logs and later fixture version errors, whose complete causal link is not established. Closing freshCI0/flock main reset0 removes disposable partial fixtures; no DB handle remains. Next two native source-only QA claims own only new lease-token grammar and sealed-lease-handoff test files. Checkpoint/push before dispatch, root frozen RED before production. Existing type/parser/SQL/header scopes released. Native usage80% weekly used/20% remaining, ordinary access allowed; no purchase/reset. Scan/seal concurrent fences, later staging/fixture issues, legacy snapshot tails/reads, real API/SQL2/browser/full gates, Slices12–17 and conditional PR/integration/cleanup remain open.0/122 unchanged. Earlier next-step notes below are historical.
+
 ## First-empty parent RED witnessed; native GREEN next
 
 Native one-line replay amendment is frozen: all3 completed actual-worker variants now plan8 versus unchanged original job7, with exact RPC/results intact. Parent format/ESLint0 and targeted Vitest65 again15 failed/50 passed at intended nullable-ID parser boundary; log `.lane-logs/parent-s11-first-empty-plan-advanced-replay-red-20261009.log`. QA claim released; reserved parser GREEN dispatch follows this checkpoint/push. SQL author is independently executing source-only owner-amended census scope; no unfinished SQL source staged here.

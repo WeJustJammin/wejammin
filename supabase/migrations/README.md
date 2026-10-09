@@ -564,7 +564,15 @@ races are `../tests/phase_02_slice_10_races/`. Operations: `../../docs/runbooks/
 - `016200` the writers' relation-target lock takes the target entry and the caller's assignments over it only
   (`cms_lock_entry_assignments_shared`), never rescanning the caller's person, tenure and grant rows after the active version.
 
-### Slice 11 editorial workflow migrations (`20261005017000`-`20261005018090`)
+### Slice 11 editorial workflow migrations (`20261005017000`-`20261005018100`)
+
+`018100` is the DEC-162 prerequisite repair for the private initial-scope count
+helper: valid first candidate/type-owner checks and actual persisted E/R/P/L
+census, with existing non-null source counting retained. It transfers only that
+helper to the existing restricted CMS definer, with temporary schema CREATE
+immediately revoked and no API grants. The helper's snapshot is not the final
+protected scan/seal concurrency fence; `../tests/phase_02_slice_11_first_empty_scope.sql`
+contains bounded private fixture proof, not authenticated activation evidence.
 
 Forward-only migrations for CMS-03B-05..09 (review submission, decision, schedule, preview, publication) and the
 CMS-03B-15..20 reads, reviewer assignment, preview verification and schedule execution, plus the data model under
