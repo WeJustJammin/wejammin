@@ -12,11 +12,11 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 
 - [/] `DB` Native initial-scope count helper frozen; parent20/20 plus SEC2 54/54, post-reset restricted owner/ACL/no CREATE verified, independent6.1 no bounded gap; claim released. Protected scan/seal fences separate. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-scope-green-2026-10-09.md).
 
-- [/] `QA` Actual SQL UUID lease-token grammar RED, dedicated non-global decoder boundary; source-only. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lease-token-red-2026-10-09.md).
+- [/] `QA` UUID lease-token preliminary parent RED115:30 failed/85 passed; independent6.1 requires legacy punctuation control before GREEN. Native source-only amendment118 cases; claim retained. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lease-token-red-amendment-2026-10-09.md).
   - files: apps/worker/src/content-schema-registry/migration-worker-lease-token-compatibility.test.ts
 
-- [/] `QA` Actual sealed dry-run lease handoff/reclaim RED, independent of UUID bug; source-only. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-red-2026-10-09.md).
-  - files: apps/worker/src/content-schema-registry/migration-worker-sealed-lease-handoff.test.ts
+- [/] `QA` Sealed lease preliminary parent RED7:5 failed/2 passed, intended stale-token/call-history boundary; formatted460 exceeds400 cap. Native source-only extraction claim; preserve all proof before GREEN. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-cap-repair-2026-10-09.md).
+  - files: apps/worker/src/content-schema-registry/migration-worker-sealed-lease-handoff.test.ts, apps/worker/src/content-schema-registry/migration-worker-sealed-lease-test-support.ts
 
 User authorized "continue with native models" on2026-10-09, resolving the routing blocker without purchasing credits or repairing Phils availability. Orchestration/review/validation remain `gpt-6.1-sol` / `ultra`; fresh preparation-only implementation agents use available native `gpt-6-astra` / `high`, actual identity verified before acceptance. Resumed from clean pushed `6272d21a2baa74cfd2f7bc869149b8c4ef97f2bd`; checkpoint this routing/claim/handoff update before dispatch.0/122 acceptance unchanged; prior full API527/528 remains historical with cold-read settings-snapshot mutation RED. Owner recovery policy and external gates are not selected/promoted. See live handoff and today's session log for exact state.
 

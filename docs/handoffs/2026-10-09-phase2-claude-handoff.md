@@ -1,5 +1,23 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Lease parent RED; native QA amendments before production
+
+Frozen preliminary token tests115:30 failed/85 passed at intended UUID decoder
+assertions; independent6.1 found missing legacy `_.:` positive control. Native
+sole-file amendment adds `Lease_1.part:resume-1` to all3 positive paths (118 total).
+Frozen sealed-handoff7:5 failed/2 passed at stale-token/exact RPC-history
+assertions, independent of numeric UUID grammar. Formatting expanded460 lines,
+so native exact two-file extraction must meet test400/support300 caps while
+preserving all7 cases and complete oracles. Both selected ESLint0, but no GREEN
+claim yet. Root formats/reruns after freeze. Parent checkpoints/pushes these
+precise scopes before retained native6astra/high authors continue.
+
+Production lease guard and lifecycle detail fixture briefs are drafts, NOT
+dispatched claims. No production changes since verified pushed36e7b0cb. Genuine
+API7/7 RED, SQL fences, review/activation staging, DEC-163, DB lint/full gates and
+Slices12–17 remain open.0/122 unchanged. No DB handle; disposable main fixtures
+were reset, other stack untouched. Earlier notes below are historical.
+
 ## First-empty bounded GREEN; two next lease QA-RED claims
 
 Native DEC-162 parser/output and private census repairs are frozen and parent-verified: new65/65 plus registry147 suites2386/2386; private helper20/20 and SEC2 54/54; restricted owner/ACL/no CREATE verified; root type/contracts/progress and serialized DB types0. Independent6.1 bounded no findings. DB lint CLI0 is NOT clean:100 issues/39 functions, one existing manifest pg_temp relation error; helper no reported issue. [Exact receipts/limits](2026-10-08-phase2-codex-handoff/codex/s11-first-empty-green-and-lease-red-2026-10-09.md).
