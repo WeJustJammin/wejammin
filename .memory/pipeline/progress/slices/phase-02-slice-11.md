@@ -14,7 +14,7 @@
 
 ## Tasks
 
-**Continuation 2026-10-09:** orchestration `gpt-6.1-sol`/`ultra`; execution `Phils-Charm/deepseek-v4.1-flash`/`high`, verified against live agent metadata. First repair completed with fresh failing-first fixture evidence and independent rerun; no acceptance checkbox is closed by that repair alone. [Live handoff](../../../../docs/handoffs/2026-10-09-phase2-claude-handoff.md).
+**Continuation 2026-10-09:** orchestration `gpt-6.1-sol`/`ultra`; execution `Phils-Charm/deepseek-v4.1-flash`/`high`, verified against live agent metadata. E2 fixture and submit-review replay repairs completed with fresh failing-first evidence and independent reruns; no acceptance checkbox is closed by these narrow repairs alone. [Live handoff](../../../../docs/handoffs/2026-10-09-phase2-claude-handoff.md).
 
 | Lane                              | Exclusive file scope                                                                                                         | Result / lock state                                                                                                                                                                                                           |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,6 +22,9 @@
 | `/root/s11_sql2_refutation_exact` | Read-only SQL2 source/assertion review; no edits or DB access                                                                | 14 UPHELD, 1 OWNER-CONTRADICTION; narrowed findings 12/15. [Static report](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/codex/s11-sql2-reverification-2026-10-09.md). No runtime acceptance claimed.             |
 
 - [ ] Contract: lock Zod, data, registry, event, and route contracts
+- [x] `BE` Repair authority-bound submit-review replay with refreshed server evidence
+  - files: `supabase/migrations/20261005017640_cms_submit_review.sql`, `supabase/tests/phase_02_slice_11_rpc_review_submit_evidence_replay.sql`
+  - Owner: `/root/s11_submit_hash`, verified `Phils-Charm/deepseek-v4.1-flash`/`high`; dispatched after pushed checkpoint `28a8e4e6`. Fresh planned RED:21 assertions,3 failures. Final full-row-fingerprint GREEN and independent parent rerun:9 files/267 assertions, exit0. Claim and DB slot released. Existing test titles unchanged; no acceptance criterion closed.
 - [ ] `QA` RED: failing contract, permission, unit, integration, component, accessibility, and applicable E2E tests
 - [ ] `BE` data, API, and policy implementation
 - [ ] `FE` Astro SSR and bounded React-island implementation

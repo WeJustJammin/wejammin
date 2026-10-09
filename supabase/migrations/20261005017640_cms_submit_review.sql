@@ -155,7 +155,12 @@ begin
      and platform_private.cms_authority_origin(actor_id, acting_party_id, 'cms.editor', entry_row.id) is null then
     raise exception 'capability_missing' using errcode = 'P0001';
   end if;
-  reservation := platform_private.cms_reserve(p_request, actor_id, 'CMS-03B-05');
+  -- Idempotency identity is the browser request, never the server-built accessibility evidence: the
+  -- Worker rebuilds PreflightEvidence (a fresh evaluatedAt, and a fresh inputHash whenever the
+  -- checker input changed) on every retry, so hashing it in would turn a genuine same-key replay
+  -- into IDEMPOTENCY_MISMATCH.  Parity with CMS-03B-07 / CMS-03B-09, which reserve p_request -
+  -- 'evidence'; the acting party and the authority-bearing context stay inside the request hash.
+  reservation := platform_private.cms_reserve(p_request - 'evidence', actor_id, 'CMS-03B-05');
   if reservation.state = 'completed'::platform_private.idempotency_state then
     if reservation.response_ref->'safeHeaders' ? 'response' then
       perform pg_catalog.set_config(
