@@ -5,6 +5,7 @@ import { createSchemaMigrationWorker } from './migration-worker-engine';
 import type { MigrationWorkerPort } from './migration-worker-types';
 import {
   batchRequest,
+  EXPIRES,
   fixture,
   FINGERPRINTS,
   INSTANT,
@@ -37,10 +38,23 @@ type Mode =
 // SQL authority, seal races, approval, activation or production job dispatch.
 export const purposeFixture = (mode: Mode = 'seal') => {
   const f = fixture('acquired', mode !== 'partial');
+  const running = {
+    ...f.sealed,
+    state: 'running' as const,
+    version: '10',
+    cursor: '1',
+    progress: 0.5,
+    migratedCount: '1',
+    leaseOwner: WORKER,
+    leaseToken: NEW_TOKEN,
+    leaseExpiresAt: EXPIRES,
+  };
   let sealed = false;
+  let backfilled = false;
   const call = vi.fn<MigrationWorkerPort['call']>(
     async (rpc, request, signal) => {
       if (rpc === RPC.readPlan) {
+        if (backfilled) return running;
         if (mode === 'ready' || sealed) return f.sealed;
         if (mode === 'blocked')
           return {
@@ -75,7 +89,9 @@ export const purposeFixture = (mode: Mode = 'seal') => {
       if (rpc === RPC.deadLetter || rpc === RPC.acknowledgeEvent)
         return { accepted: true };
       if (rpc === RPC.claimEvent) return { status: 'new' };
-      return f.call(rpc, request, signal);
+      const response = await f.call(rpc, request, signal);
+      if (rpc === RPC.processBatch) backfilled = true;
+      return response;
     },
   );
   const telemetry = vi.fn();
@@ -97,6 +113,7 @@ export const purposeFixture = (mode: Mode = 'seal') => {
   };
   return {
     ...f,
+    running,
     call,
     telemetry,
     baseDependencies,

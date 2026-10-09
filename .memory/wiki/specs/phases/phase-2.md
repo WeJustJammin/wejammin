@@ -76,24 +76,24 @@ DEC-148, DEC-149 and DEC-154 add 74 open active Slice 11 depth-floor criteria (A
 
 ### BE endpoint assignment
 
-| Slice    | Endpoint IDs                                                                                                                                  | Source |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Slice 01 | AUTH-API-01, AUTH-API-02, AUTH-API-03, AUTH-API-04, AUTH-API-05, AUTH-API-06, AUTH-API-07, AUTH-API-08                                        | BE01a  |
-| Slice 02 | AUTH-API-09, AUTH-API-10, AUTH-API-11, AUTH-API-12, AUTH-API-13, AUTH-API-14, AUTH-API-15                                                     | BE01a  |
-| Slice 03 | BE01b-01, BE01b-02, BE01b-03, BE01b-04, BE01b-05, BE01b-06, BE01b-07, BE01b-08, BE01b-09, BE01b-10, BE01b-11, BE01b-12, BE01b-13, BE01b-18    | BE01b  |
-| Slice 04 | ORG-01, ORG-02, TYPE-01, TYPE-02, MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, MEM-06                                                              | BE01c  |
-| Slice 05 | PRF-API-01, PRF-API-02, PRF-API-03, PRF-API-04, PRF-API-05, PRF-API-06, PRF-API-07, PRF-API-08                                                | BE02a  |
-| Slice 06 | PRF-PROF-01, PRF-PROF-02, PRF-PROF-03, PRF-PROF-04, PRF-PROF-05, PRF-PROF-06, PRF-PROF-07, PRF-PROF-08, PRF-PROF-09, PRF-PROF-10, PRF-PROF-11 | BE02b  |
-| Slice 07 | CFG-05A-01, CFG-05A-02, CFG-05A-03, CFG-05A-04                                                                                                | BE05a  |
-| Slice 08 | CFG-05B-01, CFG-05B-04, CFG-05B-05                                                                                                            | BE05b  |
+| Slice    | Endpoint IDs                                                                                                                                  | Source              |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Slice 01 | AUTH-API-01, AUTH-API-02, AUTH-API-03, AUTH-API-04, AUTH-API-05, AUTH-API-06, AUTH-API-07, AUTH-API-08                                        | BE01a               |
+| Slice 02 | AUTH-API-09, AUTH-API-10, AUTH-API-11, AUTH-API-12, AUTH-API-13, AUTH-API-14, AUTH-API-15                                                     | BE01a               |
+| Slice 03 | BE01b-01, BE01b-02, BE01b-03, BE01b-04, BE01b-05, BE01b-06, BE01b-07, BE01b-08, BE01b-09, BE01b-10, BE01b-11, BE01b-12, BE01b-13, BE01b-18    | BE01b               |
+| Slice 04 | ORG-01, ORG-02, TYPE-01, TYPE-02, MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, MEM-06                                                              | BE01c               |
+| Slice 05 | PRF-API-01, PRF-API-02, PRF-API-03, PRF-API-04, PRF-API-05, PRF-API-06, PRF-API-07, PRF-API-08                                                | BE02a               |
+| Slice 06 | PRF-PROF-01, PRF-PROF-02, PRF-PROF-03, PRF-PROF-04, PRF-PROF-05, PRF-PROF-06, PRF-PROF-07, PRF-PROF-08, PRF-PROF-09, PRF-PROF-10, PRF-PROF-11 | BE02b               |
+| Slice 07 | CFG-05A-01, CFG-05A-02, CFG-05A-03, CFG-05A-04                                                                                                | BE05a               |
+| Slice 08 | CFG-05B-01, CFG-05B-04, CFG-05B-05                                                                                                            | BE05b               |
 | Slice 09 | CMS-03A-01 through CMS-03A-18; AUTH-API-16 through AUTH-API-21; CFG-05B-06                                                                    | BE03a, BE01a, BE05b |
-| Slice 10 | CMS-03B-01, CMS-03B-02, CMS-03B-03, CMS-03B-04, CMS-03B-10, CMS-03B-11                                                                        | BE03b  |
-| Slice 11 | CMS-03B-05, CMS-03B-06, CMS-03B-07, CMS-03B-08, CMS-03B-09, CMS-03B-15, CMS-03B-16, CMS-03B-17, CMS-03B-18, CMS-03B-19, CMS-03B-20              | BE03b  |
-| Slice 12 | CMS-03C-01, CMS-03C-02, CMS-03C-03                                                                                                            | BE03c  |
-| Slice 13 | DLV-NAV-API-01, DLV-NAV-API-02, DLV-NAV-API-03, DLV-NAV-API-04                                                                                | BE04a  |
-| Slice 14 | DLV-04B-01, DLV-04B-02, DLV-04B-03, DLV-04B-04                                                                                                | BE04b  |
-| Slice 15 | DLV-DEL-API-01, DLV-DEL-API-02, DLV-DEL-API-03, DLV-DEL-API-04, DLV-DEL-API-05, DLV-DEL-API-06                                                | BE04c  |
-| Slice 16 | CFG-05C-02                                                                                                                                    | BE05c  |
+| Slice 10 | CMS-03B-01, CMS-03B-02, CMS-03B-03, CMS-03B-04, CMS-03B-10, CMS-03B-11                                                                        | BE03b               |
+| Slice 11 | CMS-03B-05, CMS-03B-06, CMS-03B-07, CMS-03B-08, CMS-03B-09, CMS-03B-15, CMS-03B-16, CMS-03B-17, CMS-03B-18, CMS-03B-19, CMS-03B-20            | BE03b               |
+| Slice 12 | CMS-03C-01, CMS-03C-02, CMS-03C-03                                                                                                            | BE03c               |
+| Slice 13 | DLV-NAV-API-01, DLV-NAV-API-02, DLV-NAV-API-03, DLV-NAV-API-04                                                                                | BE04a               |
+| Slice 14 | DLV-04B-01, DLV-04B-02, DLV-04B-03, DLV-04B-04                                                                                                | BE04b               |
+| Slice 15 | DLV-DEL-API-01, DLV-DEL-API-02, DLV-DEL-API-03, DLV-DEL-API-04, DLV-DEL-API-05, DLV-DEL-API-06                                                | BE04c               |
+| Slice 16 | CFG-05C-02                                                                                                                                    | BE05c               |
 
 ### Feature ledger assignment
 
@@ -2764,7 +2764,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 - [x] **P2-S09-AC-1203** — The draft and successor RPCs run the pure platform_api.cms_validate_locale_config function, which applies the same rules and exact messages as the locale refusal table, and compute localeConfigHash. [BE03a](../be/03a-content-schema-registry.md) §Canonical records and fields
 - [x] **P2-S09-AC-1204** — cms_schema_reviews locale_config_hash is NOT NULL char(64) with a lowercase 64-hex CHECK and equals the candidate version's value at freeze. [BE03a](../be/03a-content-schema-registry.md) §Canonical records and fields
 - [x] **P2-S09-AC-1205** — A BEFORE UPDATE trigger rejects any UPDATE of supported_locales, fallback_chains, locale_config_hash, source_locale and default_locale on cms_content_type_versions. [BE03a](../be/03a-content-schema-registry.md) §Canonical records and fields
-- [x] **P2-S09-AC-1206** — The scheduled state is unreachable for content-type versions because CMS-03A-04 activates synchronously or queues migration work, and no schema-version resource, evidence record or test expects scheduled (OD-6). [BE03a](../be/03a-content-schema-registry.md) §State machine and concurrency
+- [x] **P2-S09-AC-1206** — The scheduled state is unreachable for content-type versions because CMS-03A-04 has no schedule action and no route sets a future activation time, and no schema-version resource, evidence record or test expects scheduled (OD-6). [BE03a](../be/03a-content-schema-registry.md) §State machine and concurrency
 - [x] **P2-S09-AC-1207** — The supported-languages tag input has the persistent label 'Add a language tag', the help 'For example en, fr-CA, zh-Hans-CN', autocomplete off, autocapitalize none and spellcheck false. [FE03](../fe/03-cms-content-modeling.md) §Locale configuration fields (OD-4)
 - [x] **P2-S09-AC-1208** — Pressing Enter in the tag input activates Add and never submits the form. [FE03](../fe/03-cms-content-modeling.md) §Locale configuration fields (OD-4)
 - [x] **P2-S09-AC-1209** — Supported tags render as a native list and each item has a Remove button named 'Remove {tag} from supported languages'. [FE03](../fe/03-cms-content-modeling.md) §Locale configuration fields (OD-4)
@@ -2943,7 +2943,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 **Authored criteria**: 122 (PASS)  
 **Cascade criteria (DEC-149)**: P2-S11-AC-049 through AC-084 are the additive, independently testable obligations of CMS-03B-15 (AC049–AC054), CMS-03B-16 (AC055–AC060), CMS-03B-17 (AC061–AC066), CMS-03B-18 (AC067–AC072), CMS-03B-19 (AC073–AC078) and CMS-03B-20 (AC079–AC084); they are open until their implementation path is verified. Derivation: [depth-floor ledger](../../../pipeline/progress/verification/2026-10-08-slice-11-depth-floor.md).  
 **Cascade criteria (DEC-154)**: P2-S11-AC-085 through AC-122 own the Slice 11 specification-cascade obligations that no earlier criterion named; each is one independently testable obligation with its exact BE03b (or BE05c, FE03) section, and all are open until their implementation path is verified. Derivation: [depth-floor ledger](../../../pipeline/progress/verification/2026-10-08-slice-11-depth-floor.md).  
-**Receiving criteria (DEC-122)**: P2-S11-AC-046 (CMS-03B-06), AC-047 (CMS-03B-07) and AC-048 (CMS-03B-09) carry the step-up recovery moved out of Slice 09 AC1031; they are open until their implementation path is verified.  
+**Receiving criteria (DEC-122)**: P2-S11-AC-046 (CMS-03B-06), AC-047 (CMS-03B-07) and AC-048 (CMS-03B-09) carry the step-up recovery moved out of Slice 09 AC1031; they are open until their implementation path is verified.
 
 ### Acceptance criteria
 
@@ -3086,7 +3086,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 **Spec depth floor**: 53 criteria  
 **Breakdown**: prior locked floor 50 (locked gates 3 + BE happy paths 3 + BE field validation 3 + BE authorization 3 + BE concurrency 3 + BE failures 3 + BE recovery 3 + BE validation rows 18 + IA acceptance 3 + IA recovery 3 + FE interactions 3 + TDD/validation 2) + DEC-121, DEC-122 and DEC-123 receiving criteria 3  
 **Authored criteria**: 53 (PASS)  
-**Receiving criteria (DEC-121, DEC-122, DEC-123)**: P2-S12-AC-051 and AC-052 carry the `no_fallback` resolution semantics and stale-translation behavior moved out of Slice 09 AC005 and AC1166, and AC-053 carries the template binding flows beyond DEC-123; they are open until their implementation path is verified.  
+**Receiving criteria (DEC-121, DEC-122, DEC-123)**: P2-S12-AC-051 and AC-052 carry the `no_fallback` resolution semantics and stale-translation behavior moved out of Slice 09 AC005 and AC1166, and AC-053 carries the template binding flows beyond DEC-123; they are open until their implementation path is verified.
 
 ### Acceptance criteria
 
@@ -3531,7 +3531,7 @@ After Slice 03, Slices 04, 05, and 07 may proceed in parallel when file claims d
 **Spec depth floor**: 29 criteria  
 **Breakdown**: prior locked floor 28 (locked gates 4 + BE happy paths 1 + BE field validation 1 + BE authorization 1 + BE concurrency 1 + BE failures 1 + BE recovery 1 + BE validation rows 13 + IA acceptance 1 + IA recovery 1 + FE interactions 1 + TDD/validation 2) + DEC-122 legal-hold receiving criterion 1  
 **Authored criteria**: 29 (PASS)  
-**Receiving criteria (DEC-122; the Slice 16 criterion is owner-ratified as DEC-125)**: P2-S16-AC-029 carries the legal-hold and incident-fence enforcement over CMS records moved out of Slice 09 AC185; it is open until its implementation path is verified.  
+**Receiving criteria (DEC-122; the Slice 16 criterion is owner-ratified as DEC-125)**: P2-S16-AC-029 carries the legal-hold and incident-fence enforcement over CMS records moved out of Slice 09 AC185; it is open until its implementation path is verified.
 
 ### Acceptance criteria
 

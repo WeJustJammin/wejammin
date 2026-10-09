@@ -100,8 +100,10 @@ editor, reviewer, specialist-reviewer, template-designer and publisher humans
 that the editorial and review flows require. This boundary therefore owns every
 HTTP operation from CMS-03A-01 through CMS-03A-18, each with exactly one route registry entry and one operation
 contract. Existing operation IDs CMS-03A-01 through CMS-03A-08 are unchanged
-and never renumbered. CMS-04 may enqueue migration work, but migration worker
-execution is an internal consumer, not a second HTTP endpoint. CMS-10 is
+and never renumbered. CMS-03A-10 queues pre-review migration preparation;
+CMS-04 owns the approved active switch and may enqueue activation-projection
+work. Migration worker execution is an internal consumer, not a second HTTP
+endpoint. CMS-10 is
 admitted only from a trusted code-release registration path; an administrator
 cannot upload executable assets.
 
@@ -2054,11 +2056,13 @@ lifecycle value.
 
 The declared HTTP responses are 201 for draft/field/relation/block creation
 and lifecycle-advance event append, plus successor-draft, review-submission,
-review-decision, and assignment-create (201); 202 for activation and dry-run
-acceptance when migration/projection work is queued; 200 for a completed
+review-decision, and assignment-create (201); 202 for dry-run acceptance when
+pre-review preparation is queued, or activation when post-switch projection
+work is queued; 200 for a completed
 synchronous activation, an assignment revocation, or either protected registry
-read. CMS-03A-04 always returns SchemaActivationResource with a jobId when work
-remains. CMS-03A-06 returns ContentSchemaRegistryListPage, CMS-03A-07 returns
+read. CMS-03A-04 always returns SchemaActivationResource with a jobId when
+activation-projection work remains; this is not a deferred pre-review backfill.
+CMS-03A-06 returns ContentSchemaRegistryListPage, CMS-03A-07 returns
 ContentSchemaRegistryDetail, CMS-03A-13 returns SchemaReviewResource, and
 CMS-03A-14 returns SchemaReviewAssignmentResource on both create and revoke.
 CMS-03A-15 returns CmsCapabilityGrantResource with 201, CMS-03A-16 and
@@ -2563,7 +2567,7 @@ External seam policy: the canonical definition compiler and protected registries
 
 ### State machine and concurrency
 
-Definition state is draft → review → approved → scheduled or active → superseded or retired; blocked may return to draft. Content-type versions have no schedule action (CMS-03A-04 activates synchronously or queues migration work and no route sets a future activation time), so `scheduled` is unreachable for schema versions by design (OD-6); the state value is retained only for the shared definition-state vocabulary and no schema-version resource, evidence record or test may expect it. Active ContentTypeVersion, FieldDefinitionVersion, RelationDefinition, SchemaMigrationPlan definitions after completion, and BlockDefinitionVersion rows are immutable. A block row starts with physical state `registered` and derived API lifecycle `supported`; later lifecycle values exist only as ordered immutable lifecycle events. CMS-03A-02, CMS-03A-03, and CMS-03A-08 use SELECT FOR UPDATE plus expected version; two writers cannot append the same stable field, relation, or lifecycle successor.
+Definition state is draft → review → approved → scheduled or active → superseded or retired; blocked may return to draft. Content-type versions have no schedule action (CMS-03A-10 queues pre-review migration preparation; CMS-03A-04 performs the approved active switch and may enqueue activation-projection work, but no route sets a future activation time), so `scheduled` is unreachable for schema versions by design (OD-6); the state value is retained only for the shared definition-state vocabulary and no schema-version resource, evidence record or test may expect it. Active ContentTypeVersion, FieldDefinitionVersion, RelationDefinition, SchemaMigrationPlan definitions after completion, and BlockDefinitionVersion rows are immutable. A block row starts with physical state `registered` and derived API lifecycle `supported`; later lifecycle values exist only as ordered immutable lifecycle events. CMS-03A-02, CMS-03A-03, and CMS-03A-08 use SELECT FOR UPDATE plus expected version; two writers cannot append the same stable field, relation, or lifecycle successor.
 
 Migration state is draft → dry_running → ready or blocked → running → verifying → completed, failed_retryable, or failed_terminal. The cursor, row counts, compiler hash, transform version, and source/target hashes are durable. Worker lease expiry is recoverable; each retry rechecks state and cursor. A failed migration leaves old active schema serving, never deletes rows, and cannot silently retry a changed transform.
 
@@ -2774,7 +2778,7 @@ Validation failures preserve stable JSON Pointer paths and safe messages for fro
 ## Ambiguity Gate
 
 - Micro ambiguity PASS: every request/query/path field has a type, bound, null/default rule, unknown-key policy, and failure; every state transition names its guard and recovery; every operation has auth, CORS, rate, error, observability, and test rows, while mutation-only idempotency/If-Match and read-only absence rules are explicit.
-- Macro ambiguity PASS: create → draft → field/relation changes → successor/dry-run → frozen CMS review with bounded assignment and independent decisions → workflow/risk-policy-derived activation → migration worker → downstream refetch is a single deterministic flow with no hidden endpoint or ownership handoff.
+- Macro ambiguity PASS: create → draft → field/relation changes → successor/dry-run with nonzero pre-review backfill/verification → frozen CMS review with bounded assignment and independent decisions → workflow/risk-policy-derived active switch → activation projection/downstream refetch is a single deterministic flow with no hidden endpoint or ownership handoff.
 - Two-implementer PASS: independent implementers can derive the same definition tables plus the private CMS review, owner-grant and workflow-policy records (including nonce receipts, lifecycle events, template/capability bindings, immutable dry-run reports, the review/decision/assignment tables, and the capability-grant and seeded-policy tables), operation IDs CMS-03A-01 through CMS-03A-18, Zod schemas, event payloads, RPC transaction boundaries, protected-read behavior, and 403/404 policy.
 - Devil's-advocate PASS: hostile admin upload, reserved key reuse, relation-to-private-domain target, approval race, submitter/self or repeated-human decision, assignment broadening or delegation, a decision replayed after evidence drift, stale compiler, duplicate release digest/nonce, forged nested Ed25519 attestation, illegal lifecycle advance, worker crash, and telemetry outage produce safe typed outcomes.
 - No unresolved product, architecture, security, or implementation ambiguity remains in this boundary.

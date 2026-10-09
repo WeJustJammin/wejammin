@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_MIGRATION_RPC as RPC } from './migration-worker-constants';
 import { createSchemaMigrationWorker } from './migration-worker-engine';
 import { SchemaMigrationJobPayloadSchema } from './migration-worker-job-schema';
+import { MigrationPlanRecordSchema } from './migration-worker-plan-record-schema';
 import { SchemaMigrationQueueEnvelopeSchema } from './migration-worker-queue-schema';
 import {
   activationCalls,
@@ -31,7 +32,7 @@ import {
 const OTHER_TARGET_VERSION_ID = '90000000-0000-4000-8000-000000000009';
 
 describe('trusted dry-run execution purpose', () => {
-  it('trusted dry-run completes a nonzero bounded scan at canonical ready without crossing into backfill', async () => {
+  it('trusted dry-run continues a nonzero sealed scan into canonical reclaim and bounded backfill without switching', async () => {
     const f = purposeFixture();
     const result = await f.worker.process(job, {
       signal: f.signal,
@@ -41,8 +42,16 @@ describe('trusted dry-run execution purpose', () => {
     expect(f.call.mock.calls).toEqual([
       ...scanCalls(f.signal),
       sealCall(f.signal),
+      ...activationCalls(f.signal),
     ]);
-    expect(result).toEqual(READY_RESULT);
+    expect(result).toEqual({
+      ...READY_RESULT,
+      outcome: 'progress',
+      state: 'running',
+      cursor: '1',
+      progress: 0.5,
+      retryAfterMs: 15_000,
+    });
     expect(f.sealed).toMatchObject({
       state: 'ready',
       version: '9',
@@ -61,7 +70,7 @@ describe('trusted dry-run execution purpose', () => {
   });
 
   it.each(['process', 'replayDlq'] as const)(
-    'trusted dry-run %s accepts newer canonical ready without reclaim or effects',
+    'trusted dry-run %s rejects newer canonical ready as stale without reclaim or effects',
     async (method) => {
       const f = purposeFixture('ready');
       expect(f.sealed.version).toBe('9');
@@ -73,20 +82,45 @@ describe('trusted dry-run execution purpose', () => {
       });
 
       expect(f.call.mock.calls).toEqual([readCall(f.signal)]);
-      expect(result).toEqual(READY_RESULT);
+      expect(result).toEqual({
+        ...READY_RESULT,
+        outcome: 'stale',
+        reasonCode: 'PLAN_VERSION_MISMATCH',
+      });
     },
   );
 
-  it('trusted dry-run remains seal-only on a later replay of the same worker', async () => {
+  it('trusted dry-run rejects the original job as stale on a later running-plan replay of the same worker', async () => {
     const f = purposeFixture();
+    expect(MigrationPlanRecordSchema.safeParse(f.running)).toEqual({
+      success: true,
+      data: f.running,
+    });
+    expect(f.running.version).toBe('10');
+    expect(job.expectedVersion).toBe('7');
     const first = await f.worker.process(job, { signal: f.signal });
     const replay = await f.worker.replayDlq(job, { signal: f.signal });
 
-    expect(first).toEqual(READY_RESULT);
-    expect(replay).toEqual(READY_RESULT);
+    expect(first).toEqual({
+      ...READY_RESULT,
+      outcome: 'progress',
+      state: 'running',
+      cursor: '1',
+      progress: 0.5,
+      retryAfterMs: 15_000,
+    });
+    expect(replay).toEqual({
+      ...READY_RESULT,
+      outcome: 'stale',
+      state: 'running',
+      cursor: '1',
+      progress: 0.5,
+      reasonCode: 'PLAN_VERSION_MISMATCH',
+    });
     expect(f.call.mock.calls).toEqual([
       ...scanCalls(f.signal),
       sealCall(f.signal),
+      ...activationCalls(f.signal),
       readCall(f.signal),
     ]);
   });

@@ -1,6 +1,48 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Additional defensive guards before core implementation
+
+Independent6.1 finds no false oracle in41, but prospective guard gaps remain:
+strict-valid verifying returned by complete must not be successful preparation;
+each cursor/error/migrated/failed/leaseOwner/leaseToken empty predicate needs its
+own controlled denial witness. New sole-file7 QA claimed; every existing source
+frozen, core NOTDISPATCHED. Parent checkpoint/push before native QA, then RED/
+oracle review before six-file producer GREEN. No new policy. Doc source cascade
+independent6.1 bounded no finding; frozen2026-10-02 depth-floor1290 quote stays
+historical, not current job-ownership authority. No S09 restart/evidence rewrite.
+
+## DEC108 preparation QA41 RED; core GREEN gated before dispatch
+
+FrozenA29:13failed/16passed, test388/support220; frozenB12:4failed/8passed,
+test364/support237; both root format/ESLint0. Total41:17failed/24passed. Exact
+private constructor9/wrong-purpose4, nonzero private-activation2 and empty
+later-stage2 boundaries. EightB controls and remaining16A pass; no setup errors.
+Four changed A title mappings saved in replacement pre-review QA brief; other25
+unchanged. Root read full new files, strict-positive fixtures/real scanner stages.
+All QA claims released, all tests/support frozen. Independent oracle review plus
+checkpoint/push required before prospective six-file core GREEN dispatch.
+
+Core prospective scope: types/runtime/engine/verification + new execution and
+activation modules; every modified utility<=300. Admission remains unchanged:
+no newer-ready exception, no late-state refusal. Dry_run trusted construction
+preserves pre-review nonzero backfill/verify but stops before private activation;
+empty actual sealed-ready zeros can finish worker job while plan remainsready.
+No SQL/factory/dispatch proof; these later boundaries remain open. Corrected
+remaining BE ownership prose and AC1206 explanatory cause (same OD6 predicate,
+checked states/counts), generated canonical compile/contracts/progress before
+checkpoint. No S09 restart/new acceptance;0/122/genuine7RED/allholds unchanged.
+
 ## Binding correction: preserve owner-approved DEC-108 preparation order
+
+Lane A frozen388/220; parent29:13 failed/16 passed, format/ESLint0. Four changed
+titles inventoried in replacement QA brief; other25 retained and root9 unchanged
+declaration bodies verified. Lane A claim released; Lane B new full preparation
+tests/support still claimed. Remaining A RED only constructor9/wrong-purpose4.
+Independent6.1 upholds initial two source cascade blocks, then finds additional
+mechanical residues at BE03a top/state/response/macro and phase AC1206. Corrected
+BE residues distinguish queued CMS10 preparation from later activation projection;
+AC1206 explanatory cause now no schedule action/no future time, same OD6 predicate
+and checked state, synchronized plan/tracker. No S09 restart/new acceptance.
 
 Replacement pre-review-purpose QA brief claims disjoint native lanes A/B: amend
 four proposed old oracles while retaining29 guards; new full actual-worker

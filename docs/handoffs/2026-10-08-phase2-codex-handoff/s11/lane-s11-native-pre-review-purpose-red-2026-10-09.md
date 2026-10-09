@@ -1,5 +1,32 @@
 # Native QA — preserve DEC-108 pre-review preparation, prohibit early switch
 
+## Lane A frozen receipt / exact changed titles
+
+Parent format/ESLint0,29 cases13 failed/16 passed. Test388/support220; root confirms
+12 declarations retained and9 unchanged declaration bodies (the other25 cases).
+Only four source-stale case titles changed:
+
+- `trusted dry-run completes a nonzero bounded scan at canonical ready without crossing into backfill`
+  → `trusted dry-run continues a nonzero sealed scan into canonical reclaim and bounded backfill without switching`.
+- `trusted dry-run %s accepts newer canonical ready without reclaim or effects`
+  → `trusted dry-run %s rejects newer canonical ready as stale without reclaim or effects`
+  for process and replayDlq (two cases).
+- `trusted dry-run remains seal-only on a later replay of the same worker`
+  → `trusted dry-run rejects the original job as stale on a later running-plan replay of the same worker`.
+
+Remaining RED: private constructor9 and valid wrong-purpose envelopes4. No missing
+imports/setup failures; actual ignored purpose behavior. Lane A claim released.
+
+## Lane B frozen receipt
+
+Parent12 cases4 failed/8 passed, format/ESLint0; test364/support237. Fails exactly
+nonzero process/replay's extra private activation RPC and empty process/replay's
+extra later-stage RPCs. Default/explicit activation, verification/complete4
+failures and mixed-counter/held-lease2 denial controls pass. Real strict plan/job/
+page/batch schemas and actual bounded scanner/stages; controlled responses never
+select behavior by purpose. Root read full files. Claim released; no production
+code, SQL authority, public approval or persisted job-completion proof.
+
 Root `/home/rob/.codex/worktrees/phase2-slice11/WeJammin` only. Native author
 gpt-6-astra/high; orchestration/review gpt-6.1-sol/ultra. Parent checkpoint/push/
 exact origin verification BEFORE each author continuation. Source-only PURE ctx

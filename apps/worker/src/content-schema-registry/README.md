@@ -40,6 +40,10 @@ Database RPCs remain the transaction and audit authority.
   `migration-worker-dry-run-purpose-test-support.ts` pin the trusted, private
   seal-only boundary and unchanged activation controls. Controlled ports do not
   establish production dispatch or persisted job completion.
+- `migration-worker-pre-review-purpose.test.ts` and its focused support pin
+  DEC-108 nonzero preparation through verification/complete without an early
+  switch, genuine-empty shape controls and unchanged activation/failure behavior.
+  Empty controlled shapes are not SQL census or concurrent-fence proof.
 - `migration-source-read.ts` validates the `cms_read_schema_migration_source_rows`
   page (at most 128 rows; `targetFields[]` of changed fields with compiled
   constraints, `retiredFields[]` of removed keys carried unvalidated; a page
