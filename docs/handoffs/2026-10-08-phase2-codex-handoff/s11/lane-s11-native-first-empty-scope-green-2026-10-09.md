@@ -16,7 +16,16 @@ Parent checkpoints/pushes this claim before dispatch.
 Create ONLY forward migration:
 `supabase/migrations/20261005018100_cms_first_empty_scope.sql` (<=300 lines).
 Replace ONLY existing private `cms_schema_source_row_count(uuid,uuid)` body,
-retaining signature/search_path/owner/definer/revokes and non-null branch behavior.
+retaining signature/search_path/definer/revokes and non-null branch behavior.
+Verified parent CI0/flock live catalog: old owner postgres, STABLE/definer with
+empty search_path; EXECUTE ACL only postgres and existing CMS definer. Direct
+forced-table census requires SEC-2 ownership, so scope now explicitly includes
+transfer to existing `wejammin_cms_definer` within this sole migration, using
+transaction-local schema CREATE grant, ALTER OWNER and immediate CREATE revoke
+pattern. Role already NOLOGIN/NOSUPERUSER/NOBYPASSRLS and holds required SELECT.
+No new API EXECUTE/table/role/membership grants. Preserve effective existing
+private access, empty search_path and STABLE/read-only behavior. Parent verifies
+live ACL/role/CREATE and SEC-2 tests after reset; do not retain postgres ownership.
 No historical migration/test edits, new public function/grant, packages/config/
 lock/environment, README/progress/other files. Parent updates directory docs.
 PURE ctx JavaScript fs/path reads + native apply_patch writes ONLY. NO commands,
