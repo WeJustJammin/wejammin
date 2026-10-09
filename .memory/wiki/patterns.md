@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 28
-- **Unique pattern titles**: 25
+- **Total patterns**: 29
+- **Unique pattern titles**: 26
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -379,6 +379,20 @@
 - **Context**: Contract/integration tests that check a generated artifact is current (spec graph, receipts, compiled memory)
 - **Pattern**: A fresh CI checkout gives every file the checkout time, so an mtime comparison passes locally and fails in CI (PR #126). Compare content instead: rebuild the artifact from the committed sources in a temporary copy (never writing the repository) and require equality, with a negative control. Calling a builder in place can rewrite tracked files.
 - **Source**: PR #126 quality job, 2026-10-08
+
+## PAT-024: pgTAP green does not prove an RPC works through PostgREST (pg-safeupdate) (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-09T01:45:20.772Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 real-composition verification
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: SQL RPCs verified only by pgTAP (psql session) and Worker adapters verified only against transport fakes.
+- **Pattern**: PostgREST sessions load pg-safeupdate, which refuses any DELETE or UPDATE without a WHERE clause; a psql/pgTAP session does not, so an unqualified `delete from pg_temp.scratch;` passes every pgTAP file and fails every real request. Slice 11's dependency-manifest builder (20261005017560) broke every manifest-rebuilding RPC this way, found only when lane S11-4R drove the production Worker adapters against real PostgREST. Always add a real-PostgREST apispec per RPC before calling it done, and scan new migrations for unqualified DELETE/UPDATE (use `where true` for deliberate full clears of scratch tables).
+- **Source**: lanes S11-4R and S11-5 real-stack runs, 2026-10-09; related memory e2e-mock-masked-production-defect.
 
 ## Full Log
 
@@ -770,3 +784,16 @@
 - **Context**: Contract/integration tests that check a generated artifact is current (spec graph, receipts, compiled memory)
 - **Pattern**: A fresh CI checkout gives every file the checkout time, so an mtime comparison passes locally and fails in CI (PR #126). Compare content instead: rebuild the artifact from the committed sources in a temporary copy (never writing the repository) and require equality, with a negative control. Calling a builder in place can rewrite tracked files.
 - **Source**: PR #126 quality job, 2026-10-08
+
+### PAT-024: pgTAP green does not prove an RPC works through PostgREST (pg-safeupdate) (2026-10-08)
+
+- **Timestamp**: 2026-10-09T01:45:20.772Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 real-composition verification
+- **Tags**: pattern, phase-2, slice-11, postgrest, testing
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: SQL RPCs verified only by pgTAP (psql session) and Worker adapters verified only against transport fakes.
+- **Pattern**: PostgREST sessions load pg-safeupdate, which refuses any DELETE or UPDATE without a WHERE clause; a psql/pgTAP session does not, so an unqualified `delete from pg_temp.scratch;` passes every pgTAP file and fails every real request. Slice 11's dependency-manifest builder (20261005017560) broke every manifest-rebuilding RPC this way, found only when lane S11-4R drove the production Worker adapters against real PostgREST. Always add a real-PostgREST apispec per RPC before calling it done, and scan new migrations for unqualified DELETE/UPDATE (use `where true` for deliberate full clears of scratch tables).
+- **Source**: lanes S11-4R and S11-5 real-stack runs, 2026-10-09; related memory e2e-mock-masked-production-defect.

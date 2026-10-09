@@ -1576,6 +1576,7 @@
 
 ## Structured Memory
 
+- pattern: PAT-024: pgTAP green does not prove an RPC works through PostgREST (pg-safeupdate) (2026-10-08) — 2026-10-09T01:45:20.772Z
 - decision: DEC-161: Revoking a counted approver's assignment on an open review invalidates the review with reviewer_authority_changed (2026-10-08) — 2026-10-08T18:33:30.609Z
 - decision: DEC-160: provider_unavailable is the registered unavailable reason of every non-worker preflight category (2026-10-08) — 2026-10-08T18:30:48.668Z
 - decision: DEC-159: Slice 11 Worker-SQL refusal conventions, null accessibility evidence, the quality-gate input load, the audit evidence summary and snake_case metric labels (2026-10-08) — 2026-10-08T18:27:32.889Z
