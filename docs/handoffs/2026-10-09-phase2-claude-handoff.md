@@ -1,6 +1,8 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
-## Owner approvals propagated; native first-empty QA-RED next
+## First-empty parent RED witnessed; native GREEN next
+
+Latest contract/QA checkpoint365afb82 is pushed. Frozen first-empty unit65 cases:15 failed/50 passed at nullable-ID parser/replay boundary, format/ESLint0. Frozen private helper pgTAP20 assertions:13 failed/7 passed, all13 caught no exception instead of P0001/DEPENDENCY_UNAVAILABLE; no fixture error. Parent freshCI0/shared-flock/main54322 reset0 then freshCI0 targeted testexit1; no DB handle remains. [Receipts and limitations](2026-10-08-phase2-codex-handoff/codex/s11-first-empty-parent-red-2026-10-09.md). New disjoint source-only native GREEN claims own parser/output/optional shape helper and one forward private count-helper migration. Checkpoint/push before dispatch; frozen tests unchanged. Full protected scan/seal fences, lease/stage fixes, legacy tails/reads and real lifecycle remain open;0/122, full Phase2 unfinished. Earlier QA-next/current-checkpoint notes below are historical.
 
 Native QA wave has disjoint single-file claims: first-empty Worker contract/replay unit tests and initial-scope SQL helper tests. Both are source-only gpt-6-astra/high; parent executes/labels actual RED and validates scope. The SQL suite uses controlled draft/type/content negative fixtures only, never fabricated positive approvals/reports/plans; it proves the private helper boundary, not real authority or full API activation. Source-only readonly6.1 scan confirms true initial content scope and completed-null-active pre-switch validity. Source scopes/briefs are in the slice tracker; parent checkpoints before dispatch.
 

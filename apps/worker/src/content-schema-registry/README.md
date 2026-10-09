@@ -24,6 +24,9 @@ Database RPCs remain the transaction and audit authority.
   plan-record, batch, and plan-record output modules; `schema-core.ts` and
   `validation.ts` own shared parsing and validation.
 - `migration-worker-results.ts` owns result and rollback mapping.
+- `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
+  shape and completed read-only replay; provisional zeros are not SQL eligibility
+  or authenticated migration/activation evidence.
 - `migration-source-read.ts` validates the `cms_read_schema_migration_source_rows`
   page (at most 128 rows; `targetFields[]` of changed fields with compiled
   constraints, `retiredFields[]` of removed keys carried unvalidated; a page

@@ -118,8 +118,11 @@ RPC flag restore.
 
 ### Slice 11 — editorial workflow and publication
 
-The Slice 11 pgTAP files are `phase_02_slice_11_*.sql`; each entrypoint opens one transaction, includes its
-fragments with psql `\ir` and rolls back. Fragment directories (each with a README): `phase_02_slice_11_schema/`
+The Slice 11 pgTAP files are `phase_02_slice_11_*.sql`; each entrypoint opens one transaction and rolls back.
+Most include fragments with psql `\ir`. Standalone `phase_02_slice_11_first_empty_scope.sql` pins DEC-162's
+private initial-scope count helper with controlled draft/type/content fixtures; it is not authenticated
+producer, scan/seal-fence or activation evidence. Publication/current-active/cross-owner cases and an
+independent locale-only initial predicate remain unproven there. Fragment directories (each with a README): `phase_02_slice_11_schema/`
 (the data model, lane S11-2), `phase_02_slice_11_helpers/` (the shared helpers, S11-3s),
 `phase_02_slice_11_rpc_review/` (CMS-03B-05, 06, 18; S11-3a), `phase_02_slice_11_rpc_publication/` (CMS-03B-07, 09, 20;
 S11-3b), `phase_02_slice_11_rpc_preview/` and `phase_02_slice_11_rpc_reads/` (CMS-03B-08, 15, 16, 17, 19; S11-3c) and
