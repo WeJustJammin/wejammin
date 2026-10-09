@@ -1,6 +1,10 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
-## Owner approvals recorded; contract propagation next
+## Owner approvals propagated; native first-empty QA-RED next
+
+Native QA wave has disjoint single-file claims: first-empty Worker contract/replay unit tests and initial-scope SQL helper tests. Both are source-only gpt-6-astra/high; parent executes/labels actual RED and validates scope. The SQL suite uses controlled draft/type/content negative fixtures only, never fabricated positive approvals/reports/plans; it proves the private helper boundary, not real authority or full API activation. Source-only readonly6.1 scan confirms true initial content scope and completed-null-active pre-switch validity. Source scopes/briefs are in the slice tracker; parent checkpoints before dispatch.
+
+Locked BE03a/BE03b and IA03/deep-dive amendments plus propagation scan/record are now written. The private plan type preserves nullable IDs; production parser/output and real SQL empty-scope proof remain open. Native QA-RED owns only the new first-empty plan test file, under its exact lane brief and parent checkpoint. No production author dispatch until parent witnesses frozen RED. Actual source querying, post-seal lease reuse, pre-review activation staging and legacy transactional-tail/read repair remain separate open boundaries. Earlier "propagation next" notes below are historical;0/122 acceptance unchanged.
 
 On2026-10-09 the owner replied "approve all" to both recommended choices: DEC-162 permits null source/active version IDs only for a genuinely verified empty first activation, with locked-contract updates; DEC-163 makes missing legacy CMS settings fail closed until an existing authorized settings save initializes them. Both are durably recorded through canonical flush/compile. These decisions supersede the pending questions in the historical checkpoint notes below. No new bootstrap command, implicit GET repair, authority bypass, fabricated baseline/evidence, real-account work, or external acceptance is authorized.
 

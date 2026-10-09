@@ -3,7 +3,8 @@ import type { MigrationState } from './migration-worker-constants';
 export type MigrationPlanRecord = Readonly<{
   id: string;
   contentTypeId: string;
-  fromVersionId: string;
+  // DEC-162: null is the genuine first-empty baseline, never a fabricated ID.
+  fromVersionId: string | null;
   toVersionId: string;
   state: MigrationState;
   version: string;
@@ -20,7 +21,7 @@ export type MigrationPlanRecord = Readonly<{
   compilerHash: string;
   sourceHash: string;
   targetHash: string;
-  activeVersionId: string;
+  activeVersionId: string | null;
   leaseOwner: string | null;
   leaseToken: string | null;
   leaseExpiresAt: string | null;

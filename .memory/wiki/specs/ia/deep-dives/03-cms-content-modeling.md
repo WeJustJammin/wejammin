@@ -1,5 +1,7 @@
 # Deep Dive 03 — CMS content modeling and authoring
 
+> **DEC-162/163 amendments (owner approved2026-10-09):** The migration model's `from_version_id` is nullable only for a genuine version1 first-empty baseline; before initial activation its internal `activeVersionId` may be null. Pending zero counters never substitute for affected-relation reads and sealed empty evidence. Nonempty initial scopes fail closed; successors retain real distinct source/target IDs. Completed replay may project the later legitimate active UUID without effects, and a null-source first plan is excluded from restore-chain edges. Every "prior active remains" clause is conditional on such a prior version existing. Missing stored publication settings prevent complete preparation; reads do not materialize. Existing authorized revision-save tails initialize atomically, preserve CAS/replay/lock order, and introduce no new operation or grant. BE03a DEC-162 and BE03b E7/DEC-163 carry the normative details.
+
 > **Parent IA Shard**: [../03-cms-content-modeling.md](../03-cms-content-modeling.md)
 > **Architecture Source**: [../../2026-08-02-architecture-design.md](../../2026-08-02-architecture-design.md)
 > **Status**: Complete — deepening converged

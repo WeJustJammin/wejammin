@@ -60,6 +60,7 @@
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]] — audit — spec-vault
 - [[specs/audits/propagation-option-a-2026-09-02|Slice 09 Option A propagation record]] — audit — spec-vault
 - [[specs/audits/propagation-owner-bootstrap-2026-09-10|Initial-owner propagation]] — audit — spec-vault
+- [[specs/audits/propagation-s11-owner-approvals-2026-10-09|DEC-162/163 propagation record —2026-10-09]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-08-30|Sentry Removal and Free-Only Operations Propagation Scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-02|Option A downstream propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-09|AC265 scope propagation scan]] — audit — spec-vault
@@ -81,6 +82,7 @@
 - [[specs/audits/propagation-scan-2026-09-30-cms-revision-comparison|Propagation scan — complete CMS-07 revision comparison]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-30-cms-rich-text-ast|Propagation scan — approved CMS rich-text AST]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-10-02|Propagation scan — Slice 09 activation amendment]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-10-09|DEC-162/163 propagation scan —2026-10-09]] — audit — spec-vault
 - [[specs/audits/remediation-state|Pipeline remediation state]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1255|Infrastructure Verification Report]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1353|Infrastructure Verification Report]] — audit — spec-vault
@@ -1573,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-approved-dec162-163-cascade-and-native-red-claim|Slice 11 approved DEC162/163 cascade and native RED claim]] — event — 2026-10-09T20:17:27.103Z
 - [[knowledge/2026-10-09-slice-11-confirmed-first-plan-parser-red|Slice 11 confirmed first plan parser RED]] — event — 2026-10-09T18:50:17.179Z
 - [[knowledge/2026-10-09-slice-11-first-baseline-representation-question|Slice 11 first baseline representation question]] — event — 2026-10-09T18:40:56.046Z
 - [[knowledge/2026-10-09-slice-11-migration-diagnostic-exact-scope|Slice 11 migration diagnostic exact scope]] — event — 2026-10-09T18:37:58.832Z

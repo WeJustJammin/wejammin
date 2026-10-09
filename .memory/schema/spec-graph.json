@@ -1,6 +1,6 @@
 {
-  "builtAt": "2026-10-09T19:57:16.225Z",
-  "nodeCount": 1655,
+  "builtAt": "2026-10-09T20:21:23.837Z",
+  "nodeCount": 1657,
   "edgeCount": 10175,
   "nodes": [
     {
@@ -312,6 +312,13 @@
       "shardId": null
     },
     {
+      "id": "audit:audits/propagation-s11-owner-approvals-2026-10-09",
+      "type": "audit",
+      "label": "DEC-162/163 propagation record —2026-10-09",
+      "path": ".memory/wiki/specs/audits/propagation-s11-owner-approvals-2026-10-09.md",
+      "shardId": null
+    },
+    {
       "id": "audit:audits/propagation-scan-2026-08-30",
       "type": "audit",
       "label": "Sentry Removal and Free-Only Operations Propagation Scan",
@@ -456,6 +463,13 @@
       "type": "audit",
       "label": "Propagation scan — Slice 09 activation amendment",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-02.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-09",
+      "type": "audit",
+      "label": "DEC-162/163 propagation scan —2026-10-09",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-09.md",
       "shardId": null
     },
     {
@@ -72645,7 +72659,7 @@
     "byNodeType": {
       "plan": 12,
       "architecture": 18,
-      "audit": 51,
+      "audit": 53,
       "be-spec": 157,
       "fe-spec": 44,
       "ia-spec": 85,

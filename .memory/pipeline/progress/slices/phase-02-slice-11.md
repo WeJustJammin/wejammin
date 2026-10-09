@@ -2,6 +2,12 @@
 
 Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 narrowly permits null source/active version IDs for a genuinely verified empty first activation, with locked-contract cascade; DEC-163 makes missing legacy CMS settings fail closed until an existing authorized save initializes them, with non-mutating reads. Canonical decisions recorded and compiled. Propagate contracts before native TDD; parent-only commands and serialized CI/flock/main-stack DB remain binding. Earlier unresolved-policy notes are historical;0/122 acceptance unchanged.
 
+- [/] `QA` DEC-162 first-empty defensive contract tests, source-only; parent frozen RED before production dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-red-2026-10-09.md).
+  - files: apps/worker/src/content-schema-registry/migration-worker-first-empty-baseline.test.ts
+
+- [/] `QA` DEC-162 initial-scope SQL helper RED, controlled private DB unit fixtures; no real activation/authority claim. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-sql-red-2026-10-09.md).
+  - files: supabase/tests/phase_02_slice_11_first_empty_scope.sql
+
 User authorized "continue with native models" on2026-10-09, resolving the routing blocker without purchasing credits or repairing Phils availability. Orchestration/review/validation remain `gpt-6.1-sol` / `ultra`; fresh preparation-only implementation agents use available native `gpt-6-astra` / `high`, actual identity verified before acceptance. Resumed from clean pushed `6272d21a2baa74cfd2f7bc869149b8c4ef97f2bd`; checkpoint this routing/claim/handoff update before dispatch.0/122 acceptance unchanged; prior full API527/528 remains historical with cold-read settings-snapshot mutation RED. Owner recovery policy and external gates are not selected/promoted. See live handoff and today's session log for exact state.
 
 **Status**: in-progress  

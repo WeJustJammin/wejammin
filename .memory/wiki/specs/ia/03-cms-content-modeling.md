@@ -1,5 +1,7 @@
 # Shard 03 — CMS content modeling and authoring
 
+> **DEC-162/163 amendments (owner approved2026-10-09):** CMS-04's "prior active remains" requirement applies when a prior version exists. A genuine first-empty activation has no predecessor; its internal migration source/active IDs may be null, never fabricated, with actual empty-scope scanning and authoritative sealing required before reviewed activation. Successor protections are unchanged; completed first-empty plans do not become restore-chain edges. Publication workflow reads/preflight never initialize settings: missing legacy snapshots fail closed until an existing authorized save materializes the matching snapshot atomically. See BE03a DEC-162 and BE03b E7/DEC-163 for the closed guard/error/write-order contracts; no new endpoint or authority is added.
+
 > **Architecture Source**: [2026-08-02-architecture-design.md](../2026-08-02-architecture-design.md)
 > **Decomposition Source**: [decomposition-plan.md](decomposition-plan.md)
 > **Deep Dive**: [deep-dives/03-cms-content-modeling.md](deep-dives/03-cms-content-modeling.md)

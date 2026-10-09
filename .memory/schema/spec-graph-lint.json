@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-10-09T19:57:16.225Z",
+  "builtAt": "2026-10-09T20:21:23.837Z",
   "issues": [
     {
       "severity": "warning",
@@ -148,6 +148,12 @@
     {
       "severity": "warning",
       "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-s11-owner-approvals-2026-10-09.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-s11-owner-approvals-2026-10-09.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
       "message": ".memory/wiki/specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number.md has no graph relationships",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number.md"
     },
@@ -186,6 +192,12 @@
       "code": "ORPHAN_SPEC",
       "message": ".memory/wiki/specs/audits/propagation-scan-2026-10-02.md has no graph relationships",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-02.md"
+    },
+    {
+      "severity": "warning",
+      "code": "ORPHAN_SPEC",
+      "message": ".memory/wiki/specs/audits/propagation-scan-2026-10-09.md has no graph relationships",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-09.md"
     },
     {
       "severity": "warning",
