@@ -1,5 +1,14 @@
 # Native QA — dry-run purpose admission controls
 
+## WITHDRAWN before source edits
+
+No new test file was written. DEC-108's owner-approved source225–230 requires
+nonzero pre-review backfill/verification; the later-state refusal proposal below
+would contradict it. No production implementation or acceptance claim. Preserve
+strict version/identity admission and approval-gated switch; replacement QA must
+exercise pre-review preparation without private activation. Canonical source
+precedence resolves this without a new owner decision; do not re-ask DEC-108.
+
 Root `/home/rob/.codex/worktrees/phase2-slice11/WeJammin` only. Retained native
 author gpt-6-astra/high; orchestration/review gpt-6.1-sol/ultra. Parent checkpoints,
 pushes and verifies origin before dispatch. Existing purpose suite frozen351,

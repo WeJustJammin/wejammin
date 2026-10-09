@@ -1,5 +1,20 @@
 # Native QA-RED — trusted dry-run execution boundary
 
+## SUPERSEDED proposal — not a binding seal-only contract
+
+Authority trace found DEC-108's exact owner-approved proposal225–230 explicitly
+requires nonzero dry-run/backfill/verify BEFORE independent review. DEC-162
+preserves DEC-108. The interpretation below incorrectly elevated conflicting
+BE03a2272 job-ownership wording over that approved source. Existing new29 tests
+are frozen proposed oracles, not acceptance evidence; parent17failed/12passed
+does NOT establish the four seal-only/newer-ready expectations as requirements.
+No purpose implementation was applied. Preserve pre-review nonzero preparation;
+stop before private activation and keep the public switch approval-gated. Correct
+these new tests only against approved DEC-108, list all changed titles, and keep
+constructor/wire/version/identity/failure/activation controls. Strict plan-version
+checks remain; trusted persisted-job resolution supplies current canonical plan
+facts, not a blanket newer-ready exception. Use the replacement pre-review brief.
+
 ## Narrow fixture amendment after preliminary RED
 
 Native source frozen; parent format/ESLint0, preliminary29 cases18 failed/11

@@ -1,5 +1,38 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Binding correction: preserve owner-approved DEC-108 preparation order
+
+Replacement pre-review-purpose QA brief claims disjoint native lanes A/B: amend
+four proposed old oracles while retaining29 guards; new full actual-worker
+nonzero preparation/no-switch, empty ready, default activation and failure cases.
+Source-only; checkpoint/push before dispatch, parent RED before implementation.
+Core proposal preserves admission unchanged, separates existing private activation
+continuation from verification, and stops dry_run purpose before switching. No
+special newer-ready version exception. Nonzero backfill/verify stays pre-review.
+
+DEC108 decisions1588 approves the exact proposal225–230: actual nonzero dry-run /
+backfill / verify BEFORE independent review, then second atomic switch. DEC162
+preserves that path; independent6.1 found no later override. Root verified the
+source directly. The preceding seal-only proposal misread downstream BE03a2272
+and IA deep-dive286 ownership wording. Correct these downstream statements to
+the approved source; do not ask the owner to approve the same decision again.
+Approval still exclusively gates the active switch. No purpose implementation
+was applied; earlier purpose29 tests are proposed, non-authoritative oracles
+(parent17/12), pending narrow source-led amendment with changed-title inventory.
+Admission12 proposal withdrawn before any file edit; all native write claims
+released. The prior seal-only briefs are explicitly superseded, not instructions.
+
+Next QA preserves nonzero pre-review backfill/verify and proves no private
+activate/reconcile/switch at completion; empty actual sealed preparation may
+remain ready for the approved public activation's empty-plan advance. Keep
+strict version/CAS/identity guards; canonical claimed-job resolution provides
+current plan facts, not a blanket ready-version exception. Existing trusted
+cms_get_schema_migration_plan(jsonb) can support a closed claimed-job read branch
+with existing ACLs/owner and ZERO new grants/roles/endpoints. Jobs SELECT-only:
+do not FOR UPDATE/SHARE them. Persisted dispatch/retry/attempt/heartbeat proof
+still open; named factory/unit tests do not establish it. No DB handles;0/122,
+genuine7 RED, full/owner/external gates unchanged. Earlier notes historical.
+
 ## Corrected purpose RED; narrow admission controls before implementation
 
 Parent corrected purpose29:17 failed/12 passed, format/ESLint0, test351/support203.
