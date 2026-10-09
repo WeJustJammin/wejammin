@@ -2,6 +2,7 @@
  * transport; SQL here reads evidence only. No raw activation rows. */
 import { randomUUID } from 'node:crypto';
 
+import { ContentSchemaRegistryDetailSchema } from '@wejammin/contracts';
 import { expect } from 'vitest';
 
 import { createProductionSchemaMigrationWorker } from '../../../apps/worker/src/production-worker-runtime-cms';
@@ -155,7 +156,9 @@ export const prepareS11SchemaCandidate = async (
     );
   } else {
     const path = versionPath(source.contentTypeId, source.contentTypeVersionId);
-    const previous = await read(designer.app, path);
+    const previous = ContentSchemaRegistryDetailSchema.parse(
+      await read(designer.app, path),
+    ).resource;
     draft = await post(
       designer.app,
       `${path}/successors`,
@@ -185,7 +188,9 @@ export const prepareS11SchemaCandidate = async (
   const dryRunId = s11String(dryRun, 'id');
   const migrationPlanId = s11String(dryRun, 'migrationPlanId');
   const workerCalls = await sealDryRun(contentTypeVersionId, migrationPlanId);
-  const afterDryRun = await read(designer.app, path);
+  const afterDryRun = ContentSchemaRegistryDetailSchema.parse(
+    await read(designer.app, path),
+  ).resource;
   const review = await post(
     designer.app,
     `${path}/reviews`,
@@ -245,7 +250,9 @@ export const s11ActivationRequest = async (candidate: S11SchemaCandidate) => {
     candidate.contentTypeId,
     candidate.contentTypeVersionId,
   );
-  const version = await read(candidate.designer.app, path);
+  const version = ContentSchemaRegistryDetailSchema.parse(
+    await read(candidate.designer.app, path),
+  ).resource;
   return {
     path: `${path}/activate`,
     body: {

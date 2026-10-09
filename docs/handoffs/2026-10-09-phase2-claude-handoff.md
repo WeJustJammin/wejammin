@@ -1,5 +1,26 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Lease targeted GREEN; one legacy recovery fixture regression
+
+Native dry-run sole-line canonical token return frozen114; parent8/8 +118/118
++65/65 =191/191, format/ESLint0, independent6.1 no bounded producer gap. Native
+lifecycle detail helper frozen294, real exported strict `.resource` parsing at
+all3 schema GETs, format/ESLint0, independent6.1 no bounded gap; genuine rerun pending.
+Broader registry149 suites2512:2511 passed/one AC-188 recovery fixture failure.
+Its full history omits required second claim and handler always returns old
+dry_running lease/cursor; do NOT undo reclaim or loosen equality. Next exact
+sole-test native amendment models fresh running version6/reset cursor after
+sealed5 and asserts both complete canonical claim bodies, preserving both literal
+titles/old assertions. Checkpoint/push/remote verify before continuation.
+
+The failed registry chain stopped before root type/contracts/progress steps;
+type/contracts not newly run; separate claim progress check0. No full/genuine API
+success, no DB handle. Root may rerun genuine lifecycle independently using freshCI0/
+flock/main reset and closing reset while source-only old-recovery author works.
+All native code claims released except sole recovery QA.0/122 and SQL fences,
+DEC-163, later review/activation, owner/external/full-phase gates still open.
+Earlier notes below historical.
+
 ## UUID bounded GREEN; amended handoff RED; two native continuations
 
 Native shared lease guard frozen: only acquired/plan tokens accept UUID OR the

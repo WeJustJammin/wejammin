@@ -18,11 +18,12 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 
 - [/] `BE` Narrow UUID-or-unchanged-legacy lease guard frozen; parent118/118, format/ESLint0, independent6.1 no bounded gap. Core98/validation288/schema139; only acquired/plan lease tokens changed. Broader regression pending; write claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lease-token-green-2026-10-09.md).
 
-- [/] `BE` Canonical post-seal token handoff sole-producer native GREEN claim; parent8-case RED6/2 frozen. Checkpoint/push and amendment review before dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-green-2026-10-09.md).
-  - files: apps/worker/src/content-schema-registry/migration-worker-dry-run.ts
+- [/] `BE` Canonical post-seal token handoff frozen114 lines; parent8/8 plus UUID118/118/first-empty65/65 (191/191), format/ESLint0, independent6.1 no bounded gap. Broader149 suites2511/2512: sole old recovery fixture omits required reclaim. Producer claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-green-2026-10-09.md).
 
-- [/] `QA` Genuine lifecycle fixture parses actual CMS03A07 detail at all3 schema GET consumers; native sole-helper claim, no assertion/status/authority weakening. Checkpoint/push before dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lifecycle-detail-amendment-2026-10-09.md).
-  - files: tests/postgrest/support/phase-02-slice-11-schema-lifecycle.ts
+- [/] `QA` Genuine lifecycle detail amendment frozen294 lines, all3 schema GET consumers parse real detail.resource; format/ESLint0, independent6.1 no bounded gap. Genuine rerun pending; write claim released. No authority/status/assertion changes. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lifecycle-detail-amendment-2026-10-09.md).
+
+- [/] `QA` Old recovery fixture canonical second reclaim amendment; preserve2 literal tests/full equality, model fresh running lease/reset cursor and exact claim operands. Native sole-test claim after checkpoint/push. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-recovery-reclaim-amendment-2026-10-09.md).
+  - files: apps/worker/src/content-schema-registry/migration-worker-recovery.test.ts
 
 User authorized "continue with native models" on2026-10-09, resolving the routing blocker without purchasing credits or repairing Phils availability. Orchestration/review/validation remain `gpt-6.1-sol` / `ultra`; fresh preparation-only implementation agents use available native `gpt-6-astra` / `high`, actual identity verified before acceptance. Resumed from clean pushed `6272d21a2baa74cfd2f7bc869149b8c4ef97f2bd`; checkpoint this routing/claim/handoff update before dispatch.0/122 acceptance unchanged; prior full API527/528 remains historical with cold-read settings-snapshot mutation RED. Owner recovery policy and external gates are not selected/promoted. See live handoff and today's session log for exact state.
 
