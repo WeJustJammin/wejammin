@@ -1,5 +1,30 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Trusted claim QA56 RED; sole adapter QA amendment before GREEN
+
+Parent actual56:26failed/30passed. Application12:4failed8passed359lines, actual
+effect input omits receipt; all earlier completion/order/CAS assertions pass.
+Adapter44:22failed22passed300lines, foreign/null bindings accepted instead of
+refused; no missing imports/setup failures. Format/ESLint/type/contracts/progress0
+and existing consumer/async9suites58/58, freshCI0/flock. Independent6.1 LaneA no
+falseoracle; LaneB three P3 gaps: wrong third alias, safe-number normalization
+compatibility, no negative singleton-array witness. Original QA claims released.
+
+SOLE adapter-test amendment claimed in lane-s11-native-claim-binding-qa-amendment-
+2026-10-09.md: exact old alias correction plus4 numeric normalization positives
+and3 array foreign negatives, all old proof otherwise retained. Checkpoint/push/
+exact-origin before native continuation, expected51B/63combined parent count
+unproven until execution. All producers/LaneA/source frozen; NO GREEN dispatch.
+
+Server resolver design remains proposal, not locked contract: existing get-plan
+signature/owner/ACL can admit closed claimed-receipt/original-event request and
+closed report/candidate/plan binding response. Root must read required source
+before freezing design. Successful CMS report resultRef.type not pinned by source
+and synthetic cms_schema_migration literal is NOT normative. Postclaim snapshot
+does not fix preclaim stale/duplicate/queued-event ACK, missing attempts/heartbeat
+or per-stage live job fencing. No roles/grants/job row locks/S09 restart;
+genuineAPI7RED/0of122/full/owner/external holds unchanged.
+
 ## Receiver proof closed; trusted claim seam QA next
 
 Dispatcher QA264/55: one additive context assertion across all3 exact families,

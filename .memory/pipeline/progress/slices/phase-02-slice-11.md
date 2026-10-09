@@ -47,9 +47,11 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 - [/] `QA` Dispatcher receiver witness frozen264/55, one additive assertion/all old proof unchanged. Parent55/55, unbound-callback mutation3failed/52passed55, exact producer restoration then77/77 and format/ESLint/type/contracts/progress0. Independent6.1 P3 closed; claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-dispatch-receiver-witness-2026-10-09.md).
   - files: none; no persisted job/SQL acceptance claim.
 
-- [/] `QA` Disjoint trusted claim receipt/request-binding QA claims; checkpoint/push/exact-origin before native authors, existing source/tests frozen. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-job-seam-qa-2026-10-09.md).
-  - lane A file: packages/application/src/infrastructure/jobs/consumer-claimed-lease.test.ts
-  - lane B file: apps/worker/src/async-runtime-claim-binding.test.ts
+- [/] `QA` Trusted claim QA56 frozen:26failed30passed; A12:4failed8passed359, B44:22failed22passed300. Format/ESLint/type/contracts/progress0 and old consumer/async58/58, freshCI0/flock. A independent6.1 nofalseoracle; B3 proof gaps pending amendment. Original claims released/all producers frozen. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-job-seam-qa-2026-10-09.md).
+  - files: none; actual missingreceipt/acceptedforeignbindings RED, no SQL/enduringauthority claim.
+
+- [/] `QA` Sole adapter QA amendment claimed: exact legacyalias correction,4 numeric normalization positive and3 singleton foreign negative controls. Checkpoint/push before author; no GREEN dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claim-binding-qa-amendment-2026-10-09.md).
+  - file: apps/worker/src/async-runtime-claim-binding.test.ts
 
 - [/] `QA` Completion-state/every-empty-operand guard8 frozen250; parent8:1failed/7passed, format/ESLint0. Standalone sourceCount row added; every prior source byte unchanged. Existing41/support/producers frozen; QA claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-pre-review-guards-red-2026-10-09.md).
   - files: none; guarded completion and all eight empty-discriminator operands have independent controlled witnesses. No SQL eligibility or acceptance proof.
