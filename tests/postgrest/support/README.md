@@ -81,6 +81,9 @@
   of fabricating activation rows. Initial7-case runtime is RED before dry-run
   processing; first-plan null-ID/parser mismatch is source-identified, exact
   early-exit diagnostics pending. No ordinary authority acceptance yet.
+- `phase-02-slice-11-migration-diagnostics.ts` (scoped preparation): closed,
+  bounded RPC/status/result/plan-boolean observer; cloned responses only, original
+  transport/operands unchanged. No IDs, tokens, raw bodies, lease data or content.
 
 These additions are preparation, not acceptance proof. The inherited
 frozen-review trigger bypass remains an execution/authority hold pending legal

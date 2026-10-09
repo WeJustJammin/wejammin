@@ -12,14 +12,17 @@ fail strict Worker parsing, followed by dead-letter; runtime names/result still
 need confirmation. Earlier premature-activation hypothesis is not established.
 
 After parent pushes/verifies this checkpoint, continuation may edit ONLY the
-schema-lifecycle helper, preserving all assertions/titles and all real return
+schema-lifecycle helper and new
+`tests/postgrest/support/phase-02-slice-11-migration-diagnostics.ts`, preserving all assertions/titles and all real return
 values. Add bounded failure diagnostics: ordered allowlisted migration RPC names
 and HTTP statuses; Worker outcome/state/reasonCode/activationSwitched; cloned
 read-plan booleans fromVersionIdIsNull/activeVersionIdIsNull/sourceHashIsZero.
 No tokens, IDs, operands, lease fields, raw responses or content. Error codes
 must use a fixed known-code allowlist, otherwise unclassified. Utility<=300
-post-format (currently281); request exact additional helper scope before edits
-if necessary. No production/contract fix, fabricated response, removed assertion
+post-format (lifecycle currently281); the exact observer-helper extension above
+was requested before edits and authorized to keep readable code under the cap.
+Retain at most32 ordered RPC/status records and closed diagnostic projections;
+failed clone parsing emits no raw exception/body. No production/contract fix, fabricated response, removed assertion
 or execution is authorized. Parent independently runs the next diagnostic RED.
 
 Use actual `gpt-6-astra`/`high`, fork-none; parent/review remain6.1/ultra. Only approved worktree `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`, branch `claude/phase2-slice11`. Read applicable AGENTS, rules, instructions and implement-slice/setup/TDD skills fully. Use pure context-mode fs/path source reads and native apply_patch only. NO shell/native exec/write_stdin/child_process, scripts/tests/DB/network, formatting, commits, nested agents or runtime/module execution. Parent owns every execution and README/tracker/canonical-memory change. Report source-only honestly; stop at missing policy/authority rather than inventing it.

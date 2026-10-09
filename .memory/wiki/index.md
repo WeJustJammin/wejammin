@@ -1573,6 +1573,8 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-first-baseline-representation-question|Slice 11 first baseline representation question]] — event — 2026-10-09T18:40:56.046Z
+- [[knowledge/2026-10-09-slice-11-migration-diagnostic-exact-scope|Slice 11 migration diagnostic exact scope]] — event — 2026-10-09T18:37:58.832Z
 - [[knowledge/2026-10-09-slice-11-native-header-green-and-lifecycle-red|Slice 11 native header GREEN and lifecycle RED]] — event — 2026-10-09T18:33:13.002Z
 - [[knowledge/2026-10-09-slice-11-response-header-fresh-red|Slice 11 response header fresh RED]] — event — 2026-10-09T18:20:24.686Z
 - [[knowledge/2026-10-09-slice-11-native-api-preparation-checkpoint|Slice 11 native API preparation checkpoint]] — event — 2026-10-09T18:11:01.317Z
