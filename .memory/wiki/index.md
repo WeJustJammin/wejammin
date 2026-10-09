@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-claim-source-green-and-mutation-proof-with-legacy-fixture-gate|Slice 11 claim source GREEN and mutation proof with legacy fixture gate]] — knowledge — 2026-10-09T23:39:47.437Z
 - [[knowledge/2026-10-09-slice-11-corrected-claim-qa63-red-and-three-source-green-scopes|Slice 11 corrected claim QA63 RED and three-source GREEN scopes]] — knowledge — 2026-10-09T23:28:59.142Z
 - [[knowledge/2026-10-09-slice-11-claim-qa56-red-and-adapter-amendment-gate|Slice 11 claim QA56 RED and adapter amendment gate]] — knowledge — 2026-10-09T23:23:38.342Z
 - [[knowledge/2026-10-09-slice-11-dispatcher-receiver-mutation-proof-and-claim-seam-qa-scope|Slice 11 dispatcher receiver mutation proof and claim seam QA scope]] — knowledge — 2026-10-09T23:13:12.298Z

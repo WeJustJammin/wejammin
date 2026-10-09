@@ -97,6 +97,21 @@ export const parseLease = (
 ): JobLeaseClaimResult => {
   const row = firstRow(value);
   if (!isRecord(row)) throw new Error('Invalid job lease');
+  const hasOwn = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(row, key);
+  if (
+    ['jobId', 'job_id'].some(
+      (key) => hasOwn(key) && row[key] !== request.jobId,
+    ) ||
+    ['leaseToken', 'lease_token'].some(
+      (key) => hasOwn(key) && row[key] !== request.leaseToken,
+    ) ||
+    ['expectedVersion', 'expected_version'].some(
+      (key) => hasOwn(key) && toVersion(row[key]) !== request.expectedVersion,
+    )
+  ) {
+    throw new Error('Invalid job lease');
+  }
   const jobId = row.jobId ?? row.job_id;
   const leaseToken = row.leaseToken ?? row.lease_token ?? request.leaseToken;
   const expectedVersion =

@@ -1,5 +1,27 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Claim source63 GREEN; two legacy fixed-token fixtures block regression
+
+Three source files frozen; counts runtime-types221/consumer123/parser284 after
+parent formatting. New QA63/63; broader31 suites475 tests:473passed/2failed.
+Failures are decisions/defaults and manual-review/post-effect tests: each old
+claim response supplies a fixed token while async-runtime generates a different
+request token. Actual claim SQL omits token/requestedversion; submitted fallback
+is preserved. No production guard waiver. Scopedformat/ESLint/type/contracts/
+progress0, freshCI0/flock; full validation NOT run. Independent6.1 no producer
+defect; root receipt-removal4failed8passed12 and binding-guard-removal25failed/
+26passed51 at real boundary assertions. ExactSHA restoration of both sources,
+then79/79 (claim63+factory16) and restoredformat/ESLint/type/contracts/progress0.
+
+Next sole two-test fixture amendment scope lane-s11-native-legacy-claim-token-
+fixture-amendment-2026-10-09.md: delete only claim-response leaseToken member in
+each old fixture; outbox token/default generator/all assertions unchanged.
+Checkpoint/push/exact-origin before author continuation. Parent63 plus broader
+jobs/async/production/core including preparation factory16, static gates, isolated
+receipt/binding proof retained. All other source/QA
+frozen. No receiving/resolver/SQL/acceptance claim; genuineAPI7RED/0of122 and
+owner/external/full gates unchanged. Prior claimed scopes below historical.
+
 ## Corrected claim QA63 accepted; disjoint three-source GREEN claims
 
 Corrected parent63:29failed34passed. A12:4failed8passed359 (unchanged); B51:

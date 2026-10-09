@@ -125,6 +125,8 @@ export type JobEffectInput = Readonly<{
   job: CanonicalJob;
   envelope: QueueEnvelope;
   leaseToken: string;
+  /** Actual internal claim receipt, not wire metadata or enduring authorization. */
+  claimedLease?: JobLeaseClaimResult;
 }>;
 
 export type JobEffectResult = Readonly<{

@@ -82,6 +82,7 @@ export const executeJobDispatch = async (
       envelope: decision.envelope,
       job: canonical,
       leaseToken: lease.lease.leaseToken,
+      claimedLease: lease.lease,
     });
   } catch {
     return manualReview();
