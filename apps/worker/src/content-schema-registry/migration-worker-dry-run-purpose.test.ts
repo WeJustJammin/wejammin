@@ -28,6 +28,8 @@ import {
   TARGET_VERSION_ID,
 } from './migration-worker-test-support';
 
+const OTHER_TARGET_VERSION_ID = '90000000-0000-4000-8000-000000000009';
+
 describe('trusted dry-run execution purpose', () => {
   it('trusted dry-run completes a nonzero bounded scan at canonical ready without crossing into backfill', async () => {
     const f = purposeFixture();
@@ -91,7 +93,10 @@ describe('trusted dry-run execution purpose', () => {
 
   it('trusted dry-run ready retry retains target identity checks', async () => {
     const f = purposeFixture('ready');
-    f.call.mockResolvedValueOnce({ ...f.sealed, toVersionId: OLD_VERSION_ID });
+    f.call.mockResolvedValueOnce({
+      ...f.sealed,
+      toVersionId: OTHER_TARGET_VERSION_ID,
+    });
 
     const result = await f.worker.process(job, { signal: f.signal });
 

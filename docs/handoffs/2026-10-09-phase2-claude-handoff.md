@@ -1,5 +1,26 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Corrected purpose RED; narrow admission controls before implementation
+
+Parent corrected purpose29:17 failed/12 passed, format/ESLint0, test351/support203.
+Distinct valid target identity control passes; old29 titles/assertions unchanged.
+Independent6.1 found version-exception and later-state proof gaps. New sole-file
+QA11 controls claimed in purpose-admission brief; all existing sources frozen.
+Matching later activation states through dry_run wiring must fail terminal with
+EXECUTION_PURPOSE_MISMATCH, truthful metadata and readPlan only, never mutation.
+Default activation and non-ready dry-run retain version checks. Parent checkpoint,
+push/origin verification before continuation, then actual RED/review before GREEN.
+
+Trusted BE00 inventory: actual relay uses job.requested/1, not extra CMS domain
+event. CMS job executor/job-to-report-plan resolver absent; current dispatcher
+supports object verification only. Original-envelope stale-version retry and
+missing attempt/heartbeat plumbing are separate required integration work. Current
+SQL plan reader refuses newer ready under original version. Core tests are not
+persisted completion proof. BE03a2272 versus2704 nonzero backfill/review ordering
+contradiction remains to check against canonical decisions before owner escalation.
+No DB handles; genuine7/7 private activate/reconcile/rollback400 remains latest
+API RED, reason not established. All0/122/full/owner/external holds unchanged.
+
 ## Purpose preliminary RED; target fixture correction before GREEN
 
 Native purpose29 cases frozen: parent format/ESLint0,18 failed/11 passed (exit1,
