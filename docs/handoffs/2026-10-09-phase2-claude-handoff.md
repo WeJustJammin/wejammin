@@ -1,5 +1,35 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Native UUID GREEN and disjoint sealed-CONFLICT QA amendment
+
+Independent6.1 upheld sealed test oracles/extraction with one narrow gap: actual
+CAS CONFLICT reason propagation is absent. Preserve existing7 and add one
+controlled nonretryable CONFLICT through actual factory, exact canonical sealed
+metadata and complete history ending at reclaim (8 total); no SQL-race claim.
+Exact test/support QA claim replaces pending handoff producer claim. UUID118
+parent RED30/88 is frozen and may proceed independently with the narrow3-file
+guard GREEN. Checkpoint/push/remote verification before both native6astra/high
+continuations. Handoff dry-run producer and lifecycle detail helper remain
+undispatched drafts. Parent alone witnesses next RED/GREEN/regressions.0/122 and
+all genuine/API/SQL-fence/legacy/full-phase holds unchanged.
+
+## Amended lease RED frozen; narrow native GREEN claims
+
+Parent amended UUID118 cases:30 failed/88 passed, exit1, format/ESLint0; legacy
+punctuation token passes all3 exact positive paths. Native sealed-lease cap split
+is frozen: test249/support233 lines, complete describe block byte-identical and
+13 assertion sites unchanged. Parent split RED7:5 failed/2 passed, exit1,
+format/ESLint0, intended stale-token/full RPC-history assertions. Independent
+sealed proof review pending; finish it before GREEN dispatch.
+
+Two disjoint source-only native claims: UUID guard ONLY schema-core/validation/
+plan-record-schema (never global token widening), and canonical seal handoff
+ONLY dry-run producer. Tests/support are now frozen with claims released. Parent
+checkpoint/push/remote verification before author continuation, root executes
+all GREEN/regression checks. Lifecycle GET detail amendment still an undispatched
+sole-helper draft. No DB handle;0/122 and all genuine/API/fence/DEC-163/full-phase
+holds unchanged. Earlier notes below are historical.
+
 ## Lease parent RED; native QA amendments before production
 
 Frozen preliminary token tests115:30 failed/85 passed at intended UUID decoder

@@ -29,6 +29,13 @@ Database RPCs remain the transaction and audit authority.
 - `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
   shape and completed read-only replay; provisional zeros are not SQL eligibility
   or authenticated migration/activation evidence.
+- `migration-worker-lease-token-compatibility.test.ts` checks actual UUID lease
+  decoding and preservation of bounded legacy tokens without widening non-lease
+  token domains.
+- `migration-worker-sealed-lease-handoff.test.ts` and its focused
+  `migration-worker-sealed-lease-test-support.ts` pin canonical post-seal reclaim
+  operands, failure barriers, held-lease and read-only replay controls. Controlled
+  ports prove worker transitions, not SQL authority, seal races or approval.
 - `migration-source-read.ts` validates the `cms_read_schema_migration_source_rows`
   page (at most 128 rows; `targetFields[]` of changed fields with compiled
   constraints, `retiredFields[]` of removed keys carried unvalidated; a page

@@ -23,6 +23,7 @@ const VALID_TOKENS = [
   },
   { label: 'legacy opaque token', token: 'token' },
   { label: 'legacy hyphenated token', token: 'lease-1' },
+  { label: 'legacy punctuation token', token: 'Lease_1.part:resume-1' },
   { label: 'maximum-length opaque token', token: 'L'.repeat(200) },
 ];
 const INVALID_TOKENS: ReadonlyArray<

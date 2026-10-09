@@ -2,8 +2,10 @@
 
 Native author gpt-6-astra/high; parent/review6.1/ultra. Root only
 `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`. Parent checkpoint/push before
-dispatch. Frozen native compatibility unit115 cases: parent format/ESLint0 and
-targeted Vitest30 failed/85 passed, intended numeric UUID rejection, exit1.
+dispatch. Frozen native compatibility unit118 cases: parent format/ESLint0 and
+targeted Vitest30 failed/88 passed, intended numeric UUID rejection, exit1.
+Independent6.1's legacy punctuation gap is amended: `Lease_1.part:resume-1`
+passes all3 exact positive paths, preserving underscore/dot/colon grammar.
 Real SQL claim021490:342 generates UUID text; actual lifecycle's five numeric
 leased tokens fail existing letter-leading readAcquired/plan guards. Tests frozen.
 
@@ -25,6 +27,6 @@ README/progress/config/packages/lock/environment frozen. Ask exact extra scope.
 
 PURE ctx JavaScript fs/path reads + native apply_patch writes only. NO commands,
 exec/write_stdin/shell/child_process/scripts/tests/DB/network/format/lint/TSC/git/
-packages/commits/nested agents. All source UNRUN; parent executes115 plus registry
+packages/commits/nested agents. All source UNRUN; parent executes118 plus registry
 regressions and readonly review. Root owns README after source freeze. No SQL
 authority/lease ownership/activation proof from unit transport. Freeze exact3 files.
