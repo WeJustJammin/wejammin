@@ -32,6 +32,7 @@ export const rateCheck = async (
   routePolicy: (typeof cmsEditorialRoutePolicies)[number] = policy,
   deadlineAt?: number,
 ): Promise<Result<Headers>> => {
+  const headers = new Headers();
   for (const scope of ['user', 'party'] as const) {
     if (scope === 'party' && session.actingPartyId === null) continue;
     const remainingMs =
@@ -84,6 +85,12 @@ export const rateCheck = async (
         retryAfterSeconds,
       };
     }
+    // Report the admitted user bucket; the party check still gates admission.
+    if (scope === 'user') {
+      headers.set('ratelimit-limit', String(decision.limit));
+      headers.set('ratelimit-remaining', String(decision.remaining));
+      headers.set('ratelimit-reset', String(decision.resetAt));
+    }
   }
-  return { ok: true, value: new Headers() };
+  return { ok: true, value: headers };
 };

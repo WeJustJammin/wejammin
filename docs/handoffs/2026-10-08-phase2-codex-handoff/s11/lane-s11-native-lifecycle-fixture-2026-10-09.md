@@ -1,5 +1,27 @@
 # Native Slice11 genuine local lifecycle fixture — source preparation only
 
+## Parent fresh RED; diagnostic-only continuation
+
+Six files prepared and frozen; parent format/eslint/root type-check/contracts/
+progress/diff pass and caps hold after formatting. Parent freshly checked CI0,
+held shared flock, reset main stack successfully, rechecked CI0, then ran all7
+cases: all fail before the dry-run batch because only2 RPC names were observed.
+Log `parent-s11-lifecycle-fresh-red-20261009.log`, exit1. No approval/MFA/successor
+behavior reached; no acceptance. Source predicts nullable first-version plan IDs
+fail strict Worker parsing, followed by dead-letter; runtime names/result still
+need confirmation. Earlier premature-activation hypothesis is not established.
+
+After parent pushes/verifies this checkpoint, continuation may edit ONLY the
+schema-lifecycle helper, preserving all assertions/titles and all real return
+values. Add bounded failure diagnostics: ordered allowlisted migration RPC names
+and HTTP statuses; Worker outcome/state/reasonCode/activationSwitched; cloned
+read-plan booleans fromVersionIdIsNull/activeVersionIdIsNull/sourceHashIsZero.
+No tokens, IDs, operands, lease fields, raw responses or content. Error codes
+must use a fixed known-code allowlist, otherwise unclassified. Utility<=300
+post-format (currently281); request exact additional helper scope before edits
+if necessary. No production/contract fix, fabricated response, removed assertion
+or execution is authorized. Parent independently runs the next diagnostic RED.
+
 Use actual `gpt-6-astra`/`high`, fork-none; parent/review remain6.1/ultra. Only approved worktree `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`, branch `claude/phase2-slice11`. Read applicable AGENTS, rules, instructions and implement-slice/setup/TDD skills fully. Use pure context-mode fs/path source reads and native apply_patch only. NO shell/native exec/write_stdin/child_process, scripts/tests/DB/network, formatting, commits, nested agents or runtime/module execution. Parent owns every execution and README/tracker/canonical-memory change. Report source-only honestly; stop at missing policy/authority rather than inventing it.
 
 Exclusive claim: `tests/postgrest/support/phase-02-slice-11-type.ts`, `phase-02-slice-11-world.ts`, `phase-02-slice-11-stack.ts`, shared `stack.ts` and `cms-app.ts` in that directory, new `phase-02-slice-11-session.ts`, new `phase-02-slice-11-schema-lifecycle.ts`; new `tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts`. Existing callers and all other files read-only. Shared helper changes must be opt-in/backward compatible outside Slice11. Utilities<=300 lines/tests<=400; request exact extension before adding files. Do not edit production/contracts/migrations, other prepared suites, cold-read regression, decisions or guards.

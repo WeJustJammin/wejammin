@@ -71,9 +71,20 @@
   explicitly privileged local cursor artifact signer is SELECT-only and retains
   Vault material server-side; no API EXECUTE privilege is added.
 
-These additions are preparation, not runtime or acceptance proof. The inherited
-type activation shortcut and frozen-review trigger bypass remain execution/authority
-holds pending canonical fixture replacement. New helpers do not legalize them.
+- `phase-02-slice-11-session.ts`: real local authenticated bind/register/read,
+  opt-in production token/cookie/session capture, actual stored receipt/grant/
+  assignment capability projection. Controlled local provider adapter is not
+  hosted Auth/MFA proof; no stored MFA timestamp is invented.
+- `phase-02-slice-11-schema-lifecycle.ts`: fresh public draft/successor, real
+  worker transport, independent reviewer decision and server-derived activation
+  operands; SQL reads evidence only. S11 type helper now uses this chain instead
+  of fabricating activation rows. Initial7-case runtime is RED before dry-run
+  processing; first-plan null-ID/parser mismatch is source-identified, exact
+  early-exit diagnostics pending. No ordinary authority acceptance yet.
+
+These additions are preparation, not acceptance proof. The inherited
+frozen-review trigger bypass remains an execution/authority hold pending legal
+successor replacement. New helpers do not legalize it.
 Changed-table append counts and unchanged-table digests alone also do not prove
 every historical row in a changed table remained untouched.
 

@@ -8,8 +8,8 @@
  *   publisher  cms.publisher (schedules and publishes)
  *   outsider   an organization member with no CMS capability
  *
- * plus one active content type. Everything but the activation envelope and the
- * membership/grant rows comes from production code: the persons are created by
+ * plus a fresh content type activated through the complete CMS03A lifecycle.
+ * Editorial membership/grant rows below remain scoped fixtures; persons are created by
  * `identity_create`, the entries/revisions by the production Worker routes
  * (CMS-03B-10 / -01). Commits fixtures; run right after `pnpm db:reset`.
  */

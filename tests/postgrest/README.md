@@ -60,8 +60,11 @@ Preparation/static checks are not runtime or acceptance receipts. Do not execute
 the inherited stale-review fixtures that disable immutable guards in
 `support/phase-02-slice-11-read-fixtures.ts` or the original publish suite until
 their canonical successor-activation fixture is repaired. The shared type helper
-also still fabricates activation approval instead of exercising the genuine03A
-workflow. Archived-entry and standing-grant projections are synthetic controls,
+now prepares the genuine03A bind/session/dry-run/worker/review/activation chain,
+without fabricated activation rows. Its first real run is RED before dry-run
+processing: first-version plan null IDs conflict with the Worker parser in
+source; safe runtime diagnostics must confirm the exact early exit. No ordinary
+API acceptance follows from this unverified fixture. Archived-entry and standing-grant projections are synthetic controls,
 not authorized archival/revoke or real-time-lapse proof. These authority gaps,
 the parent cold-read mutation, complete negative matrices and actual concurrency
 remain open; no Slice11 criterion is promoted by this preparation.

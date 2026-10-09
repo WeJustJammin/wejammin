@@ -32,12 +32,13 @@ import {
   type RegistryRoute,
 } from './workflow-support';
 import type { WorkflowLabels } from './workflow-telemetry';
-import type {
-  CmsEditorialDependencies,
-  CmsEditorialError,
-  CmsEditorialPorts,
-  CmsEditorialResult,
-  CmsEditorialSession,
+import {
+  CMS_EDITORIAL_PREVIEW_OPERATION_ID,
+  type CmsEditorialDependencies,
+  type CmsEditorialError,
+  type CmsEditorialPorts,
+  type CmsEditorialResult,
+  type CmsEditorialSession,
 } from './types';
 
 /**
@@ -224,6 +225,10 @@ export const registerWorkflowCommand = <
       }
       return fail(rate, rateHeaders);
     }
+    const failAdmitted = (error: CmsEditorialError) => {
+      const failure = publishedError(error, policy);
+      return fail(error, failure.status === 503 ? rate.value : undefined);
+    };
     // BE00 step 8: exact Idempotency-Key and quoted If-Match.
     const headers = parseEditorialHeaders(request, spec.headersSchema);
     if (!headers.ok) return fail(headers);
@@ -234,7 +239,8 @@ export const registerWorkflowCommand = <
     if (versionError !== null) return fail(versionError);
 
     const port = spec.port(dependencies.ports);
-    if (typeof port !== 'function') return fail(dependencyUnavailable());
+    if (typeof port !== 'function')
+      return failAdmitted(dependencyUnavailable());
     const prepared = await spec.prepare({
       dependencies,
       request,
@@ -245,7 +251,7 @@ export const registerWorkflowCommand = <
       nowMs: dependencies.now?.() ?? Date.now(),
       withinDeadline,
     });
-    if (!prepared.ok) return fail(prepared);
+    if (!prepared.ok) return failAdmitted(prepared);
     const input = spec.build(
       {
         requestId,
@@ -259,7 +265,7 @@ export const registerWorkflowCommand = <
       prepared.value,
     );
     const result = await withinDeadline((signal) => port(input, signal));
-    if (!result.ok) return fail(result);
+    if (!result.ok) return failAdmitted(result);
     const resource = parsedResource<Resource>(
       spec.resourceSchema,
       result.value,
@@ -269,6 +275,8 @@ export const registerWorkflowCommand = <
     if (accepted === null) return fail(BAD_GATEWAY);
     const responseHeaders = commonHeaders(request, dependencies, requestId);
     responseHeaders.set('content-type', 'application/json; charset=UTF-8');
+    if (policy.operationId === CMS_EDITORIAL_PREVIEW_OPERATION_ID)
+      responseHeaders.set('x-robots-tag', 'noindex');
     if (accepted.etag !== null) responseHeaders.set('etag', accepted.etag);
     if (accepted.location !== null)
       responseHeaders.set('location', accepted.location);
