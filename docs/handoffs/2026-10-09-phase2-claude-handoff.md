@@ -1,5 +1,24 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## UUID bounded GREEN; amended handoff RED; two native continuations
+
+Native shared lease guard frozen: only acquired/plan tokens accept UUID OR the
+unchanged bounded legacy grammar; general owner/worker/transform tokens remain
+unchanged. Parent118/118, format/ESLint0; core98/validation288/schema139. Independent
+6.1 producer review no bounded gap; broader regressions pending, claim released. Native sealed
+QA amendment frozen8: parent6 failed/2 passed at intended stale-token/full history
+assertions, format/ESLint0; test255/support236. Old7 retained, new exact CONFLICT
+case; independent6.1 confirms conflict gap closed, old7 retained, no bounded gap.
+
+Next disjoint source-only claims: dry-run canonical post-seal token handoff, and
+sole lifecycle helper parsing exported real detail `.resource` at all3 schema
+GET consumers. Root checkpoint/push/remote verification before native6astra/high
+continuations; all tests/status/evidence/authority guards frozen. Parent targeted/
+broader checks and independent fixture review, then freshCI0/flock/main reset and
+genuine lifecycle rerun. Do not infer review/activation staging or SQL authority
+from these unit passes. No DB handle;0/122, DEC-163, seal fences, full/API/browser,
+owner/external holds and Slices12–17 still open. Earlier notes below historical.
+
 ## Native UUID GREEN and disjoint sealed-CONFLICT QA amendment
 
 Independent6.1 upheld sealed test oracles/extraction with one narrow gap: actual

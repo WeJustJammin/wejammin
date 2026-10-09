@@ -162,6 +162,12 @@ describe('sealed dry-run lease handoff', () => {
       reasonCode: 'DEPENDENCY_UNAVAILABLE',
       retryAfterMs: null,
     },
+    {
+      reclaim: 'conflict' as const,
+      outcome: 'failed_terminal',
+      reasonCode: 'CONFLICT',
+      retryAfterMs: null,
+    },
   ])(
     'sealed reclaim $reclaim preserves failure semantics and prevents backfill verification and activation',
     async (row) => {

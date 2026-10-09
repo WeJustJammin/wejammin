@@ -9,10 +9,13 @@ frozen. Ask exact extra scope before edits. PURE ctx JavaScript fs/path reads an
 native apply_patch writes ONLY. NO commands/exec/write_stdin/shell/child_process/
 scripts/tests/DB/network/format/lint/TSC/git/packages/commits/nested agents.
 
-Parent deterministic sealed-lease QA7:5 failed/2 passed at stale returned token
+Parent deterministic sealed-lease QA8:6 failed/2 passed at stale returned token
 and exact actual-factory RPC order/body assertions. Cap-only extraction is
-frozen, parent format/ESLint0 and RED repeated; test249/support233 lines, describe
-block byte-identical and all13 assertion sites unchanged. SQL021830
+frozen, parent format/ESLint0 and RED repeated; test255/support236 lines. Existing
+7 cases/oracles unchanged; eighth controlled nonretryable CONFLICT row preserves
+the exact reason/null retry delay/canonical sealed metadata/full call barrier.
+Independent6.1 review confirms conflict gap closed, old7 retained, no bounded
+gap. SQL021830
 successful dry-run seal returns canonical ready plan with null leaseOwner/token
 and seal-instant expiry. Current runDryRunStage parses that plan but returns its
 old input token. Existing backfill therefore skips necessary canonical reclaim.
@@ -24,9 +27,9 @@ Preserve the original held token for stages which did not finalize, and every
 existing dry-run retry/failure/rollback/invalid-response path. Let existing
 backfill reclaim use the canonical sealed version/cursor/fingerprints; do not
 duplicate claim logic, skip CAS, override versions, synthesize lease/approval,
-disable guards, or alter verification/activation. The entire7-case assertion
+disable guards, or alter verification/activation. The entire8-case assertion
 matrix, including reclaim failure barriers, must remain unchanged.
 
-Return exact sole-file diff and freeze, source UNRUN. Parent runs new7 plus
+Return exact sole-file diff and freeze, source UNRUN. Parent runs new8 plus
 existing registry regressions and independent review. Unit transport does not
 prove SQL lease authority, concurrent sealing, editorial approval or activation.

@@ -32,7 +32,8 @@ export const FINGERPRINTS = {
   sourceHash: 'a'.repeat(64),
   targetHash: 'b'.repeat(64),
 } as const;
-type Reclaim = 'acquired' | 'unavailable' | 'retryable' | 'terminal';
+type Reclaim =
+  'acquired' | 'unavailable' | 'retryable' | 'terminal' | 'conflict';
 
 export const fixture = (
   reclaim: Reclaim = 'acquired',
@@ -108,6 +109,8 @@ export const fixture = (
             code: 'DEPENDENCY_UNAVAILABLE',
             retryable: reclaim === 'retryable',
           };
+        if (reclaim === 'conflict')
+          throw { code: 'CONFLICT', retryable: false };
         reclaimed = true;
         return {
           acquired: true,

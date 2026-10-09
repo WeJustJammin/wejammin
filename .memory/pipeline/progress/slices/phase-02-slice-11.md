@@ -14,13 +14,15 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 
 - [/] `QA` UUID lease-token amendment frozen; parent118:30 failed/88 passed, format/ESLint0. Independent6.1 legacy punctuation gap corrected through all3 exact paths; QA write claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lease-token-red-amendment-2026-10-09.md).
 
-- [/] `QA` Sealed lease extraction parent7:5 failed/2 passed, format/ESLint0, test249/support233, full describe unchanged. Independent6.1 no false oracle; add exact CONFLICT propagation case (8 total) before handoff GREEN. Native two-file QA claim. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-conflict-red-amendment-2026-10-09.md).
-  - files: apps/worker/src/content-schema-registry/migration-worker-sealed-lease-handoff.test.ts, apps/worker/src/content-schema-registry/migration-worker-sealed-lease-test-support.ts
+- [/] `QA` Sealed-CONFLICT amendment frozen; parent8:6 failed/2 passed at intended stale-token/full history assertions, format/ESLint0, test255/support236. Independent6.1 confirms conflict gap closed, old7 retained, no bounded gap. QA write claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-conflict-red-amendment-2026-10-09.md).
 
-- [/] `BE` Narrow UUID-or-unchanged-legacy lease guard; native source-only GREEN claim. Parent checkpoint/push before dispatch; tests frozen. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lease-token-green-2026-10-09.md).
-  - files: apps/worker/src/content-schema-registry/migration-worker-schema-core.ts, apps/worker/src/content-schema-registry/migration-worker-validation.ts, apps/worker/src/content-schema-registry/migration-worker-plan-record-schema.ts
+- [/] `BE` Narrow UUID-or-unchanged-legacy lease guard frozen; parent118/118, format/ESLint0, independent6.1 no bounded gap. Core98/validation288/schema139; only acquired/plan lease tokens changed. Broader regression pending; write claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lease-token-green-2026-10-09.md).
 
-- [/] `BE` Canonical post-seal token handoff GREEN reserved, NOT dispatched/claimed until 8-case amended parent RED and checkpoint. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-green-2026-10-09.md).
+- [/] `BE` Canonical post-seal token handoff sole-producer native GREEN claim; parent8-case RED6/2 frozen. Checkpoint/push and amendment review before dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sealed-lease-green-2026-10-09.md).
+  - files: apps/worker/src/content-schema-registry/migration-worker-dry-run.ts
+
+- [/] `QA` Genuine lifecycle fixture parses actual CMS03A07 detail at all3 schema GET consumers; native sole-helper claim, no assertion/status/authority weakening. Checkpoint/push before dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lifecycle-detail-amendment-2026-10-09.md).
+  - files: tests/postgrest/support/phase-02-slice-11-schema-lifecycle.ts
 
 User authorized "continue with native models" on2026-10-09, resolving the routing blocker without purchasing credits or repairing Phils availability. Orchestration/review/validation remain `gpt-6.1-sol` / `ultra`; fresh preparation-only implementation agents use available native `gpt-6-astra` / `high`, actual identity verified before acceptance. Resumed from clean pushed `6272d21a2baa74cfd2f7bc869149b8c4ef97f2bd`; checkpoint this routing/claim/handoff update before dispatch.0/122 acceptance unchanged; prior full API527/528 remains historical with cold-read settings-snapshot mutation RED. Owner recovery policy and external gates are not selected/promoted. See live handoff and today's session log for exact state.
 

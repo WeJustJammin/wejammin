@@ -11,6 +11,7 @@ import {
 } from './migration-worker-plan-schemas';
 import {
   hasExactKeys,
+  isMigrationLeaseToken,
   isRecord,
   isSafeToken,
   isUuid,
@@ -132,7 +133,7 @@ export const readAcquired = (
         ? value.reasonCode
         : 'LEASE_UNAVAILABLE',
     };
-  if (!isSafeToken(value.leaseToken, 200))
+  if (!isMigrationLeaseToken(value.leaseToken))
     throw { code: 'DEPENDENCY_INVALID_RESPONSE', retryable: false } as const;
   return {
     acquired: true,

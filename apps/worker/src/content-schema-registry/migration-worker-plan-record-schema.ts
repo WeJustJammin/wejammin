@@ -5,6 +5,7 @@ import {
   isCounter,
   isHash,
   isInstant,
+  isMigrationLeaseToken,
   isRecord,
   isSafeToken,
   isUuid,
@@ -127,7 +128,7 @@ export const MigrationPlanRecordSchema: RuntimeSchema<MigrationPlanRecord> =
       return failure([], 'plan hashes are invalid');
     if (value.leaseOwner !== null && !isSafeToken(value.leaseOwner, 200))
       return failure(['leaseOwner'], 'leaseOwner is invalid');
-    if (value.leaseToken !== null && !isSafeToken(value.leaseToken, 200))
+    if (value.leaseToken !== null && !isMigrationLeaseToken(value.leaseToken))
       return failure(['leaseToken'], 'leaseToken is invalid');
     if (value.leaseExpiresAt !== null && !isInstant(value.leaseExpiresAt))
       return failure(['leaseExpiresAt'], 'leaseExpiresAt is invalid');
