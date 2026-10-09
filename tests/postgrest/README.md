@@ -47,6 +47,32 @@ A missing stack fails loudly; nothing is skipped.
 
 ## Extension
 
+### Slice 11 native preparation (not acceptance)
+
+The native API preparation is split by operation: submit/decision (05/06),
+schedule/time/actions and sweep composition/outcomes (07/20), preview/verifier and
+publication lineage/preflight (08/09/19), and workflow/detail/queue/assignment
+(15–18). Original literal titles remain in their feature files; new scenario
+suites use the same `phase-02-slice-11-*.apispec.ts` prefix. Shared assertions hash
+the complete fourteen durable-effect groups without exposing raw resources.
+
+Preparation/static checks are not runtime or acceptance receipts. Do not execute
+the inherited stale-review fixtures that disable immutable guards in
+`support/phase-02-slice-11-read-fixtures.ts` or the original publish suite until
+their canonical successor-activation fixture is repaired. The shared type helper
+also still fabricates activation approval instead of exercising the genuine03A
+workflow. Archived-entry and standing-grant projections are synthetic controls,
+not authorized archival/revoke or real-time-lapse proof. These authority gaps,
+the parent cold-read mutation, complete negative matrices and actual concurrency
+remain open; no Slice11 criterion is promoted by this preparation.
+
+The queue's explicitly named privileged local test-artifact signer performs a
+SELECT-only call to the existing server-side cursor signer. It never exposes
+Vault key material, changes grants/keys/clock/rows, or pretends a browser/service
+role may call the private signer. Sweep expiry/retry witnesses use actual server
+time; their450-second test deadlines require yielding parent execution. Every DB
+operation still requires fresh active-CI preflight and the shared lock/main stack.
+
 Name it `*.apispec.ts`, call only through `support/stack.ts` (never set a GUC), build
 fixtures with production functions (`createPerson`, `ensureCmsOwner`), and document any
 reset requirement in the file header.

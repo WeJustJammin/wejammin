@@ -121,6 +121,7 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
       locale: 'en-US',
       audience: 'public',
     };
+    const beforeVerification = snapshotDigest();
     const valid = await verify(binding);
     expect(valid).toMatchObject({
       valid: true,
@@ -132,10 +133,16 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
     const unknown = await verify({ ...binding, token: 'A'.repeat(43) });
     expect(wrongRoute).toEqual(unknown);
     expect(wrongRoute).toMatchObject({ valid: false });
+    expectUnchanged(
+      beforeVerification,
+      snapshotDigest(),
+      'all original verifier reads write nothing',
+    );
   });
 
   it('[CMS-03B-08] a stale version set is 409 version_set_stale and a stale entry version is 409 VERSION_MISMATCH with the safe versions', async () => {
     stack.as(world.owner);
+    const before = snapshotDigest();
     const stale = await stack.post('/api/v1/cms/previews', {
       body: previewBody({
         versionSet: { ...draft.versionSet, settingsVersion: '99999' },
@@ -164,6 +171,11 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
         currentVersion: entryVersion,
       },
     });
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'both preview CAS refusals have no effects',
+    );
   });
 
   it('[CMS-03B-08] an unscoped confirmed member is refused by the database, not by the Worker', async () => {
@@ -172,6 +184,7 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
     // RPC answers the visible-target-without-scope refusal: 403 capability_missing (BE03b:160).
     stack.as({ ...world.outsider, capabilities: ['cms.author'] });
     stack.clearRpcs();
+    const before = snapshotDigest();
     const response = await stack.post('/api/v1/cms/previews', {
       body: previewBody(),
       ifMatch: entryVersion,
@@ -186,6 +199,11 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
       response,
       draft.entryId,
       'an unscoped preview refusal never discloses the entry id',
+    );
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'unscoped preview refusal has no effects',
     );
   });
 });

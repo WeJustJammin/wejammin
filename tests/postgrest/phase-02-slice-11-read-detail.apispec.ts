@@ -32,10 +32,15 @@ import {
 import {
   expectAbsent,
   expectSafeEqual,
+  expectSafeError,
   expectStatus,
   expectUnchanged,
   snapshotDigest,
 } from './support/phase-02-slice-11-assert';
+import {
+  expectReadHeaders,
+  expectReadIdentity,
+} from './support/phase-02-slice-11-read-support';
 import {
   type S11Stack,
   createS11Stack,
@@ -92,10 +97,16 @@ describe('CMS-03B-16 review detail through the real stack', () => {
     const before = snapshotDigest();
     const ownerResponse = await stack.get(`/api/v1/cms/reviews/${reviewId}`);
     expectStatus(ownerResponse, 200);
+    expectReadHeaders(ownerResponse);
     const ownerDetail = EditorialReviewDetailResourceSchema.parse(
       ownerResponse.body,
     );
     expect(ownerDetail.state).toBe('approved');
+    expectSafeEqual(
+      ownerResponse.headers.get('etag'),
+      `"${ownerDetail.version}"`,
+      'owner detail ETag',
+    );
     // Live recount: exactly the one approve this fixture issued.
     expectSafeEqual(ownerDetail.distinctApprovalCount, 1, 'owner recount');
     const ownerDecision = ownerDetail.decisions.find(
@@ -128,6 +139,7 @@ describe('CMS-03B-16 review detail through the real stack', () => {
     stack.as(world.reviewer);
     const deciderResponse = await stack.get(`/api/v1/cms/reviews/${reviewId}`);
     expectStatus(deciderResponse, 200);
+    expectReadHeaders(deciderResponse);
     const deciderDetail = EditorialReviewDetailResourceSchema.parse(
       deciderResponse.body,
     );
@@ -151,6 +163,60 @@ describe('CMS-03B-16 review detail through the real stack', () => {
       before,
       snapshotDigest(),
       'the CMS-03B-16 detail reads commit no durable effect',
+    );
+  });
+
+  it('[CMS-03B-16] publisher detail redacts another decision reason and assignments while binding request identity without effects', async () => {
+    stack.as(world.publisher);
+    const before = snapshotDigest();
+    const requestId = '77777777-7777-4777-8777-777777777777';
+    const correlationId = '88888888-8888-4888-8888-888888888888';
+    stack.clearRpcs();
+    const response = await stack.get(`/api/v1/cms/reviews/${reviewId}`, {
+      headers: { 'x-request-id': requestId, 'x-correlation-id': correlationId },
+    });
+    expectStatus(response, 200);
+    expectReadHeaders(response);
+    expectReadIdentity(stack, response, requestId, correlationId);
+    const detail = EditorialReviewDetailResourceSchema.parse(response.body);
+    expect(detail.decisions).toHaveLength(1);
+    expectSafeEqual(
+      detail.decisions.map(({ mine, reason }) => ({ mine, reason })),
+      [{ mine: false, reason: null }],
+      'publisher reason privacy',
+    );
+    expectSafeEqual(detail.assignments, [], 'publisher assignment privacy');
+    expect(detail.myAssignment).toBeNull();
+    expect(detail.distinctApprovalCount).toBe(1);
+    expectSafeEqual(
+      detail.permittedNextActions,
+      ['schedule', 'publish'],
+      'publisher next actions',
+    );
+    for (const identifier of [
+      world.owner.personId,
+      world.reviewer.personId,
+      world.organizationId,
+      world.reviewer.authUserId,
+      REASON,
+    ]) {
+      expectAbsent(
+        response,
+        identifier,
+        'publisher detail excludes private identity or reason',
+      );
+    }
+    stack.as(world.reviewer2);
+    const visibleDenied = await stack.get(`/api/v1/cms/reviews/${reviewId}`);
+    expectSafeError(visibleDenied, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
+    });
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'publisher and unassigned-reader detail reads write nothing',
     );
   });
 });

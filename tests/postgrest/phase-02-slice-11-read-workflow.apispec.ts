@@ -16,7 +16,10 @@ import {
   expectSafeError,
   expectStatus,
   parseApiError,
+  expectUnchanged,
+  snapshotDigest,
 } from './support/phase-02-slice-11-assert';
+import { expectReadIdentity } from './support/phase-02-slice-11-read-support';
 import {
   type S11Stack,
   createS11Stack,
@@ -37,8 +40,10 @@ beforeAll(async () => {
 describe('CMS-03B-15 workflow read through the real stack', () => {
   it('[CMS-03B-15] [CMS-03B-16] concealment: a stranger is 404 and an unscoped member claiming a capability is capability_missing; neither leaks an identifier', async () => {
     const draft = await approvedDraft(stack, world, 'Read concealment');
+    const before = snapshotDigest();
     stack.as(world.stranger);
     const hiddenRequestId = '11111111-1111-4111-8111-111111111111';
+    stack.clearRpcs();
     const hidden = await stack.get(
       `/api/v1/cms/entries/${draft.entryId}/workflow`,
       { headers: { 'x-request-id': hiddenRequestId } },
@@ -49,7 +54,9 @@ describe('CMS-03B-15 workflow read through the real stack', () => {
       details: {},
       requestId: hiddenRequestId,
     });
+    expectReadIdentity(stack, hidden, hiddenRequestId, hiddenRequestId);
     const absentRequestId = '22222222-2222-4222-8222-222222222222';
+    stack.clearRpcs();
     const absent = await stack.get(
       `/api/v1/cms/entries/00000000-0000-4000-8000-000000000001/workflow`,
       { headers: { 'x-request-id': absentRequestId } },
@@ -63,6 +70,7 @@ describe('CMS-03B-15 workflow read through the real stack', () => {
       details: {},
       requestId: absentRequestId,
     });
+    expectReadIdentity(stack, absent, absentRequestId, absentRequestId);
     const hiddenBody = parseApiError(hidden);
     const absentBody = parseApiError(absent);
     expect(absentBody.code).toBe(hiddenBody.code);
@@ -82,6 +90,11 @@ describe('CMS-03B-15 workflow read through the real stack', () => {
       `/api/v1/cms/reviews/${draft.reviewId}`,
     );
     expectStatus(hiddenReview, 404);
+    expectSafeError(hiddenReview, {
+      status: 404,
+      code: 'NOT_FOUND',
+      details: {},
+    });
     expectAbsent(
       hiddenReview,
       draft.reviewId,
@@ -96,5 +109,15 @@ describe('CMS-03B-15 workflow read through the real stack', () => {
     expect(unscoped.body.details).toMatchObject({
       reasonCode: 'capability_missing',
     });
+    expectSafeError(unscoped, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
+    });
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'concealment and visible denial write nothing',
+    );
   });
 });

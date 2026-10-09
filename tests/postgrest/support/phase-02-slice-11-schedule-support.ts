@@ -11,10 +11,97 @@
  */
 import type { ReviewedDraft } from './phase-02-slice-11-flow';
 import type { S11Stack } from './phase-02-slice-11-stack';
-import { psql } from './stack';
+import { expect } from 'vitest';
+import { ScheduleExecutionResultSchema } from '@wejammin/contracts';
+import {
+  claimsOf,
+  executionOf,
+  strictValue,
+  type SweepTrace,
+} from './phase-02-slice-11-sweep-support';
+import {
+  type EffectSnapshot,
+  EFFECT_TABLES,
+  expectUnchanged,
+} from './phase-02-slice-11-assert';
+import { API_URL, callRpc, psql, workerServiceCredential } from './stack';
+
+const EXECUTE = 'cms_execute_publication_schedule';
 
 /** The CMS-03B-07 collection path. */
 export const SCHEDULES = '/api/v1/cms/publication-schedules';
+
+/** Yield to the real clock in bounded intervals; never rewrite schedule or lease instants. */
+export const sleepUntil = async (iso: string): Promise<void> => {
+  let remaining = Date.parse(iso) - Date.now() + 1_500;
+  while (remaining > 0) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(remaining, 30_000)),
+    );
+    remaining = Date.parse(iso) - Date.now() + 1_500;
+  }
+};
+
+/** Replay the exact captured internal command against PostgREST, without regenerating any operand. */
+export const replayExecution = async (request: Record<string, unknown>) => {
+  const response = await fetch(`${API_URL}/rest/v1/rpc/${EXECUTE}`, {
+    method: 'POST',
+    headers: {
+      apikey: workerServiceCredential(),
+      authorization: `Bearer ${workerServiceCredential()}`,
+      'content-type': 'application/json',
+      'content-profile': 'platform_api',
+      'accept-profile': 'platform_api',
+    },
+    body: JSON.stringify({ p_request: request }),
+  });
+  expect(response.status).toBe(200);
+  return strictValue(ScheduleExecutionResultSchema, await response.json());
+};
+
+/** Fresh transport only: exact captured claim, lease, CAS and evidence operands. */
+export const resendExecution = (request: Record<string, unknown>) =>
+  callRpc(EXECUTE, workerServiceCredential(), { p_request: request });
+
+/** Observe real server-clock expiry without changing the row or inventing time. */
+export const waitForLeaseExpiry = async (scheduleId: string): Promise<void> => {
+  for (;;) {
+    const value =
+      psql(`select greatest(0, extract(epoch from lease_until - clock_timestamp()))
+      from platform_private.cms_publication_schedules where id = '${scheduleId}'
+        and state = 'executing' and lease_id is not null and lease_until is not null`);
+    if (value === '') throw new Error('actual executing lease missing');
+    const seconds = Number(value);
+    if (!Number.isFinite(seconds))
+      throw new Error('actual lease expiry is invalid');
+    if (seconds <= 0) return;
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(seconds * 1_000 + 100, 30_000)),
+    );
+  }
+};
+
+/** Compare the stored five-field audit summary to the actual Worker evidence, SQL-side hash only. */
+export const expectStoredEvidence = (
+  trace: SweepTrace,
+  scheduleId: string,
+): void => {
+  const { request } = executionOf(trace, scheduleId);
+  const claim = claimsOf(trace).find((item) => item.scheduleId === scheduleId);
+  if (claim === undefined)
+    throw new Error('stored evidence requires actual claim');
+  const evidence = request.evidence;
+  if (evidence === null)
+    throw new Error('stored evidence assertion requires actual proof');
+  const matches =
+    psql(`select count(*) from platform_private.cms_command_accessibility_evidence
+    where subject_id = '${scheduleId}' and operation_id = 'CMS-03B-20'
+      and revision_id = '${claim.revisionId}' and correlation_id = '${claim.correlationId}'
+      and checker_key = '${evidence.providerKey}' and checker_version = ${evidence.providerVersion}
+      and outcome = '${evidence.outcome}' and blocking_count = ${evidence.blockingCount}
+      and input_hash = '${evidence.inputHash}'`);
+  expect(matches).toBe('1');
+};
 
 /** An ISO instant truncated to whole seconds (the schedule body's second precision). */
 export const isoSecond = (at: Date): string => at.toISOString().slice(0, 19);
@@ -63,3 +150,33 @@ export const scheduleRow = (id: string): string =>
     `select state || '/' || version || '/' || attempt_count || '/' || coalesce(reason_code, '-')
        from platform_private.cms_publication_schedules where id = '${id}'`,
   );
+
+/** Exact whole-table deltas; every other full-row group remains byte-identical. */
+export const expectScheduleEffects = (
+  before: EffectSnapshot,
+  after: EffectSnapshot,
+  deltas: Readonly<Record<string, number>> = {
+    'platform_private.cms_publication_schedules': 1,
+    'platform_private.idempotency_records': 1,
+    'platform_private.cms_command_accessibility_evidence': 1,
+    'audit_private.audit_events': 1,
+  },
+): void => {
+  for (const table of EFFECT_TABLES) {
+    if (!Object.hasOwn(deltas, table)) {
+      expectUnchanged(
+        { [table]: before[table] as string },
+        {
+          [table]: after[table] as string,
+        },
+        'unrelated complete effect group remains unchanged',
+      );
+      continue;
+    }
+    expect(
+      Number(after[table]?.split(':')[0]) -
+        Number(before[table]?.split(':')[0]),
+    ).toBe(deltas[table]);
+    expect(after[table] === before[table]).toBe(false);
+  }
+};

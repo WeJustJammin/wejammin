@@ -14,10 +14,16 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   EditorialReviewAssignmentResourceSchema,
   cmsSlice11ReasonStatus,
+  MFA_METHOD_REGISTRY,
 } from '@wejammin/contracts';
 
 import { submitForReview } from './support/phase-02-slice-11-flow';
-import { expectStatus } from './support/phase-02-slice-11-assert';
+import {
+  expectSafeError,
+  expectStatus,
+  expectUnchanged,
+  snapshotDigest,
+} from './support/phase-02-slice-11-assert';
 import {
   type S11Stack,
   createS11Stack,
@@ -55,6 +61,7 @@ describe('CMS-03B-18 refusals through the real stack', () => {
       stack.as(world.owner, proof);
       stack.clearRpcs();
       const before = reservationCount();
+      const beforeEffects = snapshotDigest();
       const refused = await stack.post(path, {
         body: createBody(),
         ifMatch: version,
@@ -63,9 +70,23 @@ describe('CMS-03B-18 refusals through the real stack', () => {
       expect(refused.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
+      expectSafeError(refused, {
+        status: 401,
+        code: 'STEP_UP_REQUIRED',
+        details: {
+          recoveryAction: 'step_up',
+          allowedMethods: [...MFA_METHOD_REGISTRY],
+        },
+      });
+      expectUnchanged(
+        beforeEffects,
+        snapshotDigest(),
+        'step-up refusal writes nothing',
+      );
     }
 
     stack.as(world.owner, 'fresh');
+    const beforeEligibility = snapshotDigest();
     const ineligible = await stack.post(path, {
       body: createBody({ reviewerPersonId: world.outsider.personId }),
       ifMatch: version,
@@ -74,6 +95,20 @@ describe('CMS-03B-18 refusals through the real stack', () => {
     expect(ineligible.body.details).toMatchObject({
       reasonCode: 'reviewer_not_eligible',
     });
+    expectSafeError(ineligible, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
+        reasonCode: 'reviewer_not_eligible',
+      },
+    });
+    expectUnchanged(
+      beforeEligibility,
+      snapshotDigest(),
+      'ineligible assignment writes nothing',
+    );
 
     const tooLong = await stack.post(path, {
       body: createBody({
@@ -86,6 +121,25 @@ describe('CMS-03B-18 refusals through the real stack', () => {
       reasonCode: 'expiry_out_of_bounds',
       violations: [{ path: '/expiresAt' }],
     });
+    expectSafeError(tooLong, {
+      status: 422,
+      code: 'VALIDATION_FAILED',
+      details: {
+        reasonCode: 'expiry_out_of_bounds',
+        violations: [
+          {
+            path: '/expiresAt',
+            code: 'expiry_out_of_bounds',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
+    });
+    expectUnchanged(
+      beforeEligibility,
+      snapshotDigest(),
+      'out-of-bounds assignment writes nothing',
+    );
 
     const created = await stack.post(path, {
       body: createBody(),
@@ -96,6 +150,7 @@ describe('CMS-03B-18 refusals through the real stack', () => {
       created.body,
     );
 
+    const beforeDuplicate = snapshotDigest();
     const duplicate = await stack.post(path, {
       body: createBody(),
       ifMatch: version,
@@ -104,6 +159,20 @@ describe('CMS-03B-18 refusals through the real stack', () => {
     expect(duplicate.body.details).toMatchObject({
       reasonCode: 'assignment_exists',
     });
+    expectSafeError(duplicate, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'INVALID_TRANSITION',
+        recoveryAction: 'refresh',
+        reasonCode: 'assignment_exists',
+      },
+    });
+    expectUnchanged(
+      beforeDuplicate,
+      snapshotDigest(),
+      'duplicate assignment writes nothing',
+    );
 
     stack.as({ ...world.reviewer, capabilities: ['cms.reviewer'] }, 'fresh');
     const notOwner = await stack.post(path, {
@@ -114,6 +183,16 @@ describe('CMS-03B-18 refusals through the real stack', () => {
     expect(notOwner.body.details).toMatchObject({
       reasonCode: 'capability_missing',
     });
+    expectSafeError(notOwner, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
+    });
+    expectUnchanged(
+      beforeDuplicate,
+      snapshotDigest(),
+      'non-owner assignment writes nothing',
+    );
 
     stack.as(world.owner, 'fresh');
     const revoked = await stack.post(path, {
@@ -130,6 +209,7 @@ describe('CMS-03B-18 refusals through the real stack', () => {
     ).toBe('revoked');
     expect(revoked.headers.get('location')).toBeNull();
 
+    const beforeAgain = snapshotDigest();
     const again = await stack.post(path, {
       body: {
         action: 'revoke',
@@ -140,5 +220,15 @@ describe('CMS-03B-18 refusals through the real stack', () => {
     });
     expectStatus(again, 409);
     expect(again.body.code).toBe('CONFLICT');
+    expectSafeError(again, {
+      status: 409,
+      code: 'CONFLICT',
+      details: { conflict: 'INVALID_TRANSITION', recoveryAction: 'refresh' },
+    });
+    expectUnchanged(
+      beforeAgain,
+      snapshotDigest(),
+      'duplicate revocation writes nothing',
+    );
   });
 });

@@ -16,6 +16,7 @@ import {
   expectStatus,
   expectUnchanged,
   snapshotDigest,
+  expectSafeEqual,
 } from './support/phase-02-slice-11-assert';
 import {
   s11Submit,
@@ -32,6 +33,12 @@ import {
   workflowEffects,
 } from './support/phase-02-slice-11-world';
 import { psql } from './support/stack';
+import { assignReviewer, decide } from './support/phase-02-slice-11-flow';
+import {
+  SUBMIT_CATEGORIES,
+  submitFixture,
+} from './support/phase-02-slice-11-submit-support';
+import { EditorialReviewResourceSchema } from '@wejammin/contracts';
 
 let world: S11World;
 let stack: S11Stack;
@@ -51,6 +58,36 @@ const submit = (
 ) => s11Submit(stack, entryId, body, ifMatch, idempotencyKey);
 
 describe('CMS-03B-05 refusals through the real stack', () => {
+  for (const decision of ['approve', 'reject'] as const) {
+    it(`[CMS-03B-05] ${decision === 'approve' ? 'approved' : 'rejected'} revision cannot be submitted again and adds no effects`, async () => {
+      const fixture = await submitFixture(stack, world);
+      const submitted = await stack.post(fixture.path, {
+        body: fixture.body,
+        ifMatch: fixture.draft.entryVersion,
+      });
+      expectStatus(submitted, 201);
+      const review = EditorialReviewResourceSchema.parse(submitted.body);
+      await assignReviewer(stack, world, review.id, review.version);
+      await decide(stack, world, review.id, review.version, decision);
+      stack.as(world.owner);
+      const before = snapshotDigest();
+      const response = await stack.post(fixture.path, {
+        body: fixture.body,
+        ifMatch: fixture.draft.entryVersion,
+      });
+      expectSafeError(response, {
+        status: 409,
+        code: 'CONFLICT',
+        details: { reasonCode: 'revision_not_submittable' },
+      });
+      expectUnchanged(
+        before,
+        snapshotDigest(),
+        'terminal reviewed revision cannot make a second review',
+      );
+    });
+  }
+
   it('[CMS-03B-05] a stale entry version is 409 VERSION_MISMATCH carrying only the expected and current versions', async () => {
     const draft = await seedDraft(stack, world, 'Submit version');
     const body = await submitBody(draft.entryId, draft.revisionId);
@@ -126,6 +163,7 @@ describe('CMS-03B-05 refusals through the real stack', () => {
       select set_config('app.cms_rpc', 'true', true);
       update platform_private.cms_content_entries set lifecycle = 'archived' where id = '${draft.entryId}';
       commit;`);
+    const before = snapshotDigest();
     const response = await submit(draft.entryId, body, draft.entryVersion);
     // BE03b:1807: preflight_failed is authoritative 422, never 409.
     expectSafeError(response, {
@@ -143,6 +181,30 @@ describe('CMS-03B-05 refusals through the real stack', () => {
       (response.body.details as { preflight: unknown[] }).preflight,
     ).toHaveLength(17);
     expect(workflowEffects(draft.entryId).reviews).toBe(0);
+    expectSafeEqual(
+      (response.body.details as { preflight: unknown }).preflight,
+      SUBMIT_CATEGORIES.map((category) => ({
+        category,
+        outcome:
+          category === 'revocation'
+            ? 'failed'
+            : category === 'accessibility'
+              ? 'unavailable'
+              : 'passed',
+        reasonCode:
+          category === 'revocation'
+            ? 'entry_unavailable'
+            : category === 'accessibility'
+              ? 'checker_failed'
+              : null,
+      })),
+      'archived entry evaluates all seventeen ordered categories',
+    );
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'preflight rejection rolls back all fourteen groups',
+    );
   });
 
   it('[CMS-03B-05] an unavailable accessibility proof is 503 DEPENDENCY_UNAVAILABLE with Retry-After and no review', async () => {

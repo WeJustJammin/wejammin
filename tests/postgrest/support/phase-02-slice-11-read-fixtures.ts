@@ -5,9 +5,16 @@
  * helper is parameterised on the caller's `stack`/`world` so each focused file
  * keeps its own isolated fixtures.
  */
-import { readWorkflow } from './phase-02-slice-11-flow';
+import { EditorialReviewAssignmentResourceSchema } from '@wejammin/contracts';
+import { expectStatus } from './phase-02-slice-11-assert';
+import {
+  approvedDraft,
+  assignReviewer,
+  readWorkflow,
+  submitForReview,
+} from './phase-02-slice-11-flow';
 import type { S11Stack } from './phase-02-slice-11-stack';
-import type { S11World } from './phase-02-slice-11-world';
+import { addMember, seedDraft, type S11World } from './phase-02-slice-11-world';
 import { psql } from './stack';
 
 /**
@@ -81,3 +88,93 @@ export const s11OwnerSettingsSnapshotCount = (ownerPartyId: string): number =>
       `select count(*) from platform_private.cms_publication_settings_snapshots where owner_id = '${ownerPartyId}'`,
     ),
   );
+
+/**
+ * Fresh submitter and reviewer, canonical receipt owner for assignments. Expected
+ * membership comes from commands this fixture issues, never a query of the queue
+ * producer's tables. The author owns no receipt and gains only authoring scope.
+ */
+export const s11QueueFixture = async (stack: S11Stack, world: S11World) => {
+  const submitter = addMember(world.organizationId, world.owner.personId, [
+    'cms.author',
+    'cms.editor',
+  ]);
+  const authoredWorld = { ...world, owner: submitter };
+  const approved = [];
+  for (const title of ['Queue one', 'Queue two']) {
+    const draft = await seedDraft(stack, authoredWorld, title);
+    const review = await submitForReview(stack, authoredWorld, draft);
+    await assignReviewer(stack, world, review.id, String(review.version));
+    stack.as(world.reviewer, 'fresh');
+    const decided = await stack.post(
+      `/api/v1/cms/reviews/${review.id}/decision`,
+      {
+        body: {
+          reviewId: review.id,
+          decision: 'approve',
+          reason: 'Queue fixture approval.',
+          expectedVersion: String(review.version),
+        },
+        ifMatch: String(review.version),
+      },
+    );
+    expectStatus(decided, 200);
+    approved.push({ reviewId: review.id, entryId: draft.entryId });
+  }
+  const unassignedDraft = await seedDraft(
+    stack,
+    authoredWorld,
+    'Unassigned queue exclusion',
+  );
+  const unassigned = await submitForReview(
+    stack,
+    authoredWorld,
+    unassignedDraft,
+  );
+  const revokedDraft = await seedDraft(
+    stack,
+    authoredWorld,
+    'Revoked queue exclusion',
+  );
+  const revoked = await submitForReview(stack, authoredWorld, revokedDraft);
+  const assigned = await assignReviewer(
+    stack,
+    world,
+    revoked.id,
+    String(revoked.version),
+  );
+  const assignment = EditorialReviewAssignmentResourceSchema.parse(
+    assigned.body,
+  );
+  const revoke = await stack.post(
+    `/api/v1/cms/reviews/${revoked.id}/assignments`,
+    {
+      body: {
+        action: 'revoke',
+        expectedVersion: String(revoked.version),
+        assignmentId: assignment.id,
+      },
+      ifMatch: String(revoked.version),
+    },
+  );
+  expectStatus(revoke, 200);
+  const foreign = await approvedDraft(
+    stack,
+    world,
+    'Other submitter exclusion',
+    world.reviewer2,
+  );
+  return {
+    submitter,
+    approved,
+    submittedIds: [
+      ...approved.map((review) => review.reviewId),
+      unassigned.id,
+      revoked.id,
+    ],
+    assignedIds: approved.map((review) => review.reviewId),
+    openIds: [unassigned.id, revoked.id],
+    assignedExclusions: [unassigned.id, revoked.id, foreign.reviewId],
+    submittedExclusions: [foreign.reviewId],
+  };
+};

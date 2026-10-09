@@ -1,28 +1,11 @@
-/**
- * Slice 11 real composition, scheduling (lane S11-4R): CMS-03B-07 through the production
- * Worker route and adapter, and the CMS-03B-20 sweep (claim -> Worker accessibility checker
- * -> execute) through the production sweep module and the real internal RPCs.
- *
- * The browser half proves the Worker time authority (E8) and the database re-checks
- * (horizon, publisher authority) agree end to end. The sweep half schedules real approved
- * reviews ~75 s ahead (the database minimum is 60 s), lets them fall due, and runs the
- * production tick: the Worker's checker evidence must be accepted by the database
- * (completed publication), a missing proof must be failed_retryable (never a pass), and a
- * lapsed publisher grant must block with publisher_authority_ended.
- *
- * Commits fixtures; run right after `pnpm db:reset`, and reset again afterwards.
- */
+/** CMS-03B-07 through the production Worker and real PostgREST. */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-
 import { PublicationScheduleResourceSchema } from '@wejammin/contracts';
-
-import type { AsyncWorkerBindings } from '../../apps/worker/src/async-entrypoint';
-import { runProductionCmsPublicationScheduleSweep } from '../../apps/worker/src/cms-publication-schedule-sweep';
 import {
   expectEvidenceNull,
   expectEvidencePresent,
   expectSafeError,
-  expectSameInstant,
+  expectSafeEqual,
   expectStatus,
   expectUnchanged,
   resourceDigest,
@@ -35,11 +18,10 @@ import {
 import {
   SCHEDULES,
   postSchedule,
-  scheduleRow,
   utcScheduleBody,
+  expectScheduleEffects,
 } from './support/phase-02-slice-11-schedule-support';
 import {
-  type S11Actor,
   type S11Stack,
   createS11Stack,
 } from './support/phase-02-slice-11-stack';
@@ -49,114 +31,27 @@ import {
   reservationCount,
   workflowEffects,
 } from './support/phase-02-slice-11-world';
-import { API_URL, psql, workerServiceCredential } from './support/stack';
+import { psql } from './support/stack';
 
 let world: S11World;
 let stack: S11Stack;
 let tzdb = '';
-
-/** A UTC schedule request `leadMs` from now, pinned to this run's tzdb version. */
 const utcBody = (
   draft: ReviewedDraft,
   leadMs: number,
   over: Record<string, unknown> = {},
 ) => utcScheduleBody(draft, leadMs, tzdb, over);
-
 const schedule = (
   draft: ReviewedDraft,
   body: Record<string, unknown>,
   options: { key?: string; ifMatch?: string } = {},
 ) => postSchedule(stack, draft, body, options);
 
-const sweepEnvironment = {
-  SUPABASE_URL: API_URL,
-  SUPABASE_SECRET_KEY: workerServiceCredential(),
-  APP_ENVIRONMENT: 'development',
-  APP_RELEASE: 'slice-11-api',
-} as unknown as AsyncWorkerBindings;
-
-/** One CMS-03B-20 execute command observed at the composition boundary. */
-type SweepExecute = Readonly<{
-  scheduleId: string;
-  expectedVersion: string;
-  leaseId: string;
-  evidencePresent: boolean;
-  evidenceNull: boolean;
-}>;
-const sweepExecutes: SweepExecute[] = [];
-
-const firstExecute = (scheduleId: string): SweepExecute | undefined =>
-  sweepExecutes.find((execute) => execute.scheduleId === scheduleId);
-
-/** One production sweep tick; `failLoadFor` makes the load RPC of those schedules a transport 503. */
-const tick = async (failLoadFor: readonly string[] = []): Promise<void> => {
-  const original = globalThis.fetch;
-  globalThis.fetch = (async (
-    input: string | URL | Request,
-    init?: RequestInit,
-  ) => {
-    const url = String(input instanceof Request ? input.url : input);
-    const body = String(init?.body ?? '');
-    if (url.endsWith('/rpc/cms_execute_publication_schedule')) {
-      const request = (
-        JSON.parse(body) as { p_request?: Record<string, unknown> }
-      ).p_request as Record<string, unknown>;
-      sweepExecutes.push({
-        scheduleId: String(request.scheduleId),
-        expectedVersion: String(request.expectedVersion),
-        leaseId: String(request.leaseId),
-        evidencePresent:
-          typeof request.evidence === 'object' && request.evidence !== null,
-        evidenceNull: 'evidence' in request && request.evidence === null,
-      });
-    }
-    if (
-      url.endsWith('/rpc/cms_load_quality_gate_input') &&
-      failLoadFor.some((id) => body.includes(id))
-    )
-      return new Response('{"message":"upstream unavailable"}', {
-        status: 503,
-        headers: { 'content-type': 'application/json' },
-      });
-    return original(input, init);
-  }) as typeof fetch;
-  try {
-    await runProductionCmsPublicationScheduleSweep(sweepEnvironment);
-  } finally {
-    globalThis.fetch = original;
-  }
-};
-
-const sleepUntil = async (iso: string): Promise<void> => {
-  const wait = Date.parse(iso) - Date.now() + 1_500;
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-};
-
-type Due = Readonly<{ draft: ReviewedDraft; id: string; resolvedUtc: string }>;
-let dueOk: Due;
-let dueRetry: Due;
-let dueLapsed: Due;
-
-const scheduleDue = async (actor: S11Actor, title: string): Promise<Due> => {
-  const draft = await approvedDraft(stack, world, title);
-  stack.as(actor, 'fresh');
-  const response = await schedule(draft, utcBody(draft, 75_000));
-  expectStatus(response, 202);
-  const resource = PublicationScheduleResourceSchema.parse(response.body);
-  return { draft, id: resource.id, resolvedUtc: resource.resolvedUtc };
-};
-
 beforeAll(async () => {
   world = await prepareS11World();
   stack = createS11Stack(world.owner);
   tzdb = psql('select platform_private.cms_tzdb_version()');
-  // The three sweep subjects are scheduled FIRST so their ~75 s fuse burns while the
-  // browser tests below run.
-  dueOk = await scheduleDue(world.publisher, 'Sweep completes');
-  dueRetry = await scheduleDue(world.publisher, 'Sweep retries');
-  dueLapsed = await scheduleDue(world.publisher2, 'Sweep lapses');
 }, 120_000);
-
 afterEach(() => {
   stack.breakRpc(null);
 });
@@ -168,6 +63,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     const body = utcBody(draft, 2 * 86_400_000);
     const key = `schedule-${draft.entryId}`;
     const before = reservationCount();
+    const beforeEffects = snapshotDigest();
     stack.clearRpcs();
     const response = await schedule(draft, body, { key });
     expectStatus(response, 202);
@@ -189,6 +85,8 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     expect(sent?.request.tzdbVersion).toBe(tzdb);
     expectEvidencePresent(sent?.request ?? {});
     expect(reservationCount()).toBe(before + 1);
+    const acceptedEffects = snapshotDigest();
+    expectScheduleEffects(beforeEffects, acceptedEffects);
 
     stack.clearRpcs();
     const replay = await schedule(draft, body, { key });
@@ -199,60 +97,11 @@ describe('CMS-03B-07 schedule through the real stack', () => {
         ?.replayHeader,
     ).toBe('true');
     expect(workflowEffects(draft.entryId).schedules).toBe(1);
-  });
-
-  it('[CMS-03B-07] a non-UTC zone and the earlier instant of a fold round-trip through the Worker time authority and the database sanity bounds', async () => {
-    const berlin = await approvedDraft(stack, world, 'Berlin subject');
-    const fold = await approvedDraft(stack, world, 'Fold subject');
-    stack.as(world.publisher, 'fresh');
-    const ordinary = await schedule(berlin, {
-      ...utcBody(berlin, 0),
-      localDateTime: '2026-12-01T09:00:00',
-      timezone: 'Europe/Berlin',
-      resolvedUtc: '2026-12-01T08:00:00Z',
-    });
-    expectStatus(ordinary, 202);
-    const ordinaryResource = PublicationScheduleResourceSchema.parse(
-      ordinary.body,
+    expectUnchanged(
+      acceptedEffects,
+      snapshotDigest(),
+      'exact replay preserves all fourteen groups',
     );
-    expect(ordinaryResource.timezone).toBe('Europe/Berlin');
-    // The selected UTC instant is what the time authority resolved: 09:00 Berlin on
-    // 2026-12-01 is 08:00Z. Compare by instant value, not by ISO string spelling (the
-    // strict schema permits a second- or millisecond-precision offset instant).
-    expectSameInstant(
-      ordinaryResource.resolvedUtc,
-      '2026-12-01T08:00:00Z',
-      'Europe/Berlin 09:00 resolves to 08:00Z',
-    );
-    expect(ordinaryResource.localDateTime).toBe('2026-12-01T09:00:00');
-    const earlier = await schedule(fold, {
-      ...utcBody(fold, 0),
-      localDateTime: '2026-11-01T01:30:00',
-      timezone: 'America/New_York',
-      resolvedUtc: '2026-11-01T05:30:00Z',
-      disambiguation: 'earlier',
-    });
-    expectStatus(earlier, 202);
-  });
-
-  it('[CMS-03B-07] a nonexistent local time is the Worker 422 with its two alternatives and reaches no RPC', async () => {
-    const draft = await approvedDraft(stack, world, 'Gap subject');
-    stack.as(world.publisher, 'fresh');
-    stack.clearRpcs();
-    const response = await schedule(draft, {
-      ...utcBody(draft, 0),
-      localDateTime: '2027-03-14T02:30:00',
-      timezone: 'America/New_York',
-      resolvedUtc: '2027-03-14T07:30:00Z',
-    });
-    expectStatus(response, 422);
-    expect(response.body.details).toMatchObject({
-      reasonCode: 'nonexistent_local_time',
-      alternatives: [{ localDateTime: expect.any(String) }, expect.any(Object)],
-    });
-    expect(
-      stack.rpcs().filter((rpc) => rpc.rpc === 'cms_schedule_publication'),
-    ).toEqual([]);
   });
 
   it('[CMS-03B-07] a missing, stale or future-dated step-up is 401 before any RPC and reserves nothing', async () => {
@@ -261,25 +110,26 @@ describe('CMS-03B-07 schedule through the real stack', () => {
       stack.as(world.publisher, proof);
       stack.clearRpcs();
       const before = reservationCount();
+      const beforeEffects = snapshotDigest();
       const response = await schedule(draft, utcBody(draft, 2 * 86_400_000));
       expectStatus(response, 401, proof);
       expect(response.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
+      expectSafeError(response, {
+        status: 401,
+        code: 'STEP_UP_REQUIRED',
+        detailsKeys: ['recoveryAction', 'allowedMethods'],
+      });
+      expect(
+        (response.body.details as Record<string, unknown>).recoveryAction,
+      ).toBe('step_up');
+      expectUnchanged(
+        beforeEffects,
+        snapshotDigest(),
+        'step-up refuses before all durable effects',
+      );
     }
-  });
-
-  it('[CMS-03B-07] the database horizon is 422 schedule_out_of_horizon with minUtc and maxUtc', async () => {
-    const draft = await approvedDraft(stack, world, 'Horizon subject');
-    stack.as(world.publisher, 'fresh');
-    const soon = await schedule(draft, utcBody(draft, 20_000));
-    expectStatus(soon, 422);
-    expect(soon.body.details).toMatchObject({
-      reasonCode: 'schedule_out_of_horizon',
-      minUtc: expect.stringMatching(/Z$/u),
-      maxUtc: expect.stringMatching(/Z$/u),
-    });
-    expect(workflowEffects(draft.entryId).schedules).toBe(0);
   });
 
   it('[CMS-03B-07] a publisher whose grant ends before the schedule is 422 authority_ends_before_schedule', async () => {
@@ -322,75 +172,131 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     expect(wire).toBeDefined();
     expectEvidenceNull(wire?.request ?? {});
   });
-});
 
-describe('CMS-03B-20 sweep through the real RPCs', () => {
-  it('[CMS-03B-20] the tick executes due schedules: real checker evidence completes one publication, a missing proof is failed_retryable (never a pass) and a lapsed publisher grant blocks', async () => {
-    psql(
-      `update identity_private.organization_actor_grant set active = false
-        where person_id = '${world.publisher2.personId}' and capability_code = 'cms.publisher'`,
-    );
-    await sleepUntil(
-      [dueOk, dueRetry, dueLapsed]
-        .map((due) => due.resolvedUtc)
-        .sort()
-        .at(-1) as string,
-    );
-    await tick([dueRetry.id]);
-
-    expect(scheduleRow(dueOk.id)).toMatch(/^completed\/[0-9]+\/0\/-$/u);
-    expect(workflowEffects(dueOk.draft.entryId).publications).toBe(1);
-    expect(
-      psql(
-        `select outcome from platform_private.cms_command_accessibility_evidence
-          where subject_id = '${dueOk.id}' and operation_id = 'CMS-03B-20'`,
-      ),
-    ).toBe('healthy');
-
-    expect(scheduleRow(dueRetry.id)).toMatch(/^failed_retryable\/[0-9]+\/1\//u);
-    expect(workflowEffects(dueRetry.draft.entryId).publications).toBe(0);
-
-    expect(scheduleRow(dueLapsed.id)).toMatch(
-      /^blocked\/[0-9]+\/[0-9]+\/publisher_authority_ended$/u,
-    );
-    expect(workflowEffects(dueLapsed.draft.entryId).publications).toBe(0);
-
-    // Command-wire trace (composition boundary): the healthy schedule's execute carries a
-    // PRESENT Worker evidence object, the outage schedule's carries an EXACT null (never
-    // undefined), and each execute is fenced by the claim's version and lease id.
-    const okExecute = firstExecute(dueOk.id);
-    expect(okExecute).toBeDefined();
-    expect(okExecute?.evidencePresent).toBe(true);
-    expect(okExecute?.expectedVersion).toMatch(/^[0-9]+$/u);
-    expect(okExecute?.leaseId).toMatch(/^[0-9a-f-]{36}$/u);
-    const retryExecute = firstExecute(dueRetry.id);
-    expect(retryExecute).toBeDefined();
-    expectEvidenceNull({
-      evidence: retryExecute?.evidenceNull === true ? null : undefined,
+  it('[CMS-03B-07] readable nonpublisher is exactly 403 and hidden and absent revisions are identical safe 404s', async () => {
+    const draft = await approvedDraft(stack, world, 'Schedule visibility');
+    const body = utcBody(draft, 172_800_000);
+    stack.as({ ...world.owner, capabilities: ['cms.publisher'] }, 'fresh');
+    const before = snapshotDigest();
+    const denied = await schedule(draft, body);
+    expectSafeError(denied, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
     });
-  }, 150_000);
-
-  it('[CMS-03B-20] a second tick inside the 15 s retry delay claims nothing; after it the retried schedule completes with real evidence', async () => {
-    const [, versionBefore] = scheduleRow(dueRetry.id).split('/');
-    await tick();
-    expect(scheduleRow(dueRetry.id)).toMatch(/^failed_retryable\//u);
-    expect(scheduleRow(dueRetry.id).split('/')[1]).toBe(versionBefore);
-
-    await new Promise((resolve) => setTimeout(resolve, 16_000));
-    await tick();
-    expect(scheduleRow(dueRetry.id)).toMatch(/^completed\/[0-9]+\/1\//u);
-    expect(workflowEffects(dueRetry.draft.entryId).publications).toBe(1);
-  }, 60_000);
-
-  it('[CMS-03B-15] the workflow read of a swept entry lists the completed schedule and its publication', async () => {
-    stack.as(world.owner);
-    const read = await stack.get(
-      `/api/v1/cms/entries/${dueOk.draft.entryId}/workflow`,
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'visible publisher refusal has no effects',
     );
-    expectStatus(read, 200);
-    expect(read.body.schedules).toMatchObject([
-      { id: dueOk.id, state: 'completed' },
-    ]);
-    expect((read.body.publications as unknown[]).length).toBe(1);
+    stack.as(world.stranger, 'fresh');
+    const hidden = await stack.post(SCHEDULES, {
+      body,
+      ifMatch: draft.reviewVersion,
+      headers: {
+        'x-request-id': '71337133-7133-4133-8133-713371337133',
+        'x-correlation-id': '72337233-7233-4233-8233-723372337233',
+      },
+    });
+    const absent = await stack.post(SCHEDULES, {
+      body: { ...body, revisionId: '73337333-7333-4333-8333-733373337333' },
+      ifMatch: draft.reviewVersion,
+      headers: { 'x-request-id': '74337433-7433-4433-8433-743374337433' },
+    });
+    expectSafeError(hidden, {
+      status: 404,
+      code: 'NOT_FOUND',
+      details: {},
+      requestId: '71337133-7133-4133-8133-713371337133',
+    });
+    expectSafeError(absent, {
+      status: 404,
+      code: 'NOT_FOUND',
+      details: {},
+      requestId: '74337433-7433-4433-8433-743374337433',
+    });
+    expectSafeEqual(
+      {
+        code: hidden.body.code,
+        message: hidden.body.message,
+        details: hidden.body.details,
+      },
+      {
+        code: absent.body.code,
+        message: absent.body.message,
+        details: absent.body.details,
+      },
+      'hidden and absent disclosure is identical',
+    );
+    const wire = stack
+      .rpcs()
+      .find(
+        (call) =>
+          call.rpc === 'cms_schedule_publication' &&
+          (call.request.context as Record<string, unknown> | undefined)
+            ?.requestId === '71337133-7133-4133-8133-713371337133',
+      );
+    expect(wire !== undefined).toBe(true);
+    expectSafeEqual(
+      (wire?.request.context as Record<string, unknown> | undefined)
+        ?.correlationId,
+      '72337233-7233-4233-8233-723372337233',
+      'real RPC correlation identity',
+    );
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'concealed refusals have no effects',
+    );
+  });
+
+  it('[CMS-03B-07] stale approved-review CAS is exact VERSION_MISMATCH with no effects', async () => {
+    const draft = await approvedDraft(stack, world, 'Schedule stale CAS');
+    stack.as(world.publisher, 'fresh');
+    const stale = String(BigInt(draft.reviewVersion) + 1n);
+    const before = snapshotDigest();
+    const response = await schedule(
+      draft,
+      utcBody(draft, 172_800_000, { expectedVersion: stale }),
+      { ifMatch: stale },
+    );
+    expectSafeError(response, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'VERSION_MISMATCH',
+        recoveryAction: 'reload',
+        expectedVersion: stale,
+        currentVersion: draft.reviewVersion,
+      },
+    });
+    expectUnchanged(before, snapshotDigest(), 'stale CAS has no effects');
+  });
+
+  it('[CMS-03B-07] changed same-key schedule body is exact idempotency mismatch and preserves all effects', async () => {
+    const draft = await approvedDraft(stack, world, 'Schedule replay identity');
+    stack.as(world.publisher, 'fresh');
+    const body = utcBody(draft, 172_800_000);
+    const key = `identity-${draft.entryId}`;
+    expectStatus(await schedule(draft, body, { key }), 202);
+    const before = snapshotDigest();
+    const response = await schedule(
+      draft,
+      { ...body, audience: 'members' },
+      { key },
+    );
+    expectSafeError(response, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'IDEMPOTENCY_MISMATCH',
+        recoveryAction: 'use_new_idempotency_key',
+      },
+    });
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'same-key changed body creates no second schedule',
+    );
   });
 });

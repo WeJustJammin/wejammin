@@ -13,10 +13,17 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { ReviewQueuePageSchema } from '@wejammin/contracts';
 
-import { approvedDraft, collectQueue } from './support/phase-02-slice-11-flow';
+import { collectQueue } from './support/phase-02-slice-11-flow';
+import { s11QueueFixture } from './support/phase-02-slice-11-read-fixtures';
+import {
+  expectQueueMembership,
+  readQueuePages,
+} from './support/phase-02-slice-11-read-support';
 import {
   expectSafeError,
   expectStatus,
+  expectUnchanged,
+  snapshotDigest,
 } from './support/phase-02-slice-11-assert';
 import {
   type S11Stack,
@@ -37,14 +44,22 @@ beforeAll(async () => {
 
 describe('CMS-03B-17 reviewer queue through the real stack', () => {
   it('[CMS-03B-17] the queue pages with a signed cursor; a tampered cursor is 409 CONFLICT and an out-of-range limit never reaches the database', async () => {
-    const first = await approvedDraft(stack, world, 'Queue one');
-    const second = await approvedDraft(stack, world, 'Queue two');
-    stack.as(world.owner);
+    const fixture = await s11QueueFixture(stack, world);
+    const [first, second] = fixture.approved;
+    expect(first !== undefined && second !== undefined).toBe(true);
+    const before = snapshotDigest();
+    stack.as(fixture.submitter);
     const items = await collectQueue(stack, 'scope=submitted');
     const ids = items.map((item) => item.reviewId);
-    expect(ids).toContain(first.reviewId);
-    expect(ids).toContain(second.reviewId);
+    expect(ids.includes(first!.reviewId)).toBe(true);
+    expect(ids.includes(second!.reviewId)).toBe(true);
     expect(new Set(ids).size).toBe(ids.length);
+    expectQueueMembership(
+      items,
+      fixture.submittedIds,
+      fixture.submittedExclusions,
+    );
+    await readQueuePages(stack, 'scope=submitted', fixture.submittedIds);
 
     const page1 = await stack.get(
       '/api/v1/cms/reviews?scope=submitted&limit=1',
@@ -59,6 +74,7 @@ describe('CMS-03B-17 reviewer queue through the real stack', () => {
     );
     expectStatus(page2, 200);
     const parsed2 = ReviewQueuePageSchema.parse(page2.body);
+    expect(parsed2.items).toHaveLength(1);
     expect(parsed2.items[0]?.reviewId).not.toBe(parsed1.items[0]?.reviewId);
 
     // DEC-140 fault classes: a structurally malformed envelope is 400; a WELL-FORMED
@@ -92,7 +108,15 @@ describe('CMS-03B-17 reviewer queue through the real stack', () => {
     expectSafeError(malformed, {
       status: 400,
       code: 'INVALID_REQUEST',
-      detailsKeys: ['violations'],
+      details: {
+        violations: [
+          {
+            path: '/cursor',
+            code: 'invalid_value',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
     });
     expect(malformed.body.details).toMatchObject({
       violations: [{ path: '/cursor', code: 'invalid_value' }],
@@ -105,7 +129,15 @@ describe('CMS-03B-17 reviewer queue through the real stack', () => {
     expectSafeError(zero, {
       status: 400,
       code: 'INVALID_REQUEST',
-      detailsKeys: ['violations'],
+      details: {
+        violations: [
+          {
+            path: '/limit',
+            code: 'invalid_value',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
     });
     expect(zero.body.details).toMatchObject({
       violations: [{ path: '/limit', code: 'invalid_value' }],
@@ -121,11 +153,19 @@ describe('CMS-03B-17 reviewer queue through the real stack', () => {
     // item carries its assignment end (the scope=assigned projection).
     const assignedIds = parsedAssigned.items.map((item) => item.reviewId);
     expect(assignedIds.length).toBeGreaterThan(0);
-    expect(assignedIds).toEqual(
-      expect.arrayContaining([first.reviewId, second.reviewId]),
+    expectQueueMembership(
+      parsedAssigned.items,
+      fixture.assignedIds,
+      fixture.assignedExclusions,
     );
     expect(
       parsedAssigned.items.every((item) => item.assignmentEndsAt !== null),
     ).toBe(true);
+    await readQueuePages(stack, 'scope=assigned', fixture.assignedIds);
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'queue reads and refusals have no effects',
+    );
   });
 });

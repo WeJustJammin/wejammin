@@ -12,6 +12,7 @@
  * manifest no longer matching the rebuilt one, not an assignment revocation.
  * Commits fixtures; run right after `pnpm db:reset`, and reset again afterwards.
  */
+import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -21,6 +22,9 @@ import {
 import {
   expectSafeError,
   expectStatus,
+  expectSafeEqual,
+  expectUnchanged,
+  snapshotDigest,
 } from './support/phase-02-slice-11-assert';
 import { s11DriftFrozenManifest } from './support/phase-02-slice-11-read-fixtures';
 import {
@@ -35,6 +39,7 @@ import {
   workflowEffects,
 } from './support/phase-02-slice-11-world';
 import { psql } from './support/stack';
+import { decisionFixture } from './support/phase-02-slice-11-decision-support';
 
 let world: S11World;
 let stack: S11Stack;
@@ -45,6 +50,96 @@ beforeAll(async () => {
 });
 
 describe('CMS-03B-06 refusals through the real stack', () => {
+  for (const fault of [
+    'json',
+    'media',
+    'anonymous',
+    'missing-key',
+    'path-body',
+    'caller-capability',
+  ] as const) {
+    it(`[CMS-03B-06] ${fault} admission refuses before RPC and leaves all durable groups unchanged`, async () => {
+      const fixture = await decisionFixture(stack, world);
+      if (fault === 'anonymous') stack.as(null);
+      stack.clearRpcs();
+      const before = snapshotDigest();
+      const response = await stack.post(fixture.path, {
+        body:
+          fault === 'json'
+            ? '{'
+            : fault === 'path-body'
+              ? { ...fixture.body, reviewId: randomUUID() }
+              : fault === 'caller-capability'
+                ? { ...fixture.body, capability: 'cms.reviewer.policy' }
+                : fixture.body,
+        ifMatch: fixture.review.version,
+        ...(fault === 'missing-key' ? { idempotencyKey: null } : {}),
+        headers: fault === 'media' ? { 'content-type': 'text/plain' } : {},
+      });
+      const status =
+        fault === 'media'
+          ? 415
+          : fault === 'anonymous'
+            ? 401
+            : fault === 'path-body' || fault === 'caller-capability'
+              ? 422
+              : 400;
+      const code =
+        status === 415
+          ? 'UNSUPPORTED_MEDIA_TYPE'
+          : status === 401
+            ? 'UNAUTHENTICATED'
+            : status === 422
+              ? 'VALIDATION_FAILED'
+              : 'INVALID_REQUEST';
+      const details =
+        fault === 'media'
+          ? { allowedMediaTypes: ['application/json'] }
+          : fault === 'anonymous'
+            ? { recoveryAction: 'reauthenticate' }
+            : fault === 'json'
+              ? {}
+              : undefined;
+      expectSafeError(response, {
+        status,
+        code,
+        ...(details === undefined
+          ? { detailsKeys: ['violations'] }
+          : { details }),
+      });
+      if (details === undefined)
+        expectSafeEqual(
+          response.body.details,
+          {
+            violations: [
+              {
+                path:
+                  fault === 'path-body'
+                    ? '/reviewId'
+                    : fault === 'caller-capability'
+                      ? '/capability'
+                      : '/idempotencyKey',
+                code:
+                  fault === 'path-body'
+                    ? 'mismatch'
+                    : fault === 'caller-capability'
+                      ? 'unknown_field'
+                      : 'invalid_value',
+                message: 'The value is invalid.',
+              },
+            ],
+          },
+          'exact decision admission violation semantics',
+        );
+      expect(stack.rpcs()).toEqual([]);
+      expectUnchanged(
+        before,
+        snapshotDigest(),
+        'decision admission has no effects',
+      );
+    });
+  }
+
   it('[CMS-03B-06] step-up, the Worker gate, the assignment gate, a stale version and a decided review', async () => {
     const draft = await seedDraft(stack, world, 'Decision refusals');
     const review = await submitForReview(stack, world, draft);

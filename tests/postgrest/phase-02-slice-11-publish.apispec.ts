@@ -101,6 +101,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
     expect(sent?.request.expectedVersion).toBe(draft.reviewVersion);
 
     stack.clearRpcs();
+    const beforeReplay = snapshotDigest();
     const replay = await publish(draft, { key });
     expectStatus(replay, 202);
     expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
@@ -110,6 +111,11 @@ describe('CMS-03B-09 publish through the real stack', () => {
     ).toBe('true');
     expect(workflowEffects(draft.entryId).publications).toBe(1);
     expect(reservationCount()).toBe(before + 1);
+    expectUnchanged(
+      beforeReplay,
+      snapshotDigest(),
+      'publication replay preserves every effect group',
+    );
   });
 
   it('[CMS-03B-09] a missing, stale or future-dated step-up is 401 STEP_UP_REQUIRED before any RPC and any idempotency reservation', async () => {
@@ -118,11 +124,17 @@ describe('CMS-03B-09 publish through the real stack', () => {
       stack.as(world.publisher, proof);
       stack.clearRpcs();
       const before = reservationCount();
+      const beforeEffects = snapshotDigest();
       const response = await publish(draft);
       expectStatus(response, 401, proof);
       expect(response.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
+      expectUnchanged(
+        beforeEffects,
+        snapshotDigest(),
+        'MFA refusal preserves every effect group',
+      );
     }
     expect(workflowEffects(draft.entryId).publications).toBe(0);
   });
@@ -206,6 +218,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
     const draft = await approvedDraft(stack, world, 'Version subject');
     stack.as(world.publisher, 'fresh');
     const stale = String(Number(draft.reviewVersion) + 4);
+    const before = snapshotDigest();
     const response = await publish(draft, {
       ifMatch: stale,
       body: { expectedVersion: stale },
@@ -220,11 +233,17 @@ describe('CMS-03B-09 publish through the real stack', () => {
         currentVersion: draft.reviewVersion,
       },
     });
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'stale review CAS has no durable effect',
+    );
   });
 
   it('[CMS-03B-09] a stale expected version set is 409 version_set_stale and a wrong frozenHash is 422 at /frozenHash', async () => {
     const draft = await approvedDraft(stack, world, 'Set subject');
     stack.as(world.publisher, 'fresh');
+    const before = snapshotDigest();
     const stale = await publish(draft, {
       body: {
         expectedVersionSet: { ...draft.versionSet, settingsVersion: '424242' },
@@ -242,6 +261,11 @@ describe('CMS-03B-09 publish through the real stack', () => {
       violations: [{ path: '/frozenHash' }],
     });
     expect(workflowEffects(draft.entryId).publications).toBe(0);
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'version-set and frozen-hash refusals have no effects',
+    );
   });
 
   it('[CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409', async () => {
@@ -281,11 +305,17 @@ describe('CMS-03B-09 publish through the real stack', () => {
     ).toBe('invalidated');
     expect(workflowEffects(draft.entryId).publications).toBe(0);
 
+    const beforeReplay = snapshotDigest();
     const replay = await publish(draft, { key });
     expectStatus(replay, 409);
     expect(replay.body.details).toMatchObject({
       reasonCode: 'dependency_changed',
     });
+    expectUnchanged(
+      beforeReplay,
+      snapshotDigest(),
+      'committed dependency refusal replay has no additional effects',
+    );
   });
 
   it('[CMS-03B-09] an unavailable accessibility proof is 503 DEPENDENCY_UNAVAILABLE with Retry-After and nothing is committed', async () => {

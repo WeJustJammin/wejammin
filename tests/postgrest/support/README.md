@@ -58,11 +58,30 @@
   Slice 11 read/command-refusal suites (submit body/request, frozen-manifest
   drift).
 
+- `phase-02-slice-11-submit-support.ts` / `submit-policy-support.ts` /
+  `decision-support.ts`: prepared05/06 command/context, frozen dependency/policy
+  and immutable-guard rejection assertions; no new activation authority shortcut.
+- `phase-02-slice-11-preview-support.ts` / `publish-support.ts`: prepared08/09/19
+  strict resources, hash-only verifier, persistence and lineage/effect assertions.
+- `phase-02-slice-11-sweep-support.ts`: transparent real claim/load/execute observer
+  and named transport faults; forwards actual responses except named faults. Real
+  clock/replay/stored-summary helpers are in `schedule-support.ts`; no fake lease.
+- `phase-02-slice-11-read-support.ts` / `assignment-support.ts`: controlled queue
+  membership/traversal, request identities and ordinary assignment effects. The
+  explicitly privileged local cursor artifact signer is SELECT-only and retains
+  Vault material server-side; no API EXECUTE privilege is added.
+
+These additions are preparation, not runtime or acceptance proof. The inherited
+type activation shortcut and frozen-review trigger bypass remain execution/authority
+holds pending canonical fixture replacement. New helpers do not legalize them.
+Changed-table append counts and unchanged-table digests alone also do not prove
+every historical row in a changed table remained untouched.
+
 ## Ownership
 
-The database owner maintains these modules. Apart from the exact expectations the
-claim-gate fixtures state (one per entry), they contain no assertions; suites in the
-parent directory own every assertion.
+The database owner maintains these modules. They include shared strict and
+digest-only assertions as well as fixtures/effect helpers; suites in the parent
+directory own scenario-level acceptance. DB-bearing facades are not pure imports.
 
 ## Extension
 
