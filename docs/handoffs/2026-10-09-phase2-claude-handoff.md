@@ -1,5 +1,23 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Claim regression491 GREEN; private resolver contract next
+
+Two legacy fixture claim tokens omitted, all other bytes/assertions/defaults/
+outbox tokens unchanged; counts274/226. Parent63/63 and broader32 suites491/491
+(includes preparation factory16), format/ESLint/type/contracts/progress0,
+freshCI0/flock. Independent6.1 no weakened oracle; sole QA claim released.
+Earlier receipt/binding mutation proof/exact restoration retained.
+
+Next contract-only scope lane-s11-native-claimed-dry-run-contract-2026-10-09.md
+pins closed private request from actual claimed receipt/original event and six-
+object response. Existing plan has23 keys (prior24 count was a reporting error,
+not a schema change). Plan/report creator, not candidate creator, binds job actor.
+BE00 resultRef.type uses open Code grammar; naming is implementation-owned, not
+an owner approval blocker; no literal chosen in this contract wave. No resolver,
+RPC branch, effect, startup, receiving or SQL authority implementation yet.
+Checkpoint/push/exact-origin before native contract author; contracts precede
+behavior QA/producer work. GenuineAPI7RED/0of122/full/owner/external holds remain.
+
 ## Claim source63 GREEN; two legacy fixed-token fixtures block regression
 
 Three source files frozen; counts runtime-types221/consumer123/parser284 after

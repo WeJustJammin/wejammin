@@ -13,6 +13,11 @@ and return deterministic plans.
   before an atomic commit.
 - `dispatch.ts` handles leases, replay, stale/future versions, terminal jobs,
   and restore-independent queue decisions.
+- `consumer.ts` composes persisted claim/effect/outcome decisions. Acquired
+  effects receive the actual private claim receipt without rewriting the
+  preclaim job or original queue envelope; the receipt is not enduring authority.
+- `consumer-claimed-lease.test.ts` pins receipt identity, exact final CAS,
+  non-adjacent controlled-port versions and existing refusal boundaries.
 - `offline.ts` revalidates temporary intents without treating local state as
   canonical.
 - `realtime.ts` coalesces identifier/version hints and authorizes canonical

@@ -56,8 +56,11 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 - [/] `BE` Three-source receipt/binding frozen221/123/284; new63/63, broader475:473passed/2failed at old fixed-token fixtures versus default generated token. Independent6.1 no producer defect; receipt mutant4/8 and binding mutant25/26, exactSHA restoration then79/79 and format/ESLint/type/contracts/progress0. Claims released, no production waiver. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-job-seam-green-2026-10-09.md).
   - files: none; no SQL/enduringauthority/acceptance claim.
 
-- [/] `QA` Sole old decisions/manual-review claim-token fixture omission amendment claimed; actual SQL omits token, fallback unchanged. All old assertions/default generator/outbox retained, all other source/QA frozen; checkpoint/push/exact-origin before native continuation. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-legacy-claim-token-fixture-amendment-2026-10-09.md).
-  - files: apps/worker/src/async-runtime-decisions.test.ts, apps/worker/src/async-runtime-manual-review.test.ts
+- [/] `QA` Legacy two-token fixture omission frozen274/226, all other bytes/defaults/outbox/assertions retained. Parent63/63 and broader32suites491/491 including factory16, format/ESLint/type/contracts/progress0; independent6.1 no weaker oracle, claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-legacy-claim-token-fixture-amendment-2026-10-09.md).
+  - files: none; no receiving/resolver/SQL/acceptance closure.
+
+- [/] `BE` Private claimed dry-run contract-only new-file scope claimed; actualreceipt/originalevent request and six-object closed response, unchanged existing23-key plan. No new endpoint/wire/policy, no candidate creator equality; checkpoint/push/exact-origin before native contract author, then behavior QA before producers. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-dry-run-contract-2026-10-09.md).
+  - files: apps/worker/src/content-schema-registry/schema-dry-run-claim-request.ts, schema-dry-run-claim-response.ts, schema-dry-run-claim-shape.ts
 
 - [/] `QA` Completion-state/every-empty-operand guard8 frozen250; parent8:1failed/7passed, format/ESLint0. Standalone sourceCount row added; every prior source byte unchanged. Existing41/support/producers frozen; QA claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-pre-review-guards-red-2026-10-09.md).
   - files: none; guarded completion and all eight empty-discriminator operands have independent controlled witnesses. No SQL eligibility or acceptance proof.
