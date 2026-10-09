@@ -59,6 +59,7 @@ export type ProductionPlatformConfigurationOptions = Pick<
 >;
 export type { ProductionContentSchemaRegistryOptions } from './production-worker-runtime';
 export {
+  createProductionSchemaMigrationPreparationWorker,
   createProductionSchemaMigrationWorker,
   migrationQueueOutcome,
 } from './production-worker-runtime';

@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-production-foundation-green-and-named-purpose-mutation-proof|Slice 11 production foundation GREEN and named purpose mutation proof]] — knowledge — 2026-10-09T23:04:54.991Z
 - [[knowledge/2026-10-09-slice-11-production-qa71-red-and-authority-limits|Slice 11 production QA71 RED and authority limits]] — knowledge — 2026-10-09T22:56:01.804Z
 - [[knowledge/2026-10-09-slice-11-empty-activation-compatibility-mutation-proof|Slice 11 empty activation compatibility mutation proof]] — knowledge — 2026-10-09T22:42:56.293Z
 - [[knowledge/2026-10-09-authorized-earned-codex-reset-succeeded|Authorized earned Codex reset succeeded]] — knowledge — 2026-10-09T22:38:25.259Z

@@ -1,5 +1,30 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Production foundation GREEN and named-purpose mutation proof
+
+Four-file source frozen: factory/facades263/197/262, dispatcher105. Parent71/71
+new QA plus265/265 core/legacy production tests, format/ESLint/type/contracts/
+progress0. Root changed ONLY named preparation purpose dry_run→activation:
+10failed/6passed16 at actual transport/result/refusal boundaries, not missing
+entry. Factory restored exactSHA2566d66ce985b9aa3d20ce7e6a63736ce6d6bb8bd4aa735c0c06fc202df9cc8619f;
+then336/336 and restored format/ESLint/type/contracts/progress0, freshCI0/flock.
+Independent6.1 no producer defect. Old dependency types/validators/aliases,
+original input and method receiver preserved; facade function identity direct.
+
+Producer claims released. Sole-file dispatcher QA receiver assertion claimed
+in lane-s11-native-dispatch-receiver-witness-2026-10-09.md; all55 cases/old proof
+retained. Checkpoint/push/exact-origin verification before author continuation,
+then parent actual unbound-callback mutation/restore proof. Existing callbacks
+ignore this, so current55 alone cannot prove receiver preservation. No producer
+receiver defect, new policy or execution before that checkpoint.
+
+Named factory/exact CMS dispatcher now implemented; env-bound startup, claimed
+job seam/resolver, receiving retry/attempt/heartbeat and SQL fences remain open.
+GenuineAPI7RED and0/122/full/owner/external holds unchanged. Resolver snapshot
+alone is not enduring BE00 job authority. No new roles/grants/job row locks,
+no S09 restart or DB handles. Earlier construction/unimplemented notes below
+are historical and superseded only within this bounded source wave.
+
 ## Production QA71 RED accepted; disjoint construction/routing GREEN claims
 
 Factory16:13failed/3passed,337/197; all13 failures explicit missing-entry asserts,

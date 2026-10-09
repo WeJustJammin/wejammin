@@ -10,6 +10,14 @@ The composition root and its colocated transport tests live here. New
 consumers, schedules, and routes should remain small modules with one
 responsibility.
 
+`production-worker-runtime-cms.ts` constructs protected schema migration
+workers. The legacy factory binds activation; the named preparation factory
+binds private `dry_run` purpose without exposing a caller option. Both facades
+re-export the same functions. `production-job-effect-dispatcher.ts` selects
+only exact internal object-verification aliases or `cms.schema.dry_run`;
+provider and lookalike families never select a dependency. These construction
+seams do not themselves supply claimed-job resolution or persistent job fences.
+
 ## Ownership
 
 This directory owns Worker entry-point composition and transport orchestration;

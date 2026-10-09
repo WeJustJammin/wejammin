@@ -19,6 +19,12 @@ export type ProductionVerificationDependencies = Readonly<{
 export type PlatformVerificationDependencies =
   ProductionVerificationDependencies;
 
+export type ProductionJobEffectDependencies = Readonly<{
+  verifyObject?: ProductionVerificationDependencies['verifyObject'];
+  /** Executes only the private CMS schema preparation contract. */
+  prepareSchemaDryRun?: (input: JobEffectInput) => Promise<JobEffectResult>;
+}>;
+
 const manualReview = (errorCode: string): JobEffectResult => ({
   errorCode,
   resultRef: null,
@@ -61,23 +67,30 @@ const validResult = (value: unknown): value is JobEffectResult => {
 };
 
 /**
- * Builds the production job effect boundary. The only executable production
- * key is the internal object-verification job; provider and arbitrary job
- * names never select a credential, adapter, or network effect.
+ * Builds the production job effect boundary for exact internal verification
+ * and CMS preparation families. Provider and arbitrary job names never select
+ * a credential, adapter, or network effect.
  */
 export const createProductionJobEffectDispatcher =
-  (
-    dependencies?: ProductionVerificationDependencies,
-  ): JobEffectPort['execute'] =>
+  (dependencies?: ProductionJobEffectDependencies): JobEffectPort['execute'] =>
   async (input): Promise<JobEffectResult> => {
-    if (!APPROVED_VERIFICATION_TYPES.has(input.job.type)) {
+    const isPreparation = input.job.type === 'cms.schema.dry_run';
+    if (!isPreparation && !APPROVED_VERIFICATION_TYPES.has(input.job.type)) {
       return manualReview('UNSUPPORTED_JOB_TYPE');
     }
-    if (typeof dependencies?.verifyObject !== 'function') {
-      return manualReview('DEPENDENCY_UNAVAILABLE');
-    }
     try {
-      const result = await dependencies.verifyObject(input);
+      let result: JobEffectResult;
+      if (isPreparation) {
+        if (typeof dependencies?.prepareSchemaDryRun !== 'function') {
+          return manualReview('DEPENDENCY_UNAVAILABLE');
+        }
+        result = await dependencies.prepareSchemaDryRun(input);
+      } else {
+        if (typeof dependencies?.verifyObject !== 'function') {
+          return manualReview('DEPENDENCY_UNAVAILABLE');
+        }
+        result = await dependencies.verifyObject(input);
+      }
       return validResult(result)
         ? result
         : manualReview('DEPENDENCY_UNAVAILABLE');

@@ -64,6 +64,7 @@ export type ProductionContentSchemaRegistryOptions = Pick<
  * session/rate seams used by focused composition tests.
  */
 export {
+  createProductionSchemaMigrationPreparationWorker,
   createProductionSchemaMigrationWorker,
   migrationQueueOutcome,
   productionMigrationTelemetry,
