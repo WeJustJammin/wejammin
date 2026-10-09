@@ -9,8 +9,7 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 - [/] `BE` Native defensive first-empty parser/output GREEN, source-only after parent RED; no SQL eligibility claim. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-plan-green-2026-10-09.md).
   - files: apps/worker/src/content-schema-registry/migration-worker-plan-record-schema.ts, apps/worker/src/content-schema-registry/migration-worker-plan-record-output.ts, apps/worker/src/content-schema-registry/migration-worker-first-empty-plan-shape.ts
 
-- [/] `QA` Independent replay-version gap: strengthen completed first-empty plan8 versus original job7, rerun frozen RED before reserved parser GREEN dispatch. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-replay-red-amendment-2026-10-09.md).
-  - files: apps/worker/src/content-schema-registry/migration-worker-first-empty-baseline.test.ts
+- [/] `QA` Independent replay-version gap corrected: completed first-empty plan8 versus original job7; parent frozen Vitest65 remains15 failed/50 passed at intended parser boundary, format/ESLint0. Claim released; parser GREEN dispatch next. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-replay-red-amendment-2026-10-09.md).
 
 - [/] `DB` Native actual initial-scope count-helper forward repair, source-only after parent RED; protected scan/seal fences separate. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-scope-green-2026-10-09.md).
   - files: supabase/migrations/20261005018100_cms_first_empty_scope.sql

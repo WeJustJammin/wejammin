@@ -10,6 +10,12 @@ completed replay variants consequently attempt dead-letter persistence instead
 of exactly one readPlan call. Existing negative controls pass. Log:
 `.lane-logs/parent-s11-first-empty-plan-red-20261009.log`.
 
+Independent6.1/ultra identified advanced-version replay sensitivity gap. Native
+one-line amendment sets all3 completed plans8 against unchanged original job7,
+preserving exact calls/results. Parent format/ESLint0 and rerun65:15 failed/50
+passed at same intended parser boundary. Revised frozen log:
+`.lane-logs/parent-s11-first-empty-plan-advanced-replay-red-20261009.log`.
+
 Private SQL helper test: fresh GitHub activeCI0, shared flock and main54322
 `pnpm db:reset` exit0; fresh activeCI0 and lock, targeted Supabase pgTAP exit1.
 20 assertions,13 failed/7 passed, no setup or deferred-constraint error. Every

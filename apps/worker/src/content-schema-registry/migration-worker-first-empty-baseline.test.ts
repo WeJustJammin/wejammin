@@ -259,6 +259,7 @@ describe('DEC-162 first-empty migration plan boundary', () => {
     async ({ activeVersionId }) => {
       const plan = firstPlan({
         state: 'completed',
+        version: '8',
         progress: 1,
         activeVersionId,
       });
