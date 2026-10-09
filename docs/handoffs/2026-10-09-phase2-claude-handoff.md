@@ -1,5 +1,23 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Corrected claim QA63 accepted; disjoint three-source GREEN claims
+
+Corrected parent63:29failed34passed. A12:4failed8passed359 (unchanged); B51:
+25failed26passed344. Four numeric normalization positives pass and3 singleton
+foreign negatives fail intended binding boundary. Exact old alias corrected;
+prior44proof otherwise byte-identical. Format/ESLint/type/contracts/progress0,
+freshCI0/flock. Independent6.1 all3 P3 closed/no weaker oracle/new policy.
+QA amendment claim released; all63 tests/support and existing source frozen.
+
+Next GREEN scope lane-s11-native-claimed-job-seam-green-2026-10-09.md: A only
+application jobs/runtime-types.ts+consumer.ts add optional private actualreceipt
+member and direct forwarding; B only Worker async-runtime-parsing.ts hardens
+parseLease explicit aliases/request binding with unchanged omission fallback/
+normalization/shape/output. Checkpoint/push/exact-origin before authors, parent
+GREEN/regression/mutation+exactrestore/review before further author wave. No
+wire/private-RPC/SQL/receiving policy or enduring job authority change;
+genuineAPI7RED/0of122/full/owner/external holds remain. Older claims historical.
+
 ## Trusted claim QA56 RED; sole adapter QA amendment before GREEN
 
 Parent actual56:26failed/30passed. Application12:4failed8passed359lines, actual

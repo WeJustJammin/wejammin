@@ -138,6 +138,18 @@ const foreignRows = [
     label: 'hidden conflicting expected_version',
     row: { ...both, expected_version: CLAIMED },
   },
+  {
+    label: 'singleton array foreign job_id',
+    row: [{ ...snake, job_id: FOREIGN_ID }],
+  },
+  {
+    label: 'singleton array foreign lease_token',
+    row: [{ ...snake, lease_token: FOREIGN_TOKEN }],
+  },
+  {
+    label: 'singleton array foreign expected_version',
+    row: [{ ...snake, expected_version: CLAIMED }],
+  },
 ];
 const aliases = [
   { field: 'jobId', row: camel },
@@ -171,6 +183,38 @@ describe('claim response binding at the protected persistence adapter', () => {
       expect(input).toEqual(before);
       expect(f.fetcher.mock.calls).toEqual([rpcCall('claim_job', claimBody)]);
     });
+  });
+
+  it.each([
+    {
+      label: 'numeric camel expectedVersion',
+      row: { ...camel, expectedVersion: 1, version: '2' },
+    },
+    {
+      label: 'numeric snake expected_version',
+      row: { ...snake, expected_version: 1, version: '2' },
+    },
+    {
+      label: 'numeric camel and string snake expected versions',
+      row: { ...both, expectedVersion: 1, expected_version: '1', version: '2' },
+    },
+    {
+      label: 'string camel and numeric snake expected versions',
+      row: { ...both, expectedVersion: '1', expected_version: 1, version: '2' },
+    },
+  ])('normalizes safe numeric compatibility: $label', async ({ row }) => {
+    const input: JobLeaseClaimRequest = { ...request(), expectedVersion: '1' };
+    const before = { ...input };
+    const normalized = { ...camel, expectedVersion: '1', version: '2' };
+    const f = fixture(row);
+    expect(parseLease(row, input)).toEqual(normalized);
+    await expect(f.persistence.claimJobLease(input)).resolves.toEqual(
+      normalized,
+    );
+    expect(input).toEqual(before);
+    expect(f.fetcher.mock.calls).toEqual([
+      rpcCall('claim_job', { ...claimBody, p_expected_version: '1' }),
+    ]);
   });
 
   it.each(foreignRows)(
@@ -252,7 +296,7 @@ describe('claim response binding at the protected persistence adapter', () => {
     expect(f.fetcher.mock.calls).toEqual([rpcCall('claim_job', claimBody)]);
   });
 
-  it.each(['cms.schema.dry_run', 'object.verify', 'objects.verify'])(
+  it.each(['cms.schema.dry_run', 'object.verify', 'platform.object.verify'])(
     'blocks %s effects and terminal writes after an adapter binding rejection',
     async (type) => {
       const f = fixture({ ...sqlRow, job_id: FOREIGN_ID }, type);
