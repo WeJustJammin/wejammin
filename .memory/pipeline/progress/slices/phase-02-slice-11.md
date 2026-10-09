@@ -35,8 +35,12 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 - [/] `BE` Native DEC108 preparation six-file source frozen; parent242/242 targeted and registry152 suites2561/2561, format/ESLint/type/contracts/progress0. Independent6.1 no producer regression; empty default/explicit activation witness depth gap remains. Claim released; strict admission/SQL/factories/tests unchanged. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-pre-review-purpose-green-2026-10-09.md).
   - files: none; utility counts110/263/194/136/128/215, all<=300. Default activation/ACK body root comparison unchanged apart from indentation.
 
-- [/] `QA` Empty READY default/explicit activation compatibility two-case amendment claimed; preserve existing8 and all helpers/producers. Parent isolated purpose-predicate mutation required before release. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-empty-activation-compatibility-2026-10-09.md).
-  - files: apps/worker/src/content-schema-registry/migration-worker-pre-review-response-guards.test.ts
+- [/] `QA` Empty READY activation compatibility frozen369/10, parent10/10; isolated only-purpose-predicate mutation2failed/8skipped, exact producer restoration then244/244 plus format/ESLint/type/contracts/progress0. Independent6.1 last P3 closed; claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-empty-activation-compatibility-2026-10-09.md).
+  - files: none; all prior8 cases/assertions/helpers unchanged.
+
+- [/] `QA` Production named preparation factory and exact CMS family routing disjoint native QA claims; all existing source frozen. Missing named export RED is not functional proof; real current dispatcher must expose ignored CMS dependency. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-production-preparation-qa-2026-10-09.md).
+  - lane A files: new apps/worker/src/production-schema-migration-preparation.test.ts, production-schema-migration-preparation-test-support.ts
+  - lane B file: new apps/worker/src/production-job-effect-dispatcher-cms-preparation.test.ts
 
 - [/] `QA` Completion-state/every-empty-operand guard8 frozen250; parent8:1failed/7passed, format/ESLint0. Standalone sourceCount row added; every prior source byte unchanged. Existing41/support/producers frozen; QA claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-pre-review-guards-red-2026-10-09.md).
   - files: none; guarded completion and all eight empty-discriminator operands have independent controlled witnesses. No SQL eligibility or acceptance proof.

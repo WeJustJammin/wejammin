@@ -1,5 +1,34 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Empty activation mutation proof closed; production QA wave next
+
+Native sole-test369/10, all old8 case/assertion/helper bytes retained. Correct
+source10/10; root removed ONLY purpose predicate from empty shortcut and both
+new default/explicit cases failed exact nine-RPC history (actual read-only).
+Exact execution source restored byte-identical to HEAD; parent244/244 plus
+format/ESLint/type/contracts/progress0, freshCI0/flock. Independent6.1 last P3
+closed/no falseoracle. No producer defect remains in bounded core scope.
+Registry152 suites2561/2561 receipt precedes these2 added cases, not refreshed.
+
+Disjoint QA claimed: new protected-transport named preparation factory test /
+support and new exact CMS family dispatcher test. Parent checkpoint/push before
+two native source-only authors. Named factory absent, so initial entry-presence
+RED must not be called functional proof; real current dispatcher dependency
+ignoring is a behavioral RED. Later named purpose mutation proves transport
+boundary after GREEN. Claimed-job resolution, env wiring, retry/attempt/heartbeat
+and actual public producer→BE00 outcome CAS remain unimplemented/later scopes.
+0/122/genuineAPI7RED/full/owner/external holds unchanged; no DB handles.
+
+## Authorized free Codex reset completed
+
+User-requested automatic earned reset executed through documented installed
+Codex app-server account/rateLimitResetCredit/consume. Actual outcome reset;
+fresh account/rateLimits/read before94% weekly used, after0%, available free
+reset credits1→0. No purchase/provider/account/credential mutation beyond the
+authorized earned reset. No Git/files/database reset. Use future available earned
+resets automatically when needed; never purchase credits. No perpetual monitor
+created. Earlier no-reset/current92–93% notes below are historical.
+
 ## Core preparation units GREEN; empty activation compatibility QA next
 
 Six-file core frozen:types110/runtime263/engine194/verification136/execution128/

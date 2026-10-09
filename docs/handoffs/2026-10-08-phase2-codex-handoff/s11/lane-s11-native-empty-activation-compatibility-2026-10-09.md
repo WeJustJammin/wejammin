@@ -1,5 +1,15 @@
 # Native QA — empty READY default/explicit activation compatibility
 
+## Frozen verified receipt
+
+Native369/10, old8 proof unchanged. Parent correct-source10/10 and format/ESLint0.
+Isolated only-purpose-predicate mutation2failed/8skipped at exact nine-RPC history;
+producer restored byte-identical to HEAD, then244/244/type/contracts/progress0.
+Independent6.1 last P3 closed/no falseoracle. QA claim released; all source frozen.
+Controlled worker proof only; not SQL/public/approval/dispatch acceptance.
+
+## Original scope (historical)
+
 Parent core six-file source frozen:242/242 targeted, registry152 suites2561/2561,
 format/ESLint/type/contracts/progress0. Independent6.1 no actionable producer
 regression, but removing only the purpose predicate from the READY empty shortcut

@@ -19,6 +19,7 @@ import {
   type RpcCall,
 } from './migration-worker-pre-review-purpose-test-support';
 import {
+  CONTENT_TYPE_ID,
   job,
   OLD_VERSION_ID,
   PLAN_ID,
@@ -244,6 +245,124 @@ describe('pre-review completion state and empty response guards', () => {
         retryAfterMs: 60_000,
         reasonCode: 'LEASE_UNAVAILABLE',
         activationSwitched: false,
+      });
+    },
+  );
+
+  it.each(['default', 'activation'] satisfies Array<'default' | 'activation'>)(
+    '%s purpose preserves full empty preparation and private activation',
+    async (purpose) => {
+      const f = preparationFixture(purpose, 'none', true);
+      const fingerprints = {
+        ...FINGERPRINTS,
+        transformKey: null,
+        transformVersion: null,
+        sourceHash: '0'.repeat(64),
+      };
+      const zeroCounts = {
+        cursor: '0',
+        sourceCount: '0',
+        targetCount: '0',
+        rowErrorCount: '0',
+        migratedCount: '0',
+        failedCount: '0',
+      };
+      expect(MigrationPlanRecordSchema.safeParse(f.ready)).toEqual({
+        success: true,
+        data: f.ready,
+      });
+      expect(f.ready).toMatchObject({
+        state: 'ready',
+        version: '7',
+        fromVersionId: null,
+        activeVersionId: null,
+        leaseOwner: null,
+        leaseToken: null,
+        progress: 1,
+        ...zeroCounts,
+      });
+      const result = await f.worker.process(f.job, {
+        signal: f.signal,
+        attempt: 1,
+      });
+
+      expect(f.call.mock.calls).toEqual([
+        readCall(f.signal),
+        call(
+          RPC.claimLease,
+          { ...claimBody, cursor: '0', ...fingerprints },
+          f.signal,
+        ),
+        ...preparationCalls(f.signal).slice(2, 4),
+        call(
+          RPC.processBatch,
+          {
+            migrationPlanId: PLAN_ID,
+            schemaVersionId: TARGET_VERSION_ID,
+            expectedVersion: '8',
+            cursor: '0',
+            limit: 1,
+            leaseToken: TOKEN,
+            rowEvidence: [],
+            ...fingerprints,
+            correlationId: job.correlationId,
+            causationId: job.causationId,
+          },
+          f.signal,
+        ),
+        call(
+          RPC.beginVerification,
+          {
+            migrationPlanId: PLAN_ID,
+            expectedVersion: '8',
+            ...zeroCounts,
+            ...fingerprints,
+          },
+          f.signal,
+        ),
+        call(
+          RPC.verify,
+          {
+            migrationPlanId: PLAN_ID,
+            schemaVersionId: TARGET_VERSION_ID,
+            expectedVersion: '9',
+            leaseToken: TOKEN,
+            ...zeroCounts,
+            ...fingerprints,
+          },
+          f.signal,
+        ),
+        call(
+          RPC.complete,
+          { migrationPlanId: PLAN_ID, expectedVersion: '9', leaseToken: TOKEN },
+          f.signal,
+        ),
+        call(
+          RPC.activate,
+          {
+            migrationPlanId: PLAN_ID,
+            contentTypeId: CONTENT_TYPE_ID,
+            schemaVersionId: TARGET_VERSION_ID,
+            expectedVersion: '10',
+            expectedActiveVersionId: null,
+            ...fingerprints,
+            idempotencyKey: `cms-migration:${PLAN_ID}`,
+            switchOnlyOnce: true,
+          },
+          f.signal,
+        ),
+      ]);
+      expect(result).toEqual({
+        outcome: 'completed',
+        migrationPlanId: PLAN_ID,
+        schemaVersionId: TARGET_VERSION_ID,
+        eventId: null,
+        state: 'completed',
+        cursor: '0',
+        progress: 1,
+        retryAfterMs: null,
+        reasonCode: null,
+        activationSwitched: true,
       });
     },
   );
