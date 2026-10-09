@@ -10,6 +10,18 @@ export const CMS_EDITORIAL_OPERATION_IDS = [
   'CMS-03B-12',
   'CMS-03B-13',
   'CMS-03B-14',
+  // Slice 11 (DEC-148): review, schedule, preview, publication and the
+  // preparation, detail, queue and assignment reads. CMS-03B-19 and CMS-03B-20
+  // are internal RPCs and never appear here (see `internal-rpc.ts`).
+  'CMS-03B-05',
+  'CMS-03B-06',
+  'CMS-03B-07',
+  'CMS-03B-08',
+  'CMS-03B-09',
+  'CMS-03B-15',
+  'CMS-03B-16',
+  'CMS-03B-17',
+  'CMS-03B-18',
 ] as const;
 
 export type CmsEditorialOperationId =
@@ -17,10 +29,16 @@ export type CmsEditorialOperationId =
 
 /**
  * Only these capabilities may open an editorial route. CMS-03B-03 additionally
- * grants reviewer read scope; no route grants a capability outside this set.
+ * grants reviewer read scope; the Slice 11 commands add `cms.publisher` and the
+ * owner-only, non-grantable `cms.editorial_review.assign` (CMS-03B-18, DEC-136).
+ * No route grants a capability outside this set.
  */
 export type CmsEditorialCapability =
-  'cms.author' | 'cms.editor' | 'cms.reviewer';
+  | 'cms.author'
+  | 'cms.editor'
+  | 'cms.reviewer'
+  | 'cms.publisher'
+  | 'cms.editorial_review.assign';
 
 export const CmsEditorialCapabilityModeSchema = z.enum(['any_of', 'all_of']);
 
@@ -35,7 +53,16 @@ export type CmsEditorialPath =
   | '/api/v1/cms/entries'
   | '/api/v1/cms/entries/{entryId}'
   | '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}'
-  | '/api/v1/cms/entries/authoring-context';
+  | '/api/v1/cms/entries/authoring-context'
+  | '/api/v1/cms/entries/{entryId}/reviews'
+  | '/api/v1/cms/reviews/{reviewId}/decision'
+  | '/api/v1/cms/publication-schedules'
+  | '/api/v1/cms/previews'
+  | '/api/v1/cms/publications'
+  | '/api/v1/cms/entries/{entryId}/workflow'
+  | '/api/v1/cms/reviews/{reviewId}'
+  | '/api/v1/cms/reviews'
+  | '/api/v1/cms/reviews/{reviewId}/assignments';
 
 export type CmsEditorialRequestSchemaName =
   | 'EntryRevisionRequestSchema'
@@ -46,7 +73,16 @@ export type CmsEditorialRequestSchemaName =
   | 'EntryDraftDetailQuerySchema'
   | 'ConflictDetailQuerySchema'
   | 'EntryListQuerySchema'
-  | 'AuthoringContextQuerySchema';
+  | 'AuthoringContextQuerySchema'
+  | 'ReviewSubmissionRequestSchema'
+  | 'EditorialDecisionRequestSchema'
+  | 'PublicationScheduleRequestSchema'
+  | 'PreviewRequestSchema'
+  | 'PublicationRequestSchema'
+  | 'EntryWorkflowQuerySchema'
+  | 'EditorialReviewDetailQuerySchema'
+  | 'ReviewQueueQuerySchema'
+  | 'EditorialReviewAssignmentRequestSchema';
 
 export type CmsEditorialSuccessSchemaName =
   | 'EntryRevisionResourceSchema'
@@ -55,7 +91,15 @@ export type CmsEditorialSuccessSchemaName =
   | 'EntryDraftDetailResourceSchema'
   | 'ConflictDetailResourceSchema'
   | 'EntryListPageSchema'
-  | 'AuthoringContextResourceSchema';
+  | 'AuthoringContextResourceSchema'
+  | 'EditorialReviewResourceSchema'
+  | 'PublicationScheduleResourceSchema'
+  | 'PreviewTokenResourceSchema'
+  | 'PublicationResourceSchema'
+  | 'EntryWorkflowResourceSchema'
+  | 'EditorialReviewDetailResourceSchema'
+  | 'ReviewQueuePageSchema'
+  | 'EditorialReviewAssignmentResourceSchema';
 
 export type CmsEditorialPathParamsSchemaName =
   | 'EntryRevisionPathParamsSchema'
@@ -63,11 +107,17 @@ export type CmsEditorialPathParamsSchemaName =
   | 'RevisionHistoryPathParamsSchema'
   | 'RevisionRestorePathParamsSchema'
   | 'EntryDraftDetailPathParamsSchema'
-  | 'ConflictDetailPathParamsSchema';
+  | 'ConflictDetailPathParamsSchema'
+  | 'CmsEditorialReviewSubmissionPathParamsSchema'
+  | 'CmsEditorialDecisionPathParamsSchema'
+  | 'EntryWorkflowPathParamsSchema'
+  | 'EditorialReviewDetailPathParamsSchema'
+  | 'EditorialReviewAssignmentPathParamsSchema';
 
 export type CmsEditorialErrorCode =
   | 'INVALID_REQUEST'
   | 'UNAUTHENTICATED'
+  | 'STEP_UP_REQUIRED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'CONFLICT'

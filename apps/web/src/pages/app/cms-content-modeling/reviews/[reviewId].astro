@@ -1,0 +1,56 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadReviewDetailPage } from '../../../../components/cms-editorial-pages/load-review-detail-page';
+import CmsEditorialReviewDetailIsland from '../../../../components/cms-editorial-workflow/CmsEditorialReviewDetailIsland';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Protected review detail for CMS-03B-16 with the decision (CMS-03B-06) and the
+ * owner's assignment (CMS-03B-18) commands. All behavior lives in the tested
+ * loader and island: the loader verifies the strict detail for THIS review and
+ * returns one view, one closed state (a hidden, absent or cross-owner review is
+ * one identical 404), or a sign-in redirect; the island renders the evidence and
+ * exactly the forms `permittedNextActions` allows. No reviewer, submitter or
+ * person identifier is serialized into the document outside the island's data.
+ */
+const outcome = await loadReviewDetailPage({
+  request: Astro.request,
+  reviewId: Astro.params.reviewId ?? '',
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Read the frozen candidate and record your decision."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <CmsEditorialReviewDetailIsland
+        init={{
+          review: outcome.view.review,
+          reviewId: outcome.view.reviewId,
+          verifiedAt: outcome.view.verifiedAt,
+        }}
+        client:load
+      />
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

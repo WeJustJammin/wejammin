@@ -1,0 +1,181 @@
+-- Row-image builders for the Slice 11 tables.  Each returns the complete jsonb
+-- image of a VALID row; a test overrides one member with `|| '{...}'` to build a
+-- violating row.  The images name columns the forward migrations add, and
+-- jsonb_populate_record ignores a key that has no column, so the builders also
+-- work (and the structural assertions then fail) before the migrations exist.
+
+-- A draft revision image (for the CHECK probe on cms_entry_revisions.state).
+create or replace function pg_temp.s11_revision_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'entry_id', pg_temp.s11_id('entryA'), 'revision_number', 9,
+    'schema_version_id', pg_temp.s11_id('schemaVersion'),
+    'template_version_id', null, 'taxonomy_version_ids', '[]'::jsonb,
+    'parent_revision_ids', '[]'::jsonb, 'locale', 'en-US',
+    'payload_hash', pg_temp.s11_hex('s11-revision-row'),
+    'author_person_id', pg_temp.s11_id('editor'),
+    'acting_party_id', pg_temp.s11_id('org'), 'state', 'draft', 'version', 1,
+    'validation_state', 'valid', 'validation_report', '{}'::jsonb,
+    'created_at', timestamptz '2026-10-01T13:00:00Z',
+    'updated_at', timestamptz '2026-10-01T13:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- An editorial review image: open, version 1, ordinary risk, one decision.
+create or replace function pg_temp.s11_review_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'revision_id', pg_temp.s11_id('revA1'), 'entry_id', pg_temp.s11_id('entryA'),
+    'state', 'open', 'version', 1, 'risk_class', 'ordinary',
+    'frozen_hash', pg_temp.s11_hex('s11-frozen'),
+    'dependency_manifest', '{}'::jsonb,
+    'dependency_hash', pg_temp.s11_hex('s11-dependency'),
+    'activation_evidence', '{}'::jsonb,
+    'workflow_policy_key', 'editorial', 'workflow_policy_version', 1,
+    'workflow_policy_hash', pg_temp.s11_hex('s11-policy'),
+    'required_capabilities', jsonb_build_array('cms.reviewer'),
+    'required_decision_count', 1, 'recorded_decision_count', 0,
+    'approval_evidence_hash', pg_temp.s11_hex('s11-approval'),
+    'submitted_by', pg_temp.s11_id('editor'),
+    'submitted_at', timestamptz '2026-10-01T14:00:00Z',
+    'invalidated_reason', null, 'decided_at', null,
+    'created_at', timestamptz '2026-10-01T14:00:00Z',
+    'updated_at', timestamptz '2026-10-01T14:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- A reviewer assignment image: active, version 1, a one-day window.
+create or replace function pg_temp.s11_assignment_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'review_id', pg_temp.s11_id('review1'),
+    'reviewer_person_id', pg_temp.s11_id('reviewer01'),
+    'grantor_person_id', pg_temp.s11_id('creator'),
+    'capability_key', 'cms.editorial_review',
+    'actions', jsonb_build_array('read', 'decide'), 'state', 'active',
+    'starts_at', timestamptz '2026-10-01T14:00:00Z',
+    'ends_at', timestamptz '2026-10-02T14:00:00Z', 'reason', null,
+    'version', 1, 'created_at', timestamptz '2026-10-01T14:00:00Z',
+    'updated_at', timestamptz '2026-10-01T14:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- A decision image: an approve by reviewer01 under assignment `assignment1`.
+create or replace function pg_temp.s11_decision_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'state', 'recorded', 'version', 1,
+    'review_id', pg_temp.s11_id('review1'),
+    'reviewer_person_id', pg_temp.s11_id('reviewer01'),
+    'acting_party_id', pg_temp.s11_id('org'),
+    'capability', 'cms.reviewer',
+    'assignment_id', pg_temp.s11_id('assignment1'), 'assignment_version', 1,
+    'decision', 'approve', 'reason', 'Reads well; approved.',
+    'comment_hash', encode(extensions.digest('Reads well; approved.', 'sha256'), 'hex'),
+    'reviewed_hash', pg_temp.s11_hex('s11-frozen'),
+    'step_up_at', timestamptz '2026-10-01T14:00:00Z' - interval '60 seconds',
+    'decided_at', timestamptz '2026-10-01T14:00:00Z',
+    'created_at', timestamptz '2026-10-01T14:00:00Z',
+    'updated_at', timestamptz '2026-10-01T14:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- A review dependency image: a schema dependency of review1.
+create or replace function pg_temp.s11_dependency_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'state', 'active', 'version', 1, 'review_id', pg_temp.s11_id('review1'),
+    'kind', 'schema', 'ref_id', pg_temp.s11_id('schemaVersion'),
+    'created_at', timestamptz '2026-10-01T14:00:00Z',
+    'updated_at', timestamptz '2026-10-01T14:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- A publication schedule image: a pending publish bound to approvedReview.
+create or replace function pg_temp.s11_schedule_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'entry_id', pg_temp.s11_id('entryA'), 'revision_id', pg_temp.s11_id('revA1'),
+    'review_id', pg_temp.s11_id('approvedReview'),
+    'dependency_hash', pg_temp.s11_hex('s11-dependency'),
+    'activation_evidence_hash', pg_temp.s11_hex('s11-activation'),
+    'action', 'publish', 'local_datetime', '2027-01-15T09:00:00'::timestamp,
+    'timezone', 'Europe/Paris',
+    'resolved_at_utc', timestamptz '2027-01-15T08:00:00Z',
+    'tzdb_version', '2026b', 'disambiguation', 'none', 'audience', 'public',
+    'state', 'pending', 'job_id', null, 'expected_version', 2,
+    'attempt_count', 0, 'next_attempt_at', null, 'lease_id', null,
+    'lease_until', null, 'reason_code', null, 'actual_at_utc', null,
+    'deviation_seconds', null, 'version', 1,
+    'created_by', pg_temp.s11_id('reviewer04'),
+    'created_at', timestamptz '2026-10-01T14:00:00Z',
+    'updated_at', timestamptz '2026-10-01T14:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- A publication lineage row image: the first `publish` row of a lineage.
+create or replace function pg_temp.s11_publication_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', 'a9110000-0000-4000-8000-000000000601'::uuid,
+    'owner_id', pg_temp.s11_id('org'),
+    'publication_id', 'a9110000-0000-4000-8000-000000000601'::uuid,
+    'state', 'active', 'version', 1, 'supersedes_id', null, 'action', 'publish',
+    'entry_id', pg_temp.s11_id('entryA'), 'revision_id', pg_temp.s11_id('revA1'),
+    'schedule_id', null, 'publisher_person_id', pg_temp.s11_id('reviewer04'),
+    'dependency_hash', pg_temp.s11_hex('s11-dependency'),
+    'activation_evidence_hash', pg_temp.s11_hex('s11-activation'),
+    'schema_artifact_id', pg_temp.s11_id('artifactId'),
+    'schema_artifact_hash', pg_temp.s11_val('artifactHash'),
+    'version_set', jsonb_build_object('settingsVersion', 1),
+    'schema_version_id', pg_temp.s11_id('schemaVersion'),
+    'template_version_id', null, 'taxonomy_version_ids', '[]'::jsonb,
+    'settings_version', 1, 'locale', 'en-US', 'audience', 'public',
+    'publication_hash', pg_temp.s11_hex('s11-publication'),
+    'activated_at', timestamptz '2026-10-01T15:00:00Z', 'revoked_at', null,
+    'created_at', timestamptz '2026-10-01T15:00:00Z',
+    'updated_at', timestamptz '2026-10-01T15:00:00Z'
+  ) || p_overrides
+$body$;
+
+-- A preview token image: active, version 1, valid for exactly 15 minutes.
+create or replace function pg_temp.s11_token_row(p_overrides jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'),
+    'state', 'active', 'version', 1,
+    'token_hash', pg_temp.s11_hex('s11-token-' || gen_random_uuid()::text),
+    'entry_id', pg_temp.s11_id('entryA'), 'revision_id', pg_temp.s11_id('revA1'),
+    'user_id', pg_temp.s11_id('creatorAuth'), 'person_id', pg_temp.s11_id('creator'),
+    'acting_party_id', pg_temp.s11_id('org'),
+    'capability_snapshot_hash', pg_temp.s11_hex('s11-capabilities'),
+    'version_set', jsonb_build_object('settingsVersion', 1),
+    'locale', 'en-US', 'audience', 'public', 'route', '/preview/article',
+    'expires_at', timestamptz '2026-10-01T16:15:00Z',
+    'nonce', gen_random_uuid(), 'revoked_at', null,
+    'created_at', timestamptz '2026-10-01T16:00:00Z',
+    'updated_at', timestamptz '2026-10-01T16:00:00Z'
+  ) || p_overrides
+$body$;

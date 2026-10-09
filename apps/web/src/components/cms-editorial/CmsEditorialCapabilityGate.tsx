@@ -4,6 +4,8 @@ export interface CmsEditorialCapabilityGateProps {
   readonly headingId: string;
   readonly reason: string;
   readonly requestId?: string | null;
+  /** The surface the gate stands for; the editor's default names editing. */
+  readonly title?: string;
 }
 
 /**
@@ -15,13 +17,14 @@ const CmsEditorialCapabilityGate = ({
   headingId,
   reason,
   requestId = null,
+  title = 'Editing unavailable',
 }: CmsEditorialCapabilityGateProps): React.ReactElement => (
   <section
     className="cms-editorial-gate"
     aria-labelledby={headingId}
     data-cms-editorial-capability-gate="true"
   >
-    <h2 id={headingId}>Editing unavailable</h2>
+    <h2 id={headingId}>{title}</h2>
     <p>{reason}</p>
     {requestId === null ? null : (
       <p className="cms-editorial-request-id">Reference: {requestId}</p>

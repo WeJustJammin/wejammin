@@ -5,6 +5,7 @@ import {
   forwardCmsEditorialEntryListRead,
   forwardCmsEditorialRevisionHistoryRead,
 } from '../../server/cms-editorial-platform-reads';
+import { forwardCmsWorkflowRead } from '../../server/cms-workflow-platform-reads';
 
 /**
  * The protected first-party reads a CMS editorial page performs, behind one
@@ -32,6 +33,15 @@ export interface CmsEditorialPageReads {
     entryId: string,
   ) => Promise<Response>;
   readonly entryList: (request: Request) => Promise<Response>;
+  /** CMS-03B-15: the workflow and preparation of an entry (`revisionId` is URL state). */
+  readonly workflow: (request: Request, entryId: string) => Promise<Response>;
+  /** CMS-03B-16: the review detail; the detail address accepts no query. */
+  readonly reviewDetail: (
+    request: Request,
+    reviewId: string,
+  ) => Promise<Response>;
+  /** CMS-03B-17: the reviewer queue with its typed query. */
+  readonly reviewQueue: (request: Request) => Promise<Response>;
 }
 
 /**
@@ -70,4 +80,18 @@ export const createCmsEditorialPageReads = (
   revisionHistory: (request, entryId) =>
     forwardCmsEditorialRevisionHistoryRead(request, binding, entryId),
   entryList: (request) => forwardCmsEditorialEntryListRead(request, binding),
+  workflow: (request, entryId) =>
+    forwardCmsWorkflowRead('CMS-03B-15', request, { entryId }, binding),
+  reviewDetail: (request, reviewId) =>
+    forwardCmsWorkflowRead(
+      'CMS-03B-16',
+      derivedRead(
+        request,
+        `/api/v1/cms/reviews/${encodeURIComponent(reviewId)}`,
+      ),
+      { reviewId },
+      binding,
+    ),
+  reviewQueue: (request) =>
+    forwardCmsWorkflowRead('CMS-03B-17', request, {}, binding),
 });

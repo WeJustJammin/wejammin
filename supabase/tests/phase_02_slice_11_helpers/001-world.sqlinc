@@ -1,0 +1,335 @@
+-- Slice 11 shared-helper world (lane S11-3s).  Include AFTER
+-- phase_02_slice_10_rpc/000-helpers.sqlinc, phase_02_slice_10_rpc/001-fixtures.sqlinc
+-- and phase_02_slice_11_helpers/000-helpers.sqlinc.
+--
+-- Builds, inside the caller's rolled-back transaction:
+--   * an ACTIVE content type `h11doc` created by the real cms_create_type_draft
+--     RPC, with one field of every kind the manifest, the reference counter and
+--     the preflight providers read (title, taxonomy, media, rich_text, object with
+--     a rich_text property, a no_fallback short_text and three content relations
+--     whose onUnavailable is omit / block / placeholder), activated with the
+--     REAL seeded editorial workflow policy (so the production evidence function
+--     cms_editorial_workflow_policy_evidence answers, never a stub);
+--   * pg_temp.h11w_* builders: ids from a tag, entries, revisions, field values,
+--     relations, composition instances, term assignments and locale variants.
+-- Everything is written under the CMS RPC context exactly as a named RPC would.
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table h11w_type_created on commit drop as
+select platform_api.cms_create_type_draft(
+  request || jsonb_build_object(
+    'typeKey', 'h11doc', 'label', 'H11 document',
+    'idempotencyKey', 'h11-type-create-0001',
+    'fields', jsonb_build_array(
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c31',
+        'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Title', 'order', 0), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c32',
+        'key', 'tags', 'kind', 'taxonomy', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Tags', 'order', 1), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c33',
+        'key', 'hero', 'kind', 'media', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Hero', 'order', 2), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c34',
+        'key', 'body', 'kind', 'rich_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Body', 'order', 3), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c35',
+        'key', 'meta', 'kind', 'object',
+        'constraints', '{"objectStructure":{"properties":[{"key":"label","kind":"scalar","required":false,"constraints":{}},{"key":"note","kind":"rich_text","required":false,"constraints":{}}]}}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Meta', 'order', 4), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c36',
+        'key', 'legal', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'no_fallback',
+        'editorConfig', jsonb_build_object('label', 'Legal', 'order', 5), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c37',
+        'key', 'rel_omit', 'kind', 'relation', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Related (omit)', 'order', 6), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c38',
+        'key', 'rel_block', 'kind', 'relation', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Related (block)', 'order', 7), 'lifecycle', 'active'),
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000c39',
+        'key', 'rel_placeholder', 'kind', 'relation', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Related (placeholder)', 'order', 8), 'lifecycle', 'active')
+    ),
+    'relations', jsonb_build_array(
+      jsonb_build_object('fieldId', 'a9200000-0000-4000-8000-000000000c37',
+        'targetKind', 'content', 'targetType', 'article', 'projectionKey', 'cms.article.card',
+        'cardinality', 'many', 'min', 0, 'max', 8, 'ordered', true, 'onUnavailable', 'omit'),
+      jsonb_build_object('fieldId', 'a9200000-0000-4000-8000-000000000c38',
+        'targetKind', 'content', 'targetType', 'article', 'projectionKey', 'cms.article.card',
+        'cardinality', 'many', 'min', 0, 'max', 8, 'ordered', true, 'onUnavailable', 'block'),
+      jsonb_build_object('fieldId', 'a9200000-0000-4000-8000-000000000c39',
+        'targetKind', 'content', 'targetType', 'article', 'projectionKey', 'cms.article.card',
+        'cardinality', 'many', 'min', 0, 'max', 8, 'ordered', true, 'onUnavailable', 'placeholder')
+    )
+  )
+) as response
+from s10_type_request;
+
+create temp table h11w_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from h11w_type_created
+union all select 'versionId', response->>'id' from h11w_type_created
+union all select 'artifactId', response->>'schemaArtifactId' from h11w_type_created
+union all select 'artifactHash', artifact.artifact_hash::text
+  from platform_private.cms_schema_artifacts artifact
+  join h11w_type_created created on artifact.id = (created.response->>'schemaArtifactId')::uuid;
+
+select ok(
+  (select count(*) = 4 from h11w_ids)
+    and (select count(*) = 9 from platform_private.cms_field_definition_versions field
+          where field.content_type_version_id = (select value::uuid from h11w_ids where key = 'versionId')),
+  'h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)'
+);
+
+-- Terminal active state bound to the REAL seeded editorial policy member.
+select set_config('app.cms_rpc', 'true', true);
+create temp table h11w_policy on commit drop as
+select platform_private.cms_workflow_policy_member('editorial', 1) as member;
+
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = (select member->>'key' from h11w_policy),
+    activation_workflow_policy_version = (select (member->>'version')::bigint from h11w_policy),
+    activation_workflow_policy_hash = (select member->>'policyHash' from h11w_policy),
+    activation_required_decision_count = (select (member->>'requiredDecisionCount')::integer from h11w_policy),
+    activation_required_capabilities = (select member->'requiredCapabilities' from h11w_policy),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from h11w_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from h11w_ids where key = 'typeId');
+
+select ok(
+  (select platform_private.cms_editorial_workflow_policy_evidence(
+            (select value::uuid from h11w_ids where key = 'versionId')) is not null),
+  'h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)'
+);
+
+-- ---------------------------------------------------------------------------
+-- Builders.  Ids are derived from a tag so a test reads like a story.
+-- ---------------------------------------------------------------------------
+create or replace function pg_temp.h11w_uuid(p_tag text)
+returns uuid
+language sql
+immutable
+as $body$
+  select ('a9200000-0000-4000-8000-' || substr(md5('h11w:' || p_tag), 1, 12))::uuid
+$body$;
+
+create or replace function pg_temp.h11w_org()
+returns uuid language sql stable as $body$
+  select value::uuid from s10_ids where key = 'organization'
+$body$;
+
+create or replace function pg_temp.h11w_person(p_key text)
+returns uuid language sql stable as $body$
+  select value::uuid from s10_ids where key = p_key
+$body$;
+
+create or replace function pg_temp.h11w_version()
+returns uuid language sql stable as $body$
+  select value::uuid from h11w_ids where key = 'versionId'
+$body$;
+
+-- stable field id of a world field by key
+create or replace function pg_temp.h11w_fid(p_key text)
+returns uuid language sql stable as $body$
+  select field.stable_field_id from platform_private.cms_field_definition_versions field
+  where field.content_type_version_id = pg_temp.h11w_version() and field.field_key = p_key
+$body$;
+
+-- version-row id of a world field definition by key
+create or replace function pg_temp.h11w_fdef(p_key text)
+returns uuid language sql stable as $body$
+  select field.id from platform_private.cms_field_definition_versions field
+  where field.content_type_version_id = pg_temp.h11w_version() and field.field_key = p_key
+$body$;
+
+-- Entry + one draft revision of the world type.  The revision is authored by
+-- p_author (a person key of s10_ids) at p_locale; the entry is active.  With
+-- p_entry_tag the revision is appended to that tag's existing entry as
+-- revision number p_number instead (a sibling revision, e.g. a locale variant).
+create or replace function pg_temp.h11w_revision(
+  p_tag text,
+  p_author text default 'creatorPerson',
+  p_locale text default 'en-US',
+  p_taxonomy_version_ids jsonb default '[]'::jsonb,
+  p_entry_tag text default null,
+  p_number bigint default 1,
+  p_template uuid default null
+)
+returns uuid
+language plpgsql
+as $body$
+declare
+  entry_uuid uuid := pg_temp.h11w_uuid(coalesce(p_entry_tag, p_tag) || ':entry');
+  revision_uuid uuid := pg_temp.h11w_uuid(p_tag || ':revision');
+  stamp timestamptz := timestamptz '2026-10-08T12:00:00Z';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  if p_entry_tag is null then
+    insert into platform_private.cms_content_entries(
+      id, owner_id, content_type_id, owner_party_id, lifecycle,
+      current_draft_revision_id, version, created_by, created_at, updated_at
+    ) values (
+      entry_uuid, pg_temp.h11w_org(), (select value::uuid from h11w_ids where key = 'typeId'),
+      pg_temp.h11w_org(), 'active', null, 1,
+      (select value::uuid from s10_ids where key = 'creatorAuth'), stamp, stamp
+    );
+  end if;
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id,
+    template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+    payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at
+  ) values (
+    revision_uuid, pg_temp.h11w_org(), entry_uuid, p_number, pg_temp.h11w_version(),
+    p_template, p_taxonomy_version_ids, '[]'::jsonb, p_locale,
+    encode(extensions.digest(convert_to('h11w:' || p_tag, 'utf8'), 'sha256'), 'hex'),
+    pg_temp.h11w_person(p_author), pg_temp.h11w_org(), 'draft', 1,
+    'valid', '{}'::jsonb, stamp, stamp
+  );
+  update platform_private.cms_content_entries
+     set current_draft_revision_id = revision_uuid
+   where id = entry_uuid;
+  return revision_uuid;
+end;
+$body$;
+
+-- One authored field value of a revision.
+create or replace function pg_temp.h11w_value(
+  p_revision uuid, p_field_key text, p_value jsonb, p_locale text default 'en-US'
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_field_values(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    locale, value, provenance, value_hash, created_at, updated_at
+  ) values (
+    pg_temp.h11w_org(), 'active', 1, p_revision, pg_temp.h11w_fid(p_field_key),
+    pg_temp.h11w_fdef(p_field_key), p_locale, p_value, 'authored',
+    platform_private.cms_jcs_sha256(p_value)::char(64),
+    timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z'
+  );
+end;
+$body$;
+
+-- One relation row of a revision to a target entry (content kind).
+create or replace function pg_temp.h11w_relation(
+  p_revision uuid, p_field_key text, p_target uuid, p_pin bigint, p_position integer default 0,
+  p_on_unavailable text default 'omit'
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_relations(
+    owner_id, state, version, revision_id, field_id, field_definition_id,
+    target_kind, target_id, expected_target_version, position, on_unavailable,
+    created_at, updated_at
+  ) values (
+    pg_temp.h11w_org(), 'active', 1, p_revision, pg_temp.h11w_fid(p_field_key),
+    pg_temp.h11w_fdef(p_field_key), 'content', p_target, p_pin, p_position,
+    p_on_unavailable, timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z'
+  );
+end;
+$body$;
+
+-- A rich_text.v1 document with one paragraph; p_link is a link jsonb or null.
+create or replace function pg_temp.h11w_rich(p_text text, p_link jsonb default null)
+returns jsonb
+language sql
+immutable
+as $body$
+  select jsonb_build_object(
+    'format', 'rich_text.v1',
+    'blocks', jsonb_build_array(jsonb_build_object(
+      'type', 'paragraph',
+      'spans', jsonb_build_array(
+        case when p_link is null
+          then jsonb_build_object('text', p_text, 'marks', '[]'::jsonb)
+          else jsonb_build_object('text', p_text, 'marks', '[]'::jsonb, 'link', p_link)
+        end
+      )
+    ))
+  )
+$body$;
+
+select ok(
+  pg_temp.h11w_fid('title') = 'a9200000-0000-4000-8000-000000000c31'::uuid
+    and pg_temp.h11w_fdef('body') is not null
+    and pg_temp.h11w_revision('smoke') = pg_temp.h11w_uuid('smoke:revision'),
+  'h11 world: the builders resolve stable field ids and create an entry with a draft revision'
+);
+
+-- A composition instance of a revision (p_pattern: names the world pattern pg_temp.h11w_uuid('pattern') v1).
+create or replace function pg_temp.h11w_instance(
+  p_tag text, p_revision uuid, p_path text, p_pattern boolean,
+  p_state text default 'draft', p_block_key text default 'profile.header'
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_composition_instances(
+    id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version,
+    pattern_id, pattern_version, block_registry_digest, link_mode, created_by
+  ) values (
+    pg_temp.h11w_uuid(p_tag), pg_temp.h11w_org(), p_state, 1, p_revision, p_path, 'primary',
+    p_block_key, 1,
+    case when p_pattern then pg_temp.h11w_uuid('pattern') end,
+    case when p_pattern then 1 end,
+    repeat('a', 64), case when p_pattern then 'linked' else 'detached' end,
+    (select value::uuid from s10_ids where key = 'creatorAuth')
+  );
+end;
+$body$;
+
+
+-- One TermAssignment of a revision to a world term (tax1 vocabulary).
+create or replace function pg_temp.h11w_assignment(
+  p_tag text, p_revision uuid, p_term text, p_state text default 'active', p_position integer default 0
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_term_assignments(
+    id, owner_id, state, version, revision_id, field_definition_id,
+    term_id, taxonomy_version_id, position, provenance, created_by
+  ) values (
+    pg_temp.h11w_uuid(p_tag), pg_temp.h11w_org(), p_state, 1, p_revision, pg_temp.h11w_fdef('tags'),
+    pg_temp.h11w_uuid(p_term), pg_temp.h11w_uuid('tax1'), p_position, 'authored',
+    (select value::uuid from s10_ids where key = 'creatorAuth')
+  );
+end;
+$body$;
+

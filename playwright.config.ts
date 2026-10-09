@@ -61,6 +61,7 @@ export default defineConfig({
     'phase-02-slice-10-keyboard-real-route.spec.ts',
     'phase-02-slice-10-rich-text-toolbar-real-route.spec.ts',
     'phase-02-slice-10-surfaces-real-route.spec.ts',
+    'phase-02-slice-11-workflow-real-route.spec.ts',
     'phase-02-slice-12-template-real-route.spec.ts',
     'phase-02-slice-12-template-uncertain-real-route.spec.ts',
     'phase-02-slice-12-locale-real-route.spec.ts',

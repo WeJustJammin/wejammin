@@ -11,6 +11,7 @@ Safe operational endpoint, job/outbox reconciliation, retention, and SLO procedu
 - [Initial CMS owner](./initial-cms-owner.md) — initialize the sole approved staging owner once through the audited operator-only boundary.
 - [Sole administrator MFA lockout](./sole-admin-mfa-lockout.md) — recover the only administrator's authenticators through the Supabase dashboard with an audit note.
 - [CMS editorial entry authoring](./cms-editorial.md) — triage typed refusals, provision and rotate the signed-cursor Vault key, reconcile lost responses by idempotency key, and handle presence-sweep and restore-chain failures for the nine Slice 10 operations.
+- [CMS editorial publication](./cms-publication.md) — the Slice 11 review, scheduling, preview and publication operations: limits and deadlines, the closed typed-refusal catalog, the internal preview-token verifier and schedule executor, the pinned tz release, metrics and alerts.
 
 ## Ownership
 

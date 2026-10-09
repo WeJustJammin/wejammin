@@ -22,6 +22,33 @@ import {
   AuthoringContextApiRequestSchema,
   AuthoringContextResourceSchema,
 } from './cms-editorial/authoring-context.ts';
+import {
+  EditorialDecisionApiRequestSchema,
+  PreviewApiRequestSchema,
+  PublicationApiRequestSchema,
+  PublicationScheduleApiRequestSchema,
+  ReviewSubmissionApiRequestSchema,
+} from './cms-editorial/workflow-requests.ts';
+import {
+  PreviewTokenResourceSchema,
+  PublicationResourceSchema,
+  PublicationScheduleResourceSchema,
+} from './cms-editorial/publication-resources.ts';
+import { EditorialReviewResourceSchema } from './cms-editorial/review-resources.ts';
+import {
+  EntryWorkflowApiRequestSchema,
+  EntryWorkflowResourceSchema,
+} from './cms-editorial/workflow-read.ts';
+import {
+  EditorialReviewDetailApiRequestSchema,
+  EditorialReviewDetailResourceSchema,
+  ReviewQueueApiRequestSchema,
+  ReviewQueuePageSchema,
+} from './cms-editorial/review-read.ts';
+import {
+  EditorialReviewAssignmentApiRequestSchema,
+  EditorialReviewAssignmentResourceSchema,
+} from './cms-editorial/review-assignment.ts';
 import { ConflictResolutionApiRequestSchema } from './cms-editorial/conflict-resolution.ts';
 import { EntryRevisionApiRequestSchema } from './cms-editorial/requests.ts';
 import {
@@ -219,6 +246,23 @@ const schemaContracts = {
   EntryListPageSchema,
   AuthoringContextApiRequestSchema,
   AuthoringContextResourceSchema,
+  ReviewSubmissionApiRequestSchema,
+  EditorialDecisionApiRequestSchema,
+  PublicationScheduleApiRequestSchema,
+  PreviewApiRequestSchema,
+  PublicationApiRequestSchema,
+  EntryWorkflowApiRequestSchema,
+  EditorialReviewDetailApiRequestSchema,
+  ReviewQueueApiRequestSchema,
+  EditorialReviewAssignmentApiRequestSchema,
+  EditorialReviewResourceSchema,
+  PublicationScheduleResourceSchema,
+  PreviewTokenResourceSchema,
+  PublicationResourceSchema,
+  EntryWorkflowResourceSchema,
+  EditorialReviewDetailResourceSchema,
+  ReviewQueuePageSchema,
+  EditorialReviewAssignmentResourceSchema,
   HealthResponseSchema,
   JobIdPathSchema,
   JobStatusSchema,
@@ -350,6 +394,15 @@ const schemaIo = {
   ConflictDetailApiRequestSchema: 'input',
   EntryListApiRequestSchema: 'input',
   AuthoringContextApiRequestSchema: 'input',
+  ReviewSubmissionApiRequestSchema: 'input',
+  EditorialDecisionApiRequestSchema: 'input',
+  PublicationScheduleApiRequestSchema: 'input',
+  PreviewApiRequestSchema: 'input',
+  PublicationApiRequestSchema: 'input',
+  EntryWorkflowApiRequestSchema: 'input',
+  EditorialReviewDetailApiRequestSchema: 'input',
+  ReviewQueueApiRequestSchema: 'input',
+  EditorialReviewAssignmentApiRequestSchema: 'input',
   ConflictResolutionApiRequestSchema: 'input',
   EntryRevisionApiRequestSchema: 'input',
   RevisionHistoryApiRequestSchema: 'input',

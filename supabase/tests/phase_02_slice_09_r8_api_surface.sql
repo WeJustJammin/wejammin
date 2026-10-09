@@ -35,6 +35,16 @@ select no_plan();
 -- so neither has an API wrapper. Each is Worker-bound (the Worker is the
 -- only browser-facing boundary caller) and service-role only by migration
 -- grant.
+-- Slice 11 adds thirteen service-role-only editorial workflow RPCs to the supporting
+-- set (BE03b CMS-03B-05..09 and the safe reads, DEC-149): review assignment, decision
+-- and submission (cms_assign_editorial_reviewer, cms_record_review_decision,
+-- cms_submit_review); schedule, publish, claim and execute (cms_schedule_publication,
+-- cms_publish_revision, cms_claim_due_publication_schedules,
+-- cms_execute_publication_schedule); preview mint and verification (cms_mint_preview,
+-- cms_verify_preview_token); and the review, workflow and quality-gate reads
+-- (cms_get_editorial_review, cms_list_editorial_reviews, cms_get_entry_workflow,
+-- cms_load_quality_gate_input).  Every one is a Worker-called command or read, so none
+-- is internal, and each is granted to service_role only.
 
 create temp table r8a_original(fn text primary key, human boolean) on commit drop;
 insert into r8a_original values
@@ -92,7 +102,24 @@ insert into r8a_supporting values
   ('cms_template_context'),
   ('cms_template_latest'),
   ('cms_verify_operational_alert_delivery'),
-  ('cms_verify_schema_migration');
+  ('cms_verify_schema_migration'),
+  -- Slice 11 (DEC-149, BE03b CMS-03B-05..09): review authority commands
+  ('cms_assign_editorial_reviewer'),
+  ('cms_record_review_decision'),
+  ('cms_submit_review'),
+  -- Slice 11: publication commands
+  ('cms_schedule_publication'),
+  ('cms_publish_revision'),
+  ('cms_claim_due_publication_schedules'),
+  ('cms_execute_publication_schedule'),
+  -- Slice 11: preview commands
+  ('cms_mint_preview'),
+  ('cms_verify_preview_token'),
+  -- Slice 11: editorial reads
+  ('cms_get_editorial_review'),
+  ('cms_list_editorial_reviews'),
+  ('cms_get_entry_workflow'),
+  ('cms_load_quality_gate_input');
 
 create temp table r8a_internal(fn text primary key) on commit drop;
 insert into r8a_internal values
@@ -160,7 +187,7 @@ select is((select count(distinct p.proname)::integer
      where p.pronamespace = 'platform_api'::regnamespace and p.proname like 'cms\_%'
        and (has_function_privilege('service_role', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   (select count(*)::integer from (select fn from r8a_original union all select fn from r8a_amendment union all select fn from r8a_supporting) e),
-  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 38 [P2-S09-AC-180]');
+  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 51 [P2-S09-AC-180]');
 
 select * from finish();
 rollback;

@@ -12,7 +12,10 @@ returns text[]
 language sql
 stable
 as $body$
-  select coalesce(array_agg(m.arr[1] order by m.arr[1]), array[]::text[])
+  -- DISTINCT: a later forward migration may add a second CHECK that mentions the
+  -- same column (for example a state/timestamp consistency rule), which repeats
+  -- labels already in the closed union without widening it.
+  select coalesce(array_agg(distinct m.arr[1] order by m.arr[1]), array[]::text[])
   from pg_constraint c
   cross join lateral regexp_matches(
     pg_get_constraintdef(c.oid), '''([^'']+)''', 'g'

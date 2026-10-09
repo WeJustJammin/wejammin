@@ -5,7 +5,9 @@
 select ok(
   pg_temp.s10r_closed_check_labels(
     'platform_private.cms_preview_tokens', 'state'
-  ) = array['active','expired','revoked']::text[]
+  -- Slice 11 (BE03b PreviewToken): `expired` is derived from expires_at and never
+  -- stored, so the stored union is active | revoked.
+  ) = array['active','revoked']::text[]
     and pg_temp.s10r_has_default(
       'platform_private.cms_preview_tokens', 'version'
     )

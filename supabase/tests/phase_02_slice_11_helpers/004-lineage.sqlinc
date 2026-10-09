@@ -1,0 +1,91 @@
+-- Slice 11 publication-lineage builders (helpers lane S11-3s; the S11-SR split of
+-- phase_02_slice_11_helpers_lineage.sql).  Include AFTER the Slice 11 data-model prelude
+-- (phase_02_slice_11_schema/000-helpers, 001-fixture, 002-row-builders),
+-- phase_02_slice_11_helpers/000-helpers, 001-world and 002-reviews, and after
+-- pg_temp.h11r_member('reviewer01', ...) so the approved reviews qualify:
+--   pg_temp.h11l_manifest / h11l_dep / h11l_vs (tag)       manifest, dependency hash, version set of a revision
+--   pg_temp.h11l_review(tag, entry_tag, reviewer)          an approved review whose dependency hash is its own
+--   pg_temp.h11l_publish / h11l_tombstone                  request builders for cms_append_publication_lineage
+--   pg_temp.h11l_append(request)                           the call, answering the resource or { error }
+--   pg_temp.h11l_rows(entry_tag, audience)                 'version:action:state:S|-' of a lineage
+
+-- Revisions R1, R2, R3 of one entry (en-US), each with an approved review whose
+-- dependency hash is the hash of its own manifest.  Appending R2 invalidates R1's
+-- (now irrelevant) review through the revision-superseded producer, so the reviews
+-- are created in the order the publications are made.
+create or replace function pg_temp.h11l_manifest(p_tag text)
+returns jsonb language sql as $body$
+  select platform_private.cms_build_dependency_manifest(pg_temp.h11w_uuid(p_tag || ':revision'))
+$body$;
+create or replace function pg_temp.h11l_dep(p_tag text)
+returns text language sql as $body$
+  select platform_private.cms_jcs_sha256(pg_temp.h11l_manifest(p_tag))
+$body$;
+create or replace function pg_temp.h11l_vs(p_tag text)
+returns jsonb language sql as $body$
+  select platform_private.cms_revision_version_set(pg_temp.h11w_uuid(p_tag || ':revision'), pg_temp.h11l_manifest(p_tag))
+$body$;
+create or replace function pg_temp.h11l_review(p_tag text, p_entry_tag text default null, p_reviewer text default 'reviewer01')
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.h11r_approved('rv-' || p_tag, pg_temp.h11w_uuid(p_tag || ':revision'), pg_temp.h11w_uuid(coalesce(p_entry_tag, p_tag) || ':entry'), p_reviewer,
+    jsonb_build_object('dependency_hash', pg_temp.h11l_dep(p_tag)));
+end;
+$body$;
+
+create or replace function pg_temp.h11i_review_state(p_review text)
+returns text language sql as $body$
+  select state || '/' || coalesce(invalidated_reason, '-') from platform_private.cms_editorial_reviews where id = pg_temp.s11_id(p_review)
+$body$;
+
+-- request builders ---------------------------------------------------------------
+create or replace function pg_temp.h11l_publish(
+  p_tag text, p_audience text default 'public', p_overrides jsonb default '{}'::jsonb,
+  p_entry_tag text default null, p_publisher text default 'reviewer04'
+)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'entryId', pg_temp.h11w_uuid(coalesce(p_entry_tag, p_tag) || ':entry'),
+    'revisionId', pg_temp.h11w_uuid(p_tag || ':revision'),
+    'locale', 'en-US', 'audience', p_audience, 'action', 'publish',
+    'publisherPersonId', pg_temp.s11_id(p_publisher),
+    'versionSet', pg_temp.h11l_vs(p_tag), 'dependencyHash', pg_temp.h11l_dep(p_tag),
+    'activationEvidenceHash', repeat('b', 64),
+    'correlationId', 'a9200000-0000-4000-8000-0000000000c2'
+  ) || p_overrides
+$body$;
+create or replace function pg_temp.h11l_tombstone(
+  p_entry_tag text, p_action text, p_audience text default 'public', p_overrides jsonb default '{}'::jsonb
+)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'entryId', pg_temp.h11w_uuid(p_entry_tag || ':entry'), 'locale', 'en-US', 'audience', p_audience,
+    'action', p_action, 'publisherPersonId', pg_temp.s11_id('reviewer04'),
+    'correlationId', 'a9200000-0000-4000-8000-0000000000c3'
+  ) || p_overrides
+$body$;
+create or replace function pg_temp.h11l_append(p_request jsonb)
+returns jsonb
+language plpgsql
+as $body$
+begin
+  return platform_private.cms_append_publication_lineage(p_request);
+exception when others then
+  return jsonb_build_object('error', sqlstate || ':' || sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.h11l_rows(p_entry_tag text, p_audience text default 'public')
+returns text
+language sql
+as $body$
+  select coalesce(string_agg(version::text || ':' || action || ':' || state || ':' ||
+           (case when supersedes_id is null then '-' else 'S' end), ',' order by version), '')
+    from platform_private.cms_publication_versions
+   where entry_id = pg_temp.h11w_uuid(p_entry_tag || ':entry') and audience = p_audience
+$body$;

@@ -35,6 +35,55 @@ bytes>"`. The response bytes are `JSON.stringify` of the strict parsed
 resource, with no actor or acting-party preimage, so a first-party proxy can
 recompute the validator from the body without private scope inputs.
 
+## Slice 11: review, schedule, preview and publication
+
+Slice 11 adds nine browser operations, all driven by one admission kit instead of
+nine copies. `workflow-command.ts` is the shared pipeline of a command (BE00
+order: origin, media and size, CSRF, body, session, strict query/path/body,
+capability gate, step-up, quota, Idempotency-Key and strong If-Match, optional
+pre-RPC stage, port, response invariants) and `workflow-read.ts` that of a safe
+read. Every operation module supplies only what differs and takes its method,
+path, statuses, rate class, deadline, tier, validators and step-up from the
+registry row (`policyFor`), never from a literal:
+
+| Operation                  | Module                        | Port                      | Pre-RPC stage                                      |
+| -------------------------- | ----------------------------- | ------------------------- | -------------------------------------------------- |
+| CMS-03B-05 submit review   | `review-submit-routes.ts`     | `submitReview`            | accessibility proof (submit)                       |
+| CMS-03B-06 record decision | `review-decision-routes.ts`   | `recordDecision`          | none; step-up                                      |
+| CMS-03B-07 schedule        | `schedule-routes.ts`          | `schedulePublication`     | time authority (E8) then proof (schedule); step-up |
+| CMS-03B-08 mint preview    | `preview-routes.ts`           | `mintPreview`             | none                                               |
+| CMS-03B-09 publish         | `publication-routes.ts`       | `publishRevision`         | accessibility proof (publish); step-up             |
+| CMS-03B-15 workflow read   | `workflow-read-routes.ts`     | `getEntryWorkflow`        | accessibility proof (workflow_read)                |
+| CMS-03B-16 review detail   | `review-detail-routes.ts`     | `getEditorialReview`      | none                                               |
+| CMS-03B-17 reviewer queue  | `review-queue-routes.ts`      | `listEditorialReviews`    | none                                               |
+| CMS-03B-18 assign / revoke | `review-assignment-routes.ts` | `assignEditorialReviewer` | none; step-up                                      |
+
+Rules a new Slice 11 operation follows:
+
+- A `gate: 'capability'` row gets the coarse capability check (403
+  `capability_missing`); an `rpc_scope` row has none because the RPC resolves
+  the full scope and answers 403/404 itself. A `stepUp: 'required'` row answers a
+  stale MFA proof 401 `STEP_UP_REQUIRED` before the quota, the idempotency
+  reservation and any domain read.
+- `workflow-errors.ts` is the only error boundary of these rows: a status the row
+  does not declare is a scrubbed 500, a reason token must be in the row's
+  `reasonCodes` with its status, and structured detail members (preflight
+  entries, alternatives, dependency hash, safe versions) are rebuilt from the
+  contract's strict detail schemas. CORS and CSRF refusals are middleware and
+  publish the BE00 403 on every row.
+- `workflow-time-authority.ts` verifies the committed tz snapshot at module load;
+  a failed check answers every schedule command 503. `a11y-structural/` is the
+  pure accessibility checker (Slice 16 reuses it unchanged); the route layer only
+  asks the injected `qualityGate` for a `PreflightEvidence | null`.
+- CMS-03B-19 (preview verifier) and CMS-03B-20 (schedule sweep) are internal RPCs
+  and have no route here: see `cms-editorial-production-preview-verifier.ts` and
+  `cms-publication-schedule-sweep.ts`; `cms-editorial-principals.test.ts` pins
+  who may import them.
+- Tests: `workflow-command-admission.test.ts` and `workflow-read-routes.test.ts`
+  drive every operation through the whole admission order from the fixtures in
+  `workflow-fixtures.test-support.ts` and `workflow-harness.test-support.ts`; add
+  a `commandCases` / `readCases` row for a new operation.
+
 ## Ownership
 
 This directory owns HTTP admission and response policy only. The production

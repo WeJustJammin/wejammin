@@ -34,9 +34,15 @@ select ok(
     and pg_temp.s10r_has_check(
       'platform_private.cms_editorial_decisions', 'updated_at = created_at'
     )
+    -- Slice 11 (DEC-158a, BE03b amended 2026-10-08): the reason bound is Unicode
+    -- code points, 1 to 2000, not octets.
     and pg_temp.s10r_has_check(
       'platform_private.cms_editorial_decisions',
-      'octet_length(reason) >= 1'
+      'char_length(reason) >= 1'
+    )
+    and pg_temp.s10r_has_check(
+      'platform_private.cms_editorial_decisions',
+      'char_length(reason) <= 2000'
     )
     and pg_temp.s10r_has_check(
       'platform_private.cms_editorial_decisions',
@@ -94,7 +100,8 @@ select ok(
 
 select ok(
   pg_temp.s10r_unique_target('platform_private.cms_publication_schedules')
-    @> array['entry_id,revision_id,action,local_datetime,timezone']::text[]
+    -- Slice 11 (BE03b E9): the lineage audience is part of the duplicate key.
+    @> array['entry_id,revision_id,action,local_datetime,timezone,audience']::text[]
     and pg_temp.s10r_has_check(
       'platform_private.cms_publication_schedules', 'expected_version > 0'
     )
@@ -105,13 +112,25 @@ select ok(
       'platform_private.cms_publication_schedules',
       'octet_length(tzdb_version) >= 1'
     ),
-  'schedule identity is unique and its version and tz evidence are bounded'
+  'schedule identity is unique per audience and its version and tz evidence are bounded'
 );
 
 select ok(
-  pg_temp.s10r_closed_check_labels(
-    'platform_private.cms_publication_versions', 'state'
-  ) = array['active','pending','revoked','superseded']::text[]
+  -- Slice 11 (BE03b E3): superseded is derived for a non-head publish row and
+  -- pending is not a physical state, so the stored union is active | revoked.
+  -- (The label inspector unions every literal of every CHECK that names the
+  -- column, which now includes the action/state consistency rule, so the union
+  -- is pinned on the state CHECK itself.)
+  pg_temp.s10r_has_check(
+    'platform_private.cms_publication_versions',
+    'state = ANY (ARRAY[''active''::text, ''revoked''::text])'
+  )
+    and not pg_temp.s10r_has_check(
+      'platform_private.cms_publication_versions', 'superseded'
+    )
+    and not pg_temp.s10r_has_check(
+      'platform_private.cms_publication_versions', 'pending'
+    )
     and pg_temp.s10r_has_default(
       'platform_private.cms_publication_versions', 'version'
     )
@@ -143,20 +162,21 @@ select ok(
 );
 
 select ok(
-  pg_temp.s10r_has_partial_index(
-    'platform_private.cms_publication_versions',
-    'cms_publication_versions_active_identity_unique',
-    array['(entry_id, locale, audience)', 'active']
-  )
+  -- Slice 11 (BE03b E3): the one-active partial index is replaced by the
+  -- append-only lineage key; a prior head stays active physically and at most one
+  -- head per lineage follows from UNIQUE (entry, locale, audience, version).
+  to_regclass('platform_private.cms_publication_versions_active_identity_unique') is null
+    and pg_temp.s10r_unique_target('platform_private.cms_publication_versions')
+      @> array['entry_id,locale,audience,version', 'publication_id,version']::text[]
     and pg_temp.s10r_has_index(
       'platform_private.cms_publication_versions',
-      'cms_publication_versions_entry_locale_audience_state_idx',
-      array['(entry_id, locale, audience, state)']
+      'cms_publication_versions_lineage_head_idx',
+      array['(entry_id, locale, audience, version DESC)']
     )
     and pg_temp.s10r_has_index(
       'platform_private.cms_publication_versions',
       'cms_publication_versions_revision_idx',
       array['(revision_id)']
     ),
-  'only one active publication per entry, locale and audience'
+  'publication lineage rows are unique per entry, locale, audience and version (the one-active partial index is replaced)'
 );

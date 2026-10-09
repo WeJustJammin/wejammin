@@ -108,11 +108,17 @@ select ok(
   'P2-S10-AC-050 ContentEntry lifecycle is the closed IA envelope union'
 );
 
+-- BE03b E2 (Slice 11, migration 20261005018090): the stored revision is an immutable
+-- snapshot, so its physical state is the constant `draft`; the six-label
+-- EntryRevisionState union (draft, submitted, approved, rejected, scheduled, published)
+-- is DERIVED by platform_private.cms_revision_effective_state and is pinned by
+-- phase_02_slice_11_e2_*.sql.  The union this assertion used to pin is now the derived
+-- output set, so the stored column is closed to the one label.
 select ok(
   pg_temp.s10_closed_check_labels(
     'platform_private.cms_entry_revisions', 'state'
-  ) = array['approved','draft','published','rejected','scheduled','submitted']::text[],
-  'P2-S10-AC-001 EntryRevision state is the closed workflow union'
+  ) = array['draft']::text[],
+  'P2-S10-AC-001 EntryRevision physical state is the closed constant draft (the workflow union is derived, E2)'
 );
 
 select ok(

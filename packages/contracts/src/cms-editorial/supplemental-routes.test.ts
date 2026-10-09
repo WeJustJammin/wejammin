@@ -81,12 +81,12 @@ const forbiddenOwnership = [
 
 describe('supplemental cms editorial route registry', () => {
   it('registers exactly the nine locked operations in order', () => {
+    // Slice 11 (DEC-148) appends its nine operations after these nine rows;
+    // routes-slice11.test.ts asserts the full eighteen-row registry.
     expect(
-      cmsEditorialRoutePolicies.map(({ operationId, method, path }) => [
-        operationId,
-        method,
-        path,
-      ]),
+      cmsEditorialRoutePolicies
+        .slice(0, expectedOrder.length)
+        .map(({ operationId, method, path }) => [operationId, method, path]),
     ).toEqual(expectedOrder);
   });
 

@@ -14,6 +14,7 @@ import {
   safeDetails,
 } from './route-error-details';
 import type { CmsEditorialDependencies, CmsEditorialError } from './types';
+import { isWorkflowPolicy, normalizedWorkflowError } from './workflow-errors';
 
 /**
  * Error envelopes for the CMS editorial routes: the safe-read boundary shared by
@@ -161,6 +162,19 @@ const normalizedReadError = (
 };
 
 /**
+ * The per-row boundary: a Slice 11 row publishes through the workflow boundary
+ * (typed reasons, step-up, preflight outage); every Slice 10 row keeps the safe
+ * read projection.
+ */
+const policyError = (
+  error: CmsEditorialError,
+  routePolicy: CmsEditorialRoutePolicy,
+): CmsEditorialError =>
+  isWorkflowPolicy(routePolicy)
+    ? normalizedWorkflowError(error, routePolicy)
+    : normalizedReadError(error, routePolicy);
+
+/**
  * CMS-03B-12/13/14 share this read-error envelope: the canonical route message
  * replaces the dependency text and every status runs through the allowlist, so
  * a concealed 404 keeps empty details while a visible 403 keeps its bounded
@@ -171,7 +185,7 @@ export const sanitizeReadError = (
   routePolicy?: CmsEditorialRoutePolicy,
 ): CmsEditorialError =>
   routePolicy
-    ? normalizedReadError(error, routePolicy)
+    ? policyError(error, routePolicy)
     : {
         ...error,
         message:
@@ -207,9 +221,7 @@ export const publishedError = (
   failure: CmsEditorialError,
   routePolicy?: CmsEditorialRoutePolicy,
 ): CmsEditorialError =>
-  routePolicy
-    ? normalizedReadError(failure, routePolicy)
-    : normalizedError(failure);
+  routePolicy ? policyError(failure, routePolicy) : normalizedError(failure);
 
 export const errorResponse = (
   request: Request,
@@ -232,7 +244,12 @@ export const errorResponse = (
       'retry-after',
       String(clampRetryAfterSeconds(error.retryAfterSeconds)),
     );
-  const publishedDetails = safeDetails(error);
+  // A Slice 11 error is already the final projection: its structured members
+  // (preflight entries, alternatives, permitted MFA methods) are not scalars.
+  const publishedDetails =
+    routePolicy !== undefined && isWorkflowPolicy(routePolicy)
+      ? (error.details as Readonly<Record<string, unknown>>)
+      : safeDetails(error);
   additionalHeaders?.forEach((value, name) => headers.set(name, value));
   if (error.status === 429) {
     if (typeof publishedDetails.limit === 'number')

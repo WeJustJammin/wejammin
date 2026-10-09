@@ -19,6 +19,7 @@ select ok(
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir phase_02_slice_11_e2/000-derived-evidence.sqlinc
 
 select set_config('app.cms_rpc', 'true', true);
 
@@ -68,7 +69,9 @@ select is(
 );
 
 -- CMSCOMP-DRAFT-TARGET: seed a non-draft (submitted) revision in the same
--- entry/owner, mirroring the terminal-state fixture approach used elsewhere.
+-- entry/owner.  The physical revision state is the constant `draft` (BE03b E2), so
+-- `submitted` is the DERIVED state: the revision is stored as `draft` and carries an
+-- open review (the evidence cms_revision_effective_state reads).
 insert into platform_private.cms_entry_revisions(
   id, owner_id, entry_id, revision_number, schema_version_id,
   template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
@@ -78,10 +81,11 @@ insert into platform_private.cms_entry_revisions(
 select 'a9150000-0000-4000-8000-000000000020', owner_id, entry_id, 2,
        schema_version_id, template_version_id, taxonomy_version_ids,
        '[]'::jsonb, locale, payload_hash, author_person_id, acting_party_id,
-       'submitted', version, validation_state, validation_report,
+       'draft', version, validation_state, validation_report,
        created_at, updated_at
   from platform_private.cms_entry_revisions
  where id = (select value::uuid from s10_ids where key = 'entryRevisionId');
+select pg_temp.e2_evidence('a9150000-0000-4000-8000-000000000020', 'submitted');
 
 select throws_ok(
   $$insert into platform_private.cms_composition_instances(

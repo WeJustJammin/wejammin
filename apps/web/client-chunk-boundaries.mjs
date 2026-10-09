@@ -32,6 +32,30 @@ export const CLIENT_RULE_CONTRACT_MODULES = Object.freeze([
 ]);
 
 /**
+ * The pinned tz snapshot of the CMS Time authority (BE03b E8, about 218 KB or
+ * 26 KB gzip) and the modules only its subpath reaches. The schedule form
+ * imports `@wejammin/contracts/time-authority` dynamically when it opens, so
+ * these modules own a lazy chunk instead of the eager `contracts` chunk every
+ * protected island loads. The resolver, the pin and the calendar rules are
+ * exported from the main barrel and therefore stay eager.
+ * `client-chunk-time-authority.test.ts` proves this list is exactly the closure
+ * only the subpath reaches.
+ */
+export const TIME_AUTHORITY_LAZY_CONTRACT_MODULES = Object.freeze([
+  '/packages/contracts/src/cms-editorial/time-authority/index.ts',
+  '/packages/contracts/src/cms-editorial/time-authority/time-authority.ts',
+  '/packages/contracts/src/cms-editorial/time-authority/tzdb-snapshot-data.ts',
+  '/packages/contracts/src/cms-editorial/time-authority/tzdb-snapshot.ts',
+]);
+
+/**
+ * @param {string} id
+ * @returns {boolean}
+ */
+export const isTimeAuthorityLazyModule = (id) =>
+  TIME_AUTHORITY_LAZY_CONTRACT_MODULES.some((module) => id.endsWith(module));
+
+/**
  * @param {string} id
  * @returns {boolean}
  */
@@ -51,6 +75,7 @@ export const isClientSafeContractModule = (id) =>
  */
 export const clientChunkFor = (id) => {
   if (id.includes('/node_modules/zod/')) return 'zod';
+  if (isTimeAuthorityLazyModule(id)) return 'contracts-time-authority';
   if (id.includes('/packages/contracts/src/')) return 'contracts';
   return undefined;
 };

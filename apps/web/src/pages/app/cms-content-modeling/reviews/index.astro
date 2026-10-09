@@ -1,0 +1,52 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadReviewQueuePage } from '../../../../components/cms-editorial-pages/load-review-queue-page';
+import CmsEditorialReviewQueue from '../../../../components/cms-editorial-workflow/CmsEditorialReviewQueue';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Protected reviewer queue for CMS-03B-17. All behavior lives in the tested
+ * loader and view: the URL owns the scope, state filter, limit and signed
+ * cursor, the loader verifies the strict page and returns one view, one closed
+ * state, or a sign-in redirect, and the view renders native links with the
+ * review state, risk class, decision counts and the caller's own decision as
+ * text. No mutation exists on this surface and no row is cached offline.
+ */
+const outcome = await loadReviewQueuePage({
+  request: Astro.request,
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Find the reviews assigned to you or submitted by you."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <CmsEditorialReviewQueue
+        page={outcome.view.page}
+        routePath={outcome.view.routePath}
+        query={outcome.view.query}
+        announcement={outcome.view.announcement}
+      />
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

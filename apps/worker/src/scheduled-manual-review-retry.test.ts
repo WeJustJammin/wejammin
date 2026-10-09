@@ -4,6 +4,7 @@ const schedulerMocks = vi.hoisted(() => ({
   createProductionAsyncEntrypoint: vi.fn(),
   outbox: vi.fn(),
   runProductionCmsEditPresenceSweep: vi.fn(),
+  runProductionCmsPublicationScheduleSweep: vi.fn(),
   runProductionCmsReviewAuthoritySweep: vi.fn(),
   runProductionIdempotencyExpirySweep: vi.fn(),
   runProductionOperationalAlerts: vi.fn(),
@@ -17,6 +18,13 @@ vi.mock('./production-async-entrypoint', () => ({
 vi.mock('./production-cms-edit-presence-sweep', () => ({
   runProductionCmsEditPresenceSweep:
     schedulerMocks.runProductionCmsEditPresenceSweep,
+}));
+// Slice 11 harness cascade (CMS-03B-20): the publication schedule sweep is one
+// more scheduled job, mocked like its siblings so these policy tests stay about
+// the retry policy; its own behaviour is pinned in cms-publication-schedule-sweep*.
+vi.mock('./cms-publication-schedule-sweep', () => ({
+  runProductionCmsPublicationScheduleSweep:
+    schedulerMocks.runProductionCmsPublicationScheduleSweep,
 }));
 vi.mock('./production-cms-review-authority-sweep', () => ({
   runProductionCmsReviewAuthoritySweep:
@@ -49,6 +57,9 @@ beforeEach(() => {
     undefined,
   );
   schedulerMocks.runProductionCmsEditPresenceSweep.mockResolvedValue(undefined);
+  schedulerMocks.runProductionCmsPublicationScheduleSweep.mockResolvedValue(
+    undefined,
+  );
   schedulerMocks.runProductionOperationalAlerts.mockResolvedValue(undefined);
 });
 

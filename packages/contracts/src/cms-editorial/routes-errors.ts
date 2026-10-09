@@ -154,3 +154,65 @@ export const editorialAuthoringContextErrors = {
   GATEWAY_TIMEOUT: 504,
   INTERNAL_ERROR: 500,
 } as const;
+
+/** CMS-03B-05 and CMS-03B-08 command envelope (no step-up). */
+export const editorialReviewCommandErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;
+
+/** CMS-03B-06, -07, -09 and -18 envelope: the command codes plus step-up (E6). */
+export const editorialStepUpCommandErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  STEP_UP_REQUIRED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;
+
+/** CMS-03B-15 and CMS-03B-16 bounded read envelope: no CONFLICT, 415 kept. */
+export const editorialWorkflowReadErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;
+
+/** CMS-03B-17 scoped-list envelope: no 403 or 404, the DEC-140 cursor 409 kept. */
+export const editorialReviewQueueErrors = {
+  INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  CONFLICT: 409,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  VALIDATION_FAILED: 422,
+  RATE_LIMITED: 429,
+  BAD_GATEWAY: 502,
+  DEPENDENCY_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_ERROR: 500,
+} as const;

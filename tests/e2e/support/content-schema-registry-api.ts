@@ -25,10 +25,8 @@ import {
 import { revokeLaneSession } from './s09-lane-auth';
 import { createCmsTemplateFixture } from './cms-template-fixture';
 import { createCmsLocaleFixture } from './cms-locale-fixture';
-import {
-  createS10RealCmsEditorial,
-  type S10RealBindings,
-} from './s10-real-editorial';
+import type { S10RealBindings } from './s10-real-editorial';
+import { createS11RealCmsEditorial } from './s11-real-editorial';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';
@@ -350,7 +348,7 @@ const appFor = (env: unknown): ReturnType<typeof createWorkerApp> => {
   const editorial =
     bindings.SUPABASE_URL !== undefined &&
     bindings.SUPABASE_SECRET_KEY !== undefined
-      ? { cmsEditorial: createS10RealCmsEditorial(bindings, revokedSessionIds) }
+      ? { cmsEditorial: createS11RealCmsEditorial(bindings, revokedSessionIds) }
       : {};
   app = createWorkerApp({
     ...baseDependencies,

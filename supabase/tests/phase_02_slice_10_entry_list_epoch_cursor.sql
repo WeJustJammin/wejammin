@@ -33,6 +33,7 @@ select no_plan();
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir phase_02_slice_11_e2/000-derived-evidence.sqlinc
 
 select pg_temp.s10_rpc_as(
   (select value::uuid from s10_ids where key = 'creatorAuth'),
@@ -49,6 +50,7 @@ select pg_temp.s10k_seed('a9100000-0000-4000-8000-0000000e0003', 'a9100000-0000-
 select pg_temp.s10k_seed('a9100000-0000-4000-8000-0000000e0004', 'a9100000-0000-4000-8000-0000000e1004', timestamptz '2026-10-01T12:00:04Z', 'cms.editor', 'active', 'active', 'draft');
 select pg_temp.s10k_seed('a9100000-0000-4000-8000-0000000e0005', 'a9100000-0000-4000-8000-0000000e1005', timestamptz '2026-10-01T12:00:03Z', 'cms.author', 'revoked', 'active', 'draft');
 select pg_temp.s10k_seed('a9100000-0000-4000-8000-0000000e0006', 'a9100000-0000-4000-8000-0000000e1006', timestamptz '2026-10-01T12:00:02Z', 'cms.author', 'active', 'archived', 'draft');
+-- K7: derived-approved (physical `draft` plus an approved review), see the keyset suite.
 select pg_temp.s10k_seed('a9100000-0000-4000-8000-0000000e0007', 'a9100000-0000-4000-8000-0000000e1007', timestamptz '2026-10-01T12:00:01Z', 'cms.author', 'active', 'active', 'approved');
 select set_config('app.cms_rpc', 'true', true);
 update platform_private.cms_content_entries set updated_at = timestamptz '2026-09-26T12:00:00Z'

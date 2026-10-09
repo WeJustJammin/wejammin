@@ -1,0 +1,236 @@
+-- Slice 11 preview RPC builders (lane S11-3c).  Include AFTER the review world
+-- (phase_02_slice_11_rpc_review/000-world.sqlinc) AND phase_02_slice_11_rpc_review/030-submit.sqlinc
+-- (r11_entry: an active entry with one draft revision whose payload hash is the true projection hash).
+--
+--   r11p_plain(key)                  the plaintext of the token `key` (never stored by the system under test)
+--   r11p_token(key, tag, actor, ...) a committed preview token row for the entry/revision of tag, minted by
+--                                    the actor (an r11_actor key), written through the real guards
+--   r11p_revoke(key)                 the CAS revocation of that token (state revoked, version 2)
+--   r11p_vreq(...) / r11p_vcall(...) a CMS-03B-19 request builder and its call probe
+--   r11p_denial(revoked)             the one canonical denial document
+--   r11p_tokens_digest()             an order-independent digest of every cms_preview_tokens row
+
+create or replace function pg_temp.r11p_plain(p_key text)
+returns text
+language sql
+immutable
+as $body$
+  select 'pv-plain-' || p_key
+$body$;
+
+create or replace function pg_temp.r11p_person(p_actor text)
+returns uuid
+language sql
+stable
+as $body$
+  select person_id from r11_actor where key = p_actor
+$body$;
+
+-- A token minted by p_actor for the entry and revision of tag p_tag.  p_age is how long ago it was
+-- minted (expires_at is exactly 15 minutes later, the table CHECK).  The version set, route, locale
+-- and audience are the fixed binding the verifier suite presents.
+create or replace function pg_temp.r11p_token(
+  p_key text, p_tag text, p_actor text default 'owner',
+  p_age interval default interval '1 minute', p_overrides jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+as $body$
+declare
+  minted timestamptz := clock_timestamp() - p_age;
+  person uuid := pg_temp.r11p_person(p_actor);
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  execute pg_temp.s11_insert_sql('platform_private.cms_preview_tokens',
+    pg_temp.s11_token_row(jsonb_build_object(
+      'token_hash', pg_temp.h11_sha256(pg_temp.r11p_plain(p_key)),
+      'entry_id', pg_temp.h11w_uuid(p_tag || ':entry'),
+      'revision_id', pg_temp.h11w_uuid(p_tag || ':revision'),
+      'user_id', (select auth_user_id from r11_actor where key = p_actor),
+      'person_id', person,
+      'capability_snapshot_hash', platform_private.cms_acting_context_version(person, pg_temp.s11_id('org')),
+      'version_set', jsonb_build_object('settingsVersion', '1', 'tag', p_tag),
+      'locale', 'en-US', 'audience', 'public', 'route', '/preview/article',
+      'created_at', minted, 'updated_at', minted, 'expires_at', minted + interval '15 minutes'
+    ) || p_overrides));
+end;
+$body$;
+
+-- The CAS revocation active -> revoked (the only update the state guard admits).
+create or replace function pg_temp.r11p_revoke(p_key text)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  update platform_private.cms_preview_tokens
+     set state = 'revoked', revoked_at = clock_timestamp(), version = version + 1, updated_at = clock_timestamp()
+   where token_hash = pg_temp.h11_sha256(pg_temp.r11p_plain(p_key));
+end;
+$body$;
+
+-- A well-formed CMS-03B-19 request for token p_key presented by p_actor with that actor's CURRENT
+-- acting-context version; p_overrides replaces members, p_drop removes them.
+create or replace function pg_temp.r11p_vreq(
+  p_key text, p_actor text default 'owner', p_overrides jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[]
+)
+returns jsonb
+language sql
+stable
+as $body$
+  select ((jsonb_build_object(
+    'tokenHash', pg_temp.h11_sha256(pg_temp.r11p_plain(p_key)),
+    'actorPersonId', pg_temp.r11p_person(p_actor),
+    'actingContextVersion', platform_private.cms_acting_context_version(pg_temp.r11p_person(p_actor), pg_temp.s11_id('org')),
+    'route', '/preview/article', 'locale', 'en-US', 'audience', 'public'
+  ) || p_overrides) - p_drop)
+$body$;
+
+create or replace function pg_temp.r11p_vcall(p_label text, p_request jsonb)
+returns void
+language sql
+as $body$
+  select pg_temp.r11_try(p_label,
+    format('select platform_api.cms_verify_preview_token(%L::jsonb)', p_request::text), true)
+$body$;
+
+-- The one denial document: valid false, five null members, `revoked` as given.
+create or replace function pg_temp.r11p_denial(p_revoked boolean default false)
+returns text
+language sql
+immutable
+as $body$
+  select jsonb_build_object(
+    'valid', false, 'userId', null, 'entryId', null, 'revisionId', null,
+    'exactVersionSet', null, 'expiresAt', null, 'revoked', p_revoked)::text
+$body$;
+
+create or replace function pg_temp.r11p_tokens_digest()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select coalesce(pg_catalog.md5(pg_catalog.string_agg(
+    pg_catalog.to_jsonb(token_row)::text || '/' || token_row.xmin::text, ';' order by token_row.id)), '-')
+  from platform_private.cms_preview_tokens token_row
+$body$;
+
+-- ---------------------------------------------------------------------------
+-- CMS-03B-08 builders.
+-- ---------------------------------------------------------------------------
+
+-- The Vault history-signing key the preview token is derived under (a transaction-only secret).
+create or replace function pg_temp.r11p_key(p_hex text default null)
+returns void
+language plpgsql
+as $body$
+begin
+  perform vault.create_secret(
+    coalesce(p_hex, repeat('a1', 32)), 'cms_editorial_history_cursor_active',
+    'pgTAP transaction-only CMS-03B-08 preview key');
+end;
+$body$;
+
+-- The VersionSet the server recomputes for the revision of tag p_tag (the preparation read's value).
+create or replace function pg_temp.r11p_vs(p_tag text)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  revision uuid := pg_temp.h11w_uuid(p_tag || ':revision');
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return platform_private.cms_revision_version_set(revision, platform_private.cms_build_dependency_manifest(revision));
+end;
+$body$;
+
+-- A well-formed mint request for the entry/revision of tag p_tag at the entry's CURRENT version.
+create or replace function pg_temp.r11p_mreq(
+  p_tag text, p_extra jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[]
+)
+returns jsonb
+language sql
+as $body$
+  select ((
+    jsonb_build_object(
+      'entryId', entry.id, 'revisionId', pg_temp.h11w_uuid(p_tag || ':revision'),
+      'locale', 'en-US', 'audience', 'public', 'route', '/preview/article',
+      'versionSet', pg_temp.r11p_vs(p_tag),
+      'expectedVersion', entry.version::text, 'ifMatch', entry.version::text,
+      'idempotencyKey', 'r11-' || replace(extensions.gen_random_uuid()::text, '-', ''),
+      'context', pg_temp.r11_ctx())
+    || p_extra) - p_drop)
+  from platform_private.cms_content_entries entry
+  where entry.id = pg_temp.h11w_uuid(p_tag || ':entry')
+$body$;
+
+create or replace function pg_temp.r11p_mcall(
+  p_label text, p_actor text, p_request jsonb, p_keep boolean default true
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_session(p_actor);
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.cms_mint_preview(%L::jsonb)', p_request::text), p_keep);
+end;
+$body$;
+
+-- The token the derivation rule yields, from the literal JCS text (an oracle independent of
+-- cms_jcs) and the hex key; p_token_id is the token row id.
+create or replace function pg_temp.r11p_derive(
+  p_token_id uuid, p_nonce uuid, p_entry uuid, p_revision uuid, p_key_hex text default null
+)
+returns text
+language sql
+immutable
+as $body$
+  select translate(trim(trailing '=' from replace(encode(extensions.hmac(
+    convert_to('cms.preview.token.v1{"entryId":"' || p_entry || '","nonce":"' || p_nonce
+      || '","revisionId":"' || p_revision || '","tokenId":"' || p_token_id || '"}', 'utf8'),
+    decode(coalesce(p_key_hex, repeat('a1', 32)), 'hex'), 'sha256'), 'base64'), E'\n', '')), '+/', '-_')
+$body$;
+
+-- The stored row of a minted token (looked up by the hash of its plaintext).
+create or replace function pg_temp.r11p_row(p_token text)
+returns platform_private.cms_preview_tokens
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select token_row.* from platform_private.cms_preview_tokens token_row
+   where token_row.token_hash = pg_catalog.encode(extensions.digest(pg_catalog.convert_to(p_token, 'utf8'), 'sha256'), 'hex')
+$body$;
+
+-- Counters the mint "no partial effect" assertions compare.
+create or replace function pg_temp.r11p_effects()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select (select count(*) from platform_private.cms_preview_tokens)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.cms_preview_tokens)::text
+    || '/' || (select count(*) from platform_private.idempotency_records where operation = 'CMS-03B-08')::text
+    || '/' || (select count(*) from audit_private.audit_events where action = 'cms.preview.mint')::text
+    || '/' || (select count(*) from platform_private.outbox_events)::text
+    || '/' || (select count(*) from platform_private.cms_publication_settings_snapshots)::text
+$body$;
+
+-- The CAS revocation of the token whose SHA-256 is p_hash.
+create or replace function pg_temp.r11p_revoke_hash(p_hash text)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  update platform_private.cms_preview_tokens
+     set state = 'revoked', revoked_at = clock_timestamp(), version = version + 1, updated_at = clock_timestamp()
+   where token_hash = p_hash;
+end;
+$body$;

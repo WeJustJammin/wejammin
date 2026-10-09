@@ -1,4 +1,7 @@
-import { CorrelationIdSchema } from '@wejammin/contracts';
+import {
+  CorrelationIdSchema,
+  type PreflightEvidence,
+} from '@wejammin/contracts';
 import { isFreshProof } from './authentication/step-up';
 import {
   type CmsEditorialProductionOperationId,
@@ -32,12 +35,22 @@ export type CmsEditorialPortInput = Readonly<{
   requestId: string;
   request: Request;
   session?: CmsEditorialSession;
-  path?: Readonly<{ entryId: string; conflictId?: string }>;
+  path?: Readonly<{
+    entryId?: string;
+    reviewId?: string;
+    conflictId?: string;
+  }>;
   query?: Readonly<Record<string, unknown>>;
   /** The already-validated request body; authority keys are rejected, not read. */
   body?: object;
   idempotencyKey?: string;
   ifMatch?: string;
+  /**
+   * Slice 11 server-built accessibility proof (CMS-03B-05, -07, -09, -15): the
+   * Worker checker's `PreflightEvidence`, or null when it produced none. Never a
+   * browser member; present exactly on the operations that evaluate preflight.
+   */
+  evidence?: PreflightEvidence | null;
 }>;
 
 export const correlationFor = (

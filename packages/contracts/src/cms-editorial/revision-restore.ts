@@ -8,6 +8,7 @@ import {
   IdempotencyKeySchema,
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
+import { refineIfMatchEqualsExpectedVersion } from './if-match.ts';
 
 /**
  * BE03b RevisionRestoreRequest: the CMS-03B-04 body.  Restoring never edits or
@@ -51,12 +52,14 @@ export const RevisionRestoreForbiddenAuthoritySchema = z
   .readonly();
 
 /** OpenAPI transport view for CMS-03B-04: both UUIDs, headers, and body. */
-export const RevisionRestoreApiRequestSchema = z.strictObject({
-  entryId: CmsUuidSchema,
-  revisionId: CmsUuidSchema,
-  headers: RevisionRestoreHeadersSchema,
-  body: RevisionRestoreRequestSchema,
-});
+export const RevisionRestoreApiRequestSchema = z
+  .strictObject({
+    entryId: CmsUuidSchema,
+    revisionId: CmsUuidSchema,
+    headers: RevisionRestoreHeadersSchema,
+    body: RevisionRestoreRequestSchema,
+  })
+  .superRefine(refineIfMatchEqualsExpectedVersion);
 
 /**
  * Implementation checklist only.  These are the checks CMS-03B-04 must perform

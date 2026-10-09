@@ -1,0 +1,39 @@
+-- Committed fixture of the Slice 11 schedule / publication race runners (lane S11-3b).  Included by
+-- infra/database-races/publication-kit.mjs AFTER the r11 world, 020-decision, 030-submit and 000-world,
+-- inside one transaction that COMMITS (the runners drive fresh sessions against it).  Every revision gets
+-- its own entry and its own approved review (rvA approved it, review version 2); the schedules are pending
+-- publishes of those reviews dated 30 days ahead, so a runner makes exactly the ones it needs due with the
+-- kit's makeDue (a claim is global, and the scenarios must not claim each other's schedules).  The last
+-- statement is the ids document the runners read.
+
+select pg_temp.p11_approved(tag) from (values
+  ('cr-1'), ('cr-2'), ('cr-3'), ('cr-4'), ('cr-5'), ('cr-6'), ('cr-7'), ('cr-8'), ('cr-9'), ('cr-10'), ('cr-11'), ('cr-12'),
+  ('sk-1'), ('sk-2'), ('sk-3'), ('lx-1'), ('lx-2'), ('lx-3'), ('lx-4'),
+  ('ex-twice'), ('ex-lock'), ('pe-1'), ('pe-2'), ('dp-1'), ('dp-2'), ('dp-3'), ('gt-a'), ('gt-b'), ('gt-c'),
+  ('sa-1'), ('sa-2'), ('sa-3'), ('sa-4'), ('sa-5')) as t(tag);
+
+select pg_temp.p11_schedule_row('s-' || tag, tag, jsonb_build_object(
+  'resolved_at_utc', date_trunc('second', clock_timestamp()) + interval '30 days',
+  'local_datetime', (date_trunc('second', clock_timestamp()) + interval '30 days') at time zone 'UTC'))
+from (values
+  ('cr-1'), ('cr-2'), ('cr-3'), ('cr-4'), ('cr-5'), ('cr-6'), ('cr-7'), ('cr-8'), ('cr-9'), ('cr-10'), ('cr-11'), ('cr-12'),
+  ('sk-1'), ('sk-2'), ('sk-3'), ('lx-1'), ('lx-2'), ('lx-3'), ('lx-4'), ('ex-twice'), ('ex-lock'), ('pe-1'), ('pe-2'),
+  ('gt-a'), ('gt-b'), ('gt-c')) as t(tag);
+
+with review_ids as (
+  select substr(ids.key, 4) as tag, review.id as review_id, review.entry_id, review.revision_id
+    from s11_ids ids
+    join platform_private.cms_editorial_reviews review on review.id = ids.value::uuid
+   where ids.key like 'rv-%' and ids.key not like '%-asg' and ids.key not like '%-dec'
+), schedule_ids as (
+  select substr(ids.key, 3) as tag, ids.value from s11_ids ids where ids.key like 's-%'
+)
+select jsonb_build_object(
+  'org', pg_temp.s11_id('org'),
+  'actors', (select jsonb_object_agg(key, jsonb_build_object('auth', auth_user_id, 'person', person_id)) from r11_actor),
+  'entries', (select jsonb_object_agg(tag, entry_id) from review_ids),
+  'revisions', (select jsonb_object_agg(tag, revision_id) from review_ids),
+  'reviews', (select jsonb_object_agg(tag, review_id) from review_ids),
+  'schedules', (select jsonb_object_agg(tag, value) from schedule_ids),
+  'titleField', pg_temp.h11w_fid('title')
+)::text;

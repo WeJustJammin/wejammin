@@ -88,8 +88,11 @@ describe('EC-099 entry list keyboard order', () => {
       'button#Filter entries',
       `a:${ROUTE}/new`,
       `a:${ROUTE}/${entryId(1)}`,
+      `a:${ROUTE}/${entryId(1)}/workflow`,
       `a:${ROUTE}/${entryId(2)}`,
+      `a:${ROUTE}/${entryId(2)}/workflow`,
       `a:${ROUTE}/${entryId(3)}`,
+      `a:${ROUTE}/${entryId(3)}/workflow`,
       expect.stringMatching(
         /^a:\/app\/cms-content-modeling\/entries\?.*cursor=next-token/u,
       ),
@@ -154,10 +157,11 @@ describe('EC-099 entry list shows no optimistic row', () => {
           anchor.getAttribute('href'),
         ),
       ).toEqual(
-        Array.from(
-          { length: count },
-          (_, index) => `${ROUTE}/${entryId(index + 1)}`,
-        ),
+        // Slice 11 (FE03 route rows): each row also links to its workflow.
+        Array.from({ length: count }, (_, index) => [
+          `${ROUTE}/${entryId(index + 1)}`,
+          `${ROUTE}/${entryId(index + 1)}/workflow`,
+        ]).flat(),
       );
     }
   });

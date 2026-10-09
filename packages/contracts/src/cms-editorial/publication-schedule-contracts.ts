@@ -12,6 +12,7 @@ import {
 } from '../request-navigation-security.ts';
 import { VersionSetSchema } from './publication-contracts.ts';
 import { Bcp47Schema } from './primitives.ts';
+import { PublicationActionSchema } from './workflow-models.ts';
 
 /*
  * BE03b schedule, preview, and publication contracts: the CMS-03B-07 schedule
@@ -20,40 +21,33 @@ import { Bcp47Schema } from './primitives.ts';
  * served by the review-side contracts in `publication-contracts.ts`.
  */
 
-/** BE03b publication-schedule action vocabulary. */
-const PublicationScheduleActionSchema = z.enum([
-  'publish',
-  'unpublish',
-  'expire',
-  'archive',
-]);
+/** BE03b publication-schedule action vocabulary (shared with the publication lineage). */
+const PublicationScheduleActionSchema = PublicationActionSchema;
 
 /**
  * BE03b IANA timezone grammar (DEC-145): one to three `/`-separated name
  * segments over 1-64 total characters, so `UTC`, `America/New_York`, `Etc/GMT+5`
  * and the three-segment zones `America/Argentina/Buenos_Aires`,
  * `America/Indiana/Indianapolis` and `America/North_Dakota/Center` are all
- * valid. The first segment starts with a letter and no segment is `.` or `..`.
+ * valid. The first segment starts with a letter and no later segment is made of
+ * dots alone (`.`, `..`, `...`): the negative lookahead is the whole rule, so
+ * the runtime and the published OpenAPI `pattern` are the same expression.
  * Whether the name is a member of the pinned tzdb is Slice 11 runtime.
  */
 const TIMEZONE_PATTERN =
-  /^[A-Za-z][A-Za-z0-9_+.-]*(?:\/[A-Za-z0-9_+.-]+){0,2}$/u;
-const TimezoneSchema = z
+  /^[A-Za-z][A-Za-z0-9_+.-]*(?:\/(?!\.+(?:\/|$))[A-Za-z0-9_+.-]+){0,2}$/u;
+export const CmsScheduleTimezoneSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(TIMEZONE_PATTERN, 'timezone_invalid')
-  .refine(
-    (value) => value.split('/').every((segment) => !/^\.+$/u.test(segment)),
-    'timezone_invalid',
-  );
+  .regex(TIMEZONE_PATTERN, 'timezone_invalid');
 
 /**
  * BE03b deliverable audience grammar (DEC-145, BE04c): shared by schedule,
  * preview, and publication, `^[a-z0-9_-]{1,48}$`. The value is matched as
  * submitted (never trimmed), so a padded or mixed-case audience is refused.
  */
-const AudienceSchema = z
+export const CmsPublicationAudienceSchema = z
   .string()
   .regex(/^[a-z0-9_-]{1,48}$/u, 'audience_invalid');
 
@@ -77,12 +71,29 @@ const LOCAL_DATETIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?$/u;
 
 /**
+ * The published (OpenAPI) form of the local-datetime rule: the same set as
+ * `LOCAL_DATETIME_PATTERN` plus the range refinement below, written as one
+ * expression because JSON Schema has no custom keyword for either. Year 0001-9999
+ * (the proleptic-Gregorian leap rule: divisible by 4, and by 400 when divisible by
+ * 100), a real day of its month, hour 00-23, minute and second 00-59 (no leap
+ * second) and at most nine fractional digits. A differential contract test
+ * (`phase-02-slice-11-openapi-refinements`) proves it equal to the runtime.
+ */
+const LEAP_DAY_SOURCE =
+  '(?:[0-9]{2}[2468][048]|[0-9]{2}[13579][26]|[0-9]{2}0[48]|[02468][048]00|[13579][26]00)-02-29';
+const ORDINARY_DAY_SOURCE =
+  '[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))';
+const CLOCK_SOURCE =
+  '(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9](?:\\.[0-9]{1,9})?)?';
+export const CMS_LOCAL_DATETIME_OPENAPI_PATTERN = `^(?!0000)(?:${LEAP_DAY_SOURCE}|${ORDINARY_DAY_SOURCE})T${CLOCK_SOURCE}$`;
+
+/**
  * BE03b local datetime: an offset-free ISO local date and time whose every
  * component is in range (a real calendar day, hour 00-23, minute and second
  * 00-59 with no leap second, at most nine fractional digits). A nonexistent or
  * ambiguous wall-clock time in the zone is Slice 11 runtime, not a shape rule.
  */
-const LocalDateTimeSchema = z
+export const CmsScheduleLocalDateTimeSchema = z
   .string()
   .regex(LOCAL_DATETIME_PATTERN, 'local_datetime_must_be_offset_free')
   .refine((value) => {
@@ -102,7 +113,8 @@ const LocalDateTimeSchema = z
       minute <= 59 &&
       second <= 59
     );
-  }, 'local_datetime_out_of_range');
+  }, 'local_datetime_out_of_range')
+  .meta({ pattern: CMS_LOCAL_DATETIME_OPENAPI_PATTERN });
 
 /**
  * BE03b preview/publication route: a normalized site path. The leading slash
@@ -110,6 +122,20 @@ const LocalDateTimeSchema = z
  * because the repository lint bans control-character regexes.
  */
 const PREVIEW_ROUTE_MAX_CHARACTERS = 2048;
+
+/**
+ * The published (OpenAPI) form of the route rules below as one expression: one
+ * leading slash and never `//`, no C0, DEL or C1 control character, no
+ * backslash, query or fragment, no percent-encoded dot, slash or backslash
+ * anywhere, no `.` or `..` segment and no empty interior segment (a trailing
+ * slash is a valid directory path). The length is the `maxLength` of the same
+ * schema (JSON Schema counts Unicode code points). The whole-string lookahead
+ * uses `[\s\S]` so a line terminator cannot hide an encoded dot. A differential
+ * contract test proves it equal to the runtime refinements.
+ */
+const ROUTE_SEGMENT_SOURCE =
+  '(?!\\.\\.?(?:/|$))[^\\u0000-\\u001f\\u007f-\\u009f\\\\?#/]+';
+export const CMS_PREVIEW_ROUTE_OPENAPI_PATTERN = `^(?![\\s\\S]*%(?:2[eEfF]|5[cC]))/(?:${ROUTE_SEGMENT_SOURCE}(?:/${ROUTE_SEGMENT_SOURCE})*/?)?$`;
 
 /** True when `value` holds a C0, DEL or C1 control character (no control regex: lint). */
 const hasControlCharacter = (value: string): boolean => {
@@ -120,7 +146,7 @@ const hasControlCharacter = (value: string): boolean => {
   return false;
 };
 
-const PreviewRouteSchema = z
+export const CmsPreviewRouteSchema = z
   .string()
   .max(PREVIEW_ROUTE_MAX_CHARACTERS * 2)
   .refine(
@@ -149,7 +175,12 @@ const PreviewRouteSchema = z
         segment === '..' ||
         (segment === '' && index !== segments.length - 1),
     );
-  }, 'route_not_normalized');
+  }, 'route_not_normalized')
+  .meta({
+    minLength: 1,
+    maxLength: PREVIEW_ROUTE_MAX_CHARACTERS,
+    pattern: CMS_PREVIEW_ROUTE_OPENAPI_PATTERN,
+  });
 
 /**
  * BE03b `PublicationScheduleRequest`: the CMS-03B-07 body. The schedule
@@ -161,12 +192,12 @@ export const PublicationScheduleRequestSchema = z
   .strictObject({
     revisionId: CmsUuidSchema,
     action: PublicationScheduleActionSchema,
-    localDateTime: LocalDateTimeSchema,
-    timezone: TimezoneSchema,
+    localDateTime: CmsScheduleLocalDateTimeSchema,
+    timezone: CmsScheduleTimezoneSchema,
     resolvedUtc: CmsInstantSchema,
     tzdbVersion: z.string().min(1).max(32),
     disambiguation: z.enum(['none', 'earlier', 'later']),
-    audience: AudienceSchema,
+    audience: CmsPublicationAudienceSchema,
     expectedVersion: CmsVersionSchema,
   })
   .readonly();
@@ -180,8 +211,8 @@ export const PreviewRequestSchema = z
     entryId: CmsUuidSchema,
     revisionId: CmsUuidSchema,
     locale: Bcp47Schema,
-    audience: AudienceSchema,
-    route: PreviewRouteSchema,
+    audience: CmsPublicationAudienceSchema,
+    route: CmsPreviewRouteSchema,
     versionSet: VersionSetSchema,
   })
   .readonly();
@@ -197,7 +228,7 @@ export const PublicationRequestSchema = z
     revisionId: CmsUuidSchema,
     frozenHash: CmsHashSchema,
     expectedVersionSet: VersionSetSchema,
-    audience: AudienceSchema,
+    audience: CmsPublicationAudienceSchema,
     expectedVersion: CmsVersionSchema,
   })
   .readonly();

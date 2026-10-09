@@ -1,0 +1,264 @@
+-- Slice 11 review-authority RPC world (lane S11-3a).  Include AFTER, in this order:
+--   support/jwt-claims.sqlinc (before the first begin), phase_02_slice_10_rpc/000-helpers.sqlinc,
+--   phase_02_slice_10_remaining_schema/000-helpers.sqlinc, phase_02_slice_10_rpc/001-fixtures.sqlinc,
+--   phase_02_slice_11_schema/{000-helpers,001-fixture,002-row-builders}.sqlinc,
+--   phase_02_slice_11_helpers/{000-helpers,002-reviews}.sqlinc.
+--
+-- Adds, inside the caller's rolled-back transaction:
+--   * five more real accounts (rvA, rvB, rvS, pub, rvX) bootstrapped through
+--     platform_api.auth_bootstrap, each with a confirmed membership of the Slice 10
+--     organization and its standing CMS grants (the h11r_member builder);
+--   * the receipt-derived OWNER: the creator holds the immutable owner initialization
+--     receipt for the organization.  FIXTURE FORGERY (labelled, no producer): the
+--     Slice 10 fixture already grants cms.* capabilities, and initialize_cms_owner
+--     refuses once any cms.% grant exists, so the receipt row is inserted exactly as
+--     phase_02_slice_09_dec108/00-helpers.sqlinc (s09d_legacy_owner_receipt) does;
+--   * request builders and an effect-preserving / rolled-back probe that records
+--     the SQLSTATE, the message token, the PostgreSQL DETAIL and the response.
+-- Actors: owner (creator), editor, outsider (member, no CMS capability), stranger
+-- (not a member), rvA / rvB (cms.reviewer), rvS (cms.reviewer + cms.reviewer.policy),
+-- pub (cms.publisher), rvX (cms.reviewer, banned by the tests that need it).
+
+create temp table r11_actor(
+  key text primary key,
+  auth_user_id uuid not null,
+  person_id uuid not null
+) on commit drop;
+
+create temp table r11_probe(
+  label text primary key,
+  state text,
+  message text,
+  detail text,
+  response jsonb
+) on commit drop;
+
+insert into auth.users(id)
+select ('a9120000-0000-4000-8000-00000000000' || n)::uuid from generate_series(1, 5) as n;
+
+select platform_api.auth_bootstrap(
+  ('a9120000-0000-4000-8000-00000000000' || n)::uuid,
+  decode(repeat('5' || n, 32), 'hex'), decode(repeat('6' || n, 32), 'hex'),
+  ('a9120000-0000-4000-8000-0000000001' || n || '1')::uuid,
+  ('a9120000-0000-4000-8000-0000000001' || n || '2')::uuid
+) from generate_series(1, 5) as n;
+
+insert into r11_actor(key, auth_user_id, person_id)
+select k.key, k.auth_user_id::uuid, binding.person_id
+from (values
+  ('owner', (select value from s10_ids where key = 'creatorAuth')),
+  ('editor', (select value from s10_ids where key = 'editorAuth')),
+  ('outsider', (select value from s10_ids where key = 'outsiderAuth')),
+  ('stranger', (select value from s10_ids where key = 'strangerAuth')),
+  ('rvA', 'a9120000-0000-4000-8000-000000000001'),
+  ('rvB', 'a9120000-0000-4000-8000-000000000002'),
+  ('rvS', 'a9120000-0000-4000-8000-000000000003'),
+  ('pub', 'a9120000-0000-4000-8000-000000000004'),
+  ('rvX', 'a9120000-0000-4000-8000-000000000005')
+) as k(key, auth_user_id)
+join identity.auth_user_bindings binding on binding.auth_user_id = k.auth_user_id::uuid;
+
+insert into s11_ids(key, value)
+select key, person_id::text from r11_actor where key in ('rvA', 'rvB', 'rvS', 'pub', 'rvX');
+
+select pg_temp.h11r_member('rvA', array['cms.reviewer']);
+select pg_temp.h11r_member('rvB', array['cms.reviewer']);
+select pg_temp.h11r_member('rvS', array['cms.reviewer', 'cms.reviewer.policy']);
+select pg_temp.h11r_member('pub', array['cms.publisher']);
+select pg_temp.h11r_member('rvX', array['cms.reviewer']);
+-- The submitter, the revision author and the owner also hold the standing grant, so
+-- an ineligible reviewer is refused for the role and never for a missing grant.
+select pg_temp.h11r_member('editor', array['cms.reviewer']);
+select pg_temp.h11r_member('creator', array['cms.reviewer']);
+
+-- FIXTURE FORGERY: the owner receipt of the organization (see the header).
+create or replace function pg_temp.r11_owner_receipt()
+returns void
+language plpgsql
+as $body$
+declare
+  person uuid := pg_temp.s11_id('creator');
+  auth_user uuid := (select value::uuid from s10_ids where key = 'creatorAuth');
+  alias_id uuid;
+  handle text := 'R11' || substr(replace(extensions.gen_random_uuid()::text, '-', ''), 1, 10);
+begin
+  perform pg_temp.s10_rpc_as(auth_user, null);
+  perform set_config('app.idempotency_key_hash', 'r11-alias-0001', true);
+  perform set_config('app.request_hash', 'r11-alias-request-0001', true);
+  perform set_config('app.correlation_id', extensions.gen_random_uuid()::text, true);
+  alias_id := (platform_api.identity_alias_create(handle, handle, 'private')->>'aliasId')::uuid;
+  insert into platform_private.cms_owner_initialization(
+    auth_user_id, person_id, alias_id, organization_id, authorization_ref, operator_role, grant_ends_at
+  ) values (
+    auth_user, person, alias_id, pg_temp.s11_id('org'), extensions.gen_random_uuid(),
+    current_user, clock_timestamp() + interval '3 days'
+  );
+end;
+$body$;
+select pg_temp.r11_owner_receipt();
+
+-- Session of one actor acting in the organization (p_party null: the actor's own party).
+create or replace function pg_temp.r11_session(p_key text, p_party uuid default pg_temp.s11_id('org'))
+returns void
+language sql
+as $body$
+  select pg_temp.s10_rpc_as((select auth_user_id from r11_actor where key = p_key), p_party)
+$body$;
+
+-- The server-built request context: verified step-up at now - p_age.
+create or replace function pg_temp.r11_ctx(
+  p_age interval default interval '60 seconds',
+  p_verified boolean default true,
+  p_party uuid default pg_temp.s11_id('org')
+)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'actingPartyId', p_party, 'stepUpVerified', p_verified,
+    'stepUpAt', to_char((clock_timestamp() - p_age) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'correlationId', extensions.gen_random_uuid()
+  )
+$body$;
+
+-- Probe: run a single-value statement, record state/message/detail/response.  With
+-- p_keep false the effects of a success are rolled back (a violation probe).
+create or replace function pg_temp.r11_try(p_label text, p_sql text, p_keep boolean default true)
+returns void
+language plpgsql
+as $body$
+declare
+  observed_state text := '00000';
+  observed_message text;
+  observed_detail text;
+  observed_response jsonb;
+begin
+  begin
+    begin
+      execute p_sql into observed_response;
+    exception
+      when others then
+        get stacked diagnostics observed_detail = pg_exception_detail;
+        observed_detail := nullif(observed_detail, '');
+        observed_state := sqlstate;
+        observed_message := sqlerrm;
+        observed_response := null;
+    end;
+    if not p_keep then
+      raise exception 'R11_SENTINEL_5c1f' using errcode = 'P0001';
+    end if;
+  exception
+    when others then
+      if sqlerrm <> 'R11_SENTINEL_5c1f' then raise; end if;
+  end;
+  insert into r11_probe(label, state, message, detail, response)
+  values (p_label, observed_state, observed_message, observed_detail, observed_response)
+  on conflict (label) do update
+    set state = excluded.state, message = excluded.message,
+        detail = excluded.detail, response = excluded.response;
+end;
+$body$;
+
+create or replace function pg_temp.r11_state(p_label text) returns text language sql stable as $body$
+  select coalesce((select state from r11_probe where label = p_label), 'MISSING') $body$;
+create or replace function pg_temp.r11_msg(p_label text) returns text language sql stable as $body$
+  select coalesce((select coalesce(message, '') from r11_probe where label = p_label), 'MISSING') $body$;
+create or replace function pg_temp.r11_detail(p_label text) returns text language sql stable as $body$
+  select (select detail from r11_probe where label = p_label) $body$;
+create or replace function pg_temp.r11_resp(p_label text) returns jsonb language sql stable as $body$
+  select (select response from r11_probe where label = p_label) $body$;
+
+-- Outcome of a probe as 'state:message' ('00000:' on success).
+create or replace function pg_temp.r11_out(p_label text) returns text language sql stable as $body$
+  select pg_temp.r11_state(p_label) || ':' || pg_temp.r11_msg(p_label) $body$;
+
+-- Table counters the "no partial effect" assertions compare before and after.
+create or replace function pg_temp.r11_effects()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select (select count(*) from platform_private.cms_editorial_reviews)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.cms_editorial_reviews)::text
+    || '/' || (select count(*) from platform_private.cms_editorial_review_assignments)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.cms_editorial_review_assignments)::text
+    || '/' || (select count(*) from platform_private.cms_editorial_decisions)::text
+    || '/' || (select count(*) from platform_private.cms_editorial_review_dependencies)::text
+    || '/' || (select count(*) from platform_private.idempotency_records where operation like 'CMS-03B-%')::text
+    || '/' || (select count(*) from platform_private.outbox_events where event_type = 'cms.entry.review-changed.v1')::text
+    || '/' || (select count(*) from audit_private.audit_events where action like 'cms.editorial.review.%')::text
+$body$;
+
+-- A fresh revision of entry A (author p_author) so every review fixture has its own revision.
+create or replace function pg_temp.r11_revision(p_key text, p_number integer, p_author text default 'creator')
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into s11_ids(key, value) values (p_key, extensions.gen_random_uuid()::text)
+  on conflict (key) do nothing;
+  execute pg_temp.s11_insert_sql('platform_private.cms_entry_revisions',
+    pg_temp.s11_revision_row(jsonb_build_object(
+      'id', pg_temp.s11_id(p_key), 'revision_number', p_number,
+      'author_person_id', pg_temp.s11_id(p_author),
+      'payload_hash', pg_temp.s11_hex('r11-revision-' || p_key))));
+end;
+$body$;
+
+select ok(
+  (select count(*) = 9 from r11_actor)
+    and exists (select 1 from platform_private.cms_owner_initialization receipt
+                 where receipt.organization_id = pg_temp.s11_id('org')
+                   and receipt.person_id = pg_temp.s11_id('creator'))
+    and platform_private.cms_person_holds_capability(pg_temp.s11_id('org'), pg_temp.s11_id('rvS'), 'cms.reviewer.policy')
+    and platform_private.cms_person_holds_capability(pg_temp.s11_id('org'), pg_temp.s11_id('pub'), 'cms.publisher')
+    and not platform_private.cms_person_holds_capability(pg_temp.s11_id('org'), pg_temp.s11_id('outsider'), 'cms.reviewer'),
+  'R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist'
+);
+
+-- True when <schema>.<signature> is a SECURITY DEFINER of the CMS definer with an empty search_path
+-- whose EXECUTE belongs to the owner alone, except that the platform_api wrapper is executable by
+-- service_role (the Worker's credential) and by no other API role: the private command is never
+-- directly callable (P2-S09-AC-018, AC-182).
+create or replace function pg_temp.r11_posture(p_schema text, p_signature text)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(
+    p.prosecdef
+    and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+    and coalesce(p.proconfig, array[]::text[]) @> array['search_path=""']
+    and has_function_privilege('service_role', p.oid, 'execute') = (p_schema = 'platform_api')
+    and not has_function_privilege('anon', p.oid, 'execute')
+    and not has_function_privilege('authenticated', p.oid, 'execute')
+    and not exists (
+      select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+      where acl.grantee = 0 and acl.privilege_type = 'EXECUTE'
+    )
+  ), false)
+  from pg_proc p
+  where p.oid = to_regprocedure(p_schema || '.' || p_signature)
+$body$;
+
+-- The set of top-level keys of a jsonb object, sorted, as one comma list.
+create or replace function pg_temp.r11_keys(p_value jsonb)
+returns text
+language sql
+immutable
+as $body$
+  select string_agg(k, ',' order by k) from jsonb_object_keys(p_value) as k
+$body$;
+
+-- True when none of the given identifiers appears anywhere in the response text.
+create or replace function pg_temp.r11_leaks(p_response jsonb, p_ids text[])
+returns boolean
+language sql
+immutable
+as $body$
+  select coalesce(bool_or(position(lower(id) in lower(p_response::text)) > 0), false)
+  from unnest(p_ids) as id
+$body$;

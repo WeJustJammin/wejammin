@@ -33,3 +33,15 @@ export const cmsEditorialAppConflictPath = (
   CmsUuidSchema.safeParse(conflictId).success
     ? `${CMS_EDITORIAL_APP_ENTRIES_PATH}/${entryId}/conflicts/${conflictId}`
     : null;
+
+/** The review and publish workflow of one entry (CMS-03B-15 and its commands). */
+export const cmsEditorialAppWorkflowPath = (entryId: string): string | null =>
+  withUuid((id) => `${CMS_EDITORIAL_APP_ENTRIES_PATH}/${id}/workflow`, entryId);
+
+/** The reviewer queue (CMS-03B-17). */
+export const CMS_EDITORIAL_APP_REVIEWS_PATH =
+  '/app/cms-content-modeling/reviews';
+
+/** One review (CMS-03B-16 and its decision and assignment commands). */
+export const cmsEditorialAppReviewPath = (reviewId: string): string | null =>
+  withUuid((id) => `${CMS_EDITORIAL_APP_REVIEWS_PATH}/${id}`, reviewId);

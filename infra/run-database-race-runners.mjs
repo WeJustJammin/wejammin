@@ -29,6 +29,14 @@ export const RACE_RUNNERS = [
   'supabase/tests/phase_02_slice_10_races/012-relation-target-race.mjs',
   'supabase/tests/phase_02_slice_10_races/013-revision-concurrency-cap.mjs',
   'supabase/tests/phase_02_slice_10_races/014-revocation-vs-activation.mjs',
+  'supabase/tests/phase_02_slice_11_races/010-review-assignment-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/011-review-decision-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/012-review-submit-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/013-schedule-claim-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/015-schedule-accept-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/020-preview-mint-race.mjs',
 ];
 
 /**

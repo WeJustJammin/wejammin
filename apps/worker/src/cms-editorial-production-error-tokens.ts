@@ -1,4 +1,10 @@
 import {
+  CMS_SLICE_11_CONFLICT_REASONS,
+  CMS_SLICE_11_FORBIDDEN_REASONS,
+  CMS_SLICE_11_VALIDATION_REASONS,
+} from '@wejammin/contracts';
+
+import {
   TYPED_CONFLICT_REASONS,
   TYPED_VALIDATION_REASONS,
 } from './cms-editorial/error-vocabulary';
@@ -55,6 +61,14 @@ const versionConflict = (): FailureMapping => ({
 
 const typedValidation = (reasonCode: string): FailureMapping => ({
   ...VALIDATION,
+  details: { reasonCode },
+});
+
+/** A Slice 11 403 carries exactly its typed reason (capability, separation of duties). */
+const typedForbidden = (reasonCode: string): FailureMapping => ({
+  status: 403,
+  code: 'FORBIDDEN',
+  message: 'The action is not allowed.',
   details: { reasonCode },
 });
 
@@ -156,6 +170,25 @@ const TOKEN_TABLE: ReadonlyMap<string, FailureMapping> = new Map<
   ),
   ...TYPED_CONFLICT_REASONS.map(
     (reason) => [reason, stateConflict(reason)] as const,
+  ),
+  // BE03b E6: a missing or stale MFA proof; the route adds the allowed methods.
+  [
+    'STEP_UP_REQUIRED',
+    {
+      status: 401,
+      code: 'STEP_UP_REQUIRED',
+      message: 'Recent verification is required.',
+      details: { recoveryAction: 'step_up' },
+    },
+  ],
+  ...CMS_SLICE_11_FORBIDDEN_REASONS.map(
+    (reason) => [reason, typedForbidden(reason)] as const,
+  ),
+  ...CMS_SLICE_11_CONFLICT_REASONS.map(
+    (reason) => [reason, stateConflict(reason)] as const,
+  ),
+  ...CMS_SLICE_11_VALIDATION_REASONS.map(
+    (reason) => [reason, typedValidation(reason)] as const,
   ),
 ]);
 

@@ -13,12 +13,15 @@ import {
 import {
   isRecord,
   safeDetails,
+  structuredMembersFromDetailText,
   violationsFromDetailText,
 } from './cms-editorial-production-error-details';
 
 export {
   isRecord,
   safeDetails,
+  structuredMembers,
+  structuredMembersFromDetailText,
   violationsFromDetailText,
   type SafeViolation,
 } from './cms-editorial-production-error-details';
@@ -178,6 +181,13 @@ const mappedDetails = (
     );
     if (pointers.length > 0) details.violations = pointers;
   }
+  // Slice 11 typed refusals may carry structured members in a JSON object
+  // DETAIL; they never override the mapper-owned conflict, recovery or reason.
+  if (mapped.status === 409 || mapped.status === 422 || mapped.status === 503)
+    return {
+      ...structuredMembersFromDetailText(payload.details),
+      ...details,
+    };
   return details;
 };
 

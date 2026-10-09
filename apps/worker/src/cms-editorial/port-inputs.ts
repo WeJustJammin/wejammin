@@ -1,10 +1,19 @@
 import type {
   AuthoringContextQuery,
   ConflictResolutionRequest,
+  EditorialDecisionRequest,
+  EditorialReviewAssignmentRequest,
   EntryCreateRequest,
   EntryDraftDetailQuery,
   EntryListQuery,
   EntryRevisionRequest,
+  EntryWorkflowQuery,
+  PreflightEvidence,
+  PreviewRequest,
+  PublicationRequest,
+  PublicationScheduleRequest,
+  ReviewQueueQuery,
+  ReviewSubmissionRequest,
   RevisionHistoryQuery,
   RevisionRestoreRequest,
 } from '@wejammin/contracts';
@@ -111,4 +120,102 @@ export type CmsEditorialAuthoringContextPortInput = Readonly<{
   request: Request;
   session: CmsEditorialSession;
   query: AuthoringContextQuery;
+}>;
+
+/**
+ * Slice 11 review, schedule, preview, publication and workflow-read inputs.
+ * `evidence` is the server-built accessibility `PreflightEvidence` (or null when
+ * the in-process checker could not produce any): never a browser member, and the
+ * database reports an absent proof as an unavailable `accessibility` provider.
+ */
+export type CmsEditorialSubmitReviewPortInput = Readonly<{
+  operationId: 'CMS-03B-05';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  path: Readonly<{ entryId: string }>;
+  body: ReviewSubmissionRequest;
+  idempotencyKey: string;
+  ifMatch: string;
+  evidence: PreflightEvidence | null;
+}>;
+
+export type CmsEditorialDecisionPortInput = Readonly<{
+  operationId: 'CMS-03B-06';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  path: Readonly<{ reviewId: string }>;
+  body: EditorialDecisionRequest;
+  idempotencyKey: string;
+  ifMatch: string;
+}>;
+
+export type CmsEditorialSchedulePortInput = Readonly<{
+  operationId: 'CMS-03B-07';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  body: PublicationScheduleRequest;
+  idempotencyKey: string;
+  ifMatch: string;
+  evidence: PreflightEvidence | null;
+}>;
+
+export type CmsEditorialPreviewPortInput = Readonly<{
+  operationId: 'CMS-03B-08';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  body: PreviewRequest;
+  idempotencyKey: string;
+  ifMatch: string;
+}>;
+
+export type CmsEditorialPublishPortInput = Readonly<{
+  operationId: 'CMS-03B-09';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  body: PublicationRequest;
+  idempotencyKey: string;
+  ifMatch: string;
+  evidence: PreflightEvidence | null;
+}>;
+
+export type CmsEditorialWorkflowPortInput = Readonly<{
+  operationId: 'CMS-03B-15';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  path: Readonly<{ entryId: string }>;
+  query: EntryWorkflowQuery;
+  evidence: PreflightEvidence | null;
+}>;
+
+export type CmsEditorialReviewDetailPortInput = Readonly<{
+  operationId: 'CMS-03B-16';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  path: Readonly<{ reviewId: string }>;
+}>;
+
+export type CmsEditorialReviewQueuePortInput = Readonly<{
+  operationId: 'CMS-03B-17';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  query: ReviewQueueQuery;
+}>;
+
+export type CmsEditorialAssignmentPortInput = Readonly<{
+  operationId: 'CMS-03B-18';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  path: Readonly<{ reviewId: string }>;
+  body: EditorialReviewAssignmentRequest;
+  idempotencyKey: string;
+  ifMatch: string;
 }>;

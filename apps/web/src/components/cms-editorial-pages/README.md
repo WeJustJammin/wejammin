@@ -26,6 +26,9 @@ Worker and the proxies.
 - `load-entry-list-page.ts`, `load-entry-create-page.ts`,
   `load-entry-edit-page.ts`, `load-conflict-page.ts`,
   `load-revision-history-page.ts` — one per route.
+- `load-workflow-page.ts`, `load-review-detail-page.ts`,
+  `load-review-queue-page.ts` — the Slice 11 routes (CMS-03B-15, -16, -17); the
+  queue restarts from the first page after a refused cursor like the entry list.
 - `CmsEditorialPageNotice.tsx`, `CmsEditorialEntryEditUnavailable.tsx` — the
   shared closed views.
 

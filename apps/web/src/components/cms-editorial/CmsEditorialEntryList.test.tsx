@@ -61,6 +61,13 @@ describe('CmsEditorialEntryList (FE03 CmsEditorialEntryList, DEC-145)', () => {
     );
   });
 
+  it('links each row to its review and publish workflow', () => {
+    const html = render();
+    expect(html).toContain(`href="${ROUTE}/${entryId(1)}/workflow"`);
+    expect(html).toContain(`href="${ROUTE}/${entryId(2)}/workflow"`);
+    expect(html.match(/>Review and publish<\/a>/gu)).toHaveLength(2);
+  });
+
   it('shows no revision hash, author class or any identifier beyond the entry id', () => {
     const html = render();
     expect(html).not.toContain('a'.repeat(64));

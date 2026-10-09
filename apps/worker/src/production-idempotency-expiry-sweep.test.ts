@@ -31,6 +31,10 @@ const operationalResponse = (url: string): Response | undefined => {
   // The BE03b advisory edit-presence expiry sweep also shares every tick.
   if (url.includes('/rest/v1/rpc/cms_expire_edit_presence_leases'))
     return Response.json({ expiredLeases: 0 });
+  // The Slice 11 CMS-03B-20 publication schedule claim shares every tick too
+  // (nothing is due here).
+  if (url.includes('/rest/v1/rpc/cms_claim_due_publication_schedules'))
+    return Response.json([]);
   if (url.includes('/rest/v1/rpc/cms_get_operational_state_snapshot'))
     return Response.json({});
   if (url.endsWith('/graphql'))

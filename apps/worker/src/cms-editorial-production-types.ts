@@ -20,6 +20,16 @@ export const CMS_EDITORIAL_PRODUCTION_OPERATION_IDS = [
   'CMS-03B-12',
   'CMS-03B-13',
   'CMS-03B-14',
+  // Slice 11: review, schedule, preview, publication and the workflow reads.
+  'CMS-03B-05',
+  'CMS-03B-06',
+  'CMS-03B-07',
+  'CMS-03B-08',
+  'CMS-03B-09',
+  'CMS-03B-15',
+  'CMS-03B-16',
+  'CMS-03B-17',
+  'CMS-03B-18',
 ] as const;
 
 export type CmsEditorialProductionOperationId =
@@ -39,6 +49,15 @@ export const CMS_EDITORIAL_RPC = {
   'CMS-03B-12': 'cms_get_conflict_detail',
   'CMS-03B-13': 'cms_list_entries',
   'CMS-03B-14': 'cms_get_entry_authoring_context',
+  'CMS-03B-05': 'cms_submit_review',
+  'CMS-03B-06': 'cms_record_review_decision',
+  'CMS-03B-07': 'cms_schedule_publication',
+  'CMS-03B-08': 'cms_mint_preview',
+  'CMS-03B-09': 'cms_publish_revision',
+  'CMS-03B-15': 'cms_get_entry_workflow',
+  'CMS-03B-16': 'cms_get_editorial_review',
+  'CMS-03B-17': 'cms_list_editorial_reviews',
+  'CMS-03B-18': 'cms_assign_editorial_reviewer',
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, string>
 >;
@@ -61,6 +80,15 @@ export const CMS_EDITORIAL_DEADLINE_MS = {
   'CMS-03B-12': 8_000,
   'CMS-03B-13': 8_000,
   'CMS-03B-14': 8_000,
+  'CMS-03B-05': 15_000,
+  'CMS-03B-06': 15_000,
+  'CMS-03B-07': 15_000,
+  'CMS-03B-08': 8_000,
+  'CMS-03B-09': 15_000,
+  'CMS-03B-15': 8_000,
+  'CMS-03B-16': 8_000,
+  'CMS-03B-17': 8_000,
+  'CMS-03B-18': 15_000,
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, number>
 >;
@@ -75,6 +103,15 @@ export const CMS_EDITORIAL_RATE_LIMIT = {
   'CMS-03B-12': { limit: 300, partyLimit: 600, windowSeconds: 60 },
   'CMS-03B-13': { limit: 300, partyLimit: 600, windowSeconds: 60 },
   'CMS-03B-14': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-05': { limit: 30, partyLimit: 60, windowSeconds: 60 },
+  'CMS-03B-06': { limit: 30, partyLimit: 60, windowSeconds: 60 },
+  'CMS-03B-07': { limit: 20, partyLimit: 40, windowSeconds: 60 },
+  'CMS-03B-08': { limit: 60, partyLimit: 120, windowSeconds: 60 },
+  'CMS-03B-09': { limit: 20, partyLimit: 40, windowSeconds: 60 },
+  'CMS-03B-15': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-16': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-17': { limit: 300, partyLimit: 600, windowSeconds: 60 },
+  'CMS-03B-18': { limit: 10, partyLimit: 20, windowSeconds: 60 },
 } as const;
 
 /** BE03b abuse-control classes; a read shares no bucket with an entry write. */
@@ -88,6 +125,15 @@ export const CMS_EDITORIAL_RATE_CLASS = {
   'CMS-03B-12': 'cms-entry-read',
   'CMS-03B-13': 'cms-entry-read',
   'CMS-03B-14': 'cms-entry-read',
+  'CMS-03B-05': 'cms-review-write',
+  'CMS-03B-06': 'cms-review-write',
+  'CMS-03B-07': 'cms-schedule-write',
+  'CMS-03B-08': 'cms-preview-write',
+  'CMS-03B-09': 'cms-publish-write',
+  'CMS-03B-15': 'cms-entry-read',
+  'CMS-03B-16': 'cms-entry-read',
+  'CMS-03B-17': 'cms-entry-read',
+  'CMS-03B-18': 'cms-review-assignment',
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, string>
 >;

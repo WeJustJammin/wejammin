@@ -1,0 +1,159 @@
+-- Slice 11 shared SQL helper suite (lane S11-3s): pg_temp inspectors and probes.
+--
+-- Everything here lives and dies with the test session.  Inspectors resolve
+-- identifiers through pg_catalog by name/OID and answer false or empty for an
+-- absent object, so a RED run reports every missing helper instead of aborting
+-- at the first one.  Behavioural probes run in subtransactions.
+--
+-- Prerequisite includes (in this order): support/jwt-claims.sqlinc (before the
+-- first begin), phase_02_slice_10_rpc/000-helpers.sqlinc and
+-- phase_02_slice_10_rpc/001-fixtures.sqlinc.
+
+-- Outcome of one statement: '00000' on success, 'P0001:<message>' for a typed
+-- refusal, otherwise the bare SQLSTATE.  Effects of a success are kept.
+create or replace function pg_temp.h11_outcome(p_sql text)
+returns text
+language plpgsql
+as $body$
+begin
+  begin
+    execute p_sql;
+    return '00000';
+  exception
+    when others then
+      if sqlstate = 'P0001' then
+        return 'P0001:' || sqlerrm;
+      end if;
+      return sqlstate;
+  end;
+end;
+$body$;
+
+-- Scalar result of a single-value statement as text, or 'ERR:<sqlstate>:<msg>'
+-- when it raised (the subtransaction keeps the suite alive).
+create or replace function pg_temp.h11_text(p_sql text)
+returns text
+language plpgsql
+as $body$
+declare
+  result text;
+begin
+  begin
+    execute p_sql into result;
+    return result;
+  exception
+    when others then
+      return 'ERR:' || sqlstate || ':' || sqlerrm;
+  end;
+end;
+$body$;
+
+-- Scalar result of a single-value statement as jsonb, or null when it raised.
+create or replace function pg_temp.h11_json(p_sql text)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  result jsonb;
+begin
+  begin
+    execute p_sql into result;
+    return result;
+  exception
+    when others then
+      return null;
+  end;
+end;
+$body$;
+
+-- True when platform_private.<name>(<arg types>) exists, is SECURITY DEFINER,
+-- owned by the CMS definer with an empty search_path, and none of PUBLIC, anon,
+-- authenticated or service_role may execute it.
+create or replace function pg_temp.h11_private_definer(p_signature text)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(
+    p.prosecdef
+    and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+    and coalesce(p.proconfig, array[]::text[]) @> array['search_path=""']
+    and not has_function_privilege('anon', p.oid, 'execute')
+    and not has_function_privilege('authenticated', p.oid, 'execute')
+    and not has_function_privilege('service_role', p.oid, 'execute')
+    and not exists (
+      select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+      where acl.grantee = 0 and acl.privilege_type = 'EXECUTE'
+    )
+  ), false)
+  from pg_proc p
+  where p.oid = to_regprocedure('platform_private.' || p_signature)
+$body$;
+
+-- Return type of platform_private.<signature>, or null when absent.
+create or replace function pg_temp.h11_rettype(p_signature text)
+returns text
+language sql
+stable
+as $body$
+  select pg_get_function_result(to_regprocedure('platform_private.' || p_signature))
+$body$;
+
+-- Volatility letter (i, s, v) of platform_private.<signature>, or null.
+create or replace function pg_temp.h11_volatility(p_signature text)
+returns text
+language sql
+stable
+as $body$
+  select p.provolatile::text
+  from pg_proc p where p.oid = to_regprocedure('platform_private.' || p_signature)
+$body$;
+
+-- Independent lowercase SHA-256 of a text (the expected-value oracle used by
+-- the parity assertions, deliberately not platform_private.cms_jcs_sha256).
+create or replace function pg_temp.h11_sha256(p_text text)
+returns text
+language sql
+immutable
+as $body$
+  select encode(extensions.digest(convert_to(p_text, 'utf8'), 'sha256'), 'hex')
+$body$;
+
+-- Run one data-changing statement with every USER trigger of p_table disabled
+-- (the helper under test reads columns; the rows' guard-compliance is proven by the
+-- data-model suite).  Foreign keys and CHECKs still apply.  The triggers are
+-- re-enabled whether the statement succeeds or not.
+create or replace function pg_temp.h11_raw_exec(p_table text, p_sql text)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    execute format('alter table %s disable trigger user', p_table);
+  exception when object_in_use then
+    -- the table has pending (deferred) trigger events in this transaction: run them now
+    -- (deferred constraint checks of earlier fixture statements) and retry
+    set constraints all immediate;
+    execute format('alter table %s disable trigger user', p_table);
+  end;
+  begin
+    execute p_sql;
+  exception when others then
+    execute format('alter table %s enable trigger user', p_table);
+    raise;
+  end;
+  execute format('alter table %s enable trigger user', p_table);
+end;
+$body$;
+
+-- INSERT of a jsonb row image under h11_raw_exec (unknown keys are ignored by
+-- jsonb_populate_record).
+create or replace function pg_temp.h11_raw_insert(p_table text, p_row jsonb)
+returns void
+language sql
+as $body$
+  select pg_temp.h11_raw_exec(p_table, format(
+    'insert into %s select * from jsonb_populate_record(null::%s, %L::jsonb)',
+    p_table, p_table, p_row::text))
+$body$;

@@ -1,5 +1,7 @@
 import { assertCmsEditorialRouteRegistry } from './route-policy.ts';
 import type { CmsEditorialRoutePolicy } from './route-policy-contract.ts';
+import { slice11RoutePolicies } from './routes-review-publication.ts';
+import { tier1Slo, tier2Slo } from './route-slo.ts';
 import {
   editorialAuthoringContextErrors,
   editorialConflictResolutionErrors,
@@ -11,22 +13,6 @@ import {
   editorialRevisionErrors,
   editorialRevisionHistoryErrors,
 } from './routes-errors.ts';
-
-/** Tier 2 command budget shared by every 03b mutation (p95 under 1,200ms). */
-const tier2Slo = {
-  tier: 2,
-  commandP95Ms: 1_200,
-  protectedRpcP95Ms: 300,
-  acceptanceP99Ms: 1_000,
-} as const;
-
-/** Tier 1 read budget shared by 03b safe reads (p95 under 750ms). */
-const tier1Slo = {
-  tier: 1,
-  commandP95Ms: 750,
-  protectedRpcP95Ms: 300,
-  acceptanceP99Ms: 1_000,
-} as const;
 
 /** The author-or-editor gate shared by every authoring route. */
 const authorOrEditor = ['cms.author', 'cms.editor'] as const;
@@ -57,6 +43,8 @@ const routePolicies = [
     auth: 'editorial_author',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'required',
@@ -93,6 +81,8 @@ const routePolicies = [
     auth: 'editorial_author',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'required',
@@ -133,6 +123,8 @@ const routePolicies = [
     auth: 'editorial_reader',
     capabilities: authorEditorOrReviewer,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     // A safe read performs no mutation, so CSRF is deliberately absent while
@@ -170,6 +162,8 @@ const routePolicies = [
     auth: 'editorial_author',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'required',
@@ -203,6 +197,8 @@ const routePolicies = [
     auth: 'editorial_author',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'required',
@@ -241,6 +237,8 @@ const routePolicies = [
     auth: 'editorial_reader',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'none',
@@ -277,6 +275,8 @@ const routePolicies = [
     auth: 'editorial_reader',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'none',
@@ -311,6 +311,8 @@ const routePolicies = [
     auth: 'editorial_reader',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'none',
@@ -346,6 +348,8 @@ const routePolicies = [
     auth: 'editorial_reader',
     capabilities: authorOrEditor,
     capabilityMode: 'any_of',
+    gate: 'capability',
+    stepUp: 'none',
     audience: 'browser',
     cors: 'cms-console',
     csrf: 'none',
@@ -365,6 +369,7 @@ const routePolicies = [
     eventType: 'none',
     errors: editorialAuthoringContextErrors,
   },
+  ...slice11RoutePolicies,
 ] as const satisfies readonly CmsEditorialRoutePolicy[];
 
 export const cmsEditorialRoutePolicies =

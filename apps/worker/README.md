@@ -38,7 +38,13 @@ transport seam: it validates producer envelopes, delegates queue messages to
 application orchestration, acknowledges only successful work, and retries when
 orchestration is missing, fails, or requests a retry. The scheduled handler
 keeps platform retries enabled when the one-minute outbox sweep is unavailable
-or incomplete.
+or incomplete. Each minute it also runs the CMS publication schedule sweep
+(`src/cms-publication-schedule-sweep.ts`, CMS-03B-20): it claims at most 25 due
+schedules, runs the Worker-resident accessibility checker for each, and executes
+them with the claimed schedule version and lease; the retry ladder belongs to the
+database. Its RPC port is importable only by that sweep, and the CMS-03B-19
+preview-token verifier only by the future delivery adapter
+(`src/cms-editorial-principals.test.ts` pins both).
 
 Exercise the local queue without a provider call with:
 

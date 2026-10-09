@@ -75,3 +75,13 @@ describe('cms editorial entries routes', () => {
     });
   });
 });
+
+describe('the draft page links to its workflow', () => {
+  const source = readFileSync(fromHere('./[entryId].astro'), 'utf8');
+
+  it('offers a native link to the review and publish workflow beside the editor', () => {
+    expect(source).toContain('cmsEditorialAppWorkflowPath(');
+    expect(source).toContain('Review and publish');
+    expect(source).toContain('<CmsEditorialEntryEditorIsland');
+  });
+});

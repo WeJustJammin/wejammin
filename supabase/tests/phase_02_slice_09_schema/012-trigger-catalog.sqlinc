@@ -23,7 +23,7 @@ select is((select count(*)::integer from (select table_name, trigger_name, funct
   'every proved trigger still exists with its function, timing, row level and events [P2-S09-AC-215]');
 select is((select count(*)::integer from s09t_catalog where enabled <> 'O'), 0,
   'every cms_ trigger fires in the origin session role, none is disabled or replica-only [P2-S09-AC-215]');
-select is((select count(*)::integer from s09t_inventory), 112, 'the inventory holds exactly 112 triggers [P2-S09-AC-215]');
+select is((select count(*)::integer from s09t_inventory), 134, 'the inventory holds exactly 134 triggers [P2-S09-AC-215]');
 
 -- Every cms_ table has INSERT, UPDATE and DELETE each covered by a BEFORE row trigger, except the two
 -- named exceptions: the alert delivery log has no trigger (its RLS policy admits only RPC context) and
@@ -44,7 +44,7 @@ select diag(table_name || ' ' || trigger_name || ' ' || event || ' => ' || outco
 select ok(outcome = expected, trigger_name || ' refuses ' || upper(event) || ' with ' || expected || ' (' || outcome || ') [P2-S09-AC-215]')
   from s09t_generic where outcome <> 'EMPTY' order by table_name, trigger_name, event;
 select is((select string_agg(distinct table_name, ',' order by table_name) from s09t_generic where outcome = 'EMPTY'),
-  'cms_composition_instances,cms_conflict_records,cms_content_type_capability_bindings,cms_edit_presence,cms_editorial_decisions,cms_editorial_reviews,cms_entry_relations,cms_locale_variants,cms_pattern_versions,cms_preview_tokens,cms_publication_schedules,cms_publication_versions,cms_related_content_rules,cms_restore_chain_manifests,cms_taxonomy_versions,cms_term_assignments,cms_term_labels,cms_terms',
+  'cms_command_accessibility_evidence,cms_composition_instances,cms_conflict_records,cms_content_type_capability_bindings,cms_edit_presence,cms_editorial_decisions,cms_editorial_review_assignments,cms_editorial_review_dependencies,cms_editorial_reviews,cms_entry_relations,cms_locale_variants,cms_pattern_versions,cms_preview_tokens,cms_publication_schedules,cms_publication_settings_snapshots,cms_publication_versions,cms_related_content_rules,cms_restore_chain_manifests,cms_taxonomy_versions,cms_term_assignments,cms_term_labels,cms_terms',
   'the tables with no row in this fixture are exactly the listed ones; the entry/locale/relation tables are proved on the second fixture and the rest are Slice 10-16 producers [P2-S09-AC-215]');
 
 -- The state, identity, parent and lifecycle guards of the original BE03a tables and of the new review,

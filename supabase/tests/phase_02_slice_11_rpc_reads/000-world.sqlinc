@@ -1,0 +1,62 @@
+-- Slice 11 read-RPC builders (lane S11-3c).  Include AFTER phase_02_slice_11_rpc_review/000-world.sqlinc,
+-- 020-decision.sqlinc (r11_protected, r11_assign_now, r11_decide_now) and 030-submit.sqlinc (r11_entry,
+-- r11_manifest, r11_evidence).
+--
+--   r11r_review(key, tag, submitter, overrides)   an OPEN review frozen from the REAL manifest of the revision
+--                                                 of r11_entry(tag); the submitter is an s11 person key
+--   r11r_call(label, function, actor, request)    one platform_api read through the probe (the session is the actor's)
+--   r11r_effects()                                 counters the "reads write nothing" assertions compare
+--   r11r_pointer_free(response, ids)               true when none of the identifiers occurs in the response text
+
+create or replace function pg_temp.r11r_review(
+  p_key text, p_tag text, p_submitter text default 'editor', p_overrides jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+as $body$
+declare
+  revision uuid := pg_temp.h11w_uuid(p_tag || ':revision');
+  manifest jsonb := pg_temp.r11_manifest(revision);
+  policy jsonb := manifest->'schema'->'workflowPolicy';
+begin
+  perform pg_temp.h11r_review(p_key, jsonb_build_object(
+    'revision_id', revision, 'entry_id', pg_temp.h11w_uuid(p_tag || ':entry'),
+    'frozen_hash', (select payload_hash from platform_private.cms_entry_revisions where id = revision),
+    'dependency_manifest', manifest, 'dependency_hash', platform_private.cms_jcs_sha256(manifest),
+    'activation_evidence', manifest->'schema'->'activationEvidence',
+    'workflow_policy_key', policy->>'key', 'workflow_policy_version', (policy->>'version')::bigint,
+    'workflow_policy_hash', policy->>'policyHash', 'risk_class', policy->>'riskClass',
+    'required_decision_count', (policy->>'requiredDecisionCount')::integer,
+    'required_capabilities', policy->'requiredCapabilities',
+    'approval_evidence_hash', policy->>'approvalEvidenceHash',
+    'submitted_by', pg_temp.s11_id(p_submitter)) || p_overrides);
+end;
+$body$;
+
+create or replace function pg_temp.r11r_call(
+  p_label text, p_function text, p_actor text, p_request jsonb, p_keep boolean default true
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_session(p_actor);
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.%I(%L::jsonb)', p_function, p_request::text), p_keep);
+end;
+$body$;
+
+-- Everything a safe read must leave alone.
+create or replace function pg_temp.r11r_effects()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select pg_temp.r11_effects()
+    || '/' || (select count(*) from platform_private.cms_preview_tokens)::text
+    || '/' || (select count(*) from platform_private.cms_publication_schedules)::text
+    || '/' || (select count(*) from platform_private.cms_publication_versions)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.cms_content_entries)::text
+$body$;

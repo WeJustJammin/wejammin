@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 155
-- **Unique decision titles**: 155
+- **Total decisions**: 162
+- **Unique decision titles**: 162
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2253,6 +2253,105 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: Slice 11 evidence ledger; DEC-147 wording batch.
 - **Reversibility**: High
 
+## DEC-156: Slice 11 RPCs follow the Slice 10 single-JSON definer convention; internal CMS-03B-19/20 are granted to service_role and principal-bound at the Worker module boundary (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T12:28:48.751Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 RPC planning (orchestrator resolution of the Codex RPC-plan contradictions; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: BE03b names the Slice 11 RPCs but gives no SQL signatures, grant roles or definer/invoker declarations, and says CMS-03B-19 and CMS-03B-20 are reachable only by one registered non-browser principal (the Shard 04 delivery principal; the Worker scheduled sweep principal) without naming a PostgreSQL role (BE03b:172-180, 1986-1994, 2020-2021). The Codex Slice 11 RPC plan flagged both as spec gaps.
+- **Options considered**: (A) the Slice 10 convention: platform_private.<name>(p_request jsonb) returns jsonb plus a platform_api wrapper (SECURITY DEFINER, search_path '', owner wejammin_cms_definer, revoke from public/anon/authenticated, grant execute to service_role); internal RPCs granted to service_role like the 03A review-authority sweep (20261002193000:119) and the 138 other internal grants, with the one-principal rule enforced in the Worker (only the scheduled handler imports the claim/execute port; only the delivery adapter imports the verifier port; architecture test) and the functions absent from the browser route inventory; (B) two dedicated NOLOGIN roles reached through PostgREST JWT role switching (rejected: the Worker would have to hold the JWT signing secret, which can mint any role including service_role, so it adds a secret without adding isolation); (C) leave the internal RPCs ungranted until an owner names roles (rejected: blocks CMS-03B-19/20 verification with no security gain).
+- **Decision**: (A). The registered principal is the Worker service credential; misuse inside the Worker is prevented by the module-boundary architecture test, and the S09 API-surface guard classifies the new functions by role.
+- **Downstream**: Slice 11 lanes S11-3 (SQL) and S11-4 (Worker ports, scheduled handler, delivery verifier adapter); the S09 r8 API-surface guard; Slice 15 consumes the verifier through the same port.
+- **Reversibility**: High (a later dedicated role is a forward grant change)
+
+## DEC-157: The BE03b global lock order governs Slice 11 decision, execution and assignment commands (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T12:28:48.751Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 RPC planning (orchestrator resolution of the Codex RPC-plan contradictions; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: BE03b's decision algorithm holds the review row lock before rebuilding dependencies (BE03b:1838-1840) and describes execution as running under the schedule and lineage locks before rereading approval and preflights (BE03b:1865-1874), while the global order forbids acquiring dependency/schema positions after the review position (BE03b:1698-1720; supabase/migrations/20261005013000). Assignment create/revoke requires an exact review If-Match but does not advance the review version, so the serialization authority was unstated.
+- **Options considered**: (A) the global order governs: decision recording locks dependency/schema positions before the review row; execution locks authority, dependency and review positions, then the schedule row (rechecking the lease after the lock), then the publication-lineage advisory lock; assignment commands lock the review row FOR UPDATE, check the exact review version, rely on a partial unique (review_id, reviewer) where active, and count the <=16 active assignments under that lock; (B) follow the algorithm prose literally (rejected: reintroduces the lock inversions Slice 10 removed and deadlocks against activation/revocation).
+- **Decision**: (A). Residual deadlocks keep the Slice 10 mapping to P0001 CONFLICT / 409 with nothing committed and the same idempotency key reusable.
+- **Downstream**: Slice 11 lane S11-3 RPC bodies and race runners; Slice 11 race/concurrency criteria.
+- **Reversibility**: High
+
+## DEC-158: Slice 11 spec-text reconciliations (decision reason length unit, assignment reason NFC, evidence verification, execute outcomes, projection state) (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T12:28:48.751Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 RPC planning (orchestrator resolution of the Codex RPC-plan contradictions; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: The Codex Slice 11 RPC plan found five places where BE03b's prose, Zod and SQL rows disagree: the decision reason is 1-2000 code points (BE03b:264, 315-320) but the table CHECK uses octet_length (BE03b:1968); the assignment reason field matrix requires NFC but its Zod checks length only (BE03b:301, 599, 605); evidence is 'accepted only when healthy' (BE03b:1799-1802) while DEC-150 maps blocked and failed evidence; ScheduleExecutionResult has no cancelled outcome although schedules can be cancelled; and projectionState has no source before a Shard 04 consumer exists.
+- **Options considered**: per item, (A) the API/user-facing rule governs and the lower layer mirrors it, or (B) the literal lower-layer text.
+- **Decision**: (A) throughout. (a) cms_editorial_decisions.reason CHECK is char_length(reason) BETWEEN 1 AND 2000, so every API-valid non-ASCII reason persists. (b) Assignment reasons are 1-256 Unicode code points and must already be NFC (refused, never normalized), exactly as the field matrix states (BE03b:296); no further character exclusions are added. (c) The execute RPC verifies the evidence binding (provider key/version, 60-second freshness, JCS binding hash) for every outcome; only healthy satisfies category 11; blocked maps to failed/blocking_finding and failed to unavailable/checker_failed (DEC-150); stale or mis-bound evidence is 409 preflight_evidence_stale. (d) Verified against BE03b:1844 and 2073: cancellation happens only inside the review-invalidation transaction (pending or failed_retryable to cancelled), so ScheduleExecutionResult correctly omits cancelled; an executing schedule whose approval was invalidated becomes blocked with approval_invalidated (BE03b:1867). The Codex 'missing cancelled' finding is refuted and nothing changes. (e) PublicationResource.projectionState is pending until a Shard 04 consumer reports (Slice 15); Slice 11 never reports converged.
+- **Downstream**: BE03b changelog row and the decisions table row; Slice 11 contracts (S11-1), data model (S11-2), RPCs (S11-3).
+- **Reversibility**: High
+
+## DEC-153 (pin recorded): IANA tz release 2026e is the Slice 11 CMS_TZDB_VERSION; snapshot SHA-256 862c1656e10ab81c18359393473448dcd2540d4254fa5b2c432a2989cac81c3b (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T13:01:12.837Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 lane S11-1 (contract spine; DEC-153 pin recorded; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: DEC-153 deferred the concrete pin to the Slice 11 contract lane (Q-TZ-1 option C): the lane pins the newest stable IANA release available when it starts and records the tag, the SHA-256 of the generated snapshot and the generation command here.
+- **Decision (pin recorded)**: `CMS_TZDB_VERSION` = `2026e`, the newest stable release on https://data.iana.org/time-zones/releases/ on 2026-10-08 (tzdata2026e.tar.gz published 2026-09-30, release dated 2026-09-29; 2026d was 2026-09-11). `CMS_TZDB_SHA256` = `862c1656e10ab81c18359393473448dcd2540d4254fa5b2c432a2989cac81c3b`, the SHA-256 of the exact snapshot text `CMS_TZDB_SNAPSHOT_JSON` in `packages/contracts/src/cms-editorial/time-authority/tzdb-snapshot-data.ts` (constants in `tzdb-pin.ts`, subpath export `@wejammin/contracts/time-authority`).
+- **Sources pinned by digest**: tzdata2026e.tar.gz sha256 `b26882805f26aac59d5b222978e6580484b834ccdc98be89df2f05a6dc53a652`; tzcode2026e.tar.gz sha256 `cc3d27ca2a0d8399504551b920970d80af83bfb9c216e8082a15491921935d54`.
+- **Generation command**: `node infra/generate-tzdb-snapshot.mjs --download` (add `--check` to fail on drift; `--tzdata F --tzcode F` uses local tarballs). The script verifies both tarball digests, builds zic from the release tzcode (`cc -O2 -o zic zic.c`), compiles africa antarctica asia australasia etcetera europe northamerica southamerica backward with `zic -b slim` (the pseudo-zone `factory` is excluded), and reduces every distinct zone to its UT offsets, transition instants and POSIX footer (format `cms.tzdb.v1`, 597 names over 344 zones, 218 KB source, 26 KB gzip). A fresh download regenerated the identical snapshot (`--download --check` matched the SHA-256 above).
+- **Verification**: the snapshot agrees with the host ICU (`Intl`) on every offset change and weekly samples for 39 zones from 2000 to 2040 (tzdb-differential test). Africa/Casablanca is compared only until 2026-09-19 because 2026e itself moves Morocco to permanent +00 on 2026-09-20 (host ICU carries 2026a); that behaviour is pinned by golden values.
+- **Unchanged**: Q-TZ-2 (tag only, no schedule hash column). The owner may override by a forward migration; stored schedules keep the version and instant they were accepted with. Downstream: P2-S11-AC-103..106; `platform_private.cms_tzdb_version()` must return `2026e` (CI parity test with the contracts constant, lane S11-3); the Worker answers every schedule command 503 DEPENDENCY_UNAVAILABLE when `createTimeAuthority` rejects with TzdbIntegrityError.
+
+## DEC-159: Slice 11 Worker-SQL refusal conventions, null accessibility evidence, the quality-gate input load, the audit evidence summary and snake_case metric labels (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T18:27:32.889Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 Worker/SQL integration (orchestrator resolution of lane S11-4 and S11-3a requests; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: Building the Slice 11 Worker and RPCs in parallel exposed six seams the specs leave open or get wrong: (1) Slice 10 refusals carry a DETAIL that is only a JSON array of RFC 6901 pointers, which cannot carry the structured members BE03b requires (preflight results, dependencyHash, versions, time-resolution bounds); (2) a refusal that must keep committed state (the review invalidation behind dependency_changed on CMS-03B-06/07/09) cannot be raised, and the Worker lane and the review-RPC lane built two different envelopes for it; (3) the Worker checker sometimes produces no proof (unreadable input, dependency failure, timeout) while ExecuteScheduleRequest.evidence was non-nullable; (4) BE05c:1004 requires 'one read-only RPC load of the revision' for the checker without naming it; (5) BE03b:1807 says the command audit record stores { checkerKey, checkerVersion, outcome, blockingCount, inputHash } but audit_private.audit_events has no payload column; (6) BE03b:2149 names the metric label riskClass, which the shared logger grammar [a-z][a-z0-9_]{0,31} (packages/observability/src/logging.ts:46) rejects, dropping the whole event.
+- **Options considered**: per seam, the lane proposal versus leaving the spec literal; for (2) the Worker envelope { kind: 'refusal', reasonCode, details } versus the review lane's { outcome: 'invalidated', reasonCode, dependencyHash, review }; for (5) a CMS-owned side table versus a payload column on the shared audit table.
+- **Decision**: (1) VALIDATION_FAILED keeps the pointer-array DETAIL; every other structured Slice 11 refusal carries a JSON-object DETAIL whose members come only from the closed set preflight, dependencyHash, pinnedVersion, expectedUtc, minUtc, maxUtc, alternatives, dependencyClass, retryAfterSeconds, expectedVersion, currentVersion; the Worker drops any other member. (2) A committed refusal is answered with HTTP 200 and exactly { kind: 'refusal', reasonCode, details } (the Worker lane shape: generic for 06/07/09 and it returns no resource the Worker would discard); a decision refused because a counted approver lapsed uses reasonCode review_not_open, the CMS-03B-06 token for a review that is no longer open. (3) evidence is PreflightEvidence | null on CMS-03B-05/07/09/15 and on CMS-03B-20 execute; null maps to the unavailable/checker_failed result (DEC-150), never to a pass. (4) The load is platform_api.cms_load_quality_gate_input(p_request jsonb), service_role only, read-only, uniform NOT_FOUND for any hidden or unreadable target, returning the checker's strict AccessibilityCheckerInput. (5) A CMS-owned append-only side table keyed to the command's audit event stores exactly the five summary fields, written in the command transaction whenever evidence is present; the shared audit table is not altered. (6) The label is risk_class; BE03b and the runbook are amended.
+- **Downstream**: lanes S11-3a (envelope, side table), S11-3b (envelope and side table on 07/09/execute), S11-3c (the load RPC), S11-4 (Worker parsing); packages/contracts ExecuteScheduleRequestSchema and observability labels; BE03b changelog; a separate task fixes the same label defect in the Slice 09 schema-review metric.
+- **Reversibility**: High
+
+## DEC-160: provider_unavailable is the registered unavailable reason of every non-worker preflight category (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T18:30:48.668Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 Codex contract review finding 4 (orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: BE03b says a non-passed PreflightResult.reasonCode is 'a closed lowercase token from the provider's registered reason set' (BE03b:1265-1279) and defines unavailable as 'a provider dependency failed or timed out' (BE03b:1805), but the D19 registry registers an unavailable reason only for the accessibility provider (checker_failed). cms_evaluate_preflight (20261005017570) answers unavailable/provider_unavailable when a registry row names a provider the deployed code does not implement (forward-migrated registry ahead of code), and the Codex contract review found that the contract accepted any lowercase token for unavailable.
+- **Options considered**: (A) register provider_unavailable as the unavailable reason of every database and reference-gate category, keep checker_failed for the worker accessibility provider, and validate every non-passed reason against the category's closed failed set or its closed unavailable set; (B) treat registry/code skew as an internal 500 (rejected: BE03b makes provider unavailability a retryable 503 that commits nothing, which is the right behaviour while code catches up with a forward-migrated registry); (C) keep an open token (rejected: contradicts 'closed').
+- **Decision**: (A). The contract validates failed reasons against the category's registered failed set and unavailable reasons against { provider_unavailable } (categories 1-10, 12-17) or { checker_failed } (category 11). BE03b registry text is amended.
+- **Downstream**: packages/contracts preflight.ts (contract-fix lane), cms_evaluate_preflight (already emits these tokens), BE03b D19 registry table and changelog.
+- **Reversibility**: High
+
+## DEC-161: Revoking a counted approver's assignment on an open review invalidates the review with reviewer_authority_changed (2026-10-08)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-08T18:33:30.609Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 lane S11-3s escalation (orchestrator resolution; owner may override)
+- **Index**: [[index]]
+
+- **Problem**: BE03b's review-invalidation table lists, under reviewer_authority_changed, 'a counted approver's assignment is revoked while the review is open' (BE03b:1860), while the CMS-03B-18 assignment rules and the review state-machine prose say assignment create/revoke does not change the review state or version. Lane S11-3s implemented no assignment-revocation trigger and recommended recount-only.
+- **Options considered**: (A) the specific invalidation row governs: the CMS-03B-18 revoke path, in its own transaction and under DEC-157 lock order, invalidates the open review with reviewer_authority_changed when the revoked assignment authorized a counted approve decision; every other assignment create/revoke leaves the review state and version unchanged; (B) recount only, so the open review simply needs another approval (rejected: contradicts the explicit invalidation row and keeps a review alive whose counted approval lost its authorization).
+- **Decision**: (A). The general 'does not change the review version' rule covers assignment changes that touch no counted decision.
+- **Downstream**: lane S11-3a cms_assign_editorial_reviewer revoke path (calls cms_invalidate_editorial_review), its pgTAP and the CMS-03B-18 Worker mapping (the revoke still answers 200 with the assignment resource; the review becomes invalidated and emits its own review-changed event).
+- **Reversibility**: High
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -4346,4 +4445,96 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: (A) apply the corrected text now; (B) leave the existing criterion text and add the corrected wording to the owner DEC-147 wording batch.
 - **Decision**: (B). Existing criterion text AC001-AC048 is not changed; the owner ratifies the corrected wording together with the Slice 10 wording defects (DEC-147 class) before the Slice 11 evidence ledger freezes these rows. Proposed corrected text is listed in the lane S11-0 report section 7.
 - **Downstream**: Slice 11 evidence ledger; DEC-147 wording batch.
+- **Reversibility**: High
+
+### DEC-156: Slice 11 RPCs follow the Slice 10 single-JSON definer convention; internal CMS-03B-19/20 are granted to service_role and principal-bound at the Worker module boundary (2026-10-08)
+
+- **Timestamp**: 2026-10-08T12:28:48.751Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 RPC planning (orchestrator resolution of the Codex RPC-plan contradictions; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: BE03b names the Slice 11 RPCs but gives no SQL signatures, grant roles or definer/invoker declarations, and says CMS-03B-19 and CMS-03B-20 are reachable only by one registered non-browser principal (the Shard 04 delivery principal; the Worker scheduled sweep principal) without naming a PostgreSQL role (BE03b:172-180, 1986-1994, 2020-2021). The Codex Slice 11 RPC plan flagged both as spec gaps.
+- **Options considered**: (A) the Slice 10 convention: platform_private.<name>(p_request jsonb) returns jsonb plus a platform_api wrapper (SECURITY DEFINER, search_path '', owner wejammin_cms_definer, revoke from public/anon/authenticated, grant execute to service_role); internal RPCs granted to service_role like the 03A review-authority sweep (20261002193000:119) and the 138 other internal grants, with the one-principal rule enforced in the Worker (only the scheduled handler imports the claim/execute port; only the delivery adapter imports the verifier port; architecture test) and the functions absent from the browser route inventory; (B) two dedicated NOLOGIN roles reached through PostgREST JWT role switching (rejected: the Worker would have to hold the JWT signing secret, which can mint any role including service_role, so it adds a secret without adding isolation); (C) leave the internal RPCs ungranted until an owner names roles (rejected: blocks CMS-03B-19/20 verification with no security gain).
+- **Decision**: (A). The registered principal is the Worker service credential; misuse inside the Worker is prevented by the module-boundary architecture test, and the S09 API-surface guard classifies the new functions by role.
+- **Downstream**: Slice 11 lanes S11-3 (SQL) and S11-4 (Worker ports, scheduled handler, delivery verifier adapter); the S09 r8 API-surface guard; Slice 15 consumes the verifier through the same port.
+- **Reversibility**: High (a later dedicated role is a forward grant change)
+
+### DEC-157: The BE03b global lock order governs Slice 11 decision, execution and assignment commands (2026-10-08)
+
+- **Timestamp**: 2026-10-08T12:28:48.751Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 RPC planning (orchestrator resolution of the Codex RPC-plan contradictions; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: BE03b's decision algorithm holds the review row lock before rebuilding dependencies (BE03b:1838-1840) and describes execution as running under the schedule and lineage locks before rereading approval and preflights (BE03b:1865-1874), while the global order forbids acquiring dependency/schema positions after the review position (BE03b:1698-1720; supabase/migrations/20261005013000). Assignment create/revoke requires an exact review If-Match but does not advance the review version, so the serialization authority was unstated.
+- **Options considered**: (A) the global order governs: decision recording locks dependency/schema positions before the review row; execution locks authority, dependency and review positions, then the schedule row (rechecking the lease after the lock), then the publication-lineage advisory lock; assignment commands lock the review row FOR UPDATE, check the exact review version, rely on a partial unique (review_id, reviewer) where active, and count the <=16 active assignments under that lock; (B) follow the algorithm prose literally (rejected: reintroduces the lock inversions Slice 10 removed and deadlocks against activation/revocation).
+- **Decision**: (A). Residual deadlocks keep the Slice 10 mapping to P0001 CONFLICT / 409 with nothing committed and the same idempotency key reusable.
+- **Downstream**: Slice 11 lane S11-3 RPC bodies and race runners; Slice 11 race/concurrency criteria.
+- **Reversibility**: High
+
+### DEC-158: Slice 11 spec-text reconciliations (decision reason length unit, assignment reason NFC, evidence verification, execute outcomes, projection state) (2026-10-08)
+
+- **Timestamp**: 2026-10-08T12:28:48.751Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 RPC planning (orchestrator resolution of the Codex RPC-plan contradictions; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: The Codex Slice 11 RPC plan found five places where BE03b's prose, Zod and SQL rows disagree: the decision reason is 1-2000 code points (BE03b:264, 315-320) but the table CHECK uses octet_length (BE03b:1968); the assignment reason field matrix requires NFC but its Zod checks length only (BE03b:301, 599, 605); evidence is 'accepted only when healthy' (BE03b:1799-1802) while DEC-150 maps blocked and failed evidence; ScheduleExecutionResult has no cancelled outcome although schedules can be cancelled; and projectionState has no source before a Shard 04 consumer exists.
+- **Options considered**: per item, (A) the API/user-facing rule governs and the lower layer mirrors it, or (B) the literal lower-layer text.
+- **Decision**: (A) throughout. (a) cms_editorial_decisions.reason CHECK is char_length(reason) BETWEEN 1 AND 2000, so every API-valid non-ASCII reason persists. (b) Assignment reasons are 1-256 Unicode code points and must already be NFC (refused, never normalized), exactly as the field matrix states (BE03b:296); no further character exclusions are added. (c) The execute RPC verifies the evidence binding (provider key/version, 60-second freshness, JCS binding hash) for every outcome; only healthy satisfies category 11; blocked maps to failed/blocking_finding and failed to unavailable/checker_failed (DEC-150); stale or mis-bound evidence is 409 preflight_evidence_stale. (d) Verified against BE03b:1844 and 2073: cancellation happens only inside the review-invalidation transaction (pending or failed_retryable to cancelled), so ScheduleExecutionResult correctly omits cancelled; an executing schedule whose approval was invalidated becomes blocked with approval_invalidated (BE03b:1867). The Codex 'missing cancelled' finding is refuted and nothing changes. (e) PublicationResource.projectionState is pending until a Shard 04 consumer reports (Slice 15); Slice 11 never reports converged.
+- **Downstream**: BE03b changelog row and the decisions table row; Slice 11 contracts (S11-1), data model (S11-2), RPCs (S11-3).
+- **Reversibility**: High
+
+### DEC-153 (pin recorded): IANA tz release 2026e is the Slice 11 CMS_TZDB_VERSION; snapshot SHA-256 862c1656e10ab81c18359393473448dcd2540d4254fa5b2c432a2989cac81c3b (2026-10-08)
+
+- **Timestamp**: 2026-10-08T13:01:12.837Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 lane S11-1 (contract spine; DEC-153 pin recorded; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution, pinned
+
+- **Problem**: DEC-153 deferred the concrete pin to the Slice 11 contract lane (Q-TZ-1 option C): the lane pins the newest stable IANA release available when it starts and records the tag, the SHA-256 of the generated snapshot and the generation command here.
+- **Decision (pin recorded)**: `CMS_TZDB_VERSION` = `2026e`, the newest stable release on https://data.iana.org/time-zones/releases/ on 2026-10-08 (tzdata2026e.tar.gz published 2026-09-30, release dated 2026-09-29; 2026d was 2026-09-11). `CMS_TZDB_SHA256` = `862c1656e10ab81c18359393473448dcd2540d4254fa5b2c432a2989cac81c3b`, the SHA-256 of the exact snapshot text `CMS_TZDB_SNAPSHOT_JSON` in `packages/contracts/src/cms-editorial/time-authority/tzdb-snapshot-data.ts` (constants in `tzdb-pin.ts`, subpath export `@wejammin/contracts/time-authority`).
+- **Sources pinned by digest**: tzdata2026e.tar.gz sha256 `b26882805f26aac59d5b222978e6580484b834ccdc98be89df2f05a6dc53a652`; tzcode2026e.tar.gz sha256 `cc3d27ca2a0d8399504551b920970d80af83bfb9c216e8082a15491921935d54`.
+- **Generation command**: `node infra/generate-tzdb-snapshot.mjs --download` (add `--check` to fail on drift; `--tzdata F --tzcode F` uses local tarballs). The script verifies both tarball digests, builds zic from the release tzcode (`cc -O2 -o zic zic.c`), compiles africa antarctica asia australasia etcetera europe northamerica southamerica backward with `zic -b slim` (the pseudo-zone `factory` is excluded), and reduces every distinct zone to its UT offsets, transition instants and POSIX footer (format `cms.tzdb.v1`, 597 names over 344 zones, 218 KB source, 26 KB gzip). A fresh download regenerated the identical snapshot (`--download --check` matched the SHA-256 above).
+- **Verification**: the snapshot agrees with the host ICU (`Intl`) on every offset change and weekly samples for 39 zones from 2000 to 2040 (tzdb-differential test). Africa/Casablanca is compared only until 2026-09-19 because 2026e itself moves Morocco to permanent +00 on 2026-09-20 (host ICU carries 2026a); that behaviour is pinned by golden values.
+- **Unchanged**: Q-TZ-2 (tag only, no schedule hash column). The owner may override by a forward migration; stored schedules keep the version and instant they were accepted with. Downstream: P2-S11-AC-103..106; `platform_private.cms_tzdb_version()` must return `2026e` (CI parity test with the contracts constant, lane S11-3); the Worker answers every schedule command 503 DEPENDENCY_UNAVAILABLE when `createTimeAuthority` rejects with TzdbIntegrityError.
+
+### DEC-159: Slice 11 Worker-SQL refusal conventions, null accessibility evidence, the quality-gate input load, the audit evidence summary and snake_case metric labels (2026-10-08)
+
+- **Timestamp**: 2026-10-08T18:27:32.889Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 Worker/SQL integration (orchestrator resolution of lane S11-4 and S11-3a requests; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: Building the Slice 11 Worker and RPCs in parallel exposed six seams the specs leave open or get wrong: (1) Slice 10 refusals carry a DETAIL that is only a JSON array of RFC 6901 pointers, which cannot carry the structured members BE03b requires (preflight results, dependencyHash, versions, time-resolution bounds); (2) a refusal that must keep committed state (the review invalidation behind dependency_changed on CMS-03B-06/07/09) cannot be raised, and the Worker lane and the review-RPC lane built two different envelopes for it; (3) the Worker checker sometimes produces no proof (unreadable input, dependency failure, timeout) while ExecuteScheduleRequest.evidence was non-nullable; (4) BE05c:1004 requires 'one read-only RPC load of the revision' for the checker without naming it; (5) BE03b:1807 says the command audit record stores { checkerKey, checkerVersion, outcome, blockingCount, inputHash } but audit_private.audit_events has no payload column; (6) BE03b:2149 names the metric label riskClass, which the shared logger grammar [a-z][a-z0-9_]{0,31} (packages/observability/src/logging.ts:46) rejects, dropping the whole event.
+- **Options considered**: per seam, the lane proposal versus leaving the spec literal; for (2) the Worker envelope { kind: 'refusal', reasonCode, details } versus the review lane's { outcome: 'invalidated', reasonCode, dependencyHash, review }; for (5) a CMS-owned side table versus a payload column on the shared audit table.
+- **Decision**: (1) VALIDATION_FAILED keeps the pointer-array DETAIL; every other structured Slice 11 refusal carries a JSON-object DETAIL whose members come only from the closed set preflight, dependencyHash, pinnedVersion, expectedUtc, minUtc, maxUtc, alternatives, dependencyClass, retryAfterSeconds, expectedVersion, currentVersion; the Worker drops any other member. (2) A committed refusal is answered with HTTP 200 and exactly { kind: 'refusal', reasonCode, details } (the Worker lane shape: generic for 06/07/09 and it returns no resource the Worker would discard); a decision refused because a counted approver lapsed uses reasonCode review_not_open, the CMS-03B-06 token for a review that is no longer open. (3) evidence is PreflightEvidence | null on CMS-03B-05/07/09/15 and on CMS-03B-20 execute; null maps to the unavailable/checker_failed result (DEC-150), never to a pass. (4) The load is platform_api.cms_load_quality_gate_input(p_request jsonb), service_role only, read-only, uniform NOT_FOUND for any hidden or unreadable target, returning the checker's strict AccessibilityCheckerInput. (5) A CMS-owned append-only side table keyed to the command's audit event stores exactly the five summary fields, written in the command transaction whenever evidence is present; the shared audit table is not altered. (6) The label is risk_class; BE03b and the runbook are amended.
+- **Downstream**: lanes S11-3a (envelope, side table), S11-3b (envelope and side table on 07/09/execute), S11-3c (the load RPC), S11-4 (Worker parsing); packages/contracts ExecuteScheduleRequestSchema and observability labels; BE03b changelog; a separate task fixes the same label defect in the Slice 09 schema-review metric.
+- **Reversibility**: High
+
+### DEC-160: provider_unavailable is the registered unavailable reason of every non-worker preflight category (2026-10-08)
+
+- **Timestamp**: 2026-10-08T18:30:48.668Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 Codex contract review finding 4 (orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: BE03b says a non-passed PreflightResult.reasonCode is 'a closed lowercase token from the provider's registered reason set' (BE03b:1265-1279) and defines unavailable as 'a provider dependency failed or timed out' (BE03b:1805), but the D19 registry registers an unavailable reason only for the accessibility provider (checker_failed). cms_evaluate_preflight (20261005017570) answers unavailable/provider_unavailable when a registry row names a provider the deployed code does not implement (forward-migrated registry ahead of code), and the Codex contract review found that the contract accepted any lowercase token for unavailable.
+- **Options considered**: (A) register provider_unavailable as the unavailable reason of every database and reference-gate category, keep checker_failed for the worker accessibility provider, and validate every non-passed reason against the category's closed failed set or its closed unavailable set; (B) treat registry/code skew as an internal 500 (rejected: BE03b makes provider unavailability a retryable 503 that commits nothing, which is the right behaviour while code catches up with a forward-migrated registry); (C) keep an open token (rejected: contradicts 'closed').
+- **Decision**: (A). The contract validates failed reasons against the category's registered failed set and unavailable reasons against { provider_unavailable } (categories 1-10, 12-17) or { checker_failed } (category 11). BE03b registry text is amended.
+- **Downstream**: packages/contracts preflight.ts (contract-fix lane), cms_evaluate_preflight (already emits these tokens), BE03b D19 registry table and changelog.
+- **Reversibility**: High
+
+### DEC-161: Revoking a counted approver's assignment on an open review invalidates the review with reviewer_authority_changed (2026-10-08)
+
+- **Timestamp**: 2026-10-08T18:33:30.609Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 lane S11-3s escalation (orchestrator resolution; owner may override)
+- **Tags**: decision, phase-2, slice-11, orchestrator-resolution
+
+- **Problem**: BE03b's review-invalidation table lists, under reviewer_authority_changed, 'a counted approver's assignment is revoked while the review is open' (BE03b:1860), while the CMS-03B-18 assignment rules and the review state-machine prose say assignment create/revoke does not change the review state or version. Lane S11-3s implemented no assignment-revocation trigger and recommended recount-only.
+- **Options considered**: (A) the specific invalidation row governs: the CMS-03B-18 revoke path, in its own transaction and under DEC-157 lock order, invalidates the open review with reviewer_authority_changed when the revoked assignment authorized a counted approve decision; every other assignment create/revoke leaves the review state and version unchanged; (B) recount only, so the open review simply needs another approval (rejected: contradicts the explicit invalidation row and keeps a review alive whose counted approval lost its authorization).
+- **Decision**: (A). The general 'does not change the review version' rule covers assignment changes that touch no counted decision.
+- **Downstream**: lane S11-3a cms_assign_editorial_reviewer revoke path (calls cms_invalidate_editorial_review), its pgTAP and the CMS-03B-18 Worker mapping (the revoke still answers 200 with the assignment resource; the review becomes invalidated and emits its own review-changed event).
 - **Reversibility**: High

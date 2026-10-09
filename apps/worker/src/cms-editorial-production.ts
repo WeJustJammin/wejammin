@@ -36,13 +36,23 @@ import {
   type CmsEditorialServerSessionContext,
   type CmsEditorialTelemetryEvent,
 } from './cms-editorial-production-types';
+import { createCmsEditorialQualityGate } from './cms-editorial-production-quality-gate';
+import type { CmsEditorialQualityGate } from './cms-editorial/types';
 import type {
   AuthoringContextResource,
   ConflictDetailResource,
+  EditorialReviewAssignmentResource,
+  EditorialReviewDetailResource,
+  EditorialReviewResource,
   EntryCreateResource,
   EntryDraftDetailResource,
   EntryListPage,
   EntryRevisionResource,
+  EntryWorkflowResource,
+  PreviewTokenResource,
+  PublicationResource,
+  PublicationScheduleResource,
+  ReviewQueuePage,
   RevisionHistoryPage,
 } from '@wejammin/contracts';
 
@@ -100,6 +110,15 @@ export type CmsEditorialPorts = Readonly<{
   getConflictDetail: CmsEditorialPort<ConflictDetailResource>;
   listEntries: CmsEditorialPort<EntryListPage>;
   getAuthoringContext: CmsEditorialPort<AuthoringContextResource>;
+  submitReview: CmsEditorialPort<EditorialReviewResource>;
+  recordDecision: CmsEditorialPort<EditorialReviewResource>;
+  schedulePublication: CmsEditorialPort<PublicationScheduleResource>;
+  mintPreview: CmsEditorialPort<PreviewTokenResource>;
+  publishRevision: CmsEditorialPort<PublicationResource>;
+  getEntryWorkflow: CmsEditorialPort<EntryWorkflowResource>;
+  getEditorialReview: CmsEditorialPort<EditorialReviewDetailResource>;
+  listEditorialReviews: CmsEditorialPort<ReviewQueuePage>;
+  assignEditorialReviewer: CmsEditorialPort<EditorialReviewAssignmentResource>;
 }>;
 
 /**
@@ -122,6 +141,8 @@ export type CmsEditorialProductionDependencies = Readonly<{
   now?: () => number;
   deadlineMs?: number;
   telemetry?: (event: CmsEditorialTelemetryEvent) => void | Promise<void>;
+  /** The in-process accessibility gate of the preflight-bearing routes. */
+  qualityGate: CmsEditorialQualityGate;
 }>;
 
 /**
@@ -170,11 +191,10 @@ export const createProductionCmsEditorialDependencies = (
     ...authConfiguration,
     maxResponseBytes,
   };
+  const logger =
+    options.logger ?? defaultCmsEditorialLogger(options.environment);
   const telemetry =
-    options.telemetry ??
-    productionCmsEditorialTelemetry(
-      options.logger ?? defaultCmsEditorialLogger(options.environment),
-    );
+    options.telemetry ?? productionCmsEditorialTelemetry(logger);
   const humanOrigins = validateOriginList(
     options.humanOrigins ??
       configuredOriginList(options.environment.CMS_HUMAN_ORIGINS),
@@ -235,6 +255,26 @@ export const createProductionCmsEditorialDependencies = (
       'CMS-03B-14',
     );
 
+  const resource = <T>(operationId: CmsEditorialProductionOperationId) =>
+    cmsEditorialResourcePort<T>(callerFor(operationId), operationId);
+  const submitReview = resource<EditorialReviewResource>('CMS-03B-05');
+  const recordDecision = resource<EditorialReviewResource>('CMS-03B-06');
+  const schedulePublication =
+    resource<PublicationScheduleResource>('CMS-03B-07');
+  const mintPreview = resource<PreviewTokenResource>('CMS-03B-08');
+  const publishRevision = resource<PublicationResource>('CMS-03B-09');
+  const getEntryWorkflow = resource<EntryWorkflowResource>('CMS-03B-15');
+  const getEditorialReview =
+    resource<EditorialReviewDetailResource>('CMS-03B-16');
+  const listEditorialReviews = resource<ReviewQueuePage>('CMS-03B-17');
+  const assignEditorialReviewer =
+    resource<EditorialReviewAssignmentResource>('CMS-03B-18');
+  const qualityGate = createCmsEditorialQualityGate({
+    configuration,
+    contexts: sessionContexts,
+    logger,
+  });
+
   return {
     ports: {
       appendRevision,
@@ -246,7 +286,17 @@ export const createProductionCmsEditorialDependencies = (
       getConflictDetail,
       listEntries,
       getAuthoringContext,
+      submitReview,
+      recordDecision,
+      schedulePublication,
+      mintPreview,
+      publishRevision,
+      getEntryWorkflow,
+      getEditorialReview,
+      listEditorialReviews,
+      assignEditorialReviewer,
     },
+    qualityGate,
     resolveSession,
     rateLimit,
     humanOrigins,

@@ -10,6 +10,7 @@ import { registerCmsEditorialListRoutes } from './list-routes';
 import { registerCmsEditorialRestoreRoutes } from './restore-routes';
 import { registerCmsEditorialRoutes as registerRevisionRoutes } from './routes';
 import { instrumentDependencies } from './route-stages';
+import { registerCmsEditorialWorkflowRoutes } from './workflow-routes';
 import type { CmsEditorialDependencies } from './types';
 
 export const registerCmsEditorialRoutes = <E extends Env>(
@@ -29,6 +30,7 @@ export const registerCmsEditorialRoutes = <E extends Env>(
   registerCmsEditorialListRoutes(app, dependencies);
   registerCmsEditorialDetailRoutes(app, dependencies);
   registerCmsEditorialConflictDetailRoutes(app, dependencies);
+  registerCmsEditorialWorkflowRoutes(app, dependencies);
 };
 
 export const createCmsEditorialApp = (
@@ -39,7 +41,18 @@ export const createCmsEditorialApp = (
   return app;
 };
 export type {
+  CmsEditorialAssignmentPortInput,
+  CmsEditorialDecisionPortInput,
   CmsEditorialDependencies,
+  CmsEditorialPreviewPortInput,
+  CmsEditorialPublishPortInput,
+  CmsEditorialQualityGate,
+  CmsEditorialQualityGateInput,
+  CmsEditorialReviewDetailPortInput,
+  CmsEditorialReviewQueuePortInput,
+  CmsEditorialSchedulePortInput,
+  CmsEditorialSubmitReviewPortInput,
+  CmsEditorialWorkflowPortInput,
   CmsEditorialAuthoringContextPortInput,
   CmsEditorialConflictPortInput,
   CmsEditorialConflictDetailPortInput,

@@ -1576,6 +1576,13 @@
 
 ## Structured Memory
 
+- decision: DEC-161: Revoking a counted approver's assignment on an open review invalidates the review with reviewer_authority_changed (2026-10-08) — 2026-10-08T18:33:30.609Z
+- decision: DEC-160: provider_unavailable is the registered unavailable reason of every non-worker preflight category (2026-10-08) — 2026-10-08T18:30:48.668Z
+- decision: DEC-159: Slice 11 Worker-SQL refusal conventions, null accessibility evidence, the quality-gate input load, the audit evidence summary and snake_case metric labels (2026-10-08) — 2026-10-08T18:27:32.889Z
+- decision: DEC-153 (pin recorded): IANA tz release 2026e is the Slice 11 CMS_TZDB_VERSION; snapshot SHA-256 862c1656e10ab81c18359393473448dcd2540d4254fa5b2c432a2989cac81c3b (2026-10-08) — 2026-10-08T13:01:12.837Z
+- decision: DEC-156: Slice 11 RPCs follow the Slice 10 single-JSON definer convention; internal CMS-03B-19/20 are granted to service_role and principal-bound at the Worker module boundary (2026-10-08) — 2026-10-08T12:28:48.751Z
+- decision: DEC-157: The BE03b global lock order governs Slice 11 decision, execution and assignment commands (2026-10-08) — 2026-10-08T12:28:48.751Z
+- decision: DEC-158: Slice 11 spec-text reconciliations (decision reason length unit, assignment reason NFC, evidence verification, execute outcomes, projection state) (2026-10-08) — 2026-10-08T12:28:48.751Z
 - decision: DEC-154: DEC-149 additive rule extends to every Slice 11 cascade obligation no criterion owned; Slice 11 floor 122 (2026-10-08) — 2026-10-08T10:54:13.221Z
 - decision: DEC-155: AC035, AC038 and AC041 wording defects stay unapplied and join the owner DEC-147 wording batch (2026-10-08) — 2026-10-08T10:54:13.221Z
 - decision: DEC-153: The pinned IANA tz release is an implementation choice; the Slice 11 contract lane pins the newest stable release and records it here (2026-10-08) — 2026-10-08T10:54:13.220Z

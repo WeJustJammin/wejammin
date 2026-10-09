@@ -113,3 +113,45 @@ export type EditorialEntryListErrors = CmsEditorialErrorMap<
  */
 export type EditorialAuthoringContextErrors =
   CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;
+
+/**
+ * CMS-03B-05 and CMS-03B-08 command envelope: the twelve BE00 codes. A stale
+ * entry version is `CONFLICT` (`VERSION_MISMATCH`), an unavailable preflight
+ * provider is 503 `DEPENDENCY_UNAVAILABLE`, and neither requires step-up.
+ */
+export type EditorialReviewCommandErrors =
+  CmsEditorialErrorMap<EditorialCommandErrorCodes>;
+
+/**
+ * CMS-03B-06, -07, -09 and -18 envelope (E6): the twelve command codes plus the
+ * 401 `STEP_UP_REQUIRED` of a missing or stale MFA proof, which reserves no
+ * idempotency record and changes no state.
+ */
+export type EditorialStepUpCommandErrors = CmsEditorialErrorMap<
+  EditorialCommandErrorCodes | 'STEP_UP_REQUIRED'
+>;
+
+/**
+ * CMS-03B-15 and CMS-03B-16 envelope: the bounded read codes. A read mutates
+ * nothing and a hidden target is 404, so there is no CONFLICT; 415 stays.
+ */
+export type EditorialWorkflowReadErrors =
+  CmsEditorialErrorMap<EditorialBoundedReadErrorCodes>;
+
+/**
+ * CMS-03B-17 envelope: the caller's own scoped list. BE03b marks 403 and 404
+ * "not applicable to a scoped list", and a well-formed expired, tampered or
+ * foreign-bound cursor is 409 `CONFLICT` (DEC-140).
+ */
+export type EditorialReviewQueueErrors = CmsEditorialErrorMap<
+  | 'INVALID_REQUEST'
+  | 'UNAUTHENTICATED'
+  | 'CONFLICT'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'VALIDATION_FAILED'
+  | 'RATE_LIMITED'
+  | 'BAD_GATEWAY'
+  | 'DEPENDENCY_UNAVAILABLE'
+  | 'GATEWAY_TIMEOUT'
+  | 'INTERNAL_ERROR'
+>;

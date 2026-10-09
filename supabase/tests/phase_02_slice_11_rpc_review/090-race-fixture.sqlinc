@@ -1,0 +1,49 @@
+-- Committed fixture of the Slice 11 review-authority race runners (lane S11-3a).  Included by
+-- infra/database-races/review-kit.mjs AFTER 000-world, 020-decision and 030-submit, inside one
+-- transaction that COMMITS (the runners drive fresh sessions against it).  Every revision of
+-- entry A is created before any review (a newer revision of an entry invalidates its older live
+-- reviews).  The last statement of the script is the ids document the runners read.
+
+select pg_temp.r11_revision('race-rev-assign-1', 41);
+select pg_temp.r11_revision('race-rev-assign-2', 42);
+select pg_temp.r11_revision('race-rev-assign-3', 43);
+select pg_temp.r11_revision('race-rev-assign-4', 44);
+
+-- Assignment races: an open review without assignments, one with fifteen active unexpired
+-- assignments (one slot left), one with a single active assignment to revoke, and one to lock.
+select pg_temp.h11r_review('race-assign-1', jsonb_build_object('revision_id', pg_temp.s11_id('race-rev-assign-1')));
+select pg_temp.h11r_review('race-assign-limit', jsonb_build_object('revision_id', pg_temp.s11_id('race-rev-assign-2')));
+select pg_temp.h11r_assign('race-lim' || n, 'race-assign-limit', 'reviewer' || lpad(n::text, 2, '0'),
+  jsonb_build_object('starts_at', clock_timestamp() - interval '1 hour', 'ends_at', clock_timestamp() + interval '23 hours'))
+from generate_series(1, 15) as n;
+select pg_temp.h11r_review('race-assign-revoke', jsonb_build_object('revision_id', pg_temp.s11_id('race-rev-assign-3')));
+select pg_temp.r11_assign_now('race-revoke-asg', 'race-assign-revoke', 'rvA');
+select pg_temp.h11r_review('race-assign-lock', jsonb_build_object('revision_id', pg_temp.s11_id('race-rev-assign-4')));
+
+-- Decision races: reviews frozen from the real manifest of their own entry.
+select pg_temp.r11_frozen_review('race-dec-two', 'race-dec-two', jsonb_build_object('required_decision_count', 2));
+select pg_temp.r11_frozen_review('race-dec-one', 'race-dec-one');
+select pg_temp.r11_frozen_review('race-dec-replay', 'race-dec-replay');
+select pg_temp.r11_frozen_review('race-dec-dup', 'race-dec-dup', jsonb_build_object('required_decision_count', 2));
+select pg_temp.r11_frozen_review('race-dec-lock', 'race-dec-lock');
+select pg_temp.r11_frozen_review('race-dec-revoke', 'race-dec-revoke', jsonb_build_object('required_decision_count', 2));
+select pg_temp.r11_frozen_review('race-dec-serial', 'race-dec-serial');
+select pg_temp.r11_frozen_review('race-dec-grant', 'race-dec-grant');
+select pg_temp.r11_assign_now(r.review || '-' || r.reviewer, r.review, r.reviewer)
+  from (values ('race-dec-two', 'rvA'), ('race-dec-two', 'rvB'), ('race-dec-one', 'rvA'), ('race-dec-one', 'rvB'),
+               ('race-dec-replay', 'rvA'), ('race-dec-dup', 'rvA'), ('race-dec-dup', 'rvB'),
+               ('race-dec-lock', 'rvA'), ('race-dec-revoke', 'rvA'), ('race-dec-revoke', 'rvB'), ('race-dec-serial', 'rvA'), ('race-dec-grant', 'rvB')) as r(review, reviewer);
+
+-- Submit races: entries with one draft revision each (creator author assignment, editor editor assignment).
+select pg_temp.r11_entry(tag) from (values ('race-sub-1'), ('race-sub-gate-a'), ('race-sub-gate-b'), ('race-sub-three')) as t(tag);
+
+select jsonb_build_object(
+  'org', pg_temp.s11_id('org'),
+  'actors', (select jsonb_object_agg(key, jsonb_build_object('auth', auth_user_id, 'person', person_id)) from r11_actor),
+  'persons', (select jsonb_object_agg(key, value) from s11_ids where key ~ '^(reviewer[0-9]+|creator|editor)$'),
+  'reviews', (select jsonb_object_agg(key, value) from s11_ids where key like 'race-%' and key !~ '(-asg|-lim[0-9]|-rvA|-rvB|^race-rev)'),
+  'assignments', (select jsonb_object_agg(key, value) from s11_ids where key like 'race-%' and key ~ '(-rvA|-rvB|race-revoke-asg)'),
+  'entries', (select jsonb_object_agg(tag, pg_temp.h11w_uuid(tag || ':entry')) from (values ('race-sub-1'), ('race-sub-gate-a'), ('race-sub-gate-b'), ('race-sub-three')) as t(tag)),
+  'revisions', (select jsonb_object_agg(tag, pg_temp.h11w_uuid(tag || ':revision')) from (values ('race-sub-1'), ('race-sub-gate-a'), ('race-sub-gate-b'), ('race-sub-three')) as t(tag)),
+  'titleField', pg_temp.h11w_fid('title')
+)::text;

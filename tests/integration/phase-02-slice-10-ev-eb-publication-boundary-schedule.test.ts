@@ -210,44 +210,82 @@ describe('EB publication boundary AC-046/AC-047/AC-048: CMS-03B-08/09 preview an
   });
 });
 
-describe('EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths', () => {
-  const publicationOperations = [
-    'CMS-03B-05',
-    'CMS-03B-06',
-    'CMS-03B-07',
-    'CMS-03B-08',
-    'CMS-03B-09',
-    'CMS-03B-19',
-    'CMS-03B-20',
-  ];
-  for (const operation of publicationOperations)
+const slice10Operations = {
+  'CMS-03B-01': ['POST', '/api/v1/cms/entries/{entryId}/revisions'],
+  'CMS-03B-02': [
+    'POST',
+    '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}/resolve',
+  ],
+  'CMS-03B-03': ['GET', '/api/v1/cms/entries/{entryId}/revisions'],
+  'CMS-03B-04': [
+    'POST',
+    '/api/v1/cms/entries/{entryId}/revisions/{revisionId}/restore',
+  ],
+  'CMS-03B-10': ['POST', '/api/v1/cms/entries'],
+  'CMS-03B-11': ['GET', '/api/v1/cms/entries/{entryId}'],
+  'CMS-03B-12': ['GET', '/api/v1/cms/entries/{entryId}/conflicts/{conflictId}'],
+  'CMS-03B-13': ['GET', '/api/v1/cms/entries'],
+  'CMS-03B-14': ['GET', '/api/v1/cms/entries/authoring-context'],
+} as const;
+
+// Slice 11 (DEC-149, BE03b CMS-03B-05..09 and CMS-03B-15..18): the explicit allow-list of the operations Slice 11 registers.
+const slice11Operations = {
+  'CMS-03B-05': ['POST', '/api/v1/cms/entries/{entryId}/reviews'],
+  'CMS-03B-06': ['POST', '/api/v1/cms/reviews/{reviewId}/decision'],
+  'CMS-03B-07': ['POST', '/api/v1/cms/publication-schedules'],
+  'CMS-03B-08': ['POST', '/api/v1/cms/previews'],
+  'CMS-03B-09': ['POST', '/api/v1/cms/publications'],
+  'CMS-03B-15': ['GET', '/api/v1/cms/entries/{entryId}/workflow'],
+  'CMS-03B-16': ['GET', '/api/v1/cms/reviews/{reviewId}'],
+  'CMS-03B-17': ['GET', '/api/v1/cms/reviews'],
+  'CMS-03B-18': ['POST', '/api/v1/cms/reviews/{reviewId}/assignments'],
+} as const;
+
+const methodAndPath = (operation: string): readonly string[] | undefined => {
+  const route = cmsEditorialRoutePolicies.find(
+    (candidate) => candidate.operationId === operation,
+  );
+  return route === undefined ? undefined : [route.method, route.path];
+};
+
+describe('EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes', () => {
+  for (const [operation, route] of Object.entries(slice11Operations))
+    it(`EB publication scope ${operation}: it is a registered route operation and a Worker RPC binding on its named method and path`, () => {
+      expect(methodAndPath(operation)).toEqual(route);
+      expect(Object.keys(CMS_EDITORIAL_RPC)).toContain(operation);
+    });
+  for (const operation of ['CMS-03B-19', 'CMS-03B-20'])
     it(`EB publication scope ${operation}: it is neither a registered route operation nor a Worker RPC binding`, () => {
       expect(
         cmsEditorialRoutePolicies.map((route) => route.operationId),
       ).not.toContain(operation);
       expect(Object.keys(CMS_EDITORIAL_RPC)).not.toContain(operation);
     });
-  it('EB publication scope: the registered editorial operations are exactly the nine of Slice 10', () => {
+  it('EB publication scope: the nine Slice 10 operations stay registered Worker RPC bindings on their locked method and path', () => {
+    for (const [operation, route] of Object.entries(slice10Operations)) {
+      expect(methodAndPath(operation)).toEqual(route);
+      expect(Object.keys(CMS_EDITORIAL_RPC)).toContain(operation);
+    }
+  });
+  it('EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations', () => {
+    const allowed = [
+      ...Object.keys(slice10Operations),
+      ...Object.keys(slice11Operations),
+    ].sort();
+    expect(allowed).toHaveLength(18);
     expect(
       cmsEditorialRoutePolicies.map((route) => route.operationId).sort(),
-    ).toEqual([
-      'CMS-03B-01',
-      'CMS-03B-02',
-      'CMS-03B-03',
-      'CMS-03B-04',
-      'CMS-03B-10',
-      'CMS-03B-11',
-      'CMS-03B-12',
-      'CMS-03B-13',
-      'CMS-03B-14',
-    ]);
+    ).toEqual(allowed);
+    expect(Object.keys(CMS_EDITORIAL_RPC).sort()).toEqual(allowed);
   });
-  it('EB publication scope: no route path mints, opens or revokes a preview token, schedules, reviews or publishes', () => {
+  it('EB publication scope: the route paths that mint, open or revoke a preview token, schedule, review or publish are exactly the named Slice 11 paths', () => {
     const paths = cmsEditorialRoutePolicies.map((route) => route.path);
-    expect(
-      paths.filter((path) =>
-        /preview|publication|schedule|review|decision/u.test(path),
-      ),
-    ).toEqual([]);
+    const reviewLike = /preview|publication|schedule|review|decision/u;
+    expect(paths.filter((path) => reviewLike.test(path)).sort()).toEqual(
+      Object.values(slice11Operations)
+        .map(([, path]) => path)
+        .filter((path) => reviewLike.test(path))
+        .sort(),
+    );
   });
 });

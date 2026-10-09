@@ -133,6 +133,23 @@ has NOT been run yet.
   E11 universal review is already locked BE03b text; S11 AC035/AC038/AC041 punctuation defects → DEC-147-style wording record (owner);
   pinned tzdb version + hash frozen as a code constant (architecture; present options to the owner if contract-visible).
 
+## Checkpoint 2026-10-08 18:45 UTC — Slice 11 implementation in flight (backup refs/backup/s11-wave2)
+
+- Checkout `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`, branch `claude/phase2-slice11` (commits 1dc3969b criteria, fe2eb57f handoff);
+  all Slice 11 code is uncommitted on disk. Backup refs: `refs/backup/s11-wave1-reboot` (after the 15:40Z host reboot), `refs/backup/s11-wave2`.
+- Lane briefs, reports and rulings: `/home/rob/.codex/worktrees/phase2-slice10/orchestration/s11/` (lane-s11-<n>-brief.md / -report.md),
+  `orchestration/lanes/NOTES.md` (binding rulings), `orchestration/codex/` (Codex RPC plan s11-rpc-plan.md, contract review).
+- Done: S11-1 contracts (tz pin 2026e, DEC-153 addendum), S11-2 data model (017000-017090), S11-3s shared SQL helpers (017500-017595),
+  S11-4 Worker routes + a11y checker + sweep (unit level), S11-5 proxies (CP-A).
+- In flight: S11-3a review RPCs (017600-), S11-3b schedule/publication RPCs (017700-), S11-3c preview/read RPCs + quality-gate load (017850-),
+  S11-3d E2 derived-state adoption (018000-), S11-1R contract remediation (Codex review), S11-5 web surfaces.
+- Orchestrator rulings this slice: DEC-156 (RPC convention, internal principal), DEC-157 (lock order), DEC-158 (spec reconciliations),
+  DEC-159 (Worker/SQL refusal conventions, null evidence, quality-gate load, audit side table, risk_class label), DEC-160 (unavailable
+  reasons), DEC-161 (revoking a counted approver's assignment invalidates). All owner-overridable.
+- Orchestrator-owned at integration: guard cascades (r8_api_surface, ev_eb_publication_scope, sec2 forced-table set; rows listed in each
+  lane report's GUARD CASCADE section), S09/S10 receipt refresh, real-PostgREST and real-route verification, the S11 evidence ledger
+  (122 criteria), Codex review and refutation, `pnpm db:verify` and `pnpm validate`, tracking, PR.
+
 ## Remaining to close Slice 10 (in order)
 
 1. Finish in-flight lanes; regenerate DB types inside the lock (`flock /tmp/wejammin-supabase-ci.lock bash -c 'pnpm db:reset && pnpm db:types'`).

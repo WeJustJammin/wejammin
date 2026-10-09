@@ -2,6 +2,7 @@ import type {
   AsyncWorkerBindings,
   PlatformJobsMessage,
 } from './async-entrypoint';
+import type { CmsPublicationScheduleRpcName } from './cms-publication-schedule-rpc-names';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
 import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
@@ -18,6 +19,7 @@ export type AsyncRpcOperation =
   | 'apply_job_outcome'
   | 'record_processed_event'
   | 'ac265_prepare_hosted_run'
+  | CmsPublicationScheduleRpcName
   | EventConsumerRpcName
   | SchemaMigrationRpcName;
 

@@ -116,6 +116,22 @@ inside them. Three consequences for a test:
 function called under `anon`, `authenticated` and `service_role` with `request.jwt.claims`, and the
 RPC flag restore.
 
+### Slice 11 — editorial workflow and publication
+
+The Slice 11 pgTAP files are `phase_02_slice_11_*.sql`; each entrypoint opens one transaction, includes its
+fragments with psql `\ir` and rolls back. Fragment directories (each with a README): `phase_02_slice_11_schema/`
+(the data model, lane S11-2), `phase_02_slice_11_helpers/` (the shared helpers, S11-3s),
+`phase_02_slice_11_rpc_review/` (CMS-03B-05, 06, 18; S11-3a), `phase_02_slice_11_rpc_publication/` (CMS-03B-07, 09, 20;
+S11-3b), `phase_02_slice_11_rpc_preview/` and `phase_02_slice_11_rpc_reads/` (CMS-03B-08, 15, 16, 17, 19; S11-3c) and
+`phase_02_slice_11_e2/` (the derived revision state, S11-3d). The independent-session runners are
+`phase_02_slice_11_races/` (`pnpm db:races`).
+
+The guard files that pin the whole catalog carry the Slice 11 names as explicit allow-lists, so an unnamed function or
+table fails them: `phase_02_slice_09_r8_api_surface.sql` (the service-role-only supporting RPC set),
+`phase_02_slice_09_sec2_all_schema_definer_rls.sql` (the forced tables a definer function names) and
+`phase_02_slice_10_ev_eb_publication_scope.sql` (the review, decision, schedule, preview, publication, manifest and
+version-set functions and tables).
+
 ## Extension
 
 Add tests beside the migration that introduces a behavior. Cover both allowed

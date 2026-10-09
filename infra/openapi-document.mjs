@@ -12,6 +12,7 @@ import {
   mutationHeaders,
   retryHeaders,
   routeDefinitions,
+  unversionedHeaders,
 } from './openapi-definitions.mjs';
 
 const isRecord = (value) =>
@@ -235,6 +236,7 @@ const responseHeaders = (kind) => {
   if (kind === 'entity') return entityHeaders;
   if (kind === 'mutation') return mutationHeaders;
   if (kind === 'rate') return retryHeaders;
+  if (kind === 'unversioned') return unversionedHeaders;
   return undefined;
 };
 

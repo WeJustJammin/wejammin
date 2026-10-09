@@ -120,11 +120,23 @@ export const cmsEditorialBoundedResponseJson = async (
  * keeping only the upstream request id as correlation. A malformed, oversize,
  * non-JSON, or out-of-range error collapses to a local safe error.
  */
+/**
+ * An operation family that publishes structured details of its own (the Slice 11
+ * workflow) supplies its projector: it receives the upstream status, code and
+ * details and returns the rebuilt, allowlisted details.
+ */
+export type CmsEditorialDetailProjector = (
+  status: number,
+  code: string,
+  upstreamDetails: unknown,
+) => Record<string, unknown>;
+
 export const cmsEditorialForwardedError = async (
   request: Request,
   upstream: Response,
   allowedErrors: Readonly<Record<string, number>>,
   detailPolicy: CmsEditorialErrorDetailPolicy = CMS_EDITORIAL_DETAIL_POLICIES.read,
+  projector?: CmsEditorialDetailProjector,
 ): Promise<Response> => {
   // Each BE03b operation publishes a closed code/status registry. A valid
   // ApiError envelope is not enough: an upstream 403 carrying INTERNAL_ERROR,
@@ -141,11 +153,14 @@ export const cmsEditorialForwardedError = async (
   const published = ApiErrorSchema.safeParse({
     code: parsed.data.code,
     message: cmsEditorialErrorMessage(parsed.data.code),
-    details: projectCmsEditorialErrorDetails(
-      upstream.status,
-      parsed.data.details,
-      detailPolicy,
-    ),
+    details:
+      projector === undefined
+        ? projectCmsEditorialErrorDetails(
+            upstream.status,
+            parsed.data.details,
+            detailPolicy,
+          )
+        : projector(upstream.status, parsed.data.code, parsed.data.details),
     requestId: parsed.data.requestId,
   });
   if (!published.success)

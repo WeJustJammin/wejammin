@@ -1,5 +1,6 @@
 import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
 
+import { isStepUpRequiredCode } from '../components/step-up-required';
 import { cmsEditorialZodViolations } from './cms-editorial-platform-error-details';
 
 /**
@@ -96,6 +97,8 @@ export const cmsEditorialSameOriginRequest = (request: Request): boolean => {
 };
 
 export const cmsEditorialErrorMessage = (code: string): string => {
+  if (isStepUpRequiredCode(code))
+    return 'Recent verification is required to continue.';
   switch (code) {
     case 'INVALID_REQUEST':
       return 'The entry request is invalid.';

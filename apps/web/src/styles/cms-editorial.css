@@ -256,6 +256,35 @@
     }
   }
 
+  /* Slice 11 workflow: regions and command forms stack in reading order on
+     every width (mobile keeps Back first); a form is a bordered panel and a
+     preview token wraps instead of scrolling. */
+  [data-cms-workflow-panel] > section,
+  .cms-workflow-form {
+    margin-block-start: var(--space-2);
+  }
+
+  .cms-workflow-form {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  [data-cms-workflow-degraded],
+  [data-cms-workflow-disabled] {
+    padding: var(--space-2);
+    border-inline-start: 4px solid var(--cms-danger);
+  }
+
+  [data-cms-preview-token] {
+    display: block;
+    padding: var(--space-2);
+    border: 1px dashed var(--color-border);
+    user-select: all;
+    overflow-wrap: anywhere;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     #cms-editorial-main * {
       transition-duration: 0.01ms;

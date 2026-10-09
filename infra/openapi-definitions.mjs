@@ -166,11 +166,13 @@ const contentSchemaRegistryResponses = (
     schema: 'success',
     headers: successHeaders,
   })),
-  ...errors.map(({ status, description, schema = 'error' }) => ({
+  ...errors.map(({ status, description, schema = 'error', retryable }) => ({
     status: String(status),
     description,
     schema,
-    ...(status === 429 ? { headers: 'rate' } : {}),
+    // BE00/BE03b: 429 and a retryable 503 carry Retry-After and the RateLimit
+    // headers; a definition marks its retryable 503 explicitly.
+    ...(status === 429 || retryable === true ? { headers: 'rate' } : {}),
   })),
 ];
 
@@ -193,6 +195,58 @@ const contentSchemaRegistryHumanMutationErrors = [
   },
   { status: 503, description: 'Content schema dependency unavailable' },
   { status: 504, description: 'Content schema dependency timed out' },
+];
+
+/** The twelve command statuses of an editorial command that requires step-up (E6). */
+const editorialStepUpErrors = (subject, rateDescription) => [
+  { status: 400, description: `${subject} request is malformed` },
+  {
+    status: 401,
+    description: 'Authentication or recent step-up verification is required',
+    schema: 'stepUpUnauthorized',
+  },
+  {
+    status: 403,
+    description: `${subject} capability or separation of duties is forbidden`,
+  },
+  { status: 404, description: `${subject} target is absent or concealed` },
+  {
+    status: 409,
+    description: `${subject} version, dependency or idempotency conflicts`,
+  },
+  { status: 415, description: 'Request media type is unsupported' },
+  {
+    status: 422,
+    description: `${subject} fields fail validation or preflight`,
+  },
+  { status: 429, description: rateDescription },
+  { status: 500, description: `${subject} request failed safely` },
+  { status: 502, description: 'Editorial dependency returned invalid data' },
+  {
+    status: 503,
+    description: 'Editorial or preflight dependency unavailable',
+    retryable: true,
+  },
+  { status: 504, description: 'Editorial dependency timed out' },
+];
+
+/** The eleven bounded safe-read statuses: no 409, 415 kept. */
+const editorialBoundedReadErrors = (subject) => [
+  { status: 400, description: `${subject} request is malformed` },
+  { status: 401, description: 'Authentication is required' },
+  { status: 403, description: `${subject} read scope is forbidden` },
+  { status: 404, description: `${subject} target is absent or concealed` },
+  { status: 415, description: 'Request media type is unsupported' },
+  { status: 422, description: `${subject} response bounds fail validation` },
+  { status: 429, description: 'Read rate limit exceeded' },
+  { status: 500, description: `${subject} read failed safely` },
+  { status: 502, description: 'Editorial dependency returned invalid data' },
+  {
+    status: 503,
+    description: 'Editorial dependency unavailable',
+    retryable: true,
+  },
+  { status: 504, description: 'Editorial dependency timed out' },
 ];
 
 const contentSchemaRegistryStepUpMutationErrors =
@@ -2157,6 +2211,178 @@ export const routeDefinitions = {
       'entity',
     ),
   },
+  'CMS-03B-05': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Editorial review submitted with its frozen candidate',
+      [
+        { status: 400, description: 'Review submission is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 403,
+          description: 'Submit capability or assignment is forbidden',
+        },
+        {
+          status: 404,
+          description: 'Entry or revision is absent or concealed',
+        },
+        {
+          status: 409,
+          description:
+            'Revision not submittable, dependency changed, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description: 'Frozen hash, manifest or preflight validation failed',
+        },
+        { status: 429, description: 'Review-write rate limit exceeded' },
+        { status: 500, description: 'Review submission failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        {
+          status: 503,
+          description: 'Editorial or preflight dependency unavailable',
+          retryable: true,
+        },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'mutation',
+    ),
+  },
+  'CMS-03B-06': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Editorial review decision recorded',
+      editorialStepUpErrors('Review decision', 'Decision rate limit exceeded'),
+      'entity',
+    ),
+  },
+  'CMS-03B-07': {
+    responses: contentSchemaRegistryResponses(
+      [202],
+      'Publication scheduled; not yet published',
+      editorialStepUpErrors(
+        'Publication schedule',
+        'Schedule rate limit exceeded',
+      ),
+      'mutation',
+    ),
+  },
+  'CMS-03B-08': {
+    responses: contentSchemaRegistryResponses(
+      [201],
+      'Preview token minted; the plaintext appears only in this response',
+      [
+        { status: 400, description: 'Preview request is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        { status: 403, description: 'Preview scope is forbidden' },
+        {
+          status: 404,
+          description: 'Entry or revision is absent or concealed',
+        },
+        {
+          status: 409,
+          description:
+            'Stale entry or version set, expired replay, or idempotency conflict',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        {
+          status: 422,
+          description:
+            'Preview route, audience or version set fails validation',
+        },
+        { status: 429, description: 'Preview rate limit exceeded' },
+        { status: 500, description: 'Preview mint failed safely' },
+        {
+          status: 502,
+          description: 'Editorial dependency returned invalid data',
+        },
+        {
+          status: 503,
+          description: 'Editorial dependency unavailable',
+          retryable: true,
+        },
+        { status: 504, description: 'Editorial dependency timed out' },
+      ],
+      'unversioned',
+    ),
+  },
+  'CMS-03B-09': {
+    responses: contentSchemaRegistryResponses(
+      [202],
+      'Publication lineage row committed; projection pending',
+      editorialStepUpErrors('Publication', 'Publish rate limit exceeded'),
+      'mutation',
+    ),
+  },
+  'CMS-03B-15': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Workflow and submission preparation of an entry revision',
+      editorialBoundedReadErrors('Workflow'),
+      'entity',
+    ),
+  },
+  'CMS-03B-16': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Review detail with safe decision metadata',
+      editorialBoundedReadErrors('Review detail'),
+      'entity',
+    ),
+  },
+  'CMS-03B-17': {
+    responses: contentSchemaRegistryResponses(
+      [200],
+      'Reviewer queue page',
+      [
+        { status: 400, description: 'Queue query or cursor is malformed' },
+        { status: 401, description: 'Authentication is required' },
+        {
+          status: 409,
+          description:
+            'Cursor is expired, tampered or bound to another context',
+        },
+        { status: 415, description: 'Request media type is unsupported' },
+        { status: 422, description: 'Queue query bounds fail validation' },
+        { status: 429, description: 'Read rate limit exceeded' },
+        { status: 500, description: 'Queue read failed safely' },
+        {
+          status: 502,
+          description: 'Queue dependency returned invalid data',
+        },
+        {
+          status: 503,
+          description: 'Queue dependency unavailable',
+          retryable: true,
+        },
+        { status: 504, description: 'Queue dependency timed out' },
+      ],
+      'entity',
+    ),
+  },
+  'CMS-03B-18': {
+    responses: [
+      ...contentSchemaRegistryResponses(
+        [201],
+        'Reviewer assignment created',
+        editorialStepUpErrors(
+          'Reviewer assignment',
+          'Assignment rate limit exceeded',
+        ),
+        'mutation',
+      ),
+      {
+        status: '200',
+        description: 'Reviewer assignment revoked',
+        schema: 'success',
+        headers: 'entity',
+      },
+    ],
+  },
   'CMS-03C-01': {
     responses: contentSchemaRegistryResponses(
       [201],
@@ -2595,6 +2821,11 @@ export const mutationHeaders = {
     description: 'Canonical URL of the created or accepted resource.',
     schema: { type: 'string', format: 'uri-reference' },
   },
+  ...rateHeaders,
+};
+
+/** A derived token response has no validator and no Location, only the rate headers. */
+export const unversionedHeaders = {
   ...rateHeaders,
 };
 
