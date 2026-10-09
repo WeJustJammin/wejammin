@@ -19,6 +19,13 @@ import { PublicationScheduleResourceSchema } from '@wejammin/contracts';
 import type { AsyncWorkerBindings } from '../../apps/worker/src/async-entrypoint';
 import { runProductionCmsPublicationScheduleSweep } from '../../apps/worker/src/cms-publication-schedule-sweep';
 import {
+  expectEvidenceNull,
+  expectEvidencePresent,
+  expectSameInstant,
+  expectStatus,
+  resourceDigest,
+} from './support/phase-02-slice-11-assert';
+import {
   type ReviewedDraft,
   approvedDraft,
 } from './support/phase-02-slice-11-flow';
@@ -87,6 +94,19 @@ const sweepEnvironment = {
   APP_RELEASE: 'slice-11-api',
 } as unknown as AsyncWorkerBindings;
 
+/** One CMS-03B-20 execute command observed at the composition boundary. */
+type SweepExecute = Readonly<{
+  scheduleId: string;
+  expectedVersion: string;
+  leaseId: string;
+  evidencePresent: boolean;
+  evidenceNull: boolean;
+}>;
+const sweepExecutes: SweepExecute[] = [];
+
+const firstExecute = (scheduleId: string): SweepExecute | undefined =>
+  sweepExecutes.find((execute) => execute.scheduleId === scheduleId);
+
 /** One production sweep tick; `failLoadFor` makes the load RPC of those schedules a transport 503. */
 const tick = async (failLoadFor: readonly string[] = []): Promise<void> => {
   const original = globalThis.fetch;
@@ -96,6 +116,19 @@ const tick = async (failLoadFor: readonly string[] = []): Promise<void> => {
   ) => {
     const url = String(input instanceof Request ? input.url : input);
     const body = String(init?.body ?? '');
+    if (url.endsWith('/rpc/cms_execute_publication_schedule')) {
+      const request = (
+        JSON.parse(body) as { p_request?: Record<string, unknown> }
+      ).p_request as Record<string, unknown>;
+      sweepExecutes.push({
+        scheduleId: String(request.scheduleId),
+        expectedVersion: String(request.expectedVersion),
+        leaseId: String(request.leaseId),
+        evidencePresent:
+          typeof request.evidence === 'object' && request.evidence !== null,
+        evidenceNull: 'evidence' in request && request.evidence === null,
+      });
+    }
     if (
       url.endsWith('/rpc/cms_load_quality_gate_input') &&
       failLoadFor.some((id) => body.includes(id))
@@ -127,7 +160,7 @@ const scheduleDue = async (actor: S11Actor, title: string): Promise<Due> => {
   const draft = await approvedDraft(stack, world, title);
   stack.as(actor, 'fresh');
   const response = await schedule(draft, utcBody(draft, 75_000));
-  expect(response.status, response.text).toBe(202);
+  expectStatus(response, 202);
   const resource = PublicationScheduleResourceSchema.parse(response.body);
   return { draft, id: resource.id, resolvedUtc: resource.resolvedUtc };
 };
@@ -156,7 +189,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     const before = reservationCount();
     stack.clearRpcs();
     const response = await schedule(draft, body, { key });
-    expect(response.status, response.text).toBe(202);
+    expectStatus(response, 202);
     const resource = PublicationScheduleResourceSchema.parse(response.body);
     expect(resource.state).toBe('pending');
     expect(resource.localDateTime).toBe(body.localDateTime);
@@ -173,13 +206,13 @@ describe('CMS-03B-07 schedule through the real stack', () => {
       .rpcs()
       .find((rpc) => rpc.rpc === 'cms_schedule_publication');
     expect(sent?.request.tzdbVersion).toBe(tzdb);
-    expect(sent?.request.evidence).not.toBeNull();
+    expectEvidencePresent(sent?.request ?? {});
     expect(reservationCount()).toBe(before + 1);
 
     stack.clearRpcs();
     const replay = await schedule(draft, body, { key });
-    expect(replay.status, replay.text).toBe(202);
-    expect(replay.body).toEqual(response.body);
+    expectStatus(replay, 202);
+    expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
     expect(
       stack.rpcs().find((rpc) => rpc.rpc === 'cms_schedule_publication')
         ?.replayHeader,
@@ -197,13 +230,20 @@ describe('CMS-03B-07 schedule through the real stack', () => {
       timezone: 'Europe/Berlin',
       resolvedUtc: '2026-12-01T08:00:00Z',
     });
-    expect(ordinary.status, ordinary.text).toBe(202);
-    expect(
-      PublicationScheduleResourceSchema.parse(ordinary.body),
-    ).toMatchObject({
-      timezone: 'Europe/Berlin',
-      resolvedUtc: '2026-12-01T08:00:00.000Z',
-    });
+    expectStatus(ordinary, 202);
+    const ordinaryResource = PublicationScheduleResourceSchema.parse(
+      ordinary.body,
+    );
+    expect(ordinaryResource.timezone).toBe('Europe/Berlin');
+    // The selected UTC instant is what the time authority resolved: 09:00 Berlin on
+    // 2026-12-01 is 08:00Z. Compare by instant value, not by ISO string spelling (the
+    // strict schema permits a second- or millisecond-precision offset instant).
+    expectSameInstant(
+      ordinaryResource.resolvedUtc,
+      '2026-12-01T08:00:00Z',
+      'Europe/Berlin 09:00 resolves to 08:00Z',
+    );
+    expect(ordinaryResource.localDateTime).toBe('2026-12-01T09:00:00');
     const earlier = await schedule(fold, {
       ...utcBody(fold, 0),
       localDateTime: '2026-11-01T01:30:00',
@@ -211,7 +251,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
       resolvedUtc: '2026-11-01T05:30:00Z',
       disambiguation: 'earlier',
     });
-    expect(earlier.status, earlier.text).toBe(202);
+    expectStatus(earlier, 202);
   });
 
   it('[CMS-03B-07] a nonexistent local time is the Worker 422 with its two alternatives and reaches no RPC', async () => {
@@ -224,7 +264,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
       timezone: 'America/New_York',
       resolvedUtc: '2027-03-14T07:30:00Z',
     });
-    expect(response.status, response.text).toBe(422);
+    expectStatus(response, 422);
     expect(response.body.details).toMatchObject({
       reasonCode: 'nonexistent_local_time',
       alternatives: [{ localDateTime: expect.any(String) }, expect.any(Object)],
@@ -241,7 +281,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
       stack.clearRpcs();
       const before = reservationCount();
       const response = await schedule(draft, utcBody(draft, 2 * 86_400_000));
-      expect(response.status, `${proof}: ${response.text}`).toBe(401);
+      expectStatus(response, 401, proof);
       expect(response.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
@@ -252,7 +292,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     const draft = await approvedDraft(stack, world, 'Horizon subject');
     stack.as(world.publisher, 'fresh');
     const soon = await schedule(draft, utcBody(draft, 20_000));
-    expect(soon.status, soon.text).toBe(422);
+    expectStatus(soon, 422);
     expect(soon.body.details).toMatchObject({
       reasonCode: 'schedule_out_of_horizon',
       minUtc: expect.stringMatching(/Z$/u),
@@ -265,7 +305,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     const draft = await approvedDraft(stack, world, 'Authority subject');
     stack.as(world.shortPublisher, 'fresh');
     const response = await schedule(draft, utcBody(draft, 4 * 86_400_000));
-    expect(response.status, response.text).toBe(422);
+    expectStatus(response, 422);
     expect(response.body.details).toMatchObject({
       reasonCode: 'authority_ends_before_schedule',
     });
@@ -277,7 +317,7 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     stack.as(world.publisher, 'fresh');
     stack.breakRpc('cms_load_quality_gate_input');
     const response = await schedule(draft, utcBody(draft, 2 * 86_400_000));
-    expect(response.status, response.text).toBe(503);
+    expectStatus(response, 503);
     expect(response.headers.get('retry-after')).toMatch(/^[0-9]+$/u);
     expect(response.body.details).toMatchObject({
       dependencyClass: 'preflight',
@@ -316,6 +356,20 @@ describe('CMS-03B-20 sweep through the real RPCs', () => {
       /^blocked\/[0-9]+\/[0-9]+\/publisher_authority_ended$/u,
     );
     expect(workflowEffects(dueLapsed.draft.entryId).publications).toBe(0);
+
+    // Command-wire trace (composition boundary): the healthy schedule's execute carries a
+    // PRESENT Worker evidence object, the outage schedule's carries an EXACT null (never
+    // undefined), and each execute is fenced by the claim's version and lease id.
+    const okExecute = firstExecute(dueOk.id);
+    expect(okExecute).toBeDefined();
+    expect(okExecute?.evidencePresent).toBe(true);
+    expect(okExecute?.expectedVersion).toMatch(/^[0-9]+$/u);
+    expect(okExecute?.leaseId).toMatch(/^[0-9a-f-]{36}$/u);
+    const retryExecute = firstExecute(dueRetry.id);
+    expect(retryExecute).toBeDefined();
+    expectEvidenceNull({
+      evidence: retryExecute?.evidenceNull === true ? null : undefined,
+    });
   }, 150_000);
 
   it('[CMS-03B-20] a second tick inside the 15 s retry delay claims nothing; after it the retried schedule completes with real evidence', async () => {
@@ -335,7 +389,7 @@ describe('CMS-03B-20 sweep through the real RPCs', () => {
     const read = await stack.get(
       `/api/v1/cms/entries/${dueOk.draft.entryId}/workflow`,
     );
-    expect(read.status, read.text).toBe(200);
+    expectStatus(read, 200);
     expect(read.body.schedules).toMatchObject([
       { id: dueOk.id, state: 'completed' },
     ]);

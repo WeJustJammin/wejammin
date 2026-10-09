@@ -6,6 +6,8 @@
  */
 import { expect } from 'vitest';
 
+import { expectStatus } from './phase-02-slice-11-assert';
+
 import {
   EditorialReviewDetailResourceSchema,
   EditorialReviewResourceSchema,
@@ -36,7 +38,7 @@ export const workflowPath = (entryId: string): string =>
 /** CMS-03B-15 as the owner, parsed through the strict resource schema. */
 export const readWorkflow = async (stack: S11Stack, entryId: string) => {
   const response = await stack.get(workflowPath(entryId));
-  expect(response.status, response.text).toBe(200);
+  expectStatus(response, 200);
   return EntryWorkflowResourceSchema.parse(response.body);
 };
 
@@ -63,7 +65,7 @@ export const submitForReview = async (
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
     },
   );
-  expect(response.status, response.text).toBe(201);
+  expectStatus(response, 201);
   return EditorialReviewResourceSchema.parse(response.body);
 };
 
@@ -88,7 +90,7 @@ export const assignReviewer = async (
       ifMatch: reviewVersion,
     },
   );
-  expect(response.status, response.text).toBe(201);
+  expectStatus(response, 201);
   return response;
 };
 
@@ -114,7 +116,7 @@ export const decide = async (
       ifMatch: reviewVersion,
     },
   );
-  expect(response.status, response.text).toBe(200);
+  expectStatus(response, 200);
   return EditorialReviewResourceSchema.parse(response.body);
 };
 
@@ -144,7 +146,7 @@ export const approvedDraft = async (
   );
   stack.as(reviewer);
   const detail = await stack.get(`/api/v1/cms/reviews/${approved.id}`);
-  expect(detail.status, detail.text).toBe(200);
+  expectStatus(detail, 200);
   const parsed = EditorialReviewDetailResourceSchema.parse(detail.body);
   return {
     entryId: draft.entryId,
@@ -168,7 +170,7 @@ export const collectQueue = async (stack: S11Stack, query: string) => {
     const response = await stack.get(
       `/api/v1/cms/reviews?${query}&limit=50${suffix}`,
     );
-    expect(response.status, response.text).toBe(200);
+    expectStatus(response, 200);
     const parsed = ReviewQueuePageSchema.parse(response.body);
     seen.push(...parsed.items);
     cursor = parsed.nextCursor;

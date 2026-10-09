@@ -27,6 +27,12 @@ import {
   submitForReview,
 } from './support/phase-02-slice-11-flow';
 import {
+  expectAbsent,
+  expectSafeError,
+  expectStatus,
+  parseApiError,
+} from './support/phase-02-slice-11-assert';
+import {
   type S11Stack,
   createS11Stack,
 } from './support/phase-02-slice-11-stack';
@@ -89,10 +95,15 @@ describe('CMS-03B-05 refusals through the real stack', () => {
     const draft = await seedDraft(stack, world, 'Submit version');
     const body = await submitBody(draft.entryId, draft.revisionId);
     const response = await submit(draft.entryId, body, '9');
-    expect(response.status, response.text).toBe(409);
-    expect(response.body.details).toMatchObject({
-      expectedVersion: '9',
-      currentVersion: draft.entryVersion,
+    expectSafeError(response, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'VERSION_MISMATCH',
+        recoveryAction: 'reload',
+        expectedVersion: '9',
+        currentVersion: draft.entryVersion,
+      },
     });
     expect(workflowEffects(draft.entryId).reviews).toBe(0);
   });
@@ -104,9 +115,10 @@ describe('CMS-03B-05 refusals through the real stack', () => {
       201,
     );
     const again = await submit(draft.entryId, body, draft.entryVersion);
-    expect(again.status, again.text).toBe(409);
-    expect(again.body.details).toMatchObject({
-      reasonCode: 'revision_not_submittable',
+    expectSafeError(again, {
+      status: 409,
+      code: 'CONFLICT',
+      details: { reasonCode: 'revision_not_submittable' },
     });
     expect(workflowEffects(draft.entryId).reviews).toBe(1);
   });
@@ -125,7 +137,11 @@ describe('CMS-03B-05 refusals through the real stack', () => {
       },
     };
     const drift = await submit(draft.entryId, tampered, draft.entryVersion);
-    expect(drift.status, drift.text).toBe(409);
+    expectSafeError(drift, {
+      status: 409,
+      code: 'CONFLICT',
+      detailsKeys: ['reasonCode', 'dependencyHash'],
+    });
     expect(drift.body.details).toMatchObject({
       reasonCode: 'dependency_changed',
       dependencyHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
@@ -136,7 +152,7 @@ describe('CMS-03B-05 refusals through the real stack', () => {
       { ...body, frozenHash: 'f'.repeat(64) },
       draft.entryVersion,
     );
-    expect(hash.status, hash.text).toBe(422);
+    expectStatus(hash, 422);
     expect(hash.body.details).toMatchObject({
       violations: [{ path: '/frozenHash' }],
     });
@@ -151,7 +167,12 @@ describe('CMS-03B-05 refusals through the real stack', () => {
       update platform_private.cms_content_entries set lifecycle = 'archived' where id = '${draft.entryId}';
       commit;`);
     const response = await submit(draft.entryId, body, draft.entryVersion);
-    expect([409, 422]).toContain(response.status);
+    // BE03b:1807: preflight_failed is authoritative 422, never 409.
+    expectSafeError(response, {
+      status: 422,
+      code: 'VALIDATION_FAILED',
+      detailsKeys: ['preflight', 'reasonCode'],
+    });
     expect(response.body.details).toMatchObject({
       reasonCode: 'preflight_failed',
       preflight: expect.arrayContaining([
@@ -171,11 +192,12 @@ describe('CMS-03B-05 refusals through the real stack', () => {
     stack.breakRpc('cms_load_quality_gate_input');
     try {
       const response = await submit(draft.entryId, body, draft.entryVersion);
-      expect(response.status, response.text).toBe(503);
-      expect(response.headers.get('retry-after')).toMatch(/^[0-9]+$/u);
-      expect(response.body.details).toMatchObject({
-        dependencyClass: 'preflight',
+      expectSafeError(response, {
+        status: 503,
+        code: 'DEPENDENCY_UNAVAILABLE',
+        details: { dependencyClass: 'preflight', retryable: true },
       });
+      expect(response.headers.get('retry-after')).toMatch(/^[0-9]+$/u);
       expect(workflowEffects(draft.entryId).reviews).toBe(0);
     } finally {
       stack.breakRpc(null);
@@ -196,9 +218,10 @@ describe('CMS-03B-05 refusals through the real stack', () => {
 
     stack.as({ ...world.reviewer, capabilities: ['cms.author'] });
     const claimed = await submit(draft.entryId, body, draft.entryVersion);
-    expect(claimed.status, claimed.text).toBe(403);
-    expect(claimed.body.details).toMatchObject({
-      reasonCode: 'capability_missing',
+    expectSafeError(claimed, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
     });
     expect(workflowEffects(draft.entryId).reviews).toBe(0);
   });
@@ -226,7 +249,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
         body: createBody(),
         ifMatch: version,
       });
-      expect(refused.status, `${proof}: ${refused.text}`).toBe(401);
+      expectStatus(refused, 401, proof);
       expect(refused.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
@@ -237,9 +260,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       body: createBody({ reviewerPersonId: world.outsider.personId }),
       ifMatch: version,
     });
-    expect(ineligible.status, ineligible.text).toBe(
-      cmsSlice11ReasonStatus('reviewer_not_eligible'),
-    );
+    expectStatus(ineligible, cmsSlice11ReasonStatus('reviewer_not_eligible'));
     expect(ineligible.body.details).toMatchObject({
       reasonCode: 'reviewer_not_eligible',
     });
@@ -250,9 +271,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       }),
       ifMatch: version,
     });
-    expect(tooLong.status, tooLong.text).toBe(
-      cmsSlice11ReasonStatus('expiry_out_of_bounds'),
-    );
+    expectStatus(tooLong, cmsSlice11ReasonStatus('expiry_out_of_bounds'));
     expect(tooLong.body.details).toMatchObject({
       reasonCode: 'expiry_out_of_bounds',
       violations: [{ path: '/expiresAt' }],
@@ -262,7 +281,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       body: createBody(),
       ifMatch: version,
     });
-    expect(created.status, created.text).toBe(201);
+    expectStatus(created, 201);
     const assignment = EditorialReviewAssignmentResourceSchema.parse(
       created.body,
     );
@@ -271,9 +290,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       body: createBody(),
       ifMatch: version,
     });
-    expect(duplicate.status, duplicate.text).toBe(
-      cmsSlice11ReasonStatus('assignment_exists'),
-    );
+    expectStatus(duplicate, cmsSlice11ReasonStatus('assignment_exists'));
     expect(duplicate.body.details).toMatchObject({
       reasonCode: 'assignment_exists',
     });
@@ -283,7 +300,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       body: createBody({ reviewerPersonId: world.reviewer2.personId }),
       ifMatch: version,
     });
-    expect(notOwner.status, notOwner.text).toBe(403);
+    expectStatus(notOwner, 403);
     expect(notOwner.body.details).toMatchObject({
       reasonCode: 'capability_missing',
     });
@@ -297,7 +314,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       },
       ifMatch: version,
     });
-    expect(revoked.status, revoked.text).toBe(200);
+    expectStatus(revoked, 200);
     expect(
       EditorialReviewAssignmentResourceSchema.parse(revoked.body).state,
     ).toBe('revoked');
@@ -311,7 +328,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       },
       ifMatch: version,
     });
-    expect(again.status, again.text).toBe(409);
+    expectStatus(again, 409);
     expect(again.body.code).toBe('CONFLICT');
   });
 
@@ -337,7 +354,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
         body: body(),
         ifMatch: version,
       });
-      expect(refused.status, `${proof}: ${refused.text}`).toBe(401);
+      expectStatus(refused, 401, proof);
       expect(refused.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
@@ -350,14 +367,32 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
     ).toBe(403);
     expect(stack.rpcs()).toEqual([]);
 
-    stack.as(world.reviewer2, 'fresh');
+    // A confirmed member who can READ the review but holds no assignment on it: world.dual
+    // holds cms.publisher (a read scope) so the review is visible; without an effective
+    // assignment the refusal is 403 capability_missing, never a concealment 404.
+    stack.as(world.dual, 'fresh');
     const unassigned = await stack.post(path, {
       body: body(),
       ifMatch: version,
     });
-    expect(unassigned.status, unassigned.text).toBe(403);
-    expect(unassigned.body.details).toMatchObject({
-      reasonCode: 'capability_missing',
+    expectSafeError(unassigned, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
+    });
+
+    // A confirmed member with NO read scope on this review (world.reviewer2 is neither
+    // assignee, submitter, publisher nor owner) is concealed: the same request is 404,
+    // indistinguishable from an absent review.
+    stack.as(world.reviewer2, 'fresh');
+    const hiddenUnassigned = await stack.post(path, {
+      body: body(),
+      ifMatch: version,
+    });
+    expectSafeError(hiddenUnassigned, {
+      status: 404,
+      code: 'NOT_FOUND',
+      details: {},
     });
 
     stack.as(world.reviewer, 'fresh');
@@ -365,19 +400,19 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
       body: body({ expectedVersion: '8' }),
       ifMatch: '8',
     });
-    expect(stale.status, stale.text).toBe(409);
+    expectStatus(stale, 409);
     expect(stale.body.details).toMatchObject({
       expectedVersion: '8',
       currentVersion: version,
     });
 
     const decided = await stack.post(path, { body: body(), ifMatch: version });
-    expect(decided.status, decided.text).toBe(200);
+    expectStatus(decided, 200);
     const closed = await stack.post(path, {
       body: body({ expectedVersion: String(Number(version) + 1) }),
       ifMatch: String(Number(version) + 1),
     });
-    expect(closed.status, closed.text).toBe(409);
+    expectStatus(closed, 409);
     expect(closed.body.details).toMatchObject({
       reasonCode: 'review_not_open',
     });
@@ -404,7 +439,7 @@ describe('CMS-03B-18 and CMS-03B-06 refusals through the real stack', () => {
         ifMatch: version,
       },
     );
-    expect(response.status, response.text).toBe(409);
+    expectStatus(response, 409);
     expect(response.body.details).toMatchObject({
       reasonCode: 'dependency_changed',
       dependencyHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
@@ -430,26 +465,61 @@ describe('CMS-03B-15, 16, 17 reads through the real stack', () => {
   it('[CMS-03B-15] [CMS-03B-16] concealment: a stranger is 404 and an unscoped member claiming a capability is capability_missing; neither leaks an identifier', async () => {
     const draft = await approvedDraft(stack, world, 'Read concealment');
     stack.as(world.stranger);
+    const hiddenRequestId = '11111111-1111-4111-8111-111111111111';
     const hidden = await stack.get(
       `/api/v1/cms/entries/${draft.entryId}/workflow`,
+      { headers: { 'x-request-id': hiddenRequestId } },
     );
-    expect(hidden.status, hidden.text).toBe(404);
+    expectSafeError(hidden, {
+      status: 404,
+      code: 'NOT_FOUND',
+      details: {},
+      requestId: hiddenRequestId,
+    });
+    const absentRequestId = '22222222-2222-4222-8222-222222222222';
     const absent = await stack.get(
       `/api/v1/cms/entries/00000000-0000-4000-8000-000000000001/workflow`,
+      { headers: { 'x-request-id': absentRequestId } },
     );
-    expect(absent.status).toBe(404);
-    expect(absent.text).toBe(hidden.text);
+    // A hidden entry and an absent one are the same safe envelope (empty details, the
+    // NOT_FOUND code); the only difference is the per-request request id, which each
+    // response echoes from its own header and which is not part of the safe semantics.
+    expectSafeError(absent, {
+      status: 404,
+      code: 'NOT_FOUND',
+      details: {},
+      requestId: absentRequestId,
+    });
+    const hiddenBody = parseApiError(hidden);
+    const absentBody = parseApiError(absent);
+    expect(absentBody.code).toBe(hiddenBody.code);
+    expect(absentBody.message).toBe(hiddenBody.message);
+    expect(absentBody.details).toEqual(hiddenBody.details);
+    expectAbsent(
+      absent,
+      draft.entryId,
+      'an absent entry 404 never discloses the entry id',
+    );
+    expectAbsent(
+      hidden,
+      draft.entryId,
+      'a hidden entry 404 never discloses the entry id',
+    );
     const hiddenReview = await stack.get(
       `/api/v1/cms/reviews/${draft.reviewId}`,
     );
-    expect(hiddenReview.status, hiddenReview.text).toBe(404);
-    expect(hiddenReview.text).not.toContain(draft.reviewId);
+    expectStatus(hiddenReview, 404);
+    expectAbsent(
+      hiddenReview,
+      draft.reviewId,
+      'a hidden review 404 never discloses the review id',
+    );
 
     stack.as({ ...world.outsider, capabilities: ['cms.author'] });
     const unscoped = await stack.get(
       `/api/v1/cms/entries/${draft.entryId}/workflow`,
     );
-    expect(unscoped.status, unscoped.text).toBe(403);
+    expectStatus(unscoped, 403);
     expect(unscoped.body.details).toMatchObject({
       reasonCode: 'capability_missing',
     });
@@ -468,7 +538,7 @@ describe('CMS-03B-15, 16, 17 reads through the real stack', () => {
     const page1 = await stack.get(
       '/api/v1/cms/reviews?scope=submitted&limit=1',
     );
-    expect(page1.status, page1.text).toBe(200);
+    expectStatus(page1, 200);
     const parsed1 = ReviewQueuePageSchema.parse(page1.body);
     expect(parsed1.items).toHaveLength(1);
     expect(parsed1.nextCursor).not.toBeNull();
@@ -476,26 +546,73 @@ describe('CMS-03B-15, 16, 17 reads through the real stack', () => {
     const page2 = await stack.get(
       `/api/v1/cms/reviews?scope=submitted&limit=1&cursor=${cursor}`,
     );
-    expect(page2.status, page2.text).toBe(200);
+    expectStatus(page2, 200);
     const parsed2 = ReviewQueuePageSchema.parse(page2.body);
     expect(parsed2.items[0]?.reviewId).not.toBe(parsed1.items[0]?.reviewId);
 
-    const flipped = `${(parsed1.nextCursor as string).slice(0, -2)}${(parsed1.nextCursor as string).endsWith('AA') ? 'BB' : 'AA'}`;
+    // DEC-140 fault classes: a structurally malformed envelope is 400; a WELL-FORMED
+    // signed envelope whose signed member was mutated (the HMAC no longer matches) is
+    // 409. The envelope is re-serialized as valid JSON with a changed signed member, so
+    // the shape and signature grammar stay intact and only verification fails.
+    const envelope = JSON.parse(
+      Buffer.from(parsed1.nextCursor as string, 'base64').toString('utf8'),
+    ) as Record<string, unknown>;
+    const originalSignature = String(envelope.signature);
+    envelope.lastReviewId = '00000000-0000-4000-8000-0000000000ff';
     const tampered = await stack.get(
-      `/api/v1/cms/reviews?scope=submitted&limit=1&cursor=${encodeURIComponent(flipped)}`,
+      `/api/v1/cms/reviews?scope=submitted&limit=1&cursor=${encodeURIComponent(
+        Buffer.from(JSON.stringify(envelope), 'utf8').toString('base64'),
+      )}`,
     );
-    expect(tampered.status, tampered.text).toBe(409);
-    expect(tampered.body.code).toBe('CONFLICT');
+    // A tampered cursor carries no typed reason: the generic state-conflict envelope.
+    expectSafeError(tampered, {
+      status: 409,
+      code: 'CONFLICT',
+      details: { conflict: 'INVALID_TRANSITION', recoveryAction: 'refresh' },
+    });
+    expect(originalSignature).toMatch(/^[0-9a-f]{64}$/u);
+
+    // A structurally malformed cursor (empty) is refused by the closed query guard as a
+    // 400 with the safe pointer violation, before any dependency or RPC.
+    stack.clearRpcs();
+    const malformed = await stack.get(
+      '/api/v1/cms/reviews?scope=submitted&limit=1&cursor=',
+    );
+    expectSafeError(malformed, {
+      status: 400,
+      code: 'INVALID_REQUEST',
+      detailsKeys: ['violations'],
+    });
+    expect(malformed.body.details).toMatchObject({
+      violations: [{ path: '/cursor', code: 'invalid_value' }],
+    });
+    expect(stack.rpcs()).toEqual([]);
 
     stack.clearRpcs();
     const zero = await stack.get('/api/v1/cms/reviews?limit=0');
-    expect([400, 422]).toContain(zero.status);
+    // The closed query guard refuses an out-of-range limit as a 400 before any dependency.
+    expectSafeError(zero, {
+      status: 400,
+      code: 'INVALID_REQUEST',
+      detailsKeys: ['violations'],
+    });
+    expect(zero.body.details).toMatchObject({
+      violations: [{ path: '/limit', code: 'invalid_value' }],
+    });
     expect(stack.rpcs()).toEqual([]);
 
     stack.as(world.reviewer);
     const assigned = await stack.get('/api/v1/cms/reviews?scope=assigned');
-    expect(assigned.status, assigned.text).toBe(200);
+    expectStatus(assigned, 200);
     const parsedAssigned = ReviewQueuePageSchema.parse(assigned.body);
+    // Non-vacuous membership: the page is nonempty and contains exactly the reviews
+    // this reviewer holds an active assignment on, including both approved drafts; every
+    // item carries its assignment end (the scope=assigned projection).
+    const assignedIds = parsedAssigned.items.map((item) => item.reviewId);
+    expect(assignedIds.length).toBeGreaterThan(0);
+    expect(assignedIds).toEqual(
+      expect.arrayContaining([first.reviewId, second.reviewId]),
+    );
     expect(
       parsedAssigned.items.every((item) => item.assignmentEndsAt !== null),
     ).toBe(true);

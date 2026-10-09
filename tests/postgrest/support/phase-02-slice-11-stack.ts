@@ -105,6 +105,7 @@ export const createS11Stack = (initial: S11Actor) => {
   const rpcs: S11Rpc[] = [];
   const events: CmsEditorialTelemetryEvent[] = [];
   let brokenRpc: string | null = null;
+  let brokenRpcBody = '{"message":"upstream unavailable"}';
 
   const spyFetch = (async (
     input: string | URL | Request,
@@ -115,7 +116,7 @@ export const createS11Stack = (initial: S11Actor) => {
     // Fault injection (transport only): the named RPC answers a gateway 503.
     const response =
       brokenRpc !== null && rpc === brokenRpc
-        ? new Response('{"message":"upstream unavailable"}', {
+        ? new Response(brokenRpcBody, {
             status: 503,
             headers: { 'content-type': 'application/json' },
           })
@@ -128,9 +129,17 @@ export const createS11Stack = (initial: S11Actor) => {
         ? ((requestBody as { p_request?: Record<string, unknown> }).p_request ??
           (requestBody as Record<string, unknown>))
         : {};
-    // One run-log line per RPC: the wire answer behind a Worker status.
+    // One run-log line per RPC: only SAFE metadata (status, byte length, body
+    // digest). The raw wire body is never echoed, so a preview token, manifest or
+    // person identifier inside a failing PostgREST body can never reach the test
+    // output; the digest still lets a failure be correlated.
     console.info(
-      `[s11-rpc] ${rpc} ${response.status} ${response.ok ? '' : text.slice(0, 500)} <- ${Object.keys(request).join(',')}`,
+      `[s11-rpc] ${rpc} ${response.status} bytes=${text.length} bodySha256=${createHash(
+        'sha256',
+      )
+        .update(text)
+        .digest('hex')
+        .slice(0, 16)} <- ${Object.keys(request).join(',')}`,
     );
     rpcs.push({
       rpc,
@@ -234,7 +243,15 @@ export const createS11Stack = (initial: S11Actor) => {
     );
     if (result.status >= 400)
       console.info(
-        `[s11-http] ${method} ${path} ${result.status} ${result.text.slice(0, 400)}`,
+        `[s11-http] ${method} ${result.status} pathSha256=${createHash('sha256')
+          .update(path)
+          .digest('hex')
+          .slice(0, 16)} bytes=${result.text.length} bodySha256=${createHash(
+          'sha256',
+        )
+          .update(result.text)
+          .digest('hex')
+          .slice(0, 16)}`,
       );
     return result;
   };
@@ -245,16 +262,22 @@ export const createS11Stack = (initial: S11Actor) => {
       actor = next;
       stepUp = proof;
     },
-    /** Make one RPC (e.g. cms_load_quality_gate_input) answer a transport 503; null heals it. */
-    breakRpc: (name: string | null): void => {
+    /**
+     * Make one RPC (e.g. cms_load_quality_gate_input) answer a transport 503;
+     * null heals it. The optional `body` is the injected upstream text, used by
+     * the diagnostics control to prove the run-log never echoes a sensitive body.
+     */
+    breakRpc: (name: string | null, body?: string): void => {
       brokenRpc = name;
+      brokenRpcBody = body ?? '{"message":"upstream unavailable"}';
     },
     rpcs: (): readonly S11Rpc[] => rpcs,
     clearRpcs: (): void => {
       rpcs.length = 0;
     },
     events: (): readonly CmsEditorialTelemetryEvent[] => events,
-    get: (path: string) => send('GET', path),
+    get: (path: string, options: S11SendOptions = {}) =>
+      send('GET', path, options),
     post: (path: string, options: S11SendOptions = {}) =>
       send('POST', path, options),
     send,

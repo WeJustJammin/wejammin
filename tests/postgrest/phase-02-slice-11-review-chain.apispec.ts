@@ -23,6 +23,11 @@ import {
 
 import { collectQueue } from './support/phase-02-slice-11-flow';
 import {
+  expectEvidencePresent,
+  resourceDigest,
+  expectStatus,
+} from './support/phase-02-slice-11-assert';
+import {
   type S11World,
   prepareS11World,
   reservationCount,
@@ -60,7 +65,7 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
     stack.as(world.owner);
     stack.clearRpcs();
     const response = await stack.get(workflowPath(entryId));
-    expect(response.status, response.text).toBe(200);
+    expectStatus(response, 200);
     expect(response.headers.get('cache-control')).toBe('no-store');
     const parsed = EntryWorkflowResourceSchema.parse(response.body);
     expect(response.headers.get('etag')).toMatch(
@@ -108,7 +113,7 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
         ifMatch: entryVersion,
       },
     );
-    expect(response.status, response.text).toBe(201);
+    expectStatus(response, 201);
     const review = EditorialReviewResourceSchema.parse(response.body);
     reviewId = review.id;
     reviewVersion = String(review.version);
@@ -121,7 +126,8 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
     expect(workflowEffects(entryId).reviews).toBe(1);
     // the wire request the adapter built carries the server-built members the SQL reads
     const sent = stack.rpcs().find((rpc) => rpc.rpc === 'cms_submit_review');
-    expect(sent?.request.evidence).not.toBeNull();
+    expect(sent).toBeDefined();
+    expectEvidencePresent(sent?.request ?? {});
     expect(sent?.request.expectedVersion).toBe(entryVersion);
     expect(sent?.request.ifMatch).toBe(entryVersion);
 
@@ -131,8 +137,8 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
       idempotencyKey: key,
       ifMatch: entryVersion,
     });
-    expect(replay.status, replay.text).toBe(201);
-    expect(replay.body).toEqual(response.body);
+    expectStatus(replay, 201);
+    expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
     expect(
       stack.rpcs().find((rpc) => rpc.rpc === 'cms_submit_review')?.replayHeader,
     ).toBe('true');
@@ -154,7 +160,7 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
         ifMatch: reviewVersion,
       },
     );
-    expect(response.status, response.text).toBe(201);
+    expectStatus(response, 201);
     const assignment = EditorialReviewAssignmentResourceSchema.parse(
       response.body,
     );
@@ -178,7 +184,7 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
       `/api/v1/cms/reviews/${reviewId}/decision`,
       { body, idempotencyKey: key, ifMatch: reviewVersion },
     );
-    expect(response.status, response.text).toBe(200);
+    expectStatus(response, 200);
     const review = EditorialReviewResourceSchema.parse(response.body);
     expect(review.state).toBe('approved');
     expect(response.headers.get('etag')).toBe(`"${review.version}"`);
@@ -191,8 +197,8 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
       `/api/v1/cms/reviews/${reviewId}/decision`,
       { body, idempotencyKey: key, ifMatch: String(Number(reviewVersion) - 1) },
     );
-    expect(replay.status, replay.text).toBe(200);
-    expect(replay.body).toEqual(response.body);
+    expectStatus(replay, 200);
+    expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
     expect(
       stack.rpcs().find((rpc) => rpc.rpc === 'cms_record_review_decision')
         ?.replayHeader,
@@ -203,7 +209,7 @@ describe('CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack', () =
   it('[CMS-03B-16] the review detail read serves the approved review with its assignment', async () => {
     stack.as(world.reviewer);
     const response = await stack.get(`/api/v1/cms/reviews/${reviewId}`);
-    expect(response.status, response.text).toBe(200);
+    expectStatus(response, 200);
     const detail = EditorialReviewDetailResourceSchema.parse(response.body);
     expect(detail.state).toBe('approved');
     expect(response.headers.get('etag')).toBe(`"${detail.version}"`);

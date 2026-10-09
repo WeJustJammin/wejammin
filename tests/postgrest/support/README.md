@@ -23,6 +23,16 @@
 - `claim-gate-mutants.ts`: the shared-gate mutations, with the entries that must
   fail for each.
 - `claim-gate-world.ts`: the committed fixtures the claim-gate suites share.
+- `phase-02-slice-11-assert.ts`: strict assertion helpers for the Slice 11
+  real-composition suites (`expectSafeError` with the exact closed details and
+  MIME boundary, `sameInstant` at nanosecond resolution, the safe evidence-shape
+  probes). It re-exports the effect helpers below so existing consumers keep one
+  import site.
+- `phase-02-slice-11-effect.ts`: the durable-effect snapshot builder/decoder
+  (`snapshotDigest`, `decodeSnapshot`) that hashes every row of every effect table
+  SQL-side, the SELECT-only idempotency projection used to prove full-row
+  sensitivity at an unchanged count, and `expectUnchanged`. Split from the
+  assertion module to stay within the 300-line utility limit.
 
 ## Ownership
 

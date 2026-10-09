@@ -5,8 +5,9 @@
 -- platform_private.cms_revision_effective_state from committed evidence
 -- (published > scheduled > approved > rejected > submitted > draft).  A suite that
 -- needs a revision in a non-draft state therefore seeds the revision as `draft`
--- and attaches the evidence this fragment writes, exactly as the Slice 11 named
--- RPCs would leave it.  Include AFTER phase_02_slice_10_rpc/000-helpers.sqlinc and
+-- and attaches guard-valid synthetic evidence through the same guards the named
+-- RPCs pass -- not a byte-for-byte reproduction of an authenticated RPC call.
+-- Include AFTER phase_02_slice_10_rpc/000-helpers.sqlinc and
 -- 001-fixtures.sqlinc (it needs nothing but the revision row it is pointed at).
 --
 --   pg_temp.e2_evidence(revision, state)    attach the evidence of `state`
@@ -53,13 +54,15 @@ begin
 end;
 $body$;
 
--- A shadow person that can actually hold a review decision: a confirmed,
+-- A shadow person that qualifies to hold a review decision: a confirmed,
 -- in-window membership of the review's owner organization plus the standing
 -- cms.reviewer grant.  cms_editorial_review_qualifying_decisions requires the
 -- decider to still hold the satisfied slot's capability
 -- (cms_person_holds_capability), so an approval only derives `approved` when the
--- reviewer's authority is real.  The person is deliberately neither the review
--- submitter nor the revision author (separation of duties).  Returns the id.
+-- reviewer holds that confirmed standing membership and grant.  The reviewer is a
+-- shadow person (a fixture party), not a claimed or active usable Auth account,
+-- and is deliberately neither the review submitter nor the revision author
+-- (separation of duties).  Returns the id.
 create or replace function pg_temp.e2_reviewer(p_owner uuid)
 returns uuid
 language plpgsql

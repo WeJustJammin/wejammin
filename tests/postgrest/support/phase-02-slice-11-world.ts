@@ -17,9 +17,10 @@ import { randomUUID } from 'node:crypto';
 
 import { expect } from 'vitest';
 
+import { expectStatus } from './phase-02-slice-11-assert';
+
 import { type EditorialWorld, createEntryBody } from './cms-editorial-world';
 import { prepareGateWorld } from './claim-gate-world';
-import { applyDiagnosticOverlay } from './phase-02-slice-11-overlay';
 import { ensureS11ContentType } from './phase-02-slice-11-type';
 import type { S11Actor, S11Stack } from './phase-02-slice-11-stack';
 import { createPerson, psql } from './stack';
@@ -100,7 +101,6 @@ const strangerOf = (organizationId: string): S11Actor => {
 };
 
 export const prepareS11World = async (): Promise<S11World> => {
-  applyDiagnosticOverlay();
   // The bootstrap owner: CMS-03B-18 and the `owner` read scopes derive from its receipt.
   const bootstrap = prepareGateWorld().owner;
   const editorial = await ensureS11ContentType(bootstrap);
@@ -147,7 +147,7 @@ const creatableType = async (
   world: S11World,
 ): Promise<Record<string, unknown>> => {
   const response = await stack.get('/api/v1/cms/entries/authoring-context');
-  expect(response.status, response.text).toBe(200);
+  expectStatus(response, 200);
   const type = (
     response.body.creatableTypes as readonly Record<string, unknown>[]
   ).find(
@@ -169,7 +169,7 @@ export const seedDraft = async (
   const created = await stack.post('/api/v1/cms/entries', {
     body: createEntryBody(world.editorial, title, type),
   });
-  expect(created.status, created.text).toBe(201);
+  expectStatus(created, 201);
   const entry = created.body.entry as { id: string; version: string };
   const revision = created.body.revision as { id: string };
   return {

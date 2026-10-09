@@ -24,6 +24,15 @@ import {
   approvedDraft,
 } from './support/phase-02-slice-11-flow';
 import {
+  expectAbsent,
+  expectEvidencePresent,
+  expectSafeError,
+  expectStatus,
+  expectUnchanged,
+  resourceDigest,
+  snapshotDigest,
+} from './support/phase-02-slice-11-assert';
+import {
   type S11Stack,
   createS11Stack,
 } from './support/phase-02-slice-11-stack';
@@ -99,7 +108,7 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
       idempotencyKey: key,
       ifMatch: entryVersion,
     });
-    expect(response.status, response.text).toBe(201);
+    expectStatus(response, 201);
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(response.headers.get('location')).toBeNull();
     const preview = PreviewTokenResourceSchema.parse(response.body);
@@ -109,13 +118,24 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
     expect(sent?.request.expectedVersion).toBe(entryVersion);
 
     stack.clearRpcs();
+    const beforeReplay = snapshotDigest();
     const replay = await stack.post('/api/v1/cms/previews', {
       body: previewBody(),
       idempotencyKey: key,
       ifMatch: entryVersion,
     });
-    expect(replay.status, replay.text).toBe(201);
-    expect(replay.body).toEqual(response.body);
+    expectStatus(replay, 201);
+    // Strict parse + whole-resource DIGEST equality (never a raw-body or raw-token
+    // comparison, which could print the plaintext token in a failure diff).
+    const replayPreview = PreviewTokenResourceSchema.parse(replay.body);
+    expect(replayPreview.revoked).toBe(false);
+    expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
+    // The replay added no durable effect (no second token, reservation or audit row).
+    expectUnchanged(
+      beforeReplay,
+      snapshotDigest(),
+      'an exact preview replay adds no effect',
+    );
     expect(
       stack.rpcs().find((rpc) => rpc.rpc === 'cms_mint_preview')?.replayHeader,
     ).toBe('true');
@@ -158,33 +178,51 @@ describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real s
       }),
       ifMatch: entryVersion,
     });
-    expect(stale.status, stale.text).toBe(409);
-    expect(stale.body.details).toMatchObject({
-      reasonCode: 'version_set_stale',
+    expectSafeError(stale, {
+      status: 409,
+      code: 'CONFLICT',
+      details: { reasonCode: 'version_set_stale' },
     });
 
     const mismatch = await stack.post('/api/v1/cms/previews', {
       body: previewBody(),
       ifMatch: String(Number(entryVersion) + 7),
     });
-    expect(mismatch.status, mismatch.text).toBe(409);
-    expect(mismatch.body.details).toMatchObject({
-      expectedVersion: String(Number(entryVersion) + 7),
-      currentVersion: entryVersion,
+    // BE00: a stale CAS operand is 409 CONFLICT with the closed VERSION_MISMATCH
+    // details (conflict, recoveryAction reload, and the safe expected/current versions).
+    expectSafeError(mismatch, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'VERSION_MISMATCH',
+        recoveryAction: 'reload',
+        expectedVersion: String(Number(entryVersion) + 7),
+        currentVersion: entryVersion,
+      },
     });
   });
 
   it('[CMS-03B-08] an unscoped confirmed member is refused by the database, not by the Worker', async () => {
-    // The Worker gate admits any editorial capability; the member holds none in the database.
+    // The Worker gate admits any editorial capability; the confirmed member is tenant-visible
+    // (so the target is NOT concealed) but holds no preview scope on this entry, so the mint
+    // RPC answers the visible-target-without-scope refusal: 403 capability_missing (BE03b:160).
     stack.as({ ...world.outsider, capabilities: ['cms.author'] });
     stack.clearRpcs();
     const response = await stack.post('/api/v1/cms/previews', {
       body: previewBody(),
       ifMatch: entryVersion,
     });
-    expect([403, 404]).toContain(response.status);
+    expectSafeError(response, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'capability_missing' },
+    });
     expect(stack.rpcs().map((rpc) => rpc.rpc)).toContain('cms_mint_preview');
-    expect(response.text).not.toContain(draft.entryId);
+    expectAbsent(
+      response,
+      draft.entryId,
+      'an unscoped preview refusal never discloses the entry id',
+    );
   });
 });
 
@@ -196,10 +234,12 @@ describe('CMS-03B-09 publish through the real stack', () => {
     const before = reservationCount();
     stack.clearRpcs();
     const response = await publish(draft, { key });
-    expect(response.status, response.text).toBe(202);
+    expectStatus(response, 202);
     const publication = PublicationResourceSchema.parse(response.body);
     expect(publication.state).toBe('active');
-    expect(publication.version).toBe(1);
+    // The version is a lossless decimal string (CmsVersionSchema / BE00 version
+    // grammar); the resource never carries a JSON number.
+    expect(publication.version).toBe('1');
     expect(response.headers.get('location')).toBe(
       `/api/v1/cms/publications/${publication.id}`,
     );
@@ -207,14 +247,15 @@ describe('CMS-03B-09 publish through the real stack', () => {
     expect(reservationCount()).toBe(before + 1);
     expect(workflowEffects(draft.entryId).publications).toBe(1);
     const sent = stack.rpcs().find((rpc) => rpc.rpc === 'cms_publish_revision');
-    expect(sent?.request.evidence).not.toBeNull();
+    expect(sent).toBeDefined();
+    expectEvidencePresent(sent?.request ?? {});
     expect(sent?.request.expectedVersionSet).toEqual(draft.versionSet);
     expect(sent?.request.expectedVersion).toBe(draft.reviewVersion);
 
     stack.clearRpcs();
     const replay = await publish(draft, { key });
-    expect(replay.status, replay.text).toBe(202);
-    expect(replay.body).toEqual(response.body);
+    expectStatus(replay, 202);
+    expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
     expect(
       stack.rpcs().find((rpc) => rpc.rpc === 'cms_publish_revision')
         ?.replayHeader,
@@ -230,7 +271,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
       stack.clearRpcs();
       const before = reservationCount();
       const response = await publish(draft);
-      expect(response.status, `${proof}: ${response.text}`).toBe(401);
+      expectStatus(response, 401, proof);
       expect(response.body.code).toBe('STEP_UP_REQUIRED');
       expect(stack.rpcs()).toEqual([]);
       expect(reservationCount()).toBe(before);
@@ -243,13 +284,13 @@ describe('CMS-03B-09 publish through the real stack', () => {
     stack.as(world.owner, 'fresh');
     stack.clearRpcs();
     const gated = await publish(draft);
-    expect(gated.status, gated.text).toBe(403);
+    expectStatus(gated, 403);
     expect(stack.rpcs()).toEqual([]);
 
     stack.as({ ...world.reviewer, capabilities: ['cms.publisher'] }, 'fresh');
     stack.clearRpcs();
     const claimed = await publish(draft);
-    expect(claimed.status, claimed.text).toBe(403);
+    expectStatus(claimed, 403);
     expect(claimed.body.details).toMatchObject({
       reasonCode: 'capability_missing',
     });
@@ -259,20 +300,58 @@ describe('CMS-03B-09 publish through the real stack', () => {
     expect(workflowEffects(draft.entryId).publications).toBe(0);
   });
 
-  it('[CMS-03B-09] the counted approver may not publish: 403 separation_of_duties', async () => {
+  it('[CMS-03B-09] a counted approver who is not the revision author publishes normally (202 active)', async () => {
     const draft = await approvedDraft(
       stack,
       world,
-      'Separation subject',
+      'Counted approver subject',
       world.dual,
     );
+    // world.dual is the counted approver (cms.reviewer + cms.publisher) but NOT the
+    // revision author (the owner authored the revision): E11 forbids only the AUTHOR
+    // from publishing, so this publication succeeds.
     stack.as(world.dual, 'fresh');
     const response = await publish(draft);
-    expect(response.status, response.text).toBe(403);
-    expect(response.body.details).toMatchObject({
-      reasonCode: 'separation_of_duties',
+    expectStatus(response, 202);
+    expect(PublicationResourceSchema.parse(response.body).state).toBe('active');
+    expect(workflowEffects(draft.entryId).publications).toBe(1);
+  });
+
+  it('[CMS-03B-09] the author of the revision may not publish it even with a standing publisher grant: 403 separation_of_duties and no effects', async () => {
+    const draft = await approvedDraft(
+      stack,
+      world,
+      'Author separation subject',
+    );
+    // The owner authored this revision (seedDraft acts as the owner). Give the owner a
+    // real standing cms.publisher grant so the refusal is the E11 separation rule and
+    // not a missing capability.
+    psql(`
+      insert into identity_private.organization_actor_grant(
+        organization_id, person_id, capability_code, valid_from, valid_through, active)
+      values ('${world.organizationId}', '${world.owner.personId}', 'cms.publisher',
+              current_date, null, true)
+      on conflict (organization_id, person_id, capability_code)
+      do update set active = true, valid_through = null`);
+    stack.as(
+      {
+        ...world.owner,
+        capabilities: [...world.owner.capabilities, 'cms.publisher'],
+      },
+      'fresh',
+    );
+    const before = snapshotDigest();
+    const response = await publish(draft);
+    expectSafeError(response, {
+      status: 403,
+      code: 'FORBIDDEN',
+      details: { reasonCode: 'separation_of_duties' },
     });
-    expect(workflowEffects(draft.entryId).publications).toBe(0);
+    expectUnchanged(
+      before,
+      snapshotDigest(),
+      'a separation-of-duties refusal commits no publication, audit or outbox row',
+    );
   });
 
   it('[CMS-03B-09] a stale review version is 409 VERSION_MISMATCH with the safe expected and current versions', async () => {
@@ -283,10 +362,15 @@ describe('CMS-03B-09 publish through the real stack', () => {
       ifMatch: stale,
       body: { expectedVersion: stale },
     });
-    expect(response.status, response.text).toBe(409);
-    expect(response.body.details).toMatchObject({
-      expectedVersion: stale,
-      currentVersion: draft.reviewVersion,
+    expectSafeError(response, {
+      status: 409,
+      code: 'CONFLICT',
+      details: {
+        conflict: 'VERSION_MISMATCH',
+        recoveryAction: 'reload',
+        expectedVersion: stale,
+        currentVersion: draft.reviewVersion,
+      },
     });
   });
 
@@ -298,13 +382,14 @@ describe('CMS-03B-09 publish through the real stack', () => {
         expectedVersionSet: { ...draft.versionSet, settingsVersion: '424242' },
       },
     });
-    expect(stale.status, stale.text).toBe(409);
-    expect(stale.body.details).toMatchObject({
-      reasonCode: 'version_set_stale',
+    expectSafeError(stale, {
+      status: 409,
+      code: 'CONFLICT',
+      details: { reasonCode: 'version_set_stale' },
     });
 
     const hash = await publish(draft, { body: { frozenHash: 'f'.repeat(64) } });
-    expect(hash.status, hash.text).toBe(422);
+    expectStatus(hash, 422);
     expect(hash.body.details).toMatchObject({
       violations: [{ path: '/frozenHash' }],
     });
@@ -330,7 +415,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
     const key = `drift-${draft.entryId}`;
     stack.clearRpcs();
     const response = await publish(draft, { key });
-    expect(response.status, response.text).toBe(409);
+    expectStatus(response, 409);
     expect(response.body.details).toMatchObject({
       reasonCode: 'dependency_changed',
       dependencyHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
@@ -349,7 +434,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
     expect(workflowEffects(draft.entryId).publications).toBe(0);
 
     const replay = await publish(draft, { key });
-    expect(replay.status, replay.text).toBe(409);
+    expectStatus(replay, 409);
     expect(replay.body.details).toMatchObject({
       reasonCode: 'dependency_changed',
     });
@@ -362,7 +447,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
     try {
       const before = workflowEffects(draft.entryId);
       const response = await publish(draft);
-      expect(response.status, response.text).toBe(503);
+      expectStatus(response, 503);
       expect(response.headers.get('retry-after')).toMatch(/^[0-9]+$/u);
       expect(response.body.code).toBe('DEPENDENCY_UNAVAILABLE');
       expect(response.body.details).toMatchObject({
