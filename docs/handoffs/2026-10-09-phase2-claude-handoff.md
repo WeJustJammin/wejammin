@@ -1,5 +1,28 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Production QA71 RED accepted; disjoint construction/routing GREEN claims
+
+Factory16:13failed/3passed,337/197; all13 failures explicit missing-entry asserts,
+not import/setup or functional proof. Three existing default factory actual
+protected-transport/scanner/seal/backfill/switch controls pass. Dispatcher55:
+21failed/34passed,263lines; only exact CMS family wrongly unsupported instead of
+selected effect/unavailable. Format/ESLint/type/contracts/progress0, freshCI0/
+flock. Independent6.1 no falseoracle; successor empty shape not firstness/census,
+constant fixture active IDs not database immutability. QA claims released/all
+source frozen. New producer claims3 factory/facade files plus disjoint dispatcher;
+checkpoint/push/exact-origin verification before native wave. Later actual named
+purpose mutation must prove transport boundary after GREEN.
+
+Latest-source SQL authority inventory (not live catalog): all10 stages service
+role only with plan version/state/lease/report-fingerprint checks; none validates
+BE00 running/version/live token/originating event/report.job_id. Resolver snapshot
+alone is not enduring authority. Seal/beginVerify use stored plan tokens, not
+caller possession. Read/heartbeat/complete lack fresh current-report fingerprint
+checks; source-read only explicit superseded fence. Future receiving/fence TDD
+must keep these limits explicit. No new grants/job row locks or S09 restart.
+No env-startup/resolver/retry/attempt/heartbeat producer implementation yet;
+0/122/genuineAPI7RED/full/owner/external holds unchanged, no DB handles.
+
 ## Empty activation mutation proof closed; production QA wave next
 
 Native sole-test369/10, all old8 case/assertion/helper bytes retained. Correct
