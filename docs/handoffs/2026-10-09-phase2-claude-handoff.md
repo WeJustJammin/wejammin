@@ -1,5 +1,23 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Private resolver contracts frozen; disjoint schema QA next
+
+Native new request/response/helper frozen47/135/77 after parentformat. Existing
+eight-field event/exact23-key plan parser+output reused; own complete original
+keys before projection;15 internal response relations. Format/ESLint/type/
+contracts/progress0 plus related32suites491/491, freshCI0/flock. Independent6.1 no
+bounded defect; schema behavior/negative witnesses not yet run, no provenance or
+context/live-authority proof. Source claim released/all existing source frozen.
+
+Next disjoint request/response schema QA scope lane-s11-native-claimed-dry-run-
+contract-qa-2026-10-09.md, new tests/support only. Isolate each15 relation edge
+while holding other equalities; own inherited/symbol/non-enumerable controls and
+inherited plan/nullable/completed/legacy compatibility required. Checkpoint/push/
+exact-origin before native authors; parent actualtests and isolated mutations/
+exact restoration/review before further producer work. Current RPC still has only
+legacy3-key branch; claimed resolver/effect/startup/receiving/per-stage SQL fences
+NOT implemented. GenuineAPI7RED/0of122/full/owner/external holds remain.
+
 ## Claim regression491 GREEN; private resolver contract next
 
 Two legacy fixture claim tokens omitted, all other bytes/assertions/defaults/

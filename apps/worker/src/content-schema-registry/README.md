@@ -28,6 +28,10 @@ Database RPCs remain the transaction and audit authority.
   `validation.ts` own shared parsing and validation.
   The plan-record parser/output preserve DEC-162's narrow first-empty null ID
   pairs; the producer must independently prove firstness and actual emptiness.
+- `schema-dry-run-claim-{request,response,shape}.ts` define the private closed
+  claimed-receipt/original-event resolution contracts and 15 internal response
+  relations, reusing the existing event/plan parsers. These contracts do not
+  resolve server records, bind an external claim context or prove live authority.
 - `migration-worker-results.ts` owns result and rollback mapping.
 - `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
   shape and completed read-only replay; provisional zeros are not SQL eligibility

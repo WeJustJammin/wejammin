@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-private-claim-contracts-frozen-and-disjoint-schema-qa-scope|Slice 11 private claim contracts frozen and disjoint schema QA scope]] — knowledge — 2026-10-09T23:54:30.574Z
 - [[knowledge/2026-10-09-slice-11-claim-regression491-green-and-private-resolver-contract-scope|Slice 11 claim regression491 GREEN and private resolver contract scope]] — knowledge — 2026-10-09T23:45:14.464Z
 - [[knowledge/2026-10-09-slice-11-claim-source-green-and-mutation-proof-with-legacy-fixture-gate|Slice 11 claim source GREEN and mutation proof with legacy fixture gate]] — knowledge — 2026-10-09T23:39:47.437Z
 - [[knowledge/2026-10-09-slice-11-corrected-claim-qa63-red-and-three-source-green-scopes|Slice 11 corrected claim QA63 RED and three-source GREEN scopes]] — knowledge — 2026-10-09T23:28:59.142Z
