@@ -14,25 +14,49 @@
 - `claim-gate-manifest.ts`: the checked-in list of claim-gated `platform_api`
   functions (name, grant class, and the helper family that resolves the caller).
 - `claim-gate-fixtures*.ts`: one VALID request per manifest entry, split by family
-  (CMS actor, admin and configuration, identity, profile, workers), plus the exact
-  outcome a real caller gets once the gate has passed.
+  (CMS actor, CMS editorial, admin and configuration, identity, profile, workers,
+  service principal), plus the exact outcome a real caller gets once the gate has
+  passed.
 - `claim-gate-success.ts`: the entries where a real person (the CMS owner) gets a
   success through the same gate.
-- `claim-gate-check.ts`: the drift check and the behaviour probes (exact outcomes
-  for ghost, forged, ungranted and real callers) the claim-gate suites assert.
+- `claim-gate-check.ts`: the drift check (exact manifest/catalog equality both ways
+  and the gate against the EXECUTE grants) the claim-gate suites assert.
+- `claim-gate-probes.ts`: the behaviour probes (exact outcomes for ghost, forged,
+  ungranted, real and actorless service-principal callers); `claim-gate-check.ts`
+  re-exports them so import sites are unchanged. Split to keep each module within
+  the 300-line utility limit.
 - `claim-gate-mutants.ts`: the shared-gate mutations, with the entries that must
   fail for each.
 - `claim-gate-world.ts`: the committed fixtures the claim-gate suites share.
-- `phase-02-slice-11-assert.ts`: strict assertion helpers for the Slice 11
-  real-composition suites (`expectSafeError` with the exact closed details and
-  MIME boundary, `sameInstant` at nanosecond resolution, the safe evidence-shape
-  probes). It re-exports the effect helpers below so existing consumers keep one
-  import site.
-- `phase-02-slice-11-effect.ts`: the durable-effect snapshot builder/decoder
-  (`snapshotDigest`, `decodeSnapshot`) that hashes every row of every effect table
-  SQL-side, the SELECT-only idempotency projection used to prove full-row
-  sensitivity at an unchanged count, and `expectUnchanged`. Split from the
-  assertion module to stay within the 300-line utility limit.
+- `phase-02-slice-11-assert.ts`: the DB/stack FACADE for the Slice 11 strict
+  assertions; it re-exports the pure assertion core and the effect helpers so
+  existing consumers keep one import site. Importing it loads `stack.ts` (a real
+  `supabase status`/docker probe), so pure controls import the cores directly.
+- `phase-02-slice-11-assert-core.ts`: the PURE strict assertions (`expectSafeError`
+  with exact closed details and the MIME boundary, `expectSafeEqual` over real
+  deep equality, `sameInstant` at nanosecond resolution, the safe evidence-shape
+  probes). No stack import.
+- `phase-02-slice-11-snapshot-core.ts`: the PURE effect-snapshot decoder
+  (`EFFECT_TABLES`, `decodeSnapshot`) with fixed safe rejections; no imports.
+- `phase-02-slice-11-effect.ts`: the DB-bearing durable-effect snapshot builder
+  (`snapshotDigest`, the SELECT-only idempotency projection, `expectUnchanged`)
+  that hashes every row of every effect table SQL-side; re-exports the snapshot
+  core. Calls `psql` at run time.
+- `phase-02-slice-11-safe-diagnostics.ts`: PURE diagnostic privacy primitives --
+  `deepEqual` (Node `isDeepStrictEqual`), the best-effort `stableSerialize` and
+  `valueDigest` (diagnostic only), and the diagnostic-only code allowlist.
+- `phase-02-slice-11-meta-controls.ts`: PURE safe meta-controls that run a control,
+  inspect the real failure surfaces (message, stack, own enumerable AND
+  non-enumerable data properties incl. `cause`/`actual`/`expected`, stringified
+  operands) and report only `caught`/`leaked` booleans plus a digest.
+- `phase-02-slice-11-log-capture.ts`: PURE cycle-safe inspection of `console.*`
+  arguments (object/array markers) returning leak booleans and a digest.
+- `phase-02-slice-11-schedule-support.ts`: DB-BEARING CMS-03B-07 request/row
+  helpers (`utcScheduleBody`, `postSchedule`, `scheduleRow`, `SCHEDULES`); imports
+  `./stack`, so pure controls must not import it.
+- `phase-02-slice-11-read-fixtures.ts`: shared refusal fixtures for the split
+  Slice 11 read/command-refusal suites (submit body/request, frozen-manifest
+  drift).
 
 ## Ownership
 
@@ -48,6 +72,12 @@ a real person can succeed without domain rows, a success control; the manifest s
 fails until all four exist. Add a module only when two or more suites need the same production composition. Build
 it from production functions, never from a stand-in, and never set a GUC (claims
 travel only inside a minted JWT).
+
+An actorless internal operation (CMS-03B-20 execute) uses the `service-principal`
+family: it resolves no caller, so it is ineligible for the caller-binding
+ghost/forged probes and has no shared caller helper to mutate. Its boundary is the
+service_role EXECUTE grant plus the Worker module boundary (DEC-156), proven by the
+manifest suite's ACL check and `apps/worker/src/cms-editorial-principals.test.ts`.
 
 ## Conventions and related material
 

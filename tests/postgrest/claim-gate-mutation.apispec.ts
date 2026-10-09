@@ -163,7 +163,7 @@ describe('SEC-1 weakening a shared gate fails exactly the entries that rely on i
     '%s',
     async (_name, mutant) => {
       const failures = await runHelperMutant(mutant);
-      const expected = mutant.expected(world).sort();
+      const expected = [...mutant.expected()].sort();
       const failing = [
         ...new Set(failures.map((line) => line.split(': ')[0] ?? '')),
       ].sort();
@@ -181,11 +181,58 @@ describe('SEC-1 weakening a shared gate fails exactly the entries that rely on i
     const covered = new Set(
       HELPER_MUTANTS.flatMap((mutant) => mutant.families),
     );
+    // The actorless service-principal entry resolves no caller, so no shared caller
+    // helper can be weakened for it; its boundary is the service_role EXECUTE grant,
+    // covered by the ACL mutant below (DEC-156).
     expect([...covered].sort()).toEqual(
-      [...new Set(Object.values(CLAIM_ACTOR_FAMILY))].sort(),
+      [...new Set(Object.values(CLAIM_ACTOR_FAMILY))]
+        .filter((family) => family !== 'service-principal')
+        .sort(),
     );
     expect(entriesOf([...covered]).length).toBe(
-      Object.keys(CLAIM_GATED_API_FUNCTIONS).length,
+      Object.keys(CLAIM_GATED_API_FUNCTIONS).length - 1,
     );
   });
+});
+
+describe('SEC-1 the actorless service-principal boundary is the EXECUTE grant (DEC-156)', () => {
+  const name = 'cms_execute_publication_schedule';
+
+  it('widening the actorless execute grant to authenticated fails exactly that entry, then the ACL and every catalog body are restored', async () => {
+    const before = listApiFunctions().find(
+      (candidate) => candidate.name === name,
+    );
+    // Exact precondition: the function is service_role-only (anon and authenticated denied).
+    expect(before).toMatchObject({
+      anon: false,
+      authenticated: false,
+      serviceRole: true,
+    });
+    psql(
+      `grant execute on function platform_api.${name}(jsonb) to authenticated`,
+    );
+    try {
+      const failures = await gateBehaviourFailures(listApiFunctions(), world, [
+        name,
+      ]);
+      expect(failures.length).toBeGreaterThan(0);
+      expect(failures.every((line) => line.startsWith(`${name}: `))).toBe(true);
+    } finally {
+      psql(
+        `revoke execute on function platform_api.${name}(jsonb) from authenticated`,
+      );
+    }
+    // The restore is real: the grant is back and both checks are clean again, so no
+    // catalog body and no ACL entry is left mutated.
+    const restored = listApiFunctions();
+    expect(restored.find((candidate) => candidate.name === name)).toMatchObject(
+      {
+        anon: false,
+        authenticated: false,
+        serviceRole: true,
+      },
+    );
+    expect(driftFindings(manifestDrift(restored))).toEqual([]);
+    expect(await gateBehaviourFailures(restored, world)).toEqual([]);
+  }, 120_000);
 });

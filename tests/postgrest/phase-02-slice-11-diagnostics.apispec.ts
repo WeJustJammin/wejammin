@@ -1,23 +1,29 @@
 /**
- * Slice 11 run-log privacy control (lane S11-4R, first action3). Both composed
- * stack loggers must emit only SAFE metadata and never echo a raw failing body or
- * a request path, which can carry a preview token, manifest, cursor or person
- * identifier. This exercises the REAL loggers through the production composition:
- * a sensitive sentinel is injected as an upstream body (RPC logger) and in a
- * request path (HTTP logger), and must not appear anywhere in the captured log.
+ * Slice 11 run-log privacy control (lane S11-4R). The composed stack's ACTUAL
+ * `[s11-rpc]` and `[s11-http]` loggers must emit only SAFE metadata and never echo
+ * a raw failing body or a request path, which can carry a preview token, manifest,
+ * cursor or person identifier. Unrelated structured Worker telemetry also writes to
+ * `console.info`, so this captures ONLY the calls recorded during the one request
+ * under test and selects the EXACT expected target tuple within the actual logger
+ * namespace (by rpc name or method + status); every argument of the selected tuple
+ * is preserved and inspected. A missing expected target fails (non-vacuous), and
+ * all metadata/leak checks are booleans/digests only, so no raw log line is printed.
  *
- * RED against the historical raw-text loggers (the sentinel leaks), GREEN against
- * the digest-only loggers. The captured log is never diffed (which would print it
- * on failure); a boolean contains check with a count/digest-only message is used.
  * Commits fixtures (a world and one draft entry): run right after `pnpm db:reset`,
  * and reset again afterwards.
  */
-import { createHash } from 'node:crypto';
-
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { readWorkflow } from './support/phase-02-slice-11-flow';
 import { expectStatus } from './support/phase-02-slice-11-assert';
+import {
+  selectTargetCalls,
+  captureNamespace,
+} from './support/phase-02-slice-11-log-capture';
+import {
+  expectMetadata,
+  inspectTargetCalls,
+} from './support/phase-02-slice-11-meta-controls';
 import {
   type S11World,
   prepareS11World,
@@ -28,6 +34,16 @@ import {
   createS11Stack,
 } from './support/phase-02-slice-11-stack';
 
+/**
+ * The console calls captured from `fromIndex` onward: the slice recorded during the
+ * one request under test, so only that request's logger tuples are selected (the
+ * HTTP log line digests the path, so a marker cannot select it by text).
+ */
+const during = (
+  calls: readonly unknown[][],
+  fromIndex: number,
+): readonly unknown[][] => calls.slice(fromIndex);
+
 let world: S11World;
 let stack: S11Stack;
 
@@ -36,28 +52,8 @@ beforeAll(async () => {
   stack = createS11Stack(world.owner);
 });
 
-/**
- * Assert a captured log does NOT contain any of `secrets`, reporting only a safe
- * message (secret count and a digest of the log) so a failing RED can never print
- * the secrets or the raw log. Returns the joined log for the caller's own
- * metadata assertions.
- */
-const captureLogWithoutSecrets = (
-  calls: readonly unknown[][],
-  secrets: readonly string[],
-): string => {
-  const logged = calls.map((call) => call.map(String).join(' ')).join('\n');
-  const leaked = secrets.some((secret) => logged.includes(secret));
-  const digest = createHash('sha256').update(logged).digest('hex').slice(0, 16);
-  expect(
-    leaked,
-    `captured log leaked a secret (secrets=${secrets.length} logSha256=${digest})`,
-  ).toBe(false);
-  return logged;
-};
-
 describe('the run-log never discloses a failing RPC body', () => {
-  it('emits only status, byte length and a body digest for a 503 whose upstream body carries a sensitive sentinel', async () => {
+  it('logs only status, byte length and a body digest for a 503 whose upstream body carries a sensitive sentinel', async () => {
     // A single-token sentinel: no whitespace, so the assertion cannot be defeated
     // by any truncation or joining of the log lines.
     const sentinel = 'S11SENTINEL9f3c1a7e4b2d8c60';
@@ -65,6 +61,7 @@ describe('the run-log never discloses a failing RPC body', () => {
     const { preparation } = await readWorkflow(stack, draft.entryId);
 
     const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const start = spy.mock.calls.length;
     try {
       stack.breakRpc(
         'cms_submit_review',
@@ -87,10 +84,27 @@ describe('the run-log never discloses a failing RPC body', () => {
         },
       );
       expectStatus(response, 503);
-      const logged = captureLogWithoutSecrets(spy.mock.calls, [sentinel]);
-      // Only safe metadata is present: the sentinel is never echoed.
-      expect(logged).toMatch(/bytes=\d+/u);
-      expect(logged).toMatch(/bodySha256=[0-9a-f]{16}/u);
+      // The EXACT expected tuple: the actual [s11-rpc] logger line for the failed
+      // cms_submit_review 503, selected by namespace + status + the exact rpc name.
+      const target = selectTargetCalls(
+        during(spy.mock.calls, start),
+        '[s11-rpc]',
+        ['cms_submit_review'],
+        503,
+      );
+      const expectation = inspectTargetCalls(
+        target,
+        [sentinel],
+        [/bytes=\d+/u, /bodySha256=[0-9a-f]{16}/u],
+      );
+      expectMetadata(expectation, 'RPC 503 run-log');
+      // Every namespace call was inspected for the sentinel (any argument, nested).
+      const wholeNamespace = inspectTargetCalls(
+        captureNamespace(during(spy.mock.calls, start), '[s11-rpc]'),
+        [sentinel],
+        [/bytes=\d+/u],
+      );
+      expectMetadata(wholeNamespace, 'RPC namespace leak sweep');
     } finally {
       stack.breakRpc(null);
       spy.mockRestore();
@@ -102,18 +116,36 @@ describe('the HTTP run-log never discloses a path or body', () => {
   it('logs only method, status, path digest, byte length and body digest for a failing request whose path carries a sentinel', async () => {
     const sentinel = 'S11HTTPSENTINEL2b8d4c60e7a1f309';
     const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const start = spy.mock.calls.length;
     try {
       // A malformed (non-UUID) entry id in the path is refused 400 by the route
-      // parser, which still fires the HTTP run-log for status >= 400.
+      // parser, which still fires the HTTP run-log for status >= 400. The tuple is
+      // selected from the calls this request produced, in the [s11-http] namespace
+      // with method GET and status 400; the sentinel is only ever a leak marker.
       const response = await stack.get(
         `/api/v1/cms/entries/${sentinel}/workflow`,
       );
       expect(response.status).toBe(400);
-      const logged = captureLogWithoutSecrets(spy.mock.calls, [sentinel]);
-      // Neither the path sentinel nor any raw path/body appears: only safe metadata.
-      expect(logged).toMatch(/pathSha256=[0-9a-f]{16}/u);
-      expect(logged).toMatch(/bytes=\d+/u);
-      expect(logged).toMatch(/bodySha256=[0-9a-f]{16}/u);
+      const target = selectTargetCalls(
+        during(spy.mock.calls, start),
+        '[s11-http]',
+        ['GET'],
+        400,
+      );
+      const expectation = inspectTargetCalls(
+        target,
+        [sentinel],
+        [/pathSha256=[0-9a-f]{16}/u, /bytes=\d+/u, /bodySha256=[0-9a-f]{16}/u],
+      );
+      expectMetadata(expectation, 'HTTP 400 run-log');
+      // Whole-namespace leak sweep across the same request slice: EVERY [s11-http]
+      // argument (any nested string) is inspected, matching the RPC sweep.
+      const wholeNamespace = inspectTargetCalls(
+        captureNamespace(during(spy.mock.calls, start), '[s11-http]'),
+        [sentinel],
+        [/pathSha256=[0-9a-f]{16}/u],
+      );
+      expectMetadata(wholeNamespace, 'HTTP 400 namespace leak sweep');
     } finally {
       spy.mockRestore();
     }
@@ -122,17 +154,36 @@ describe('the HTTP run-log never discloses a path or body', () => {
   it('logs only a path digest (never the raw path) for a failing request whose valid path carries a request-id marker in the body', async () => {
     const marker = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
     const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const start = spy.mock.calls.length;
     try {
-      // A well-formed request id flows into the ApiError body (BE00 echoes it); the
-      // 404 body therefore contains the marker, proving the body-sensitivity claim.
+      // A well-formed request id flows into the ApiError body (BE00 echoes it), so
+      // the 404 body contains the marker. The tuple is selected from this request's
+      // calls in the [s11-http] namespace with method GET and status 404; the marker
+      // is only a leak marker, and the composed logger never prints the raw body.
       const response = await stack.get(
         '/api/v1/cms/entries/00000000-0000-4000-8000-000000000001/workflow',
         { headers: { 'x-request-id': marker } },
       );
-      // The body really carried the marker (non-vacuous), yet the log did not.
       expect(response.text.includes(marker)).toBe(true);
-      const logged = captureLogWithoutSecrets(spy.mock.calls, [marker]);
-      expect(logged).toMatch(/bodySha256=[0-9a-f]{16}/u);
+      const target = selectTargetCalls(
+        during(spy.mock.calls, start),
+        '[s11-http]',
+        ['GET'],
+        404,
+      );
+      const expectation = inspectTargetCalls(
+        target,
+        [marker],
+        [/bodySha256=[0-9a-f]{16}/u],
+      );
+      expectMetadata(expectation, 'HTTP 404 run-log');
+      // Whole-namespace leak sweep across the same request slice.
+      const wholeNamespace = inspectTargetCalls(
+        captureNamespace(during(spy.mock.calls, start), '[s11-http]'),
+        [marker],
+        [/bodySha256=[0-9a-f]{16}/u],
+      );
+      expectMetadata(wholeNamespace, 'HTTP 404 namespace leak sweep');
     } finally {
       spy.mockRestore();
     }

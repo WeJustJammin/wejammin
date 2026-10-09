@@ -141,10 +141,13 @@ export type SeededDraft = Readonly<{
   entryVersion: string;
 }>;
 
+/** The minimum world shape `seedDraft` needs: only the owner and its content type. */
+export type SeedableWorld = Pick<S11World, 'owner' | 'editorial'>;
+
 /** The CMS-03B-14 projection of the world's creatable type (frozen schema evidence). */
 const creatableType = async (
   stack: S11Stack,
-  world: S11World,
+  world: SeedableWorld,
 ): Promise<Record<string, unknown>> => {
   const response = await stack.get('/api/v1/cms/entries/authoring-context');
   expectStatus(response, 200);
@@ -161,7 +164,7 @@ const creatableType = async (
 /** Creates one entry (revision 1) through the production CMS-03B-10 route as the owner. */
 export const seedDraft = async (
   stack: S11Stack,
-  world: S11World,
+  world: SeedableWorld,
   title: string,
 ): Promise<SeededDraft> => {
   stack.as(world.owner);

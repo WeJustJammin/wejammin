@@ -129,7 +129,11 @@ describe('SEC-1 every manifest entry has a family and a valid request', () => {
         fixture === undefined ||
         gate === undefined ||
         gate === 'ungranted' ||
-        family === 'release-worker'
+        family === 'release-worker' ||
+        // An actorless internal operation resolves no caller, so it is ineligible
+        // for a caller-binding ghost-subject probe; its boundary is the service_role
+        // EXECUTE grant and the Worker module boundary (DEC-156), proven separately.
+        family === 'service-principal'
       )
         continue;
       const refusals = probesFor(name, fn, gate, family, fixture, world).filter(
@@ -179,5 +183,50 @@ describe('SEC-1 every manifest entry is exercised through the real API', () => {
     expect(refusals).toBeGreaterThanOrEqual(85);
     expect(controls).toBeGreaterThanOrEqual(270);
     expect(successes).toBeGreaterThanOrEqual(8);
+    // The eleven Slice 11 editorial commands: ten cfg-actor human readers plus the
+    // actorless service-principal execute. cms_list_editorial_reviews succeeds (an
+    // empty page); the rest reach their own post-gate next outcome (NOT_FOUND or
+    // STEP_UP_REQUIRED), never a request-validation refusal.
+    const editorial = [
+      'cms_submit_review',
+      'cms_record_review_decision',
+      'cms_assign_editorial_reviewer',
+      'cms_schedule_publication',
+      'cms_publish_revision',
+      'cms_get_editorial_review',
+      'cms_get_entry_workflow',
+      'cms_load_quality_gate_input',
+      'cms_list_editorial_reviews',
+      'cms_mint_preview',
+      'cms_execute_publication_schedule',
+    ];
+    const editorialProbes = editorial.flatMap((name) => {
+      const fn = functions.find((candidate) => candidate.name === name);
+      const family = CLAIM_ACTOR_FAMILY[name];
+      const fixture = CLAIM_GATE_FIXTURES[name];
+      const gate = CLAIM_GATED_API_FUNCTIONS[name];
+      if (
+        fn === undefined ||
+        family === undefined ||
+        fixture === undefined ||
+        gate === undefined
+      )
+        return [];
+      return probesFor(name, fn, gate, family, fixture, world);
+    });
+    const editorialValidation = editorialProbes.filter(
+      (probe) =>
+        probe.expected.endsWith(':INVALID_REQUEST') ||
+        probe.expected.endsWith(':VALIDATION_FAILED'),
+    );
+    expect(editorialValidation).toEqual([]);
+    expect(
+      editorialProbes.filter(
+        (probe) => probe.expected === '400:UNAUTHENTICATED',
+      ).length,
+    ).toBeGreaterThanOrEqual(9);
+    expect(
+      editorialProbes.filter((probe) => probe.expected === '200:').length,
+    ).toBeGreaterThanOrEqual(1);
   });
 });

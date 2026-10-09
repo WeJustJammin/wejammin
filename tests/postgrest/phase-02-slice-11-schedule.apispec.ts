@@ -21,14 +21,23 @@ import { runProductionCmsPublicationScheduleSweep } from '../../apps/worker/src/
 import {
   expectEvidenceNull,
   expectEvidencePresent,
+  expectSafeError,
   expectSameInstant,
   expectStatus,
+  expectUnchanged,
   resourceDigest,
+  snapshotDigest,
 } from './support/phase-02-slice-11-assert';
 import {
   type ReviewedDraft,
   approvedDraft,
 } from './support/phase-02-slice-11-flow';
+import {
+  SCHEDULES,
+  postSchedule,
+  scheduleRow,
+  utcScheduleBody,
+} from './support/phase-02-slice-11-schedule-support';
 import {
   type S11Actor,
   type S11Stack,
@@ -46,46 +55,18 @@ let world: S11World;
 let stack: S11Stack;
 let tzdb = '';
 
-const SCHEDULES = '/api/v1/cms/publication-schedules';
-const isoSecond = (at: Date): string => at.toISOString().slice(0, 19);
-
-/** A UTC schedule request `leadMs` from now (UTC wall clock = resolved instant). */
+/** A UTC schedule request `leadMs` from now, pinned to this run's tzdb version. */
 const utcBody = (
   draft: ReviewedDraft,
   leadMs: number,
   over: Record<string, unknown> = {},
-) => {
-  const local = isoSecond(new Date(Date.now() + leadMs));
-  return {
-    revisionId: draft.revisionId,
-    action: 'publish',
-    localDateTime: local,
-    timezone: 'UTC',
-    resolvedUtc: `${local}Z`,
-    tzdbVersion: tzdb,
-    disambiguation: 'none',
-    audience: 'public',
-    expectedVersion: draft.reviewVersion,
-    ...over,
-  };
-};
+) => utcScheduleBody(draft, leadMs, tzdb, over);
 
 const schedule = (
   draft: ReviewedDraft,
   body: Record<string, unknown>,
   options: { key?: string; ifMatch?: string } = {},
-) =>
-  stack.post(SCHEDULES, {
-    body,
-    ifMatch: options.ifMatch ?? draft.reviewVersion,
-    ...(options.key === undefined ? {} : { idempotencyKey: options.key }),
-  });
-
-const scheduleRow = (id: string): string =>
-  psql(
-    `select state || '/' || version || '/' || attempt_count || '/' || coalesce(reason_code, '-')
-       from platform_private.cms_publication_schedules where id = '${id}'`,
-  );
+) => postSchedule(stack, draft, body, options);
 
 const sweepEnvironment = {
   SUPABASE_URL: API_URL,
@@ -316,13 +297,30 @@ describe('CMS-03B-07 schedule through the real stack', () => {
     const draft = await approvedDraft(stack, world, 'Schedule proof');
     stack.as(world.publisher, 'fresh');
     stack.breakRpc('cms_load_quality_gate_input');
+    stack.clearRpcs();
+    const beforeSnapshot = snapshotDigest();
     const response = await schedule(draft, utcBody(draft, 2 * 86_400_000));
-    expectStatus(response, 503);
-    expect(response.headers.get('retry-after')).toMatch(/^[0-9]+$/u);
-    expect(response.body.details).toMatchObject({
-      dependencyClass: 'preflight',
+    // Strict safe ApiError: exact status/code/closed details, no-store and MIME
+    // boundary, with only booleans/digests in any failure diagnostic.
+    expectSafeError(response, {
+      status: 503,
+      code: 'DEPENDENCY_UNAVAILABLE',
+      details: { dependencyClass: 'preflight', retryable: true },
+      retryAfter: true,
     });
-    expect(workflowEffects(draft.entryId).schedules).toBe(0);
+    // Full 14-group effect snapshot is unchanged (no schedule committed).
+    expectUnchanged(
+      beforeSnapshot,
+      snapshotDigest(),
+      'the CMS-03B-07 outage commits no durable effect',
+    );
+    // The genuine schedule RPC was issued with its OWN evidence member exactly
+    // null (an unavailable checker proof, not an absent member).
+    const wire = stack
+      .rpcs()
+      .find((rpc) => rpc.rpc === 'cms_schedule_publication');
+    expect(wire).toBeDefined();
+    expectEvidenceNull(wire?.request ?? {});
   });
 });
 

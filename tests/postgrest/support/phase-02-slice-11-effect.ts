@@ -1,59 +1,33 @@
 /**
- * Slice 11 durable-effect snapshot helpers (lane S11-4R, first action3). Split
- * from `phase-02-slice-11-assert.ts` to stay within the 300-line utility limit
- * (`.agents/rules/extensibility.md`).
-
+ * Slice 11 durable-effect snapshot helpers (lane S11-4R). The PURE decoder and
+ * table list live in `phase-02-slice-11-snapshot-core.ts` (no DB import) and are
+ * re-exported here; this module adds the DB-bearing `snapshotDigest` builder and
+ * the idempotency projections, which call `psql` at run time (never at import).
  * `snapshotDigest` hashes EVERY row of EVERY effect table SQL-SIDE (no row text
- * crosses the boundary) and returns only a count and a digest, so a failure diff
- * can never print a token, content or secret; a changed value moves the digest
- * even at an unchanged count. `decodeSnapshot` fails closed on anything that is
- * not the exact closed table set with an integer count and a 64-hex digest.
+ * crosses the boundary) and returns only a count and a digest.
  */
 import { createHash } from 'node:crypto';
 
 import { expect } from 'vitest';
 
+import {
+  EFFECT_TABLES,
+  type EffectSnapshot,
+  type RowTextOverrides,
+  type SnapshotOptions,
+  decodeSnapshot,
+} from './phase-02-slice-11-snapshot-core';
 import { psql } from './stack';
 
-/**
- * The durable-effect tables a Slice 11 command could write. The snapshot hashes
- * EVERY row of EVERY table (no filter at all): an incorrectly targeted side
- * effect, a mis-named audit/outbox action or an unexpected aggregate id cannot
- * escape, because the row set is not narrowed to the entry under test.
- */
-export const EFFECT_TABLES = [
-  'platform_private.cms_editorial_reviews',
-  'platform_private.cms_editorial_decisions',
-  'platform_private.cms_editorial_review_assignments',
-  'platform_private.cms_editorial_review_dependencies',
-  'platform_private.cms_publication_schedules',
-  'platform_private.cms_publication_versions',
-  'platform_private.cms_preview_tokens',
-  'platform_private.cms_publication_settings_snapshots',
-  'platform_private.cms_command_accessibility_evidence',
-  'platform_private.idempotency_records',
-  'platform_private.outbox_events',
-  'audit_private.audit_events',
-  'platform_private.cms_content_entries',
-  'platform_private.cms_entry_revisions',
-] as const;
-
-export type EffectSnapshot = Readonly<Record<string, string>>;
-
-/**
- * The row-text SQL expression per table (aliased `t`); the default hashes the
- * WHOLE row. A caller overrides one table to project a controlled mutation, and
- * the value-blind mutant (below) drops the row text entirely. Both go through
- * this ONE builder and the ONE decoder, so weakening the boundary is observable.
- */
-export type RowTextOverrides = Readonly<Record<string, string>>;
-
-/**
- * A `snapshotDigest` option: `valueBlind` makes the fingerprint depend only on
- * the row COUNT, removing full-row value hashing. It is the controlled mutant
- * that must fail the projection assertion; the default (`false`) hashes rows.
- */
-export type SnapshotOptions = Readonly<{ valueBlind?: boolean }>;
+export {
+  EFFECT_TABLES,
+  decodeSnapshot,
+} from './phase-02-slice-11-snapshot-core';
+export type {
+  EffectSnapshot,
+  RowTextOverrides,
+  SnapshotOptions,
+} from './phase-02-slice-11-snapshot-core';
 
 const DEFAULT_ROW_TEXT = 'pg_catalog.to_jsonb(t)::text';
 
@@ -78,49 +52,6 @@ const tableDigestSql = (
            coalesce(pg_catalog.string_agg(${rowText}, E'\n'
              order by ${rowText}), ''), 'utf8')), 'hex'), ''))
        from ${table} t`;
-
-const SHA256_HEX = /^[0-9a-f]{64}$/u;
-
-/**
- * Decode one snapshot payload into `<count>:<sha>` per table, failing closed on
- * anything that is not the exact closed set of `EFFECT_TABLES`, each with a
- * nonnegative integer `count` and a 64-lowercase-hex `sha`. TypeScript casts are
- * not runtime proof: an omitted group, a stringified value (`count`/`sha`
- * undefined) or a malformed digest throws instead of comparing equal.
- */
-export const decodeSnapshot = (raw: string): EffectSnapshot => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('effect snapshot is not JSON');
-  }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-    throw new Error('effect snapshot is not an object');
-  const record = parsed as Record<string, unknown>;
-  const expectedKeys = [...EFFECT_TABLES].sort();
-  const actualKeys = Object.keys(record).sort();
-  if (
-    actualKeys.length !== expectedKeys.length ||
-    !actualKeys.every((key, index) => key === expectedKeys[index])
-  )
-    throw new Error(
-      `effect snapshot groups differ from the closed set: ${actualKeys.join(',')}`,
-    );
-  const out: Record<string, string> = {};
-  for (const table of EFFECT_TABLES) {
-    const value = record[table];
-    if (typeof value !== 'object' || value === null || Array.isArray(value))
-      throw new Error(`effect snapshot group ${table} is not an object`);
-    const { count, sha } = value as { count?: unknown; sha?: unknown };
-    if (typeof count !== 'number' || !Number.isInteger(count) || count < 0)
-      throw new Error(`effect snapshot group ${table} has no integer count`);
-    if (typeof sha !== 'string' || !SHA256_HEX.test(sha))
-      throw new Error(`effect snapshot group ${table} has no sha256 digest`);
-    out[table] = `${count}:${sha}`;
-  }
-  return out;
-};
 
 export const snapshotDigest = (
   rowTextOverrides: RowTextOverrides = {},

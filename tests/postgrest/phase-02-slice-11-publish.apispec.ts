@@ -1,30 +1,25 @@
 /**
- * Slice 11 real composition, publication (lane S11-4R): CMS-03B-08 (preview mint +
- * the CMS-03B-19 verifier adapter) and CMS-03B-09 (publish) through the production
- * Worker routes, adapters, Kong, PostgREST and the newest SQL.
- *
- * Proves what the transport fakes cannot: the wire members the adapter sends are the
- * ones the SQL reads, a 401 step-up refusal reserves nothing, every typed refusal and
- * its structured DETAIL survive the PostgREST boundary, the committed refusal of a
- * stale frozen manifest (DEC-159(2)) is HTTP 200 on the wire and 409 for the browser
- * and keeps the review invalidation, and the 503 preflight answer carries Retry-After.
+ * Slice 11 real composition, CMS-03B-09 publish (lane S11-4R; split from the
+ * inherited combined publication suite, titles and assertions preserved). Through
+ * the production Worker routes, adapters, Kong, PostgREST and the newest SQL: a
+ * 202 publish with Location/strong ETag and an exact replay, unconditional step-up,
+ * the publisher capability gate, the E11 separation split, the stale-version,
+ * stale-version-set and wrong-hash refusals, the COMMITTED dependency_changed
+ * refusal (HTTP 200 on the wire) and the 503 outage whose command carries an
+ * exactly-null evidence member.
  *
  * Commits fixtures; run right after `pnpm db:reset`, and reset again afterwards.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  PreviewTokenResourceSchema,
-  PublicationResourceSchema,
-} from '@wejammin/contracts';
+import { PublicationResourceSchema } from '@wejammin/contracts';
 
-import { createPreviewTokenVerifier } from '../../apps/worker/src/cms-editorial-production-preview-verifier';
 import {
   type ReviewedDraft,
   approvedDraft,
 } from './support/phase-02-slice-11-flow';
 import {
-  expectAbsent,
+  expectEvidenceNull,
   expectEvidencePresent,
   expectSafeError,
   expectStatus,
@@ -42,7 +37,7 @@ import {
   reservationCount,
   workflowEffects,
 } from './support/phase-02-slice-11-world';
-import { API_URL, psql, workerServiceCredential } from './support/stack';
+import { psql } from './support/stack';
 
 let world: S11World;
 let stack: S11Stack;
@@ -78,153 +73,6 @@ const publish = (
     ifMatch: options.ifMatch ?? draft.reviewVersion,
     ...(options.key === undefined ? {} : { idempotencyKey: options.key }),
   });
-
-describe('CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real stack', () => {
-  let draft: ReviewedDraft;
-  let entryVersion: string;
-  const previewBody = (over: Record<string, unknown> = {}) => ({
-    entryId: draft.entryId,
-    revisionId: draft.revisionId,
-    locale: 'en-US',
-    audience: 'public',
-    route: '/preview/article',
-    versionSet: draft.versionSet,
-    ...over,
-  });
-
-  beforeAll(async () => {
-    draft = await approvedDraft(stack, world, 'Preview subject');
-    entryVersion = psql(
-      `select version from platform_private.cms_content_entries where id = '${draft.entryId}'`,
-    );
-  });
-
-  it('[CMS-03B-08] mints a once-only token (201, no-store, no Location), replays it byte-identically and the verifier adapter accepts the bound binding', async () => {
-    stack.as(world.owner);
-    const key = `preview-${draft.entryId}`;
-    stack.clearRpcs();
-    const response = await stack.post('/api/v1/cms/previews', {
-      body: previewBody(),
-      idempotencyKey: key,
-      ifMatch: entryVersion,
-    });
-    expectStatus(response, 201);
-    expect(response.headers.get('cache-control')).toBe('no-store');
-    expect(response.headers.get('location')).toBeNull();
-    const preview = PreviewTokenResourceSchema.parse(response.body);
-    expect(preview.revoked).toBe(false);
-    const sent = stack.rpcs().find((rpc) => rpc.rpc === 'cms_mint_preview');
-    expect(sent?.request.ifMatch).toBe(entryVersion);
-    expect(sent?.request.expectedVersion).toBe(entryVersion);
-
-    stack.clearRpcs();
-    const beforeReplay = snapshotDigest();
-    const replay = await stack.post('/api/v1/cms/previews', {
-      body: previewBody(),
-      idempotencyKey: key,
-      ifMatch: entryVersion,
-    });
-    expectStatus(replay, 201);
-    // Strict parse + whole-resource DIGEST equality (never a raw-body or raw-token
-    // comparison, which could print the plaintext token in a failure diff).
-    const replayPreview = PreviewTokenResourceSchema.parse(replay.body);
-    expect(replayPreview.revoked).toBe(false);
-    expect(resourceDigest(replay.body)).toBe(resourceDigest(response.body));
-    // The replay added no durable effect (no second token, reservation or audit row).
-    expectUnchanged(
-      beforeReplay,
-      snapshotDigest(),
-      'an exact preview replay adds no effect',
-    );
-    expect(
-      stack.rpcs().find((rpc) => rpc.rpc === 'cms_mint_preview')?.replayHeader,
-    ).toBe('true');
-
-    const verify = createPreviewTokenVerifier({
-      environment: {
-        SUPABASE_URL: API_URL,
-        SUPABASE_SECRET_KEY: workerServiceCredential(),
-      },
-    });
-    const contextVersion = psql(
-      `select platform_private.cms_acting_context_version('${world.owner.personId}', '${world.organizationId}')`,
-    );
-    const binding = {
-      token: preview.token,
-      actorPersonId: world.owner.personId,
-      actingContextVersion: contextVersion,
-      route: '/preview/article',
-      locale: 'en-US',
-      audience: 'public',
-    };
-    const valid = await verify(binding);
-    expect(valid).toMatchObject({
-      valid: true,
-      entryId: draft.entryId,
-      revisionId: draft.revisionId,
-      revoked: false,
-    });
-    const wrongRoute = await verify({ ...binding, route: '/preview/other' });
-    const unknown = await verify({ ...binding, token: 'A'.repeat(43) });
-    expect(wrongRoute).toEqual(unknown);
-    expect(wrongRoute).toMatchObject({ valid: false });
-  });
-
-  it('[CMS-03B-08] a stale version set is 409 version_set_stale and a stale entry version is 409 VERSION_MISMATCH with the safe versions', async () => {
-    stack.as(world.owner);
-    const stale = await stack.post('/api/v1/cms/previews', {
-      body: previewBody({
-        versionSet: { ...draft.versionSet, settingsVersion: '99999' },
-      }),
-      ifMatch: entryVersion,
-    });
-    expectSafeError(stale, {
-      status: 409,
-      code: 'CONFLICT',
-      details: { reasonCode: 'version_set_stale' },
-    });
-
-    const mismatch = await stack.post('/api/v1/cms/previews', {
-      body: previewBody(),
-      ifMatch: String(Number(entryVersion) + 7),
-    });
-    // BE00: a stale CAS operand is 409 CONFLICT with the closed VERSION_MISMATCH
-    // details (conflict, recoveryAction reload, and the safe expected/current versions).
-    expectSafeError(mismatch, {
-      status: 409,
-      code: 'CONFLICT',
-      details: {
-        conflict: 'VERSION_MISMATCH',
-        recoveryAction: 'reload',
-        expectedVersion: String(Number(entryVersion) + 7),
-        currentVersion: entryVersion,
-      },
-    });
-  });
-
-  it('[CMS-03B-08] an unscoped confirmed member is refused by the database, not by the Worker', async () => {
-    // The Worker gate admits any editorial capability; the confirmed member is tenant-visible
-    // (so the target is NOT concealed) but holds no preview scope on this entry, so the mint
-    // RPC answers the visible-target-without-scope refusal: 403 capability_missing (BE03b:160).
-    stack.as({ ...world.outsider, capabilities: ['cms.author'] });
-    stack.clearRpcs();
-    const response = await stack.post('/api/v1/cms/previews', {
-      body: previewBody(),
-      ifMatch: entryVersion,
-    });
-    expectSafeError(response, {
-      status: 403,
-      code: 'FORBIDDEN',
-      details: { reasonCode: 'capability_missing' },
-    });
-    expect(stack.rpcs().map((rpc) => rpc.rpc)).toContain('cms_mint_preview');
-    expectAbsent(
-      response,
-      draft.entryId,
-      'an unscoped preview refusal never discloses the entry id',
-    );
-  });
-});
 
 describe('CMS-03B-09 publish through the real stack', () => {
   it('[CMS-03B-09] publishes an approved review (202, Location, strong ETag) exactly once and a replay adds nothing', async () => {
@@ -445,15 +293,30 @@ describe('CMS-03B-09 publish through the real stack', () => {
     stack.as(world.publisher, 'fresh');
     stack.breakRpc('cms_load_quality_gate_input');
     try {
-      const before = workflowEffects(draft.entryId);
+      const beforeSnapshot = snapshotDigest();
+      stack.clearRpcs();
       const response = await publish(draft);
-      expectStatus(response, 503);
-      expect(response.headers.get('retry-after')).toMatch(/^[0-9]+$/u);
-      expect(response.body.code).toBe('DEPENDENCY_UNAVAILABLE');
-      expect(response.body.details).toMatchObject({
-        dependencyClass: 'preflight',
+      // Strict safe ApiError: exact status/code/closed details, no-store and MIME
+      // boundary, with only booleans/digests in any failure diagnostic.
+      expectSafeError(response, {
+        status: 503,
+        code: 'DEPENDENCY_UNAVAILABLE',
+        details: { dependencyClass: 'preflight', retryable: true },
+        retryAfter: true,
       });
-      expect(workflowEffects(draft.entryId)).toEqual(before);
+      // Full 14-group effect snapshot is unchanged (nothing committed).
+      expectUnchanged(
+        beforeSnapshot,
+        snapshotDigest(),
+        'the CMS-03B-09 outage commits no durable effect',
+      );
+      // The genuine publish RPC was issued with its OWN evidence member exactly
+      // null (an unavailable checker proof, not an absent member).
+      const wire = stack
+        .rpcs()
+        .find((rpc) => rpc.rpc === 'cms_publish_revision');
+      expect(wire).toBeDefined();
+      expectEvidenceNull(wire?.request ?? {});
     } finally {
       stack.breakRpc(null);
     }

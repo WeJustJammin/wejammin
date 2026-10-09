@@ -1573,6 +1573,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-09-slice-11-parent-recovery-and-diagnostic-controls|Slice 11 parent recovery and diagnostic controls]] — event — 2026-10-09T12:03:46.674Z
 - [[knowledge/2026-10-09-slice-11-validation-quarantine-and-corrective-review|Slice 11 validation quarantine and corrective review]] — event — 2026-10-09T10:41:34.531Z
 - [[knowledge/2026-10-09-slice-11-repository-only-api-foundation-independently-verified|Slice 11 repository-only API foundation independently verified]] — event — 2026-10-09T09:22:13.376Z
 - [[knowledge/2026-10-09-slice-11-submit-review-replay-repair-independently-verified|Slice 11 submit-review replay repair independently verified]] — event — 2026-10-09T07:02:08.202Z
