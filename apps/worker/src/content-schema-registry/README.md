@@ -14,10 +14,13 @@ Database RPCs remain the transaction and audit authority.
 ## Module map
 
 - `migration-worker.ts` is the compatibility export facade.
-- `migration-worker-engine.ts` composes admission, lease, dry-run, backfill,
-  and verification stages.
+- `migration-worker-engine.ts` owns normalization, in-flight dedupe and event
+  claim scoping; `migration-worker-execution.ts` composes admission, lease,
+  dry-run, backfill and verification stages with trusted private purpose.
 - `migration-worker-{admission,lease,dry-run,backfill,verification}.ts` own
   stage decisions; `migration-worker-batches.ts` owns bounded batch execution.
+- `migration-worker-activation.ts` preserves activation/reconciliation/rollback
+  and durable event-ACK continuation, separate from pre-review preparation.
 - `migration-worker-input-schemas.ts` is the stable facade over the focused
   job, activation-evidence, and queue schema modules.
 - `migration-worker-plan-schemas.ts` is the stable facade over plan types,

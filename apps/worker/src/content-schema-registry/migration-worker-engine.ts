@@ -4,16 +4,12 @@ import type {
   SchemaMigrationWorker,
   SchemaMigrationWorkerDependencies,
 } from './migration-worker-types';
-import { admitMigrationInput } from './migration-worker-admission';
-import { runBackfillStage } from './migration-worker-backfill';
-import { runDryRunStage } from './migration-worker-dry-run';
-import { acquireMigrationLease } from './migration-worker-lease';
+import { processNormalized } from './migration-worker-execution';
 import {
   createMigrationWorkerRuntime,
   scopeMigrationWorkerRuntime,
   type MigrationWorkerRuntime,
 } from './migration-worker-runtime';
-import { runVerificationStage } from './migration-worker-verification';
 import {
   eventReleaseFailure,
   isEventEnvelopeCandidate,
@@ -28,101 +24,6 @@ export const createSchemaMigrationWorker = (
 ): SchemaMigrationWorker => {
   const baseRuntime = createMigrationWorkerRuntime(dependencies);
   const inFlight = new Map<string, Promise<MigrationWorkerResult>>();
-
-  const processNormalized = async (
-    runtime: MigrationWorkerRuntime,
-    normalized: NormalizedInput,
-    signal: AbortSignal,
-    attempt: number,
-    replay: boolean,
-  ): Promise<MigrationWorkerResult> => {
-    const admitted = await admitMigrationInput(
-      runtime,
-      normalized,
-      signal,
-      attempt,
-      replay,
-    );
-    if ('outcome' in admitted) return admitted;
-    let current = admitted.plan;
-    let leaseToken: string | null = null;
-    if (current.state === 'draft' || current.state === 'dry_running') {
-      const lease = await acquireMigrationLease(
-        runtime,
-        current,
-        admitted.event,
-        admitted.job,
-        signal,
-        attempt,
-      );
-      if (lease.kind === 'result') return lease.result;
-      current = lease.plan;
-      leaseToken = lease.leaseToken;
-    }
-    if (current.state === 'dry_running') {
-      const dryRun = await runDryRunStage({
-        runtime,
-        plan: current,
-        event: admitted.event,
-        job: admitted.job,
-        leaseToken,
-        signal,
-        attempt,
-      });
-      if ('outcome' in dryRun) return dryRun;
-      current = dryRun.plan;
-      leaseToken = dryRun.leaseToken;
-    }
-    if (current.state === 'blocked')
-      return resultWith('blocked', {
-        migrationPlanId: current.id,
-        schemaVersionId: current.toVersionId,
-        eventId: admitted.event?.eventId ?? null,
-        state: current.state,
-        cursor: current.cursor,
-        progress: current.progress,
-        reasonCode: 'MIGRATION_BLOCKED',
-      });
-    if (
-      current.state === 'ready' ||
-      current.state === 'running' ||
-      current.state === 'failed_retryable'
-    ) {
-      const backfill = await runBackfillStage({
-        runtime,
-        plan: current,
-        event: admitted.event,
-        job: admitted.job,
-        leaseToken,
-        signal,
-        attempt,
-      });
-      if ('outcome' in backfill) return backfill;
-      current = backfill.plan;
-      leaseToken = backfill.leaseToken;
-    }
-    if (current.state === 'verifying') {
-      return runVerificationStage({
-        runtime,
-        plan: current,
-        event: admitted.event,
-        job: admitted.job,
-        leaseToken,
-        signal,
-        attempt,
-      });
-    }
-    return resultWith('retry', {
-      migrationPlanId: current.id,
-      schemaVersionId: current.toVersionId,
-      eventId: admitted.event?.eventId ?? null,
-      state: current.state,
-      cursor: current.cursor,
-      progress: current.progress,
-      retryAfterMs: retryAfter(attempt),
-      reasonCode: 'UNEXPECTED_MIGRATION_STATE',
-    });
-  };
 
   const releaseClaimForRetry = async (
     runtime: MigrationWorkerRuntime,
@@ -217,6 +118,13 @@ export const createSchemaMigrationWorker = (
         reasonCode,
       });
     }
+    if (baseRuntime.executionPurpose === 'dry_run' && normalized.event !== null)
+      return resultWith('failed_terminal', {
+        migrationPlanId: normalized.event.payload.migrationPlanId,
+        schemaVersionId: normalized.event.payload.schemaVersionId,
+        eventId: normalized.event.eventId,
+        reasonCode: 'EXECUTION_PURPOSE_MISMATCH',
+      });
     // Normalization validates one of these identifiers before returning.
     const identity = (normalized.event?.eventId ??
       normalized.job?.migrationPlanId) as string;

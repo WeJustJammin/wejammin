@@ -1,5 +1,24 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Core preparation units GREEN; empty activation compatibility QA next
+
+Six-file core frozen:types110/runtime263/engine194/verification136/execution128/
+activation215. Parent freshCI0/flock242/242 targeted, registry152 suites2561/2561,
+format/ESLint/type/contracts/progress0. Root read changed modules; activation
+continuation and ACK helper match original bytes after indentation normalization.
+Independent6.1 no actionable producer regression; one P3 witness gap: removing
+purpose predicate from empty shortcut could pass49 while changing empty default/
+explicit activation. Two-case sole-test QA claimed; all existing8/helper/producer
+source frozen. Checkpoint/push before native amendment, then correct-source GREEN,
+isolated predicate mutation RED and exact source restoration/GREEN.
+
+Production named preparation factory/exact CMS BE00 dispatcher/claimed-job
+resolver/retry persistence remain unimplemented; factory alone will not prove
+persisted dispatch or SQL lease/approval authority. JobEffectInput has pre-claim
+version, not claimed version; use explicit trusted seam or authoritative resolver,
+never infer claimed version from old input. No new grants or job row locks.
+No DB handles,0/122/genuineAPI7RED/full/owner/external gates unchanged.
+
 ## Guard8 frozen; automatic earned Codex resets authorized
 
 Final sole sourceCount row frozen250; parent8:1failed/7passed, format/ESLint0,

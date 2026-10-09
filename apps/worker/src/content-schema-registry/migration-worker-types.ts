@@ -68,6 +68,8 @@ export type MigrationWorkerPort = Readonly<{
 export type SchemaMigrationWorkerDependencies = Readonly<{
   port: MigrationWorkerPort;
   workerId: string;
+  /** Trusted construction context, never a queue payload field. */
+  executionPurpose?: 'dry_run' | 'activation';
   now?: () => number;
   leaseDurationMs?: number;
   maxBatchRows?: number;

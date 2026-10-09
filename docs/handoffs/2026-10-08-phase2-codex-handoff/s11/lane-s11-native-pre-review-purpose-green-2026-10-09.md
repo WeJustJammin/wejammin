@@ -1,5 +1,17 @@
 # Native core GREEN — DEC-108 preparation without an early active switch
 
+## Frozen producer receipt
+
+Parent242/242 targeted and registry152 suites2561/2561; format/ESLint/type/
+contracts/progress0 with freshCI0/flock. Counts110/263/194/136/128/215, all<=300.
+Independent6.1 no actionable source regression. Root activation/ACK extraction
+indent-normalized byte-equal. Claim released, all six producer files frozen.
+One P3 witness gap remains: default/explicit activation of empty READY plans;
+new sole-test two-case QA scope must kill only-purpose-predicate removal before
+production wiring. No persisted dispatch/SQL eligibility/approval acceptance.
+
+## Pre-dispatch scope (historical)
+
 NOT DISPATCHED. Parent witnessed replacement QA49:18 failed/31 passed, intended
 purpose binding/private switch/empty stage/completion-state boundaries, format/ESLint0.
 A29:13/16, B12:4/8, C8:1/7; test388/support220, test364/support237, guard250.
