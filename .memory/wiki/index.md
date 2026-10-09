@@ -1589,6 +1589,8 @@
 
 ## Structured Memory
 
+- decision: DEC-163: Missing legacy CMS settings fail closed until authorized save — 2026-10-09T19:57:15.438Z
+- decision: DEC-162: Narrow first-empty schema baseline representation — 2026-10-09T19:57:15.435Z
 - pattern: PAT-024: pgTAP green does not prove an RPC works through PostgREST (pg-safeupdate) (2026-10-08) — 2026-10-09T01:45:20.772Z
 - decision: DEC-161: Revoking a counted approver's assignment on an open review invalidates the review with reviewer_authority_changed (2026-10-08) — 2026-10-08T18:33:30.609Z
 - decision: DEC-160: provider_unavailable is the registered unavailable reason of every non-worker preflight category (2026-10-08) — 2026-10-08T18:30:48.668Z

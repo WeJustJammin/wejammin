@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 162
-- **Unique decision titles**: 162
+- **Total decisions**: 164
+- **Unique decision titles**: 164
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2352,6 +2352,26 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: lane S11-3a cms_assign_editorial_reviewer revoke path (calls cms_invalidate_editorial_review), its pgTAP and the CMS-03B-18 Worker mapping (the revoke still answers 200 with the assignment resource; the review becomes invalidated and emits its own review-changed event).
 - **Reversibility**: High
 
+## DEC-162: Narrow first-empty schema baseline representation
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-09T19:57:15.435Z
+- **Agents**: codex
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+Owner approved allowing null source/active version IDs only for a genuinely verified empty first activation, with corresponding locked-contract updates. Preserve DEC-108 actual scan/report/plan/review/activation producer chain and fail-closed malformed/nonempty/successor behavior. No fabricated baseline identity, authority shortcuts, hand-inserted evidence, real-account creation, external acceptance, or new bootstrap command authorized. Cascade locked BE03a DDL/internal Worker contract and affected references before implementation; source-only native authors, independent 6.1 review, parent execution and serialized CI/flock main-stack DB remain binding.
+
+## DEC-163: Missing legacy CMS settings fail closed until authorized save
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-09T19:57:15.438Z
+- **Agents**: codex
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+Owner approved fail-closed handling of missing legacy CMS settings until an existing authorized settings save initializes them. GET/read/preflight must remain non-mutating. Do not add a bootstrap operation or implicit read-side repair, broad backfill, new roles/grants, or bypass CAS/idempotency/authorization/audit/outbox atomicity. Normal revision writes may materialize settings through their existing authorized transactional producer seam. Cascade affected locked BE03b/settings/error contracts and tests before implementation. External gates remain unchecked; Slice11 remains 0/122 and full phase incomplete.
+
 ## Full Log
 
 ### DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
@@ -4538,3 +4558,21 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Decision**: (A). The general 'does not change the review version' rule covers assignment changes that touch no counted decision.
 - **Downstream**: lane S11-3a cms_assign_editorial_reviewer revoke path (calls cms_invalidate_editorial_review), its pgTAP and the CMS-03B-18 Worker mapping (the revoke still answers 200 with the assignment resource; the review becomes invalidated and emits its own review-changed event).
 - **Reversibility**: High
+
+### DEC-162: Narrow first-empty schema baseline representation
+
+- **Timestamp**: 2026-10-09T19:57:15.435Z
+- **Agent**: codex
+- **Source**: human-approval
+- **Tags**: slice-11, owner-approved, contract-cascade
+
+Owner approved allowing null source/active version IDs only for a genuinely verified empty first activation, with corresponding locked-contract updates. Preserve DEC-108 actual scan/report/plan/review/activation producer chain and fail-closed malformed/nonempty/successor behavior. No fabricated baseline identity, authority shortcuts, hand-inserted evidence, real-account creation, external acceptance, or new bootstrap command authorized. Cascade locked BE03a DDL/internal Worker contract and affected references before implementation; source-only native authors, independent 6.1 review, parent execution and serialized CI/flock main-stack DB remain binding.
+
+### DEC-163: Missing legacy CMS settings fail closed until authorized save
+
+- **Timestamp**: 2026-10-09T19:57:15.438Z
+- **Agent**: codex
+- **Source**: human-approval
+- **Tags**: slice-11, owner-approved, contract-cascade
+
+Owner approved fail-closed handling of missing legacy CMS settings until an existing authorized settings save initializes them. GET/read/preflight must remain non-mutating. Do not add a bootstrap operation or implicit read-side repair, broad backfill, new roles/grants, or bypass CAS/idempotency/authorization/audit/outbox atomicity. Normal revision writes may materialize settings through their existing authorized transactional producer seam. Cascade affected locked BE03b/settings/error contracts and tests before implementation. External gates remain unchecked; Slice11 remains 0/122 and full phase incomplete.

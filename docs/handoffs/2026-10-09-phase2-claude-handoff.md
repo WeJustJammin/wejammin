@@ -1,5 +1,11 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Owner approvals recorded; contract propagation next
+
+On2026-10-09 the owner replied "approve all" to both recommended choices: DEC-162 permits null source/active version IDs only for a genuinely verified empty first activation, with locked-contract updates; DEC-163 makes missing legacy CMS settings fail closed until an existing authorized settings save initializes them. Both are durably recorded through canonical flush/compile. These decisions supersede the pending questions in the historical checkpoint notes below. No new bootstrap command, implicit GET repair, authority bypass, fabricated baseline/evidence, real-account work, or external acceptance is authorized.
+
+Resume from pushed clean checkpoint717e01bd8bf137de9e775ea99efced17bf2e8897. Propagate the locked contracts first, then native source-only TDD with independent6.1/ultra review and parent-only commands. Fresh CI checks/shared flock/main54322 stack remain mandatory for DB work. Header84 suites1452/1452 is bounded unit proof; lifecycle7/7 RED stops before real migration. Slice11 remains0/122; full phase unfinished.
+
 ## Native preparation completed; genuine lifecycle fixture next
 
 Confirmed final diagnostic RED: freshCI0/flock main reset0 then freshCI0 testexit1, all7 fail before dry-run batch. `cms_get_schema_migration_plan`200 returns null source/active IDs and zero source hash; Worker then dead-letters via200 with `DEPENDENCY_INVALID_RESPONSE`, state null, no activation switch. This confirms the first-plan parser boundary, not later lease/activation/MFA/successor defects. Observer107/lifecycle287 lines, independently reviewed6.1/ultra with no diagnostic-safety/assertion/operand gap. Source frozen and native write claim released. ClosingfreshCI0/flock main reset0 removes only disposable partial test rows; no active DB handle/lock. [Final verified boundaries and exact owner gates](2026-10-08-phase2-codex-handoff/codex/s11-native-validation-and-owner-gates-2026-10-09.md). Baseline representation and legacy settings recovery answers remain required before their respective changes; do not assume permission.0/122, full Phase2 goal and all external/owner holds remain open.
