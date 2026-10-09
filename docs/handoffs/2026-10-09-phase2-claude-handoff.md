@@ -1,5 +1,25 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Receiver proof closed; trusted claim seam QA next
+
+Dispatcher QA264/55: one additive context assertion across all3 exact families,
+all prior55 cases/titles/fixtures/assertions byte-identical. Parent55/55 and
+format/ESLint0. Root unbound-method mutation failed exactly3receiver assertions,
+52compatibility cases passed; dispatcher restored byte-identical to HEAD.
+Then77/77 (factory16, newdispatcher55, olddispatcher6), scopedformat/ESLint/type/
+contracts/progress0, freshCI0/flock. Independent6.1 exact P3 closed/no weaker
+oracle/new policy. Sole receiver QA claim released, all producers frozen.
+
+Next disjoint QA claims, scope lane-s11-native-claimed-job-seam-qa-2026-10-09.md:
+new application consumer-claimed-lease.test.ts carries existing receipt through
+proposed optional private claimedLease member without rewriting preclaim job or
+envelope; new Worker async-runtime-claim-binding.test.ts tests real response/
+request bindings, legitimate missing-field fallback and no-effects mismatch.
+All existing source/tests frozen; checkpoint/push/exact-origin before authors.
+No producer change, SQL resolver response/result type decision or adjacent
+version arithmetic. Resolver/receiving/durable job fences still separate;
+genuineAPI7RED/0of122/full/owner/external holds unchanged. Older claims historical.
+
 ## Production foundation GREEN and named-purpose mutation proof
 
 Four-file source frozen: factory/facades263/197/262, dispatcher105. Parent71/71

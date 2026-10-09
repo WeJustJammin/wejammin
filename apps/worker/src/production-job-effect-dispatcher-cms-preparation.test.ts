@@ -131,6 +131,7 @@ describe('production exact CMS preparation job family dispatch', () => {
 
       expect(result).toBe(type === CMS_TYPE ? prepared : verified);
       expect(selected.mock.calls).toEqual([[input]]);
+      expect(selected.mock.contexts).toEqual([f.dependencies]);
       expect(selected.mock.calls[0]?.[0]).toBe(input);
       expect(other.mock.calls).toEqual([]);
       expect(input.job.version).toBe('1');

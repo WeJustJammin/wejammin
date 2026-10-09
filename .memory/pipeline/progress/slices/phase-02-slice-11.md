@@ -44,8 +44,12 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 - [/] `BE` Production foundation source frozen263/197/262/105; parent71/71 plus265/265 and format/ESLint/type/contracts/progress0. Named-purpose-only mutation10failed/6passed16, exact factorySHA restored then336/336 and restored static gates0, freshCI0/flock. Independent6.1 no producer defect; claims released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-production-foundation-green-2026-10-09.md).
   - files: none; startup/claimed-job resolver/receiving/SQL not implemented, no persisted/acceptance proof.
 
-- [/] `QA` Sole dispatcher receiver assertion claimed after P3 proof-depth review; existing55 cases/old proof and all producers frozen. Checkpoint/push before continuation; parent real unbound-callback mutation required. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-dispatch-receiver-witness-2026-10-09.md).
-  - file: apps/worker/src/production-job-effect-dispatcher-cms-preparation.test.ts
+- [/] `QA` Dispatcher receiver witness frozen264/55, one additive assertion/all old proof unchanged. Parent55/55, unbound-callback mutation3failed/52passed55, exact producer restoration then77/77 and format/ESLint/type/contracts/progress0. Independent6.1 P3 closed; claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-dispatch-receiver-witness-2026-10-09.md).
+  - files: none; no persisted job/SQL acceptance claim.
+
+- [/] `QA` Disjoint trusted claim receipt/request-binding QA claims; checkpoint/push/exact-origin before native authors, existing source/tests frozen. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-job-seam-qa-2026-10-09.md).
+  - lane A file: packages/application/src/infrastructure/jobs/consumer-claimed-lease.test.ts
+  - lane B file: apps/worker/src/async-runtime-claim-binding.test.ts
 
 - [/] `QA` Completion-state/every-empty-operand guard8 frozen250; parent8:1failed/7passed, format/ESLint0. Standalone sourceCount row added; every prior source byte unchanged. Existing41/support/producers frozen; QA claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-pre-review-guards-red-2026-10-09.md).
   - files: none; guarded completion and all eight empty-discriminator operands have independent controlled witnesses. No SQL eligibility or acceptance proof.
