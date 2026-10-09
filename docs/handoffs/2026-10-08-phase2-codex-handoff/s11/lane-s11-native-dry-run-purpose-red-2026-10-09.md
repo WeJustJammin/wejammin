@@ -1,5 +1,19 @@
 # Native QA-RED — trusted dry-run execution boundary
 
+## Narrow fixture amendment after preliminary RED
+
+Native source frozen; parent format/ESLint0, preliminary29 cases18 failed/11
+passed (exit1,1.37s), test349/support203 formatted lines. Most failures are the
+currently ignored private purpose, but target-identity control is invalid: it
+sets toVersionId to OLD_VERSION_ID, which equals fromVersionId. Strict parser
+correctly rejects that source==target shape before identity admission. Edit ONLY
+the new purpose test: declare a distinct syntactically valid target-version UUID
+different from source/current target/plan/type IDs and use it in this one control.
+Keep its expected PLAN_TARGET_MISMATCH result and exact read-only call assertion,
+all29 cases/titles/assertions unchanged; support and every producer frozen.
+Never loosen the existing source!=target guard. Parent checkpoint/push before
+continuation, then format/RED again. The expected17/12 is a prediction, NOT proof.
+
 Root `/home/rob/.codex/worktrees/phase2-slice11/WeJammin` only. Native author
 gpt-6-astra/high; parent/review6.1/ultra. Parent checkpoint/push/remote verification
 before dispatch. Exact write scope ONLY new files:
@@ -31,6 +45,14 @@ a job/browser/event payload flag. To exercise currently ignored dry_run wiring
 without casts, construct a dependency object variable with the literal purpose
 then pass it to the existing factory. Old constructor currently ignores it,
 yielding an intended behavior RED, not a missing-import/setup failure.
+
+Derived private semantics agreed during this QA wave: a valid activation
+envelope delivered through dry_run constructor wiring returns failed_terminal /
+EXECUTION_PURPOSE_MISMATCH before any RPC, with null retry delay and no activation;
+ordinary malformed wire handling remains unchanged. Unsupported/malformed private
+purpose throws Error('executionPurpose is invalid') before effects; only omitted
+undefined selects the existing activation default, not explicit null. These are
+private implementation semantics, not a new browser contract or owner DEC.
 
 Required boundaries:
 

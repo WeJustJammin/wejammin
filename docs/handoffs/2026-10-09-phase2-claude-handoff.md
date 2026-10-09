@@ -1,5 +1,27 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Purpose preliminary RED; target fixture correction before GREEN
+
+Native purpose29 cases frozen: parent format/ESLint0,18 failed/11 passed (exit1,
+1.37s), test349/support203 lines. Root found one false identity oracle: setting
+target to OLD_VERSION_ID also equals source, so strict parser rightly refuses
+before target admission. Next sole-test amendment uses a distinct valid target
+UUID, preserving all29 cases/assertions and expected exact read-only stale result.
+Support and every producer remain frozen; do NOT widen source!=target guard.
+Checkpoint/push/remote verify before this native continuation; parent RED again
+and independent oracle review before any purpose implementation. Private mismatch
+semantics agreed: valid activation envelope through dry_run wiring returns
+failed_terminal/EXECUTION_PURPOSE_MISMATCH before RPC; unsupported constructor
+purpose throws, only undefined defaults activation. NEVER a wire/browser flag.
+
+Recovery final364 frozen, one complete beginVerification6/100 body assertion;
+parent2/2/format/ESLint0, independent6.1 final gap closed/no bounded gap, claim
+released. Previous149 suites2512/2512/type/contracts/progress0 predates this sole
+assertion. No DB handles; genuine7/7 activation/reconcile/rollback400 remains
+latest API boundary, exact SQL reason unknown. BE00 wiring/nonzero handoff, seal
+fences, DEC-163/full/owner/external gates still open;0/122 unchanged. Earlier notes
+below historical.
+
 ## Registry bounded GREEN; genuine dry-run boundary RED
 
 Native recovery348 frozen: targeted2/2, format/ESLint0; parent registry149 suites

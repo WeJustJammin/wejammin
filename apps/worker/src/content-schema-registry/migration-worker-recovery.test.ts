@@ -284,6 +284,22 @@ describe('schema migration recovery paths', () => {
       );
     }
     expect(port.call).toHaveBeenNthCalledWith(
+      11,
+      SCHEMA_MIGRATION_RPC.beginVerification,
+      {
+        migrationPlanId: PLAN_ID,
+        expectedVersion: '6',
+        cursor: '100',
+        sourceCount: '100',
+        targetCount: '100',
+        rowErrorCount: '0',
+        migratedCount: '100',
+        failedCount: '0',
+        ...fingerprints,
+      },
+      signal,
+    );
+    expect(port.call).toHaveBeenNthCalledWith(
       13,
       SCHEMA_MIGRATION_RPC.complete,
       {
