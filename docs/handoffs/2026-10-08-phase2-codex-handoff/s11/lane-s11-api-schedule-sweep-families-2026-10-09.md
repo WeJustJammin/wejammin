@@ -1,6 +1,6 @@
 # Slice 11 scheduling/sweep API families — pending execution
 
-Orchestration/review: `gpt-6.1-sol`/`ultra`; implementation: explicitly verified `Phils-Charm/deepseek-v4.1-flash`/`high`, no substitution. Parent checkpoint/push and live-handoff refresh are prerequisite to dispatch. This document grants no DB slot.
+User authorized native execution on2026-10-09. Orchestration/review: `gpt-6.1-sol`/`ultra`; implementation: explicitly verified `gpt-6-astra`/`high`. This replaces old Phils-only routing, not other restrictions. Parent checkpoint/push and live-handoff refresh are prerequisite to dispatch. This grants no DB slot. Dispatch/current tracker list exact permitted files; obtain authorization before any other filename, even within a family prefix.
 
 ## Exclusive scope and source gate
 

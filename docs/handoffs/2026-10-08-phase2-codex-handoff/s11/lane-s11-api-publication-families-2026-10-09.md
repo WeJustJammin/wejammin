@@ -1,6 +1,6 @@
 # Slice 11 preview/publication API families — pending execution
 
-Orchestration/review: `gpt-6.1-sol`/`ultra`; implementation: explicitly verified `Phils-Charm/deepseek-v4.1-flash`/`high`, no substitution. This brief grants neither dispatch nor DB authority. Parent must checkpoint/push and refresh the live handoff before a new wave; DB work remains serialized on the main stack.
+User authorized native execution on2026-10-09. Orchestration/review: `gpt-6.1-sol`/`ultra`; implementation: explicitly verified `gpt-6-astra`/`high`. This replaces old Phils-only routing, not other restrictions. This brief grants neither dispatch nor DB authority. Parent must checkpoint/push and refresh the live handoff before a new wave; DB remains serialized on the main stack. Dispatch/current tracker list exact permitted files; obtain authorization before any other filename, even within a family prefix.
 
 ## Exclusive scope and source gate
 

@@ -1,6 +1,6 @@
 # Slice 11 submit/decision API families — pending execution
 
-Use verified `Phils-Charm/deepseek-v4.1-flash`/`high` for implementation; parent/reviewer `gpt-6.1-sol`/`ultra`, no substitute. Parent checkpoint/push and refreshed live handoff precede a new dispatch wave. This brief grants no DB slot or production authority.
+User authorized native execution on2026-10-09: explicitly select and verify `gpt-6-astra`/`high` for implementation; parent/reviewer `gpt-6.1-sol`/`ultra`. This supersedes old Phils-only routing, not any other restriction. Parent checkpoint/push and refreshed live handoff precede a new dispatch wave. This brief grants no DB slot or production authority. The dispatch message and current task tracker list the exact permitted files; request parent authorization before adding any other filename, even within a family prefix.
 
 ## Exclusive scope
 

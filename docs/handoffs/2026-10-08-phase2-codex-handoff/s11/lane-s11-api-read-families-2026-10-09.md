@@ -1,6 +1,6 @@
 # Slice 11 API read/assignment families — pending execution
 
-Orchestration/review: `gpt-6.1-sol` / `ultra`. Implementation: `Phils-Charm/deepseek-v4.1-flash` / `high`, explicitly selected and live-verified, no substitution. Parent must checkpoint/push and refresh the live Claude handoff before dispatch. This brief alone grants no DB slot or write authority.
+User authorized native execution on2026-10-09. Orchestration/review: `gpt-6.1-sol` / `ultra`. Implementation: `gpt-6-astra` / `high`, explicitly selected and live-verified. This supersedes old Phils-only routing, not other restrictions. Parent must checkpoint/push and refresh the live Claude handoff before dispatch. This brief grants no DB slot. The dispatch message/current tracker list exact permitted files; request authorization before any other filename, even within a family prefix.
 
 ## Exclusive scope and source gate
 
