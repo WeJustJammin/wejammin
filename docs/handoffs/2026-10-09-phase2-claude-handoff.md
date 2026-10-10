@@ -1,5 +1,94 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: genuine claimed preparation proof checkpoint
+
+This section supersedes the historical snapshots below. Source/evidence
+checkpoint `f7571b082ad3dfe5b1acd604e451d37a0a3fe7e4` was verified clean and
+exactly equal to origin before this handoff refresh. Read current Git HEAD for
+the commit containing the refresh. Active checkout remains
+`/home/rob/.codex/worktrees/phase2-slice11/WeJammin`, branch
+`claude/phase2-slice11`. No Slice11 acceptance is closed:0/122.
+
+### Model and reset authority
+
+Root orchestration/research/integration/validation/review: verified
+`gpt-6.1-sol`/`ultra`. Native authors: verified `gpt-6-astra`/`high`, under
+the owner's "continue with native models" instruction. "Approve all" applied to
+DEC162/163 only; do not treat it as new product-policy approval.
+
+Automatically use an earned Codex reset when actually needed; never purchase a
+reset or credits. One earned reset was previously consumed and independently
+verified94%→0%. Last check44% ordinary use allowed, earned credits0; refresh
+live usage before sizing another wave. Do not print account identifiers,
+credentials, tokens or raw account responses.
+
+### Newly completed bounded work
+
+- Private claimed entry90 lines; mechanical shared admission/execution/recovery/
+  resolved extraction211/140/142/185. Exact legacy moved bodies/prefix/union and
+  delegation checked. Entry remains deliberately UNWIRED.
+- Entry focused40GREEN/broader1462GREEN;14 isolated source mutants caught, each
+  followed by exact16-SHA restoration and actual40GREEN control.
+- Genuine helper150/spec372: real public first draft/queued canonical job/full
+  BE00 parsed receipt/original event/signal; six real private RPC stages seal
+  report completed/pass while planREADY and candidate draft. Same-live-receipt
+  READY replay makes one read-only resolver; claimed job/event stay unchanged.
+- Genuine spec hardened with exactly two Boolean identity replacements and four
+  nested freeze additions; original368 bytes reproduce on reversal. Helper and
+  other source/QA unchanged.
+- Four genuine composition mutations I1/I2/F1/F2 caught2/0,1/1,2/0,1/1 at
+  Boolean assertions161/358/164/360. All four real2/2GREEN controls follow exact
+  18-SHA restoration. All16 pre/post resets0. Independent eight-log refutation
+  found no bounded receipt/safety/setup/source issue; no UUID or serialized
+  request keys appear in failure sections.
+- Fresh final API6suites78/78GREEN45.00s/pretestpost0; unit55suites1462/1462
+  GREEN31.42s; separate contracts/DBtypes/progress/format/ESLint/whole types/diff
+  check exit0, all18SHAexact/dirty0. This is NOT full `pnpm db:verify` +
+  `pnpm validate` or Slice11 acceptance.
+
+Proofs in `docs/handoffs/2026-10-08-phase2-codex-handoff/s11/`:
+`proof-s11-claimed-entry-green1462-mechanical-extraction-2026-10-10.md`,
+`proof-s11-claimed-entry-mutations14-restored1462-2026-10-10.md`,
+`proof-s11-genuine-claimed-preparation-first2-green-2026-10-10.md`,
+`proof-s11-genuine-claimed-preparation-amended78-green-2026-10-10.md`,
+`proof-s11-genuine-claimed-preparation-mutations4-restored78-1462-2026-10-10.md`.
+
+Two disclosed orchestration corrections: I1 count parser initially read the
+Failed Tests heading, then correctly reparsed untouched raw logs; F2 reverse
+restore hunk order failed verification, then forward-order native restore was
+verified18SHAexact/dirty0 BEFORE its real GREEN control. No active mutant,
+database reset, fixture writer or author claim remains.
+
+### Resume order and safeguards
+
+1. Read locked BE00 resultRef/summaries/retry/ACK/registered terminal contracts,
+   BE03a terminal-scan recovery/nonzero preparation, and actual receiving code.
+   Existing automatic retry and terminal domain recovery are already decided.
+   CMS-specific resultRef Code naming and closed Worker→shared-error mapping are
+   implementation work; never create shared blocked or novel recovery policy.
+2. Freeze a source-led receiving/continuation contract and native non-overlapping
+   QA claims behind a clean pushed checkpoint. Preserve actual receipt versus
+   preclaim/event/plan versions, original eight fields, Signal/attempt, report
+   identity, heartbeat renewal/loss and outcome CAS. Prove durable continuation
+   and legal redelivery before ACK; do not map queued directly to processed.
+3. Complete genuine nonzero/completed-null-source preparation and public
+   approval/activation on the real migrations. The old genuine7-case lifecycle
+   remains RED at public activation; today's private2GREEN is not its acceptance.
+4. Finish DEC163 save-tail settings initialization, remaining action3 API gaps,
+   then action4 real-route Playwright/build/bundle and the exact full gates.
+   Do not restart S09/S10 or close owner-held/external partials.
+5. Keep this handoff refreshed at every checkpoint; complete Slice11 before
+   Slices12–17/DEC148 depth-floor cascades and final `/validate-phase`.
+
+Root owns commands/format/Git/artifacts/canonical flush→compile; native authors
+have sole-file claims and no commands/tests/DB/Git/network/secret access.
+Every test/reset/check uses fresh activeCI0 and shared
+`/tmp/wejammin-supabase-ci.lock`; main54322/API54321 only. Never primary checkout.
+Only remove backups/s11*/55322/orchestration after Slice11 merge and exact
+ownership/cleanliness/recoverability audit. No cleanup or PR/merge performed by
+this proof segment. DEC147/155 and S10AC045/047/056 remain owner-held partial;
+AC209/211/265/266 remain external and unchecked.
+
 ## Pure claimed mutations27 caught; final restored controls GREEN
 
 All27 one-at-time source mutations caught on209 actual cases; each exact two
