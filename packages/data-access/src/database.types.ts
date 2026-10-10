@@ -4393,15 +4393,16 @@ export type Database = {
       }
       cms_command_accessibility_evidence: {
         Row: {
+          audit_event_id: string
           blocking_count: number
           checker_key: string
           checker_version: number
           correlation_id: string
           created_at: string
-          event_id: string
           id: string
           input_hash: string
           operation_id: string
+          outbox_event_id: string | null
           outcome: string
           owner_id: string
           revision_id: string
@@ -4411,15 +4412,16 @@ export type Database = {
           version: number
         }
         Insert: {
+          audit_event_id: string
           blocking_count: number
           checker_key: string
           checker_version: number
           correlation_id: string
           created_at?: string
-          event_id: string
           id?: string
           input_hash: string
           operation_id: string
+          outbox_event_id?: string | null
           outcome: string
           owner_id: string
           revision_id: string
@@ -4429,15 +4431,16 @@ export type Database = {
           version?: number
         }
         Update: {
+          audit_event_id?: string
           blocking_count?: number
           checker_key?: string
           checker_version?: number
           correlation_id?: string
           created_at?: string
-          event_id?: string
           id?: string
           input_hash?: string
           operation_id?: string
+          outbox_event_id?: string | null
           outcome?: string
           owner_id?: string
           revision_id?: string
@@ -6427,10 +6430,12 @@ export type Database = {
           lease_id: string | null
           lease_until: string | null
           local_datetime: string
+          local_datetime_submicro_ns: number
           next_attempt_at: string | null
           owner_id: string
           reason_code: string | null
           resolved_at_utc: string
+          resolved_utc_submicro_ns: number
           review_id: string
           revision_id: string
           state: string
@@ -6457,10 +6462,12 @@ export type Database = {
           lease_id?: string | null
           lease_until?: string | null
           local_datetime: string
+          local_datetime_submicro_ns?: number
           next_attempt_at?: string | null
           owner_id: string
           reason_code?: string | null
           resolved_at_utc: string
+          resolved_utc_submicro_ns?: number
           review_id: string
           revision_id: string
           state: string
@@ -6487,10 +6494,12 @@ export type Database = {
           lease_id?: string | null
           lease_until?: string | null
           local_datetime?: string
+          local_datetime_submicro_ns?: number
           next_attempt_at?: string | null
           owner_id?: string
           reason_code?: string | null
           resolved_at_utc?: string
+          resolved_utc_submicro_ns?: number
           review_id?: string
           revision_id?: string
           state?: string
@@ -10205,6 +10214,25 @@ export type Database = {
         }
         Returns: string
       }
+      cms_emit_event_ids: {
+        Args: {
+          p_acting_party_id: string
+          p_action: string
+          p_actor_id: string
+          p_aggregate_id: string
+          p_aggregate_type: string
+          p_aggregate_version: number
+          p_audit_event_id?: string
+          p_correlation_id: string
+          p_event_type: string
+          p_outbox_event_id?: string
+          p_payload: Json
+          p_reason_code: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: Json
+      }
       cms_entry_list_epoch: {
         Args: { p_entry_count: number; p_entry_xor: number }
         Returns: string
@@ -10314,6 +10342,10 @@ export type Database = {
       cms_json_depth: { Args: { p_value: Json }; Returns: number }
       cms_json_executable_leaves: { Args: { p_value: Json }; Returns: number }
       cms_key_hash: { Args: { p_key: string }; Returns: string }
+      cms_lineage_head_observation: {
+        Args: { p_audience: string; p_entry_id: string; p_locale: string }
+        Returns: Json
+      }
       cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
       cms_list_editorial_reviews: { Args: { p_request: Json }; Returns: Json }
@@ -10724,6 +10756,8 @@ export type Database = {
       cms_publication_preflight_verdict: {
         Args: {
           p_acting_party_id: string
+          p_actor_id: string
+          p_correlation_id: string
           p_effective_at: string
           p_evidence: Json
           p_person_id: string
@@ -10800,12 +10834,26 @@ export type Database = {
         }
         Returns: undefined
       }
+      cms_record_audit_event: {
+        Args: {
+          p_acting_party_id: string
+          p_action: string
+          p_actor_id: string
+          p_audit_event_id?: string
+          p_correlation_id: string
+          p_reason_code: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: string
+      }
       cms_record_command_accessibility_evidence: {
         Args: {
+          p_audit_event_id: string
           p_correlation_id: string
-          p_event_id: string
           p_evidence: Json
           p_operation_id: string
+          p_outbox_event_id: string
           p_revision_id: string
           p_subject_id: string
         }
@@ -11205,23 +11253,44 @@ export type Database = {
         Returns: Json
       }
       cms_rpc_context_valid: { Args: never; Returns: boolean }
-      cms_schedule_block: {
-        Args: {
-          p_correlation_id: string
-          p_expected_version: number
-          p_reason_code: string
-          p_schedule_id: string
-        }
-        Returns: undefined
-      }
-      cms_schedule_blocked_result: {
-        Args: {
-          p_correlation_id: string
-          p_reason_code: string
-          p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
-        }
-        Returns: Json
-      }
+      cms_schedule_block:
+        | {
+            Args: {
+              p_correlation_id: string
+              p_expected_version: number
+              p_reason_code: string
+              p_schedule_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_audit_event_id: string
+              p_correlation_id: string
+              p_expected_version: number
+              p_reason_code: string
+              p_schedule_id: string
+            }
+            Returns: undefined
+          }
+      cms_schedule_blocked_result:
+        | {
+            Args: {
+              p_correlation_id: string
+              p_reason_code: string
+              p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_audit_event_id: string
+              p_correlation_id: string
+              p_reason_code: string
+              p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
+            }
+            Returns: Json
+          }
       cms_schedule_completed_result: {
         Args: { p_schedule_id: string }
         Returns: Json
@@ -11266,25 +11335,44 @@ export type Database = {
         }
       }
       cms_schedule_publication: { Args: { p_request: Json }; Returns: Json }
-      cms_schedule_record_failure: {
-        Args: {
-          p_correlation_id: string
-          p_expected_version: number
-          p_schedule_id: string
-        }
-        Returns: string
-      }
+      cms_schedule_record_failure:
+        | {
+            Args: {
+              p_correlation_id: string
+              p_expected_version: number
+              p_schedule_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_audit_event_id: string
+              p_correlation_id: string
+              p_expected_version: number
+              p_schedule_id: string
+            }
+            Returns: string
+          }
       cms_schedule_retry_delay: {
         Args: { p_failure_number: number }
         Returns: string
       }
-      cms_schedule_retry_result: {
-        Args: {
-          p_correlation_id: string
-          p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
-        }
-        Returns: Json
-      }
+      cms_schedule_retry_result:
+        | {
+            Args: {
+              p_correlation_id: string
+              p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_audit_event_id: string
+              p_correlation_id: string
+              p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
+            }
+            Returns: Json
+          }
       cms_schema_dry_run_claim_request: {
         Args: { p_request: Json }
         Returns: undefined
@@ -11325,6 +11413,35 @@ export type Database = {
       cms_schema_source_row_count: {
         Args: { p_from_version_id: string; p_to_version_id: string }
         Returns: number
+      }
+      cms_sealed_cursor_is_sealed: {
+        Args: { p_cursor: Json }
+        Returns: boolean
+      }
+      cms_sealed_cursor_open: {
+        Args: { p_cursor: Json; p_domain: string }
+        Returns: string
+      }
+      cms_sealed_cursor_seal: {
+        Args: { p_domain: string; p_payload: Json }
+        Returns: string
+      }
+      cms_sealed_cursor_seal_page: {
+        Args: { p_domain: string; p_page: Json; p_payload_keys: string[] }
+        Returns: Json
+      }
+      cms_sealed_cursor_subkey: {
+        Args: {
+          p_domain: string
+          p_key_id: string
+          p_master: string
+          p_purpose: string
+        }
+        Returns: string
+      }
+      cms_sealed_cursor_verifying_key: {
+        Args: { p_key_id: string }
+        Returns: string
       }
       cms_session_owner_scope: { Args: never; Returns: string }
       cms_session_report_scope: { Args: never; Returns: string[] }
