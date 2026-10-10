@@ -1,5 +1,23 @@
 # Slice11 native queued-continuation TDD contract
 
+## Latest producer checkpoint: focused GREEN, full DB gate failed
+
+After clean pushed QA5e2ccedc, native sole consumer.ts +3 lines (126 total):
+applied queued returns actual completed/outcome/processed:null before processed
+write. Root actual12GREEN/1.96s then22files197GREEN/12.70s; all other33 source/
+QA exact. Independent producer review no bounded finding. Terminal/noop/claim/
+manual review unchanged; real running→queued helper cannot emit queued noop.
+
+Required full db:verify reset/lint0 then db:test333files12764assertions, one
+failure: reads_review assertion16/AC057/source118 (188s SQL test phase).
+API/races/types and validate UNRUN after first failure; postReset0. SQL source
+unchanged. Source diagnosis: equal fixture created_at + random reviewer IDs
+make label ordinals nondeterministic; assertion expects active/revoked order.
+Separate native fixture-only contract preserves every original assertion and
+production SQL; author only after clean pushed checkpoint. Tracked green-gate
+JSON holds exact producer/other33 hashes and actual logs. Full gates NOT green;
+no complete redelivery/production/stage-authority/S11 acceptance inferred.
+
 ## Latest QA checkpoint: actual assertion RED, producer UNRUN
 
 Contract checkpoint21b956a4 clean/pushed before native test-only writes.

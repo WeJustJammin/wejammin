@@ -1,5 +1,35 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: queued producer GREEN / full DB first failure
+
+Clean pushed QA5e2ccedcc25946d2427c4127182b4e6eb2518509 before native sole
+consumer.ts +3 lines,126 total. Applied queued now returns completed with
+actual outcome/processed:null before recording origin. Actual focused12GREEN
+1.96s then22files197GREEN12.70s, all other33 source/QA frozen exact. Independent
+producer review no bounded finding; terminal/noop/claim/manual review preserved.
+
+Full db:verify reset/lint0, db:test333files12764assertions/188s, one failure:
+supabase/tests/phase_02_slice_11_rpc_reads_review.sql assertion16/line118 AC057.
+API/races/types and validate UNRUN after first failure; postReset0. SQL source
+unchanged. Source-evidenced fixture flake: tied created_at, random reviewer IDs
+break ordinal tie; active/revoked label ordering is not normative. New sole-QA
+fixture contract lane-s11-native-ac057-fixture-order-2026-10-10.md beside queued
+brief: explicit later revoked-assignment creation/update, all32 original assertions
+and production SQL unchanged. Native author gate only after clean push.
+Tracked queued-continuation-green-gate-receipts JSON preserves producer/other33
+hashes, actual logs and first-failure limits. Full gates failed, not acceptance.
+
+Next: deterministic fixture amendment/focused repeats/full db:verify then
+validate, first failure repair without weakening. Existing-reader delegation
+can support later advisory/current-authority checks without new owner/grant/
+helper/RPC, but contract/QA/implementation still unselected; SQL fresh-read/
+clock/isolation/legacy replay details need proof. CMS callback/Job heartbeat/
+current receipt/result/error/progress mapping and stale-envelope bypass remain
+unwired. S11 acceptance0/122, public/nonzero lifecycle/actions3/DEC163/4 and
+Slices12–17/validate-phase pending. root6.1ultra/native6astrahigh; latest usage56,
+ordinary available, automatic earned resets when needed/no purchases. No PR yet,
+no cleanup/deploy/account/grant expansion; preserve recoverability/services.
+
 ## Latest snapshot: queued-continuation actual RED / type-safe QA checkpoint
 
 Supersedes contract UNRUN below. Contract21b956a4 clean/pushed before native

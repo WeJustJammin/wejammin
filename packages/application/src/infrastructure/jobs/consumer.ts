@@ -107,6 +107,9 @@ export const executeJobDispatch = async (
   if (outcome.kind !== 'applied' && outcome.kind !== 'noop') {
     return { kind: 'completed', outcome, processed: null };
   }
+  if (outcome.kind === 'applied' && outcome.nextState === 'queued') {
+    return { kind: 'completed', outcome, processed: null };
+  }
   const processed = await recordProcessedEventIdempotently({
     persistence: input.persistence,
     request: {
