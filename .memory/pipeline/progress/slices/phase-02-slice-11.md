@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Actual API69 rerun reaches graph resolver:21 functional failures/48 passed/69,0 fixture failures,32.54s; main54322 freshCI0/flock pre0/API1/post0. Graph256 preserves imports/public helper/test tail byte-identically and all public/persisted/hash/live-claim oracles completed before final exact CONFLICT got INVALID_REQUEST. Static0/independent source review no bounded gap. Next bounded three new SQL files only, clean pushed checkpoint before authors; no acceptance closure.
+
 Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 narrowly permits null source/active version IDs for a genuinely verified empty first activation, with locked-contract cascade; DEC-163 makes missing legacy CMS settings fail closed until an existing authorized save initializes them, with non-mutating reads. Canonical decisions recorded and compiled. Propagate contracts before native TDD; parent-only commands and serialized CI/flock/main-stack DB remain binding. Earlier unresolved-policy notes are historical;0/122 acceptance unchanged.
 
 - [/] `QA` DEC-162 first-empty defensive contract tests frozen; parent Vitest65:15 failed/50 passed, intended nullable-ID RED; write claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-first-empty-red-2026-10-09.md).

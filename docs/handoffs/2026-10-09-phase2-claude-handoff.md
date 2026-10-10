@@ -1,5 +1,18 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## API69 graph reached resolver RED; bounded SQL GREEN scope
+
+Actual main54322 freshCI0/flock pre0/API1/post0:21 failed/48 passed,32.54s.
+All21 functional;0 fixture failures. Graph256 passed every public field201/
+cache isolation/changed graph/unchanged attempt/event/live claim assertion,
+then exact CONFLICT received INVALID_REQUEST. Imports/public helper/test tail
+byte-identical; static0 and independent source review no bounded gap.
+See proof-s11-genuine-claim-api69-graph-reached-red-2026-10-09.md.
+Next only three new disjoint SQL files per lane-s11-native-claim-resolver-sql-
+green-2026-10-09.md; pushed clean checkpoint before authors. Legacy body/lock/
+completed exception/18-domain, service/RPC guard/wrapper/owner/ACL and QA frozen.
+Nonzero/completed producers, receiving/per-stage/DEC163/full/owner/external open.
+
 ## API69 actual21 failed48 passed; graph-only fixture amendment gate
 
 Main54322 pre0/API1/post0, freshCI0 each stage/flock;55322 untouched. Original46
