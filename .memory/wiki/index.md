@@ -1575,6 +1575,9 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-graph-fixture-rpc-context-first-gate-correction|Slice 11 graph fixture RPC context first gate correction]] — knowledge — 2026-10-10T01:31:40.413Z
+- [[knowledge/2026-10-10-slice-11-api69-twenty-resolver-red-one-graph-fixture-gap|Slice 11 API69 twenty resolver RED one graph fixture gap]] — knowledge — 2026-10-10T01:26:31.567Z
+- [[knowledge/2026-10-10-slice-11-provisional-sourcecount-wording-follows-dec108|Slice 11 provisional sourceCount wording follows DEC108]] — knowledge — 2026-10-10T01:14:42.434Z
 - [[knowledge/2026-10-10-slice-11-api46-red-final-restored1116-checkpoint|Slice 11 API46 RED final restored1116 checkpoint]] — event — 2026-10-10T01:08:01.788Z
 - [[knowledge/2026-10-10-slice-11-genuine-api46-red-observer206-mutation-closed|Slice 11 genuine API46 RED observer206 mutation closed]] — knowledge — 2026-10-10T01:06:10.221Z
 - [[knowledge/2026-10-10-slice-11-genuine-api46-cap-gate-observer193-member-count-gap|Slice 11 genuine API46 cap gate observer193 member count gap]] — knowledge — 2026-10-10T00:51:18.192Z

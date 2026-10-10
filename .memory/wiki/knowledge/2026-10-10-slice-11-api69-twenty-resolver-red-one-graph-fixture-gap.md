@@ -1,0 +1,13 @@
+---
+id: 2026-10-09-s11-api69-twenty-resolver-red-one-graph-fixture-gap
+type: knowledge
+agent: codex
+source: implement-slice
+timestamp: 2026-10-10T01:26:31.567Z
+---
+
+# Slice 11 API69 twenty resolver RED one graph fixture gap
+
+**Tags**: slice-11, genuine-api-red, graph-oracle, RLS-context, scope-amendment
+
+Actualmain54322freshCI0eachstage/flockpre0API1post0,55322untouched. Combined69:21failed48passed30.03s. Original46unchanged14/32;grammar22actual6/16 afterprotectedv7/uppercaseclaimreceipt/version/persistedtoken/origeventproof;3full19validstaleandnilwrongtokenreceiveINVALID_REQUESTnotCONFLICT. Graph1failsbaselineSHAat108beforepublicfieldorresolver,NOTgraph-driftRED;20functionalresolverfailures+1fixturegap. New184/175formatESLint/type/contracts/progress0;static6.1no-gapdidnotestablishruntimecontext. Rootreadhashauthority358RETURNStextexistinghex; latestgetter02164000:29SECDEFownerCMSdefinerforcedRLSreturnsNULLwhenno scoped candidate; diagnosticpsqlnoactualJWTscope,current03110100:102role-service_role. Source-backedRLSdiagnosis,notrawhashmeasurement. SolegraphspecmayinlinecompleteactualpersisteddefinitionSELECTexactshape/order/defaults/bindings/locale/workflow;NO GUC/JWT/roles/grants/production/helper/otherQA/assertionweakening. CheckpointpushexactoriginbeforeBcontinuation/rerunactualgraphRED. MainreadDEC162helper05018100cms_schema_source_row_count and actualproducer1026/source-read800/batch599/seal411callsalreadyexist;sourcefactsnotfreshstage/raceproof. Legacy3keypreparationreaderandreceiving/heartbeat/perstageintegrationopen;futuregenuinenonzero/completedfixturesneedactualprep/review/activation/publicentry/successornotcms-editorial-worldactivationbypass. Noacceptancefull0of122.

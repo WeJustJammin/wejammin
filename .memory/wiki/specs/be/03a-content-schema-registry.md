@@ -2169,8 +2169,10 @@ version are retained; a changed candidate or transform starts a new
 **Provisional fingerprint versus sealed report.**
 `cms_schema_migration_plans.dry_run_report` is NOT NULL and is written when
 CMS-03A-10 creates the plan. From creation it holds a provisional fingerprint
-object: `dryRunId`, the source, target, compiler and transform hashes, zero
-counters and the lease. Supersession of an earlier plan reads this fingerprint,
+object: `dryRunId`, the source, target, compiler and transform hashes,
+`sourceCount` from the affected source relation, initially zero `targetCount`,
+`rowErrorCount`, `migratedCount` and `failedCount`, and the lease.
+Supersession of an earlier plan reads this fingerprint,
 and it is never a result: no resource, projection or gate treats it as one. The
 sealed `cms_schema_dry_run_reports` row is the only authority for the result,
 counts, hashes and row errors, and sealing it does not depend on the plan column

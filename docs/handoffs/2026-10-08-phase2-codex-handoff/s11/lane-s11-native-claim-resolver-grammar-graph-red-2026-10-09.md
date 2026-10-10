@@ -1,5 +1,23 @@
 # Slice 11 — genuine resolver grammar and precompile graph QA, RED first
 
+## Parent actual69 result and sole graph amendment
+
+Actual21 failed/48 passed after main54322 pre0/post0, freshCI0/flock. Original46
+unchanged14/32; grammar22 actual6/16 at resolver boundary. Graph1 baseline SHA
+assertion fails before public field/resolver; NOT graph-drift resolver RED.
+Graph getter is SECDEF; forced-RLS definition policies first require the RPC
+flag via cms_rpc_context_valid (authority1600/2208), absent in direct diagnostic
+SELECT. JWT scope is separate, not that first lookup gate. This supersedes the
+earlier JWT-first diagnosis. JCS is TEXT hex; no encoding/cast repair supported.
+Approve ONLY B's existing sole graph spec to replace getter invocations with
+inline complete read-only persisted definition construction, exact latest
+02164000 graph shape/order/defaults/locale/workflow/bindings from actual rows.
+No set_config/GUC/JWT/role/grant/production/helper changes. Retain ALL assertions
+and same public field edit/final CONFLICT. File<=400. Grammar and six prior files
+frozen. Root checkpoint/push/exact-origin BEFORE B continuation; root read/format/
+static/review and rerun actual graph witness before SQL GREEN.
+See proof-s11-genuine-claim-api69-first-red-2026-10-09.md.
+
 ## Locked scope and ownership
 
 Preparation-only QA. Existing genuine46 and observer206 frozen and already

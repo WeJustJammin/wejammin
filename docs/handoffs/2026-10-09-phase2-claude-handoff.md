@@ -1,5 +1,24 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## API69 actual21 failed48 passed; graph-only fixture amendment gate
+
+Main54322 pre0/API1/post0, freshCI0 each stage/flock;55322 untouched. Original46
+same14/32; grammar22 actual6/16 after actual v7/uppercase claim receipts;
+graph1 fails baseline hash assertion BEFORE field write/resolver. Thus20
+functional resolver failures plus1 fixture failure, not complete graph RED.
+New files184/175/static0, reviewers static no-gap did not establish runtime.
+Hash helper already TEXT hex. SECDEF candidate reconstruction first hits forced
+RLS requiring cms_rpc_context_valid/app.cms_rpc=true (authority1600/2208),
+absent in diagnostic SELECT. JWT scope is separate; prior JWT-first diagnosis
+superseded. Source-backed diagnosis only, no raw hash proof.
+Sole graph spec continuation may inline full persisted definition SELECT under
+diagnostic row reads, no GUC/JWT/roles/grants/production/helper/assertion weakening.
+Root checkpoint/push/exact-origin before continuation, rerun actual graph RED.
+See proof-s11-genuine-claim-api69-first-red-2026-10-09.md. All other files frozen.
+Existing DEC162 census calls at producer/scan/seal verified in source, not fresh
+stage/race proof. Real nonzero/completed/receiving/per-stage/full/owner/external
+holds remain;0/122. Provisional sourceCount wording clarified per existingDEC108.
+
 ## Actual genuine API46 RED; decoder206 proof gap closed
 
 Main54322 pre-reset0/API1/post-reset0, freshCI0 each stage/flock;55322 untouched.
