@@ -73,6 +73,7 @@
     "supabase": "2.116.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.68.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "zod": "4.4.3"
   }
 }

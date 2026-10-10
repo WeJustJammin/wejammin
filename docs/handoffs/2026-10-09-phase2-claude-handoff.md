@@ -1,5 +1,40 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: root Zod harness repair / origin receiving contract
+
+Pushed fe6fa245 before native sole package.json adds existing zod4.4.3 dev pin.
+Parent pnpm11.24 offline install0/1.6s; lock changes only root importer entry.
+Reverse whole package/lock baseline exact, all35 old source/QA exact, new37
+frozen map in root-zod-gate-receipts JSON. No tests/schema/title changes.
+
+Actual repeat db:verify reset/lint0, SQL333files12764assertions PASS111s;
+API30failed34passedfiles,10failed608passed188skipped806tests937.12s.
+Root Zod loaderPASS, zero missing-package errors; six previously unloaded
+suites now import but their16 assertions stop/skip in shared preparation setup.
+dbVerifyExit1/postReset0, root-owned background driver2212068 drained.
+Races/types chain/validate UNRUN. These are not passed acceptance assertions.
+
+Next test-only contract lane-s11-native-cms-origin-receiving-tdd-2026-10-10.md:
+registered CMS immutable-origin verification allows canonical-state retry,
+not origin version as current CAS. Primary architecture257/IA00 INF05/Job
+retry support explicit BE00/BE03a consistency clarification. Other Job types
+retain stale/future rules. Private callback/exact server Boolean, local malformed
+reader-error retry, receiver-owned signal/cancellation retry, first-CMS-type
+clamp across canonical reread, terminal no-reader ACK and complete barriers
+specified. Existing source35 frozen; native new receiving QA only after clean
+push, producer UNRUN. Independent contract recommendations incorporated;
+final source/log review found no bounded defect. Saved two-hunk Zod diff
+independently confirmed; historical inverse baseline remains parent-attested.
+Static checkpoint0; incidental lock formatting reverted exactly to frozen SHA.
+
+Current/enduring SQL authority, Job heartbeat/current receipt and registered
+CMS result/error/recovery mapping, production prep callback/public lifecycle
+remain separate open work. Shared fixture still uses activation purpose for
+pre-review preparation; do not replace it with a legacy bypass or relax guards.
+S11 acceptance0/122/Slices12–17/validate-phase pending; latest usage58 ordinary
+available, earned resets0 currently, automatic resets when available/needed,
+no purchases. No PR/cleanup/deploy/accounts/grants.
+
 ## Latest snapshot: AC057 fixture controls / SQL green / API first failures
 
 Supersedes the older first-failure snapshot below. From pushed7faa253d, native

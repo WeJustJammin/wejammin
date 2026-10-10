@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "scope": "Root test dependency declaration only; no schema or assertion changes",
+  "baseline": "fe6fa2451e39afcf1c0adec4c7735bb24e197312",
+  "nativeAuthor": "gpt-6-astra/high; sole package.json entry, frozen/released",
+  "parentInstall": {
+    "command": "pnpm install --offline",
+    "exit": 0,
+    "log": ".lane-logs/parent-s11-root-zod-offline-install-20261010.log",
+    "durationSeconds": 1.6,
+    "version": "11.24.0"
+  },
+  "equivalence": {
+    "all35Exact": true,
+    "mismatch": [],
+    "reverseWholePackageExact": true,
+    "reverseWholeLockExact": true,
+    "lockBlockCount": 1,
+    "hashes": {
+      "package.json": "71329a448099e1052d6edf091be400c06d60d489c7c744233aa7ec35aed9168a",
+      "pnpm-lock.yaml": "3798f895af5e7673b0920f3a8e0cda9effeda9cac57ba5d65fa3512458f5cc54"
+    }
+  },
+  "frozen37": {
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-input.test.ts": "be11d5cce2db853d10481dccc3efba76e3342087f9eca1eff72298b31c6f069e",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-binding.test.ts": "f2fe543002c0a63d8596d7491f8646731a4964b9c86aef5f7b0798b57465cfc5",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-request.ts": "cb8dd1975fe8fc164118d20ea5e9157b38c449022ee902822c3bebfccc4442c8",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-response.ts": "4defc891b52d68de240cce642cd7bf0750ebc75f418a48717a1eeb2589fa18cd",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-shape.ts": "b9fc420395b69fa18e3552a4f869967174d11281df6ef3079a6afe299475a14e",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation.test.ts": "cc714191e2e6ee96bf0cf56eccfb9d8d3a0f4cb030e3a7567e698a14b5ef00af",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation-stages.test.ts": "66c064e232a18c2031d767f34dac7969cfd38814876adbe13150e4da548632f3",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation-test-support.ts": "79f52111a4881f925bf081b69d458be6bd563d7f066a9ec3cccb45e55911f0cb",
+    "apps/worker/src/content-schema-registry/migration-worker-resolved-admission-equivalence.test.ts": "2fc7cdae4de4b9dbec46455cbddc21dd72919df24b96fbfbfc28849a656b9ba9",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-input.ts": "b6d1640379c2de589dfa58b5957cbae61fccc00384281c80da2c4c17c7bbd628",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-binding.ts": "640b3208d996327a466c0a7dbb72af1a30a4d511a7f1c57509d557004852c601",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation.ts": "98391ff254bd3cb0b261f4cf81b445a481372b0047769421f7deb99d359c65e9",
+    "apps/worker/src/content-schema-registry/migration-worker-admission.ts": "d19a895d35f0502f65cd9bfd2ea29c8d199b51db649baa5bea6df991d91517d7",
+    "apps/worker/src/content-schema-registry/migration-worker-execution.ts": "6fe0b823918095bd92b180308d17e47ceab8ef6f8420d2c04af03215eb08b410",
+    "apps/worker/src/content-schema-registry/migration-worker-event-recovery.ts": "9242a0e2073b41df62c94cbd1b9f2d83823403e54a456e4025647dd2a6a78a37",
+    "apps/worker/src/content-schema-registry/migration-worker-resolved-admission.ts": "2da238d20a75b5dba4acca4d7c1baf5f4fcc5da648862563e5bdb66ba472e689",
+    "tests/postgrest/support/phase-02-slice-11-claimed-preparation-fixture.ts": "9085f0638c76b56672c836e4096b14014690fea1c4b3b68324daf02fa916d137",
+    "tests/postgrest/phase-02-slice-11-claimed-preparation.apispec.ts": "05d86e32717ea7d9f3c6290d7d51e580fbc4cd261970b72ccf94d009720e8d82",
+    "apps/worker/src/content-schema-registry/schema-dry-run-origin-request.ts": "fca3323c27edc0aa75211b22cf42dad784cd8944a992564d6af5beb25df494e4",
+    "apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts": "485b2432758ae2bf443a926a558f34faef94ec1d8d4401c3b92fce41d8dbe763",
+    "tests/postgrest/phase-02-slice-11-origin-admission.apispec.ts": "25b06f5b61b043cb58190e8edae91407bf2fb9cb8ac3220b5b26491fc404df01",
+    "apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.ts": "c7ed46b5577c013d56e11014781760ae305d3e4568dd336419f432d197e35712",
+    "supabase/migrations/20261005018700_cms_origin_admission_reader.sql": "4151fc0d2f347ea1d56688680efabbc374643990bcd2c33ebc2c2f6efb0751cb",
+    "packages/application/src/infrastructure/jobs/runtime-types.ts": "40fa396284567687f9cfa3f3314ad63d1fa73682996c681119fcde19708be214",
+    "packages/application/src/infrastructure/jobs/dispatch.ts": "2e2bbbef20c503a9409f736cd42b294f1d8a5f9602698d0c0f9d8ef30a25b452",
+    "packages/application/src/infrastructure/jobs/execution.ts": "e0b1803c549209aaab8379c0135d5ef3b76d98f79b1cf0f918d9616aab9bf38d",
+    "apps/worker/src/async-runtime.ts": "bf4cb6c8d2cb1e2c08f7b4c8ad6b7417c0c448aacb39cf6419e039247b8f4c00",
+    "apps/worker/src/async-entrypoint.ts": "d1ed8c5dd6ef542b23ea24e57159c69bf806fc0cefa4c8146fd6a03b1e555b22",
+    "apps/worker/src/async-runtime-support.ts": "bb3eb7df74f84a60c601830e4cf0728a75250d3b1fdfea7d1c9bc712f9223a75",
+    "apps/worker/src/async-runtime-parsing.ts": "00f5fd4a4f4d210cedc119147fec7f237fd1eeaebd9e7a6d5ef88c85da00be1a",
+    "apps/worker/src/production-async-entrypoint.ts": "d64b08324960f2dadc06351f5a65ff9f1f305a6510cebe8b88ce62af4c34592d",
+    "packages/application/src/infrastructure/jobs/consumer-queued-continuation.test.ts": "a327484bcce3404c063c9ff8608b0162a288c22bfdfc4d47ae383245c7537892",
+    "apps/worker/src/async-entrypoint-queued-continuation.test.ts": "88c8c2fa2142111f72a78e7e442a5443c55b2492295a4f3e8ac805467c9cda23",
+    "packages/application/src/infrastructure/jobs/consumer.ts": "9b56a9033ad43acfcf85d08b3ab9859c769510335f60c1d6a6d14c0d63230a77",
+    "supabase/tests/phase_02_slice_11_rpc_reads_review.sql": "eb6aa49950a29dfe740f8b17f373a2c4d9adf800d0aa33ee99fc64ef7ebd992c",
+    "package.json": "71329a448099e1052d6edf091be400c06d60d489c7c744233aa7ec35aed9168a",
+    "pnpm-lock.yaml": "3798f895af5e7673b0920f3a8e0cda9effeda9cac57ba5d65fa3512458f5cc54"
+  },
+  "fullGate": {
+    "log": ".lane-logs/parent-s11-root-zod-db-verify-validate-20261010.log",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "rootZodLoader": "PASS",
+    "reset": 0,
+    "lint": 0,
+    "sql": {
+      "files": 333,
+      "assertions": 12764,
+      "result": "PASS",
+      "wallclockSeconds": 111
+    },
+    "api": {
+      "files": {
+        "failed": 30,
+        "passed": 34,
+        "total": 64
+      },
+      "tests": {
+        "failed": 10,
+        "passed": 608,
+        "skipped": 188,
+        "total": 806
+      },
+      "durationSeconds": 937.12,
+      "missingZodErrors": 0,
+      "formerlyUnloadableSuites": 6,
+      "formerlyUnloadableSuiteStatus": "Imported; all16 assertions setup-blocked/skipped, not passed"
+    },
+    "dbVerifyExit": 1,
+    "postResetExit": 0,
+    "driverPid": 2212068,
+    "driverDrained": true,
+    "races": "UNRUN",
+    "dbTypesChain": "UNRUN",
+    "validate": "UNRUN"
+  },
+  "independentReview": {
+    "receipt": "Source/log-only reviewer found no bounded contract defect; independently confirmed full-gate counts, zero missing-module markers, six setup-blocked former loaders, current package/lock Zod4.4.3 and exact saved two-hunk diff. Historical HEAD inverse equivalence remains parent-attested.",
+    "artifact": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/root-zod-dependency-baseline-fe6fa245.patch",
+    "scope": "No scripts/tests/Git/network/DB; no runtime or acceptance closure"
+  },
+  "acceptance": "0/122"
+}

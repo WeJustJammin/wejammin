@@ -1,5 +1,19 @@
 # Slice11 real-API root Zod dependency amendment
 
+## Actual amendment / gate recovery
+
+Native sole package dev entry complete/frozen/released. Parent offline install0
+with pnpm11.24/1.6s; mechanical root importer entry only. Reverse whole package
+and lock baseline exact, all35 source/QA unchanged. Actual root loaderPASS.
+Full db:verify resetlint0/333files12764 SQL PASS111s; API30failed34passedfiles,
+10failed608passed188skipped806tests937.12s; dbVerify1/postReset0/driver drained.
+Six previously unloaded suites now import, but16 assertions setup-blocked/skip;
+no missing-package errors, no functional acceptance pass. Races/types/validate
+UNRUN. See root-zod-gate-receipts-2026-10-10.json. Historical author UNRUN below.
+Independent source/log review confirms counts, loader removal and saved exact
+two-hunk diff; historical inverse equivalence remains parent-attested. Incidental
+whole-lock formatter changes reverted mechanically; frozen SHA restored exactly.
+
 ## Frozen scope and observed harness failure
 
 After AC057 fixture correction, root full db:verify passes333files12764 SQL

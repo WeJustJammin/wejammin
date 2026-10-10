@@ -1,0 +1,27 @@
+diff --git a/package.json b/package.json
+index 50bd9269..54e33ec5 100644
+--- a/package.json
++++ b/package.json
+@@ -73,6 +73,7 @@
+     "supabase": "2.116.0",
+     "typescript": "5.9.3",
+     "typescript-eslint": "8.68.0",
+-    "vitest": "4.1.11"
++    "vitest": "4.1.11",
++    "zod": "4.4.3"
+   }
+ }
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index bd29d7b9..2124b0bf 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -312,6 +312,9 @@ importers:
+       vitest:
+         specifier: 4.1.11
+         version: 4.1.11(@opentelemetry/api@1.9.1)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(esbuild@0.28.2)(yaml@2.9.0))
++      zod:
++        specifier: 4.4.3
++        version: 4.4.3
+ 
+   apps/docs:
+     dependencies:

@@ -2541,6 +2541,15 @@ dedicated migration plan identity and report under CAS on the still-draft
 candidate, and enqueues one BE00 job in the same idempotent transaction; a
 same-key retry returns the same attempt, while changed candidate or transform
 evidence starts a new attempt and preserves earlier immutable attempts.
+The `cms.schema.dry_run` Job consumes its unchanged original `job.requested/1`
+through BE00's registered immutable-origin path: protected whole-origin
+verification identifies the accepted attempt, while current canonical Job
+reread and actual claim/heartbeat receipt supply execution CAS versions.
+Neither event version nor origin verdict grants current-stage authority.
+Queued continuation retries without a processed-event marker or terminal ACK;
+terminal outcome CAS precedes processed-event recording and ACK. Private
+stage fences, report/plan bindings and pre-review preparation guards remain
+mandatory; direct activation-purpose preparation is not this Job lifecycle.
 CMS-03A-11 accepts only a persisted passed dry run, freezes the
 candidate/artifact/compiler/dependency/dry-run/policy evidence and the stable
 context hash, and transitions draft → review atomically. CMS-03A-14 lets only
