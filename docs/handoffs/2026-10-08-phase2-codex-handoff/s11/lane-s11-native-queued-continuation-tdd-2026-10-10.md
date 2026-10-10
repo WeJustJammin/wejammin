@@ -1,5 +1,28 @@
 # Slice11 native queued-continuation TDD contract
 
+## Latest QA checkpoint: actual assertion RED, producer UNRUN
+
+Contract checkpoint21b956a4 clean/pushed before native test-only writes.
+Root application actual5 tests:1failed/4passed,1.22s; receiving latest actual7:
+2failed/5passed,1.47s. Failures are queued processed/history Boolean assertions,
+not import/setup failures. CAS-conflict and all terminal controls pass; deferred
+apply/processed barriers assert zero ACK/retry before durable response. Full
+ordered arguments/cardinalities, receipt/preclaim separation and immutable
+fixtures retained. Application301 lines; type-safe receiving360, both below400.
+
+First receiving attempt stopped in ESLint before tests; later project types
+reported node:util unavailable and generic Mock incompatibility. Neither is
+functional RED. Native sole-file repairs preserved all7 cases/oracles: browser
+structural equality for these plain acyclic values and a genuinely generic RPC
+forwarder through actual createSupabaseRpc with a local fake Response, no network.
+Renewed actual receiving RED2/5; separate contracts/db-types/progress/format/
+ESLint/project-type/diff chain0, freshCI0/flock/all34 SHA exact. Source/type-repair
+independent reviews no bounded finding; latest log review no mismatch. Tracked
+queued-continuation-qa-receipts-2026-10-10.json preserves exact hashes/logs.
+No producer edits yet. Clean pushed QA checkpoint required before consumer.ts
+sole minimal queued branch; all other source/QA remains frozen. Local controlled
+composition only, not DB durability/production wiring/redelivery/acceptance.
+
 Clean source/evidence baseline: `7af16cffad8ffc2a6e0430f445b13060f5af39c6`.
 Origin12 source mutants caught/12 actual restored controls; local evidence only.
 All23 origin/claimed QA/source hashes remain frozen. Slice11 acceptance0/122.

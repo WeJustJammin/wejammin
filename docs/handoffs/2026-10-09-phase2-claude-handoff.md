@@ -1,5 +1,34 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: queued-continuation actual RED / type-safe QA checkpoint
+
+Supersedes contract UNRUN below. Contract21b956a4 clean/pushed before native
+test-only writes. Application301 lines actual1failed/4passed5,1.22s; receiving
+360 lines latest actual2failed/5passed7,1.47s. Only queued processed/history
+Boolean assertions fail. CAS-refusal/terminal3/processed barrier controls pass;
+queued apply barrier passes before release, fails final history after release.
+Full ordered arguments/cardinalities, current claimed version/non-adjacent
+fixture, env/message identities, immutable fixtures/barriers retained.
+
+First B ESLint stop and subsequent node:util/generic Mock type failures were
+harness issues, NOT functional RED. Native sole B repairs replace comparison
+with exact own-key/prototype recursion for plain acyclic fixtures and forward
+typed generic RPC tuples through real createSupabaseRpc over local fake fetch/
+Response; no network/secrets/type-erasure/config edits. Renewed actual RED2/5
+and separate full static chain0 incl project types, freshCI0/flock/all34 exact.
+Independent source/type-repair reviews no bounded finding; latest log review
+no mismatch (exit0 root-captured). Tracked receipt holds exact34 hashes/logs.
+
+All32 old producers/QA untouched; producer consumer.ts UNRUN/forbidden until
+clean pushed QA checkpoint. Then sole minimal queued branch; focused GREEN,
+existing regressions, mandatory full validation and requested db:verify then
+validate, first failure repair/no weakened checks. This proves controlled
+sequencing, NOT second delivery, SQL durability, CMS production composition,
+current-receipt/advisory authority or S11 acceptance (still0/122). Ordinary
+stale-envelope gate remains. FullS11/action3/DEC163/action4/Slices12–17 and
+validate-phase pending. Native6-astra/high, root6.1/ultra; automatic earned
+resets when needed/no purchases, preserve checkout/services/recoverability.
+
 ## Latest snapshot: queued-continuation contract / native QA gate
 
 This supersedes older UNRUN snapshots. Clean twelve-origin-mutant proof
