@@ -1,5 +1,43 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: twelve origin mutants caught / receiving-contract gate
+
+This supersedes historical UNRUN snapshots below. Clean verifier checkpoint
+68243cdf2f9c56ccb66bfc10f06a1e0994cce8c5; all4 SQL-origin mutants now
+actually caught. S1–S4 failed/passed/skipped1/0/56,5/1/51,3/28/26,1/0/56 of57.
+Each exact23-SHA restore before actual full57-case GREEN control, respectively
+46.92/46.43/46.59/46.60s. Each mutation pre/test/post0/1/0; each control0/0/0.
+All16 pre/post resets0, freshCI0/flock. No active mutant or QA edits. Combined
+8 verifier +4 SQL actual mutants caught, all12 restored GREEN controls.
+
+Actual first overall frame is shared assert-core53:5; first origin-file frame
+equal31:3. Functional callers accepts81/grammarFailure85, invokes282/215+231/
+291/154 verified. Independent8-log SQL review no bounded mismatch; root verified
+stacks and corrected prior imprecise first-frame label. S2 is grouped whole
+tuple proof, not eight independent predicates. S4 fails first post-claim,
+so no separate heartbeat/outcome mutant observation. Stored Jobcorr/cause/
+payload guard removals remain without independent witnesses. Initial non-v2
+S1 log is harness parse error BEFORE DB/tests, source restored/not proof;
+corrected v2 harness syntax check0 then actual execution. Tracked JSON beside
+origin brief updated; ignored paired logs .lane-logs/parent-s11-origin-sql-
+sN[-control]-v2-20261010.log, N1–4. Checkpoint before next contract/native writes.
+
+Fresh restored77unitGREEN1.28s/contracts/db-types/progress/diff0/all23SHAexact.
+Canonical graph64 inherited lint issues, not lint-clean. Latest usage53%,
+ordinary available; no reset needed, earned count unexposed/no purchases.
+
+Parallel static receiving map: production dispatcher prep callback absent;
+Job heartbeats unused; queued outcome currently records processed/ACK and
+redelivery becomes duplicate. Locked BE00 already requires retryable queued
+recovery; omitting processed write is implementation repair, not new policy.
+Generic dispatch still binds original envelope version to canonical-current;
+origin proof is intended only to admit authentic immutable CMS origin, not
+stage permission. Receiving/advisory fence/heartbeat/mapping still UNWIRED and
+UNSELECTED. Origin-only local proof; S11 remains0/122, full gates UNRUN.
+Continue receiving contract/QA, nonzero/public lifecycle, remaining action3/
+DEC163/action4/full gates, Slices12–17 and final validate-phase. Native models
+unchanged, earned-only automatic resets when needed/no purchases.
+
 ## Latest snapshot: eight verifier mutants caught / SQL mutation gate
 
 This supersedes historical UNRUN snapshots below. Baseline clean pushed

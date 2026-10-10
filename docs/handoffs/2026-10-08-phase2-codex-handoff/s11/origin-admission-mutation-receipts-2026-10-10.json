@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "baseline": "9753ca21e1d33aac0251559065aba2ccb7a7124b",
+  "verifierEvidenceCheckpoint": "68243cdf2f9c56ccb66bfc10f06a1e0994cce8c5",
+  "independentSqlReview": "Eight v2 logs and receipt matched actual counts, safe assertions, functional caller frames, reset statuses and controls. Overall assert-core53:5 precedes first origin-test-file equal31:3. Historical source/preflight, command selectors and CI truth remain root-captured.",
   "scope": "Private immutable-origin verifier and additive SQL reader; local evidence only.",
   "frozenSha256": {
     "apps/worker/src/content-schema-registry/schema-dry-run-claim-input.test.ts": "be11d5cce2db853d10481dccc3efba76e3342087f9eca1eff72298b31c6f069e",
@@ -311,20 +313,196 @@
   ],
   "sqlMutations": [
     {
-      "id": "S1 non-CMS Job-type guard",
-      "status": "UNRUN"
+      "id": "S1",
+      "sourceMutation": {
+        "id": "S1",
+        "old": "         and j.job_type = 'cms.schema.dry_run'",
+        "new": "         and j.job_type is not null",
+        "selector": "returns false for a correct whole genuine registered non-CMS origin",
+        "expectedFailures": 1,
+        "selectedCases": 1
+      },
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "1",
+        "postResetExit": "0",
+        "tests": "Tests  1 failed | 56 skipped (57)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  4.83s (transform 941ms, setup 0ms, import 2.62s, tests 2.11s, environment 0ms)",
+        "firstFailure": " FAIL  tests/postgrest/phase-02-slice-11-origin-admission.apispec.ts > S11 genuine CMS dry-run origin admission > returns false for a correct whole genuine registered non-CMS origin",
+        "assertion": "AssertionError: origin admission invariant (expectedSha=1ec403ae0513ee30 actualSha=fa7249618281f04f): expected false to be true // Object.is equality",
+        "location": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstOverallFrame": "tests/postgrest/support/phase-02-slice-11-assert-core.ts:53:5",
+        "firstOriginTestFileFrame": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstFunctionalCaller": "accepts:81:3",
+        "firstInvocation": "phase-02-slice-11-origin-admission.apispec.ts:282:5",
+        "log": ".lane-logs/parent-s11-origin-sql-s1-v2-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "0",
+        "postResetExit": "0",
+        "tests": "Tests  57 passed (57)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  46.92s (transform 1.00s, setup 0ms, import 2.70s, tests 44.13s, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-sql-s1-control-v2-20261010.log"
+      }
     },
     {
-      "id": "S2 whole eight-field tuple equality",
-      "status": "UNRUN"
+      "id": "S2",
+      "sourceMutation": {
+        "id": "S2",
+        "old": "         ) = requested_event",
+        "new": "         ) is not null",
+        "selector": "refuses an independently mismatched grammar-valid original|accepts both whole genuine CMS origins but refuses their crossed provenance",
+        "expectedFailures": 5,
+        "selectedCases": 6
+      },
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "1",
+        "postResetExit": "0",
+        "tests": "Tests  5 failed | 1 passed | 51 skipped (57)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  8.76s (transform 967ms, setup 0ms, import 2.90s, tests 5.77s, environment 0ms)",
+        "firstFailure": " FAIL  tests/postgrest/phase-02-slice-11-origin-admission.apispec.ts > S11 genuine CMS dry-run origin admission > accepts both whole genuine CMS origins but refuses their crossed provenance",
+        "assertion": "AssertionError: origin admission invariant (expectedSha=1ec403ae0513ee30 actualSha=fa7249618281f04f): expected false to be true // Object.is equality",
+        "location": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstOverallFrame": "tests/postgrest/support/phase-02-slice-11-assert-core.ts:53:5",
+        "firstOriginTestFileFrame": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstFunctionalCaller": "accepts:81:3",
+        "firstInvocation": "phase-02-slice-11-origin-admission.apispec.ts:215:5",
+        "log": ".lane-logs/parent-s11-origin-sql-s2-v2-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "0",
+        "postResetExit": "0",
+        "tests": "Tests  57 passed (57)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  46.43s (transform 1.24s, setup 0ms, import 3.00s, tests 43.33s, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-sql-s2-control-v2-20261010.log"
+      }
     },
     {
-      "id": "S3 fixed event type/version/aggregate grammar",
-      "status": "UNRUN"
+      "id": "S3",
+      "sourceMutation": {
+        "id": "S3",
+        "old": "    if requested_event->>'eventType' <> 'job.requested'\n       or requested_event->'schemaVersion' <> '1'::jsonb\n       or requested_event->>'aggregateType' <> 'job' then",
+        "new": "    if false then",
+        "selector": "rejects malformed event",
+        "expectedFailures": 3,
+        "selectedCases": 31
+      },
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "1",
+        "postResetExit": "0",
+        "tests": "Tests  3 failed | 28 passed | 26 skipped (57)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  21.92s (transform 1.03s, setup 0ms, import 2.75s, tests 19.06s, environment 0ms)",
+        "firstFailure": " FAIL  tests/postgrest/phase-02-slice-11-origin-admission.apispec.ts > S11 genuine CMS dry-run origin admission > rejects malformed event eventType=\"job.completed\"",
+        "assertion": "AssertionError: origin admission invariant (expectedSha=692ddb072638626b actualSha=c9302d6fd4297f84): expected false to be true // Object.is equality",
+        "location": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstOverallFrame": "tests/postgrest/support/phase-02-slice-11-assert-core.ts:53:5",
+        "firstOriginTestFileFrame": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstFunctionalCaller": "grammarFailure:85:3",
+        "firstInvocation": "phase-02-slice-11-origin-admission.apispec.ts:291:7",
+        "log": ".lane-logs/parent-s11-origin-sql-s3-v2-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "0",
+        "postResetExit": "0",
+        "tests": "Tests  57 passed (57)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  46.59s (transform 1.08s, setup 0ms, import 2.88s, tests 43.62s, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-sql-s3-control-v2-20261010.log"
+      }
     },
     {
-      "id": "S4 forbidden current-Job-version coupling",
-      "status": "UNRUN"
+      "id": "S4",
+      "sourceMutation": {
+        "id": "S4",
+        "old": "       where j.id = (requested_event->>'aggregateId')::uuid",
+        "new": "       where j.id = (requested_event->>'aggregateId')::uuid\n         and j.version = e.aggregate_version",
+        "selector": "retains the whole original origin across actual claim heartbeat and queued outcome",
+        "expectedFailures": 1,
+        "selectedCases": 1
+      },
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "1",
+        "postResetExit": "0",
+        "tests": "Tests  1 failed | 56 skipped (57)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  6.28s (transform 968ms, setup 0ms, import 2.70s, tests 3.47s, environment 0ms)",
+        "firstFailure": " FAIL  tests/postgrest/phase-02-slice-11-origin-admission.apispec.ts > S11 genuine CMS dry-run origin admission > retains the whole original origin across actual claim heartbeat and queued outcome",
+        "assertion": "AssertionError: origin admission invariant (expectedSha=fa7249618281f04f actualSha=1ec403ae0513ee30): expected false to be true // Object.is equality",
+        "location": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstOverallFrame": "tests/postgrest/support/phase-02-slice-11-assert-core.ts:53:5",
+        "firstOriginTestFileFrame": "phase-02-slice-11-origin-admission.apispec.ts:31:3",
+        "firstFunctionalCaller": "accepts:81:3",
+        "firstInvocation": "phase-02-slice-11-origin-admission.apispec.ts:154:5",
+        "log": ".lane-logs/parent-s11-origin-sql-s4-v2-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "preResetExit": "0",
+        "testExit": "0",
+        "postResetExit": "0",
+        "tests": "Tests  57 passed (57)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  46.60s (transform 977ms, setup 0ms, import 2.98s, tests 43.52s, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-sql-s4-control-v2-20261010.log"
+      }
     }
   ],
   "limits": [
@@ -334,7 +512,10 @@
     "All eight verifier mutations caught; all eight restored controls actual 77/77. Current source restored to all 23 frozen SHA256 values.",
     "Consistent genuine fixtures do not independently prove stored Job correlation, causation, or payload guard removal.",
     "No database reset needed for pure verifier unit mutations.",
-    "SQL source mutations still UNRUN; no race/current-attempt/lease/stage/receiving/ACK/hosted Auth/full validation acceptance inferred.",
+    "All four SQL origin-source mutants caught; each exact23-SHA restore then actual full57 GREEN control. All16 pre/post DB resets exit0, fresh CI0/flock each run. No mutant active.",
+    "Initial S1 non-v2 log contains only Zsh cleanup parse error before any DB reset/test; source restored. That setup failure is not mutation evidence. Corrected v2 harness was syntax-checked before execution.",
+    "SQL actual first origin-test-file frame is equality helper31:3; first overall frame is shared assert-core53:5. Functional callers S1 accepts81/invoke282; S2 accepts81/crossed215 and mismatch231; S3 grammarFailure85/invoke291; S4 accepts81/post-claim154. S2 grouped comparison proof only; S4 no separate later heartbeat/outcome mutant observations.",
+    "Independent eight-log SQL review no bounded proof mismatch. Fresh restored unit77/77 GREEN1.28s and contracts/db-types/progress/diff0, all23 hashes exact. No race/current-attempt/lease/stage/receiving/ACK/hosted Auth/full validation acceptance inferred.",
     "Slice 11 acceptance remains 0/122."
   ]
 }

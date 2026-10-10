@@ -2,7 +2,7 @@
 
 Last clean QA baseline: `2f4f55f2db768aed3261dbe6234ed293d1605a16`.
 
-## Corrected producer proof / verifier mutation receipts / SQL gate
+## Corrected producer proof / twelve source mutation receipts
 
 Disjoint correction from clean refutation checkpoint12709db9 is now actual:
 request17/unit372/77cases/verifier22/SQL142/API345/57cases. Original request,
@@ -18,12 +18,13 @@ This is origin-only local proof, not stage/race/receiving/ACK authority or hoste
 Auth/fullValidation/Slice11 acceptance. Root saves clean pushed proof checkpoint
 before source mutants at9753ca21e1d33aac0251559065aba2ccb7a7124b. All8 verifier
 mutants are now caught, each followed by exact23-SHA restore and actual77GREEN
-control. Four SQL-origin-source mutants remain UNRUN.
+control. All4 SQL-origin-source mutants are now caught, each followed by
+exact23-SHA restore and actual full57-case GREEN control. No mutant active.
 Keep every QA/other-source path frozen; mutate only the selected producer
 temporarily. Stored Jobcorr/cause/payload predicate removal is not independently
 proven by consistent genuine fixtures; do not corrupt protected stored rows.
 
-### Actual verifier mutations; exact SQL mutants still UNRUN
+### Actual verifier and SQL mutation receipts
 
 Actual failed/passed counts, total77 each: O1 8/69; O2 18/59; O3 18/59;
 O4 18/59; O5 17/60; O6 1/76; O7 1/76; O8 17/60. Decisive unit assertion
@@ -42,7 +43,27 @@ Independent16-log review found no bounded receipt mismatch: counts, assertions,
 locations, CI flags and durations match. O6 reaches its false-result assertion
 before its no-call assertion; no separate no-call-only witness inferred.
 Fresh restored verifier77/77GREEN1.32s and bounded contracts/db-types/progress/
-format/diff0 before canonical checkpoint; SQL4 remain UNRUN.
+format/diff0 before verifier checkpoint68243cdf.
+
+Actual SQL failed/passed/skipped counts of57: S1 1/0/56; S2 5/1/51;
+S3 3/28/26; S4 1/0/56. Each mutation pre/test/post0/1/0; each control
+pre/test/post0/0/0 and57/57GREEN46.92/46.43/46.59/46.60s respectively.
+All16 pre/post DB resets exit0, freshCI0/flock each run, all23 source/QA hashes
+restored before each control. First origin-test-file stack frame is equal31:3;
+overall first frame shared assert-core53:5. Functional callers S1 accepts81/
+invoke282, S2 accepts81/crossed215 +mismatch231, S3 grammarFailure85/invoke291,
+S4 accepts81/post-claim154. Independent8-log SQL review no bounded mismatch;
+root verified safe stacks, corrected prior imprecise first-frame label. S2 is grouped tuple
+proof; S4 fails after claim before later heartbeat/outcome under mutant.
+
+Initial S1 non-v2 log is a Zsh cleanup parse error BEFORE any reset or test;
+source restored, no assertion proof counted. Corrected v2 harness syntax check
+exit0 before actual execution. Actual paired SQL logs:
+.lane-logs/parent-s11-origin-sql-sN[-control]-v2-20261010.log, N1–4.
+
+Fresh restored unit77/77GREEN1.28s and contracts/db-types/progress/diff0,
+all23 source/QA hashes exact. CI truth/commands/historical SHA/preflight
+remain root-captured. Canonical graph retains64 inherited lint issues.
 
 Verifier-only, one at a time, same frozen77-case QA; restore before77GREEN control:
 
@@ -74,7 +95,7 @@ protected stored-row edits, grants, owner changes or current authority claims.
 Active checkout `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`,
 branch `claude/phase2-slice11`. Slice11 remains0/122. Receipts below are scoped;
 historical UNRUN/refuted snapshots below do not supersede this top proof gate.
-Root checkpoints before SQL mutation writes.
+Root checkpoints before next contract or native author writes.
 
 ## Compatibility refutation / selected disjoint-key correction
 
