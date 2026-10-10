@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Claimed entry14source mutants caught/all14actual40GREEN controls after exact16-SHA restores; failed8/11/29/12/4/6/12/5 and2/1/2/4/1/1. Final55/1462GREEN31.17s/separate bounded static/types0/final16SHAexact/dirty0 at f0e1f010. ACK outcome not independent token fencing; rejection not mutated engine eviction. Checkpoint before private genuine integration; receiving/authority/fullValidation/acceptance remain0/122.
+
 - [/] `QA` Unwired claimed entry90/shared extraction211/140/142/185; moved bodies/legacy prefix/union byte-identical, delegation exact. Actual CI0/flock focused3/40GREEN2.49s/broader55/1462GREEN30.57s/separate bounded static/types0, all11 frozen SHA exact. Independent reviews no bounded gap. Checkpoint before source mutations/private genuine integration; receiving/authority/fullValidation/acceptance remain0/122.
 
 - [/] `QA` Claimed entry amended A338/helper183/B382, cases26/8 unexecuted; actual2suite missingmoduleRED/no tests250ms/exit1. All38 old expect statements retained; independent reviews no boundedgap. Legacy C254/6GREEN1.30s/test+ESLint0; all11 frozen SHA exact. Checkpoint before sole entry + mechanical shared extraction; receiving/authority/fullValidation/acceptance remain0/122.
