@@ -1,5 +1,15 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Clock correction actual API69 GREEN; mutation proof UNRUN
+
+Sole18400 initializer statement_timestamp byte correction; main54322 CI0/flock
+pre0/API0/post0,69/69,32.18s incl real expired claim. Catalog/ACL/private CREATE
+correct; pgTAP4/121 and static/types check0. Lint39/100 matches inherited baseline,
+0 new warning but old pg_temp error remains. See proof-s11-claim-sql-clock-fixed-
+api69-2026-10-09 and seven-mutant plan. Current-attempt group M6 masked by existing
+field-edit/changed-hash fixture; record actual survival and later separately
+checkpointed same-hash public repeat DR QA. No authority/acceptance/full closure.
+
 ## SQL API69 GREEN; one new clock lint warning, correction held
 
 Three new SQL files215/101/60, legacy function byte proof retained. Main54322

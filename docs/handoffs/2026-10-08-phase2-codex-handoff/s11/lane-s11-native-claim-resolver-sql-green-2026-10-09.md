@@ -1,5 +1,15 @@
 # Slice 11 — claimed dry-run resolver SQL, genuine RED before GREEN
 
+## Clock correction complete; mutations UNRUN
+
+Sole18400 statement_timestamp initializer correction, exact one-line diff.
+Parent actual API69 pre0/API0/post0,69/69,32.18s incl real expired claim;
+catalog/ACL/private CREATE correct, pgTAP4/121/static/types check0.
+Lint39/100 exact inherited baseline,0 new clock warning; old error remains.
+Author claims frozen/released. Seven parent-only mutants next; M6 same-hash
+supersession distinction absent from frozen69, record honest masking outcome.
+No further author continuation without new scope/clean pushed checkpoint.
+
 ## First GREEN and sole clock correction
 
 Actual unchanged API69 GREEN/main54322 pre0/API0/post0; catalog ACL/volatility

@@ -14,7 +14,7 @@ security definer
 set search_path = ''
 as $body$
 declare
-  observed_at timestamptz := pg_catalog.clock_timestamp();
+  observed_at timestamptz := pg_catalog.statement_timestamp();
   resolved record;
   job_row platform_private.jobs%rowtype;
   event_row platform_private.outbox_events%rowtype;
