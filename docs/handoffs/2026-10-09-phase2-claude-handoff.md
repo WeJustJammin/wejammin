@@ -1,5 +1,29 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Queued origin fixture7 / receiving24 / regression3585 GREEN
+
+From clean pusheda8b25fef, native test-only fixture split preserves the original
+seven case titles and entire describe block byte-exact. Existing strict origin
+verifier/protected Boolean reader now receives the whole eight-field origin and
+exact receiver signal in ordered RPC histories; no unconditional admission or
+producer change. Spec74/support348; all producer7/newQA5 SHAs remain exact.
+Actual focused31PASS1.97s and related184files3585PASS64.12s, types0/lint0/diff0;
+independent source review no bounded finding. Older37 frozen map now has six
+authorized overlaps including the queued fixture; other31 remain exact.
+
+Full root db:verify repeat under freshCI0/sharedflock: SQL333files12764assertions
+PASS109s; API30failed34passedfiles/10failed608passed188skipped806tests949.92s.
+27 suites fail shared preparation setup: captured activate/reconcile/rollback400,
+not exact SQL refusal reasons. Ten executed failures: lifecycle7, read-settings
+insertion1 contraryDEC163, stale global pagination2. dbVerify1/validateUNRUN/
+postReset0; runner2955979 and API child2972041 drained. No acceptance closure.
+First gate repair: selected sole shared dry-run fixture two-name purpose correction,
+plus bounded pagination witness; existing settings no-effect RED stays intact.
+Lease-control producer five-path shape independently reviewed but UNRUN;
+production300/QA400. All authors wait clean pushed exact-origin checkpoint. SQL
+stage authority, prep wiring/mapping/public lifecycle remain open; S11 0/122,
+Slices12–17 not started.
+
 ## Origin24 GREEN / first regression gate — queued fixture correction
 
 Native origin application4/Worker3 sources frozen at clean pushed9700b672;

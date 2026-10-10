@@ -55,7 +55,7 @@ workers/factories and production effect wiring.
 ## Verification and boundaries
 
 Authors filesystem reads/apply_patch only; no commands/scripts/imported runtime/
-tests/format/Git/DB/network/docs/memory/settings. Each existing file hard400;
+tests/format/Git/DB/network/docs/memory/settings. Production modules hard300;
 request root scope if extraction unavoidable, never create unauthorized file.
 Root formats, checks exact changes/all frozen QA, runs receiving24 and core/
 runtime regression, types/lint/full db:verify then validate first-failure chain,

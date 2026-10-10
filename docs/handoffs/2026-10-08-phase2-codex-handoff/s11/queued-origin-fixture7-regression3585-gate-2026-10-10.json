@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "scope": "Queued origin fixture7 correction; receiving24 and related regression3585 GREEN",
+  "baseline": "a8b25fefef100e068c294e86c97c10fa0852f7d4",
+  "proof": {
+    "log": ".lane-logs/parent-s11-queued-origin-fixture7-receiving24-regression-20261010.log",
+    "caseBlockByteExact": true,
+    "allProducer7Exact": true,
+    "allNewQA5Exact": true,
+    "files": [
+      {
+        "path": "apps/worker/src/async-entrypoint-queued-continuation.test.ts",
+        "lines": 74,
+        "sha": "449b9ed54402dc950b15c39d92740c3736f3812d6d28195bd1bfc75ba77901ee"
+      },
+      {
+        "path": "apps/worker/src/async-entrypoint-queued-continuation-test-support.ts",
+        "lines": 348,
+        "sha": "53ff6e8c662a5d9517a87affb5fd53f4a0727b796902ed127b7617a27248b827"
+      }
+    ],
+    "progress": [
+      "      Tests  31 passed (31)",
+      "   Duration  1.97s (transform 2.09s, setup 0ms, import 3.22s, tests 109ms, environment 0ms)",
+      "queuedOriginFixtureFocusedExit=0",
+      " Test Files  184 passed (184)",
+      "      Tests  3585 passed (3585)",
+      "   Duration  64.12s (transform 5.17s, setup 0ms, import 88.80s, tests 20.26s, environment 16ms)",
+      "queuedOriginFixtureRegressionExit=0",
+      "queuedOriginFixtureTypesExit=0",
+      "queuedOriginFixtureLintExit=0"
+    ]
+  },
+  "independentReview": "No bounded source defect; strict existing verifier/exact protected Boolean request/signal, mechanical fixture extraction and original seven assertion bodies root-attested byte-exact. Source-only review, not independent runtime.",
+  "frozenMap": "Origin producer7/newQA5 unchanged; older37 now six authorized overlaps, including queued test fixture; other31 unchanged.",
+  "fullGate": {
+    "log": ".lane-logs/parent-s11-origin24-queued7-db-verify-validate-20261010.log",
+    "state": "COMPLETE RED",
+    "sqlFiles": 333,
+    "sqlAssertions": 12764,
+    "sqlSeconds": 109,
+    "sql": "PASS",
+    "api": "30 failed/34 passed files; 10 failed/608 passed/188 skipped/806 tests; 949.92s",
+    "dbVerifyExit": 1,
+    "validate": "UNRUN; first db gate failed",
+    "postReset": 0,
+    "runnerDrained": true,
+    "logSha": "b7c45312fefee8f6c2bface88855dfedd53f24788ebfbafd76116dfcb541bd00",
+    "failureBoundary": "27 setup suites: helper selects activation during dry-run, observed activate/reconcile/rollback HTTP400; no exact refusal reason. Executed lifecycle7, real read-settings insertion1 contraryDEC163, stale global-pagination2."
+  },
+  "checkpoint": {
+    "staticLog": ".lane-logs/parent-s11-queued-origin-full-gate-static-checkpoint-20261010.log",
+    "staticExit": 0,
+    "canonicalFlushCompileOk": true,
+    "inheritedGraphIssueCount": 64,
+    "briefReviews": "Shared dry-run exactlytwo factory replacements no bounded policy/scope finding. Human pagination feasible with lexically ordered keys, contentTypeId rather than version id, parsed typed query defaults; root incorporated all three wording clamps. Source-only, new fixture execution UNRUN."
+  },
+  "nextLeaseProducer": {
+    "brief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-cms-lease-control-green-2026-10-10.md",
+    "scopePaths": 5,
+    "productionMaxLines": 300,
+    "testMaxLines": 400,
+    "review": "Independent source-only compatibility review no bounded finding after production cap correction",
+    "state": "UNRUN; first actual full gate failure repair precedes launch"
+  },
+  "acceptance": "0/122; enduring SQL stage authority/preparation wiring/result recovery mapping/public lifecycle and full gates remain open"
+}
