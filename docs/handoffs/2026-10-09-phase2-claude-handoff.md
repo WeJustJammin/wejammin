@@ -1,5 +1,29 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Private parser31 mutation proof complete; genuine RPC QA scope next
+
+Two assertions only, request320/response376; all419 prior proof/source/support
+unchanged. All31 mutations detected at actual boundaries, exact3sourceSHA
+restored after each, final34suites910/910 and format/ESLint/type/contracts/
+progress0, freshCI0/flock. Independent6.1 no bounded receipt mismatch. See
+proof-s11-private-claim-schema-mutations31-2026-10-09.md under s11 handoffs.
+Own-presence plan masking and actual12 abort TypeErrors explicitly limited.
+All current claims released; no parser work remaining in this bounded scope.
+
+Next lane-s11-native-claim-resolver-genuine-api-qa-2026-10-09.md: native disjoint
+A new API spec+genuine fixture; B new13-table whole-row snapshot/core+pure QA.
+Public draft/dry-run, actual protected canonical read/claim/original event;
+public field append and changed-artifact-hash supersession, no worker/plan claim.
+Observe old14 plus new13 tables around every resolver read after authorized
+setup. Exact proposed status/code reasons and actual six-object projection;
+legacy reader unchanged, no fake authority or completed replay.
+Production/SQL/contracts/existing helpers/tests/old observer frozen. Root
+checkpoint/push/exact-origin before native authors; root commands/main-stack
+reset/RED and independent oracle review before SQL GREEN. Live resolver/context/
+receiving/per-stage SQL/durable outcomes still unimplemented. 0of122/genuine7RED/
+full/owner/external holds unchanged. Automatic earned-credit resets only;
+current14percent usage/zero credits, no purchase or global auto setting.
+
 ## Private parser419 GREEN; output-freeze mutant survives, QA gate open
 
 Narrow3source47/135/87 repairs all84 defects; actual419/419 plus related32suites

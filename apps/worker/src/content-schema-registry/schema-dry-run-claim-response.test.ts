@@ -31,6 +31,7 @@ const accepted = (input: CmsSchemaDryRunClaimResponse) => {
   });
   for (const { level, keys } of LEVELS) {
     const output = level === 'outer' ? parsed.data : parsed.data[level];
+    expect(Object.isFrozen(output)).toBe(true);
     expect(Reflect.ownKeys(output).sort()).toEqual([...keys].sort());
   }
   expect(snapshot(input)).toEqual(before);

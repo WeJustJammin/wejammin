@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-parser31-mutations910-green-genuine-rpc-qa-scope|Slice 11 parser31 mutations910 GREEN genuine RPC QA scope]] — knowledge — 2026-10-10T00:38:26.250Z
 - [[knowledge/2026-10-10-slice-11-private-parser419-green-output-freeze-mutant-gap|Slice 11 private parser419 GREEN output freeze mutant gap]] — knowledge — 2026-10-10T00:19:48.422Z
 - [[knowledge/2026-10-10-slice-11-uuidv7-qa-green-schema419-red-private-repair|Slice 11 UUIDv7 QA GREEN schema419 RED private repair]] — knowledge — 2026-10-10T00:11:49.480Z
 - [[knowledge/2026-10-10-slice-11-schema418-red-causes-and-uuidv7-amendment-gate|Slice 11 schema418 RED causes and UUIDv7 amendment gate]] — knowledge — 2026-10-10T00:09:04.180Z

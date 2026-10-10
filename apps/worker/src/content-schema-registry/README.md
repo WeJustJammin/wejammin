@@ -35,6 +35,8 @@ Database RPCs remain the transaction and audit authority.
 - `schema-dry-run-claim-{request,response}.test.ts` and focused support exercise
   actual private parsers, each internal relation, original own-key boundaries,
   readonly output/input immutability, lossless versions and UUID-v7 claim tokens.
+  All 31 isolated parent mutations are detected; restored 419 parser cases plus
+  491 related cases pass. See the Slice 11 mutation receipt handoff for limits.
   Controlled fixtures are not persisted provenance or live-authority evidence.
 - `migration-worker-results.ts` owns result and rollback mapping.
 - `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID

@@ -179,6 +179,7 @@ describe('private claimed dry-run request contract', () => {
       });
       for (const { level, keys } of REQUEST_LEVELS) {
         const object = level === 'outer' ? output : output[level];
+        expect(Object.isFrozen(object)).toBe(true);
         expect(Reflect.ownKeys(object).sort()).toStrictEqual([...keys].sort());
         expect(keys.every((key) => Object.hasOwn(object, key))).toBe(true);
       }
