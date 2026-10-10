@@ -5,7 +5,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { MigrationPlanRecordSchema } from '../../apps/worker/src/content-schema-registry/migration-worker-plan-record-schema';
 import type { CmsSchemaDryRunClaimRequest } from '../../apps/worker/src/content-schema-registry/schema-dry-run-claim-request';
-import { CmsSchemaDryRunClaimResponseSchema } from '../../apps/worker/src/content-schema-registry/schema-dry-run-claim-response';
 import {
   expectSafeEqual,
   snapshotDigest,
@@ -16,20 +15,23 @@ import {
   snapshotClaimResolver,
 } from './support/phase-02-slice-11-claim-resolver-snapshot';
 import {
-  attemptState,
   claimAttempt,
   legacyRequest,
-  originalEvent,
   prepareClaimAttempt,
   record,
   resolveClaim,
   selectText,
-  storedProjection,
-  storedVersion,
   supersedeAttempt,
   type ClaimAttempt,
 } from './support/phase-02-slice-11-claimed-dry-run-fixture';
-import { tokenFor, userToken, type RpcOutcome } from './support/stack';
+import {
+  accepted,
+  assertSupersession,
+  attemptState,
+  refusal,
+  storedProjection,
+} from './support/phase-02-slice-11-claimed-dry-run-oracles';
+import { tokenFor, userToken } from './support/stack';
 
 let first: ClaimAttempt;
 let second: ClaimAttempt;
@@ -43,54 +45,6 @@ beforeAll(async () => {
   other = await claimAttempt(second);
 });
 
-const refusal = (
-  response: RpcOutcome,
-  message: string,
-  status = 400,
-  code = 'P0001',
-) => {
-  expectSafeEqual(
-    [response.status, response.code, response.message],
-    [status, code, message],
-    'resolver refusal status/SQLSTATE/reason',
-  );
-};
-const accepted = async (
-  attempt: ClaimAttempt,
-  input: CmsSchemaDryRunClaimRequest,
-) => {
-  const expected = {
-    ...storedProjection(attempt),
-    requestedEvent: originalEvent(attempt.report.jobId),
-  };
-  const response = await resolveClaim(input);
-  expect(response.status, 'new-branch resolver status').toBe(200);
-  const parsed = CmsSchemaDryRunClaimResponseSchema.safeParse(response.body);
-  expect(parsed.success, 'closed six-object resolver response').toBe(true);
-  if (!parsed.success) throw new Error('Resolver response contract is invalid');
-  expectSafeEqual(
-    parsed.data,
-    expected,
-    'complete resolver projection matches stored rows',
-  );
-  expectSafeEqual(
-    parsed.data.job,
-    {
-      id: input.claimedJob.jobId,
-      type: 'cms.schema.dry_run',
-      version: input.claimedJob.version,
-      actingPartyId: attempt.owner.organizationId,
-      originatingEventId: input.requestedEvent.eventId,
-    },
-    'actual claimed job identity and version',
-  );
-  expectSafeEqual(
-    parsed.data.requestedEvent,
-    input.requestedEvent,
-    'all eight original event fields',
-  );
-  return parsed.data;
-};
 const malformed = (
   level: 'outer' | 'claimedJob' | 'requestedEvent',
   key: string,
@@ -353,68 +307,7 @@ describe('genuine claimed dry-run resolver API', () => {
     const newer = await supersedeAttempt(old);
     const after = attemptState(old);
     const fresh = attemptState(newer);
-    expectSafeEqual(
-      [before.superseded, after.superseded, after.planState],
-      [false, true, before.planState],
-      'old plan retained without invented state',
-    );
-    expect(
-      BigInt(storedVersion(after, 'planVersion')) >
-        BigInt(storedVersion(before, 'planVersion')),
-      'old plan version advanced',
-    ).toBe(true);
-    expectSafeEqual(
-      after.fingerprint,
-      before.fingerprint,
-      'old provisional fingerprint retained',
-    );
-    expectSafeEqual(
-      [after.reportState, after.failureCode, after.jobId, after.planId],
-      [
-        'failed',
-        'ATTEMPT_SUPERSEDED',
-        old.report.jobId,
-        old.report.migrationPlanId,
-      ],
-      'old report remains linked',
-    );
-    expectSafeEqual(
-      after.finalEvidence,
-      Array(11).fill(null),
-      'old report remains unsealed',
-    );
-    expectSafeEqual(after.job, before.job, 'old BE00 claim unchanged');
-    expectSafeEqual(
-      originalEvent(old.report.jobId),
-      oldRequest.requestedEvent,
-      'old event unchanged',
-    );
-    expect(
-      selectText(`select lease_until > clock_timestamp() from platform_private.jobs
-      where id = '${old.report.jobId}'`) === 't',
-      'old claim still live',
-    ).toBe(true);
-    expect(
-      newer.report.id !== old.report.id &&
-        newer.report.jobId !== old.report.jobId &&
-        newer.report.migrationPlanId !== old.report.migrationPlanId,
-      'new attempt IDs differ',
-    ).toBe(true);
-    expectSafeEqual(
-      [fresh.reportState, fresh.candidateDryRunId, fresh.livePairCount],
-      ['queued', newer.report.id, 1],
-      'candidate points to one live replacement',
-    );
-    expect(
-      after.definitionHash !== before.definitionHash &&
-        after.artifactHash !== before.artifactHash,
-      'public field edit changes both fingerprints',
-    ).toBe(true);
-    expectSafeEqual(
-      after.definitionHash,
-      after.artifactHash,
-      'candidate and compiled artifact agree',
-    );
+    assertSupersession({ old, oldRequest, before, newer, after, fresh });
     const newRequest = await claimAttempt(newer);
     refusal(await resolveClaim(oldRequest), 'CONFLICT');
     await accepted(newer, newRequest);

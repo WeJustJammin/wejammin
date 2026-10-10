@@ -173,6 +173,18 @@ describe('additional claim resolver snapshot decoder', () => {
         messages.members,
       );
     });
+    it('rejects an extra member sorting after sha with valid count and digest', () => {
+      const group = { count: 1, sha: SHA, zPrivateExtra: MARKER };
+      expect(Object.keys(group).sort()).toEqual([
+        'count',
+        'sha',
+        'zPrivateExtra',
+      ]);
+      refuses(
+        JSON.stringify({ ...payload(), [table]: group }),
+        messages.members,
+      );
+    });
     it.each(['count', 'sha'])(
       'rejects renamed member %s at unchanged member count',
       (member) => {

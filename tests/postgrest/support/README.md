@@ -38,6 +38,17 @@
   probes). No stack import.
 - `phase-02-slice-11-snapshot-core.ts`: the PURE effect-snapshot decoder
   (`EFFECT_TABLES`, `decodeSnapshot`) with fixed safe rejections; no imports.
+- `phase-02-slice-11-claimed-dry-run-fixture.ts`: public CMS draft/dry-run
+  producers, actual BE00 claim receipts and original events; wraps resolver reads
+  with both nonmutation observers. Contains runtime database/API calls.
+- `phase-02-slice-11-claimed-dry-run-oracles.ts`: independent stored-row
+  projections and complete accepted/refused/superseded-attempt assertions.
+  Depends on the fixture; the fixture never imports this module.
+- `phase-02-slice-11-claim-resolver-snapshot-core.ts`: PURE closed decoder for
+  the additional thirteen whole-row table groups, with fixed safe diagnostics.
+- `phase-02-slice-11-claim-resolver-snapshot.ts`: runtime-only SELECT adapter
+  for those groups and same-length lease-token projection controls; importing
+  the adapter does not discover credentials or execute database commands.
 - `phase-02-slice-11-effect.ts`: the DB-bearing durable-effect snapshot builder
   (`snapshotDigest`, the SELECT-only idempotency projection, `expectUnchanged`)
   that hashes every row of every effect table SQL-side; re-exports the snapshot

@@ -1575,6 +1575,8 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-api46-red-final-restored1116-checkpoint|Slice 11 API46 RED final restored1116 checkpoint]] — event — 2026-10-10T01:08:01.788Z
+- [[knowledge/2026-10-10-slice-11-genuine-api46-red-observer206-mutation-closed|Slice 11 genuine API46 RED observer206 mutation closed]] — knowledge — 2026-10-10T01:06:10.221Z
 - [[knowledge/2026-10-10-slice-11-genuine-api46-cap-gate-observer193-member-count-gap|Slice 11 genuine API46 cap gate observer193 member count gap]] — knowledge — 2026-10-10T00:51:18.192Z
 - [[knowledge/2026-10-10-slice-11-parser31-mutations910-green-genuine-rpc-qa-scope|Slice 11 parser31 mutations910 GREEN genuine RPC QA scope]] — knowledge — 2026-10-10T00:38:26.250Z
 - [[knowledge/2026-10-10-slice-11-private-parser419-green-output-freeze-mutant-gap|Slice 11 private parser419 GREEN output freeze mutant gap]] — knowledge — 2026-10-10T00:19:48.422Z

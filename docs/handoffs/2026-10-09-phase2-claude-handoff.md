@@ -1,5 +1,24 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Actual genuine API46 RED; decoder206 proof gap closed
+
+Main54322 pre-reset0/API1/post-reset0, freshCI0 each stage/flock;55322 untouched.
+Actual14 failed/32 passed: two coherent live-claim positives400 instead of200;
+twelve semantic refusals400/P0001/INVALID_REQUEST instead of NOT_FOUND/CONFLICT.
+Public producers/original events/actual claims and supersession stored assertions
+completed; replacement acceptance unreached after old-claim refusal failed.
+API362/fixture280/oracles192; all46 behavior preserved in mechanical split.
+Decoder206 GREEN, isolated member-count removal13 failed/193 passed, exact core
+SHA restored,206/static0. Independent6.1 no bounded gap; no runtime execution by
+reviewers. See proof-s11-genuine-claim-api46-observer206-2026-10-09.md.
+Final restored35suites1116/1116 plus scoped format/progress0; not full validation.
+Prior author claims released; no source mutant or DB handle. Next narrow genuine
+grammar/definition-graph QA owns only two new specs; existing six files frozen.
+See lane-s11-native-claim-resolver-grammar-graph-red-2026-10-09.md. Root commands;
+checkpoint/push/exact-origin before dispatch. Real nonzero preparation,
+completed nullable replay and enduring receiving/per-stage authority stay open.
+Checkpoint/push/exact-origin before any new author.0/122/full/owner/external holds.
+
 ## Genuine API46 UNRUN cap gate; observer193 member-count mutation survives
 
 Native A files frozen469/331 after root format;46 case titles/behavior retained,

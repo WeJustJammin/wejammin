@@ -1,0 +1,13 @@
+---
+id: 2026-10-09-s11-genuine-api46-red-observer206-mutation-closed
+type: knowledge
+agent: codex
+source: implement-slice
+timestamp: 2026-10-10T01:06:10.221Z
+---
+
+# Slice 11 genuine API46 RED observer206 mutation closed
+
+**Tags**: phase-02, slice-11, genuine-api-red, snapshot-mutation, grammar, definition-graph
+
+Actualmain54322freshCI0eachstage/flockpreReset0API1postReset0,55322untouched. API46actual14failed32passedafterpublicproducers/origevent/actualBE00claims;2coherentpositives400not200,12semanticnegativeactual400P0001INVALID_REQUESTsafeSHA692ddb072638626bversusCONFLICT/NOT_FOUND. Supersessionstoredassertionspassed,replacementacceptanceunreached. MechanicalcapsAPI362fixture280oracles192,4movedinitializers/fullsupersessionbodyidentical;15literal+6parameterized=>46,27callnodesnotunique21declarations. Observer206GREEN,member-count-onlymutation13newfailed193passed,exactcoreSHArestoredthen206and6filestatic0. Independent6.1P3closed/nootherboundedfinding,reviewersdidnotexecute/baselinecomparisonlimitexplicit. NoSQL/authority/full/acceptanceclosure0of122. NewdisjointnativeQAonlynewgrammar/newgraphspecs;full19bigint/actualv7uppercaseclaims/nullUUIDwrongtokenandpublicoptionalfieldappendbeforecompile,existing6filesfrozen. Checkpointpushexactoriginbeforeauthors. Realnonzeroprovisional/completednullable/receiving/perstageopen. Automaticearnedresetonly,nopurchases.

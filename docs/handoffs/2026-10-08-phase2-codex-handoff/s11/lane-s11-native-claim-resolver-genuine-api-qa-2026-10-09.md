@@ -1,5 +1,16 @@
 # Slice 11 — genuine claimed dry-run resolver API QA (native, RED first)
 
+## Final parent receipt
+
+Claims released. API362/fixture280/oracles192, all46 behavior unchanged;
+actual14 failed/32 passed after public producer/claim setup. Main54322
+pre-reset0/API1/post-reset0, freshCI0 each stage/flock,55322 untouched.
+Decoder206 GREEN; member-count-only mutation13 failed/193 passed, source exact
+restored then206/static0. Independent6.1 no bounded finding, no reviewer execution.
+See proof-s11-genuine-claim-api46-observer206-2026-10-09.md. New SQL/authority,
+nonzero/completed/fingerprint/full/external proof remains open;0/122 unchanged.
+The prior amendment gate below is historical, not current authorization.
+
 ## Parent amendment gate: actual caps and isolated decoder member count
 
 Original A files frozen after formatting: API469/fixture331, over400/300 caps.
