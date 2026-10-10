@@ -1,5 +1,44 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Typed refusal/digest fixtures11 GREEN — initial lookup32 RED needs QA amendment
+
+From clean pushed227cbde5, native assignment helper removes exactly two generic
+fields; inverse whole-file byte exact, all four case bodies/titles retained.
+Lifecycle first-leaf stored digest matches canonical projection, all equalities/
+dryrun/actor bindings retained; other six cases/outside first body token-exact.
+397/221 lines. Independent static review no bounded finding.
+Actual root freshCI0/sharedflock/API11PASS24.82s; static contracts/progress/lint/
+types/diff all0, pre/postReset0, focused driver closed1 because lookup next failed.
+
+Lookup initial187/plan32 includes four fixture assertions. First focused SQL
+ran after persistent API without intervening reset:10fails and polluted baseline,
+not clean RED proof. Mandatory fresh db:verify instead:SQL334files12796 runner
+assertions110s, only new lookup32 has8failures(12–14,26–30), missing/noncurrent read
+insertion/noeffects/ordinal boundaries; dbVerify1/API+races+types+validateUNRUN,
+postReset0/driver closed1. pgTAP finish saysplanned32/ran24 after rolled-back
+savepoints: observed bookkeeping mismatch, internal mechanism inferred; QA incomplete.
+Source review also found ordinal1-only
+and missing foreign-owner matching-hash mutation gaps. Next sole QA amendment
+retains old28 assertions, fixes local subtransaction observation/counter isolation,
+adds storedordinal2, matching-old-ordinal1 with later noncurrent2, and existing real
+foreign-owner controls. Parallel new writerRED four-path scope source-reviewed:
+S11 world emits3 assertions versus S10 world4; audit checkpoint uses existing
+pg_temp SECDEF observer, no direct CMS audit read/new grant. Authors UNRUN until
+clean pushed checkpoint. Producer UNRUN until strengthened QA RED.
+
+Actual grant-free permission probe: self-CREATE OR REPLACE all five existing
+CMS-owned writers plus settings ABI succeeded with full metadata/definition
+unchanged, then ROLLBACK; no grants. Source-compatible inline five-positive-tail
+producer and genuine writer/review/fault RED briefs drafted; author UNRUN until
+strengthened QA RED and clean checkpoint. Generic completion/replays unchanged,
+existing lookup GUC retained/no volatility policy, current INTERNAL_ERROR no-row
+branch deliberately maps to established DEPENDENCY_UNAVAILABLE per DEC-163.
+Causal audit fault checkpoint requires existing legal observer, not new grants.
+Canonical owner-field mutation proof remains unavailable; impossible authorized
+NULL/divergence not faked. Runtime replacement behavior not proved.
+Lease70/stageauthority/prepwiring/mapping/public lifecycle/full gates remain open.
+Acceptance0/122; Slices12–17 not started.
+
 ## First gate fixture focus35 — shared preparation and pagination repaired
 
 From clean pushedee1ed24b, native shared preparation fixture changes exactly two

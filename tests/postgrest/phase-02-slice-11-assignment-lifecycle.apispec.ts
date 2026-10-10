@@ -39,8 +39,6 @@ import {
 let world: S11World;
 let stack: S11Stack;
 const conflict = (reasonCode: string) => ({
-  conflict: 'INVALID_TRANSITION',
-  recoveryAction: 'refresh',
   reasonCode,
 });
 

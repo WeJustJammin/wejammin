@@ -75,7 +75,22 @@ describe('Slice 11 genuine local schema lifecycle', () => {
     await activateS11SchemaCandidate(candidate);
     expect(
       psql(`select (v.activation_approval_evidence_hash = r.approval_evidence_hash
-      and r.approval_evidence_hash = platform_private.cms_schema_review_approval_digest(r.id)
+      and r.approval_evidence_hash = platform_private.cms_jcs_sha256(pg_catalog.jsonb_build_object(
+        'version', 1,
+        'reviewId', r.id,
+        'definitionHash', r.definition_hash,
+        'policyHash', r.policy_hash,
+        'decisions', coalesce((
+          select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+            'id', decision.id,
+            'assignmentId', decision.assignment_id,
+            'capability', decision.capability_key,
+            'reviewedHash', decision.reviewed_hash
+          ) order by decision.id)
+            from platform_private.cms_schema_review_decisions decision
+           where decision.review_id = r.id and decision.decision = 'approve'
+        ), '[]'::jsonb)
+      ))
       and v.dry_run_id = '${candidate.dryRunId}' and r.dry_run_id = v.dry_run_id)::text
       from platform_private.cms_content_type_versions v
       join platform_private.cms_schema_reviews r on r.content_type_version_id = v.id
