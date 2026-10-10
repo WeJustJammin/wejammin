@@ -32,6 +32,10 @@ Database RPCs remain the transaction and audit authority.
   claimed-receipt/original-event resolution contracts and 15 internal response
   relations, reusing the existing event/plan parsers. These contracts do not
   resolve server records, bind an external claim context or prove live authority.
+- `schema-dry-run-claim-{request,response}.test.ts` and focused support exercise
+  actual private parsers, each internal relation, original own-key boundaries,
+  readonly output/input immutability, lossless versions and UUID-v7 claim tokens.
+  Controlled fixtures are not persisted provenance or live-authority evidence.
 - `migration-worker-results.ts` owns result and rollback mapping.
 - `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
   shape and completed read-only replay; provisional zeros are not SQL eligibility

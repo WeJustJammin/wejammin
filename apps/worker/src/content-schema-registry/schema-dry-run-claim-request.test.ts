@@ -136,6 +136,24 @@ const INVISIBLE_CASES = REQUEST_LEVELS.flatMap(({ level, keys }) =>
 );
 
 describe('private claimed dry-run request contract', () => {
+  it('preserves a valid UUIDv7 claim lease token and the complete typed request', () => {
+    const fixture = requestFixture();
+    const leaseToken = '01926e18-7f00-7abc-8def-123456789abc';
+    const input = {
+      ...fixture,
+      claimedJob: { ...fixture.claimedJob, leaseToken },
+    };
+    const before = snapshotRequest(input);
+    const parsed = CmsSchemaDryRunClaimRequestSchema.safeParse(input);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success)
+      throw new Error('Valid UUIDv7 claim lease token was rejected');
+    const output: CmsSchemaDryRunClaimRequest = parsed.data;
+    expect(output).toStrictEqual(input);
+    expect(output.claimedJob.leaseToken).toBe(leaseToken);
+    expect(snapshotRequest(input)).toStrictEqual(before);
+  });
+
   it.each(POSITIVE_CASES)(
     'preserves exact typed request with $label',
     ({ cause, claim, event }) => {
