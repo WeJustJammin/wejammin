@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "baseline": "9753ca21e1d33aac0251559065aba2ccb7a7124b",
+  "scope": "Private immutable-origin verifier and additive SQL reader; local evidence only.",
+  "frozenSha256": {
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-input.test.ts": "be11d5cce2db853d10481dccc3efba76e3342087f9eca1eff72298b31c6f069e",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-binding.test.ts": "f2fe543002c0a63d8596d7491f8646731a4964b9c86aef5f7b0798b57465cfc5",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-request.ts": "cb8dd1975fe8fc164118d20ea5e9157b38c449022ee902822c3bebfccc4442c8",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-response.ts": "4defc891b52d68de240cce642cd7bf0750ebc75f418a48717a1eeb2589fa18cd",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-shape.ts": "b9fc420395b69fa18e3552a4f869967174d11281df6ef3079a6afe299475a14e",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation.test.ts": "cc714191e2e6ee96bf0cf56eccfb9d8d3a0f4cb030e3a7567e698a14b5ef00af",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation-stages.test.ts": "66c064e232a18c2031d767f34dac7969cfd38814876adbe13150e4da548632f3",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation-test-support.ts": "79f52111a4881f925bf081b69d458be6bd563d7f066a9ec3cccb45e55911f0cb",
+    "apps/worker/src/content-schema-registry/migration-worker-resolved-admission-equivalence.test.ts": "2fc7cdae4de4b9dbec46455cbddc21dd72919df24b96fbfbfc28849a656b9ba9",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-input.ts": "b6d1640379c2de589dfa58b5957cbae61fccc00384281c80da2c4c17c7bbd628",
+    "apps/worker/src/content-schema-registry/schema-dry-run-claim-binding.ts": "640b3208d996327a466c0a7dbb72af1a30a4d511a7f1c57509d557004852c601",
+    "apps/worker/src/content-schema-registry/claimed-schema-migration-preparation.ts": "98391ff254bd3cb0b261f4cf81b445a481372b0047769421f7deb99d359c65e9",
+    "apps/worker/src/content-schema-registry/migration-worker-admission.ts": "d19a895d35f0502f65cd9bfd2ea29c8d199b51db649baa5bea6df991d91517d7",
+    "apps/worker/src/content-schema-registry/migration-worker-execution.ts": "6fe0b823918095bd92b180308d17e47ceab8ef6f8420d2c04af03215eb08b410",
+    "apps/worker/src/content-schema-registry/migration-worker-event-recovery.ts": "9242a0e2073b41df62c94cbd1b9f2d83823403e54a456e4025647dd2a6a78a37",
+    "apps/worker/src/content-schema-registry/migration-worker-resolved-admission.ts": "2da238d20a75b5dba4acca4d7c1baf5f4fcc5da648862563e5bdb66ba472e689",
+    "tests/postgrest/support/phase-02-slice-11-claimed-preparation-fixture.ts": "9085f0638c76b56672c836e4096b14014690fea1c4b3b68324daf02fa916d137",
+    "tests/postgrest/phase-02-slice-11-claimed-preparation.apispec.ts": "05d86e32717ea7d9f3c6290d7d51e580fbc4cd261970b72ccf94d009720e8d82",
+    "apps/worker/src/content-schema-registry/schema-dry-run-origin-request.ts": "fca3323c27edc0aa75211b22cf42dad784cd8944a992564d6af5beb25df494e4",
+    "apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts": "485b2432758ae2bf443a926a558f34faef94ec1d8d4401c3b92fce41d8dbe763",
+    "tests/postgrest/phase-02-slice-11-origin-admission.apispec.ts": "25b06f5b61b043cb58190e8edae91407bf2fb9cb8ac3220b5b26491fc404df01",
+    "apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.ts": "c7ed46b5577c013d56e11014781760ae305d3e4568dd336419f432d197e35712",
+    "supabase/migrations/20261005018700_cms_origin_admission_reader.sql": "4151fc0d2f347ea1d56688680efabbc374643990bcd2c33ebc2c2f6efb0751cb"
+  },
+  "verifierMutations": [
+    {
+      "id": "O1",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  8 failed | 69 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.30s (transform 691ms, setup 0ms, import 1.11s, tests 74ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > accepts no non-true response: 'one'",
+        "assertion": "AssertionError: expected true to be false // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:208:53",
+        "log": ".lane-logs/parent-s11-origin-verifier-o1-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.29s (transform 703ms, setup 0ms, import 1.14s, tests 68ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o1-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O1",
+        "old": "    return response === true;",
+        "new": "    return Boolean(response);"
+      }
+    },
+    {
+      "id": "O2",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  18 failed | 59 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.31s (transform 717ms, setup 0ms, import 1.14s, tests 65ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > preserves the whole original event with causation null",
+        "assertion": "AssertionError: expected false to be true // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:109:36",
+        "log": ".lane-logs/parent-s11-origin-verifier-o2-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.26s (transform 680ms, setup 0ms, import 1.09s, tests 77ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o2-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O2",
+        "old": "      parsed.data,",
+        "new": "      { ...parsed.data },"
+      }
+    },
+    {
+      "id": "O3",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  18 failed | 59 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.24s (transform 662ms, setup 0ms, import 1.07s, tests 71ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > preserves the whole original event with causation null",
+        "assertion": "AssertionError: expected false to be true // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:110:48",
+        "log": ".lane-logs/parent-s11-origin-verifier-o3-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.29s (transform 702ms, setup 0ms, import 1.13s, tests 67ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o3-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O3",
+        "old": "      parsed.data,",
+        "new": "      Object.freeze({ originEvent: { ...parsed.data.originEvent } }),"
+      }
+    },
+    {
+      "id": "O4",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  18 failed | 59 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.28s (transform 694ms, setup 0ms, import 1.11s, tests 66ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > preserves the whole original event with causation null",
+        "assertion": "AssertionError: expected false to be true // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:98:31",
+        "log": ".lane-logs/parent-s11-origin-verifier-o4-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.27s (transform 694ms, setup 0ms, import 1.12s, tests 66ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o4-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O4",
+        "old": "      signal,",
+        "new": "      new AbortController().signal,"
+      }
+    },
+    {
+      "id": "O5",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  17 failed | 60 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.28s (transform 671ms, setup 0ms, import 1.08s, tests 77ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > preserves the whole original event with causation null",
+        "assertion": "AssertionError: expected [ [ …(3) ], [ …(3) ] ] to have a length of 1 but got 2",
+        "location": "schema-dry-run-origin-verifier.test.ts:93:29",
+        "log": ".lane-logs/parent-s11-origin-verifier-o5-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.28s (transform 704ms, setup 0ms, import 1.12s, tests 66ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o5-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O5",
+        "old": "    return response === true;",
+        "new": "    await port.call(SCHEMA_MIGRATION_RPC.readPlan, parsed.data, signal);\n    return response === true;"
+      }
+    },
+    {
+      "id": "O6",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  1 failed | 76 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.30s (transform 685ms, setup 0ms, import 1.12s, tests 79ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > refuses an already-aborted signal before RPC without changing the input",
+        "assertion": "AssertionError: expected true to be false // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:237:62",
+        "log": ".lane-logs/parent-s11-origin-verifier-o6-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.29s (transform 708ms, setup 0ms, import 1.13s, tests 65ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o6-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O6",
+        "old": "    if (signal.aborted) return false;",
+        "new": "    if (signal.aborted && false) return false;"
+      }
+    },
+    {
+      "id": "O7",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  1 failed | 76 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.28s (transform 685ms, setup 0ms, import 1.09s, tests 88ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > propagates the exact RPC rejection sentinel without normalization or retry",
+        "assertion": "AssertionError: expected false to be true // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:226:33",
+        "log": ".lane-logs/parent-s11-origin-verifier-o7-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.29s (transform 705ms, setup 0ms, import 1.13s, tests 65ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o7-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O7",
+        "old": "      signal,\n    );",
+        "new": "      signal,\n    ).catch(() => {\n      throw new Error('controlled origin transport rejection');\n    });"
+      }
+    },
+    {
+      "id": "O8",
+      "red": {
+        "exit": 1,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": false,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  17 failed | 60 passed (77)",
+        "testFiles": "Test Files  1 failed (1)",
+        "duration": "Duration  1.28s (transform 689ms, setup 0ms, import 1.10s, tests 70ms, environment 0ms)",
+        "firstFailure": " FAIL  apps/worker/src/content-schema-registry/schema-dry-run-origin-verifier.test.ts > private dry-run origin request and producer-facing verifier > preserves the whole original event with causation null",
+        "assertion": "AssertionError: expected false to be true // Object.is equality",
+        "location": "schema-dry-run-origin-verifier.test.ts:85:31",
+        "log": ".lane-logs/parent-s11-origin-verifier-o8-20261010.log"
+      },
+      "control": {
+        "exit": 0,
+        "signal": null,
+        "preflight": true,
+        "other22Exact": true,
+        "frozen23Exact": true,
+        "activeCI": "activeCI=0",
+        "tests": "Tests  77 passed (77)",
+        "testFiles": "Test Files  1 passed (1)",
+        "duration": "Duration  1.29s (transform 702ms, setup 0ms, import 1.13s, tests 70ms, environment 0ms)",
+        "log": ".lane-logs/parent-s11-origin-verifier-o8-control-20261010.log"
+      },
+      "sourceMutation": {
+        "id": "O8",
+        "old": "    if (!parsed.success) return false;",
+        "new": "    if (!parsed.success) return false;\n    Object.preventExtensions(envelope);"
+      }
+    }
+  ],
+  "sqlMutations": [
+    {
+      "id": "S1 non-CMS Job-type guard",
+      "status": "UNRUN"
+    },
+    {
+      "id": "S2 whole eight-field tuple equality",
+      "status": "UNRUN"
+    },
+    {
+      "id": "S3 fixed event type/version/aggregate grammar",
+      "status": "UNRUN"
+    },
+    {
+      "id": "S4 forbidden current-Job-version coupling",
+      "status": "UNRUN"
+    }
+  ],
+  "limits": [
+    "Independent 16-log review found no bounded receipt mismatch; counts, assertions, locations, CI flags and durations match. Process exits and historical preflight/SHA fields remain root-captured.",
+    "O6 fails its false-result assertion before its no-call assertion; it is not an independent no-call-only mutation witness.",
+    "Historical source SHA/preflight fields captured by root at execution; independent review checks logs, not historical source reconstruction.",
+    "All eight verifier mutations caught; all eight restored controls actual 77/77. Current source restored to all 23 frozen SHA256 values.",
+    "Consistent genuine fixtures do not independently prove stored Job correlation, causation, or payload guard removal.",
+    "No database reset needed for pure verifier unit mutations.",
+    "SQL source mutations still UNRUN; no race/current-attempt/lease/stage/receiving/ACK/hosted Auth/full validation acceptance inferred.",
+    "Slice 11 acceptance remains 0/122."
+  ]
+}

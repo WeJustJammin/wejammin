@@ -2,7 +2,7 @@
 
 Last clean QA baseline: `2f4f55f2db768aed3261dbe6234ed293d1605a16`.
 
-## Corrected producer proof / next mutation gate
+## Corrected producer proof / verifier mutation receipts / SQL gate
 
 Disjoint correction from clean refutation checkpoint12709db9 is now actual:
 request17/unit372/77cases/verifier22/SQL142/API345/57cases. Original request,
@@ -16,13 +16,33 @@ Independent amendment reviews no bounded finding; wording residue corrected.
 
 This is origin-only local proof, not stage/race/receiving/ACK authority or hosted
 Auth/fullValidation/Slice11 acceptance. Root saves clean pushed proof checkpoint
-before8 verifier-source and4 SQL-origin-source mutants, each individually
-restored exactly before an actual GREEN control. All12 are currently UNRUN.
+before source mutants at9753ca21e1d33aac0251559065aba2ccb7a7124b. All8 verifier
+mutants are now caught, each followed by exact23-SHA restore and actual77GREEN
+control. Four SQL-origin-source mutants remain UNRUN.
 Keep every QA/other-source path frozen; mutate only the selected producer
 temporarily. Stored Jobcorr/cause/payload predicate removal is not independently
 proven by consistent genuine fixtures; do not corrupt protected stored rows.
 
-### Exact source mutants, all UNRUN
+### Actual verifier mutations; exact SQL mutants still UNRUN
+
+Actual failed/passed counts, total77 each: O1 8/69; O2 18/59; O3 18/59;
+O4 18/59; O5 17/60; O6 1/76; O7 1/76; O8 17/60. Decisive unit assertion
+lines respectively208/109/110/98/93/237/226/85. Each actual restored control
+77/77, exit0; each mutation exit1. FreshCI0/flock before every run, all22
+other-source hashes exact under mutation and all23 exact before controls.
+No QA edits or active mutant. Pure unit runs require no DB reset.
+
+Tracked receipts: origin-admission-mutation-receipts-2026-10-10.json beside
+this brief; ignored execution logs .lane-logs/parent-s11-origin-verifier-oN-
+20261010.log and oN-control-20261010.log, N1–8. Root captured historical
+preflight/hash fields; independent log review must not imply historical source
+hash reconstruction. These mutations prove only their named unit assertions.
+
+Independent16-log review found no bounded receipt mismatch: counts, assertions,
+locations, CI flags and durations match. O6 reaches its false-result assertion
+before its no-call assertion; no separate no-call-only witness inferred.
+Fresh restored verifier77/77GREEN1.32s and bounded contracts/db-types/progress/
+format/diff0 before canonical checkpoint; SQL4 remain UNRUN.
 
 Verifier-only, one at a time, same frozen77-case QA; restore before77GREEN control:
 
@@ -54,7 +74,7 @@ protected stored-row edits, grants, owner changes or current authority claims.
 Active checkout `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`,
 branch `claude/phase2-slice11`. Slice11 remains0/122. Receipts below are scoped;
 historical UNRUN/refuted snapshots below do not supersede this top proof gate.
-Root checkpoints before writes.
+Root checkpoints before SQL mutation writes.
 
 ## Compatibility refutation / selected disjoint-key correction
 

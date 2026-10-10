@@ -1,5 +1,38 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: eight verifier mutants caught / SQL mutation gate
+
+This supersedes historical UNRUN snapshots below. Baseline clean pushed
+9753ca21e1d33aac0251559065aba2ccb7a7124b; all8 verifier source mutations
+actually caught. O1–O8 failed8/18/18/18/17/1/1/17 of77 at assertions
+208/109/110/98/93/237/226/85. Each restored exact23-SHA baseline BEFORE an
+actual77/77GREEN control. Mutation exits1, controls0, each freshCI0/flock;
+other22 paths frozen, QA unchanged, no active mutant. Pure unit runs need
+no DB reset. Independent16-log review no bounded mismatch. Fresh77GREEN1.32s
+and bounded contracts/db-types/progress/format/diff0. O6 false-result assertion
+precedes no-call assertion, not separate no-call-only proof. Historical SHA/preflight fields
+are root-captured, not independently reconstructed from execution logs.
+
+Tracked receipt JSON: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/
+origin-admission-mutation-receipts-2026-10-10.json. Ignored paired logs:
+.lane-logs/parent-s11-origin-verifier-oN[-control]-20261010.log, N1–8.
+Earlier corrected baseline77unit/143SQL/135API proof remains scoped below.
+Four SQL mutations still UNRUN: non-CMS type, whole tuple equality, fixed
+event grammar, forbidden current-version coupling. Exact23-SHA restore and
+full57-case genuine origin GREEN control required after each targeted RED;
+freshCI0/flock and main-stack pre/post DB cleanup. Keep header/suffix/QA exact.
+Consistent fixtures do not independently prove stored Jobcorr/cause/payload
+guard removal. Checkpoint before any SQL mutation or native author writes.
+
+Source remains disjoint originEvent request17/unit37277/verifier22/SQL142/
+API34557; no RPC/signature/grant/owner/policy expansion. Local origin proof
+is NOT current stage/lease/race/receiving/ACK/hosted Auth/full validation.
+Slice11 remains0/122. Then select receiving/enduring authority contract,
+nonzero/public lifecycle, remaining action3/DEC163/action4/full gates, Slices
+12–17 and final validate-phase. Native models unchanged. Earned-only Codex
+resets automatic when needed; no purchases. Last usage52%/ordinary allowed;
+earned count not exposed, prior confirmed0 historical only.
+
 ## Latest snapshot: disjoint origin proof / source-mutation gate
 
 This supersedes historical refutation/UNRUN snapshots below. Corrected from
