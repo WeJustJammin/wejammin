@@ -158,9 +158,10 @@ const seal = async (f: Fixture) => {
   const [read, claim, heartbeat, source, batch, finalize] = f.calls;
   if (!read || !claim || !heartbeat || !source || !batch || !finalize)
     throw new Error('Expected complete genuine preparation history');
-  expect(output.claimRequest).toBe(read.request);
+  expect(output.claimRequest === read.request).toBe(true);
   equal(output.claimRequest, claimRequest(f));
   expect(Object.isFrozen(output.claimRequest)).toBe(true);
+  expect(Object.isFrozen(output.claimRequest.claimedJob)).toBe(true);
   expect(Object.isFrozen(output.claimRequest.requestedEvent)).toBe(true);
   const resolved = ResponseSchema.parse(read.response);
   equal(resolved, before);
@@ -354,7 +355,10 @@ describe('S11 genuine private claimed preparation', () => {
       [[RPC.readPlan, claimRequest(f)]],
       f.signal,
     );
-    expect(output.claimRequest).toBe(replay[0]?.request);
+    expect(output.claimRequest === replay[0]?.request).toBe(true);
+    expect(Object.isFrozen(output.claimRequest)).toBe(true);
+    expect(Object.isFrozen(output.claimRequest.claimedJob)).toBe(true);
+    expect(Object.isFrozen(output.claimRequest.requestedEvent)).toBe(true);
     equal(output, {
       kind: 'processed',
       claimRequest: claimRequest(f),
