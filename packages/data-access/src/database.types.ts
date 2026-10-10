@@ -11285,6 +11285,14 @@ export type Database = {
         }
         Returns: Json
       }
+      cms_schema_dry_run_claim_request: {
+        Args: { p_request: Json }
+        Returns: undefined
+      }
+      cms_schema_dry_run_claim_snapshot: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_schema_dry_run_resource: {
         Args: { p_report_id: string }
         Returns: Json

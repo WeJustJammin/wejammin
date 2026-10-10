@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-claimed-sql-api69-green-one-clock-lint-gate|Slice 11 claimed SQL API69 GREEN one clock lint gate]] — knowledge — 2026-10-10T02:02:37.236Z
 - [[knowledge/2026-10-10-slice-11-api69-graph-reached-resolver-red-sql-scope|Slice 11 API69 graph reached resolver RED SQL scope]] — knowledge — 2026-10-10T01:41:52.077Z
 - [[knowledge/2026-10-10-slice-11-graph-fixture-rpc-context-first-gate-correction|Slice 11 graph fixture RPC context first gate correction]] — knowledge — 2026-10-10T01:31:40.413Z
 - [[knowledge/2026-10-10-slice-11-api69-twenty-resolver-red-one-graph-fixture-gap|Slice 11 API69 twenty resolver RED one graph fixture gap]] — knowledge — 2026-10-10T01:26:31.567Z

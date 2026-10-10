@@ -1,5 +1,18 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## SQL API69 GREEN; one new clock lint warning, correction held
+
+Three new SQL files215/101/60, legacy function byte proof retained. Main54322
+freshCI0/flock pre0/API0/post0, unchanged69/69,31.15s. Catalog owner-only ACL/
+volatility/empty search_path/CREATE revoked confirmed; pgTAP4/121, unit35/1116,
+contracts/progress/type/generation/check0. Lint exit0 NOT clean: inherited39/100
+including pg_temp error unchanged by function, plus one new STABLE/clock warning.
+ONLY B18400 initializer may use once-captured statement_timestamp, checkpoint
+push/clean origin before continuation; no predicates/other source/QA changes.
+Proof claim-sql-api69-first-green-lint-gate. Mutation proof and distinguishing
+raw-ID/max/numeric-wire/legacy/GUC QA still needed; genuine nonzero/completed,
+receiving/per-stage/DEC163/full/owner/external open. No acceptance closure.
+
 ## API69 graph reached resolver RED; bounded SQL GREEN scope
 
 Actual main54322 freshCI0/flock pre0/API1/post0:21 failed/48 passed,32.54s.

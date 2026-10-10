@@ -1,5 +1,16 @@
 # Slice 11 — claimed dry-run resolver SQL, genuine RED before GREEN
 
+## First GREEN and sole clock correction
+
+Actual unchanged API69 GREEN/main54322 pre0/API0/post0; catalog ACL/volatility
+correct, pgTAP4/121 and unit35/1116/static/type generation/check0. Lint exit0 is
+NOT clean: existing39 functions100 issues unchanged, plus one new snapshot
+STABLE/volatile-clock warning. See proof-s11-claim-sql-api69-first-green-lint-
+gate-2026-10-09.md. ONLY B's existing18400 observed_at initializer may change
+clock_timestamp() to once-captured statement_timestamp(); no other predicate,
+request/dispatcher/QA/source changes. Root clean pushed checkpoint BEFORE
+continuation; rerun actual API69/expiry/lint/catalog then mutation proof.
+
 ## Gate and disjoint ownership
 
 Parent actual69:21 functional resolver failures/48 passing controls; graph now
