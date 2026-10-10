@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Unwired claimed entry90/shared extraction211/140/142/185; moved bodies/legacy prefix/union byte-identical, delegation exact. Actual CI0/flock focused3/40GREEN2.49s/broader55/1462GREEN30.57s/separate bounded static/types0, all11 frozen SHA exact. Independent reviews no bounded gap. Checkpoint before source mutations/private genuine integration; receiving/authority/fullValidation/acceptance remain0/122.
+
 - [/] `QA` Claimed entry amended A338/helper183/B382, cases26/8 unexecuted; actual2suite missingmoduleRED/no tests250ms/exit1. All38 old expect statements retained; independent reviews no boundedgap. Legacy C254/6GREEN1.30s/test+ESLint0; all11 frozen SHA exact. Checkpoint before sole entry + mechanical shared extraction; receiving/authority/fullValidation/acceptance remain0/122.
 
 - [/] `QA` Claimed entry initial actual import RED2suites/no tests232ms/exit1; setup only. A431>400/B382<=400, planned26/8. Legacy22/341GREEN12.49s pre-extraction. Checkpoint before A sole helper/token amendment and C legacy equivalence witnesses; producers/receiving/authority/acceptance unchanged0/122.

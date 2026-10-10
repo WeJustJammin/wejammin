@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-2026-10-10-slice-11-claimed-entry-green1462-mechanical-extraction|2026-10-10 Slice 11 claimed entry GREEN1462 mechanical extraction]] — event — 2026-10-10T05:04:36.696Z
 - [[knowledge/2026-10-10-slice-11-claimed-entry-amended-import-red-legacy6-green-producer-gate|Slice 11 claimed entry amended import RED legacy6 GREEN producer gate]] — knowledge — 2026-10-10T04:51:54.861Z
 - [[knowledge/2026-10-10-slice-11-claimed-entry-initial-import-red-cap-legacy-qa-gate|Slice 11 claimed entry initial import RED cap legacy QA gate]] — knowledge — 2026-10-10T04:40:38.567Z
 - [[knowledge/2026-10-10-slice-11-unwired-claimed-entry-contract-qa-gate|Slice 11 unwired claimed entry contract QA gate]] — knowledge — 2026-10-10T04:31:05.682Z

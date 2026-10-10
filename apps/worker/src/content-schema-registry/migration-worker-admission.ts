@@ -1,4 +1,6 @@
 import { SCHEMA_MIGRATION_RPC } from './migration-worker-constants';
+import { acknowledgeEventOrRecover } from './migration-worker-event-recovery';
+import { admitResolvedMigrationInput } from './migration-worker-resolved-admission';
 import type {
   SchemaMigrationQueueEnvelope,
   SchemaMigrationJobPayload,
@@ -12,8 +14,6 @@ import type {
 import {
   errorCode,
   eventClaimStatus,
-  eventFinalizationFailure,
-  eventReleaseFailure,
   parsePlanResult,
   resultWith,
   retryAfter,
@@ -27,137 +27,6 @@ export type MigrationAdmission =
       event: SchemaMigrationQueueEnvelope | null;
       job: SchemaMigrationJobPayload;
     }>;
-
-type AcknowledgementRecoveryInput = Readonly<{
-  runtime: MigrationWorkerRuntime;
-  event: SchemaMigrationQueueEnvelope;
-  input: unknown;
-  signal: AbortSignal;
-  attempt: number;
-  migrationPlanId: string | null;
-  schemaVersionId: string | null;
-  state: MigrationWorkerResult['state'];
-  cursor: string | null;
-  progress: number | null;
-  correlationId: string | null;
-  startedAt: number;
-  outcome: 'ignored' | 'success' | 'failure';
-}>;
-
-const acknowledgeEventOrRecover = async ({
-  runtime,
-  event,
-  input,
-  signal,
-  attempt,
-  migrationPlanId,
-  schemaVersionId,
-  state,
-  cursor,
-  progress,
-  correlationId,
-  startedAt,
-  outcome,
-}: AcknowledgementRecoveryInput): Promise<MigrationWorkerResult | null> => {
-  const acknowledgement = await runtime.call(
-    SCHEMA_MIGRATION_RPC.acknowledgeEvent,
-    { eventId: event.eventId, outcome },
-    signal,
-  );
-  const failure = !acknowledgement.ok
-    ? acknowledgement.failure
-    : eventFinalizationFailure(acknowledgement.value);
-  if (failure === null) return null;
-
-  const resultDetails = {
-    migrationPlanId,
-    schemaVersionId,
-    eventId: event.eventId,
-    state,
-    cursor,
-    progress,
-    reasonCode: failure.code,
-  } satisfies Partial<MigrationWorkerResult>;
-  if (failure.retryable) {
-    await runtime.emit({
-      operation: 'migration.consume',
-      outcome: 'retry',
-      migrationPlanId,
-      schemaVersionId,
-      eventId: event.eventId,
-      correlationId,
-      cursor,
-      progress,
-      attempt,
-      retryable: true,
-      reasonCode: failure.code,
-      durationMs: Math.max(0, runtime.now() - startedAt),
-    });
-    return resultWith('retry', {
-      ...resultDetails,
-      retryAfterMs: retryAfter(attempt),
-    });
-  }
-
-  await runtime.deadLetter(input, failure.code, signal);
-  await runtime.emit({
-    operation: 'migration.consume',
-    outcome: 'dead_letter',
-    migrationPlanId,
-    schemaVersionId,
-    eventId: event.eventId,
-    correlationId,
-    cursor,
-    progress,
-    attempt,
-    retryable: false,
-    reasonCode: failure.code,
-    durationMs: Math.max(0, runtime.now() - startedAt),
-  });
-  return resultWith('dead_letter', resultDetails);
-};
-
-const releaseBlockedClaim = async (
-  runtime: MigrationWorkerRuntime,
-  event: SchemaMigrationQueueEnvelope,
-  plan: MigrationPlanRecord,
-  signal: AbortSignal,
-  attempt: number,
-  startedAt: number,
-): Promise<MigrationWorkerResult | null> => {
-  const released = await runtime.releaseEventClaim(signal);
-  const failure = released.ok
-    ? eventReleaseFailure(released.value)
-    : released.failure;
-  if (failure === null) {
-    runtime.markEventClaimReleased();
-    return null;
-  }
-  await runtime.emit({
-    operation: 'migration.recovery',
-    outcome: 'retry',
-    migrationPlanId: plan.id,
-    schemaVersionId: plan.toVersionId,
-    eventId: event.eventId,
-    correlationId: event.correlationId,
-    cursor: plan.cursor,
-    progress: plan.progress,
-    attempt,
-    retryable: true,
-    reasonCode: failure.code,
-    durationMs: Math.max(0, runtime.now() - startedAt),
-  });
-  return resultWith('retry', {
-    migrationPlanId: plan.id,
-    schemaVersionId: plan.toVersionId,
-    eventId: event.eventId,
-    state: plan.state,
-    cursor: plan.cursor,
-    progress: plan.progress,
-    retryAfterMs: retryAfter(attempt),
-    reasonCode: failure.code,
-  });
-};
 
 export const admitMigrationInput = async (
   runtime: MigrationWorkerRuntime,
@@ -331,161 +200,12 @@ export const admitMigrationInput = async (
       reasonCode: reason,
     });
   }
-  if (
-    plan.id !== job.migrationPlanId ||
-    plan.toVersionId !== job.schemaVersionId
-  ) {
-    const stale = resultWith('stale', {
-      migrationPlanId: job.migrationPlanId,
-      schemaVersionId: job.schemaVersionId,
-      eventId: event?.eventId ?? null,
-      state: plan.state,
-      reasonCode: 'PLAN_TARGET_MISMATCH',
-    });
-    if (event !== null) {
-      const acknowledgementRecovery = await acknowledgeEventOrRecover({
-        runtime,
-        event,
-        input: inputFromNormalized(normalized),
-        signal,
-        attempt,
-        migrationPlanId: plan.id,
-        schemaVersionId: plan.toVersionId,
-        state: plan.state,
-        cursor: plan.cursor,
-        progress: plan.progress,
-        correlationId: event.correlationId,
-        startedAt,
-        outcome: 'failure',
-      });
-      if (acknowledgementRecovery !== null) return acknowledgementRecovery;
-    }
-    return stale;
-  }
-  if (plan.version !== job.expectedVersion && plan.state !== 'completed') {
-    const stale = resultWith('stale', {
-      migrationPlanId: job.migrationPlanId,
-      schemaVersionId: job.schemaVersionId,
-      eventId: event?.eventId ?? null,
-      state: plan.state,
-      cursor: plan.cursor,
-      progress: plan.progress,
-      reasonCode: 'PLAN_VERSION_MISMATCH',
-    });
-    if (event !== null) {
-      const acknowledgementRecovery = await acknowledgeEventOrRecover({
-        runtime,
-        event,
-        input: inputFromNormalized(normalized),
-        signal,
-        attempt,
-        migrationPlanId: plan.id,
-        schemaVersionId: plan.toVersionId,
-        state: plan.state,
-        cursor: plan.cursor,
-        progress: plan.progress,
-        correlationId: event.correlationId,
-        startedAt,
-        outcome: 'failure',
-      });
-      if (acknowledgementRecovery !== null) return acknowledgementRecovery;
-    }
-    return stale;
-  }
-  if (plan.state === 'completed') {
-    const completed = resultWith('completed', {
-      migrationPlanId: plan.id,
-      schemaVersionId: plan.toVersionId,
-      eventId: event?.eventId ?? null,
-      state: plan.state,
-      cursor: plan.cursor,
-      progress: plan.progress,
-    });
-    if (event !== null) {
-      const acknowledgementRecovery = await acknowledgeEventOrRecover({
-        runtime,
-        event,
-        input: inputFromNormalized(normalized),
-        signal,
-        attempt,
-        migrationPlanId: plan.id,
-        schemaVersionId: plan.toVersionId,
-        state: plan.state,
-        cursor: plan.cursor,
-        progress: plan.progress,
-        correlationId: event.correlationId,
-        startedAt,
-        outcome: 'success',
-      });
-      if (acknowledgementRecovery !== null) return acknowledgementRecovery;
-    }
-    await runtime.emit({
-      operation: 'migration.consume',
-      outcome: 'success',
-      migrationPlanId: plan.id,
-      schemaVersionId: plan.toVersionId,
-      eventId: event?.eventId ?? null,
-      correlationId: event?.correlationId ?? job.correlationId,
-      cursor: plan.cursor,
-      progress: plan.progress,
-      attempt,
-      retryable: false,
-      reasonCode: null,
-      durationMs: Math.max(0, runtime.now() - startedAt),
-    });
-    return completed;
-  }
-  if (plan.state === 'failed_terminal') {
-    if (event !== null) {
-      const acknowledgementRecovery = await acknowledgeEventOrRecover({
-        runtime,
-        event,
-        input: inputFromNormalized(normalized),
-        signal,
-        attempt,
-        migrationPlanId: plan.id,
-        schemaVersionId: plan.toVersionId,
-        state: plan.state,
-        cursor: plan.cursor,
-        progress: plan.progress,
-        correlationId: event.correlationId,
-        startedAt,
-        outcome: 'failure',
-      });
-      if (acknowledgementRecovery !== null) return acknowledgementRecovery;
-    }
-    return resultWith('failed_terminal', {
-      migrationPlanId: plan.id,
-      schemaVersionId: plan.toVersionId,
-      eventId: event?.eventId ?? null,
-      state: plan.state,
-      cursor: plan.cursor,
-      progress: plan.progress,
-      reasonCode: 'MIGRATION_TERMINAL',
-    });
-  }
-  if (plan.state === 'blocked') {
-    const blocked = resultWith('blocked', {
-      migrationPlanId: plan.id,
-      schemaVersionId: plan.toVersionId,
-      eventId: event?.eventId ?? null,
-      state: plan.state,
-      cursor: plan.cursor,
-      progress: plan.progress,
-      reasonCode: 'MIGRATION_BLOCKED',
-    });
-    if (event !== null) {
-      const releaseFailure = await releaseBlockedClaim(
-        runtime,
-        event,
-        plan,
-        signal,
-        attempt,
-        startedAt,
-      );
-      if (releaseFailure !== null) return releaseFailure;
-    }
-    return blocked;
-  }
-  return { plan, event, job };
+  return admitResolvedMigrationInput(
+    runtime,
+    { event, job },
+    plan,
+    signal,
+    attempt,
+    startedAt,
+  );
 };

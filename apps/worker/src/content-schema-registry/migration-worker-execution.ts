@@ -1,4 +1,7 @@
-import { admitMigrationInput } from './migration-worker-admission';
+import {
+  admitMigrationInput,
+  type MigrationAdmission,
+} from './migration-worker-admission';
 import { runBackfillStage } from './migration-worker-backfill';
 import { runDryRunStage } from './migration-worker-dry-run';
 import { acquireMigrationLease } from './migration-worker-lease';
@@ -26,6 +29,15 @@ export const processNormalized = async (
     replay,
   );
   if ('outcome' in admitted) return admitted;
+  return processAdmittedMigration(runtime, admitted, signal, attempt);
+};
+
+export const processAdmittedMigration = async (
+  runtime: MigrationWorkerRuntime,
+  admitted: Exclude<MigrationAdmission, MigrationWorkerResult>,
+  signal: AbortSignal,
+  attempt: number,
+): Promise<MigrationWorkerResult> => {
   let current = admitted.plan;
   let leaseToken: string | null = null;
   if (current.state === 'draft' || current.state === 'dry_running') {

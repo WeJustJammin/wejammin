@@ -19,6 +19,13 @@ Database RPCs remain the transaction and audit authority.
   dry-run, backfill and verification stages with trusted private purpose.
 - `migration-worker-{admission,lease,dry-run,backfill,verification}.ts` own
   stage decisions; `migration-worker-batches.ts` owns bounded batch execution.
+- `migration-worker-resolved-admission.ts` owns shared post-read identity/state
+  admission; `migration-worker-event-recovery.ts` owns unchanged legacy ACK/release
+  recovery. The legacy claim/read/parse path delegates with its original context.
+- `claimed-schema-migration-preparation.ts` is an unwired private acquired-receipt
+  entry: one complete caller-bound resolve, plan-derived CAS, retained report and
+  request, trusted dry-run execution. Controlled entry and legacy-equivalence
+  tests do not establish persisted dispatch, continuation or live authority.
 - `migration-worker-activation.ts` preserves activation/reconciliation/rollback
   and durable event-ACK continuation, separate from pre-review preparation.
 - `migration-worker-input-schemas.ts` is the stable facade over the focused
