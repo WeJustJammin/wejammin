@@ -1,5 +1,22 @@
 # Slice11 AC057 assignment-label fixture correction
 
+## Actual correction and full-gate recovery
+
+Native sole fixture260lines hash
+eb6aa49950a29dfe740f8b17f373a2c4d9adf800d0aa33ee99fc64ef7ebd992c.
+Reverse patch reproduces the entire257line baseline; all32 assertions/titles
+and other34 paths unchanged. Independent source review no bounded finding.
+Two actual focused32PASS controls with freshCI0/flock/resets0; independent
+two-log review no mismatch. No production or assertion change.
+
+Full db:verify SQL333files12764assertions PASS108s after reset/lint0. API
+30failed34passed files,10failed608passed172skipped tests,926.04s.
+dbVerifyExit1/postReset0; children drained. API setup failures and independent
+read/pagination failures remain; races/types/validate UNRUN. Transport timeout
+at300s recovered from durable host-child log, not treated as test verdict.
+See ac057-fixture-gate-receipts-2026-10-10.json. Acceptance remains0/122.
+Prior contract/UNRUN statements below are historical.
+
 Actual full gate after queued producer126 lines: focused12GREEN plus existing
 22files197GREEN, all other33 source/QA exact. Full db:verify reset/lint0 then
 db:test333files12764assertions, one failure: reads_review assertion16/line118.

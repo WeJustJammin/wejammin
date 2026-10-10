@@ -41,7 +41,10 @@ select pg_temp.r11r_review('rr1', 'rr-1', 'rvB');
 select pg_temp.r11r_review('rr2', 'rr-2', 'editor', pg_temp.r11_protected());
 select pg_temp.r11r_review('rr3', 'rr-3', 'editor');
 select pg_temp.r11_assign_now('rr1-rvA', 'rr1', 'rvA');
-select pg_temp.r11_assign_now('rr1-rvX', 'rr1', 'rvX');
+select pg_temp.h11r_assign('rr1-rvX', 'rr1', 'rvX', jsonb_build_object(
+  'created_at', timestamptz '2026-10-01T14:00:01Z',
+  'updated_at', timestamptz '2026-10-01T14:00:01Z',
+  'starts_at', clock_timestamp() - interval '1 hour', 'ends_at', clock_timestamp() + interval '23 hours'));
 select pg_temp.h11_raw_exec('platform_private.cms_editorial_review_assignments',
   format($$update platform_private.cms_editorial_review_assignments set state = 'revoked', version = version + 1 where id = %L$$,
          pg_temp.s11_id('rr1-rvX')));

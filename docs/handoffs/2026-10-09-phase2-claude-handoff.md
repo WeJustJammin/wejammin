@@ -1,5 +1,35 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: AC057 fixture controls / SQL green / API first failures
+
+Supersedes the older first-failure snapshot below. From pushed7faa253d, native
+sole reads_review fixture changes rr1-rvX creation/update to14:00:01, retaining
+the live window.260lines; reverse patch reproduces complete257line baseline.
+All32 assertions/titles and other34 source/QA paths unchanged. Two actual
+focused controls32PASS each, freshCI0/shared flock/pre/post resets0.
+
+Full db:verify reset/lint0, SQL333files12764assertions PASS108s. API64files:
+30failed34passed;790tests:10failed608passed172skipped;926.04s. dbVerifyExit1,
+postReset0, owned children drained. Races/types chain and validate UNRUN.
+MCP transport timeout at300s was not the test result; surviving root-owned
+child was recovered through final durable log, without duplicate DB work.
+Tracked ac057-fixture-gate-receipts JSON. No S11 acceptance change:0/122.
+
+First public lifecycle setup refuses activate/reconcile/rollback RPCs400.
+Twenty-one suite setup failures share that producer-chain boundary; six
+additional suites cannot load direct zod import from root test support.
+Independent executed failures include lifecycle7, read-workflow settings
+insertion1 and worker-round-trip pagination assumptions2.172skipped prove
+nothing. No overlay, fixture bypass, grants or security-test weakening selected.
+
+Next: native sole root package.json adds existing exact zod4.4.3 development
+dependency; parent pnpm install owns mechanical lockfile/update and gates.
+Existing loader failure is harness RED, not functional acceptance RED.
+Separate shared lifecycle/claimed-stage mapping/fence work remains open.
+No tests/titles/source schema change in dependency amendment; root6.1ultra/
+native6astrahigh, automatic earned resets when needed, no purchases.
+Slices12–17/validate-phase, externally owned release gates, PR and cleanup pending.
+
 ## Latest snapshot: queued producer GREEN / full DB first failure
 
 Clean pushed QA5e2ccedcc25946d2427c4127182b4e6eb2518509 before native sole
