@@ -281,10 +281,54 @@ as $body$
   )
 $body$;
 
+-- The existing smoke resource is an ordinary saved entry, not a snapshot warm-up.
+-- Schema activation above remains controlled fixture state, not activation proof.
+create temp table h11w_smoke_saved on commit drop as
+select platform_api.cms_create_entry(jsonb_build_object(
+  'contentTypeId', (select value::uuid from h11w_ids where key = 'typeId'),
+  'contentTypeVersionId', pg_temp.h11w_version(), 'locale', 'en-US',
+  'changedPaths', jsonb_build_array('/fields/' || pg_temp.h11w_fid('title')::text),
+  'values', jsonb_build_object(pg_temp.h11w_fid('title')::text, 'Smoke entry'),
+  'validatorRefs', '[]'::jsonb, 'idempotencyKey', 'h11-world-smoke-save-0001',
+  'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(pg_temp.h11w_version()),
+  'activationEvidence', platform_private.cms_type_version_resource(pg_temp.h11w_version())->'activationEvidence',
+  'schemaArtifact', jsonb_build_object('id', artifact.id,
+    'contentTypeVersionId', artifact.content_type_version_id, 'artifactHash', artifact.artifact_hash,
+    'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref)
+)) as response
+from platform_private.cms_schema_artifacts artifact
+where artifact.id = (select value::uuid from h11w_ids where key = 'artifactId')
+  and artifact.content_type_version_id = pg_temp.h11w_version();
 select ok(
   pg_temp.h11w_fid('title') = 'a9200000-0000-4000-8000-000000000c31'::uuid
     and pg_temp.h11w_fdef('body') is not null
-    and pg_temp.h11w_revision('smoke') = pg_temp.h11w_uuid('smoke:revision'),
+    and (select count(*) = 1 from h11w_smoke_saved)
+    and (select count(*) = 1 from platform_private.cms_publication_settings_snapshots
+      where owner_id = pg_temp.h11w_org())
+    and exists(select 1 from h11w_smoke_saved saved
+      join platform_private.cms_content_entries e on e.id::text = saved.response#>>'{entry,id}'
+      join platform_private.cms_entry_revisions r on r.id::text = saved.response#>>'{revision,id}'
+      join platform_private.cms_entry_assignments a on a.entry_id = e.id
+      join platform_private.cms_entry_field_values v on v.revision_id = r.id
+      join platform_private.cms_publication_settings_snapshots s on s.owner_id = e.owner_id
+      join platform_private.idempotency_records receipt
+        on receipt.key_hash = platform_private.cms_key_hash('h11-world-smoke-save-0001')
+      where e.owner_id = pg_temp.h11w_org() and e.owner_party_id = e.owner_id
+        and e.current_draft_revision_id = r.id and r.entry_id = e.id and r.owner_id = e.owner_id
+        and e.content_type_id = (select value::uuid from h11w_ids where key = 'typeId')
+        and r.schema_version_id = pg_temp.h11w_version() and e.lifecycle = 'active'
+        and r.state = 'draft' and saved.response->>'state' = 'draft' and r.locale = 'en-US'
+        and e.version = 1 and r.version = 1 and r.revision_number = 1
+        and r.author_person_id = pg_temp.h11w_person('creatorPerson')
+        and a.owner_id = e.owner_id and a.assignee_person_id = r.author_person_id
+        and a.capability_key = 'cms.author' and a.state = 'active'
+        and v.field_id = pg_temp.h11w_fid('title') and v.value = '"Smoke entry"'::jsonb
+        and r.payload_hash::text = saved.response->>'contentHash'
+        and receipt.operation = 'CMS-03B-10' and receipt.state = 'completed'
+        and receipt.response_ref = jsonb_build_object('status', 201, 'resourceRef', e.id::text,
+          'safeHeaders', jsonb_build_object('response', saved.response))
+        and s.state = 'active' and s.version = 1 and s.registry_version = 1 and s.ordinal = 1
+        and s.effective_values = '[]'::jsonb and s.snapshot_hash = pg_temp.h11_sha256('[]')),
   'h11 world: the builders resolve stable field ids and create an entry with a draft revision'
 );
 
@@ -332,4 +376,3 @@ begin
   );
 end;
 $body$;
-

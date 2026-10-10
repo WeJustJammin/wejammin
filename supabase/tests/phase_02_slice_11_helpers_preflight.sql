@@ -153,7 +153,7 @@ select ok(
   pg_temp.h11_volatility('cms_evaluate_preflight(jsonb)') = 'v'
     and pg_temp.h11_volatility('cms_preflight_registry_current()') = 's'
     and pg_temp.h11_volatility('cms_accessibility_binding_hash(uuid, text)') = 's',
-  'evaluate is VOLATILE (it may record the settings snapshot); the registry view and the binding hash are STABLE [P2-S11-AC-093]'
+  'evaluate retains VOLATILE; the registry view and the binding hash are STABLE [P2-S11-AC-093]'
 );
 select is(pg_temp.h11_rettype('cms_evaluate_preflight(jsonb)'), 'jsonb', 'evaluate returns the report as jsonb [P2-S11-AC-097]');
 select is(pg_temp.h11_rettype('cms_preflight_registry_current()'),

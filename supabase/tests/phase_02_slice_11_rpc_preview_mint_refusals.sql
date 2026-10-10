@@ -50,7 +50,7 @@ as $body$
      and (pg_temp.r11_out(probe.label) || coalesce('/' || probe.detail, '')) is distinct from p_expected
 $body$;
 
--- Warm the settings snapshot (insert-if-absent) so the effect counters are stable from here on.
+-- Look up the owner snapshot already initialized by the world saved-resource fixture.
 select pg_temp.r11p_vs('mr-1');
 insert into r11_snap(label, effects) values ('before', pg_temp.r11p_effects());
 

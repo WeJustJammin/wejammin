@@ -1,16 +1,14 @@
 -- Slice 11 shared helpers: the E7 settings snapshot authority
 -- (BE03b "Settings snapshot authority (E7)"; tracker P2-S11-AC-091, AC-092):
 -- platform_private.cms_publication_settings_keys, cms_publication_settings_registry_version,
--- cms_publication_settings_effective_values and cms_settings_snapshot.  RED before
--- 20261005017550, GREEN after.
+-- cms_publication_settings_effective_values and cms_settings_snapshot after DEC-163.
 --
 -- CMS_PUBLICATION_SETTINGS_KEYS (registry version 1) has no members, so the
 -- version 1 snapshot is the empty array, whose JCS SHA-256 is the spec constant
--- 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945.  The snapshot
--- is inserted under ON CONFLICT (owner_id, snapshot_hash) DO NOTHING and its
--- ORDINAL (the manifest's settings.version) is read back: a new snapshot takes the
--- owner's previous maximum plus one under the owner's advisory lock, restoring
--- earlier values reuses the earlier snapshot and ordinal.
+-- 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945. Lookup returns
+-- only an existing exact owner/hash ordinal; missing snapshots fail closed.
+-- Guarded h11s_seed rows are LOOKUP TEST FIXTURES, not ordinary-save initialization
+-- or recovery proof. Authorized write materialization/atomicity has separate QA.
 
 \ir support/jwt-claims.sqlinc
 commit;
@@ -78,7 +76,7 @@ select ok(
   pg_temp.h11_volatility('cms_publication_settings_keys()') = 'i'
     and pg_temp.h11_volatility('cms_publication_settings_registry_version()') = 'i'
     and pg_temp.h11_volatility('cms_settings_snapshot(uuid)') = 'v',
-  'the registry constants are IMMUTABLE and the snapshot function is VOLATILE (it records the snapshot) [P2-S11-AC-092]'
+  'the registry constants are IMMUTABLE and the lookup retains its VOLATILE ABI [P2-S11-AC-092]'
 );
 select is(pg_temp.h11_rettype('cms_settings_snapshot(uuid)'), 'jsonb', 'the snapshot function returns jsonb [P2-S11-AC-092]');
 select is(
@@ -86,7 +84,7 @@ select is(
   '[]', 'with no registered key the effective values are the empty array [P2-S11-AC-091]');
 
 -- ---------------------------------------------------------------------------
--- The empty snapshot: constant hash, ordinal 1, recorded once.
+-- Cold missing lookup refuses without recording; guarded fixtures test reuse.
 -- ---------------------------------------------------------------------------
 select is(
   pg_temp.h11_text('select platform_private.cms_jcs_sha256(''[]''::jsonb)'),
@@ -96,22 +94,26 @@ select is(
 select is(pg_temp.h11s_rows(pg_temp.h11s_org()), '', 'no snapshot exists before the first evaluation (no migration seeds a row) [P2-S11-AC-092]');
 
 select is(
-  pg_temp.h11s_snap(pg_temp.h11s_org()),
-  '{"hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945", "version": "1"}'::jsonb,
-  'the first evaluation records ordinal 1 for the empty snapshot and answers { version: "1", hash } [P2-S11-AC-092]');
+  pg_temp.h11_outcome(format('select platform_private.cms_settings_snapshot(%L::uuid)', pg_temp.h11s_org())),
+  'P0001:DEPENDENCY_UNAVAILABLE',
+  'the first missing lookup refuses with DEPENDENCY_UNAVAILABLE [P2-S11-AC-092]');
 
 select is(
   pg_temp.h11s_rows(pg_temp.h11s_org()),
-  '1:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945:[]',
-  'exactly one immutable row holds ordinal 1, the constant hash and the empty values [P2-S11-AC-092]');
+  '',
+  'the first missing lookup leaves no owner snapshot row [P2-S11-AC-092]');
 
 select is(
-  pg_temp.h11s_snap(pg_temp.h11s_org()),
-  '{"hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945", "version": "1"}'::jsonb,
-  'a repeat evaluation reuses the snapshot and ordinal (insert-if-absent) [P2-S11-AC-092]');
+  pg_temp.h11_outcome(format('select platform_private.cms_settings_snapshot(%L::uuid)', pg_temp.h11s_org())),
+  'P0001:DEPENDENCY_UNAVAILABLE',
+  'a repeated missing lookup still refuses with DEPENDENCY_UNAVAILABLE [P2-S11-AC-092]');
 select is(
   (select count(*)::integer from platform_private.cms_publication_settings_snapshots where owner_id = pg_temp.h11s_org()),
-  1, 'a repeat evaluation inserts no second row [P2-S11-AC-092]');
+  0, 'a repeated missing lookup inserts no owner snapshot row [P2-S11-AC-092]');
+
+-- LOOKUP TEST FIXTURE only: guarded storage for independent positive controls.
+-- This is not an authorized save or proof of the write initialization path.
+select pg_temp.h11s_seed(pg_temp.h11s_org(), 1, '[]'::jsonb);
 
 select is(
   (select registry_version::text || '/' || state || '/' || version::text
@@ -122,15 +124,18 @@ select is(
 select is(pg_temp.h11s_snap(pg_temp.h11s_org())->>'version', '1', 'the version member is the ordinal as text [P2-S11-AC-092]');
 select is(jsonb_typeof(pg_temp.h11s_snap(pg_temp.h11s_org())->'version'), 'string',
   'the version member is a JSON string (a lossless decimal) [P2-S11-AC-092]');
-select is((select count(*)::integer from jsonb_object_keys(pg_temp.h11s_snap(pg_temp.h11s_org()))), 2,
+select is(pg_temp.h11s_snap(pg_temp.h11s_org()),
+  '{"version":"1","hash":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}'::jsonb,
   'the answer carries exactly version and hash (no owner or snapshot identifier) [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
 -- Owner scope.
 -- ---------------------------------------------------------------------------
+-- A second guarded LOOKUP TEST FIXTURE, not creation by the read helper.
+select pg_temp.h11s_seed('a9200000-0000-4000-8000-0000000000e2'::uuid, 1, '[]'::jsonb);
 select is(
   pg_temp.h11s_snap('a9200000-0000-4000-8000-0000000000e2'::uuid)->>'version', '1',
-  'another owner gets its own ordinal 1 for the same snapshot hash [P2-S11-AC-092]');
+  'another owner looks up its own stored ordinal 1 for the same snapshot hash [P2-S11-AC-092]');
 select is(
   (select count(*)::integer from platform_private.cms_publication_settings_snapshots),
   2, 'two owners hold one snapshot each [P2-S11-AC-092]');
@@ -138,41 +143,42 @@ select is(pg_temp.h11_outcome('select platform_private.cms_settings_snapshot(nul
   'a null owner is a malformed helper call [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
--- Ordinals: max + 1 for a new snapshot, reuse for an earlier one.
+-- Noncurrent historical lookup fixtures cannot allocate the current snapshot.
 -- ---------------------------------------------------------------------------
 select pg_temp.h11s_seed('a9200000-0000-4000-8000-0000000000e3'::uuid, 1,
   '[{"key":"cms.h11.alpha","definitionVersionId":"a9200000-0000-4000-8000-0000000000f1","sourceValueVersionId":null,"valueHash":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}]'::jsonb);
 select pg_temp.h11s_seed('a9200000-0000-4000-8000-0000000000e3'::uuid, 2,
   '[{"key":"cms.h11.alpha","definitionVersionId":"a9200000-0000-4000-8000-0000000000f2","sourceValueVersionId":null,"valueHash":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}]'::jsonb);
 select is(
-  pg_temp.h11s_snap('a9200000-0000-4000-8000-0000000000e3'::uuid)->>'version', '3',
-  'a snapshot not seen before takes the owner''s previous maximum ordinal plus one [P2-S11-AC-092]');
+  pg_temp.h11_outcome('select platform_private.cms_settings_snapshot(''a9200000-0000-4000-8000-0000000000e3''::uuid)'),
+  'P0001:DEPENDENCY_UNAVAILABLE',
+  'a missing current hash refuses with DEPENDENCY_UNAVAILABLE despite stored history [P2-S11-AC-092]');
 select is(
   (select string_agg(ordinal::text, ',' order by ordinal) from platform_private.cms_publication_settings_snapshots
     where owner_id = 'a9200000-0000-4000-8000-0000000000e3'),
-  '1,2,3', 'ordinals stay gapless per owner [P2-S11-AC-092]');
+  '1,2', 'the two stored legacy ordinals remain unchanged after missing-current lookup [P2-S11-AC-092]');
 
--- Restoring earlier values reuses the earlier snapshot: the empty snapshot of the
--- first owner keeps ordinal 1 although a newer snapshot with ordinal 2 exists.
+-- The current empty snapshot already has ordinal 1; append guarded noncurrent
+-- fixture history at ordinal 2 without changing registry or resolver values.
 select pg_temp.h11s_seed(pg_temp.h11s_org(), 2,
   '[{"key":"cms.h11.alpha","definitionVersionId":"a9200000-0000-4000-8000-0000000000f3","sourceValueVersionId":null,"valueHash":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}]'::jsonb);
 select is(
   pg_temp.h11s_snap(pg_temp.h11s_org())->>'version', '1',
-  'restoring the earlier (empty) values reuses ordinal 1, not max + 1 [P2-S11-AC-092]');
+  'the current empty hash reuses stored ordinal 1 despite later noncurrent ordinal 2 [P2-S11-AC-092]');
 select is(
   (select count(*)::integer from platform_private.cms_publication_settings_snapshots where owner_id = pg_temp.h11s_org()),
   2, 'the reuse inserts no row [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
--- Concurrency discipline: the owner's advisory lock is held to commit.
+-- Lookup does not retain the ordinary writer's owner advisory lock.
 -- ---------------------------------------------------------------------------
-select pg_temp.h11s_snap('a9200000-0000-4000-8000-0000000000e4'::uuid);
+select pg_temp.h11_outcome('select platform_private.cms_settings_snapshot(''a9200000-0000-4000-8000-0000000000e4''::uuid)');
 select is(
   (select count(*)::integer from pg_catalog.pg_locks l
     where l.locktype = 'advisory' and l.pid = pg_catalog.pg_backend_pid() and l.granted
       and l.classid = (((pg_catalog.hashtextextended('cms.settings_snapshot:' || 'a9200000-0000-4000-8000-0000000000e4', 0)) >> 32) & 4294967295)::oid
       and l.objid = ((pg_catalog.hashtextextended('cms.settings_snapshot:' || 'a9200000-0000-4000-8000-0000000000e4', 0)) & 4294967295)::oid),
-  1, 'the owner''s settings-snapshot advisory transaction lock is held after the call (race backstop: UNIQUE(owner, hash) and UNIQUE(owner, ordinal)) [P2-S11-AC-092]');
+  0, 'lookup leaves no owner settings-snapshot advisory transaction lock held after the call [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
 -- Registered keys are resolved through the Slice 07 resolver (consumer cms.publication).
@@ -219,8 +225,8 @@ select ok(
   (select pg_get_functiondef(to_regprocedure('platform_private.cms_settings_snapshot(uuid)')) !~* '(update|delete)\s+(from\s+)?platform_private'),
   'the snapshot function neither updates nor deletes snapshot rows [P2-S11-AC-092]');
 select ok(
-  (select pg_get_functiondef(to_regprocedure('platform_private.cms_settings_snapshot(uuid)')) ~* 'on conflict \(owner_id, snapshot_hash\) do nothing'),
-  'the snapshot is inserted under ON CONFLICT (owner_id, snapshot_hash) DO NOTHING [P2-S11-AC-092]');
+  (select pg_get_functiondef(to_regprocedure('platform_private.cms_settings_snapshot(uuid)')) !~* '\minsert\s+into\M'),
+  'the settings lookup contains no INSERT INTO statement [P2-S11-AC-092]');
 select is(
   (select count(*)::integer from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'platform_private'

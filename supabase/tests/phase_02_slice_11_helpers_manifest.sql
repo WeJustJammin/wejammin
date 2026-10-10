@@ -74,7 +74,7 @@ select ok(
     and pg_temp.h11_volatility('cms_dependency_manifest_within_bounds(jsonb)') = 's'
     and pg_temp.h11_volatility('cms_revision_version_set(uuid, jsonb)') = 's'
     and pg_temp.h11_volatility('cms_review_dependency_refs(uuid, jsonb)') = 's',
-  'builder, status and currency are VOLATILE (they record the settings snapshot); bounds and the version set are STABLE [P2-S11-AC-087]'
+  'builder, status and currency retain VOLATILE; bounds and the version set are STABLE [P2-S11-AC-087]'
 );
 select is(pg_temp.h11_rettype('cms_build_dependency_manifest(uuid)'), 'jsonb', 'the builder returns jsonb [P2-S11-AC-087]');
 select is(pg_temp.h11_rettype('cms_frozen_dependencies_status(uuid, jsonb)'), 'text', 'the status returns text [P2-S11-AC-090]');
@@ -140,7 +140,7 @@ select is(
   'dependencyHash (the JCS SHA-256 of the manifest) is stable [P2-S11-AC-089]');
 select is(
   (select count(*)::integer from platform_private.cms_publication_settings_snapshots),
-  1, 'building recorded exactly one settings snapshot for the owner (ordinal 1) [P2-S11-AC-092]');
+  1, 'building reuses the save-initialized owner snapshot (ordinal 1), preserving the single-row count [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
 -- Argument discipline and unavailable evidence.

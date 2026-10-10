@@ -1,0 +1,458 @@
+{
+  "schemaVersion": 1,
+  "baseline": "8d26b77e966f84dbfea8abd396c57143ad2106e8",
+  "scope": "Source-backed seven-file legacy E7 fixture cascade; full SQL GREEN and remaining API RED",
+  "acceptance": "0/122; Slices12-17 unstarted; external AC209/211/265/266 unchecked",
+  "files": [
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers/001-world.sqlinc",
+      "lines": 378,
+      "sha": "52fca239e51c46cdeb52b3c56856d5b4a2dd94337afc7c361170315f5de398ed",
+      "boundedInverseExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers_manifest.sql",
+      "lines": 657,
+      "sha": "c52dd5ce4c8394f9b9342a520b4065524a25aaddadd09b0cfc726807236fc54f",
+      "boundedInverseExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers_preflight.sql",
+      "lines": 833,
+      "sha": "8b19b5db45de18c7e23d34d1ed2fb574d6691bda67a5bc07969917d370936ec4",
+      "boundedInverseExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql",
+      "lines": 242,
+      "sha": "b268961f049f11d5b9ceedd5bc61a62c00a162c572adaf80eb666eb0bcd7b5e4",
+      "boundedInverseExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_09_evidence_trigger_catalog.sql",
+      "lines": 152,
+      "sha": "f3dec634007a486b5c8303a7f8c432862cd1f630fd5edca6ca22f1a6fd1c5a92",
+      "boundedInverseExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_09_schema/012-trigger-catalog.sqlinc",
+      "lines": 91,
+      "sha": "41013a02b4207b657ad6b8b6dcd95d8dd30304463a2fdf4beca80dd6d441b912",
+      "boundedInverseExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "lines": 238,
+      "sha": "f9fbcb41e1893422d3aef118906d1021299979244fdfbcf91d31aa10c302aaa1"
+    }
+  ],
+  "producerFrozen": {
+    "path": "supabase/migrations/20261010130000_cms_settings_write_tail_lookup.sql",
+    "lines": 212,
+    "sha": "7bd5eb6405875ba052e83b45cece793534156bba152cd5a695c4b2c165838784",
+    "qa11": [
+      {
+        "path": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+        "lines": 229,
+        "sha": "2a9384f0b9110729fa005bb29dc525c080180a904a76885637136bccb17df818",
+        "titleSequenceExact": true,
+        "bodyChanges": [
+          "'[CMS-03B-18] step-up, eligibility, duplicates, expiry bounds, revoke and conflict'"
+        ]
+      },
+      {
+        "path": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+        "lines": 172,
+        "sha": "4e57f3cd11589d69a2fb466aa2271a3e136475663b634affb1ddb5b9efcdb976",
+        "titleSequenceExact": true,
+        "bodyChanges": [
+          "'[CMS-03B-19] sends only the token hash and returns the complete bound resource without any writes'"
+        ],
+        "previewInverseExact": true
+      },
+      {
+        "path": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+        "lines": 346,
+        "sha": "0dd6ea2bbd40d65ea9537f4f85f0237d14ed8910e97e1231883ce19575516d3b",
+        "titleSequenceExact": true,
+        "bodyChanges": [
+          "'[CMS-03B-05] superseded revisions refuse revision_not_submittable using the current entry operand'",
+          "`[CMS-03B-05] ${fault} is refused before RPC and before every durable effect`"
+        ]
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+        "sha": "a76b55f199bc51bf162bc5828e0459d122c94dea8cef544331eb1b9384747872"
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_e7_settings/000-writer-helpers.sqlinc",
+        "lines": 239,
+        "sha": "8581c3686b191140f631d0adf42598c106cd647416a5e688060394409cbeb42c"
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_e7_settings/001-writer-requests.sqlinc",
+        "lines": 120,
+        "sha": "d6190167d5bb4197fb66d9a4635ca24fb6e1218ee5557faff839a0dd40b3899a"
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+        "lines": 17,
+        "sha": "fa080a58d0d38123b88c634d9cc5a8675d13cdaf73aa46cb9516e0cdfa5b3a9f",
+        "inverseOriginalExact": true
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+        "lines": 214,
+        "sha": "50a9908336eca76d704080b9f1e6f9e081ee893f3001fa744b5396a0016b02c6",
+        "inverseOriginalExact": true
+      },
+      {
+        "path": "tests/postgrest/phase-02-slice-11-read-workflow-noeffects.apispec.ts",
+        "lines": 100,
+        "sha": "3ca9c077d4d70d886cb592bdbc0e678b0738a6a022f3df5ed47cbb4c513528a5",
+        "inverseOriginalExact": true
+      },
+      {
+        "path": "tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts",
+        "lines": 226,
+        "sha": "facc77731447d123ac7338102388d259dafe2458ff3e2fa5fa3794ce696b2b76",
+        "titlesExact": true,
+        "changedBodies": [
+          "'[CMS-03B-15] assignee publisher and reviewer scopes read the same frozen candidate and submission moves the composite ETag'"
+        ],
+        "workflowInverseByteExact": true,
+        "diff": [
+          "-        parsed.review?.frozen.dependencyManifest,",
+          "-        preparation?.dependencyManifest,",
+          "-        'frozen manifest equals served preparation',",
+          "+        parsed.review?.frozen.dependencyHash,",
+          "+        preparation?.dependencyHash,",
+          "+        'frozen dependency hash equals served preparation dependency hash',"
+        ]
+      },
+      {
+        "path": "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+        "lines": 202,
+        "sha": "75fe6bba91670c4f6b3e008ea07719a94cb3a20f7b97ff45ffbf9dd959e9ad17",
+        "titlesExact": true,
+        "changedBodies": [
+          "'[CMS-03B-07] header/body CAS disagreement is 400 before any RPC or reservation'",
+          "'[CMS-03B-07] non-JSON body is exact 415 before RPC and changes nothing'"
+        ],
+        "diff": [
+          "-      details: {},",
+          "+      details: {",
+          "+        violations: [",
+          "+          {",
+          "+            path: '/expectedVersion',",
+          "+            code: 'mismatch',",
+          "+            message: 'The value is invalid.',",
+          "+          },",
+          "+        ],",
+          "+      },",
+          "-      details: {},",
+          "+      details: { allowedMediaTypes: ['application/json'] },"
+        ]
+      }
+    ],
+    "finalCheck": {
+      "frozenQaMismatch": [],
+      "legacyMismatch": [],
+      "producerSha": "7bd5eb6405875ba052e83b45cece793534156bba152cd5a695c4b2c165838784",
+      "dirtyCount": 13,
+      "unexpected": [],
+      "stagedCount": 0,
+      "diffCheck": 0
+    }
+  },
+  "static": {
+    "settingsPlan": 35,
+    "localAssertions": 31,
+    "importedAssertions": 4,
+    "unchangedLocalAssertions": 19,
+    "changedLocalAssertions": 12,
+    "s09WholeFileInverseExact": true,
+    "worldOutsideSmokeInverse": "exact modulo one trailing blank line; all deterministic builder bodies retained",
+    "previewOnlyCommentChanged": true,
+    "diffCheck": 0,
+    "documentsFormat": 0,
+    "contractsCheck": 0,
+    "progressCheck": 0,
+    "typeCheck": 0,
+    "staticLog": ".lane-logs/parent-s11-legacy-cascade-static-20261010.log"
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-legacy-e7-fixtures-first-full-gate-20261010.log",
+    "logSha": "7bf5266fea26f3ac0c4bddc9bc34e25d7b113fbb0e4578a561edd6f9caa73f8e",
+    "driverExit": 1,
+    "freshCI": 0,
+    "sharedLock": "/tmp/wejammin-supabase-ci.lock",
+    "dbReset": 0,
+    "dbLint": 0,
+    "sql": {
+      "files": 335,
+      "assertions": 12893,
+      "seconds": 111,
+      "exit": 0,
+      "result": "PASS"
+    },
+    "api": {
+      "files": 64,
+      "assertions": 806,
+      "passed": 803,
+      "failed": 3,
+      "seconds": 2133.51,
+      "exit": 1
+    },
+    "races": "UNRUN",
+    "dbTypesCheck": "UNRUN",
+    "validate": "UNRUN",
+    "postReset": 0,
+    "failures": [
+      {
+        "title": "FAIL  tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts > CMS-03B-07 exact action and audience schedule identity > [CMS-03B-07] nine-digit fractional schedule accepted by Worker remains accepted by SQL",
+        "details": [
+          "AssertionError: status=422 code=VALIDATION_FAILED bodySha256=56b6ac7c7db0e824 expectedStatus=202: expected false to be true // Object.is equality"
+        ]
+      },
+      {
+        "title": "FAIL  tests/postgrest/phase-02-slice-11-sweep-composition.apispec.ts > CMS-03B-20 real lineage and replay > [CMS-03B-20] actual ordered claim load execute operands bind all actions and late canonical lineage effects",
+        "details": ["AssertionError: expected 5 to be 4 // Object.is equality"]
+      },
+      {
+        "title": "FAIL  tests/postgrest/phase-02-slice-11-sweep-outcomes.apispec.ts > CMS-03B-20 retryable and blocked outcomes > [CMS-03B-20] an expired matching real lease refuses unchanged operands before stale-evidence handling",
+        "details": [
+          "AssertionError: expired lease closes before aging proof (expectedSha=ce91984aea2e6ca8 actualSha=904d73a0fa6d7bc3): expected false to be true // Object.is equality"
+        ]
+      }
+    ]
+  },
+  "changedTestTitles": [
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 4,
+      "oldTitle": "the registry constants are IMMUTABLE and the snapshot function is VOLATILE (it records the snapshot) [P2-S11-AC-092]",
+      "newTitle": "the registry constants are IMMUTABLE and the lookup retains its VOLATILE ABI [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 9,
+      "oldTitle": "the first evaluation records ordinal 1 for the empty snapshot and answers { version: \"1\", hash } [P2-S11-AC-092]",
+      "newTitle": "the first missing lookup refuses with DEPENDENCY_UNAVAILABLE [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 10,
+      "oldTitle": "exactly one immutable row holds ordinal 1, the constant hash and the empty values [P2-S11-AC-092]",
+      "newTitle": "the first missing lookup leaves no owner snapshot row [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 11,
+      "oldTitle": "a repeat evaluation reuses the snapshot and ordinal (insert-if-absent) [P2-S11-AC-092]",
+      "newTitle": "a repeated missing lookup still refuses with DEPENDENCY_UNAVAILABLE [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 12,
+      "oldTitle": "a repeat evaluation inserts no second row [P2-S11-AC-092]",
+      "newTitle": "a repeated missing lookup inserts no owner snapshot row [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 16,
+      "oldTitle": "the answer carries exactly version and hash (no owner or snapshot identifier) [P2-S11-AC-092]",
+      "newTitle": "the answer carries exactly version and hash (no owner or snapshot identifier) [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 17,
+      "oldTitle": "another owner gets its own ordinal 1 for the same snapshot hash [P2-S11-AC-092]",
+      "newTitle": "another owner looks up its own stored ordinal 1 for the same snapshot hash [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 20,
+      "oldTitle": "a snapshot not seen before takes the owner's previous maximum ordinal plus one [P2-S11-AC-092]",
+      "newTitle": "a missing current hash refuses with DEPENDENCY_UNAVAILABLE despite stored history [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 21,
+      "oldTitle": "ordinals stay gapless per owner [P2-S11-AC-092]",
+      "newTitle": "the two stored legacy ordinals remain unchanged after missing-current lookup [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 22,
+      "oldTitle": "restoring the earlier (empty) values reuses ordinal 1, not max + 1 [P2-S11-AC-092]",
+      "newTitle": "the current empty hash reuses stored ordinal 1 despite later noncurrent ordinal 2 [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 24,
+      "oldTitle": "the owner's settings-snapshot advisory transaction lock is held after the call (race backstop: UNIQUE(owner, hash) and UNIQUE(owner, ordinal)) [P2-S11-AC-092]",
+      "newTitle": "lookup leaves no owner settings-snapshot advisory transaction lock held after the call [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "index": 30,
+      "oldTitle": "the snapshot is inserted under ON CONFLICT (owner_id, snapshot_hash) DO NOTHING [P2-S11-AC-092]",
+      "newTitle": "the settings lookup contains no INSERT INTO statement [P2-S11-AC-092]",
+      "changed": true
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_manifest.sql",
+      "oldTitle": "builder, status and currency are VOLATILE (they record the settings snapshot); bounds and the version set are STABLE [P2-S11-AC-087]",
+      "newTitle": "builder, status and currency retain VOLATILE; bounds and the version set are STABLE [P2-S11-AC-087]",
+      "bodyChange": "none; title-only ABI clarification"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_manifest.sql",
+      "oldTitle": "building recorded exactly one settings snapshot for the owner (ordinal 1) [P2-S11-AC-092]",
+      "newTitle": "building reuses the save-initialized owner snapshot (ordinal 1), preserving the single-row count [P2-S11-AC-092]",
+      "bodyChange": "none; title-only saved-resource provenance"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_preflight.sql",
+      "oldTitle": "evaluate is VOLATILE (it may record the settings snapshot); the registry view and the binding hash are STABLE [P2-S11-AC-093]",
+      "newTitle": "evaluate retains VOLATILE; the registry view and the binding hash are STABLE [P2-S11-AC-093]",
+      "bodyChange": "none; title-only ABI clarification"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_09_evidence_trigger_catalog.sql",
+      "oldTitle": "the tables empty in this state are exactly the listed ones, proved in the schema entrypoint or owned by Slice 10-16 producers [P2-S09-AC-215]",
+      "newTitle": "the tables empty in this state are exactly the listed ones, proved in the schema entrypoint or owned by Slice 10-16 producers [P2-S09-AC-215]",
+      "bodyChange": "only remove initialized cms_publication_settings_snapshots from exact expected-empty list; enumeration unfiltered"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_09_schema/012-trigger-catalog.sqlinc",
+      "oldTitle": "the tables with no row in this fixture are exactly the listed ones; the entry/locale/relation tables are proved on the second fixture and the rest are Slice 10-16 producers [P2-S09-AC-215]",
+      "newTitle": "the tables with no row in this fixture are exactly the listed ones; the entry/locale/relation tables are proved on the second fixture and the rest are Slice 10-16 producers [P2-S09-AC-215]",
+      "bodyChange": "only remove initialized cms_publication_settings_snapshots from exact expected-empty list; enumeration unfiltered"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers/001-world.sqlinc",
+      "oldTitle": "h11 world: the builders resolve stable field ids and create an entry with a draft revision",
+      "newTitle": "h11 world: the builders resolve stable field ids and create an entry with a draft revision",
+      "bodyChange": "replace existing synthetic smoke resource with genuine B10 and exact canonical entry/revision/person/receipt/snapshot assertions; three world assertions retained"
+    }
+  ],
+  "changedTestTitleInventoryCount": 18,
+  "nonTitleChanges": [
+    {
+      "file": "supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql",
+      "change": "obsolete warming comment replaced; every assertion/body/title unchanged"
+    }
+  ],
+  "sourceReviews": [
+    "world genuine B10 smoke and retained source boundaries: no bounded finding; controlled active type is not genuine activation/hosted Auth proof",
+    "settings complete JSON/cold missing/stored history/lookup-only seeds: no bounded finding; current caught-refusal lock probe only proves retained-after-rollback state",
+    "S09 exact footprint: one list token removed each; no filtering or title change",
+    "new preflight full-row-image brief: compatible; original five unrelated counters remain count-level",
+    "new healthy-lock brief: compatible; sequence-wide retained-lock detection, not transient session-lock absence",
+    "expired-lease forward brief: compatible; existing real case does not separately prove null/equality/post-lock freshness/completed-replay"
+  ],
+  "nextBriefs": [
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-preflight-settings-rowimage-qa-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-schedule-expired-lease-fence-green-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-settings-healthy-lock-qa-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/schedule-nanosecond-implementation-contract-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-schedule-precision-api-clock-red-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-schedule-installed-arithmetic-red-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-sweep-effect-diagnostic-2026-10-10.md"
+  ],
+  "precisionCatalogBaseline": {
+    "log": ".lane-logs/parent-s11-schedule-precision-catalog-ties-baseline-20261010.log",
+    "logSha": "905f799f5a8639186def4ce6e4e5ed78e48bc36de80eadad0fbcf193dc2949c8",
+    "serverVersion": "17.6",
+    "roundDouble": [0, 2, 2, 0, -2, -2],
+    "roundNumeric": [1, 2, 3, -1, -2, -3],
+    "cmsRole": {
+      "login": false,
+      "bypassRls": false,
+      "superuser": false,
+      "schemaCreate": false
+    },
+    "functions": [
+      {
+        "signature": "platform_private.cms_claim_due_publication_schedules(jsonb)",
+        "owner": "wejammin_cms_definer",
+        "prosrcMd5": "d7b9b41bd73522bfe2bcafac97ac3c41",
+        "definitionMd5": "4878897acb07591ff12fe415f23c3b1e",
+        "metadataSha": "c8db1f636eecf2f3107764f7a74e24e2533f6c464eadaaab5b93b5782df30424",
+        "securityDefiner": true,
+        "volatility": "v",
+        "config": ["search_path=\"\""],
+        "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+        "sourceOnlyMatches": true
+      },
+      {
+        "signature": "platform_private.cms_execute_publication_schedule(jsonb)",
+        "owner": "wejammin_cms_definer",
+        "prosrcMd5": "7e6119b10a631301001038b8109a989b",
+        "definitionMd5": "3388d4cd7fa395bd1b074882e9389aa5",
+        "metadataSha": "580453822395d885fc3eb957174114439f5c65ca9a5cc0e2b0436017f2b2620f",
+        "securityDefiner": true,
+        "volatility": "v",
+        "config": ["search_path=\"\""],
+        "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+        "sourceOnlyMatches": true
+      },
+      {
+        "signature": "platform_private.cms_get_entry_workflow(jsonb)",
+        "owner": "wejammin_cms_definer",
+        "prosrcMd5": "e94ace68cc866a54e222e3475a7d9621",
+        "definitionMd5": "d3af3c9af78d91422955d845ac756867",
+        "metadataSha": "50c8e5a8aded4e89915ffe868dc481773ac94cfbd60b2600eafbf8454e549f75",
+        "securityDefiner": true,
+        "volatility": "v",
+        "config": ["search_path=\"\""],
+        "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+        "sourceOnlyMatches": true
+      },
+      {
+        "signature": "platform_private.cms_schedule_publication(jsonb)",
+        "owner": "wejammin_cms_definer",
+        "prosrcMd5": "e85fdaf10947771bb99578a9d9d30dea",
+        "definitionMd5": "8812de6db2019816ced766bd06ab5d13",
+        "metadataSha": "b54eef4910d5c24018c97bfd5195b6f4206dc2cc30dbed418acd1a26e56f7ebe",
+        "securityDefiner": true,
+        "volatility": "v",
+        "config": ["search_path=\"\""],
+        "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+        "sourceOnlyMatches": true
+      },
+      {
+        "signature": "platform_private.cms_schedule_state_guard()",
+        "owner": "wejammin_cms_definer",
+        "prosrcMd5": "be0cf18d76840b6722c28d7f85170dfb",
+        "definitionMd5": "904d575199e4e15058531f7ba5065e43",
+        "metadataSha": "15397d1ba1238301580d4c96ca3c27eff571abf2ccd77f0b42dedd311fadf3b8",
+        "securityDefiner": false,
+        "volatility": "v",
+        "config": ["search_path=\"\""],
+        "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+        "sourceOnlyMatches": true
+      }
+    ]
+  },
+  "limits": [
+    "no native follow-up author dispatched yet",
+    "sweep-composition actual effect delta5 versus4; generic runtime does not identify table; source-compatible hypothesis is expired recovery audit+1, not observed attribution; diagnostic-only brief queued",
+    "ordinary source/API/SQL results do not prove hosted external gates or all Slice11 acceptance",
+    "lease70/stage authority/prep wiring/public lifecycle producers and complete gates remain"
+  ],
+  "accountResetPolicy": "Use earned resets when available; last account check86percent ordinaryUsageAllowed=true earnedResetCredits=0 balance0. No reset purchase/API used."
+}
