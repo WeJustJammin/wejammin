@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Unwired claimed-entry contract frozen behind58e30105: required signal/attempt, one bound two-key resolve, four private result kinds with actual report/request retention, plan-derived CAS and trusted dry_run; shared admission/execution extraction only. New QA and implementation UNRUN; legacy receiving/startup/ACK/continuation/HB/stage authority unchanged;0/122.
+
 - [/] `QA` Pure claimed27mutants caught/all27actual209GREEN controls after exact production+QA/parser SHA restoration. D5/D6 compound groups, not individual redundant guards. Final37suites1325/1325/21.49s exit0 and separate fresh CI0/flock bounded static/types0/finalSHAexact. No SQL/authority/worker integration/acceptance closure; checkpoint before next entry contract/TDD.
 
 - [/] `QA` Pure claimed209GREEN2.19s/regression37suites1325GREEN23.81s. Only input oracle pair representation corrected388lines/all101cases; independent no weakening. Whole combined command timed out during types, separate fresh CI0/flock bounded static/types chain exit0. Production46/38/privatecontracts/BQA SHA unchanged. Planned mutants UNRUN behind clean checkpoint; no authority/integration/acceptance closure.

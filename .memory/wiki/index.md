@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-unwired-claimed-entry-contract-qa-gate|Slice 11 unwired claimed entry contract QA gate]] — knowledge — 2026-10-10T04:31:05.682Z
 - [[knowledge/2026-10-10-slice-11-claimed-pure-mutations27-caught-restored1325-green|Slice 11 claimed pure mutations27 caught restored1325 GREEN]] — knowledge — 2026-10-10T04:14:21.125Z
 - [[knowledge/2026-10-10-slice-11-claimed-pure209-regression1325-green-mutation-gate|Slice 11 claimed pure209 regression1325 GREEN mutation gate]] — knowledge — 2026-10-10T03:59:11.775Z
 - [[knowledge/2026-10-10-slice-11-claimed-pure-first-source-input-oracle-red|Slice 11 claimed pure first source input oracle RED]] — knowledge — 2026-10-10T03:53:17.333Z
