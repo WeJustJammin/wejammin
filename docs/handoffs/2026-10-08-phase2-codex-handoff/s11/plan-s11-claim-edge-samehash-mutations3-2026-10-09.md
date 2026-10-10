@@ -1,5 +1,9 @@
 # Slice 11 — edge/same-hash distinguishing SQL mutations, UNRUN
 
+Historical plan; all three now actually caught and restored. Separate
+proof-s11-claim-edge-samehash-mutations3-2026-10-09 records exact results and final
+fresh controls. Predictions below are not substituted for those receipts.
+
 Prerequisite actual five-suite76/76 baseline42.36s/pre0/post0/static0 and released
 native claims/independent reviews. Push clean checkpoint/exact origin first.
 Root-only one mutation at a time; no concurrent authors or resolver-SQL readers.

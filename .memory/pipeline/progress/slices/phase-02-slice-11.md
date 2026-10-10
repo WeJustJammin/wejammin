@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Distinguishing mutations3 caught: M6R1/75/76/42.61s, E1 rawUUID1/5/6/5.38s, E2 wire numeric1.0 lexical1/5/6/5.04s. Exact3-source SHA restore each/all six reset exits0, baseline reload before unlock. Final API76/76/41.65s, unit1116/22.23s, pgTAP121/9s, static/types/catalog0; lint39/100 exact inherited0new NOT clean. Current-attempt compound group mask resolved, not each predicate. Next isolated pure claimed-input/binding TDD behind clean pushed checkpoint; no acceptance closure.
+
 - [/] `QA` Actual distinguishing edge6/same-hash1 baseline: five suites76/76,42.36s main54322 freshCI0/flock pre0/API0/post0 closed0; static contracts/progress/ESLint/types/diff0. Native files191/267, old69/helpers/contracts/SQL unchanged, three SHA match. M6R/raw UUID identity/numeric lexical mutants3 UNRUN behind clean pushed checkpoint; no acceptance closure.
 
 - [/] `QA` Seven actual SQL mutations: six caught, M6 current-attempt group masked/SURVIVED; failures3/4/2/1/6/0/1. Exact3-source SHA restore each/all14 resets0. Final main54322 API69/69/31.73s/unit1116/21.25s/pgTAP121/9s/static/types/catalog0; lint inherited39/100 only, not clean. New isolated native edge6 and same-hash repeat DR1 scope behind clean pushed checkpoint; existing69/SQL/helpers frozen. No acceptance closure.
