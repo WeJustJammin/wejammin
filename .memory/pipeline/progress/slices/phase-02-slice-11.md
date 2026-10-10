@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Pure source first run46/38: input101fail at one snapshot oracle, decoder108GREEN; combined101fail1224pass1325/22.19s; bounded static/types0. Inherited descriptor map ownconstructor collides with Vitest strict type comparison. Checkpoint before input-test pair representation correction, all descriptor/identity/status assertions retained. No production defect inferred or acceptance closure.
+
 - [/] `QA` Amended pure input/binding tests384/370 cap400, planned101/108 UNEXECUTED; prior206 retained, independent descriptor/prototype/extensibility oracles and valid19/v7 positives added. Actual CI0/flock import RED exit1/two absent-module suites/no tests/1.33s. Checkpoint before two pure productionmodules; no functional proof or acceptance closure.
 
 - [/] `QA` Claimed input/binding initial import RED: two new native tests formatted344/325; planned100/106 cases UNEXECUTED. Actual CI0/flock exit1/two missing-module suites/no tests/1.36s, production modules absent. Input review found valid19 preclaim/original and prototype nonmutation gaps; binding review pending. Checkpoint before bounded amendments. No functional/SQL proof or acceptance closure.

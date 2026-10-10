@@ -1,5 +1,16 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Pure source first run: input oracle RED
+
+New modules46/38 after clean pushedf97d644a, parent fullread/independent reviews
+no bounded source defect. Actual CI0/flock decoder108GREEN1.53s; input101fail
+at unchanged:78/no visual difference. Combined37 suites101fail1224pass1325
+22.19s; existing1116GREEN, bounded static/types0. Prototype descriptor map's
+ownconstructor triggers Vitest strict type comparison. Checkpoint before native
+input-test snapshot pair representation amendment only; retain full metadata/
+identity and all101cases. Both pure production modules/decoder QA/contracts/
+helpers frozen. Actual209/1325GREEN/mutations then whole integration still due.
+
 ## Amended pure claimed input/binding import RED
 
 After clean pushed2d775000, native test-only amendments froze/released claims.

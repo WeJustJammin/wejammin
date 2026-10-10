@@ -38,6 +38,13 @@ Database RPCs remain the transaction and audit authority.
   All 31 isolated parent mutations are detected; restored 419 parser cases plus
   491 related cases pass. See the Slice 11 mutation receipt handoff for limits.
   Controlled fixtures are not persisted provenance or live-authority evidence.
+- `schema-dry-run-claim-{input,binding}.ts` are the pure acquired-receipt request
+  builder and complete-response caller binder. Their focused tests retain the
+  original event, distinguish original/preclaim/acquired versions, preserve
+  immutable complete output and caller metadata, and reject unbound/legacy
+  projections. These seams do not wire preparation, resolve SQL records or
+  establish enduring job/owner authority. Verification receipts belong in the
+  Slice11 handoff; import RED alone is not behavioral proof.
 - `migration-worker-results.ts` owns result and rollback mapping.
 - `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
   shape and completed read-only replay; provisional zeros are not SQL eligibility

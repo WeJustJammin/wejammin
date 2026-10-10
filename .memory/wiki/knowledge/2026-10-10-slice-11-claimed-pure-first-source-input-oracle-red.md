@@ -1,0 +1,13 @@
+---
+id: 2026-10-10-s11-claimed-pure-first-source-input-oracle-red
+type: knowledge
+agent: codex
+source: implement-slice
+timestamp: 2026-10-10T03:53:17.333Z
+---
+
+# Slice 11 claimed pure first source input oracle RED
+
+**Tags**: slice-11, tdd-oracle-red, private-binding, qa-amendment-gate
+
+Exact clean pushedf97d644a89d712324be201b91dbea3e26b5f082c before nativeauthorwave twoPUREmodulesbuilder46decoder38 frozen/released rootFULLreadformatter/README/independentreviewsno boundedfinding. ActualfreshCI0/sharedflockinput101fail1011.94sALLunchangedtest78 afteroutput/refusalassertions; decoder108GREEN1.53s; combined37suites1failed36passed101fail1224pass1325 22.19s old1116GREEN. BoundedcontractsDBtypesprogressformatESLinttypesdiff0 notfullValidation. DiagnosisVitest4.1.11typeEqualityownconstructorcopiedprototype descriptorrecordsidentitydiffdespitevalueequal/controlboolconstructorOwntruefreshConstructorsSamefalsevaluesSametruepairArrayConstructorsSametrue;failure novisualdifference. CheckpointbeforeSOLEnativeinputtestlocaldescriptorpairrepresentationamendment retainingallattrs/scalars/prototypeandinputidentity/frozenextensibility101cases, no skipconstructor/noassertionweaken. Existing4production+decoderQA/contractshelpersSQLfactoryreceiving frozen. True209/1325GREEN/staticandplannedmutants/exacttwoSHArestorepending. NoDBresetreload/genuinepreparationreceivingHBstageownerSQLauthorityclosure0/122.
