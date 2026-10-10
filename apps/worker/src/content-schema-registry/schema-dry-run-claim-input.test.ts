@@ -49,6 +49,11 @@ const replace = (target: object, key: string, value: unknown): void => {
   });
 };
 // Fresh descriptor records preserve inherited scalar values independently.
+const descriptorPairs = (value: object) =>
+  Reflect.ownKeys(value).map((key) => [
+    key,
+    Object.getOwnPropertyDescriptor(value, key),
+  ]);
 const metadata = (value: unknown) => {
   const object = typeof value === 'object' && value !== null ? value : null;
   const prototype: unknown =
@@ -56,11 +61,10 @@ const metadata = (value: unknown) => {
   return {
     value,
     prototype,
-    descriptors:
-      object === null ? null : Object.getOwnPropertyDescriptors(object),
+    descriptors: object === null ? null : descriptorPairs(object),
     inheritedDescriptors:
       typeof prototype === 'object' && prototype !== null
-        ? Object.getOwnPropertyDescriptors(prototype)
+        ? descriptorPairs(prototype)
         : null,
     frozen: object === null ? null : Object.isFrozen(object),
     extensible: object === null ? null : Object.isExtensible(object),

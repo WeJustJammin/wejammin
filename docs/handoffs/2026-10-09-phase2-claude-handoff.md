@@ -1,5 +1,15 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Pure claimed209/regression1325 GREEN
+
+Input oracle-only pair correction after clean pushedd0fec11a, root read/review
+upheld all101cases/metadata; formatted388. Actual CI0/flock209/209/2.19s and
+37suites1325/1325/23.81s GREEN; whole combined command timed out during types,
+no leftover tsc, separate bounded static/contracts/DBtypes/progress/format/
+ESLint/types/diff exit0. Builder46/decoder38 exactSHA unchanged, private
+contracts+BQA unchanged. Clean checkpoint before mutants UNRUN/exactrestore,
+then separate claimed worker integration. No genuine authority/acceptance0/122.
+
 ## Pure source first run: input oracle RED
 
 New modules46/38 after clean pushedf97d644a, parent fullread/independent reviews
