@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-private-genuine-seal-report-state-precision|Slice 11 private genuine seal report state precision]] — event — 2026-10-10T05:29:00.399Z
 - [[knowledge/2026-10-10-slice-11-private-genuine-claimed-preparation-qa-gate|Slice 11 private genuine claimed preparation QA gate]] — event — 2026-10-10T05:24:50.157Z
 - [[knowledge/2026-10-10-slice-11-claimed-entry-mutations14-caught-restored1462-green|Slice 11 claimed entry mutations14 caught restored1462 GREEN]] — event — 2026-10-10T05:18:48.366Z
 - [[knowledge/2026-10-10-2026-10-10-slice-11-claimed-entry-green1462-mechanical-extraction|2026-10-10 Slice 11 claimed entry GREEN1462 mechanical extraction]] — event — 2026-10-10T05:04:36.696Z

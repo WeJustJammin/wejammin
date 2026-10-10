@@ -60,8 +60,9 @@ Stage port is exact p_request adapter; observeRead wraps readPlan ONLY.
    version, not acquired job version; later tokens come from actual plan lease,
    not BE00 token. Require result processed, retained public report ID/request
    identity, outcome completed/state ready/activationSwitched false.
-   Independently SELECT sealed ready report/plan actual zero counts/hashes,
-   cleared plan lease, no active version/switch, candidate still non-active.
+   Independently SELECT plan ready; report completed, result pass and sealed_at
+   present; actual zero counts/hashes, cleared plan lease, no active version/
+   switch, candidate still non-active. Report completion is not plan completion.
    Original event and claimed job rows unchanged by entry; no ACK/processed
    outcome inferred. Whole first invocation is NOT a read-only observation.
 
@@ -91,3 +92,7 @@ Root: source review/formatter/caps/independent refutation, then actual main-stac
 closed cleanup. Never55322 or primary checkout. Preserve old76 API/1462 units.
 Actual RED must distinguish setup vs assertion failure; no source change or
 acceptance status inferred until root evidence. Full Validation Cmd still due.
+
+Independent 6.1 source review found no release-blocking contradiction/owner
+choice; seal producer20261002183000:449 confirms report completed/pass while
+plan ready. This precision is applied before native dispatch. Static only.
