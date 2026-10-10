@@ -1,3 +1,5 @@
+import type { QueueEnvelope } from '@wejammin/contracts';
+
 import type {
   AsyncWorkerBindings,
   PlatformJobsMessage,
@@ -41,6 +43,13 @@ export type AsyncJobRuntimeDependencies = Readonly<{
   rpc?: AsyncRpcClient;
   fetch?: typeof fetch;
   effect?: import('@wejammin/application').JobEffectPort['execute'];
+  verifyCmsSchemaDryRunOrigin?: (
+    input: Readonly<{
+      env: AsyncWorkerBindings;
+      envelope: QueueEnvelope;
+      signal: AbortSignal;
+    }>,
+  ) => Promise<boolean>;
   leaseToken?: (message: PlatformJobsMessage) => string;
   outboxLeaseToken?: () => string;
   leaseSeconds?: number;

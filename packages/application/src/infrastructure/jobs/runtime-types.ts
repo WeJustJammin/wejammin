@@ -197,6 +197,8 @@ export type JobConsumerInput = Readonly<{
   nowMs: number;
   processedEventIds: readonly string[];
   eventJobType?: string;
+  /** Private verified CMS origin identity, not current execution authority. */
+  verifiedImmutableJobOrigin?: boolean;
   eventPayload?: unknown;
 }>;
 

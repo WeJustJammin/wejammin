@@ -5,6 +5,9 @@ import {
   type AsyncWorkerBindings,
 } from './async-entrypoint';
 import { createAsyncJobDependencies } from './async-runtime';
+import { createSupabaseRpc, parseBoolean } from './async-runtime-support';
+import { CmsSchemaDryRunOriginRequestSchema } from './content-schema-registry/schema-dry-run-origin-request';
+import { createCmsSchemaDryRunOriginVerifier } from './content-schema-registry/schema-dry-run-origin-verifier';
 import { createProductionOperationalAlertDependencies } from './content-schema-registry/operational-alert-production';
 import { runContentSchemaRegistryOperationalAlerts } from './content-schema-registry/operational-alert-runtime';
 import type { OperationalAlertDependencies } from './content-schema-registry/operational-alert-runtime';
@@ -32,9 +35,27 @@ export const createProductionAsyncEntrypoint = (
   eventConsumerOptions?: ProductionEventConsumerOptions,
 ) =>
   (() => {
+    const originRpc = createSupabaseRpc(fetchImpl);
     const dependencies = createAsyncJobDependencies({
       effect: createProductionJobEffectDispatcher(verification),
       fetch: fetchImpl,
+      verifyCmsSchemaDryRunOrigin: ({ env, envelope, signal }) =>
+        createCmsSchemaDryRunOriginVerifier({
+          port: {
+            call: async (operation, request, rpcSignal) => {
+              const parsed = CmsSchemaDryRunOriginRequestSchema.parse(request);
+              return parseBoolean(
+                await originRpc<unknown>(
+                  env,
+                  operation,
+                  { p_request: parsed },
+                  rpcSignal,
+                ),
+                'Invalid CMS origin response',
+              );
+            },
+          },
+        }).verify(envelope, signal),
     });
     const workers = new WeakMap<
       object,

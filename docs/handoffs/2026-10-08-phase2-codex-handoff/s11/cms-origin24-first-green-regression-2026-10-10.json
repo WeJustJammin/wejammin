@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "scope": "Origin receiving24 GREEN; first broader regression gate RED",
+  "baseline": "9700b672b8089e4e263a2aedc0b26e3010e4ba78",
+  "proof": {
+    "log": ".lane-logs/parent-s11-cms-origin-receiving24-first-green-regression-20261010.log",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  24 passed (24)",
+      "   Duration  1.91s (transform 1.17s, setup 0ms, import 1.75s, tests 65ms, environment 0ms)",
+      "cmsOriginGreenFocusedExit=0",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > retries an applied queued outcome without ACK or processed-event write",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > retries a queued outcome CAS conflict without recording the origin",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > ACKs succeeded only after actual apply and processed-event port responses",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > ACKs failed only after actual apply and processed-event port responses",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > ACKs cancelled only after actual apply and processed-event port responses",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > does not retry or ACK before the queued apply response resolves",
+      " FAIL  apps/worker/src/async-entrypoint-queued-continuation.test.ts > queued continuation through the actual generic receiving composition > does not ACK or retry before the terminal processed-write response resolves",
+      " Test Files  1 failed | 183 passed (184)",
+      "      Tests  7 failed | 3578 passed (3585)",
+      "   Duration  65.49s (transform 5.31s, setup 0ms, import 91.54s, tests 19.74s, environment 17ms)",
+      "cmsOriginGreenRegressionExit=1",
+      "cmsOriginGreenTypesExit=0",
+      "cmsOriginGreenLintExit=0"
+    ],
+    "all5QAExact": true,
+    "old37Drift": [
+      "packages/application/src/infrastructure/jobs/runtime-types.ts",
+      "packages/application/src/infrastructure/jobs/dispatch.ts",
+      "apps/worker/src/async-runtime.ts",
+      "apps/worker/src/production-async-entrypoint.ts",
+      "packages/application/src/infrastructure/jobs/consumer.ts"
+    ],
+    "producer": [
+      {
+        "path": "packages/application/src/infrastructure/jobs/types.ts",
+        "lines": 284,
+        "sha": "4d25bec21dfe2906b359c417a00518bcffbd5a2791f0dc9e5ddf372e539e5861"
+      },
+      {
+        "path": "packages/application/src/infrastructure/jobs/runtime-types.ts",
+        "lines": 223,
+        "sha": "70cb3ba3434fd924f03f016f66a11f8ba5b6f3ce30e599f433ec70dac6d432a2"
+      },
+      {
+        "path": "packages/application/src/infrastructure/jobs/dispatch.ts",
+        "lines": 269,
+        "sha": "605786988c3706960f5fc084d9a1fa2193171240ff6a0d2912410ea28614c740"
+      },
+      {
+        "path": "packages/application/src/infrastructure/jobs/consumer.ts",
+        "lines": 129,
+        "sha": "ce23bf1e46de8d6e18bf4f3bf3574e270260d6899d6b5705c4943fe88d1e24b2"
+      },
+      {
+        "path": "apps/worker/src/async-runtime-rpc-types.ts",
+        "lines": 68,
+        "sha": "6cec0eb93cfb1c993514725170712a7a3302736b7c0ad4162bddd68c07e4b94c"
+      },
+      {
+        "path": "apps/worker/src/async-runtime.ts",
+        "lines": 194,
+        "sha": "e45525a47a6f3b4d742a230fcef5193b9267d726903c5baf0ba99ba8e398c770"
+      },
+      {
+        "path": "apps/worker/src/production-async-entrypoint.ts",
+        "lines": 150,
+        "sha": "9392a65dde60074adffc404071484f76eb4b00c9b7619d098c5a005f06c3c55e"
+      }
+    ]
+  },
+  "independentReview": {
+    "application": "No bounded finding; literaltrue/actualboundcanonicalid/CMS type/eventtype clamp bypass version comparison only; restguard/claim/CAS/queued/barrier unchanged.",
+    "worker": "No actionable finding; local allerrorretry/abortprecedence/exact3keyinput/original8fields/protectedstrictBoolean/exactsignal and existingordinary/terminal/outermanualreview retained.",
+    "limits": "Source-only; historical diff/equivalence parent-attested; compound CMS guard, not each redundant conjunct."
+  },
+  "frozenMapCorrection": "Five of older37 overlap authorized seven-file producer; all other32 and all5newQA exact. Earlier consumer-only sentence inaccurate and superseded by canonical correction.",
+  "nextScope": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-queued-origin-fixture-2026-10-10.md",
+  "fixtureBriefReview": "Independent source-only review: initial Jobs are queued CMS even when effect outcome terminal; registered BE00 origin admission applies. Two-path acyclic extraction, genuine strict verifier/protected Boolean/whole tuple/exact invocation signal preserves all7 bodies/nonadjacentCAS/queuedconflict/barriers. No proposed scope gap; amended source/runtime still UNRUN.",
+  "acceptance": "0/122; regression7 stale positive fixtures remain; leaseproducer/stagefence/prepwiring/mapping/full gates open"
+}

@@ -52,6 +52,9 @@ export const executeJobDispatch = async (
     ...(input.eventJobType === undefined
       ? {}
       : { eventJobType: input.eventJobType }),
+    ...(input.verifiedImmutableJobOrigin === undefined
+      ? {}
+      : { verifiedImmutableJobOrigin: input.verifiedImmutableJobOrigin }),
     ...(input.eventPayload === undefined
       ? {}
       : { eventPayload: input.eventPayload }),

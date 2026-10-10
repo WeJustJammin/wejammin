@@ -1575,6 +1575,8 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-origin-producer-frozen-map-scope-correction|Slice 11 origin producer frozen-map scope correction]] — knowledge — 2026-10-10T11:58:59.639Z
+- [[knowledge/2026-10-10-slice-11-origin24-green-regression-seven-stale-queued-fixtures|Slice 11 origin24 GREEN regression seven stale queued fixtures]] — knowledge — 2026-10-10T11:56:06.011Z
 - [[knowledge/2026-10-10-slice-11-receiving24-lease70-red-frozen-and-private-origin-producer-scope|Slice 11 receiving24 lease70 RED frozen and private origin producer scope]] — knowledge — 2026-10-10T11:45:48.533Z
 - [[knowledge/2026-10-10-slice-11-receiving24-lease63-red-and-native-qa-correction-gate|Slice 11 receiving24 lease63 RED and native QA correction gate]] — knowledge — 2026-10-10T11:35:11.176Z
 - [[knowledge/2026-10-10-slice-11-cms-operational-lease-control-next-qa-contract|Slice 11 CMS operational lease control next QA contract]] — knowledge — 2026-10-10T11:10:52.931Z

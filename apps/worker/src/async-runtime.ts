@@ -103,6 +103,30 @@ export const createAsyncJobDependencies = (
         parsed.data.aggregateId,
       );
       if (canonical === null) return 'retry';
+      let verifiedImmutableJobOrigin = false;
+      if (
+        canonical.type === 'cms.schema.dry_run' &&
+        (canonical.state === 'queued' || canonical.state === 'running')
+      ) {
+        if (dependencies.verifyCmsSchemaDryRunOrigin === undefined)
+          return 'retry';
+        const controller = new AbortController();
+        try {
+          if (controller.signal.aborted) return 'retry';
+          const verified = await dependencies.verifyCmsSchemaDryRunOrigin(
+            Object.freeze({
+              env,
+              envelope: parsed.data,
+              signal: controller.signal,
+            }),
+          );
+          if (controller.signal.aborted) return 'retry';
+          if (verified !== true) return 'ack';
+          verifiedImmutableJobOrigin = true;
+        } catch {
+          return 'retry';
+        }
+      }
       const leaseToken = tokenFor(message);
       const decision = await executeJobDispatch({
         persistence,
@@ -112,6 +136,12 @@ export const createAsyncJobDependencies = (
         leaseSeconds,
         nowMs: now(),
         processedEventIds: [],
+        ...(verifiedImmutableJobOrigin
+          ? {
+              verifiedImmutableJobOrigin: true,
+              eventJobType: 'cms.schema.dry_run',
+            }
+          : {}),
       });
       return queueOutcome(decision);
     } catch (error) {
