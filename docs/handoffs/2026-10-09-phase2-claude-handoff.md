@@ -1,5 +1,16 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Pure claimed mutations27 caught; final restored controls GREEN
+
+All27 one-at-time source mutations caught on209 actual cases; each exact two
+production+frozen QA/parser SHA restoration followed by209GREEN/CI0/flock.
+D5/D6 proof belongs to compound redundant groups only. Final fresh CI0/flock
+37suites1325/1325/21.49s exit0; separate bounded static/types chain exit0;
+finalallSHAexact. No live mutants/SQL reset/reload or authority/acceptance closure.
+Save clean checkpoint, then contract/TDD for claimed worker-entry/post-read
+extraction, actual Signal/attempt/report/plan/lease/result mapping; genuine
+nonzero/completed/lifecycle/receiving ACK/HB/stage/DEC163/full/later remainopen.
+
 ## Pure claimed209/regression1325 GREEN
 
 Input oracle-only pair correction after clean pushedd0fec11a, root read/review

@@ -1,5 +1,12 @@
 # Slice 11 — pure claimed input/binding GREEN and mutations, UNRUN
 
+Actual pure GREEN saved at2b4aa99b. All27 distinguishing source mutants now
+caught, each followed by exact production/QA/parser SHA restoration and209/209
+control. Final1325/1325/21.49s and separate bounded static chain exit0; final
+production/QA/parser SHA exact. See
+[mutation27 proof](proof-s11-claimed-pure-mutations27-2026-10-10.md).
+The original UNRUN scope below is historical, not a current mutation status.
+
 Initial tests saved at2d775000; actual import RED only. Two native QA amendments
 are running, sole disjoint test files. Parent must review/format/cap and rerun
 the corrected missing-module RED, record actual counts, then save a new clean
