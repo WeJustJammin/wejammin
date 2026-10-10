@@ -1,5 +1,35 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: origin overload regression / disjoint-key amendment gate
+
+This supersedes prior snapshots. Clean QA baseline2f4f55f; current native
+producer sources22/142. Actual verifier76/76GREEN1.32s. Actual origin-only
+API56pass/0fail, but seven-suite regression1failed/133passed134,88.29s, with
+pre/test/post0/1/0. All21 frozen hashes exact. Sole failure is existing resolver
+missing-claimedJob request: one-key requestedEvent now wrongly admits origin.
+Both prior static compatibility claims withdrawn; suffix/header byte equality
+did not preserve admission semantics. Do not edit/weaken the existing refusal.
+
+Separate contracts/db-types/progress/format/lint/project type-check/diff gates
+exit0; all23 current source/QA hashes exact. Canonical compile succeeds with64
+inherited graph-lint issues, not a lint-clean claim. Regression remains RED.
+
+Selected implementation correction in reviewed brief: disjoint one-key
+originEvent for origin-only; two-key claimedJob/requestedEvent and legacy3
+unchanged. Old one-key requestedEvent and mixed forms must INVALID_REQUEST.
+Root checkpoints refutation/current sources/canonical/handoff before native
+A amends ONLY origin request/unit/verifier and B ONLY origin API/18700 branch.
+All18 pre-origin frozen paths exact. Every original assertion retained; add
+explicit legacy-key contract/API refusal. Corrected results UNRUN; no new
+RPC/signature/grant/owner/policy, receiving or stage authority.
+
+Receipts: .lane-logs/parent-s11-origin-verifier-first-green-20261010.log and
+.lane-logs/parent-s11-origin-reader-first-api134-20261010.log. After amended
+freeze, root runs actual unit/7API regressions/static/types, source review,
+then clean checkpoint before mutants/restored controls. Do not use the
+refuted producer as a completed origin or acceptance gate. Slice11 remains0/122.
+Live usage50% ordinary allowed at latest check; earned-only resets, no purchases.
+
 ## Latest snapshot: origin QA frozen / actual RED / producer gate
 
 This supersedes contract snapshot below. Contract checkpoint a5ef923d was clean

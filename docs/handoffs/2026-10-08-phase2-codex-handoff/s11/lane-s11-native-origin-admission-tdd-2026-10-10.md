@@ -1,9 +1,28 @@
 # Slice11 native origin-admission contract / QA gate
 
-Baseline: `748bbd4def52e078f87631fcb1f9053e37c8773c`, clean/exact origin.
+Last clean QA baseline: `2f4f55f2db768aed3261dbe6234ed293d1605a16`.
 Active checkout `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`,
-branch `claude/phase2-slice11`. Slice11 remains0/122. Everything below is
-UNRUN. Root saves a clean pushed contract checkpoint before native writes.
+branch `claude/phase2-slice11`. Slice11 remains0/122. Receipts below are scoped;
+the selected disjoint-key correction is UNRUN. Root checkpoints before writes.
+
+## Compatibility refutation / selected disjoint-key correction
+
+First producers are verifier22/SQL142. Actual unit76/76GREEN1.32s;
+origin API56pass/0fail. However full seven-suite regression is1failed/133passed
+(134),88.29s, pre/test/post0/1/0: existing missing-claimedJob QA produces exactly
+one-key requestedEvent, which the new origin branch incorrectly admits.
+Both prior static compatibility conclusions are refuted. Byte-identical
+two/three-key suffixes did not preserve request-admission behavior.
+
+Keep the existing refusal/assertion unchanged. Selected correction: origin-only
+uses the disjoint one-key originEvent; claimed reader remains claimedJob plus
+requestedEvent, legacy reader its unchanged three keys. Old one-key
+requestedEvent and mixed origin/claimed/legacy forms remain INVALID_REQUEST.
+No RPC/signature/grant/owner/policy change. After clean pushed refutation
+checkpoint, native A may amend ONLY origin request/unit/verifier files; B may
+amend ONLY origin API and18700 origin branch. All18 pre-origin frozen paths
+remain exact. Preserve every existing oracle; add explicit legacy-key refusal
+to new contract/API QA. All corrected tests/producer results remain UNRUN.
 
 ## Selected bounded contract
 
@@ -13,7 +32,7 @@ Original outbox eight-field identity stays immutable when Job.version advances.
 Ordinary dispatch stale rules remain unchanged during this bounded step.
 
 Existing service-only `cms_get_schema_migration_plan(p_request jsonb)` gains
-one additive read-only branch: strict `{ requestedEvent }`; response is a
+one additive read-only branch: strict `{ originEvent }`; response is a
 literal JSON Boolean. No new RPC, signature, EXECUTE/table grant, role,
 membership, owner or bypass exemption. Existing strict two-key claimed resolver
 and three-key legacy reader retain their contracts.
@@ -50,7 +69,7 @@ A owns only these two new paths:
 Contract source exports CmsSchemaDryRunOriginRequestSchema plus inferred
 CmsSchemaDryRunOriginRequest type. Reuse existing requireClaimOwnKeys and
 ClaimRequestedEventSchema from schema-dry-run-claim-shape: own-key root guard
-for requestedEvent, pipe through strict object with the guarded event schema,
+for originEvent, pipe through strict object with the guarded event schema,
 then transform(Object.freeze). No new public contract or synthetic claimedJob.
 Do not wrap raw QueueEnvelope directly: its non-aborting decimal regex can
 reach BigInt on malformed input; readonly can freeze rejected caller arrays.
