@@ -18,7 +18,7 @@ const ClaimedJobSchema = requireClaimOwnKeys([
       version: CmsVersionSchema,
       leaseToken: CmsUuidSchema,
     })
-    .readonly(),
+    .transform((value) => Object.freeze(value)),
 );
 
 /** Private server-resolution request; no caller-selected report or plan IDs. */
@@ -40,7 +40,7 @@ export const CmsSchemaDryRunClaimRequestSchema = requireClaimOwnKeys([
       path: ['requestedEvent', 'aggregateId'],
     },
   )
-  .readonly();
+  .transform((value) => Object.freeze(value));
 
 export type CmsSchemaDryRunClaimRequest = z.infer<
   typeof CmsSchemaDryRunClaimRequestSchema

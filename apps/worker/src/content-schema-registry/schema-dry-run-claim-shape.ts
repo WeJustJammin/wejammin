@@ -1,4 +1,4 @@
-import { QueueEnvelopeSchema } from '@wejammin/contracts';
+import { CmsVersionSchema, QueueEnvelopeSchema } from '@wejammin/contracts';
 import { z } from 'zod';
 
 import { MigrationPlanRecordSchema } from './migration-worker-plan-record-schema';
@@ -13,7 +13,7 @@ export const requireClaimOwnKeys = (keys: readonly string[]) =>
         isRecord(value) &&
         Reflect.ownKeys(value).length === keys.length &&
         keys.every((key) => Object.prototype.hasOwnProperty.call(value, key)),
-      'Claim object keys are invalid',
+      { message: 'Claim object keys are invalid', abort: true },
     );
 
 export const ClaimRequestedEventSchema = requireClaimOwnKeys([
@@ -26,6 +26,16 @@ export const ClaimRequestedEventSchema = requireClaimOwnKeys([
   'correlationId',
   'causationId',
 ])
+  .refine(
+    (value) =>
+      isRecord(value) &&
+      CmsVersionSchema.safeParse(value.aggregateVersion).success,
+    {
+      message: 'Claim event aggregate version is invalid',
+      path: ['aggregateVersion'],
+      abort: true,
+    },
+  )
   .pipe(QueueEnvelopeSchema)
   .refine(
     (event) =>
@@ -74,4 +84,4 @@ export const ClaimMigrationPlanSchema = requireClaimOwnKeys([
     }
     return parsed.data;
   })
-  .readonly();
+  .transform((value) => Object.freeze(value));

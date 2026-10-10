@@ -22,7 +22,7 @@ const JobSchema = requireClaimOwnKeys([
       actingPartyId: CmsUuidSchema,
       originatingEventId: CmsUuidSchema,
     })
-    .readonly(),
+    .transform((value) => Object.freeze(value)),
 );
 const ReportSchema = requireClaimOwnKeys([
   'id',
@@ -43,7 +43,7 @@ const ReportSchema = requireClaimOwnKeys([
       sourceVersionId: CmsUuidSchema.nullable(),
       targetVersionId: CmsUuidSchema,
     })
-    .readonly(),
+    .transform((value) => Object.freeze(value)),
 );
 const CandidateSchema = requireClaimOwnKeys([
   'id',
@@ -60,12 +60,12 @@ const CandidateSchema = requireClaimOwnKeys([
       supersedesId: CmsUuidSchema.nullable(),
       dryRunId: CmsUuidSchema,
     })
-    .readonly(),
+    .transform((value) => Object.freeze(value)),
 );
 const PlanScopeSchema = requireClaimOwnKeys(['ownerId', 'dryRunId']).pipe(
   z
     .strictObject({ ownerId: CmsUuidSchema, dryRunId: CmsUuidSchema })
-    .readonly(),
+    .transform((value) => Object.freeze(value)),
 );
 
 // Internal consistency only: a later decoder must bind receipt/original event,
@@ -128,7 +128,7 @@ export const CmsSchemaDryRunClaimResponseSchema = requireClaimOwnKeys([
           });
     },
   )
-  .readonly();
+  .transform((value) => Object.freeze(value));
 
 export type CmsSchemaDryRunClaimResponse = z.infer<
   typeof CmsSchemaDryRunClaimResponseSchema
