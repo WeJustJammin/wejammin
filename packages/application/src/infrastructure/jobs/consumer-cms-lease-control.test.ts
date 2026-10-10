@@ -5,7 +5,6 @@ import { executeJobDispatch } from './consumer.ts';
 import { decideJobDispatch } from './dispatch.ts';
 import {
   ID,
-  TOKEN,
   apply,
   beat,
   completed,
@@ -187,12 +186,27 @@ describe('private CMS candidate lease control through the actual consumer', () =
     const f = fixture({ now: 1_000 });
     observe(f, async () => running('19', 301_000));
     f.execute.mockImplementation(async (_input, control) => {
-      same(await need(control).checkpoint(), current('19', 301_000));
+      const first = await need(control).checkpoint();
+      same(first, current('19', 301_000));
+      const second = await need(control).checkpoint();
+      same(second, current('19', 301_000));
+      if (first.kind !== 'current' || second.kind !== 'current')
+        throw new Error('Expected both current snapshots');
+      expect(first !== second && first.claimedJob !== second.claimedJob).toBe(
+        true,
+      );
+      expect(
+        [first, second, first.claimedJob, second.claimedJob].every(
+          Object.isFrozen,
+        ),
+      ).toBe(true);
       return outcome();
     });
     same(await f.run(), completed('19'));
     same(f.calls, [
       ...f.prefix,
+      ['restore'],
+      ['read', ID],
       ['restore'],
       ['read', ID],
       ['apply', apply('19')],
@@ -377,28 +391,4 @@ describe('private CMS candidate lease control through the actual consumer', () =
       f.assertEffect();
     },
   );
-
-  it('keeps original token for token-blind foreign candidate metadata and respects false final CAS', async () => {
-    const f = fixture();
-    f.execute.mockImplementation(async (_input, control) => {
-      same(await need(control).checkpoint(), current());
-      return outcome();
-    });
-    f.write.mockImplementation(async (...args) => {
-      f.calls.push(['apply', ...args]);
-      return false;
-    });
-    same(await f.run(), {
-      kind: 'completed',
-      outcome: {
-        kind: 'conflict',
-        reason: 'VERSION_MISMATCH',
-        canonicalWrite: false,
-      },
-      processed: null,
-    });
-    same(f.calls, [...f.prefix, ...renewedCalls(), ['apply', apply()]]);
-    expect(f.write.mock.calls[0]?.[0].leaseToken === TOKEN).toBe(true);
-    f.assertEffect();
-  });
 });

@@ -5,12 +5,15 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   ID,
   FOREIGN,
+  TOKEN,
   apply,
+  beat,
   completed,
   current,
   fixture,
   gate,
   heartbeat,
+  healthyPolicy,
   metadata,
   need,
   observe,
@@ -22,9 +25,11 @@ import {
   running,
   same,
   type Control,
+  type Checkpoint,
   type Effect,
 } from '../../../packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support';
 import { heartbeatJobLease } from '../../../packages/application/src/infrastructure/jobs/execution';
+import { executeJobDispatch } from '../../../packages/application/src/infrastructure/jobs/consumer';
 import type { CanonicalJob } from '../../../packages/application/src/infrastructure/jobs/runtime-types';
 import { buildCmsSchemaDryRunClaimRequest } from './content-schema-registry/schema-dry-run-claim-input';
 import { createProductionJobEffectDispatcher } from './production-job-effect-dispatcher';
@@ -40,6 +45,79 @@ const callbackInput = (type = 'cms.schema.dry_run'): JobEffectInput => {
 };
 
 describe('production private CMS lease-control forwarding', () => {
+  it.each(['succeeded', 'pending_manual_review', 'throw'])(
+    'drains unawaited false heartbeat before immediate %s disposition',
+    async (mode) => {
+      const f = fixture();
+      const held = gate(),
+        effectDone = gate();
+      let pending: Promise<Checkpoint> | undefined;
+      beat(f, async () => {
+        await held.hold();
+        return false;
+      });
+      f.execute.mockImplementation((_input, control) => {
+        pending = need(control).checkpoint();
+        const result =
+          mode === 'throw'
+            ? Promise.reject<JobEffectResult>(
+                new Error('Controlled effect failure'),
+              )
+            : Promise.resolve(
+                outcome(
+                  mode === 'succeeded' ? 'succeeded' : 'pending_manual_review',
+                ),
+              );
+        void result.then(effectDone.release, effectDone.release);
+        return result;
+      });
+      let settled = false;
+      const delivery = f.run().then((result) => {
+        settled = true;
+        return result;
+      });
+      try {
+        await reached(held.entered, delivery);
+        await reached(effectDone.resolved, delivery);
+        expect(settled).toBe(false);
+        same(f.calls, [...f.prefix, ['restore'], ['heartbeat', heartbeat()]]);
+      } finally {
+        held.release();
+      }
+      same(await delivery, retry);
+      same(await pending, { kind: 'lost' });
+      same(f.calls, [...f.prefix, ['restore'], ['heartbeat', heartbeat()]]);
+      f.assertEffect();
+    },
+  );
+
+  it.each(['pending_manual_review', 'throw'])(
+    'final expiry overrides healthy checkpoint then %s',
+    async (mode) => {
+      const f = fixture();
+      f.execute.mockImplementation(async (_input, control) => {
+        same(await need(control).checkpoint(), current());
+        f.time.value = 501_000;
+        if (mode === 'throw') throw new Error('Controlled effect failure');
+        return outcome('pending_manual_review');
+      });
+      same(await f.run(), retry);
+      same(f.calls, [...f.prefix, ...renewedCalls()]);
+      f.assertEffect();
+    },
+  );
+
+  it('omitted eventJobType retains verified CMS legacy one-argument dispatch', async () => {
+    const f = fixture();
+    const { eventJobType, ...withoutType } = f.input;
+    expect(eventJobType === 'cms.schema.dry_run').toBe(true);
+    expect(withoutType.verifiedImmutableJobOrigin).toBe(true);
+    same(await executeJobDispatch(Object.freeze(withoutType)), completed('19'));
+    same(f.calls, [...f.prefix, ['apply', apply('19')], ['processed', record]]);
+    same(f.clock.mock.calls, []);
+    f.assertEffect(false);
+  });
+
   it.each([
     ['absent', null],
     ['foreign id', { ...running(), id: FOREIGN }],
@@ -249,6 +327,7 @@ describe('production private CMS lease-control forwarding', () => {
     { receipt: { version: '7' } },
     { receipt: { version: '1e3' } },
     { receipt: { leaseUntilMs: NaN } },
+    { receipt: { version: '6' } },
   ])(
     'refuses unusable capability or initial receipt %# before dispatcher effects',
     async (options) => {
@@ -268,24 +347,30 @@ describe('production private CMS lease-control forwarding', () => {
 
   it.each(['manual review', 'throw'])(
     'healthy %s preserves existing policy after closing the control',
-    async (mode) => {
-      const f = fixture();
-      let retained: Control | undefined;
-      const prepareSchemaDryRun = vi.fn<Effect>(async (_input, control) => {
-        retained = need(control);
-        if (mode === 'throw') throw new Error('Controlled effect failure');
-        return outcome('pending_manual_review');
-      });
-      f.execute.mockImplementation(prepareSchemaDryRun);
-      same(await f.run(), {
-        kind: 'manual_review',
-        canonicalWrite: false,
-        replayable: false,
-      });
-      same(f.calls, f.prefix);
-      same(await need(retained).checkpoint(), { kind: 'lost' });
-      same(f.calls, f.prefix);
-      f.assertEffect();
-    },
+    healthyPolicy,
   );
+
+  it('keeps original token for token-blind foreign candidate metadata and respects false final CAS', async () => {
+    const f = fixture();
+    f.execute.mockImplementation(async (_input, control) => {
+      same(await need(control).checkpoint(), current());
+      return outcome();
+    });
+    f.write.mockImplementation(async (...args) => {
+      f.calls.push(['apply', ...args]);
+      return false;
+    });
+    same(await f.run(), {
+      kind: 'completed',
+      outcome: {
+        kind: 'conflict',
+        reason: 'VERSION_MISMATCH',
+        canonicalWrite: false,
+      },
+      processed: null,
+    });
+    same(f.calls, [...f.prefix, ...renewedCalls(), ['apply', apply()]]);
+    expect(f.write.mock.calls[0]?.[0].leaseToken === TOKEN).toBe(true);
+    f.assertEffect();
+  });
 });

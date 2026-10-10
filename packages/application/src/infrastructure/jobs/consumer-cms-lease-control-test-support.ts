@@ -344,3 +344,23 @@ export const beat = (f: Fixture, reply: () => Promise<unknown>) => {
     },
   });
 };
+
+export const healthyPolicy = async (mode: string) => {
+  const f = fixture();
+  let retained: Control | undefined;
+  const prepareSchemaDryRun = vi.fn<Effect>(async (_input, control) => {
+    retained = need(control);
+    if (mode === 'throw') throw new Error('Controlled effect failure');
+    return outcome('pending_manual_review');
+  });
+  f.execute.mockImplementation(prepareSchemaDryRun);
+  same(await f.run(), {
+    kind: 'manual_review',
+    canonicalWrite: false,
+    replayable: false,
+  });
+  same(f.calls, f.prefix);
+  same(await need(retained).checkpoint(), { kind: 'lost' });
+  same(f.calls, f.prefix);
+  f.assertEffect();
+};

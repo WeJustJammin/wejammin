@@ -199,7 +199,7 @@ describe('immutable CMS origin in actual generic receiving composition', () => {
   );
 
   it('retries receiver-owned cancellation while an origin refusal is deferred without ACK or writes', async () => {
-    const NativeController = globalThis.AbortController;
+    const NativeController = AbortController;
     const owners = new Map<AbortSignal, AbortController>();
     class ObservedController extends NativeController {
       constructor() {
@@ -297,7 +297,7 @@ describe('immutable CMS origin in actual generic receiving composition', () => {
     });
     let pending: Promise<void> | undefined;
     try {
-      globalThis.AbortController = ObservedController;
+      vi.stubGlobal('AbortController', ObservedController);
       pending = entrypoint.queue(
         { queue: 'platform-jobs-staging', messages: [message] },
         env,
@@ -352,7 +352,7 @@ describe('immutable CMS origin in actual generic receiving composition', () => {
       try {
         await pending;
       } finally {
-        globalThis.AbortController = NativeController;
+        vi.unstubAllGlobals();
       }
     }
   });
