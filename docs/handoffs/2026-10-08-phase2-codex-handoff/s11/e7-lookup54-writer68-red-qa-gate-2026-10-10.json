@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "static": {
+    "format": 0,
+    "contracts": 0,
+    "progress": 0,
+    "targetLint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0
+  },
+  "baseline": "f3756ffd13d34ef09e321003676b0e92e8ae4da7",
+  "scope": "lookup54 completed functional RED; initial writer68 RED requires stronger causal QA before production",
+  "acceptance": "0/122; Slices12-17 not started",
+  "files": [
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+      "lines": 304,
+      "sha": "a76b55f199bc51bf162bc5828e0459d122c94dea8cef544331eb1b9384747872"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+      "lines": 17,
+      "sha": "494179891155e363bfb1c428ba144223ef6d9d670433b9f54b82af09950e64b6"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/000-writer-helpers.sqlinc",
+      "lines": 239,
+      "sha": "8581c3686b191140f631d0adf42598c106cd647416a5e688060394409cbeb42c"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/001-writer-requests.sqlinc",
+      "lines": 120,
+      "sha": "d6190167d5bb4197fb66d9a4635ca24fb6e1218ee5557faff839a0dd40b3899a"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "lines": 132,
+      "sha": "6324aa0cb74e319fd1a1a7b193be28c9b3b0a92ceac2599ab5a2cbebd4a4be86"
+    }
+  ],
+  "lookup": {
+    "original28TitlesExact": true,
+    "localAssertions": 50,
+    "importAssertions": 4,
+    "assertionsOutsideRollback": true,
+    "rootTypeCastRepair": {
+      "castCount": 4,
+      "inverseNativeByteExact": true,
+      "lines": 304,
+      "sha": "a76b55f199bc51bf162bc5828e0459d122c94dea8cef544331eb1b9384747872",
+      "firstAttempt": {
+        "log": ".lane-logs/parent-s11-e7-lookup54-red-api11-20261010.log",
+        "sha": "8cdd26fbfa3a4c254df1877a8c03e3b8f7bb09c8fc6e6b13c50774af649b674c",
+        "markers": [
+          "  Parse errors: Bad plan.  You planned 54 tests but ran 11.",
+          "Files=1, Tests=11,  0 wallclock secs ( 0.01 usr +  0.00 sys =  0.01 CPU)",
+          "Result: FAIL",
+          " Test Files  2 passed (2)",
+          "      Tests  11 passed (11)",
+          "   Duration  25.76s (transform 1.29s, setup 0ms, import 5.28s, tests 20.28s, environment 0ms)",
+          "lookup54 lookup=1 api=0 preReset=0 postReset=0"
+        ]
+      }
+    },
+    "focus": {
+      "path": ".lane-logs/parent-s11-e7-lookup54-typed-red-20261010.log",
+      "sha": "c1e2096c1360cf6b430f4e2f9bd19e96a6f3576e48d03eb062396551f683092b",
+      "summary": [
+        "  Failed tests:  12-14, 31-35, 49-51, 53-54",
+        "Files=1, Tests=54,  1 wallclock secs ( 0.02 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.03 CPU)",
+        "Result: FAIL",
+        "lookup54typed lookup=1 preReset=0 postReset=0"
+      ]
+    },
+    "executed": 54,
+    "failed": 13,
+    "passed": 41,
+    "failedTests": "12-14,31-35,49-51,53-54",
+    "review": "no bounded source finding"
+  },
+  "writer": {
+    "plan": 68,
+    "importAssertions": 4,
+    "familyAssertions": 40,
+    "controls": 14,
+    "atomicityAssertions": 10,
+    "focus": {
+      "path": ".lane-logs/parent-s11-e7-inline-writer68-first-red-20261010.log",
+      "sha": "35f23b3adeac316163b3aa5cb4da2f69c8c21c042225a16d2389f4d6088cb987",
+      "summary": [
+        "  Failed tests:  8, 16, 24, 32, 40, 64-66",
+        "Files=1, Tests=68,  1 wallclock secs ( 0.02 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.03 CPU)",
+        "Result: FAIL",
+        "writer68 writer=1 preReset=0 postReset=0"
+      ]
+    },
+    "executed": 68,
+    "failed": 8,
+    "passed": 60,
+    "failedTests": "8,16,24,32,40,64-66",
+    "reviews": [
+      "s11_sql2_refutation_exact: no bounded finding",
+      "s11_recovery_reference_source: three explicit causal proof gaps"
+    ],
+    "requiredAmendment": [
+      "capture absence before healthy B01 and exact one snapshot immediately afterward, before manifest/B05 can warm it",
+      "trigger Boolean explicitly proves NEW hash equals existing stored snapshot hash",
+      "trigger completed201 compares complete exact stored response_ref/safeHeaders/response against independent actual canonical projection"
+    ],
+    "limits": [
+      "real DB submit and supplied bound checker evidence, not checker E2E",
+      "guarded policy fixture, not schema activation proof",
+      "SQLSTATE fault proof, not HTTP status mapping",
+      "canonical-owner-field mutation and global lock order remain unproved"
+    ]
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-e7-lookup54-writer68-qa-full-gate-20261010.log",
+    "sha": "20a0aba14c7a754f3d60707d216dd95b6ab6ee352f7b3d760faf59646b35fe2d",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "sqlFiles": 335,
+    "sqlAssertions": 12886,
+    "seconds": 183,
+    "failedFiles": 2,
+    "failedAssertions": 21,
+    "failedTestsByFile": {
+      "lookup": "12-14,31-35,49-51,53-54",
+      "writer": "8,16,24,32,40,64-66"
+    },
+    "dbVerify": 1,
+    "api": "UNRUN",
+    "races": "UNRUN",
+    "dbTypes": "UNRUN",
+    "validate": "UNRUN",
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "producer": "UNRUN; waits for strengthened causal writer QA, exact checkpoint and actual RED",
+  "nextFixtureBriefs": [
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-assignment-refusals-fixture-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-preview-person-fixture-2026-10-10.md",
+    "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-submit-contracts-fixture-2026-10-10.md"
+  ],
+  "changedTitles": [
+    {
+      "file": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+      "old": "all original L01-L28 retained verbatim",
+      "added": "L29-L50 controls: matching ordinal1 with later noncurrent2; current ordinal2; real foreign matching hash"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+      "new": "all68 assertions new; genuine five writer families, completed legacy replay, metadata, submitted review and injected fault"
+    }
+  ]
+}

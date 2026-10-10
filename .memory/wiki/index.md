@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-e7-lookup54-writer68-red-causal-qa-gate|Slice 11 E7 lookup54 writer68 RED causal QA gate]] — knowledge — 2026-10-10T14:28:26.604Z
 - [[knowledge/2026-10-10-slice-11-typed-digest11-green-lookup32-initial-red-qa-amendment|Slice 11 typed digest11 GREEN lookup32 initial RED QA amendment]] — knowledge — 2026-10-10T14:00:20.965Z
 - [[knowledge/2026-10-10-slice-11-first-gate-fixtures-focus35-full-api15-red|Slice 11 first gate fixtures focus35 full API15 RED]] — knowledge — 2026-10-10T13:36:57.231Z
 - [[knowledge/2026-10-10-slice-11-queued-origin-fixture-green-full-api-gate-red|Slice 11 queued origin fixture GREEN full API gate RED]] — knowledge — 2026-10-10T12:29:52.595Z

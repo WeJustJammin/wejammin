@@ -54,6 +54,11 @@ this guarded active fixture is not genuine schema-activation proof.
 Do not reuse forged repeat(ab/cd) policy binding in S10 fixture/EB requests.
 Do not rename/replace cms_editorial_workflow_policy_evidence or weaken a guard.
 Use existing real policy-member fixture pattern and applicable checker bindings.
+Minimal alternative: real CMS03A01 creation of a schema without no_fallback legal
+field is permitted, followed by the same guarded real-policy active fixture binding.
+Do not import review000 new actors/grants/forged owner receipt; actual submit uses
+existing assigned author/editor authority. Source-read supported fields/locales.
+The minimal guarded schema is not actual schema activation or checker E2E proof.
 Reuse latest active C04 request/locale configuration conventions; do not activate
 settings or invent unsupported locales/accounts/grants.
 
