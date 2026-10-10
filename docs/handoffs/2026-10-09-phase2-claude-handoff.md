@@ -1,5 +1,37 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: queued-continuation contract / native QA gate
+
+This supersedes older UNRUN snapshots. Clean twelve-origin-mutant proof
+7af16cffad8ffc2a6e0430f445b13060f5af39c6 pushed; all23 source restored,
+12 mutants caught/12 actual controls, reviews complete with stated limits.
+New contract: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/
+lane-s11-native-queued-continuation-tdd-2026-10-10.md. Frozen32 JSON beside it.
+Selected repair from locked BE00: after applying queued outcome return actual
+completed/outcome/processed:null without recording the original event. Existing
+queueOutcome maps null to retry. Terminal apply→record→ACK unchanged.
+
+Native test-only writes after clean pushed contract checkpoint: A sole new
+packages/application/src/infrastructure/jobs/consumer-queued-continuation.test.ts;
+B sole new apps/worker/src/async-entrypoint-queued-continuation.test.ts.
+Actual application consumer + actual Worker runtime/queue handler, controlled
+typed ports; queued applied witness and CAS-conflict/terminal controls. No
+mocked consumer/orchestrator-return, raw token/request diffs, commands/DB/Git/
+network/secrets/formatters/nested agents or unrelated edits. All32 producers/
+old QA frozen. Authors/tests/producer UNRUN; freeze/release before root actual
+RED, independent review and clean QA checkpoint. Only later producer target
+consumer.ts; no policy/schema/RPC/role/grant/new code mapping expansion.
+Independent bounded contract review no finding after deferred barrier/import
+amendments; B actual two canonical/two restore-fence reads must remain exact.
+
+This fixes one sequencing boundary, NOT complete redelivery: original envelope
+vs canonical-current stale gate remains; CMS composition, Job heartbeat/current
+receipt/advisory fence/result mapping and real nonzero/public lifecycle pending.
+S11 remains0/122, full validation pending; then remaining action3/DEC163/action4,
+Slices12–17 and validate-phase. Main6.1/ultra + native6-astra/high unchanged.
+Usage53% ordinary available; earned-only Codex resets automatic when needed,
+no purchases; balance unexposed. Preserve checkout/branch/services/recoverability.
+
 ## Latest snapshot: twelve origin mutants caught / receiving-contract gate
 
 This supersedes historical UNRUN snapshots below. Clean verifier checkpoint
