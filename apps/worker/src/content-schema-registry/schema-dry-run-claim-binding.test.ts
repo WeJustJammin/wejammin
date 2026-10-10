@@ -18,7 +18,6 @@ import {
   levelRecord,
   replaceLevel,
   responseFixture,
-  snapshot,
 } from './schema-dry-run-claim-response-test-support';
 
 const boundRequest = (
@@ -32,13 +31,41 @@ const boundRequest = (
   requestedEvent: { ...value.requestedEvent },
 });
 
-const capture = (value: unknown): unknown => ({
-  descriptors: snapshot(value),
-  extensible:
-    typeof value === 'object' && value !== null
-      ? Object.isExtensible(value)
-      : null,
-});
+const capture = (value: unknown): (() => void) => {
+  const seen = new Set<object>();
+  const checks: (() => void)[] = [];
+  const visit = (node: unknown): void => {
+    if (typeof node !== 'object' || node === null || seen.has(node)) return;
+    seen.add(node);
+    const prototype: unknown = Object.getPrototypeOf(node);
+    const status = [Object.isFrozen(node), Object.isExtensible(node)];
+    const descriptors = Reflect.ownKeys(node).map((key) => {
+      const descriptor = Object.getOwnPropertyDescriptor(node, key);
+      if (descriptor === undefined) throw new Error('Missing descriptor');
+      return [key, { ...descriptor }] as const;
+    });
+    checks.push(() => {
+      expect(Object.getPrototypeOf(node)).toBe(prototype);
+      expect([Object.isFrozen(node), Object.isExtensible(node)]).toStrictEqual(
+        status,
+      );
+      expect(Reflect.ownKeys(node)).toStrictEqual(
+        descriptors.map(([key]) => key),
+      );
+      for (const [key, descriptor] of descriptors) {
+        const current = Object.getOwnPropertyDescriptor(node, key);
+        expect(current).toStrictEqual(descriptor);
+        expect(current?.value).toBe(descriptor.value);
+      }
+    });
+    visit(prototype);
+    for (const [, descriptor] of descriptors) visit(descriptor.value);
+  };
+  visit(value);
+  return () => {
+    for (const check of checks) check();
+  };
+};
 
 const rejected = (
   request: CmsSchemaDryRunClaimRequest,
@@ -54,7 +81,7 @@ const rejected = (
     responseValid,
   );
   expect(decodeCmsSchemaDryRunClaimResponse(request, value)).toBeNull();
-  expect([capture(request), capture(value)]).toStrictEqual(before);
+  for (const check of before) check();
 };
 
 const accepted = (
@@ -80,7 +107,7 @@ const accepted = (
     expect(Reflect.ownKeys(output)).toHaveLength(keys.length);
     expect(Object.keys(output).sort()).toStrictEqual([...keys].sort());
   }
-  expect([capture(request), capture(value)]).toStrictEqual(before);
+  for (const check of before) check();
 };
 
 const changedEvent = (key: string, value: unknown) => {
@@ -108,6 +135,24 @@ describe('controlled claimed dry-run response caller binding', () => {
       value.plan.version,
       request.requestedEvent.aggregateVersion,
     ]).toStrictEqual(['9223372036854775807', '9007199254740999', '7']);
+    accepted(request, value);
+  });
+
+  it('preserves distinct valid full19 acquired plan and original versions', () => {
+    const value = responseFixture({
+      job: { version: '9223372036854775807' },
+      plan: { version: '9223372036854775805' },
+      requestedEvent: { aggregateVersion: '9223372036854775799' },
+    });
+    accepted(boundRequest(value), value);
+  });
+
+  it('accepts a privately valid UUIDv7 lease token without mutating either input', () => {
+    const value = responseFixture();
+    const request = boundRequest(value);
+    Object.defineProperty(request.claimedJob, 'leaseToken', {
+      value: '01926e18-7f00-7abc-8def-123456789abc',
+    });
     accepted(request, value);
   });
 

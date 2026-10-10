@@ -48,21 +48,43 @@ const replace = (target: object, key: string, value: unknown): void => {
     configurable: true,
   });
 };
+// Fresh descriptor records preserve inherited scalar values independently.
+const metadata = (value: unknown) => {
+  const object = typeof value === 'object' && value !== null ? value : null;
+  const prototype: unknown =
+    object === null ? null : Object.getPrototypeOf(object);
+  return {
+    value,
+    prototype,
+    descriptors:
+      object === null ? null : Object.getOwnPropertyDescriptors(object),
+    inheritedDescriptors:
+      typeof prototype === 'object' && prototype !== null
+        ? Object.getOwnPropertyDescriptors(prototype)
+        : null,
+    frozen: object === null ? null : Object.isFrozen(object),
+    extensible: object === null ? null : Object.isExtensible(object),
+    prototypeFrozen: Object.isFrozen(prototype),
+    prototypeExtensible: Object.isExtensible(prototype),
+  };
+};
 const snapshot = (input: JobEffectInput) =>
-  [input, input.job, input.envelope, input.claimedLease].map((value) => {
-    if (typeof value !== 'object' || value === null) return value;
-    const prototype: unknown = Object.getPrototypeOf(value);
-    return {
-      descriptors: Object.getOwnPropertyDescriptors(value),
-      prototype,
-      frozen: Object.isFrozen(value),
-      extensible: Object.isExtensible(value),
-    };
+  [input, input.job, input.envelope, input.claimedLease].map(metadata);
+const unchanged = (
+  input: JobEffectInput,
+  before: ReturnType<typeof snapshot>,
+) => {
+  const after = snapshot(input);
+  expect(after).toStrictEqual(before);
+  after.forEach((entry, index) => {
+    expect(entry.value).toBe(before[index]?.value);
+    expect(entry.prototype).toBe(before[index]?.prototype);
   });
+};
 const reject = (input: JobEffectInput): void => {
   const before = snapshot(input);
   expect(buildCmsSchemaDryRunClaimRequest(input)).toBeNull();
-  expect(snapshot(input)).toStrictEqual(before);
+  unchanged(input, before);
 };
 const expected = (input: ReturnType<typeof fixture>) => ({
   claimedJob: {
@@ -88,7 +110,7 @@ const accept = (input: ReturnType<typeof fixture>): void => {
     expect(keys.every((key) => Object.hasOwn(object, key))).toBe(true);
   }
   expect(output.requestedEvent).not.toBe(input.envelope);
-  expect(snapshot(input)).toStrictEqual(before);
+  unchanged(input, before);
 };
 
 const INVALID_VERSIONS = [
@@ -120,6 +142,24 @@ describe('controlled claimed dry-run input binding', () => {
     expect(input.claimedLease.version).toBe('9223372036854775807');
     expect(input.job.version).toBe('9007199254740993');
     expect(input.envelope.aggregateVersion).toBe('7');
+    expect(input.claimedLease.version).not.toBe(
+      (BigInt(input.job.version) + 1n).toString(),
+    );
+    accept(input);
+  });
+
+  it('preserves three distinct nineteen-digit original preclaim and acquired versions', () => {
+    const input = fixture();
+    input.job.version = '9223372036854775805';
+    input.claimedLease.expectedVersion = '9223372036854775805';
+    input.claimedLease.version = '9223372036854775807';
+    replace(input.envelope, 'aggregateVersion', '9223372036854775799');
+    for (const version of [
+      input.job.version,
+      input.claimedLease.version,
+      input.envelope.aggregateVersion,
+    ])
+      expect(CmsVersionSchema.safeParse(version).success).toBe(true);
     expect(input.claimedLease.version).not.toBe(
       (BigInt(input.job.version) + 1n).toString(),
     );

@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Amended pure input/binding tests384/370 cap400, planned101/108 UNEXECUTED; prior206 retained, independent descriptor/prototype/extensibility oracles and valid19/v7 positives added. Actual CI0/flock import RED exit1/two absent-module suites/no tests/1.33s. Checkpoint before two pure productionmodules; no functional proof or acceptance closure.
+
 - [/] `QA` Claimed input/binding initial import RED: two new native tests formatted344/325; planned100/106 cases UNEXECUTED. Actual CI0/flock exit1/two missing-module suites/no tests/1.36s, production modules absent. Input review found valid19 preclaim/original and prototype nonmutation gaps; binding review pending. Checkpoint before bounded amendments. No functional/SQL proof or acceptance closure.
 
 - [/] `QA` Distinguishing mutations3 caught: M6R1/75/76/42.61s, E1 rawUUID1/5/6/5.38s, E2 wire numeric1.0 lexical1/5/6/5.04s. Exact3-source SHA restore each/all six reset exits0, baseline reload before unlock. Final API76/76/41.65s, unit1116/22.23s, pgTAP121/9s, static/types/catalog0; lint39/100 exact inherited0new NOT clean. Current-attempt compound group mask resolved, not each predicate. Next isolated pure claimed-input/binding TDD behind clean pushed checkpoint; no acceptance closure.

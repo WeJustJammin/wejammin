@@ -1,5 +1,15 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Amended pure claimed input/binding import RED
+
+After clean pushed2d775000, native test-only amendments froze/released claims.
+Parent changed-source review/formatter384/370 cap400; planned101/108 UNEXECUTED,
+prior206 retained. Valid19 preclaim/plan/original and UUIDv7 positives plus exact
+prototype/inherited-scalar/nested-extensibility oracles added. Actual CI0/flock
+corrected import RED exit1/two absent-module suites/no tests/1.33s. Save clean
+pushed checkpoint before two pure productionmodules. Functional GREEN/mutations/
+whole claimed worker integration still unproven; no acceptance closure0/122.
+
 ## Claimed input/binding initial import RED
 
 New native tests after clean pushed24a5a85a: formatted344/325 lines, planned

@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-claimed-input-binding-amended-import-red-pure-module-gate|Slice 11 claimed input binding amended import RED pure module gate]] — knowledge — 2026-10-10T03:46:05.962Z
 - [[knowledge/2026-10-10-slice-11-claimed-input-binding-initial-import-red-qa-gaps|Slice 11 claimed input binding initial import RED QA gaps]] — knowledge — 2026-10-10T03:41:09.983Z
 - [[knowledge/2026-10-10-slice-11-edge-samehash-mutations3-caught-private-binding-tdd-scope|Slice 11 edge samehash mutations3 caught private binding TDD scope]] — knowledge — 2026-10-10T03:28:12.378Z
 - [[knowledge/2026-10-10-slice-11-edge-samehash-api76-green-mutation3-gate|Slice 11 edge samehash API76 green mutation3 gate]] — knowledge — 2026-10-10T03:09:16.751Z

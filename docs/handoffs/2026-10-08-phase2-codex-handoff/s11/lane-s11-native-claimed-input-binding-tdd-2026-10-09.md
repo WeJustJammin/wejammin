@@ -1,5 +1,13 @@
 # Slice 11 — private claimed input/binding TDD, initial import RED
 
+Amended tests after clean pushed2d775000: input384/binding370 formatted lines,
+planned101/108 cases. Both local nonmutation oracles strengthened; distinct
+valid19 and UUIDv7 compatibility controls added without dropping prior cases.
+Actual corrected CI0/flock import RED: exit1/two absent-module suites/no tests/
+1.33s. See [amended RED proof](proof-s11-claimed-input-binding-amended-red-2026-10-10.md)
+and [next pure GREEN/mutation plan](plan-s11-claimed-input-binding-pure-green-mutations-2026-10-10.md).
+Production modules remain absent; new clean pushed checkpoint before dispatch.
+
 Dispatched after exact clean pushed24a5a85a. Authors froze only the two new tests.
 Parent formatted344/325 lines; actual CI0/flock focused run exited1 with two
 missing-module suites/no tests executed. This is import RED, not functional proof.
