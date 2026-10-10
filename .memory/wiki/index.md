@@ -1575,6 +1575,8 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-schema418-red-causes-and-uuidv7-amendment-gate|Slice 11 schema418 RED causes and UUIDv7 amendment gate]] — knowledge — 2026-10-10T00:09:04.180Z
+- [[knowledge/2026-10-10-slice-11-private-claim-schema418-red-input-freezing|Slice 11 private claim schema418 RED input freezing]] — knowledge — 2026-10-10T00:05:47.255Z
 - [[knowledge/2026-10-09-slice-11-private-claim-contracts-frozen-and-disjoint-schema-qa-scope|Slice 11 private claim contracts frozen and disjoint schema QA scope]] — knowledge — 2026-10-09T23:54:30.574Z
 - [[knowledge/2026-10-09-slice-11-claim-regression491-green-and-private-resolver-contract-scope|Slice 11 claim regression491 GREEN and private resolver contract scope]] — knowledge — 2026-10-09T23:45:14.464Z
 - [[knowledge/2026-10-09-slice-11-claim-source-green-and-mutation-proof-with-legacy-fixture-gate|Slice 11 claim source GREEN and mutation proof with legacy fixture gate]] — knowledge — 2026-10-09T23:39:47.437Z

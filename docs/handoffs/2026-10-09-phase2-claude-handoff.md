@@ -1,5 +1,37 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Private claim schema QA418 RED; invalid-input freezing GREEN scope
+
+Actual418:84failed334passed (request175:27/148; response243:57/186). Invalid
+shapes are rejected, but raw input descriptors mutate writable/configurable to
+frozen. All tests/support frozen301/122/375/259 after parent format/ESLint0;
+all15 relation witnesses assert one exact issue, plan-compatible positives kept.
+Separate format/ESLint/type/contracts/progress0 plus related32suites491/491,
+freshCI0/flock; no full validation or genuineAPI rerun.
+Root read installed Zod4.4.3 readonly unconditionally freezes failed inner pipe
+payload; successful pipe transforms are skipped on issues. Existing plan parser
+allocates output and remains frozen. No weaker input snapshot assertion.
+
+Derived84failures:66descriptor assertions/16TypeErrors raw malformed nested
+shape/2SyntaxErrors fractional or scientific original-event version. Typed
+relations must not run after shape failure; existingCmsVersion admission before
+existingQueue parser avoids unsafeBigIntconversion without shared edits.
+Independent6.1 no falseoracle; P3 missing UUID-v7 claimtoken compatibility.
+
+FIRST sole additive request positive scope lane-s11-native-claim-request-uuid-v7-
+qa-2026-10-09.md. All prior418 retained; root actual amended419 on unchanged
+source before GREEN checkpoint. Then sole three-source GREEN scope
+lane-s11-native-claim-parser-input-immutability-green-2026-10-09.md: success-only
+allocated-output freezing, aborting shape failures and existingCmsVersion event
+admission; preserve inferred readonly/allvalidators/15relations/keysets.
+QA claims released except sole request amendment; root checkpoint/push/exact-
+origin before native author. Parent419 GREEN+related491+static/review,
+then independent owncount/hasOwn/event/aggregate/15 equality mutants with exact
+source restoration before any further author wave. No RPC resolver/context/
+provenance/live authority/receiving/SQL/acceptance closure;0of122/genuine7RED/full/
+owner/external holds unchanged. Earlier contract-only no-defect review was static
+and is superseded by this actual behavioral defect.
+
 ## Private resolver contracts frozen; disjoint schema QA next
 
 Native new request/response/helper frozen47/135/77 after parentformat. Existing

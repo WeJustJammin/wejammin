@@ -62,9 +62,14 @@ Owner approved both recommended policies on2026-10-09 ("approve all"): DEC-162 n
 - [/] `BE` Private claim contract source frozen47/135/77, exact8event/23plan reuse, own complete keys/15relations. Format/ESLint/type/contracts/progress0 and related491/491; independent6.1 no bounded defect, claim released. Schema behavior/context/provenance/liveauthority not proven. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-dry-run-contract-2026-10-09.md).
   - files: none; existingRPC newbranch not implemented.
 
-- [/] `QA` Disjoint private request/response schema tests/support only claimed; each15edge isolated, own inherited/symbol/hiddenextras and inheritedplan compatibility. Checkpoint/push/exact-origin before nativeauthors; root tests/mutation+restoration/review before producers. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-dry-run-contract-qa-2026-10-09.md).
-  - lane A files: apps/worker/src/content-schema-registry/schema-dry-run-claim-request.test.ts, schema-dry-run-claim-request-test-support.ts
-  - lane B files: apps/worker/src/content-schema-registry/schema-dry-run-claim-response.test.ts, schema-dry-run-claim-response-test-support.ts
+- [/] `QA` Disjoint schema QA418 frozen301/122/375/259; actual84failed334passed (A27/148,B57/186). Invalid shape rejection freezes original input descriptors; parentformat/ESLint0, all15 isolated edge/input snapshots retained. Claims released; no SQL authority proof. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claimed-dry-run-contract-qa-2026-10-09.md).
+  - files: none; all418 assertions/support frozen. Separate format/ESLint/type/contracts/progress0 and related32suites491/491, freshCI0/flock; no full validation.
+
+- [/] `QA` Independent6.1 no falseoracle; P3 validUUID-v7claimtoken positive missing. Sole additive request test claimed, all prior418 frozen. Checkpoint/push/exact-origin before author; root amended419 unchangedsourceRED before GREEN checkpoint. [!] [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claim-request-uuid-v7-qa-2026-10-09.md).
+  - files: apps/worker/src/content-schema-registry/schema-dry-run-claim-request.test.ts
+
+- [/] `BE` Narrow private claim GREEN scope planned, NOT dispatched: success-only allocated-output freezing, aborting ownshape rejection, existingCmsVersion admission before existingQueue parser. Derived84RED=66descriptor/16TypeError/2SyntaxError; all validators/keysets/15relations/readonly policies retained. Amended419QA/checkpoint before sourceauthor; rootGREEN+491/static/review then isolatedmutants+exactrestore. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-claim-parser-input-immutability-green-2026-10-09.md).
+  - files: none; source remains frozen.
 
 - [/] `QA` Completion-state/every-empty-operand guard8 frozen250; parent8:1failed/7passed, format/ESLint0. Standalone sourceCount row added; every prior source byte unchanged. Existing41/support/producers frozen; QA claim released. [Scope](../../../../docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-pre-review-guards-red-2026-10-09.md).
   - files: none; guarded completion and all eight empty-discriminator operands have independent controlled witnesses. No SQL eligibility or acceptance proof.
