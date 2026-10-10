@@ -1,5 +1,16 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Distinguishing edge6/same-hash1 actual API76 GREEN
+
+Native files frozen/released; parent/independent source reviews no bounded gap.
+Formatted191/267 lines, old69/helpers/contracts/SQL unchanged; three SHA match.
+Main54322 freshCI0/flock pre0/API0/post0 closed0; five suites76/76,42.36s;
+static contracts/progress/ESLint/types/diff0. Genuine wire1.0/same-hash repeat
+executed with both digest brackets. Root-only distinguishing mutations3 UNRUN;
+checkpoint/push clean first. Historical M6 masked survival not yet closed.
+Lifecycle/nonzero/completed/receiving/stage/DEC163/full/later/owner/external
+remain open; Slice11 remains0/122.
+
 ## Seven SQL mutants closed; six caught/one masked, native QA scope next
 
 Actual failures3/4/2/1/6/0/1 of unchanged69 per run. Every3-source SHA restore

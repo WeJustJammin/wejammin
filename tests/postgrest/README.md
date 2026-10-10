@@ -56,6 +56,14 @@ publication lineage/preflight (08/09/19), and workflow/detail/queue/assignment
 suites use the same `phase-02-slice-11-*.apispec.ts` prefix. Shared assertions hash
 the complete fourteen durable-effect groups without exposing raw resources.
 
+Claim-resolver QA is separate from lifecycle acceptance: the edge-grammar suite
+checks raw UUID relations, max-token identity, string versus raw numeric `1.0`
+schema versions, and legacy version limits. Its test-local raw request reuses the
+stack URL/token/header contract so JSON serialization cannot erase the numeric
+lexeme. The same-hash suite repeats the public dry run without editing the graph,
+then checks old-claim refusal and new-claim acceptance against full stored
+projections. Both retain the fourteen/thirteen-table read-digest observers.
+
 Preparation/static checks are not runtime or acceptance receipts. Do not execute
 the inherited stale-review fixtures that disable immutable guards in
 `support/phase-02-slice-11-read-fixtures.ts` or the original publish suite until

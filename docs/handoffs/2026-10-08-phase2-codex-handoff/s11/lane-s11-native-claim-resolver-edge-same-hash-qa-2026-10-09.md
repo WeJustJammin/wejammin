@@ -1,4 +1,9 @@
-# Slice 11 — distinguishing edge and same-hash QA, UNDISPATCHED
+# Slice 11 — distinguishing edge and same-hash QA, dispatched and frozen
+
+Executed after clean pushed da47efaa. Both claims released; actual parent
+five-suite76/76 baseline42.36s/pre0/post0/static0. Separate proof and mutation3
+plan record results/next gate. Original constraints below preserve author scope;
+no lifecycle or acceptance promotion.
 
 Do not dispatch until current seven SQL mutants fully restored, final actual
 API69/unit1116/static/catalog/lint receipts closed, canonical record compiled,

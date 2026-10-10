@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-edge-samehash-api76-green-mutation3-gate|Slice 11 edge samehash API76 green mutation3 gate]] — knowledge — 2026-10-10T03:09:16.751Z
 - [[knowledge/2026-10-10-slice-11-sql-mutations-six-caught-one-masked-edge-qa-scope|Slice 11 SQL mutations six caught one masked edge QA scope]] — knowledge — 2026-10-10T02:51:47.475Z
 - [[knowledge/2026-10-10-slice-11-statement-clock-api69-green-mutation-gate|Slice 11 statement clock API69 GREEN mutation gate]] — knowledge — 2026-10-10T02:17:50.808Z
 - [[knowledge/2026-10-10-slice-11-claimed-sql-api69-green-one-clock-lint-gate|Slice 11 claimed SQL API69 GREEN one clock lint gate]] — knowledge — 2026-10-10T02:02:37.236Z
