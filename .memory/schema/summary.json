@@ -1,9 +1,9 @@
 {
-  "compiledAt": "2026-10-10T16:09:39.715Z",
+  "compiledAt": "2026-10-10T17:47:59.261Z",
   "rawFiles": 19,
-  "knowledgeEntries": 1838,
-  "chunkEntries": 82452,
-  "semanticEntries": 82452,
+  "knowledgeEntries": 1839,
+  "chunkEntries": 82460,
+  "semanticEntries": 82460,
   "specGraphNodes": 1657,
   "specGraphEdges": 10175,
   "specGraphLintIssues": 64,

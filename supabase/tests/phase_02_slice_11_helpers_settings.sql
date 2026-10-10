@@ -170,15 +170,20 @@ select is(
   2, 'the reuse inserts no row [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
--- Lookup does not retain the ordinary writer's owner advisory lock.
+-- A healthy direct lookup retains no ordinary-writer owner transaction lock.
+-- Observe this transaction's successful lookup sequence without caught rollback;
+-- this does not establish absence of transient session locks or other namespaces.
 -- ---------------------------------------------------------------------------
-select pg_temp.h11_outcome('select platform_private.cms_settings_snapshot(''a9200000-0000-4000-8000-0000000000e4''::uuid)');
-select is(
-  (select count(*)::integer from pg_catalog.pg_locks l
+create temp table h11s_healthy_lookup on commit drop as
+select platform_private.cms_settings_snapshot(pg_temp.h11s_org()) as snapshot;
+select ok(
+  (select snapshot = '{"version":"1","hash":"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}'::jsonb
+     from h11s_healthy_lookup)
+  and (select count(*)::integer from pg_catalog.pg_locks l
     where l.locktype = 'advisory' and l.pid = pg_catalog.pg_backend_pid() and l.granted
-      and l.classid = (((pg_catalog.hashtextextended('cms.settings_snapshot:' || 'a9200000-0000-4000-8000-0000000000e4', 0)) >> 32) & 4294967295)::oid
-      and l.objid = ((pg_catalog.hashtextextended('cms.settings_snapshot:' || 'a9200000-0000-4000-8000-0000000000e4', 0)) & 4294967295)::oid),
-  0, 'lookup leaves no owner settings-snapshot advisory transaction lock held after the call [P2-S11-AC-092]');
+      and l.classid = (((pg_catalog.hashtextextended('cms.settings_snapshot:' || pg_temp.h11s_org()::text, 0)) >> 32) & 4294967295)::oid
+      and l.objid = ((pg_catalog.hashtextextended('cms.settings_snapshot:' || pg_temp.h11s_org()::text, 0)) & 4294967295)::oid) = 0,
+  'successful exact stored lookup retains no owner settings-snapshot transaction advisory lock [P2-S11-AC-092]');
 
 -- ---------------------------------------------------------------------------
 -- Registered keys are resolved through the Slice 07 resolver (consumer cms.publication).

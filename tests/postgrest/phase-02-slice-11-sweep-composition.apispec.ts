@@ -39,6 +39,10 @@ import {
 } from './support/phase-02-slice-11-world';
 import { psql } from './support/stack';
 import { appendEntryBody } from './support/cms-editorial-world';
+import {
+  captureScheduleRecoveryProof,
+  assertScheduleRecoveryProof,
+} from './support/phase-02-slice-11-schedule-recovery-proof';
 
 type Subject = Readonly<{
   draft: ReviewedDraft;
@@ -95,7 +99,7 @@ beforeAll(async () => {
 }, 120_000);
 
 describe('CMS-03B-20 real lineage and replay', () => {
-  it('[CMS-03B-20] actual ordered claim load execute operands bind all actions and late canonical lineage effects', async () => {
+  it('[CMS-03B-20] actual ordered claim load execute operands bind all actions and late canonical lineage effects plus independently proved global expired-lease recovery', async () => {
     await sleepUntil(
       subjects
         .map((item) => item.resolvedUtc)
@@ -103,7 +107,9 @@ describe('CMS-03B-20 real lineage and replay', () => {
         .at(-1) as string,
     );
     const before = snapshotDigest();
+    const recoveryBefore = captureScheduleRecoveryProof();
     trace = await tick();
+    const recoveredCount = assertScheduleRecoveryProof(recoveryBefore);
     expectOperandChain(trace);
     const claims = claimsOf(trace);
     expectSafeEqual(
@@ -188,7 +194,7 @@ describe('CMS-03B-20 real lineage and replay', () => {
       'platform_private.cms_publication_versions': 4,
       'platform_private.cms_command_accessibility_evidence': 4,
       'platform_private.outbox_events': 4,
-      'audit_private.audit_events': 4,
+      'audit_private.audit_events': 4 + recoveredCount,
     });
   }, 150_000);
 

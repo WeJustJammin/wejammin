@@ -1,8 +1,11 @@
 # S11 exact schedule nanoseconds: bounded implementation contract
 
-Status: derived implementation choice; new QA and producers UNRUN. No author
-claim released. Current seven-path legacy full gate and its receipt/clean pushed
-checkpoint precede any author. No acceptance criterion closed by this document.
+Status: derived implementation choice; private precision producers UNRUN.
+New installed-expression QA95 has24 precision failures,71 passes and no invalid
+extraction. Genuine six-digit persistence accepts202 but has no private remainder
+columns; nine-digit API admission remains422. Current QA/lease wave must have its
+receipt, canonical save and clean pushed checkpoint before any precision author.
+No acceptance criterion closed by this document.
 Root6.1/ultra commands/DB/Git/format/canonical; native6astra/high source authors.
 No new accounts, grants, helpers, public clock/precision members or hosted proof.
 
@@ -78,6 +81,20 @@ Use exact arithmetic for non-ties; a bounded
 tie branch may delegate ONLY an exactly representable half-integer to the
 unchanged existing backend overload. It must never convert a near-tie1ns value
 to float and erase its distinction. Unit proof covers both ties and neighbors.
+
+Chosen complete scalar deviation RHS uses NUMERIC integral quotient/remainder,
+not ordinary division or a float conversion: explanatory d is complete
+actual-minus-scheduled nanoseconds, q=div(d,1000000000), r=mod(abs(d),1000000000).
+Return q+sign(d) iff r>500000000 or r=500000000 with abs(q) odd; otherwise q.
+Inline every complete d occurrence in the actual assignment, without a new local
+dependency or SELECT subquery. Cast only final seconds to BIGINT. Installation
+must fail closed unless the six actual double ties still match the captured
+baseline. This is an implementation choice, not a hosted rounding-policy claim.
+[PostgreSQL17 math documentation](https://www.postgresql.org/docs/17/functions-math.html)
+confirms NUMERIC div truncates toward zero and mod retains the exact remainder.
+New scalar QA also covers near-half deltas larger than30000000seconds and valid
+four-digit epochs outside BIGINT nanosecond range. Actual QA95 detects both far
+offset errors and two of four large near-half deviation errors in the old source.
 
 Workflow reconstructs exact stored resolved UTC from floored six digits plus
 three-digit remainder using inline reviewed built-ins in the existing function.

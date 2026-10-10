@@ -817,12 +817,15 @@ as $body$
       || (select count(*) from platform_private.cms_editorial_reviews)::text || '/'
       || (select count(*) from platform_private.cms_publication_schedules)::text || '/'
       || (select count(*) from platform_private.idempotency_records)::text
+      || '/' || (select coalesce(jsonb_agg(to_jsonb(snapshot)
+          order by snapshot.owner_id, snapshot.ordinal, snapshot.id), '[]'::jsonb)::text
+        from platform_private.cms_publication_settings_snapshots snapshot)
 $body$;
 create temp table h11p_before on commit drop as select pg_temp.h11p_fingerprint() as fp;
 select pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok'));
 select pg_temp.h11p_eval(pg_temp.h11p_request('schedule', 'rv-appr', 'reviewer04', '{}', null, null, 'rv-review'));
 select is(pg_temp.h11p_fingerprint(), (select fp from h11p_before),
-  'an evaluation writes no outbox, audit, review, schedule or idempotency row (the settings snapshot excepted) [P2-S11-AC-097]');
+  'an evaluation writes no outbox, audit, review, schedule or idempotency row and preserves entire settings snapshot row images [P2-S11-AC-097]');
 select is(
   (select count(*)::integer from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'platform_private'

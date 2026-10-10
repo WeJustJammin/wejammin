@@ -24,7 +24,13 @@ import {
   EFFECT_TABLES,
   expectUnchanged,
 } from './phase-02-slice-11-assert';
-import { API_URL, callRpc, psql, workerServiceCredential } from './stack';
+import { supabaseRpcHeaders } from '../../../apps/worker/src/supabase-rpc-headers';
+import {
+  API_URL,
+  psql,
+  workerServiceCredential,
+  type RpcOutcome,
+} from './stack';
 
 const EXECUTE = 'cms_execute_publication_schedule';
 
@@ -44,24 +50,44 @@ export const sleepUntil = async (iso: string): Promise<void> => {
 
 /** Replay the exact captured internal command against PostgREST, without regenerating any operand. */
 export const replayExecution = async (request: Record<string, unknown>) => {
+  const response = await resendExecution(request);
+  expect(response.status).toBe(200);
+  return strictValue(ScheduleExecutionResultSchema, response.body);
+};
+
+/** Fresh transport only: exact captured claim, lease, CAS and evidence operands. */
+export const resendExecution = async (
+  request: Record<string, unknown>,
+): Promise<RpcOutcome> => {
   const response = await fetch(`${API_URL}/rest/v1/rpc/${EXECUTE}`, {
     method: 'POST',
     headers: {
-      apikey: workerServiceCredential(),
-      authorization: `Bearer ${workerServiceCredential()}`,
+      ...supabaseRpcHeaders(workerServiceCredential()),
       'content-type': 'application/json',
       'content-profile': 'platform_api',
       'accept-profile': 'platform_api',
     },
     body: JSON.stringify({ p_request: request }),
   });
-  expect(response.status).toBe(200);
-  return strictValue(ScheduleExecutionResultSchema, await response.json());
+  const text = await response.text();
+  const parsed: unknown = (() => {
+    try {
+      return text === '' ? null : (JSON.parse(text) as unknown);
+    } catch {
+      return text;
+    }
+  })();
+  const record =
+    typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  return {
+    status: response.status,
+    message: typeof record.message === 'string' ? record.message : '',
+    code: typeof record.code === 'string' ? record.code : '',
+    body: parsed,
+  };
 };
-
-/** Fresh transport only: exact captured claim, lease, CAS and evidence operands. */
-export const resendExecution = (request: Record<string, unknown>) =>
-  callRpc(EXECUTE, workerServiceCredential(), { p_request: request });
 
 /** Observe real server-clock expiry without changing the row or inventing time. */
 export const waitForLeaseExpiry = async (scheduleId: string): Promise<void> => {
@@ -176,6 +202,7 @@ export const expectScheduleEffects = (
     expect(
       Number(after[table]?.split(':')[0]) -
         Number(before[table]?.split(':')[0]),
+      `effect group ${table}: before=${Number(before[table]?.split(':')[0])}, after=${Number(after[table]?.split(':')[0])}, expectedDelta=${deltas[table]}`,
     ).toBe(deltas[table]);
     expect(after[table] === before[table]).toBe(false);
   }
