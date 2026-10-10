@@ -1,4 +1,12 @@
-# Slice 11 — private claimed input/binding TDD, UNDISPATCHED
+# Slice 11 — private claimed input/binding TDD, initial import RED
+
+Dispatched after exact clean pushed24a5a85a. Authors froze only the two new tests.
+Parent formatted344/325 lines; actual CI0/flock focused run exited1 with two
+missing-module suites/no tests executed. This is import RED, not functional proof.
+Independent input review identified valid19 preclaim/original and prototype
+identity/inherited-scalar QA gaps. New clean pushed checkpoint precedes amendments.
+See [initial RED proof](proof-s11-claimed-input-binding-initial-red-2026-10-10.md).
+Original dispatch prerequisite below is historical, satisfied at24a5a85a.
 
 Do not dispatch until distinguishing mutants3 restored/reloaded, final API76/
 unit1116/static/pgTAP/catalog/lint receipts closed, canonical proof compiled,

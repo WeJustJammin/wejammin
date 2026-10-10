@@ -1,5 +1,14 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Claimed input/binding initial import RED
+
+New native tests after clean pushed24a5a85a: formatted344/325 lines, planned
+100/106 cases UNEXECUTED. Actual CI0/flock run exit1/two absent-module suites/
+no tests/1.36s; no production modules/stubs. Input review found valid19
+preclaim/original and prototype identity/inherited-scalar gaps; binding review
+pending. Save clean pushed checkpoint before native QA amendments. Setup RED
+only; previous API76/unit1116/pgTAP121 remain prior-checkpoint evidence0/122.
+
 ## Distinguishing mutations3 actual caught; restored controls GREEN
 
 Clean baseline2f4756f3. M6R1fail/75pass/76/42.61s; E1 rawUUID1/5/6/5.38s;
