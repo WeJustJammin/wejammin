@@ -1,144 +1,21 @@
-import type { JobEffectInput } from '@wejammin/application';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createClaimedSchemaMigrationPreparation } from './claimed-schema-migration-preparation';
-import { SCHEMA_MIGRATION_RPC as RPC } from './migration-worker-constants';
-import type { MigrationWorkerPort } from './migration-worker-types';
-import { CmsSchemaDryRunClaimRequestSchema } from './schema-dry-run-claim-request';
-import { CmsSchemaDryRunClaimResponseSchema } from './schema-dry-run-claim-response';
 import {
-  firstFixture,
-  IDS,
-  snapshot,
-} from './schema-dry-run-claim-response-test-support';
-
-const TOKEN = 'a0000000-0000-4000-8000-000000000001';
-const CAUSE = 'b0000000-0000-4000-8000-000000000002';
-const FOREIGN = 'c0000000-0000-4000-8000-000000000003';
-const ACQUIRED = '9223372036854775807';
-const PRECLAIM = '9223372036854775805';
-const ORIGINAL = '9223372036854775799';
-const DEADLINE = { code: 'DEPENDENCY_DEADLINE_EXCEEDED', retryable: true };
-
-// Controlled ports and contract values, not persisted report or lease proof.
-const fixture = (cause: string | null = null, version = ACQUIRED) => {
-  const base = firstFixture({ state: 'ready', progress: 1 });
-  const response = {
-    ...base,
-    job: { ...base.job, version },
-    requestedEvent: {
-      ...base.requestedEvent,
-      aggregateVersion: ORIGINAL,
-      causationId: cause,
-    },
-  };
-  const input = {
-    job: {
-      id: IDS.job,
-      type: 'cms.schema.dry_run',
-      state: 'running',
-      version: PRECLAIM,
-      leaseUntilMs: null,
-    },
-    envelope: { ...response.requestedEvent },
-    leaseToken: TOKEN,
-    claimedLease: {
-      jobId: IDS.job,
-      leaseToken: TOKEN,
-      expectedVersion: PRECLAIM,
-      version,
-      leaseUntilMs: 2_000,
-    },
-  } satisfies JobEffectInput;
-  const request = {
-    claimedJob: { jobId: IDS.job, version, leaseToken: TOKEN },
-    requestedEvent: { ...response.requestedEvent },
-  };
-  expect(CmsSchemaDryRunClaimRequestSchema.safeParse(request).success).toBe(
-    true,
-  );
-  expect(CmsSchemaDryRunClaimResponseSchema.safeParse(response).success).toBe(
-    true,
-  );
-  const call = vi.fn<MigrationWorkerPort['call']>(async () => response);
-  const telemetry = vi.fn();
-  const controller = new AbortController();
-  const options = { signal: controller.signal, attempt: 2 };
-  const worker = createClaimedSchemaMigrationPreparation({
-    port: { call },
-    workerId: 'claimed-worker',
-    now: () => 1_000,
-    leaseDurationMs: 30_000,
-    telemetry,
-  });
-  return {
-    input,
-    request,
-    response,
-    call,
-    telemetry,
-    controller,
-    options,
-    worker,
-  };
-};
-type Fixture = ReturnType<typeof fixture>;
-const readCall = (f: Fixture) => [RPC.readPlan, f.request, f.options.signal];
-const processed = (f: Fixture, result = {}) => ({
-  kind: 'processed',
-  claimRequest: f.request,
-  reportId: IDS.report,
-  result: {
-    outcome: 'completed',
-    migrationPlanId: IDS.plan,
-    schemaVersionId: IDS.target,
-    eventId: null,
-    state: 'ready',
-    cursor: '0',
-    progress: 1,
-    retryAfterMs: null,
-    reasonCode: null,
-    activationSwitched: false,
-    ...result,
-  },
-});
-const deferred = <T>() => {
-  let complete: (value: T) => void = () => {
-    throw new Error('Deferred not initialized');
-  };
-  const promise = new Promise<T>((resolve) => {
-    complete = resolve;
-  });
-  return { promise, complete };
-};
-const preserve = (f: Fixture) => {
-  const objects = () => [
-    f.input,
-    f.input.job,
-    f.input.envelope,
-    f.input.claimedLease,
-  ];
-  const before = objects().map((value) => ({
-    value,
-    prototype: Object.getPrototypeOf(value),
-    descriptors: snapshot(value),
-    frozen: Object.isFrozen(value),
-    extensible: Object.isExtensible(value),
-  }));
-  const response = snapshot(f.response);
-  return () => {
-    objects().forEach((value, index) => {
-      const previous = before[index];
-      if (previous === undefined) throw new Error('Missing object snapshot');
-      expect(value).toBe(previous.value);
-      expect(Object.getPrototypeOf(value)).toBe(previous.prototype);
-      expect(snapshot(value)).toStrictEqual(previous.descriptors);
-      expect(Object.isFrozen(value)).toBe(previous.frozen);
-      expect(Object.isExtensible(value)).toBe(previous.extensible);
-    });
-    expect(snapshot(f.response)).toStrictEqual(response);
-  };
-};
+  ACQUIRED,
+  CAUSE,
+  DEADLINE,
+  deferred,
+  fixture,
+  FOREIGN,
+  ORIGINAL,
+  PRECLAIM,
+  preserve,
+  processed,
+  readCall,
+} from './claimed-schema-migration-preparation-test-support';
+import { SCHEMA_MIGRATION_RPC as RPC } from './migration-worker-constants';
+import { CmsSchemaDryRunClaimResponseSchema } from './schema-dry-run-claim-response';
+import { IDS } from './schema-dry-run-claim-response-test-support';
 
 describe('controlled claimed preparation entry boundary', () => {
   it.each(['missing', 'job', 'token', 'expectedVersion'])(
@@ -150,11 +27,13 @@ describe('controlled claimed preparation entry boundary', () => {
       if (mode === 'token') f.input.claimedLease.leaseToken = FOREIGN;
       if (mode === 'expectedVersion')
         f.input.claimedLease.expectedVersion = '9';
+      const unchanged = preserve(f);
       expect(await f.worker.process(f.input, f.options)).toStrictEqual({
         kind: 'invalid_claim',
       });
       expect(f.call.mock.calls).toStrictEqual([]);
       expect(f.telemetry.mock.calls).toStrictEqual([]);
+      unchanged();
     },
   );
 
@@ -214,11 +93,13 @@ describe('controlled claimed preparation entry boundary', () => {
         false,
       );
       f.call.mockResolvedValue(value);
+      const unchanged = preserve(f, value);
       expect(await f.worker.process(f.input, f.options)).toStrictEqual({
         kind: 'invalid_resolution',
       });
       expect(f.call.mock.calls).toStrictEqual([readCall(f)]);
       expect(f.telemetry.mock.calls).toStrictEqual([]);
+      unchanged();
     },
   );
 
@@ -255,11 +136,13 @@ describe('controlled claimed preparation entry boundary', () => {
       true,
     );
     f.call.mockResolvedValue(value);
+    const unchanged = preserve(f, value);
     expect(await f.worker.process(f.input, f.options)).toStrictEqual({
       kind: 'invalid_resolution',
     });
     expect(f.call.mock.calls).toStrictEqual([readCall(f)]);
     expect(f.telemetry.mock.calls).toStrictEqual([]);
+    unchanged();
   });
 
   it.each([
@@ -288,24 +171,28 @@ describe('controlled claimed preparation entry boundary', () => {
     async ({ error, failure }) => {
       const f = fixture();
       f.call.mockRejectedValue(error);
+      const unchanged = preserve(f, error);
       expect(await f.worker.process(f.input, f.options)).toStrictEqual({
         kind: 'resolution_failed',
         failure,
       });
       expect(f.call.mock.calls).toStrictEqual([readCall(f)]);
       expect(f.telemetry.mock.calls).toStrictEqual([]);
+      unchanged();
     },
   );
 
   it('preserves a pre-aborted invocation as retryable deadline failure without calling the port', async () => {
     const f = fixture();
     f.controller.abort();
+    const unchanged = preserve(f);
     expect(await f.worker.process(f.input, f.options)).toStrictEqual({
       kind: 'resolution_failed',
       failure: DEADLINE,
     });
     expect(f.call.mock.calls).toStrictEqual([]);
     expect(f.telemetry.mock.calls).toStrictEqual([]);
+    unchanged();
   });
 
   it('propagates in-flight abort and leaves no controlled port listener behind', async () => {
@@ -325,6 +212,7 @@ describe('controlled claimed preparation entry boundary', () => {
           entered.complete();
         }),
     );
+    const unchanged = preserve(f, DEADLINE);
     try {
       const pending = f.worker.process(f.input, f.options);
       await entered.promise;
@@ -339,6 +227,7 @@ describe('controlled claimed preparation entry boundary', () => {
       expect(remove).toHaveBeenCalledWith('abort', listener);
       f.options.signal.dispatchEvent(new Event('abort'));
       expect(listener).toHaveBeenCalledTimes(1);
+      unchanged();
     } finally {
       f.options.signal.removeEventListener('abort', listener);
       add.mockRestore();
@@ -359,6 +248,7 @@ describe('controlled claimed preparation entry boundary', () => {
       if (rpc === RPC.readPlan) return response;
       throw { code: 'DEPENDENCY_UNAVAILABLE', retryable: true };
     });
+    const unchanged = preserve(f, response);
     expect(await f.worker.process(f.input, f.options)).toStrictEqual(
       processed(f, {
         outcome: 'retry',
@@ -390,11 +280,23 @@ describe('controlled claimed preparation entry boundary', () => {
         f.options.signal,
       ],
     ]);
+    unchanged();
   });
 
   it('independently resolves distinct receipts for the same plan behind explicit barriers', async () => {
     const first = fixture(null, '9223372036854775806');
-    const second = fixture();
+    const second = fixture(null, ACQUIRED, FOREIGN);
+    expect(first.input.claimedLease.version).not.toBe(
+      second.input.claimedLease.version,
+    );
+    expect(first.input.claimedLease.leaseToken).not.toBe(
+      second.input.claimedLease.leaseToken,
+    );
+    expect(second.request.claimedJob).toStrictEqual({
+      jobId: IDS.job,
+      version: ACQUIRED,
+      leaseToken: FOREIGN,
+    });
     const enteredFirst = deferred<void>();
     const enteredSecond = deferred<void>();
     const firstReply = deferred<unknown>();
@@ -411,6 +313,8 @@ describe('controlled claimed preparation entry boundary', () => {
     expect(
       CmsSchemaDryRunClaimResponseSchema.safeParse(second.response).success,
     ).toBe(true);
+    const firstUnchanged = preserve(first, second.response);
+    const secondUnchanged = preserve(second);
     const one = first.worker.process(first.input, first.options);
     await enteredFirst.promise;
     const two = first.worker.process(second.input, second.options);
@@ -421,11 +325,14 @@ describe('controlled claimed preparation entry boundary', () => {
     ]);
     firstReply.complete(second.response);
     expect(await one).toStrictEqual({ kind: 'invalid_resolution' });
+    firstUnchanged();
     secondReply.complete(second.response);
     expect(await two).toStrictEqual(processed(second));
     expect(first.call.mock.calls).toStrictEqual([
       readCall(first),
       readCall(second),
     ]);
+    firstUnchanged();
+    secondUnchanged();
   });
 });

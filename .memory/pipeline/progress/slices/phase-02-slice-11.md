@@ -1,5 +1,7 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+- [/] `QA` Claimed entry amended A338/helper183/B382, cases26/8 unexecuted; actual2suite missingmoduleRED/no tests250ms/exit1. All38 old expect statements retained; independent reviews no boundedgap. Legacy C254/6GREEN1.30s/test+ESLint0; all11 frozen SHA exact. Checkpoint before sole entry + mechanical shared extraction; receiving/authority/fullValidation/acceptance remain0/122.
+
 - [/] `QA` Claimed entry initial actual import RED2suites/no tests232ms/exit1; setup only. A431>400/B382<=400, planned26/8. Legacy22/341GREEN12.49s pre-extraction. Checkpoint before A sole helper/token amendment and C legacy equivalence witnesses; producers/receiving/authority/acceptance unchanged0/122.
 
 - [/] `QA` Unwired claimed-entry contract frozen behind58e30105: required signal/attempt, one bound two-key resolve, four private result kinds with actual report/request retention, plan-derived CAS and trusted dry_run; shared admission/execution extraction only. New QA and implementation UNRUN; legacy receiving/startup/ACK/continuation/HB/stage authority unchanged;0/122.

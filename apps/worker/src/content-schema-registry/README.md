@@ -120,6 +120,17 @@ the contract route policy and are never restated here.
 
 ## Conventions
 
+Claimed preparation QA is kept separate from the legacy reader:
+
+- `claimed-schema-migration-preparation.test.ts` and its test support cover the
+  unwired private claim/resolution boundary, cancellation and receipt isolation.
+- `claimed-schema-migration-preparation-stages.test.ts` asserts controlled
+  scan/seal/fresh-reclaim/backfill/verification/completion without activation.
+- `migration-worker-resolved-admission-equivalence.test.ts` preserves legacy
+  identity/terminal ordering, exact ACK/release and rejected in-flight eviction.
+
+Controlled fixtures are not persisted-report, live-claim or receiving proof.
+
 Use the existing `ContentSchemaRegistry` naming and keep security branches and
 contract changes covered by colocated tests.
 

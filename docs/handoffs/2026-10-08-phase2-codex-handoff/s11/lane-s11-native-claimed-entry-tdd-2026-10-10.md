@@ -107,6 +107,18 @@ formatter/packages or nested agents.
 
 ## Evidence limits / next gate
 
+### Producer claims after amended QA checkpoint
+
+Amended boundary338/support183, stage382 and legacy equivalence254 meet caps.
+All26 boundary cases/38 prior expect statements retained; metadata and distinct
+tokens strengthened. Independent reviews found no remaining bounded gap. Actual
+amended2suite missingmodule RED/no tests250ms; legacy6GREEN1.30s/test+ESLint0.
+Checkpoint before producers. A sole new claimed-schema-migration-preparation.ts.
+B sole migration-worker-admission.ts/execution.ts plus new
+migration-worker-event-recovery.ts/migration-worker-resolved-admission.ts. No
+other source writes; QA/helpers/pure contracts/SQL/engine/types/results/stages
+remain frozen. Every new/touched utility <=300; root alone executes and tracks.
+
 ### QA amendment and legacy equivalence claims
 
 Initial actual import RED: two absent-module suites/no tests/232ms/exit1; not
@@ -115,6 +127,11 @@ Checkpoint before next native wave. A may move only existing fixture/helpers to
 claimed-schema-migration-preparation-test-support.ts (new utility <=300), retain
 all26 cases/assertions and make concurrent tokens AND versions distinct. Sole
 A claims that support file plus its existing boundary spec; B stays frozen.
+A amendment also strengthens the unchanged-caller observer: copied ordered
+descriptor pairs, object/prototype identities and frozen/extensible flags for
+input and actual raw reply/prototypes; isolated inherited scalar; observer after
+intentional corruption and checked on refusal/failure/abort/retry/concurrent paths.
+All26 cases/assertions stay; copied descriptor-map constructor collision is banned.
 
 C sole new claim: migration-worker-resolved-admission-equivalence.test.ts, <=400.
 Add otherwise valid foreign plan-ID with matching target/version, completed

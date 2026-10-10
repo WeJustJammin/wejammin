@@ -20,6 +20,11 @@ Clean pushed contract baseline3451d3e346ce7098f4fe0ca6db226439a40ccbcf.
   Exact13-call history and controlled version10 reply are not persisted proof.
 - Root found concurrent receipts varied acquired version but shared one token;
   amended witness must distinguish both actual tokens and versions.
+- Independent A review additionally found caller-mutation checks only on two
+  positive cases, no fresh prototype descriptor/status snapshots, and no raw
+  nested response extensibility checks. Freezing invalid input or preventing
+  extensions on raw report could survive. A helper amendment must capture those
+  states independently, after deliberate corruption, on refusal/failure paths.
 - Legacy matrix review found isolated gaps for foreign plan-ID/terminal
   precedence, successful exact completed/terminal ACK, successful blocked
   release/unmark, and rejected in-flight eviction. Separate bounded QA is next.
