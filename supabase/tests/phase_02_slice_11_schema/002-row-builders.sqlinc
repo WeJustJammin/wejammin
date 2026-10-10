@@ -120,6 +120,7 @@ as $body$
     'action', 'publish', 'local_datetime', '2027-01-15T09:00:00'::timestamp,
     'timezone', 'Europe/Paris',
     'resolved_at_utc', timestamptz '2027-01-15T08:00:00Z',
+    'local_datetime_submicro_ns', 0, 'resolved_utc_submicro_ns', 0,
     'tzdb_version', '2026b', 'disambiguation', 'none', 'audience', 'public',
     'state', 'pending', 'job_id', null, 'expected_version', 2,
     'attempt_count', 0, 'next_attempt_at', null, 'lease_id', null,

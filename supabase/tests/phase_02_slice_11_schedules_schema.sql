@@ -85,7 +85,7 @@ select ok(
 
 select ok(
   pg_temp.s11_constraint_has('platform_private.cms_publication_schedules', 'cms_publication_schedules_identity_unique',
-    array['UNIQUE (entry_id, revision_id, action, local_datetime, timezone, audience)'])
+    array['UNIQUE (entry_id, revision_id, action, local_datetime, local_datetime_submicro_ns, timezone, audience)'])
     and pg_temp.s11_constraint_has('platform_private.cms_publication_schedules', 'cms_publication_schedules_entry_owner_fkey',
       array['FOREIGN KEY (entry_id, owner_id)', 'cms_content_entries(id, owner_id)'])
     and pg_temp.s11_constraint_has('platform_private.cms_publication_schedules', 'cms_publication_schedules_revision_entry_fkey',

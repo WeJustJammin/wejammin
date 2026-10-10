@@ -1,6 +1,36 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
-## Latest — 2026-10-10 native precision95 QA RED / expired-lease GREEN
+## Latest — 2026-10-10 Claude: precision producers verified on a populated database; SQL gate GREEN
+
+Claude (`claude-opus-5-5` orchestration, Sonnet 5.5 execution lanes) resumed from the 2026-10-09 Codex
+handoff in `/home/rob/.codex/worktrees/phase2-slice11/WeJammin` at pushed `618ec5c1`. The five forward
+schedule-precision migrations (`20261010150000`–`154000`) were authored but uncommitted and unverified.
+
+- Legacy witness RED: with the five files parked, a real six-digit schedule was persisted through the
+  Worker/PostgREST stack, then `supabase migration up` applied the producers WITHOUT reset. The storage
+  producer aborted `55000 catalog or legacy row preservation mismatch`: its relation snapshot included
+  planner statistics (`relpages 0→1`, `reltuples -1→1`) that rebuilding the identity index refreshes
+  whenever rows exist. Row images were unchanged. Fresh empty resets could never show this; staging and
+  production would have failed at deploy.
+- Fix: the snapshot excludes `relpages`, `reltuples` and `relallvisible`. GREEN witness: all five
+  producers applied to the populated table, identical row count and row-image hash excluding the two new
+  keys, both remainders `0`.
+- Fixture cascade for the new NOT NULL private columns: the shared `s11_schedule_row` builder and the E2
+  raw schedule image now carry both zero remainders (12 aborted SQL files). The identity assertions in
+  `phase_02_slice_11_schedules_schema.sql` and `phase_02_slice_10_remaining_schema/002-…sqlinc` now pin
+  `local_datetime_submicro_ns` in the unique key. The CMS-03B-07 refusal case asserted the old six-digit
+  limit; BE03b:266 locks nine digits, so the invalid probe is now a ten-digit fraction. Changed test
+  title: `every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: … at most nine fraction
+  digits, …` (was `six`).
+- Canonical `pnpm db:verify` on a fresh reset: SQL 336 files / 12,988 assertions PASS. The API stage
+  result is recorded in the next update.
+- Evidence ledger skeleton generated (`tests/contracts/phase-02-slice-11-evidence-ledger*.ts`, four
+  fragments); independent evidence lanes are mapping criteria to exact tests and writing gap reports
+  under `docs/handoffs/2026-10-10-claude-s11/`.
+
+Acceptance remains 0/122. No PR, merge, deployment or cleanup.
+
+## Previous — 2026-10-10 native precision95 QA RED / expired-lease GREEN
 
 Active only `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`,
 `claude/phase2-slice11`; clean pushed predecessor

@@ -91,7 +91,7 @@ select pg_temp.p11_call('v-action', 'pub', 'cms_schedule_publication', pg_temp.p
 select pg_temp.p11_call('v-local-day', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('localDateTime', '2026-02-30T10:00')), false);
 select pg_temp.p11_call('v-local-second', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('localDateTime', '2026-11-03T10:00:60')), false);
 select pg_temp.p11_call('v-local-offset', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('localDateTime', '2026-11-03T10:00:00Z')), false);
-select pg_temp.p11_call('v-local-fraction', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('localDateTime', '2026-11-03T10:00:00.1234567')), false);
+select pg_temp.p11_call('v-local-fraction', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('localDateTime', '2026-11-03T10:00:00.1234567890')), false);
 select pg_temp.p11_call('v-zone', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('timezone', 'Not A Zone')), false);
 select pg_temp.p11_call('v-utc-offset', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('resolvedUtc', '2026-11-03T10:00:00')), false);
 select pg_temp.p11_call('v-tzdb', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-main', jsonb_build_object('tzdbVersion', 'bad version')), false);
@@ -112,7 +112,7 @@ select is(
   || 'v-local-offset=P0001:VALIDATION_FAILED["/localDateTime"];v-local-second=P0001:VALIDATION_FAILED["/localDateTime"];'
   || 'v-tzdb=P0001:VALIDATION_FAILED["/tzdbVersion"];v-utc-offset=P0001:VALIDATION_FAILED["/resolvedUtc"];'
   || 'v-version=P0001:VALIDATION_FAILED["/expectedVersion", "/ifMatch"];v-zone=P0001:VALIDATION_FAILED["/timezone"]',
-  'every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most six fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]');
+  'every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most nine fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]');
 select is(pg_temp.r11_detail('v-many')::jsonb, '["/action","/timezone","/audience"]'::jsonb,
   'several invalid fields are reported together, in request order, and nothing else is echoed [P2-S11-AC-018]');
 

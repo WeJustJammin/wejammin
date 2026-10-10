@@ -100,8 +100,9 @@ select ok(
 
 select ok(
   pg_temp.s10r_unique_target('platform_private.cms_publication_schedules')
-    -- Slice 11 (BE03b E9): the lineage audience is part of the duplicate key.
-    @> array['entry_id,revision_id,action,local_datetime,timezone,audience']::text[]
+    -- Slice 11 (BE03b E9): the lineage audience is part of the duplicate key; the
+    -- nanosecond remainder of the local datetime (BE03b:266) completes local_datetime.
+    @> array['entry_id,revision_id,action,local_datetime,local_datetime_submicro_ns,timezone,audience']::text[]
     and pg_temp.s10r_has_check(
       'platform_private.cms_publication_schedules', 'expected_version > 0'
     )
