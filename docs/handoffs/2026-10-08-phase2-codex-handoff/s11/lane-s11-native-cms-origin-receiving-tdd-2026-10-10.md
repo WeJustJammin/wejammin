@@ -1,5 +1,28 @@
 # Slice11 immutable CMS origin receiving — test-first contract
 
+## Actual first RED / controlled QA amendment
+
+From clean pushed6f0b4774 native sole receiving QA authored234 lines; root
+Prettier490 exceeds400 cap. All37 frozen source/QA exact. Actual23 cases execute:
+17failed6passed, Boolean ordered-history/early processed-barrier RED, not loader
+failure. FreshCI0/flock, focused1/type-check0/lint0. Receipt:
+cms-origin-receiving-first-red-2026-10-10.json. Independent source/log review found
+only missing genuine receiver cancellation. QA not accepted; producer UNRUN.
+
+Next native amendment ONLY existing async-entrypoint-cms-origin-admission.test.ts
+and new async-entrypoint-cms-origin-admission-test-support.ts. Each target350/hard400
+after Prettier. Move current lines19–319 mechanically into support; leave history
+builders/case bodies in spec. Preserve all23 titles/initializers/assertions; no
+circular import. Add one genuine cancellation case: test-local native
+AbortController subclass maps exact signals to owned controllers. Defer verifier,
+capture its signal, abort matching actual receiver controller, then resolve false.
+Actual entrypoint must retry with zero claim/effect/outcome/processed/ACK and frozen
+envelope. Restore globals in finally. Race callback-entry against delivery
+completion so current ignored-hook RED is an explicit early-completion failure,
+not timeout. No invented delivery signal/fake aborted property/sleeps/producer edit.
+Root checkpoints RED/cap/gap before claim; reruns/refutes/freezes amendment before
+a later clean pushed producer checkpoint.
+
 ## Scope and existing source
 
 The current generic receiver parses job.requested, reads canonical Job, then
