@@ -1,5 +1,52 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: origin-admission contract / native QA gate
+
+This supersedes the proof snapshot below for resume order. Baseline748bbd4d
+was clean and exactly origin; read current Git HEAD for the contract checkpoint.
+Active checkout/branch, native6.1 orchestration/Astra authors, earned-only
+reset authority, safety and0/122 acceptance limits below remain unchanged.
+
+Selected bounded contract:
+`docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-origin-admission-tdd-2026-10-10.md`.
+Existing service-only readPlan gets an additive strict one-key requestedEvent
+read-only Boolean origin proof rooted in the actual CMS Job/original outbox
+eight-field tuple. No new RPC/signature/grant/owner or claimed facts.
+It proves no current-attempt, lease, stage, result or ACK authority; ordinary
+stale rules and receiving remain unchanged. Existing two/three-key readers
+and STABLE snapshot are frozen.
+
+Native A owns new private request contract + unit verifier QA; B owns new
+genuine API origin QA. All UNRUN; verifier/SQL producers intentionally absent.
+First save a clean pushed checkpoint, then exact non-overlapping claims.
+Root owns actual RED/format/check/reset/Git; no author execution claim.
+
+Independent contract review amendments require aborting own-shape/event guards,
+rejected caller preservation/no-throw and exact rejection identity; genuine
+registered non-CMS exclusion; literal-true heartbeat/outcome setup replies
+plus observed canonical poststate before origin reads. All remain UNRUN.
+
+Live usage at this gate46%, ordinary use allowed, no purchased credits.
+No reset needed. This usage response did not expose an earned-credit count;
+last independently confirmed count0 remains historical, not a fresh assertion.
+
+Independent6.1 source research found grant-free advisory fencing source-feasible,
+not yet selected/proven: existing invoker jobs guard; Job-row→advisory mutators,
+advisory→legal CMS-lock stages and no stage Job row locks. All four Job mutators
+need fresh server time after waits; trigger-only locking is insufficient.
+Existing Boolean heartbeat + actual canonical read + strict resolver can
+reconcile operational facts without new RPC/grants; never infer version+1/
+expiry or mutate initial claim evidence. Server-derived legacy activation/
+historical report distinction remains reviewed; absence/GUC/purpose is no
+authority. Failed/cancelled resultRef-null SQL leaves terminal domain recovery
+reference location unreconciled; do not silently change it.
+
+Resume: native origin QA → actual RED/independent review/checkpoint → scoped
+origin producers → source mutants/genuine controls → receiving contract and
+race-proof enduring authority/nonzero/public lifecycle → remaining action3,
+DEC163/action4, exact full gates, then Slices12–17 and final validate-phase.
+Do not treat candidates or origin-only GREEN as Slice11 acceptance.
+
 ## Latest snapshot: genuine claimed preparation proof checkpoint
 
 This section supersedes the historical snapshots below. Source/evidence

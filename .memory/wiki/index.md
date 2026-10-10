@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-immutable-origin-admission-contract-and-native-qa-gate|Slice 11 immutable origin-admission contract and native QA gate]] — knowledge — 2026-10-10T07:04:26.677Z
 - [[knowledge/2026-10-10-slice-11-genuine-claimed-preparation-four-mutants-caught-restored78-and1462-green|Slice 11 genuine claimed preparation four mutants caught restored78 and1462 GREEN]] — knowledge — 2026-10-10T06:21:09.941Z
 - [[knowledge/2026-10-10-slice-11-hardened-genuine-claimed-preparation78-green-and-mutation-gate|Slice 11 hardened genuine claimed preparation78 GREEN and mutation gate]] — knowledge — 2026-10-10T05:55:43.850Z
 - [[knowledge/2026-10-10-slice-11-genuine-claimed-preparation-initial2-green-and-isolated-qa-hardening-gate|Slice 11 genuine claimed preparation initial2 GREEN and isolated QA hardening gate]] — knowledge — 2026-10-10T05:47:55.352Z
