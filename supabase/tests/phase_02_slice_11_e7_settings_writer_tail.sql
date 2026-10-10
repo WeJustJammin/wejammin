@@ -6,7 +6,7 @@ commit;
 create extension if not exists pgtap with schema extensions;
 commit;
 begin;
-select plan(70);
+select plan(72);
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
 \ir phase_02_slice_11_helpers/000-helpers.sqlinc

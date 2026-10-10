@@ -1,17 +1,16 @@
 /**
  * Slice 11 CMS-03B-15 read no-effects proof (lane S11-4R read families). The
  * workflow read (and the accessibility checker load it drives) must write and emit
- * NOTHING (BE03b:2070,2134; DEC-159(4)). This proves it on a FRESH isolated
- * ASSIGNEE organization so a bootstrap owner warmed by another file cannot hide the
- * defect.
+ * NOTHING (BE03b:2070,2134; DEC-159(4)). This exercises a fresh isolated
+ * ASSIGNEE organization with one settings snapshot initialized by its ordinary
+ * CMS-03B-10 entry write (DEC-163).
  *
  * The isolated org has NO canonical CMS-owner receipt (the receipt is a singleton
  * and a second initialization refuses), so this exercises the entry-assignee branch
- * only, never an owner/publisher read. It asserts the fresh entry owner's
- * publication-settings snapshot is ABSENT before the first read (a read-only count
- * SELECT narrowed to that owner), then that the whole unfiltered 14-group effect
- * snapshot is unchanged after the read. No preseed, warm, backfill, row deletion or
- * guard bypass.
+ * only, never an owner/publisher read. Normal entry creation initializes one
+ * canonical owner publication-settings snapshot before the first workflow read.
+ * Owner-scoped counts and the whole unfiltered 14-group effect snapshot must stay
+ * unchanged after the read. No preseed, warm, backfill, row deletion or guard bypass.
  *
  * Commits fixtures; run right after `pnpm db:reset`, and reset again afterwards.
  */
@@ -70,13 +69,12 @@ describe('CMS-03B-15 read writes nothing', () => {
     // The owner party is derived from the ACTUAL entry row, not assumed.
     const ownerPartyId = s11EntryOwnerPartyId(entryId);
     const before = snapshotDigest();
-    // The fresh entry owner's settings snapshot must be ABSENT before the read (a
-    // read-only count narrowed to that owner; a snapshot another owner holds cannot
-    // mask this).
+    // The ordinary entry write initialized one snapshot for the actual owner.
+    // This read-only count excludes snapshots belonging to another owner.
     expect(
       s11OwnerSettingsSnapshotCount(ownerPartyId),
-      'the fresh isolated owner party must have no stored settings snapshot before the first read',
-    ).toBe(0);
+      'the ordinary entry write must have initialized one owner-party settings snapshot before the first read',
+    ).toBe(1);
 
     stack.as(owner);
     const response = await stack.get(workflowPath(entryId));
@@ -85,14 +83,14 @@ describe('CMS-03B-15 read writes nothing', () => {
     // The eligible draft serves a recomputed preparation (never stored).
     expect(parsed.preparation).not.toBeNull();
 
-    // The owner's snapshot is still absent after the read (no per-owner read effect).
+    // The read preserves the one snapshot initialized by the ordinary entry write.
     expect(
       s11OwnerSettingsSnapshotCount(ownerPartyId),
-      'the CMS-03B-15 read must not insert the owner-party settings snapshot',
-    ).toBe(0);
+      'the CMS-03B-15 read must preserve the single existing owner-party settings snapshot',
+    ).toBe(1);
     // A safe read (and its checker load) commits no durable effect anywhere: the
-    // whole unfiltered 14-group snapshot is unchanged. This is the RED against the
-    // current producer, which inserts an owner-party settings snapshot on this path.
+    // whole unfiltered 14-group snapshot, including every existing settings row
+    // field, is unchanged.
     expectUnchanged(
       before,
       snapshotDigest(),

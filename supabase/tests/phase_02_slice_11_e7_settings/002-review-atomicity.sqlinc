@@ -80,7 +80,7 @@ begin
         and aggregate_version = prior_version + 1
         and payload = jsonb_build_object('entryId', target_entry, 'revisionId', entry_row.current_draft_revision_id)),
     'completed201', exists(select 1 from platform_private.idempotency_records
-      where key_hash = platform_private.cms_key_hash('e7-tail-fault-0001')
+      where key_hash = pg_catalog.decode(pg_catalog.current_setting('app.e7_key_hash'), 'hex')
         and operation = 'CMS-03B-01' and state = 'completed'
         and expected_response is not null
         and response_ref = jsonb_build_object('status', 201,
@@ -106,6 +106,39 @@ select pg_temp.e7_snapshots() as e7_post_save_snapshots,
       and s.effective_values = '[]'::jsonb and s.snapshot_hash = pg_temp.h11_sha256('[]'))
     as e7_save_initialized \gset
 select answer as e7_save_answer from e7_save \gset
+-- A NEW-key ordinary save must execute the healthy existing-hash INSERT/readback,
+-- not return through completed replay. Capture canonical operands before the call.
+create temp table e7_duplicate_request on commit drop as
+select pg_temp.e7_request('B01', 'e7-healthy-duplicate-0001')
+    || jsonb_build_object('values', jsonb_build_object(pg_temp.e7_id('101')::text,
+      'Healthy duplicate title')) as request,
+  e.current_draft_revision_id as prior_revision, e.version as prior_version,
+  r.revision_number as prior_revision_number
+from platform_private.cms_content_entries e
+join platform_private.cms_entry_revisions r on r.id = e.current_draft_revision_id
+where e.id = pg_temp.e7_id('301');
+select jsonb_build_object('owner', pg_temp.e7_snapshots(),
+  'others', pg_temp.e7_snapshots(true)) as e7_duplicate_snapshots_before \gset
+create temp table e7_duplicate_save on commit drop as
+select pg_temp.e7_call('B01', request) as answer from e7_duplicate_request;
+select exists(select 1 from e7_duplicate_save saved cross join e7_duplicate_request q
+  join platform_private.cms_entry_revisions r on r.id::text = saved.answer#>>'{response,id}'
+  join platform_private.cms_content_entries e on e.current_draft_revision_id = r.id
+  join platform_private.idempotency_records receipt
+    on receipt.key_hash = platform_private.cms_key_hash(q.request->>'idempotencyKey')
+  where saved.answer->>'outcome' = '00000:' and e.id = pg_temp.e7_id('301')
+    and r.entry_id = e.id and r.owner_id = e.owner_id and r.owner_id = pg_temp.e7_owner()
+    and r.id <> q.prior_revision and r.revision_number = q.prior_revision_number + 1
+    and r.parent_revision_ids = jsonb_build_array(q.prior_revision)
+    and e.version = q.prior_version + 1
+    and saved.answer#>>'{response,entryVersion}' = e.version::text
+    and saved.answer#>>'{response,contentHash}' = r.payload_hash::text
+    and receipt.operation = 'CMS-03B-01' and receipt.state = 'completed'
+    and receipt.response_ref = jsonb_build_object('status', 201, 'resourceRef', r.id::text,
+      'safeHeaders', jsonb_build_object('response', saved.answer->'response')))
+    as e7_duplicate_canonical,
+  jsonb_build_object('owner', pg_temp.e7_snapshots(),
+    'others', pg_temp.e7_snapshots(true)) as e7_duplicate_snapshots_after \gset
 create temp table e7_submission on commit drop as select pg_temp.e7_submit_request() as request;
 select platform_private.cms_evaluate_preflight(jsonb_build_object('phase', 'submit',
   'revisionId', request->'revisionId', 'actingPartyId', pg_temp.e7_owner(),
@@ -129,6 +162,10 @@ select set_config('app.e7_revision', current_draft_revision_id::text, true),
   set_config('app.e7_version', version::text, true),
   set_config('app.e7_audit', pg_temp.s10_audit_count('cms.entry.revision.create', id)::text, true)
 from platform_private.cms_content_entries where id = pg_temp.e7_id('301');
+-- Root/test setup may hash this known key; the CMS invoker trigger may not.
+-- This is only the exact receipt locator, never receipt contents or authority.
+select set_config('app.e7_key_hash',
+  pg_catalog.encode(platform_private.cms_key_hash('e7-tail-fault-0001'), 'hex'), true);
 select pg_temp.e7_snapshots() as e7_tail_snapshots, pg_temp.e7_effects() as e7_tail_before \gset
 create trigger e7_settings_tail_fault before insert
 on platform_private.cms_publication_settings_snapshots
@@ -146,6 +183,11 @@ select ok(:'e7_save_initialized'::boolean,
   'causal fixture: healthy B01 alone initializes canonical-owner registry1 ordinal1 [] snapshot with independent JCS hash before any manifest read');
 select is(:'e7_save_answer'::jsonb->>'outcome', '00000:',
   'causal fixture: genuine authorized B01 healthy save succeeds before submit');
+select ok(:'e7_duplicate_canonical'::boolean,
+  'healthy existing-hash B01 uses a fresh key, returns a new canonical successor and advances actual CAS with completed201');
+select ok(jsonb_array_length(:'e7_duplicate_snapshots_before'::jsonb->'owner') = 1
+    and :'e7_duplicate_snapshots_before'::jsonb = :'e7_duplicate_snapshots_after'::jsonb,
+  'healthy existing-hash B01 preserves all owner and other-owner snapshot row images including IDs/timestamps/versions/ordinals/values/hash');
 select ok(:'e7_preflight'::jsonb->>'passed' = 'true'
     and jsonb_array_length(:'e7_preflight'::jsonb->'results') = 17,
   'causal fixture: current manifest and bound checker evidence pass all seventeen submit categories');
