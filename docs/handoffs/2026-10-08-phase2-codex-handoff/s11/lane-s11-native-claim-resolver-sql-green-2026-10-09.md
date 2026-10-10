@@ -1,5 +1,13 @@
 # Slice 11 — claimed dry-run resolver SQL, genuine RED before GREEN
 
+## Parent mutations closed; SQL frozen, separate QA scope next
+
+Actual seven runs failures3/4/2/1/6/0/1; each exactSHA restore/all14 resets0.
+Six caught/M6 current-attempt group actualmasked survival. Final69/1116/121
+API/unit/pgTAP GREEN, static/types/catalog0, lint inherited39/100 only.
+SQL authors remain frozen/released. New edge/same-hash QA separate brief and
+clean pushed checkpoint; no authority/full acceptance closure.
+
 ## Clock correction complete; mutations UNRUN
 
 Sole18400 statement_timestamp initializer correction, exact one-line diff.

@@ -1,5 +1,21 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Seven SQL mutants closed; six caught/one masked, native QA scope next
+
+Actual failures3/4/2/1/6/0/1 of unchanged69 per run. Every3-source SHA restore
+exact; all14 pre/post resets0 and baseline reloaded before flock unlock. M6
+pointer/supersession group SURVIVED because field edit changed hashes; M7
+recomputation group caught, never each-predicate proof. Final restored pre0/API0/
+post0,69/69/31.73s; unit35/1116/21.25s, pgTAP4/121/9s/static/types0,
+catalog private ACL/volatility/CREATE correct, lint inherited39/100 only NOT clean.
+See proof-s11-claim-sql-mutations7 and lane-s11-native-claim-resolver-edge-same-hash-
+qa. Next nativeA new edge6 file/B same-hash public repeat DR1 file only; no
+shared helper/SQL/schema/existing69 changes, clean pushed origin before dispatch.
+Future claimed-preparation source plan separate: actual receipt already forwarded,
+legacy admission still three-key and plan unwrap loses six-part authority.
+Cancellation/startup/result mapping/enduring fences/genuine producers/DEC163/
+full/later slices/owner/external holds open;0/122.
+
 ## Clock correction actual API69 GREEN; mutation proof UNRUN
 
 Sole18400 initializer statement_timestamp byte correction; main54322 CI0/flock
