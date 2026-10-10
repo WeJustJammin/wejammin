@@ -7,9 +7,9 @@ import {
 
 /** Private origin read only; no claim, report or execution authority. */
 export const CmsSchemaDryRunOriginRequestSchema = requireClaimOwnKeys([
-  'requestedEvent',
+  'originEvent',
 ])
-  .pipe(z.strictObject({ requestedEvent: ClaimRequestedEventSchema }))
+  .pipe(z.strictObject({ originEvent: ClaimRequestedEventSchema }))
   .transform((value) => Object.freeze(value));
 
 export type CmsSchemaDryRunOriginRequest = z.infer<

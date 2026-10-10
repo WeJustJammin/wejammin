@@ -1,9 +1,60 @@
 # Slice11 native origin-admission contract / QA gate
 
 Last clean QA baseline: `2f4f55f2db768aed3261dbe6234ed293d1605a16`.
+
+## Corrected producer proof / next mutation gate
+
+Disjoint correction from clean refutation checkpoint12709db9 is now actual:
+request17/unit372/77cases/verifier22/SQL142/API345/57cases. Original request,
+verifier, SQL origin prefix and unit76/API56 oracles byte-exact after private-
+key mapping plus sole explicit refusal additions. All18 pre-origin paths exact.
+Actual unit77/77GREEN1.32s and separate contracts/db-types/progress/format/lint/
+project type-check/diff0. Actual three SQL suites143 assertions PASS and seven
+API suites135/135GREEN91.05s; pre/SQL/API/post exits0/0/0/0, all23SHAexact.
+Existing missing-claimedJob refusal and two/three-key behavior remain intact.
+Independent amendment reviews no bounded finding; wording residue corrected.
+
+This is origin-only local proof, not stage/race/receiving/ACK authority or hosted
+Auth/fullValidation/Slice11 acceptance. Root saves clean pushed proof checkpoint
+before8 verifier-source and4 SQL-origin-source mutants, each individually
+restored exactly before an actual GREEN control. All12 are currently UNRUN.
+Keep every QA/other-source path frozen; mutate only the selected producer
+temporarily. Stored Jobcorr/cause/payload predicate removal is not independently
+proven by consistent genuine fixtures; do not corrupt protected stored rows.
+
+### Exact source mutants, all UNRUN
+
+Verifier-only, one at a time, same frozen77-case QA; restore before77GREEN control:
+
+1. O1: return Boolean(response), not response === true — truthy reply refused.
+2. O2: pass { ...parsed.data } — root freeze fails; event remains frozen.
+3. O3: pass Object.freeze({ originEvent: { ...parsed.data.originEvent } }) —
+   root freeze passes, independent event freeze fails.
+4. O4: pass new AbortController().signal — exact invocation signal fails.
+5. O5: second raw readPlan call before return — one-call cardinality fails.
+6. O6: omit prefix signal.aborted refusal — already-aborted call/result fails.
+7. O7: catch raw rejection and throw a new Error with same controlled message —
+   Boolean rejection-object identity fails, one call remains.
+8. O8: Object.preventExtensions(envelope) after successful parse — caller
+   extensibility fails without changing descriptors/prototype/frozen flags.
+
+SQL-origin-only, one at a time; use actual genuine targeted RED then restore
+before full57-case origin GREEN control, with actual pre/post DB resets:
+
+1. S1: j.job_type is not null replaces CMS type equality — genuine non-CMS false.
+2. S2: tuple jsonb object is not null replaces equality — crossed/five mismatch
+   oracles; absent aggregateId remains false. Grouped comparison proof only.
+3. S3: if false replaces fixed-pair grammar guard — wrong pair reaches lookup
+   and200/false instead of400/INVALID_REQUEST; other scalar/UUID guards remain.
+4. S4: add j.version = e.aggregate_version — queued true first, postclaim false;
+   first failure prevents independently observing later heartbeat/outcome here.
+
+Keep existing two/three-key suffix/header exact. No new QA assertions weakened,
+protected stored-row edits, grants, owner changes or current authority claims.
 Active checkout `/home/rob/.codex/worktrees/phase2-slice11/WeJammin`,
 branch `claude/phase2-slice11`. Slice11 remains0/122. Receipts below are scoped;
-the selected disjoint-key correction is UNRUN. Root checkpoints before writes.
+historical UNRUN/refuted snapshots below do not supersede this top proof gate.
+Root checkpoints before writes.
 
 ## Compatibility refutation / selected disjoint-key correction
 
@@ -48,7 +99,7 @@ two-key validator.
 After service identity and bounded grammar admission, return true only when
 the actual Job rooted at aggregateId is cms.schema.dry_run and its actual
 originating_event_id joins the stored outbox row whose whole eight-field tuple
-equals requestedEvent. Also prove stored event job.requested/1/job,
+equals originEvent. Also prove stored event job.requested/1/job,
 aggregate/job id, Job correlation/causation, and stored payload jobId/jobType
 binding. A well-formed mismatch or absent Job returns false. Dispatch status,
 current Job.version/state/lease, and current report/plan are not origin identity.

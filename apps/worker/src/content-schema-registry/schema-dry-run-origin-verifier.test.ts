@@ -11,7 +11,7 @@ import { createCmsSchemaDryRunOriginVerifier } from './schema-dry-run-origin-ver
 const CAUSE = '50000000-0000-4000-8000-000000000005';
 const event = (
   causationId: string | null = null,
-): CmsSchemaDryRunOriginRequest['requestedEvent'] => ({
+): CmsSchemaDryRunOriginRequest['originEvent'] => ({
   eventId: '30000000-0000-4000-8000-000000000003',
   eventType: 'job.requested',
   schemaVersion: 1,
@@ -97,18 +97,18 @@ const assertCall = (
   expect(operation).toBe(SCHEMA_MIGRATION_RPC.readPlan);
   expect(signal === f.signal).toBe(true);
   const expected: CmsSchemaDryRunOriginRequest = {
-    requestedEvent: { ...input },
+    originEvent: { ...input },
   };
   expect(request).toStrictEqual(expected);
   expect(CmsSchemaDryRunOriginRequestSchema.safeParse(request).success).toBe(
     true,
   );
-  if (!isObject(request) || !('requestedEvent' in request))
+  if (!isObject(request) || !('originEvent' in request))
     throw new Error('Expected one-key origin request');
-  expect(Reflect.ownKeys(request)).toStrictEqual(['requestedEvent']);
+  expect(Reflect.ownKeys(request)).toStrictEqual(['originEvent']);
   expect(Object.isFrozen(request)).toBe(true);
-  expect(Object.isFrozen(request.requestedEvent)).toBe(true);
-  expect(request.requestedEvent === input).toBe(false);
+  expect(Object.isFrozen(request.originEvent)).toBe(true);
+  expect(request.originEvent === input).toBe(false);
 };
 const reject = async (input: unknown) => {
   const f = setup();
@@ -250,7 +250,7 @@ describe('private dry-run origin request and producer-facing verifier', () => {
     { label: 'empty array', value: [] },
     { label: 'event array', value: [event()] },
     { label: 'empty object', value: {} },
-    { label: 'request wrapper', value: { requestedEvent: event() } },
+    { label: 'request wrapper', value: { originEvent: event() } },
   ])(
     'refuses malformed envelope container $label without throwing or RPC',
     async ({ value }) => reject(value),
@@ -319,18 +319,19 @@ describe('private dry-run origin request and producer-facing verifier', () => {
     { label: 'empty array root', value: [] },
     {
       label: 'event-bearing array root',
-      value: Object.assign([], { requestedEvent: event() }),
+      value: Object.assign([], { originEvent: event() }),
     },
     { label: 'missing event', value: {} },
-    { label: 'array event', value: { requestedEvent: [] } },
+    { label: 'array event', value: { originEvent: [] } },
     {
       label: 'decimal event',
-      value: { requestedEvent: { ...event(), aggregateVersion: '1.2' } },
+      value: { originEvent: { ...event(), aggregateVersion: '1.2' } },
     },
     {
       label: 'extra root key',
-      value: { requestedEvent: event(), extra: true },
+      value: { originEvent: event(), extra: true },
     },
+    { label: 'legacy requestedEvent root', value: { requestedEvent: event() } },
   ])(
     'rejects malformed one-key contract $label without caller mutation',
     ({ value }) => {
@@ -344,10 +345,10 @@ describe('private dry-run origin request and producer-facing verifier', () => {
 
   it('rejects an inherited root key with a same-count symbol replacement', () => {
     const input = {};
-    Object.setPrototypeOf(input, { requestedEvent: event() });
+    Object.setPrototypeOf(input, { originEvent: event() });
     Object.defineProperty(input, Symbol('replacement'), { value: true });
     expect(Reflect.ownKeys(input)).toHaveLength(1);
-    expect(Object.hasOwn(input, 'requestedEvent')).toBe(false);
+    expect(Object.hasOwn(input, 'originEvent')).toBe(false);
     const unchanged = preserve(input);
     expect(CmsSchemaDryRunOriginRequestSchema.safeParse(input).success).toBe(
       false,
@@ -356,16 +357,16 @@ describe('private dry-run origin request and producer-facing verifier', () => {
   });
 
   it('parses an immutable root and event while preserving the mutable caller', () => {
-    const input = { requestedEvent: event(CAUSE) };
+    const input = { originEvent: event(CAUSE) };
     const unchanged = preserve(input);
     const parsed = CmsSchemaDryRunOriginRequestSchema.safeParse(input);
     expect(parsed.success).toBe(true);
     if (!parsed.success) throw new Error('Controlled origin request rejected');
     expect(parsed.data).toStrictEqual(input);
     expect(Object.isFrozen(parsed.data)).toBe(true);
-    expect(Object.isFrozen(parsed.data.requestedEvent)).toBe(true);
+    expect(Object.isFrozen(parsed.data.originEvent)).toBe(true);
     expect(parsed.data === input).toBe(false);
-    expect(parsed.data.requestedEvent === input.requestedEvent).toBe(false);
+    expect(parsed.data.originEvent === input.originEvent).toBe(false);
     unchanged();
   });
 });

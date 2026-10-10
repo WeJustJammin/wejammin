@@ -1,5 +1,39 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: disjoint origin proof / source-mutation gate
+
+This supersedes historical refutation/UNRUN snapshots below. Corrected from
+clean refutation12709db9; read current Git HEAD for proof checkpoint. Request17,
+unit372/77cases, verifier22, SQL142, genuine API345/57cases. Private key is now
+originEvent only; shared two-key claimedJob/requestedEvent and legacy3 unchanged.
+Root byte comparators prove key-only mapping with prior unit76/API56 preserved
+plus explicit old-key and mixed-shape refusals. All18 pre-origin hashes exact.
+
+Actual focused77/77unitGREEN1.32s; separate contracts/db-types/progress/format/
+lint/project types/diff0. Three SQL privilege/authority/API-surface suites:
+143 assertions PASS. Seven API suites135/135GREEN91.05s. Actual pre/SQL/test/
+post exits0/0/0/0/all23SHAexact. Existing missingclaimedJob refusal is restored
+without modifying old QA. Independent amendment reviews no bounded finding.
+Canonical graph compile retains64 inherited lint issues, not lint-clean proof.
+
+Receipts: .lane-logs/parent-s11-origin-disjoint-unit77-static-20261010.log and
+.lane-logs/parent-s11-origin-disjoint-sql-api135-20261010.log. Root checkpoints
+before source mutants:8 verifier and4 SQL-origin, all UNRUN. Apply individually;
+never edit QA; exact23hash restore before each actual GREEN control. O3 uses
+frozen root with mutable originEvent copy. SQL checks CMS type, whole tuple,
+fixedpair grammar and accidental current-version dependency. Consistent genuine
+fixtures do not independently prove SQL stored Jobcorr/cause/payload guard
+removal; no protected row corruption permitted. Keep legacy suffix/header exact.
+
+Origin-only local proof: no enduring race/current-attempt/lease/stage/receiving/
+ACK/hosted Auth/fullValidation/acceptance. Slice11 remains0/122. Then select
+receiving/enduring authority contract, nonzero/public lifecycle, remaining
+action3/DEC163/action4/full gates, Slices12–17 and final validate-phase.
+Same checkout/branch/native models/safety; earned-only resets, never purchases.
+
+Live usage52%, ordinary allowed, no purchased credits; no reset needed. This
+response exposes no earned count; prior confirmed0 remains historical only.
+
 ## Latest snapshot: origin overload regression / disjoint-key amendment gate
 
 This supersedes prior snapshots. Clean QA baseline2f4f55f; current native

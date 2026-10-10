@@ -9,7 +9,7 @@ export const createCmsSchemaDryRunOriginVerifier = ({
   verify: async (envelope: unknown, signal: AbortSignal): Promise<boolean> => {
     if (signal.aborted) return false;
     const parsed = CmsSchemaDryRunOriginRequestSchema.safeParse({
-      requestedEvent: envelope,
+      originEvent: envelope,
     });
     if (!parsed.success) return false;
     const response = await port.call(

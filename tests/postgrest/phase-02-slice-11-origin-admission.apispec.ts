@@ -9,6 +9,7 @@ import { ClaimRequestedEventSchema } from '../../apps/worker/src/content-schema-
 import { expectSafeEqual } from './support/phase-02-slice-11-assert';
 import {
   claimAttempt,
+  legacyRequest,
   observeRead,
   originalEvent,
   prepareClaimAttempt,
@@ -72,7 +73,7 @@ const accepts = async (
 ) => {
   expect(ClaimRequestedEventSchema.safeParse(event).success).toBe(true);
   const response = await readOrigin(
-    { requestedEvent: event },
+    { originEvent: event },
     jobs,
     undefined,
     attempts,
@@ -287,19 +288,19 @@ describe('S11 genuine CMS dry-run origin admission', () => {
     async (key, value) => {
       const event = { ...first.event, [key]: value };
       expect(ClaimRequestedEventSchema.safeParse(event).success).toBe(false);
-      await grammarFailure({ requestedEvent: event });
+      await grammarFailure({ originEvent: event });
     },
   );
   it.each(eventKeys)('rejects the event missing %s', async (key) => {
     const event = Object.fromEntries(
       Object.entries(first.event).filter(([k]) => k !== key),
     );
-    await grammarFailure({ requestedEvent: event });
+    await grammarFailure({ originEvent: event });
   });
   it.each([[null], [[]], ['event'], [1], [false]])(
-    'rejects non-object requestedEvent %j',
+    'rejects non-object originEvent %j',
     async (event) => {
-      await grammarFailure({ requestedEvent: event });
+      await grammarFailure({ originEvent: event });
     },
   );
   it('rejects missing extra ninth and wrong root keys before lookup', async () => {
@@ -308,12 +309,18 @@ describe('S11 genuine CMS dry-run origin admission', () => {
       [],
       'request',
       {},
-      { requestedEvent: first.event, extra: true },
-      { requestedEvent: { ...first.event, ninth: true } },
+      { originEvent: first.event, extra: true },
+      { originEvent: { ...first.event, ninth: true } },
       { event: first.event },
-      { requestedEvent: first.event, claimedJob: {} },
+      { originEvent: first.event, claimedJob: {} },
     ])
       await grammarFailure(request);
+  });
+  it('rejects the old claimed key and mixed origin request shapes', async () => {
+    await grammarFailure({ requestedEvent: first.event });
+    const claim = await claimAttempt(second);
+    await grammarFailure({ ...claim, originEvent: second.event });
+    await grammarFailure({ ...legacyRequest(first), originEvent: first.event });
   });
   it.each(['authenticated', 'anon', 'missing'] as const)(
     'preserves the existing service-only ACL for %s',
@@ -325,7 +332,7 @@ describe('S11 genuine CMS dry-run origin admission', () => {
             ? tokenFor('anon')
             : null;
       const response = await readOrigin(
-        { requestedEvent: first.event },
+        { originEvent: first.event },
         undefined,
         token,
       );

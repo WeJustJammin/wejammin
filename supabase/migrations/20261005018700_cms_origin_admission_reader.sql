@@ -27,15 +27,15 @@ declare
 begin
   if platform_private.cms_exact_keys(
     p_request,
-    array['requestedEvent']::text[],
-    array['requestedEvent']::text[]
+    array['originEvent']::text[],
+    array['originEvent']::text[]
   ) then
     perform platform_private.cms_worker_require_request(
       p_request,
-      array['requestedEvent']::text[],
-      array['requestedEvent']::text[]
+      array['originEvent']::text[],
+      array['originEvent']::text[]
     );
-    requested_event := p_request->'requestedEvent';
+    requested_event := p_request->'originEvent';
     if not platform_private.cms_exact_keys(requested_event, event_keys, event_keys) then
       raise exception 'INVALID_REQUEST' using errcode = 'P0001';
     end if;
