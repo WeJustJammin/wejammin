@@ -1,5 +1,33 @@
 # Slice 11 — genuine claimed dry-run resolver API QA (native, RED first)
 
+## Parent amendment gate: actual caps and isolated decoder member count
+
+Original A files frozen after formatting: API469/fixture331, over400/300 caps.
+All46 cases remain UNRUN; no genuine API RED or authority claim. Root read all
+actual source. Approve ONLY mechanical move of existing refusal/accepted/
+supersession evidence assertions plus storedProjection/attemptState into the new
+focused oracles file below; retain every46 case title/behavior/setup/assertion.
+Avoid fixture-to-oracles runtime imports/cycles. Fixture may retain storedVersion.
+No added cases, production changes, weakened conditions or compressed formatting.
+
+B frozen110/88/231; actual pure193/193 and format/ESLint/type/contracts/progress0,
+freshCI0/flock. Independent6.1 P3: existing extra-member marker sorts before sha,
+so removing only group member-count condition still rejects by key names.
+Root executed that exact mutation: actual193/193 survived. Restored core SHA
+9e15ab7434086e33556b72f004c6c318c5acdf5f5a7e065545ba2264eaaf45ad, then193/193
+and restored static0. This is a concrete proof gap, not producer defect.
+B continuation owns ONLY its pure test: add per-table valid count/sha plus one
+extra key sorting AFTER sha; require exact fixed members diagnostic. Preserve
+all193 existing cases byte-for-byte except formatting. Expected206 is predicted,
+not actual proof. All B source/core/adapter files remain frozen.
+
+Checkpoint/push/exact-origin before either continuation. Root repeated isolated
+member-count mutation must fail those thirteen new cases, exactrestore/final206/
+static0; independent review before genuine API execution. Root also keeps actual
+case-sensitive migration inventory correction explicit: latest uppercase
+20261002127000 plan JSON already LEFT JOINs source and zero64 sourceHash.
+No legacy reader in setup, no invented projection repair or fake active source.
+
 ## Gate and authority
 
 Orchestrator/reviewer: gpt-6.1-sol/ultra. Native authors: gpt-6-astra/high.
@@ -22,6 +50,8 @@ Lane A writes ONLY:
 
 - tests/postgrest/phase-02-slice-11-claimed-dry-run-resolver.apispec.ts (<=400 lines)
 - tests/postgrest/support/phase-02-slice-11-claimed-dry-run-fixture.ts (<=300 lines)
+- tests/postgrest/support/phase-02-slice-11-claimed-dry-run-oracles.ts (<=300 lines;
+  only the exact parent-approved mechanical split above)
 
 Lane B writes ONLY:
 

@@ -1,5 +1,27 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Genuine API46 UNRUN cap gate; observer193 member-count mutation survives
+
+Native A files frozen469/331 after root format;46 case titles/behavior retained,
+no genuine API execution. Exact scope amendment permits one focused oracles
+helper for mechanical split only; all files must return under400/300 caps.
+Native B core110/adapter88/pure231 actual193/193 and scoped static0, freshCI0/flock.
+Independent6.1 P3: count-guard-only mutant193/193 survives; root executed it,
+exact coreSHA restored then193/193 and restored static0. Sole thirteen additive
+per-table extra keys sorting after sha, fixed members diagnostic, unchanged
+193 prior tests/source. Predicted206 not actual. Scope amended; checkpoint/
+push/exact-origin before both native continuations. Parent repeated mutant must
+fail13 new controls, exactrestore/finalpure/static/review then genuine API RED.
+Existing contracts/SQL/production/old14 observer stay frozen; 0of122/holds unchanged.
+
+Read inventory correction: newer uppercase CREATE OR REPLACE plan JSON at
+20261002127000 already supports nullable source via LEFT JOIN/zero64 sourceHash.
+Root initial missing-projection claim withdrawn after exact read; no source edit.
+No legacy reader setup prerequisite. Future resolver still needs exact original
+event/live actual claim, current stored attempt and definition-graph fingerprint;
+full bigint/UUID grammar, provisional nonzero admission, no premature sealed
+evidence requirement. Snapshot is not enduring per-stage/receiving authority.
+
 ## Private parser31 mutation proof complete; genuine RPC QA scope next
 
 Two assertions only, request320/response376; all419 prior proof/source/support
