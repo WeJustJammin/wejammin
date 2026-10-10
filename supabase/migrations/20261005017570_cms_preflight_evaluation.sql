@@ -19,8 +19,10 @@
 --
 -- Providers (the registry row decides which one runs, by (provider_key, provider_version): every provider
 -- this migration implements is version 1.  A row this migration has no implementation for -- a newer
--- database or worker provider of another slice, or another VERSION of a known key -- is
--- `unavailable/provider_unavailable`, never a silent pass):
+-- database or worker provider of another slice, or another VERSION of a known key -- is unavailable,
+-- never a silent pass.  The unavailable token is fixed by DEC-160: `provider_unavailable` for every
+-- database and reference-gate category, `checker_failed` for category 11 (accessibility, the worker
+-- provider) -- no other unavailable token exists):
 --   reference_gate  passes at cms_revision_references(rev, reference_kind) = 0, else failed
 --                   provider_unbuilt_reference (blockingCount = the count, capped at 1000)
 --   contract        validators_changed (frozen protected validators != registry) | value_invalid (a stored
@@ -587,6 +589,14 @@ begin
         end if;
       end if;
       offenders := case when reason is null then 0 else 1 end;
+    end if;
+
+    -- DEC-160 (BE03b "Unavailable reasons"): `unavailable` carries provider_unavailable for every database
+    -- or reference-gate category and checker_failed for category 11, the worker accessibility provider.
+    -- Every path above that leaves a provider unavailable (an unimplemented version or key, a failed
+    -- checker, no evidence) therefore reports accessibility under checker_failed, whatever branch ran.
+    if outcome = 'unavailable' and registry_row.category = 'accessibility' then
+      reason := 'checker_failed';
     end if;
 
     if reason is not null and outcome = 'passed' then

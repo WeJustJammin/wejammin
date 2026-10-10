@@ -21,7 +21,11 @@
 --     for the (limit + 1)th match succeeds first, the cursor stays after the last
 --     RETURNED row and the probe is read again by the next page;
 --   * the cursor payload ({queryHash, lastRevisionNumber, lastRevisionId, expiresAt}),
---     the sort and the signed envelope never depend on the derived state;
+--     the sort and the signed envelope never depend on the derived state.  This reader
+--     answers the payload UNSIGNED and in the clear; a filtered request's bound-ending
+--     cursor can name a concealed candidate, so the caller-facing wrapper
+--     cms_list_revisions_signed seals the cursor of every request that names a `state`
+--     (authenticated encryption, 20261010161000 and 20261010161100);
 --   * the concealment classifier is handed the derived state it needs (the
 --     four-argument form of cms_revision_page_disposition, 20261005018000).
 --

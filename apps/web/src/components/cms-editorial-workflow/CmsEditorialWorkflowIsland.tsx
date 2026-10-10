@@ -117,6 +117,7 @@ export default function CmsEditorialWorkflowIsland({
             {...shared}
             revisionId={workflow.revision.id}
             reviewVersion={review.version}
+            publishPermitted={permitted.has('publish')}
           />
         ) : null}
         {permitted.has('preview') && versionSet !== null ? (

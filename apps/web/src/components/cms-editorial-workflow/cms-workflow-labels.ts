@@ -198,6 +198,13 @@ const DISABLED_ACTION_COPY: Readonly<
     'A second person with the publisher capability must publish this revision.',
 };
 
+/**
+ * Beside the schedule form's Action control when `publish` is not offered
+ * (BE03b:268-270: the revision author may schedule every action but `publish`).
+ */
+export const SCHEDULE_PUBLISH_WITHHELD_COPY =
+  'Publish is not offered here: a second person with the publisher capability must publish this revision. You can still schedule the other actions.';
+
 /** Why a form is withheld when its action is not in `permittedNextActions`. */
 export const disabledActionCopy = (
   action: WorkflowNextAction | ReviewNextAction,

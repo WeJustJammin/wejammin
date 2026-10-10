@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -8,67 +7,25 @@ import {
   disableReactAct,
   enableReactAct,
   flush,
-  mountElement,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { COMMAND_CASES } from '../../server/cms-workflow-platform-command.test-support';
 import {
-  COMMAND_CASES,
-  CSRF,
-} from '../../server/cms-workflow-platform-command.test-support';
-import CmsEditorialWorkflowIsland from './CmsEditorialWorkflowIsland';
-import type { CanonicalReadResult } from './cms-workflow-canonical-read';
-import {
-  ENTRY_ID,
-  INSTANT,
   approvedReviewFixture,
   approvedWorkflowFixture,
   apiError,
   jsonResponse,
   workflowFixture,
 } from './cms-workflow-fixtures.test-support';
+import {
+  formTitles,
+  mountWorkflowIsland,
+  ok,
+} from './cms-workflow-island-mount.test-support';
 
 beforeAll(enableReactAct);
 afterAll(disableReactAct);
 
-type Workflow = ReturnType<typeof workflowFixture>;
-
-const ok = (resource: Workflow): CanonicalReadResult<Workflow> => ({
-  kind: 'ok',
-  resource,
-});
-
-const mount = (
-  initial: Workflow,
-  reads: readonly CanonicalReadResult<Workflow>[] = [],
-  responses: readonly Response[] = [],
-) => {
-  const queue = [...reads];
-  const readWorkflow = vi.fn(async () => queue.shift() ?? ok(initial));
-  const answers = [...responses];
-  const fetcher = vi.fn(async () => answers.shift() as Response);
-  const mounted = mountElement(
-    <CmsEditorialWorkflowIsland
-      init={{
-        workflow: initial,
-        entryId: ENTRY_ID,
-        revisionId: null,
-        verifiedAt: INSTANT,
-      }}
-      readWorkflow={readWorkflow}
-      environment={{
-        transport: { fetcher, documentRef: { cookie: `wj_csrf=${CSRF}` } },
-        newKey: () => 'idem-key-workflow-001',
-        storage: () => null,
-        navigate: () => undefined,
-      }}
-    />,
-  );
-  return { ...mounted, readWorkflow, fetcher };
-};
-
-const formTitles = (container: HTMLElement): string[] =>
-  [...container.querySelectorAll('[data-cms-workflow-form] > h3')].map(
-    (heading) => heading.textContent ?? '',
-  );
+const mount = mountWorkflowIsland;
 
 describe('CmsEditorialWorkflowIsland', () => {
   it('renders the panel and, for a submittable draft, the submit and preview forms only', () => {

@@ -11,8 +11,9 @@
 -- The guard is defence in depth under that RPC: a row is created active at
 -- version 1 on an OPEN review for a reviewer who is neither the review submitter
 -- nor the revision author, with at most sixteen active assignments per review;
--- afterwards only active -> revoked (CAS version + 1, updated_at) is possible,
--- nothing else moves, and a row is never deleted.  The count and eligibility
+-- afterwards only active -> revoked (CAS version + 1, updated_at STRICTLY later than
+-- the previous instant: the revoke advances `version` and `updated_at`, P2-S11-AC-119)
+-- is possible, nothing else moves, and a row is never deleted.  The count and eligibility
 -- reads take the review row lock (FOR UPDATE), the first lock of the review
 -- position of the global order (BE03b "Write-path lock order"), so concurrent
 -- assignments to one review serialize.  The function is SECURITY INVOKER.
@@ -87,7 +88,8 @@ begin
   end if;
   if tg_op = 'UPDATE' then
     -- The reviewer, grantor, scope, window, reason and creation never change;
-    -- only state, version and updated_at move, and only active -> revoked.
+    -- only state, version and updated_at move, and only active -> revoked; the revoke
+    -- advances the CAS version by one and updated_at strictly past the previous instant.
     if (pg_catalog.to_jsonb(new) - 'state' - 'version' - 'updated_at')
        is distinct from
        (pg_catalog.to_jsonb(old) - 'state' - 'version' - 'updated_at') then
@@ -96,7 +98,7 @@ begin
     if old.state <> 'active'
        or new.state <> 'revoked'
        or new.version <> old.version + 1
-       or new.updated_at < old.updated_at then
+       or new.updated_at <= old.updated_at then
       raise exception 'CONFLICT' using errcode = 'P0001';
     end if;
     return new;

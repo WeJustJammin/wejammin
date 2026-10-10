@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -8,61 +7,24 @@ import {
   click,
   disableReactAct,
   enableReactAct,
-  mountElement,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { COMMAND_CASES } from '../../server/cms-workflow-platform-command.test-support';
 import {
-  COMMAND_CASES,
-  CSRF,
-} from '../../server/cms-workflow-platform-command.test-support';
-import CmsEditorialReviewDetailIsland from './CmsEditorialReviewDetailIsland';
-import type { CanonicalReadResult } from './cms-workflow-canonical-read';
-import {
-  INSTANT,
-  REVIEW_ID,
   jsonResponse,
   reviewDetailFixture,
 } from './cms-workflow-fixtures.test-support';
+import {
+  formTitles,
+  mountReviewIsland,
+  ok,
+} from './cms-workflow-island-mount.test-support';
 
 beforeAll(enableReactAct);
 afterAll(disableReactAct);
 
-type Review = ReturnType<typeof reviewDetailFixture>;
-
-const ok = (resource: Review): CanonicalReadResult<Review> => ({
-  kind: 'ok',
-  resource,
-});
-
-const mount = (
-  initial: Review,
-  reads: readonly CanonicalReadResult<Review>[] = [],
-  responses: readonly Response[] = [],
-) => {
-  const queue = [...reads];
-  const readReview = vi.fn(async () => queue.shift() ?? ok(initial));
-  const answers = [...responses];
-  const fetcher = vi.fn(async () => answers.shift() as Response);
-  const mounted = mountElement(
-    <CmsEditorialReviewDetailIsland
-      init={{ review: initial, reviewId: REVIEW_ID, verifiedAt: INSTANT }}
-      readReview={readReview}
-      loadOptions={async () => ({ kind: 'ok', options: [] })}
-      environment={{
-        transport: { fetcher, documentRef: { cookie: `wj_csrf=${CSRF}` } },
-        newKey: () => 'idem-key-detail-0001',
-        storage: () => null,
-        navigate: () => undefined,
-      }}
-    />,
-  );
-  return { ...mounted, readReview, fetcher };
-};
-
-const titles = (container: HTMLElement): string[] =>
-  [...container.querySelectorAll('[data-cms-workflow-form] > h3')].map(
-    (heading) => heading.textContent ?? '',
-  );
+const mount = mountReviewIsland;
+const titles = formTitles;
 
 describe('CmsEditorialReviewDetailIsland', () => {
   it('renders the review and the decision form only for an assignee who may decide', () => {

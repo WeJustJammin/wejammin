@@ -118,6 +118,77 @@ describe('resolveScheduleInput', () => {
   });
 });
 
+describe('three-segment IANA zones', () => {
+  // BE03b:266 allows one to three `/`-separated segments; the pinned snapshot
+  // carries three-segment names (America/Argentina/*, America/Indiana/*,
+  // America/Kentucky/*, America/North_Dakota/*).
+  it('[P2-S11-AC-106] resolves America/Argentina/Buenos_Aires to one UTC instant at UTC-03:00', () => {
+    expect(
+      resolve('2026-12-01T09:00', 'America/Argentina/Buenos_Aires'),
+    ).toEqual({
+      kind: 'resolved',
+      resolvedUtc: '2026-12-01T12:00:00Z',
+      offsetSeconds: -10_800,
+      disambiguation: 'none',
+    });
+    expect(offsetLabel(-10_800)).toBe('UTC-03:00');
+  });
+
+  it('[P2-S11-AC-106] reproduces the spring-forward gap of a three-segment zone with its two alternatives', () => {
+    const result = resolve('2027-03-14T02:30', 'America/Indiana/Knox');
+    expect(result).toEqual({
+      kind: 'gap',
+      alternatives: [
+        {
+          localDateTime: '2027-03-14T01:30',
+          resolvedUtc: '2027-03-14T07:30:00Z',
+        },
+        {
+          localDateTime: '2027-03-14T03:30',
+          resolvedUtc: '2027-03-14T08:30:00Z',
+        },
+      ],
+    });
+  });
+
+  it('[P2-S11-AC-106] reproduces the fall-back fold of a three-segment zone and resolves once earlier or later is chosen', () => {
+    expect(resolve('2026-11-01T01:30', 'America/Indiana/Knox')).toEqual({
+      kind: 'fold',
+      alternatives: [
+        { disambiguation: 'earlier', resolvedUtc: '2026-11-01T06:30:00Z' },
+        { disambiguation: 'later', resolvedUtc: '2026-11-01T07:30:00Z' },
+      ],
+    });
+    expect(
+      resolve('2026-11-01T01:30', 'America/Indiana/Knox', 'earlier'),
+    ).toMatchObject({
+      kind: 'resolved',
+      resolvedUtc: '2026-11-01T06:30:00Z',
+      offsetSeconds: -18_000,
+      disambiguation: 'earlier',
+    });
+    expect(
+      resolve('2026-11-01T01:30', 'America/Indiana/Knox', 'later'),
+    ).toMatchObject({
+      resolvedUtc: '2026-11-01T07:30:00Z',
+      offsetSeconds: -21_600,
+      disambiguation: 'later',
+    });
+  });
+
+  it('[P2-S11-AC-106] offers three-segment names as suggestions and refuses a fourth segment', () => {
+    const zones = zoneSuggestions(authority);
+    expect(zones).toContain('America/Argentina/Buenos_Aires');
+    expect(zones).toContain('America/Indiana/Knox');
+    expect(
+      resolve('2026-12-01T09:00', 'America/Argentina/Buenos_Aires/X'),
+    ).toEqual({
+      kind: 'refused',
+      reason: 'unknown_timezone',
+    });
+  });
+});
+
 describe('offsetLabel', () => {
   it('formats a UT offset as UTC±hh:mm', () => {
     expect(offsetLabel(0)).toBe('UTC+00:00');

@@ -67,6 +67,7 @@ const mount = (
     <CmsEditorialScheduleForm
       revisionId={REVISION_ID}
       reviewVersion="5"
+      publishPermitted
       disabledReason={null}
       refetch={refetch}
       onDone={onDone}

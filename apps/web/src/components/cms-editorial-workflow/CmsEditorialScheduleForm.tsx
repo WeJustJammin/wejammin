@@ -1,7 +1,6 @@
 import {
   CMS_TZDB_VERSION,
   CmsPublicationAudienceSchema,
-  PublicationActionSchema,
 } from '@wejammin/contracts';
 import type { TimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
@@ -16,7 +15,14 @@ import { WorkflowSelect, WorkflowTextField } from './CmsWorkflowFields';
 import { WORKFLOW_HEADING_IDS } from './CmsEditorialWorkflowPanel';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
 import { isCommitBlocked } from './cms-workflow-form-state';
-import { PUBLICATION_ACTION_LABEL } from './cms-workflow-labels';
+import {
+  PUBLICATION_ACTION_LABEL,
+  SCHEDULE_PUBLISH_WITHHELD_COPY,
+} from './cms-workflow-labels';
+import {
+  effectiveScheduleAction,
+  scheduleActionChoices,
+} from './cms-workflow-schedule-actions';
 import {
   resolveScheduleInput,
   zoneSuggestions,
@@ -33,6 +39,13 @@ export interface CmsEditorialScheduleFormProps {
   readonly revisionId: string;
   /** The approved review's `version`: the `expectedVersion` and strong `If-Match`. */
   readonly reviewVersion: string;
+  /**
+   * Whether the server proved the caller may publish (the workflow read's
+   * `permittedNextActions` holds `publish`). Without it the form still schedules
+   * `unpublish`, `expire` and `archive` but offers and defaults no `publish`
+   * (BE03b:268-270: only the action `publish` is refused to the revision author).
+   */
+  readonly publishPermitted: boolean;
   readonly disabledReason: string | null;
   readonly refetch: () => Promise<boolean>;
   readonly onDone: (headingId: string) => void;
@@ -64,6 +77,7 @@ const AUDIENCE_HINT =
 export default function CmsEditorialScheduleForm({
   revisionId,
   reviewVersion,
+  publishPermitted,
   disabledReason,
   refetch,
   onDone,
@@ -93,11 +107,13 @@ export default function CmsEditorialScheduleForm({
   const time = useTimeAuthority(open, loadAuthority);
   const { authority } = time;
   const suggested = defaultTimezone ?? browserZone();
+  const choices = scheduleActionChoices(publishPermitted);
   const fields = useDraftFields(state.restoredValues, {
-    action: 'publish',
+    action: choices.defaultAction,
     timezone: authority?.hasZone(suggested) === true ? suggested : '',
   });
-  const action = fields.value('action');
+  // A typed, restored or earlier `publish` never outlives the permission for it.
+  const action = effectiveScheduleAction(fields.value('action'), choices);
   const local = fields.value('localDateTime');
   const zone = fields.value('timezone');
   const audience = fields.value('audience');
@@ -169,7 +185,7 @@ export default function CmsEditorialScheduleForm({
     void controller.submit({
       body: {
         revisionId,
-        action: PublicationActionSchema.parse(action),
+        action,
         localDateTime: local,
         timezone: zone,
         resolvedUtc: resolution.resolvedUtc,
@@ -224,7 +240,8 @@ export default function CmsEditorialScheduleForm({
             id="schedule-action"
             label="Action"
             value={action}
-            options={PublicationActionSchema.options.map((value) => ({
+            hint={publishPermitted ? undefined : SCHEDULE_PUBLISH_WITHHELD_COPY}
+            options={choices.options.map((value) => ({
               value,
               label: PUBLICATION_ACTION_LABEL[value],
             }))}

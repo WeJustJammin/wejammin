@@ -17,7 +17,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(157);
+select plan(162);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -512,6 +512,9 @@ select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
   $$delete from platform_private.cms_preflight_registry where category = 'contract' and version = 2$$);
 
 -- Every kind and every category: a version-2 row of each of the seventeen current providers (database, reference_gate, worker).
+-- DEC-160 / BE03b "Unavailable reasons": an unavailable result carries provider_unavailable for every database or
+-- reference-gate category and checker_failed for category 11 (accessibility, the worker provider); no other unavailable
+-- token exists.  A version-2 accessibility row is therefore unavailable/checker_failed, never provider_unavailable.
 select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
   'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
   'version', 2, 'category', current_row.category, 'owner_slice', current_row.owner_slice,
@@ -526,12 +529,44 @@ select is((select report->>'error' from h11p_v2_report), null,
   'the version-2 evaluation is a report, not a raised error (the evidence is bound to the version-2 checker) [P2-S11-AC-093]');
 select is((select count(*)::integer from h11p_v2_report, jsonb_array_elements(report->'results') result
             where result->>'outcome' = 'unavailable' and result->>'reasonCode' = 'provider_unavailable'
-              and result->>'providerVersion' = '2'),
-  17, 'a version-2 row of every database, reference_gate and worker provider is unavailable/provider_unavailable, none is evaluated as v1 [P2-S11-AC-093]');
+              and result->>'providerVersion' = '2' and result->>'category' <> 'accessibility'),
+  16, 'a version-2 row of every database and reference_gate provider (the sixteen non-worker categories) is unavailable/provider_unavailable, none is evaluated as v1 [P2-S11-AC-093]');
+select is((select result->>'outcome' || '/' || coalesce(result->>'reasonCode', '')
+             from h11p_v2_report, jsonb_array_elements(report->'results') result
+            where result->>'category' = 'accessibility' and result->>'providerVersion' = '2'),
+  'unavailable/checker_failed',
+  'a version-2 row of the worker accessibility provider is unavailable/checker_failed (DEC-160: checker_failed is the only unavailable token of category 11), never provider_unavailable [P2-S11-AC-093]');
+select is((select count(*)::integer from h11p_v2_report, jsonb_array_elements(report->'results') result
+            where result->>'outcome' = 'unavailable' and result->>'providerVersion' = '2'),
+  17, 'a version-2 row of each of the seventeen providers is unavailable, none is evaluated as v1 [P2-S11-AC-093]');
+select is((select count(*)::integer from h11p_v2_report, jsonb_array_elements(report->'results') result
+            where result->>'category' = 'accessibility' and result->>'reasonCode' = 'provider_unavailable'),
+  0, 'no accessibility result ever carries the forbidden reason provider_unavailable [P2-S11-AC-093]');
 select is((select (report->>'passed')::boolean from h11p_v2_report), false,
   'passed is false when any provider version is unimplemented [P2-S11-AC-097]');
 select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
   $$delete from platform_private.cms_preflight_registry where version = 2$$);
+
+-- A worker accessibility row that names a provider key this slice does not implement (same provider version) is the
+-- same unavailable result under the same token; a worker row of any OTHER category keeps provider_unavailable.
+select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
+  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
+  'version', 2, 'category', 'accessibility', 'owner_slice', 'slice-16', 'provider_key', 'cms.a11y.deep',
+  'provider_version', 1, 'provider_kind', 'worker', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok') - 'evidence'), 'accessibility'),
+  'unavailable/checker_failed',
+  'a worker accessibility row naming an unimplemented provider key is unavailable/checker_failed, never provider_unavailable [P2-S11-AC-093]');
+select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
+  $$delete from platform_private.cms_preflight_registry where category = 'accessibility' and version = 2$$);
+select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
+  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
+  'version', 2, 'category', 'security', 'owner_slice', 'slice-16', 'provider_key', 'cms.security.deep',
+  'provider_version', 1, 'provider_kind', 'worker', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok')), 'security'),
+  'unavailable/provider_unavailable',
+  'a worker row of a non-accessibility category keeps provider_unavailable (only category 11 reports checker_failed) [P2-S11-AC-093]');
+select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
+  $$delete from platform_private.cms_preflight_registry where category = 'security' and version = 2$$);
 
 -- ---------------------------------------------------------------------------
 -- 7 settings

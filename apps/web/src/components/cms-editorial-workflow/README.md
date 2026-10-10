@@ -33,13 +33,17 @@ refusal come from the Worker through the first-party proxies in
   `CmsEditorialReviewQueue`, `CmsEditorialReviewDetail`.
 - Forms: `CmsEditorialReviewSubmitForm` (05), `CmsEditorialDecisionForm` (06),
   `CmsEditorialScheduleForm` (07, lazy Time authority via `use-cms-schedule-time.ts`
-  and `cms-workflow-schedule-resolution.ts`), `CmsEditorialPreviewForm` and
+  and `cms-workflow-schedule-resolution.ts`; its action choices come from
+  `cms-workflow-schedule-actions.ts` and the server-proven `publishPermitted`),
+  `CmsEditorialPreviewForm` and
   `CmsEditorialPreviewToken` (08), `CmsEditorialPublishConfirmation` (09),
   `CmsEditorialReviewAssignmentForm` over `CmsEditorialAssignmentCreate` and
   `CmsEditorialAssignmentRevoke` (18). Shared parts: `CmsWorkflowCommandFrame`,
   `CmsWorkflowFields`, `CmsWorkflowClosedState`.
 - Islands: `CmsEditorialWorkflowIsland` and `CmsEditorialReviewDetailIsland`.
-- `*.test-support.ts` — fixtures parsed through the real contracts.
+- `*.test-support.ts(x)` — fixtures parsed through the real contracts
+  (`cms-workflow-fixtures`), the island mounts (`cms-workflow-island-mount`) and
+  the focus drivers (`cms-workflow-focus`, `cms-workflow-focus-harness`).
 
 ## Extension rules
 
@@ -51,6 +55,27 @@ a version set, a hash, a token or a person identifier: a step-up draft holds onl
 the editable text fields of a form. A 202 is "scheduled" or "recorded", never
 "published". Files stay within the size limits (components 200 lines, lib 300,
 tests 400).
+
+## Focus rules (FE03)
+
+Focus stays on the control a person activated until navigation or a named result
+heading; a refetch never moves it. Only these may take it: the refusal alert and
+the local-error summary of `CmsWorkflowCommandFrame`, the preview token heading
+of `CmsEditorialPreviewForm`, and the heading a form names to its island through
+`onDone` (`WORKFLOW_HEADING_IDS`, `REVIEW_DETAIL_HEADING_IDS`) once the canonical
+read behind the command has landed. A commit control is `aria-disabled`, never
+`disabled`, because a disabled button drops keyboard focus to the body. The rules
+are pinned per form by `cms-workflow-focus-forms.test.tsx` (every command form)
+and through the real islands by `*Island.focus.test.tsx`; the route heading on
+navigation only is `apps/web/src/lib/route-heading-focus.ts`.
+
+## Schedule actions
+
+BE03b:268-270 refuses the revision author only the action `publish`. The island
+passes `publishPermitted={permittedNextActions.includes('publish')}` and the form
+then offers `unpublish`, `expire` and `archive` (defaulting to the first) with the
+fixed second-person note; it never hides the form. A stored or earlier `publish`
+choice is replaced by the default once `publish` is no longer offered.
 
 ## Conventions
 
