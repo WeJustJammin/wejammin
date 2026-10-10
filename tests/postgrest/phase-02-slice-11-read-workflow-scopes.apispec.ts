@@ -170,9 +170,9 @@ describe('CMS-03B-15 scoped preparation', () => {
       expect(parsed.revision.state).toBe('submitted');
       expectSafeEqual(parsed.review?.id, review.id, 'reader review identity');
       expectSafeEqual(
-        parsed.review?.frozen.dependencyManifest,
-        preparation?.dependencyManifest,
-        'frozen manifest equals served preparation',
+        parsed.review?.frozen.dependencyHash,
+        preparation?.dependencyHash,
+        'frozen dependency hash equals served preparation dependency hash',
       );
       expectSafeEqual(
         parsed.review?.frozen.versionSet,

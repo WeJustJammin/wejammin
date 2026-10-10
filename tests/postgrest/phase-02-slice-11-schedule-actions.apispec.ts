@@ -136,7 +136,15 @@ describe('CMS-03B-07 exact action and audience schedule identity', () => {
     expectSafeError(response, {
       status: 400,
       code: 'INVALID_REQUEST',
-      details: {},
+      details: {
+        violations: [
+          {
+            path: '/expectedVersion',
+            code: 'mismatch',
+            message: 'The value is invalid.',
+          },
+        ],
+      },
     });
     expect(stack.rpcs().length).toBe(0);
     expectUnchanged(
@@ -159,7 +167,7 @@ describe('CMS-03B-07 exact action and audience schedule identity', () => {
     expectSafeError(response, {
       status: 415,
       code: 'UNSUPPORTED_MEDIA_TYPE',
-      details: {},
+      details: { allowedMediaTypes: ['application/json'] },
     });
     expect(stack.rpcs().length).toBe(0);
     expectUnchanged(

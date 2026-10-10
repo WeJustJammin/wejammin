@@ -1,0 +1,496 @@
+{
+  "schemaVersion": 1,
+  "baseline": "0495b16b041680dc08914a9df4356e001b2fd29f",
+  "scope": "E7 inline producer first application and partial focused proof; full gate RED",
+  "acceptance": "0/122; Slices12-17 not started",
+  "producer": {
+    "p": "supabase/migrations/20261010130000_cms_settings_write_tail_lookup.sql",
+    "lines": 212,
+    "sha": "7bd5eb6405875ba052e83b45cece793534156bba152cd5a695c4b2c165838784",
+    "frozenQa": [
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+        "exact": true
+      },
+      {
+        "p": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+        "exact": true
+      },
+      {
+        "p": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+        "exact": true
+      },
+      {
+        "p": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings/000-writer-helpers.sqlinc",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings/001-writer-requests.sqlinc",
+        "exact": true
+      }
+    ],
+    "dirtyPaths": [
+      "tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts",
+      "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+      "supabase/migrations/20261010130000_cms_settings_write_tail_lookup.sql"
+    ]
+  },
+  "frozenQa": [
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+      "lines": 17,
+      "sha": "1163b5548d218b6967ad695e13dfc4c759467f7bb10ae074c1fde0b91697d641"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "lines": 172,
+      "sha": "402a4e046b328ded55cf19a597ea1ad38e5c14ada1f8a32ad6908e06fa4c1781"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+      "lines": 229,
+      "sha": "2a9384f0b9110729fa005bb29dc525c080180a904a76885637136bccb17df818",
+      "titleSequenceExact": true,
+      "bodyChanges": [
+        "'[CMS-03B-18] step-up, eligibility, duplicates, expiry bounds, revoke and conflict'"
+      ]
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+      "lines": 172,
+      "sha": "4e57f3cd11589d69a2fb466aa2271a3e136475663b634affb1ddb5b9efcdb976",
+      "titleSequenceExact": true,
+      "bodyChanges": [
+        "'[CMS-03B-19] sends only the token hash and returns the complete bound resource without any writes'"
+      ],
+      "previewInverseExact": true
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+      "lines": 346,
+      "sha": "0dd6ea2bbd40d65ea9537f4f85f0237d14ed8910e97e1231883ce19575516d3b",
+      "titleSequenceExact": true,
+      "bodyChanges": [
+        "'[CMS-03B-05] superseded revisions refuse revision_not_submittable using the current entry operand'",
+        "`[CMS-03B-05] ${fault} is refused before RPC and before every durable effect`"
+      ]
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+      "sha": "a76b55f199bc51bf162bc5828e0459d122c94dea8cef544331eb1b9384747872"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/000-writer-helpers.sqlinc",
+      "lines": 239,
+      "sha": "8581c3686b191140f631d0adf42598c106cd647416a5e688060394409cbeb42c"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/001-writer-requests.sqlinc",
+      "lines": 120,
+      "sha": "d6190167d5bb4197fb66d9a4635ca24fb6e1218ee5557faff839a0dd40b3899a"
+    }
+  ],
+  "fixtureRepairs": [
+    {
+      "path": "tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts",
+      "lines": 226,
+      "sha": "facc77731447d123ac7338102388d259dafe2458ff3e2fa5fa3794ce696b2b76",
+      "titlesExact": true,
+      "changedBodies": [
+        "'[CMS-03B-15] assignee publisher and reviewer scopes read the same frozen candidate and submission moves the composite ETag'"
+      ],
+      "workflowInverseByteExact": true,
+      "diff": [
+        "-        parsed.review?.frozen.dependencyManifest,",
+        "-        preparation?.dependencyManifest,",
+        "-        'frozen manifest equals served preparation',",
+        "+        parsed.review?.frozen.dependencyHash,",
+        "+        preparation?.dependencyHash,",
+        "+        'frozen dependency hash equals served preparation dependency hash',"
+      ]
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+      "lines": 202,
+      "sha": "75fe6bba91670c4f6b3e008ea07719a94cb3a20f7b97ff45ffbf9dd959e9ad17",
+      "titlesExact": true,
+      "changedBodies": [
+        "'[CMS-03B-07] header/body CAS disagreement is 400 before any RPC or reservation'",
+        "'[CMS-03B-07] non-JSON body is exact 415 before RPC and changes nothing'"
+      ],
+      "diff": [
+        "-      details: {},",
+        "+      details: {",
+        "+        violations: [",
+        "+          {",
+        "+            path: '/expectedVersion',",
+        "+            code: 'mismatch',",
+        "+            message: 'The value is invalid.',",
+        "+          },",
+        "+        ],",
+        "+      },",
+        "-      details: {},",
+        "+      details: { allowedMediaTypes: ['application/json'] },"
+      ]
+    }
+  ],
+  "catalog": {
+    "beforeLog": ".lane-logs/parent-s11-e7-inline-catalog7-baseline-20261010.log",
+    "afterLog": ".lane-logs/parent-s11-e7-inline-catalog7-after-20261010.log",
+    "comparison": [
+      {
+        "function": "platform_private.cms_author_locale_variant(jsonb)",
+        "metadataExact": true,
+        "prosrcBefore": "9521f3178fc52bc9cfe05dc57a9a3e2c",
+        "prosrcAfter": "0aa357a128f6db23251618ce4d758590",
+        "definitionBefore": "5d022c89e83a49396678b1abd2cbc166",
+        "definitionAfter": "48e83a9661c16d31f78468895f9e663f"
+      },
+      {
+        "function": "platform_private.cms_complete(uuid,uuid,integer,jsonb)",
+        "metadataExact": true,
+        "prosrcBefore": "f0f74a45824df0278bf2a4ad4e9de392",
+        "prosrcAfter": "f0f74a45824df0278bf2a4ad4e9de392",
+        "definitionBefore": "90994296fa523f04f0906dabd969a641",
+        "definitionAfter": "90994296fa523f04f0906dabd969a641"
+      },
+      {
+        "function": "platform_private.cms_create_entry(jsonb)",
+        "metadataExact": true,
+        "prosrcBefore": "4b3ff16fc36a2cf6e11353e3b2b313c6",
+        "prosrcAfter": "ed84c83ea28616d358c3dae31ded4365",
+        "definitionBefore": "d7855d363775652e3e5028c83637944f",
+        "definitionAfter": "9d3280c8fcf3357b2060ccb5b7b50e16"
+      },
+      {
+        "function": "platform_private.cms_create_revision(jsonb)",
+        "metadataExact": true,
+        "prosrcBefore": "f0bfdac1be9fee6f14873698bae2c953",
+        "prosrcAfter": "0f2813ae4369327f73fded71adef4e15",
+        "definitionBefore": "8813bdc948c8ff144a2df0b0ac1a2ccb",
+        "definitionAfter": "f09f78996613129e5432865d07cae13a"
+      },
+      {
+        "function": "platform_private.cms_resolve_conflict(jsonb)",
+        "metadataExact": true,
+        "prosrcBefore": "26ede79aefc8a7fcb2ee5330dc617af1",
+        "prosrcAfter": "8abafd1ead426d254f5c230b7fab647d",
+        "definitionBefore": "f249d3072fb36fbb510a62b23e0f5291",
+        "definitionAfter": "e1eec40215e8a4e1b446bb8fd80015f2"
+      },
+      {
+        "function": "platform_private.cms_restore_revision(jsonb)",
+        "metadataExact": true,
+        "prosrcBefore": "551996cb945b4b09d634e19d39710a59",
+        "prosrcAfter": "b326ae0f547874039e8f410861f27554",
+        "definitionBefore": "1ac24770572b089e8fb6723f2ffc922a",
+        "definitionAfter": "b4155bf2fa8031ef47e772ec030cdb5b"
+      },
+      {
+        "function": "platform_private.cms_settings_snapshot(uuid)",
+        "metadataExact": true,
+        "prosrcBefore": "81fceb00824647462f4b3eef19596235",
+        "prosrcAfter": "badab57925e93cb6854e64be739f54f8",
+        "definitionBefore": "3970fc1b407c03012efed279fd24a464",
+        "definitionAfter": "48e43df484612abceb4d6f1bad3323b2"
+      }
+    ],
+    "allSevenMetadataExact": true,
+    "genericCompletionSourceAndDefinitionExact": true
+  },
+  "focus": {
+    "log": ".lane-logs/parent-s11-e7-inline-producer-first-focus-20261010.log",
+    "sha256": "2d89bc821d840c2415dfa78c4168a896900f672c7eb661ca17981ee09c4e52b3",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "preReset": 0,
+    "lint": 0,
+    "catalog": 0,
+    "lookup": {
+      "executed": 54,
+      "passed": 54
+    },
+    "writer": {
+      "executed": 70,
+      "passed": 68,
+      "failed": 2,
+      "failedTests": "66-67",
+      "actualFault": "42501:permission denied for function cms_key_hash",
+      "intendedFault": "P7E01:E7_SNAPSHOT_TAIL_FAULT",
+      "checkpoint": null,
+      "causalTailFaultProven": false
+    },
+    "api": {
+      "files": 6,
+      "passedFiles": 4,
+      "failedFiles": 2,
+      "tests": 37,
+      "passed": 35,
+      "failed": 2,
+      "seconds": 41.01,
+      "failedCases": [
+        {
+          "title": "[CMS-03B-15] a first eligible draft workflow read on a fresh isolated assignee org writes no effect",
+          "actual": "pre-read snapshot count1 vs expected0",
+          "readReached": false
+        },
+        {
+          "title": "[CMS-03B-07] nine-digit fractional schedule accepted by Worker remains accepted by SQL",
+          "actual": "422 VALIDATION_FAILED vs202",
+          "genuineDefect": true
+        }
+      ]
+    },
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-e7-inline-first-full-gate-20261010.log",
+    "sha256": "d1b5f31df9dfdaf33303c35c79e299c6b9e817c9a67e3ac3c5a905b68ef16620",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "sqlFiles": 335,
+    "sqlAssertions": 12378,
+    "seconds": 102,
+    "failedFiles": 29,
+    "failedAssertions": 170,
+    "abortedFiles": 24,
+    "files": [
+      {
+        "path": "supabase/tests/phase_02_slice_09_evidence_trigger_catalog.sql",
+        "wstat": 0,
+        "executed": 45,
+        "failed": 1
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_09_schema.sql",
+        "wstat": 0,
+        "executed": 564,
+        "failed": 1
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+        "wstat": 0,
+        "executed": 70,
+        "failed": 2
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_lineage.sql",
+        "wstat": 768,
+        "executed": 12,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_lineage_append_only.sql",
+        "wstat": 768,
+        "executed": 8,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_manifest.sql",
+        "wstat": 0,
+        "executed": 87,
+        "failed": 33
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_preflight.sql",
+        "wstat": 0,
+        "executed": 157,
+        "failed": 121
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+        "wstat": 768,
+        "executed": 25,
+        "failed": 12
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_preview_mint.sql",
+        "wstat": 768,
+        "executed": 11,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_claim.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_evidence_audit.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_execute.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_publish.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_gate.sql",
+        "wstat": 768,
+        "executed": 11,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_queue.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_review.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_decision.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_decision_invalidation.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_evidence_audit.sql",
+        "wstat": 768,
+        "executed": 15,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_submit.sql",
+        "wstat": 768,
+        "executed": 11,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_submit_evidence_replay.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      }
+    ],
+    "dbVerify": 1,
+    "api": "UNRUN",
+    "races": "UNRUN",
+    "dbTypes": "UNRUN",
+    "validate": "UNRUN",
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "static": {
+    "targetApi2Lint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0
+  },
+  "reviews": {
+    "producer": [
+      "s11_sql2_refutation_exact: no bounded actionable producer finding",
+      "s11_recovery_reference_source: producer compatible; healthy duplicate success QA gap"
+    ],
+    "limits": [
+      "all seven checkpoint facts UNPROVEN due observer permission denial",
+      "supplied checker bindings not checker runtime E2E",
+      "guarded policy fixture not actual schema activation",
+      "JSONB object-key ordering unproved",
+      "canonical-owner-field mutation sensitivity and global lock order unproved"
+    ]
+  },
+  "changedTitles": [
+    {
+      "file": "tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts",
+      "title": "'[CMS-03B-15] assignee publisher and reviewer scopes read the same frozen candidate and submission moves the composite ETag'",
+      "retained": true
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+      "title": "'[CMS-03B-07] header/body CAS disagreement is 400 before any RPC or reservation'",
+      "retained": true
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+      "title": "'[CMS-03B-07] non-JSON body is exact 415 before RPC and changes nothing'",
+      "retained": true
+    }
+  ],
+  "next": {
+    "observerBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-writer-observer-duplicate-qa-2026-10-10.md",
+    "readNoeffectsBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-read-noeffects-write-baseline-fixture-2026-10-10.md",
+    "authors": "UNRUN until clean pushed checkpoint",
+    "legacySqlCascade": "static source classification pending",
+    "schedulePrecision": "genuine9-digit durable representation defect; no regex-only closure"
+  }
+}
