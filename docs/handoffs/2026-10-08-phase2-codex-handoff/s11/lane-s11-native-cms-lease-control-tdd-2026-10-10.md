@@ -81,14 +81,18 @@ with no further I/O. Calls after close return lost with no I/O and do not poison
 the internal lease-loss latch. Finalization drains accepted work, inspects private
 health, and never calls the closed public checkpoint for final status. No heartbeat
 may run after final CAS. Before I/O reject known expiry or invalid/throwing fresh clock. Recheck
-restore fence before any heartbeat/read; closed restore or reader error latches
+restore fence once at checkpoint start before its heartbeat/read sequence;
+closed restore or reader error latches
 lost. Use existing heartbeatJobLease helper and exact one-third threshold:
 tracked actual post-claim version, acquired original token, tracked actual expiry,
 existing leaseSeconds and fresh now. Require actual response Boolean, never truthy
 coercion. False/throw/nonboolean/reject => lost; unknown transport may have applied
 and cannot be ACKed as manual review.
 
-After renewed Boolean true, read canonical Job. Require exact id/CMS type/running,
+After renewed Boolean true, invalid/throwing fresh clock latches lost before any
+further I/O. With valid fresh clock, read canonical Job even when OLD tracked
+expiry elapsed during the heartbeat wait: successful renewal changed expiry,
+so the old expiry is not known current expiry. Require exact id/CMS type/running,
 positive actual decimal version strictly greater than tracked previous version
 (no +1 assumption), finite non-null native expiry beyond another fresh clock.
 For not_due still read canonical and require unchanged tracked version, unchanged
@@ -129,6 +133,9 @@ Causal witnesses, with exact args/order/counts and no early writes:
    and canonical-read barriers show effect return cannot cause early CAS. Two
    accepted requests still drain after effect return/close; a later retained call
    returns lost without poisoning healthy CAS using last observed version.
+   Also deferred true renewal may cross old expiry300000 while actual reread
+   returns37/expiry600000 still live; healthy CAS37 must remain possible. Invalid
+   fresh clock after true renewal instead loses before the canonical read.
 3. Not_due: zero heartbeat, actual canonical validation, final CAS19.
 4. False/throw/nonboolean heartbeat: terminal, pending_manual_review and thrown
    effect each retry; zero outcome/processed; later checkpoint does no I/O.
@@ -139,7 +146,16 @@ Causal witnesses, with exact args/order/counts and no early writes:
 7. Frozen initial job/envelope/claimedLease retain exact references/descriptors
    and same claim-builder result after renewal; checkpoint snapshots independently
    frozen. Late retained checkpoint after outcome performs zero I/O.
-8. Ordinary non-CMS with even private flag true: one effect argument, no CMS
+8. Direct exported decideJobDispatch control, not only consumer: valid frozen
+   object.verify binding/eventJobType, private verifiedImmutableJobOrigin=true,
+   envelope7/current11 exact stale skip and envelope7/current3 exact future retry.
+   This independently kills dropping core actualCMS-type predicate even when
+   consumer clamps forwarding. Use structural variable, no cast/nonexistent API.
+   Direct ordinary non-CMS consumer with private origin flag true preserves both stale
+   incoming7/current13 ACK and future incoming23/current13 retry, zero claim/
+   effect/HB/outcome/processed writes. This kills dropping actualCMS-type guards
+   in core version comparison, unlike receiver tests that never inject that flag.
+   Healthy ordinary non-CMS with private flag true: one effect argument, no CMS
    control/HB/new canonical or restore reads. Legacy unverified CMS likewise.
 9. Healthy renewed queued result: actual version CAS; no processed marker.
    Healthy renewed terminal result: deferred processed write before completion.
@@ -155,3 +171,34 @@ Causal witnesses, with exact args/order/counts and no early writes:
 Root runs functional RED, exact-change/source-only refutation and freezes QA before
 a separately scoped native producer. No test schema/title/security weakening.
 Full db:verify then validate remains mandatory; a focused green is not acceptance.
+
+## First63 actual RED / controlled assertion amendment
+
+Actual32 application/31 Worker,54failed9passed; application404/support346/Worker291.
+Lint0; combined types2 is receiving cancellation global typing, separate lane.
+After clean pushed exact-origin checkpoint only same three QA paths may change.
+Preserve every existing title/operand/assertion/history; mechanical helper/case
+extraction between these files permitted, acyclic, each formatted hard400
+(target350). Do not shorten by deleting assertions or hiding source in strings.
+
+Independent source review requires four narrow additions before producer:
+
+1. Three effect-outcome rows: accept an unawaited deferred checkpoint, immediately
+   return succeeded/manual_review or throw; pending HB later resolves false.
+   Explicit barrier races prove delivery still pending before release; afterward
+   exact retry/lease_conflict, no outcome or processed writes. Existing await-before
+   return loss cases remain. Add final-expiry manual_review/throw rows (succeeded
+   already exists), requiring lost precedence and zero persistence.
+2. Strengthen existing not_due case to two checkpoints at same valid facts19/
+   expiry301000: distinct outer and claimedJob identities, both levels frozen for
+   both; exact two restore/read sequences, zero heartbeat, final CAS19.
+3. Add initial valid positive receipt version6 below preclaim7, all other fields
+   valid; retry before effect/outcome/processed calls. Equality7 case remains.
+4. Isolate construction eventJobType clamp: verified=true, canonical CMS,
+   matching envelope/current version, omitted eventJobType. Existing legacy
+   dispatch behavior without control/extra clock/HB/read; wrong-type binding
+   refusal is not this witness. Omit through a structural input variable, no cast.
+
+Expected70 executed cases if additions use seven new rows; root independently
+counts actual cases. Restore reread once at checkpoint start, not after each I/O.
+No enduring stage-authority proof/production change/acceptance claim.

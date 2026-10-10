@@ -1575,6 +1575,7 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-receiving24-lease63-red-and-native-qa-correction-gate|Slice 11 receiving24 lease63 RED and native QA correction gate]] — knowledge — 2026-10-10T11:35:11.176Z
 - [[knowledge/2026-10-10-slice-11-cms-operational-lease-control-next-qa-contract|Slice 11 CMS operational lease control next QA contract]] — knowledge — 2026-10-10T11:10:52.931Z
 - [[knowledge/2026-10-10-slice-11-cms-origin-receiving-first-red-and-controlled-qa-amendment|Slice 11 CMS origin receiving first RED and controlled QA amendment]] — knowledge — 2026-10-10T11:10:52.930Z
 - [[knowledge/2026-10-10-slice-11-cms-immutable-origin-receiving-contract|Slice 11 CMS immutable-origin receiving contract]] — knowledge — 2026-10-10T10:43:40.217Z

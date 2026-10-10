@@ -17,7 +17,11 @@ circular import. Add one genuine cancellation case: test-local native
 AbortController subclass maps exact signals to owned controllers. Defer verifier,
 capture its signal, abort matching actual receiver controller, then resolve false.
 Actual entrypoint must retry with zero claim/effect/outcome/processed/ACK and frozen
-envelope. Restore globals in finally. Race callback-entry against delivery
+envelope. Existing signal check may gain explicit expectedAborted=false parameter,
+true ONLY for new cancellation case; default remains algebraically identical for
+all23 old cases. Retain signal identity/instance/frozen/count/history oracles.
+Root discloses this narrow oracle extension separately from pure extraction.
+Restore globals in finally. Race callback-entry against delivery
 completion so current ignored-hook RED is an explicit early-completion failure,
 not timeout. No invented delivery signal/fake aborted property/sleeps/producer edit.
 Root checkpoints RED/cap/gap before claim; reruns/refutes/freezes amendment before
@@ -128,3 +132,15 @@ Root executes genuine RED, freezes SHA, reviews independently, then checkpoints
 before separately selected producer claim. No author commands/tests/format/Git/
 DB/runtime/network/docs/memory. Edit only after clean pushed exact-origin
 checkpoint is announced. Native6astrahigh; root6.1ultra. Claim released after QA.
+
+## Next controlled typed cancellation amendment
+
+Actual24 RED18failed6passed/spec359/support338; combined types2 identifies
+globalThis.AbortController typing, not a behavioral producer defect. After root
+clean pushed checkpoint, native same two-path scope only: capture native typed
+constructor with `const NativeController = AbortController`, intercept using
+`vi.stubGlobal('AbortController', ObservedController)`, restore via
+`vi.unstubAllGlobals()` inside existing nested finally. Keep subclass/exact signal
+owner map/barriers/all24 titles/assertions unchanged; no casts or ambient types.
+No other global stubs are introduced. Root confirms typing/runtime and original
+case equivalence. Target350/hard400 remains; no production edits.
