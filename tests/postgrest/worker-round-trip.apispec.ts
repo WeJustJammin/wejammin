@@ -32,6 +32,11 @@ import {
   userToken,
   workerServiceCredential,
 } from './support/stack';
+import {
+  assertAdapterContentTypePagination,
+  assertContentTypePage,
+  assertDirectContentTypePagination,
+} from './support/worker-round-trip-pagination';
 
 const RELEASE_KEY = 'apigate-worker-key';
 
@@ -211,8 +216,10 @@ describe('SEC-1 Worker production adapters against the real API', () => {
     // page is checked for its shape, not for emptiness.
     expect(result).toMatchObject({
       ok: true,
-      value: { items: expect.any(Array), nextCursor: null },
+      value: { items: expect.any(Array) },
     });
+    assertContentTypePage(result.ok ? result.value : null);
+    await assertAdapterContentTypePagination(owner, dependencies);
   });
 
   it('human CMS read: the same read as the owner directly (authenticated JWT) succeeds, and a stranger forging the owner does not', async () => {
@@ -230,8 +237,10 @@ describe('SEC-1 Worker production adapters against the real API', () => {
     );
     expect(own).toMatchObject({
       status: 200,
-      body: { items: expect.any(Array), nextCursor: null },
+      body: { items: expect.any(Array) },
     });
+    assertContentTypePage(own.body);
+    await assertDirectContentTypePagination(owner);
     createPerson(stranger);
     const forged = await callRpc(
       'cms_list_content_types',

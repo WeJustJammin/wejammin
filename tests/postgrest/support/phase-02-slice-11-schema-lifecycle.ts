@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { ContentSchemaRegistryDetailSchema } from '@wejammin/contracts';
 import { expect } from 'vitest';
 
-import { createProductionSchemaMigrationWorker } from '../../../apps/worker/src/production-worker-runtime-cms';
+import { createProductionSchemaMigrationPreparationWorker } from '../../../apps/worker/src/production-worker-runtime-cms';
 import { type CmsApp, draftTypeBody } from './cms-app';
 import type { EditorialWorld } from './cms-editorial-world';
 import { createS11MigrationDiagnostics } from './phase-02-slice-11-migration-diagnostics';
@@ -98,7 +98,7 @@ const sealDryRun = async (schemaVersionId: string, migrationPlanId: string) => {
     await diagnostics.observe(rpc, response);
     return response;
   };
-  const worker = createProductionSchemaMigrationWorker(
+  const worker = createProductionSchemaMigrationPreparationWorker(
     s11Environment(),
     transport,
   );
