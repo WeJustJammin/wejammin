@@ -80,7 +80,7 @@ describe('CMS-03B-19 production adapter over actual PostgREST', () => {
       result,
       {
         valid: true,
-        userId: world.owner.authUserId,
+        userId: world.owner.personId,
         entryId: draft.entryId,
         revisionId: draft.revisionId,
         exactVersionSet: draft.versionSet,

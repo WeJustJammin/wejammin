@@ -5,6 +5,19 @@ Author/implementation UNRUN; producer cannot start before new writer/lookup QA
 actual RED, independent review, canonical receipt and clean pushed QA checkpoint.
 Supersedes the DEFERRED new-CMS-helper shape. DEC-163 unchanged.
 
+## Latest strengthened QA prerequisite
+
+Lookup304/54 actual13FAIL41PASS. Writer17/239/120/172 now plan70,
+actual10FAIL60PASS; added immediate pre/post-B01 witnesses, post-B05 image
+equality, explicit existingHash and full canonical-row-derived completed201
+receipt. Every original68 title retained; independent source review no bounded
+mismatch. FreshCI0/flock/pre-middle-postReset0; three fixture APIs25PASS23.64s.
+Mandatory full gate and clean pushed checkpoint still required before author.
+Freeze all124 SQL assertions and three repaired API paths during production work.
+Root owns actual baseline/changed-function catalog and functional fault proof.
+Do not prewarm fixtures to evade legacy lookup refusal or soften existing tests;
+root classifies any source-backed stale fixture after genuine producer execution.
+
 ## Exact author scope
 
 Root owns execution, DB, formatting, Git, canonical flush/compile and validation.

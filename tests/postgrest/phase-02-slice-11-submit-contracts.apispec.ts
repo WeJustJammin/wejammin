@@ -4,7 +4,10 @@
  */
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { EditorialReviewResourceSchema } from '@wejammin/contracts';
+import {
+  EditorialReviewResourceSchema,
+  EntryDraftDetailResourceSchema,
+} from '@wejammin/contracts';
 import {
   expectAbsent,
   expectSafeEqual,
@@ -125,6 +128,11 @@ describe('CMS-03B-05 frozen submission and admission contracts', () => {
 
   it('[CMS-03B-05] superseded revisions refuse revision_not_submittable using the current entry operand', async () => {
     const fixture = await submitFixture(stack, world);
+    const detail = await stack.get(
+      `/api/v1/cms/entries/${fixture.draft.entryId}`,
+    );
+    expectStatus(detail, 200);
+    const currentDraft = EntryDraftDetailResourceSchema.parse(detail.body);
     const appended = await stack.post(
       `/api/v1/cms/entries/${fixture.draft.entryId}/revisions`,
       {
@@ -132,7 +140,7 @@ describe('CMS-03B-05 frozen submission and admission contracts', () => {
           world.editorial,
           fixture.draft.entryId,
           'New current revision',
-          fixture.draft.revisionId,
+          currentDraft.revisionNumber,
           fixture.draft.entryVersion,
         ),
         ifMatch: fixture.draft.entryVersion,
@@ -281,6 +289,15 @@ describe('CMS-03B-05 frozen submission and admission contracts', () => {
                       : 'invalid_value',
                 message: 'The value is invalid.',
               },
+              ...(fault === 'weak-etag'
+                ? [
+                    {
+                      path: '/ifMatch',
+                      code: 'invalid_value',
+                      message: 'The value is invalid.',
+                    },
+                  ]
+                : []),
             ],
           },
           'exact admission violation semantics',

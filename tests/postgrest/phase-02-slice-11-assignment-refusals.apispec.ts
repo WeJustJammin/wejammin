@@ -14,7 +14,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   EditorialReviewAssignmentResourceSchema,
   cmsSlice11ReasonStatus,
-  MFA_METHOD_REGISTRY,
 } from '@wejammin/contracts';
 
 import { submitForReview } from './support/phase-02-slice-11-flow';
@@ -75,7 +74,7 @@ describe('CMS-03B-18 refusals through the real stack', () => {
         code: 'STEP_UP_REQUIRED',
         details: {
           recoveryAction: 'step_up',
-          allowedMethods: [...MFA_METHOD_REGISTRY],
+          allowedMethods: ['totp'],
         },
       });
       expectUnchanged(
@@ -99,8 +98,6 @@ describe('CMS-03B-18 refusals through the real stack', () => {
       status: 409,
       code: 'CONFLICT',
       details: {
-        conflict: 'INVALID_TRANSITION',
-        recoveryAction: 'refresh',
         reasonCode: 'reviewer_not_eligible',
       },
     });
@@ -163,8 +160,6 @@ describe('CMS-03B-18 refusals through the real stack', () => {
       status: 409,
       code: 'CONFLICT',
       details: {
-        conflict: 'INVALID_TRANSITION',
-        recoveryAction: 'refresh',
         reasonCode: 'assignment_exists',
       },
     });

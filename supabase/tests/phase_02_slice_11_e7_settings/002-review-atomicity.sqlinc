@@ -37,11 +37,34 @@ declare target_entry uuid := current_setting('app.e7_entry')::uuid;
   prior_revision uuid := current_setting('app.e7_revision')::uuid;
   prior_version bigint := current_setting('app.e7_version')::bigint;
   prior_audit integer := current_setting('app.e7_audit')::integer;
-  entry_row platform_private.cms_content_entries; checkpoint jsonb;
+  entry_row platform_private.cms_content_entries; checkpoint jsonb; expected_response jsonb;
 begin
   select * into entry_row from platform_private.cms_content_entries where id = target_entry;
   if new.owner_id is distinct from entry_row.owner_id then return new; end if;
+  -- Independent row oracle: BE03b EntryRevisionResource 749-766; resources.ts
+  -- strict shape; B01 ABI 20261005018045:630-645. Never read the stored response
+  -- to build its expected value or call a production response projection helper.
+  -- This fresh successor has no review/publication: its expected state is draft.
+  -- Preserve array order and JSON nulls; version fields are decimal strings.
+  select jsonb_build_object(
+    'id', r.id, 'version', r.version::text,
+    'createdAt', to_char(r.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'updatedAt', to_char(r.updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'state', 'draft', 'entryId', r.entry_id, 'revisionNumber', r.revision_number::text,
+    'schemaVersionId', r.schema_version_id, 'templateVersionId', r.template_version_id,
+    'taxonomyVersionIds', r.taxonomy_version_ids, 'locale', r.locale,
+    'contentHash', r.payload_hash::text, 'parentRevisionIds', r.parent_revision_ids,
+    'validationState', r.validation_state, 'conflictId', null,
+    'entryVersion', entry_row.version::text) into expected_response
+  from platform_private.cms_entry_revisions r
+  where r.id = entry_row.current_draft_revision_id and r.entry_id = entry_row.id
+    and r.owner_id = entry_row.owner_id;
   checkpoint := jsonb_build_object(
+    'existingHash', (select count(*) = 1
+      from platform_private.cms_publication_settings_snapshots s where s.owner_id = entry_row.owner_id)
+      and exists(select 1 from platform_private.cms_publication_settings_snapshots s
+        where s.owner_id = entry_row.owner_id and s.snapshot_hash = new.snapshot_hash
+          and s.effective_values = new.effective_values and s.registry_version = new.registry_version),
     'canonicalExists', exists(select 1 from platform_private.cms_entry_revisions r
       join platform_private.cms_entry_field_values v on v.revision_id = r.id
       where r.id = entry_row.current_draft_revision_id and r.id <> prior_revision
@@ -59,17 +82,29 @@ begin
     'completed201', exists(select 1 from platform_private.idempotency_records
       where key_hash = platform_private.cms_key_hash('e7-tail-fault-0001')
         and operation = 'CMS-03B-01' and state = 'completed'
-        and response_ref->>'status' = '201'
-        and response_ref->>'resourceRef' = entry_row.current_draft_revision_id::text
-        and response_ref#>>'{safeHeaders,response,id}' = entry_row.current_draft_revision_id::text
-        and response_ref#>>'{safeHeaders,response,entryVersion}' = entry_row.version::text));
+        and expected_response is not null
+        and response_ref = jsonb_build_object('status', 201,
+          'resourceRef', entry_row.current_draft_revision_id::text,
+          'safeHeaders', jsonb_build_object('response', expected_response))));
   raise exception 'E7_SNAPSHOT_TAIL_FAULT' using errcode = 'P7E01', detail = checkpoint::text;
 end;
 $$;
 
 savepoint e7_review_tail;
+select pg_temp.e7_snapshots() as e7_pre_save_snapshots \gset
 create temp table e7_save on commit drop as
 select pg_temp.e7_call('B01', pg_temp.e7_request('B01', 'e7-healthy-save-0001')) as answer;
+-- Capture before ANY manifest/preflight/submit builder can perform an old cold read.
+select pg_temp.e7_snapshots() as e7_post_save_snapshots,
+  jsonb_array_length(pg_temp.e7_snapshots()) = 1 and exists(
+    select 1 from e7_save saved
+    join platform_private.cms_entry_revisions r on r.id::text = saved.answer#>>'{response,id}'
+    join platform_private.cms_content_entries e on e.current_draft_revision_id = r.id
+    join platform_private.cms_publication_settings_snapshots s on s.owner_id = r.owner_id
+    where r.entry_id = e.id and r.owner_id = e.owner_id and r.owner_id = pg_temp.e7_owner()
+      and s.state = 'active' and s.version = 1 and s.registry_version = 1 and s.ordinal = 1
+      and s.effective_values = '[]'::jsonb and s.snapshot_hash = pg_temp.h11_sha256('[]'))
+    as e7_save_initialized \gset
 select answer as e7_save_answer from e7_save \gset
 create temp table e7_submission on commit drop as select pg_temp.e7_submit_request() as request;
 select platform_private.cms_evaluate_preflight(jsonb_build_object('phase', 'submit',
@@ -105,6 +140,10 @@ select pg_temp.e7_effects() = :'e7_tail_before'::jsonb as e7_rolled_back,
 rollback to savepoint e7_review_tail;
 release savepoint e7_review_tail;
 
+select is(:'e7_pre_save_snapshots'::jsonb, '[]'::jsonb,
+  'causal fixture: exact owner snapshot images are absent immediately before healthy B01');
+select ok(:'e7_save_initialized'::boolean,
+  'causal fixture: healthy B01 alone initializes canonical-owner registry1 ordinal1 [] snapshot with independent JCS hash before any manifest read');
 select is(:'e7_save_answer'::jsonb->>'outcome', '00000:',
   'causal fixture: genuine authorized B01 healthy save succeeds before submit');
 select ok(:'e7_preflight'::jsonb->>'passed' = 'true'
@@ -114,12 +153,13 @@ select is(:'e7_submit_answer'::jsonb->>'outcome', '00000:',
   'causal fixture: actual cms_submit_review succeeds, not a direct review-row insertion');
 select ok(:'e7_open_review'::boolean,
   'causal fixture: submitted review really freezes current draft hash and exact manifest');
-select ok(jsonb_array_length(:'e7_tail_snapshots'::jsonb) = 1,
+select ok(jsonb_array_length(:'e7_tail_snapshots'::jsonb) = 1
+    and :'e7_post_save_snapshots'::jsonb = :'e7_tail_snapshots'::jsonb,
   'fault targets an existing owner/hash snapshot: no cold-read/warm-submit initialization claim');
 select is(:'e7_fault'::jsonb->>'outcome', 'P7E01:E7_SNAPSHOT_TAIL_FAULT',
   'duplicate-hash ordinary save still reaches snapshot BEFORE INSERT fault after completion');
 select is((:'e7_fault'::jsonb->>'detail')::jsonb,
-  '{"canonicalExists":true,"casAdvanced":true,"reviewInvalidated":true,"auditWritten":true,"outboxWritten":true,"completed201":true}'::jsonb,
+  '{"canonicalExists":true,"casAdvanced":true,"reviewInvalidated":true,"auditWritten":true,"outboxWritten":true,"completed201":true,"existingHash":true}'::jsonb,
   'causal tail checkpoint observes canonical/CAS/review/audit/outbox/completed201 before raising');
 select ok(:'e7_rolled_back'::boolean,
   'snapshot fault rolls back every complete canonical/value/relation/review/audit/outbox/idempotency row fingerprint');

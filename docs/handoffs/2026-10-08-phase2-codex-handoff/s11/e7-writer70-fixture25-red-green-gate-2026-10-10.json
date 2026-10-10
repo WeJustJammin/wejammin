@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "baseline": "957faccbf168ceebbe6bcfabec1fe8af8dd865cd",
+  "scope": "strengthened writer70 functional RED and three narrow API fixture repairs GREEN",
+  "acceptance": "0/122; Slices12-17 not started",
+  "files": [
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+      "lines": 17,
+      "sha": "1163b5548d218b6967ad695e13dfc4c759467f7bb10ae074c1fde0b91697d641"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "lines": 172,
+      "sha": "402a4e046b328ded55cf19a597ea1ad38e5c14ada1f8a32ad6908e06fa4c1781"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+      "lines": 229,
+      "sha": "2a9384f0b9110729fa005bb29dc525c080180a904a76885637136bccb17df818",
+      "titleSequenceExact": true,
+      "bodyChanges": [
+        "'[CMS-03B-18] step-up, eligibility, duplicates, expiry bounds, revoke and conflict'"
+      ]
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+      "lines": 172,
+      "sha": "4e57f3cd11589d69a2fb466aa2271a3e136475663b634affb1ddb5b9efcdb976",
+      "titleSequenceExact": true,
+      "bodyChanges": [
+        "'[CMS-03B-19] sends only the token hash and returns the complete bound resource without any writes'"
+      ],
+      "previewInverseExact": true
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+      "lines": 346,
+      "sha": "0dd6ea2bbd40d65ea9537f4f85f0237d14ed8910e97e1231883ce19575516d3b",
+      "titleSequenceExact": true,
+      "bodyChanges": [
+        "'[CMS-03B-05] superseded revisions refuse revision_not_submittable using the current entry operand'",
+        "`[CMS-03B-05] ${fault} is refused before RPC and before every durable effect`"
+      ]
+    }
+  ],
+  "static": {
+    "format": 0,
+    "contracts": 0,
+    "progress": 0,
+    "targetLint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0,
+    "assignmentSixChangeInverseByteExact": true,
+    "previewOneChangeInverseByteExact": true,
+    "allApiTitleSequencesExact": true,
+    "writerOriginalTenTitlesPreserved": true,
+    "writerOtherTwoIncludesExact": true
+  },
+  "focus": {
+    "log": ".lane-logs/parent-s11-e7-writer70-lookup54-api3-focus-20261010.log",
+    "sha": "6f99c0e17ab77c776124896d876d628e12ae83fd1b2bdc1157c31c638170a217",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "lookup": {
+      "executed": 54,
+      "failed": 13,
+      "passed": 41,
+      "failedTests": "12-14,31-35,49-51,53-54"
+    },
+    "writer": {
+      "executed": 70,
+      "failed": 10,
+      "passed": 60,
+      "failedTests": "8,16,24,32,40,60,65-68"
+    },
+    "api": {
+      "files": 3,
+      "tests": 25,
+      "passed": 25,
+      "failed": 0,
+      "seconds": 23.64
+    },
+    "preReset": 0,
+    "middleReset": 0,
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-e7-writer70-fixture25-full-gate-20261010.log",
+    "sha": "cedaed6581f3afc82cef62adc3c6c6f13e94939a52cc2fc31012496eb0222e0d",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "sqlFiles": 335,
+    "sqlAssertions": 12888,
+    "seconds": 110,
+    "failedFiles": 2,
+    "failedAssertions": 23,
+    "failedTestsByFile": {
+      "lookup": "12-14,31-35,49-51,53-54",
+      "writer": "8,16,24,32,40,60,65-68"
+    },
+    "dbVerify": 1,
+    "api": "UNRUN",
+    "races": "UNRUN",
+    "dbTypes": "UNRUN",
+    "validate": "UNRUN",
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "reviews": {
+    "writer": "s11_recovery_reference_source: no bounded implementation mismatch; immediate pre/post-B01 captures before manifest, exact same images after B05, explicit same hash/values/registry trigger and full canonical-row response_ref",
+    "limits": [
+      "supplied checker bindings are not checker runtime E2E",
+      "guarded policy fixture is not actual schema activation",
+      "JSONB equality proves complete key set/types/nulls and array order, not object-key ordering",
+      "fresh draft literal uses locked physical state invariant",
+      "global lock order and canonical-owner-field mutation sensitivity unproved",
+      "SQLSTATE proof, not HTTP fault mapping"
+    ]
+  },
+  "changedTitles": [
+    {
+      "file": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+      "title": "[CMS-03B-18] step-up, eligibility, duplicates, expiry bounds, revoke and conflict",
+      "change": "six exact source-backed expected-detail/import edits; title retained"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+      "title": "[CMS-03B-19] sends only the token hash and returns the complete bound resource without any writes",
+      "change": "one canonical personId expectation; title retained"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+      "title": "[CMS-03B-05] superseded revisions refuse revision_not_submittable using the current entry operand",
+      "change": "actual strict CMS03B11 revisionNumber setup; title retained"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+      "title": "[CMS-03B-05] weak-etag is refused before RPC and before every durable effect",
+      "change": "two exact ordered projected violations; other fault cases unchanged"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "originalTitles": "all10 retained; 2 new titles only",
+      "added": [
+        "causal fixture: exact owner snapshot images are absent immediately before healthy B01",
+        "causal fixture: healthy B01 alone initializes canonical-owner registry1 ordinal1 [] snapshot with independent JCS hash before any manifest read"
+      ]
+    }
+  ],
+  "next": {
+    "producer": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-inline-write-tail-green-2026-10-10.md",
+    "status": "UNRUN until clean pushed strengthened-QA checkpoint",
+    "fixtureBriefs": [
+      "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-workflow-frozen-digest-fixture-2026-10-10.md",
+      "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-schedule-admission-fixture-2026-10-10.md"
+    ],
+    "schedulePrecision": "source audit confirms regex-only fix does not close exact durable time/identity/workflow/grant-day/due/deviation semantics; no precision author selected"
+  }
+}
