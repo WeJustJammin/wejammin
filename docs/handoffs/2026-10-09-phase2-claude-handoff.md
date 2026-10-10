@@ -1,5 +1,46 @@
 # Phase 2 — Claude continuation handoff (from Codex, Slice 11 in flight)
 
+## Latest snapshot: origin QA frozen / actual RED / producer gate
+
+This supersedes contract snapshot below. Contract checkpoint a5ef923d was clean
+and pushed; read current Git HEAD for the QA checkpoint. Same checkout/branch,
+native6.1/ultra orchestration and Astra/high authors; acceptance remains0/122.
+
+Released native QA: guarded request17, unit371/76 planned, genuine API338/56.
+Actual amended unit RED is missing-module/no executed cases. Project type
+check has only expected missing-verifier TS2307. Genuine API initial RED:
+8failed/48passed39.71s; actual pre/test/post0/1/0. Existing grammar/ACL refusals
+passing do not prove origin behavior. Separate format/lint/diff0/all18SHAexact.
+Independent reviews: positive MAX bigint added; no other bounded QA finding.
+No origin GREEN, current-stage/lease/receiving/ACK authority or full validation.
+
+Logs: .lane-logs/parent-s11-origin-api-initial-red-20261010.log and
+.lane-logs/parent-s11-origin-qa-amended-gate-20261010.log. Reviewed brief above
+contains exact producer scope. Root saves clean pushed QA checkpoint, freezes
+all21 source/QA paths, then A authors ONLY new schema-dry-run-origin-verifier.ts
+and B ONLY new 20261005018700_cms_origin_admission_reader.sql. Keep existing
+two/three-key branch bodies byte-identical; owner/signature/grants unchanged.
+Root owns GREEN/static/source review, actual mutants/restored controls, Git
+and canonical flush→compile. Do not wire receiving during this origin step.
+
+Live usage50%, ordinary use allowed, no purchased credits; no reset needed.
+This response exposes no earned count; historical confirmed0 is not fresh.
+Earned-only automatic-reset authority remains active, never purchases.
+
+Recovery source reconciliation: BE00:512 requires domain recovery reference
+but does not name JobStatus.resultRef. BE03a:2021–2033 and
+supabase/migrations/20261002134000_cms_content_type_detail_activation_preparation.sql:37
+already project failed report id/failureCode via activationPreparation.dryRunRef;
+supabase/migrations/20261003100300_cms_dry_run_scan_failure.sql:95 recovers through
+a new CMS03A10 attempt. Keep
+failed/cancelled Job result_ref NULL; actual terminal write/domain association
+still unwired and not runtime proof. No new policy/state/grant selected.
+
+Resume bounded origin producers → actual GREEN/source review/checkpoint →
+mutants/restored genuine controls → receiving/enduring authority contract,
+nonzero/public lifecycle → remaining action3/DEC163/action4/full gates,
+Slices12–17/final validate-phase. All prior safety/external/cleanup limits hold.
+
 ## Latest snapshot: origin-admission contract / native QA gate
 
 This supersedes the proof snapshot below for resume order. Baseline748bbd4d

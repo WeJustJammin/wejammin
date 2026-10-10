@@ -116,6 +116,34 @@ Unauthenticated/non-service denial must retain existing service-only ACLs.
 Read-only origin says nothing about superseded report/current-attempt authority.
 Spec <=400 physical lines, no helper edits. Actual replies/assertions only.
 
+## Reviewed QA freeze / bounded producer gate
+
+Contract checkpoint a5ef923d32d7847821a16994fe07605d336fbc40 was clean/pushed.
+Native QA is now frozen: request17, unit371/76 planned cases, API338/56 cases.
+Actual amended unit initial import RED executes no cases; project type check
+has only the expected missing-verifier TS2307. Genuine API initial RED is
+8 failed/48 passed,39.71s, with actual pre/test/post exits0/1/0. Passed existing
+grammar/ACL refusals are not origin-branch proof. Format/lint/diff pass and all
+18 old source/QA SHA match. Independent reviews: MAX positive added; no other
+bounded QA finding. No GREEN, receiving or Slice11 acceptance claim.
+
+After root saves a clean pushed QA checkpoint, freeze all21 old/new QA paths.
+Native A owns ONLY new schema-dry-run-origin-verifier.ts under the same worker
+directory (<=100 lines): use frozen guarded request schema and direct raw port,
+with the exact verify API above. No receiving/runtime/dispatcher edits.
+Native B owns ONLY new migration
+supabase/migrations/20261005018700_cms_origin_admission_reader.sql (<=300 lines).
+CREATE OR REPLACE only the existing private cms_get_schema_migration_plan body:
+add the strict one-key service/bounded-grammar origin branch above; retain
+existing two/three-key branch bodies byte-for-byte, owner/signature/grants and
+their behavior. Reuse existing worker admission; validate all event own keys,
+JSON scalar types, fixed pair, canonical UUIDs and decimal signed-bigint range
+before lookup/casts. Return literal JSON Boolean from actual Job/outbox join
+and complete immutable binding; no current version/state/lease/report filter.
+No new function signature/helper/RPC/grant/owner/role or SQL authority change.
+Native source reads/apply_patch only; root retains actual commands, resets,
+formatting, source review, mutations, canonical flush/compile and Git.
+
 ## Receiving research retained, not yet selected or implemented
 
 Existing consumer finalizes against its initial claim version, records queued
