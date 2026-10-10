@@ -5,7 +5,7 @@
 --
 -- An owner-party publisher publishes a revision whose LATEST review is approved.  Order of the evaluation (a
 -- refusal is a P0001 whose whole message is the token; structured members ride in a JSON-OBJECT DETAIL;
--- nothing a refusal does is committed except the review invalidation of step 7):
+-- nothing a refusal does is committed except the review invalidation of step 7 or 8):
 --   1. structure: exact keys (a caller action, locale or owner is an unknown key), UUID ids, the field
 --      pointers (VALIDATION_FAILED at /frozenHash, /expectedVersionSet, /audience, /expectedVersion,
 --      /ifMatch, all reported together);
@@ -13,6 +13,10 @@
 --   3. concealment and authority: a revision outside the caller's workflow scope, or not of the named entry,
 --      is NOT_FOUND; a visible one without the owner-party cms.publisher grant is capability_missing; the
 --      author of the revision is separation_of_duties;
+--   3'. the lineage head of (entry, locale, audience) is OBSERVED here, before the first shared lock (BE03b E3,
+--      finding 8): the append compares it with the head under the lineage lock, so of two publishes racing on
+--      one head exactly one commits and the other is 409 publication_conflict (an unlocked read: it is not
+--      part of the request hash, a replay is answered before any comparison);
 --   4. global lock order: the entry row FOR SHARE (0), the authority rows of the publisher and of every
 --      decider of the latest review (1), the capability re-proved under the locks, then the idempotency
 --      reservation (an exact replay returns the stored resource, even with freshly evaluated proof);
@@ -21,11 +25,16 @@
 --   6. frozenHash equals the review's frozen hash (422 at /frozenHash) and expectedVersionSet equals the
 --      version set frozen on the review (409 version_set_stale);
 --   7. the frozen manifest is rebuilt and every frozen identity must be current: otherwise the review
---      invalidation (dependency_changed) COMMITS and the committed-refusal envelope is returned and stored;
+--      invalidation (dependency_changed) COMMITS and the committed-refusal envelope (409 version_set_stale,
+--      BE03b E1) is returned and stored;
 --   8. the publish-phase preflight (17 categories, no short circuit) with the Worker's accessibility proof;
+--      a counted approver whose standing grant lapsed is found lazily there: the reviewer_authority_changed
+--      invalidation COMMITS (pending and retry schedules cancelled) and the committed refusal (422
+--      preflight_failed) is returned and stored;
 --   9. cms_append_publication_lineage appends the next row under the lineage advisory lock (position 7) with
---      its audit record and exactly one cms.publication.changed.v1; the accessibility summary of the proof
---      (DEC-159 (5)) and the completed idempotency record (202) commit with it.  projectionState is `pending` until a Shard 04 consumer reports (DEC-158(e)).
+--      its audit record and exactly one cms.publication.changed.v1 (their ids are chosen here); the
+--      accessibility summary of the proof, keyed to that audit event (DEC-159 (5)), and the completed
+--      idempotency record (202) commit with it.  projectionState is `pending` until a Shard 04 consumer reports (DEC-158(e)).
 -- A lineage collision of two racing publications is publication_conflict (the loser commits nothing).
 -- Forward-only.
 begin;
@@ -56,6 +65,10 @@ declare
   review_row platform_private.cms_editorial_reviews%rowtype;
   frozen_set jsonb;
   refusal jsonb;
+  verdict jsonb;
+  head_observation jsonb;
+  audit_id uuid := extensions.gen_random_uuid();
+  outbox_id uuid := extensions.gen_random_uuid();
   appended jsonb;
 begin
   perform pg_catalog.set_config('app.cms_rpc', 'true', true);
@@ -140,6 +153,9 @@ begin
   target := platform_private.cms_publication_target(actor_id, acting_party_id, requested_revision, requested_entry, 'publish');
   publisher_person := (target->>'personId')::uuid;
 
+  -- 3'. the head this command saw, BEFORE the first shared lock (the append compares it under the lineage lock)
+  head_observation := platform_private.cms_lineage_head_observation(requested_entry, target->>'locale', audience_value);
+
   -- 4. global lock order positions 0-1, the capability re-proved under the locks, then the reservation
   perform platform_private.cms_publication_lock_authority(requested_entry, acting_party_id, publisher_person, requested_revision);
   if not platform_private.cms_person_holds_capability(acting_party_id, publisher_person, 'cms.publisher') then
@@ -176,9 +192,14 @@ begin
     return refusal;
   end if;
 
-  -- 8. the publish-phase preflight registry
-  perform platform_private.cms_publication_preflight_verdict(
-    'publish', review_row, acting_party_id, publisher_person, pg_catalog.clock_timestamp(), evidence);
+  -- 8. the publish-phase preflight registry; a lapsed counted approver COMMITS the invalidation and answers a refusal
+  verdict := platform_private.cms_publication_preflight_verdict(
+    'publish', review_row, acting_party_id, publisher_person, pg_catalog.clock_timestamp(), evidence,
+    actor_id, correlation_id);
+  if verdict->>'kind' = 'refusal' then
+    perform platform_private.cms_complete(reservation.id, review_row.id, 422, verdict);
+    return verdict;
+  end if;
 
   -- 9. the lineage row, its audit record and the one cms.publication.changed.v1
   appended := platform_private.cms_append_publication_lineage(pg_catalog.jsonb_build_object(
@@ -192,24 +213,22 @@ begin
     'dependencyHash', review_row.dependency_hash,
     'activationEvidenceHash', platform_private.cms_activation_evidence_hash(review_row.id),
     'correlationId', correlation_id,
-    'actorId', actor_id
+    'actorId', actor_id,
+    'expectedHead', head_observation,
+    'auditEventId', audit_id,
+    'outboxEventId', outbox_id
   ));
-  -- DEC-159 (5): the Worker's proof is summarized against the publication event it accompanied.
+  -- DEC-159 (5): the Worker's proof is summarized, keyed to the exact audit event and outbox event of the append.
   perform platform_private.cms_record_command_accessibility_evidence(
     'CMS-03B-09', (appended->>'publicationVersionId')::uuid, review_row.revision_id,
-    (select event.id
-       from platform_private.outbox_events event
-      where event.event_type = 'cms.publication.changed.v1'
-        and event.aggregate_id = (appended->>'id')::uuid
-        and event.aggregate_version = (appended->>'version')::bigint),
-    correlation_id, evidence);
+    audit_id, outbox_id, correlation_id, evidence);
   perform platform_private.cms_complete(reservation.id, (appended->>'publicationVersionId')::uuid, 202, appended);
   return appended;
 end;
 $body$;
 
 comment on function platform_private.cms_publish_revision(jsonb) is
-  'CMS-03B-09: an owner-party publisher publishes a revision whose latest review is approved: step-up, workflow-scope concealment, the DEC-157 lock order, the approved review''s version as the CAS operand, the frozen hash and version set echoed back, frozen-dependency currency (a stale manifest commits the invalidation and answers the committed refusal), the publish-phase preflight, then one append-only lineage row with its audit record and exactly one cms.publication.changed.v1. Private; the Worker calls the platform_api wrapper.';
+  'CMS-03B-09: an owner-party publisher publishes a revision whose latest review is approved: step-up, workflow-scope concealment, the lineage head observed before any shared lock, the DEC-157 lock order, the approved review''s version as the CAS operand, the frozen hash and version set echoed back, frozen-dependency currency (a stale manifest commits the invalidation and answers the committed refusal version_set_stale), the publish-phase preflight (a lapsed counted approver commits the reviewer_authority_changed invalidation and answers the committed refusal), then one append-only lineage row (publication_conflict when another append moved the observed head) with its audit record and exactly one cms.publication.changed.v1. Private; the Worker calls the platform_api wrapper.';
 
 create or replace function platform_api.cms_publish_revision(p_request jsonb)
 returns jsonb

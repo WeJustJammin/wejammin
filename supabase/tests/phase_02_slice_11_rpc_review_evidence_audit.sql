@@ -4,7 +4,10 @@
 -- altered, so the summary is a CMS-owned append-only side table,
 -- platform_private.cms_command_accessibility_evidence, written in the command transaction whenever the
 -- command received non-null PreflightEvidence (cms_submit_review here; S11-3b reuses the recorder
--- platform_private.cms_record_command_accessibility_evidence for schedule, publish and execute).
+-- platform_private.cms_record_command_accessibility_evidence for schedule, publish and execute).  DEC-159 (5): the
+-- summary is KEYED TO THE EXACT AUDIT EVENT of its command (audit_event_id: a unique foreign key to
+-- audit_private.audit_events, written by the audit-returning helpers cms_record_audit_event / cms_emit_event_ids),
+-- never joined by a correlation id that two commands can share; the outbox event is a separate, optional id.
 -- RED before 20261005017635 / 20261005017640.
 
 \ir support/jwt-claims.sqlinc
@@ -13,7 +16,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(34);
+select plan(40);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -47,14 +50,49 @@ select is(pg_temp.s11_triggers('platform_private.cms_command_accessibility_evide
 select is(
   (select string_agg(column_name, ',' order by ordinal_position) from information_schema.columns
     where table_schema = 'platform_private' and table_name = 'cms_command_accessibility_evidence'),
-  'id,owner_id,state,version,operation_id,subject_id,revision_id,event_id,correlation_id,checker_key,checker_version,outcome,blocking_count,input_hash,created_at,updated_at',
-  'the columns are the envelope, the command reference and exactly the five summary members (no finding text, no binding hash) [P2-S11-AC-101]');
+  'id,owner_id,state,version,operation_id,subject_id,revision_id,audit_event_id,outbox_event_id,correlation_id,checker_key,checker_version,outcome,blocking_count,input_hash,created_at,updated_at',
+  'the columns are the envelope, the command reference (the exact audit event, the optional outbox event) and exactly the five summary members (no finding text, no binding hash) [P2-S11-AC-101]');
+select ok(
+  exists (select 1 from pg_constraint c
+           where c.conrelid = 'platform_private.cms_command_accessibility_evidence'::regclass and c.contype = 'u'
+             and c.conkey = array[(select attnum from pg_attribute where attrelid = 'platform_private.cms_command_accessibility_evidence'::regclass and attname = 'audit_event_id')])
+    and exists (select 1 from pg_constraint c
+                 where c.conrelid = 'platform_private.cms_command_accessibility_evidence'::regclass and c.contype = 'f'
+                   and c.confrelid = 'audit_private.audit_events'::regclass
+                   and c.conkey = array[(select attnum from pg_attribute where attrelid = 'platform_private.cms_command_accessibility_evidence'::regclass and attname = 'audit_event_id')])
+    and exists (select 1 from pg_attribute where attrelid = 'platform_private.cms_command_accessibility_evidence'::regclass
+                   and attname = 'audit_event_id' and attnotnull)
+    and exists (select 1 from pg_attribute where attrelid = 'platform_private.cms_command_accessibility_evidence'::regclass
+                   and attname = 'outbox_event_id' and not attnotnull),
+  'the audit event id is NOT NULL, UNIQUE and a foreign key to audit_private.audit_events; the outbox event id is a separate nullable column [P2-S11-AC-101]');
 select ok(pg_temp.s10r_closed_check_labels('platform_private.cms_command_accessibility_evidence', 'outcome') = array['blocked', 'failed', 'healthy']
     and pg_temp.s10r_closed_check_labels('platform_private.cms_command_accessibility_evidence', 'operation_id')
           = array['CMS-03B-05', 'CMS-03B-07', 'CMS-03B-09', 'CMS-03B-20'],
   'the outcome is the BE05c run state (healthy, blocked, failed) and the operation is one of the four evidence-carrying commands [P2-S11-AC-101]');
-select ok(pg_temp.h11_private_definer('cms_record_command_accessibility_evidence(text,uuid,uuid,uuid,uuid,jsonb)'),
-  'the recorder is a private SECURITY DEFINER of the CMS definer with no API-role execute [P2-S11-AC-101]');
+select ok(pg_temp.h11_private_definer('cms_record_command_accessibility_evidence(text,uuid,uuid,uuid,uuid,uuid,jsonb)')
+    and pg_temp.h11_private_definer('cms_record_audit_event(text,uuid,uuid,text,uuid,text,uuid,uuid)')
+    and pg_temp.h11_private_definer('cms_emit_event_ids(text,uuid,uuid,text,uuid,text,text,text,uuid,bigint,jsonb,uuid,uuid,uuid)'),
+  'the recorder and the two audit-writing helpers are private SECURITY DEFINERs of the CMS definer with no API-role execute [P2-S11-AC-101]');
+-- The helpers answer the EXACT ids of the rows they wrote (a caller may also choose the ids).
+create temp table r11_helper_ids(label text primary key, ids jsonb not null) on commit drop;
+select set_config('app.cms_rpc', 'true', true);
+insert into r11_helper_ids(label, ids) values
+  ('audit', jsonb_build_object('auditEventId', platform_private.cms_record_audit_event(
+     'cms.test.audit', null, pg_temp.s11_id('org'), 'cms_test', extensions.gen_random_uuid(), 'CMS_TEST', extensions.gen_random_uuid()))),
+  ('emit', platform_private.cms_emit_event_ids(
+     'cms.test.emit', null, pg_temp.s11_id('org'), 'cms_test', extensions.gen_random_uuid(), 'CMS_TEST',
+     'cms.entry.review-changed.v1', 'cms_editorial_review', extensions.gen_random_uuid(), 1,
+     jsonb_build_object('reviewId', extensions.gen_random_uuid(), 'revisionId', extensions.gen_random_uuid()), extensions.gen_random_uuid()));
+select ok(
+  exists (select 1 from audit_private.audit_events audit
+           where audit.id = (select (ids->>'auditEventId')::uuid from r11_helper_ids where label = 'audit') and audit.action = 'cms.test.audit'
+             and audit.acting_party_id = pg_temp.s11_id('org') and audit.reason_code = 'CMS_TEST')
+    and exists (select 1 from audit_private.audit_events audit
+                 where audit.id = (select (ids->>'auditEventId')::uuid from r11_helper_ids where label = 'emit') and audit.action = 'cms.test.emit')
+    and exists (select 1 from platform_private.outbox_events event
+                 where event.id = (select (ids->>'outboxEventId')::uuid from r11_helper_ids where label = 'emit')
+                   and event.event_type = 'cms.entry.review-changed.v1'),
+  'cms_record_audit_event answers the exact id of the audit row it wrote; cms_emit_event_ids answers the exact audit and outbox ids of the pair it wrote [P2-S11-AC-101]');
 
 -- ---------------------------------------------------------------------------
 -- Written by cms_submit_review whenever evidence is non-null.
@@ -77,17 +115,21 @@ select ok(
        and summary.input_hash = (select request->'evidence'->>'inputHash' from r11_req where label = 'e1')),
   'the row stores the command, the review, the revision, the owner and exactly {checkerKey, checkerVersion, outcome, blockingCount, inputHash} [P2-S11-AC-101]');
 select ok(
-  (select summary.event_id from platform_private.cms_command_accessibility_evidence summary)
+  (select summary.outbox_event_id from platform_private.cms_command_accessibility_evidence summary)
      = (select event.id from platform_private.outbox_events event
          where event.event_type = 'cms.entry.review-changed.v1'
            and event.aggregate_id = (pg_temp.r11_resp('e1')->>'id')::uuid),
-  'the row references the command''s outbox event [P2-S11-AC-101]');
+  'the row references the command''s outbox event in its own optional column [P2-S11-AC-101]');
 select ok(
-  (select summary.correlation_id from platform_private.cms_command_accessibility_evidence summary)
+  (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary)
+     = (select audit.id from audit_private.audit_events audit
+         where audit.action = 'cms.editorial.review.submit'
+           and audit.target_id = (pg_temp.r11_resp('e1')->>'id')::uuid)
+    and (select summary.correlation_id from platform_private.cms_command_accessibility_evidence summary)
      = (select audit.correlation_id from audit_private.audit_events audit
          where audit.action = 'cms.editorial.review.submit'
            and audit.target_id = (pg_temp.r11_resp('e1')->>'id')::uuid),
-  'the row carries the correlation id of the command''s audit record, which is how the summary is joined to it [P2-S11-AC-101]');
+  'the row is keyed to the exact audit event of the command (audit_event_id), not by a shared correlation id [P2-S11-AC-101]');
 select ok(not pg_temp.r11_leaks(pg_temp.r11_resp('e1'), array[
     (select request->'evidence'->>'inputHash' from r11_req where label = 'e1'),
     (select request->'evidence'->>'bindingHash' from r11_req where label = 'e1')]),
@@ -122,12 +164,18 @@ select is(pg_temp.s11_outcome('insert into platform_private.cms_command_accessib
   'P0001:DIRECT_CMS_TABLE_WRITE', 'a write outside the CMS RPC context is refused before any constraint [P2-S11-AC-101]');
 select set_config('app.cms_rpc', 'true', true);
 
+-- A fresh audit event for a hand-built summary row (the foreign key needs a real one).
+create or replace function pg_temp.r11_new_audit()
+returns uuid language sql as $body$
+  select platform_private.cms_record_audit_event(
+    'cms.test.summary', null, pg_temp.s11_id('org'), 'cms_test', extensions.gen_random_uuid(), 'CMS_TEST', extensions.gen_random_uuid())
+$body$;
 create or replace function pg_temp.r11_summary_row(p_overrides jsonb default '{}'::jsonb)
 returns jsonb language sql as $body$
   select jsonb_build_object(
     'id', extensions.gen_random_uuid(), 'owner_id', pg_temp.s11_id('org'), 'state', 'recorded', 'version', 1,
     'operation_id', 'CMS-03B-05', 'subject_id', extensions.gen_random_uuid(),
-    'revision_id', pg_temp.h11w_uuid('ev-1:revision'), 'event_id', extensions.gen_random_uuid(),
+    'revision_id', pg_temp.h11w_uuid('ev-1:revision'), 'audit_event_id', pg_temp.r11_new_audit(), 'outbox_event_id', null,
     'correlation_id', extensions.gen_random_uuid(), 'checker_key', 'cms.a11y.structural', 'checker_version', 1,
     'outcome', 'healthy', 'blocking_count', 0, 'input_hash', repeat('a', 64),
     'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z') || p_overrides
@@ -149,23 +197,39 @@ select is(
   null,
   'an unknown outcome or operation, an out-of-range count, a malformed hash or checker key, a zero version, another state and an updated_at that differs from created_at are each refused by a CHECK [P2-S11-AC-101]');
 create temp table r11_known_event on commit drop as
-select event_id from platform_private.cms_command_accessibility_evidence limit 1;
+select audit_event_id, outbox_event_id from platform_private.cms_command_accessibility_evidence limit 1;
 select is(pg_temp.s11_bare_outcome('platform_private.cms_command_accessibility_evidence',
   pg_temp.s11_insert_sql('platform_private.cms_command_accessibility_evidence',
-    pg_temp.r11_summary_row(jsonb_build_object('event_id', (select event_id from r11_known_event))))), '23505',
-  'one summary per command event: the event id is unique [P2-S11-AC-101]');
+    pg_temp.r11_summary_row(jsonb_build_object('audit_event_id', (select audit_event_id from r11_known_event))))), '23505',
+  'one summary per audit event: the audit event id is unique [P2-S11-AC-101]');
+select is(pg_temp.s11_bare_outcome('platform_private.cms_command_accessibility_evidence',
+  pg_temp.s11_insert_sql('platform_private.cms_command_accessibility_evidence',
+    pg_temp.r11_summary_row(jsonb_build_object('outbox_event_id', (select outbox_event_id from r11_known_event))))), '23505',
+  'one summary per outbox event: a present outbox event id is unique [P2-S11-AC-101]');
+select is(pg_temp.s11_bare_outcome('platform_private.cms_command_accessibility_evidence',
+  pg_temp.s11_insert_sql('platform_private.cms_command_accessibility_evidence',
+    pg_temp.r11_summary_row(jsonb_build_object('audit_event_id', extensions.gen_random_uuid())))), '23503',
+  'the summary names an existing audit event (foreign key) [P2-S11-AC-101]');
+select is(pg_temp.s11_bare_outcome('platform_private.cms_command_accessibility_evidence',
+  pg_temp.s11_insert_sql('platform_private.cms_command_accessibility_evidence',
+    pg_temp.r11_summary_row(jsonb_build_object('audit_event_id', null)))), '23502',
+  'the audit event id is required (NOT NULL) [P2-S11-AC-101]');
 select is(pg_temp.s11_bare_outcome('platform_private.cms_command_accessibility_evidence',
   pg_temp.s11_insert_sql('platform_private.cms_command_accessibility_evidence',
     pg_temp.r11_summary_row(jsonb_build_object('revision_id', extensions.gen_random_uuid())))), '23503',
   'the summary names an existing revision (foreign key) [P2-S11-AC-101]');
 
 -- The recorder: a null evidence is a no-op, a malformed one is refused.
-select is(pg_temp.h11_text(format('select platform_private.cms_record_command_accessibility_evidence(%L, %L::uuid, %L::uuid, %L::uuid, %L::uuid, null)',
-  'CMS-03B-05', extensions.gen_random_uuid(), pg_temp.h11w_uuid('ev-1:revision'), extensions.gen_random_uuid(), extensions.gen_random_uuid())),
+select is(pg_temp.h11_text(format('select platform_private.cms_record_command_accessibility_evidence(%L, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, null)',
+  'CMS-03B-05', extensions.gen_random_uuid(), pg_temp.h11w_uuid('ev-1:revision'), pg_temp.r11_new_audit(), extensions.gen_random_uuid(), extensions.gen_random_uuid())),
   null, 'the recorder with no evidence writes nothing and answers null [P2-S11-AC-101]');
-select is(pg_temp.h11_outcome(format('select platform_private.cms_record_command_accessibility_evidence(%L, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::jsonb)',
-  'CMS-03B-05', extensions.gen_random_uuid(), pg_temp.h11w_uuid('ev-1:revision'), extensions.gen_random_uuid(), extensions.gen_random_uuid(),
+select is(pg_temp.h11_outcome(format('select platform_private.cms_record_command_accessibility_evidence(%L, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::jsonb)',
+  'CMS-03B-05', extensions.gen_random_uuid(), pg_temp.h11w_uuid('ev-1:revision'), pg_temp.r11_new_audit(), extensions.gen_random_uuid(), extensions.gen_random_uuid(),
   '{"outcome":"healthy"}')), 'P0001:INVALID_REQUEST', 'the recorder refuses evidence that lacks a summary member [P2-S11-AC-101]');
+select is(pg_temp.h11_outcome(format('select platform_private.cms_record_command_accessibility_evidence(%L, %L::uuid, %L::uuid, null, null, %L::uuid, %L::jsonb)',
+  'CMS-03B-05', extensions.gen_random_uuid(), pg_temp.h11w_uuid('ev-1:revision'), extensions.gen_random_uuid(),
+  jsonb_build_object('providerKey', 'cms.a11y.structural', 'providerVersion', '1', 'outcome', 'healthy', 'blockingCount', 0, 'inputHash', repeat('a', 64)))),
+  'P0001:INVALID_REQUEST', 'the recorder refuses a summary that names no audit event [P2-S11-AC-101]');
 select is((select count(*)::integer from platform_private.cms_command_accessibility_evidence), 1,
   'the refused recorder calls wrote nothing [P2-S11-AC-101]');
 

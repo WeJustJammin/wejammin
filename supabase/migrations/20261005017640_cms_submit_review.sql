@@ -71,7 +71,7 @@ declare
   report jsonb;
   failed_results jsonb;
   review_id uuid := extensions.gen_random_uuid();
-  event_id uuid;
+  emitted jsonb;
   submitted_at timestamptz;
   response jsonb;
 begin
@@ -266,7 +266,7 @@ begin
   select entry_row.owner_id, 'active', 1, review_id, refs.kind, refs.ref_id, submitted_at, submitted_at
     from platform_private.cms_review_dependency_refs(revision_row.id, rebuilt) refs;
 
-  event_id := platform_private.cms_emit_event(
+  emitted := platform_private.cms_emit_event_ids(
     'cms.editorial.review.submit', actor_id, acting_party_id,
     'cms_editorial_review', review_id, 'CMS_EDITORIAL_REVIEW_SUBMITTED',
     'cms.entry.review-changed.v1', 'cms_editorial_review', review_id, 1,
@@ -275,7 +275,8 @@ begin
   );
   -- DEC-159 (5): the accessibility audit summary of the evidence this command received.
   perform platform_private.cms_record_command_accessibility_evidence(
-    'CMS-03B-05', review_id, revision_row.id, event_id, correlation_id, evidence);
+    'CMS-03B-05', review_id, revision_row.id, (emitted->>'auditEventId')::uuid, (emitted->>'outboxEventId')::uuid,
+    correlation_id, evidence);
   response := platform_private.cms_editorial_review_resource(review_id);
   perform platform_private.cms_complete(reservation.id, review_id, 201, response);
   return response;

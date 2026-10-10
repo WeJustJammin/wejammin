@@ -33,6 +33,18 @@
 -- snapshot row is recorded by the first evaluation (also when a read-only workflow
 -- read is the first caller).  Private; callers run under the CMS RPC context.
 -- Forward-only.
+--
+-- AMENDED by 20261010130000 (E7 / DEC-163), which replaced cms_settings_snapshot with the
+-- read-only LOOKUP (no insert, no lock) and moved the insert into the tail of the ordinary
+-- writers.  The ONE position of the owner settings advisory key in the BE03b global lock
+-- order (DEC-157) is therefore: the leaf of an ordinary write transaction - taken after the
+-- idempotency reservation is completed, i.e. after every canonical position (0, 1, 2, 4), and
+-- followed by nothing but the snapshot insert.  The review (5), schedule (6) and lineage (7)
+-- positions are never taken after it, and no decision, schedule, publish, execute or
+-- invalidation command, no manifest build and no preflight evaluation takes it, so the
+-- decision/publication lock inversion of finding 5 cannot arise.  The static guard is
+-- supabase/tests/phase_02_slice_11_rpc_publication_lock_order.sql; the three-session
+-- interleaving is race runner 014 (E8).
 begin;
 
 create or replace function platform_private.cms_publication_settings_keys()

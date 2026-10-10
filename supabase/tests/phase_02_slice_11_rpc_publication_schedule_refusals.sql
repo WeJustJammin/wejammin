@@ -2,8 +2,11 @@
 -- AC-047, AC-097, AC-101, AC-102, AC-103 .. AC-107, DEC-157, DEC-159).  Order of the evaluation: structure
 -- -> step-up -> concealment (404) -> capability and separation (403) -> the reservation (replay) -> the
 -- approved review's CAS operand (VERSION_MISMATCH) and state (CONFLICT) -> the time rules -> the publisher's
--- grant end -> frozen-dependency currency (a stale manifest COMMITS the review invalidation and answers the
--- committed-refusal envelope) -> the schedule-phase preflight.  Every raised refusal leaves no partial effect.
+-- grant end -> frozen-dependency currency (a stale manifest COMMITS the review invalidation dependency_changed and
+-- answers the committed-refusal envelope 409 version_set_stale, BE03b E1) -> the schedule-phase preflight (a
+-- counted approver whose standing grant lapsed is found lazily by the revocation category: that COMMITS the
+-- reviewer_authority_changed invalidation and cancels the review's pending schedules, BE03b Review invalidation).
+-- Every raised refusal leaves no partial effect.
 -- RED before 20261005017710.
 
 \ir support/jwt-claims.sqlinc
@@ -12,7 +15,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(38);
+select plan(41);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -52,6 +55,8 @@ select pg_temp.h11w_value(pg_temp.h11w_uuid('sr-media:revision'), 'hero', jsonb_
 select pg_temp.p11_approved('sr-rejected', 'creator', '{}'::jsonb, '[]'::jsonb, 'reject');
 select pg_temp.p11_approved('sr-open', 'creator', '{}'::jsonb, '[]'::jsonb, 'none');
 select pg_temp.p11_approved('sr-invalid');
+-- A pending schedule of the review whose counted approver will lapse (cancelled by the lazy invalidation).
+select pg_temp.p11_schedule_row('s-sr-grant', 'sr-grant');
 select pg_temp.r11_entry('sr-none');
 -- A publisher whose grant ends tomorrow.
 select pg_temp.h11r_member('rvX', array['cms.reviewer', 'cms.publisher']);
@@ -271,18 +276,16 @@ insert into r11_req(label, request) values ('dep', pg_temp.p11_sreq('sr-dep'));
 select pg_temp.p11_call('dep', 'pub', 'cms_schedule_publication', (select request from r11_req where label = 'dep'));
 select ok(
   pg_temp.r11_out('dep') = '00000:' and pg_temp.r11_keys(pg_temp.r11_resp('dep')) = 'details,kind,reasonCode'
-    and pg_temp.r11_resp('dep')->>'kind' = 'refusal' and pg_temp.r11_resp('dep')->>'reasonCode' = 'dependency_changed'
-    and pg_temp.r11_resp('dep')->'details' = jsonb_build_object('dependencyHash',
-          platform_private.cms_jcs_sha256(platform_private.cms_build_dependency_manifest(pg_temp.h11w_uuid('sr-dep:revision'))))
-    and (pg_temp.p11_review('sr-dep')).dependency_hash <> pg_temp.r11_resp('dep')#>>'{details,dependencyHash}',
-  'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode, details} carrying only the CURRENT dependencyHash [P2-S11-AC-021]');
+    and pg_temp.r11_resp('dep')->>'kind' = 'refusal' and pg_temp.r11_resp('dep')->>'reasonCode' = 'version_set_stale'
+    and pg_temp.r11_resp('dep')->'details' = '{}'::jsonb,
+  'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-021]');
 select ok(
   (pg_temp.p11_review('sr-dep')).state = 'invalidated' and (pg_temp.p11_review('sr-dep')).version = 3
     and (pg_temp.p11_review('sr-dep')).invalidated_reason = 'dependency_changed'
     and not exists (select 1 from platform_private.cms_publication_schedules where revision_id = pg_temp.h11w_uuid('sr-dep:revision'))
     and (select count(*) = 1 from platform_private.outbox_events event
           where event.event_type = 'cms.entry.review-changed.v1' and event.aggregate_id = pg_temp.s11_id('rv-sr-dep')),
-  'the invalidation committed (review invalidated at version 3, one review-changed event) and no schedule exists [P2-S11-AC-111]');
+  'the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no schedule exists [P2-S11-AC-111]');
 select is(pg_temp.p11_reservation((select request->>'idempotencyKey' from r11_req where label = 'dep')), 'completed/409',
   'the reservation is completed with the typed refusal (status 409) [P2-S11-AC-020]');
 select pg_temp.p11_call('dep-replay', 'pub', 'cms_schedule_publication', (select request from r11_req where label = 'dep'));
@@ -297,11 +300,31 @@ select is(pg_temp.r11_out('dep-again'), 'P0001:VERSION_MISMATCH', 'a fresh attem
 select pg_temp.h11_raw_exec('identity_private.organization_actor_grant',
   format($$update identity_private.organization_actor_grant set active = false
             where person_id = %L and capability_code = 'cms.reviewer'$$, pg_temp.s11_id('rvA')));
-select pg_temp.p11_call('rev-lapsed', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('sr-grant'), false);
-select ok(pg_temp.r11_out('rev-lapsed') = 'P0001:preflight_failed'
-    and (pg_temp.r11_detail('rev-lapsed')::jsonb->'preflight') @>
+insert into r11_req(label, request) values ('lapsed', pg_temp.p11_sreq('sr-grant'));
+select pg_temp.p11_call('rev-lapsed', 'pub', 'cms_schedule_publication', (select request from r11_req where label = 'lapsed'));
+select ok(
+  pg_temp.r11_out('rev-lapsed') = '00000:' and pg_temp.r11_keys(pg_temp.r11_resp('rev-lapsed')) = 'details,kind,reasonCode'
+    and pg_temp.r11_resp('rev-lapsed')->>'kind' = 'refusal' and pg_temp.r11_resp('rev-lapsed')->>'reasonCode' = 'preflight_failed'
+    and pg_temp.r11_keys(pg_temp.r11_resp('rev-lapsed')->'details') = 'preflight'
+    and jsonb_array_length(pg_temp.r11_resp('rev-lapsed')#>'{details,preflight}') = 17
+    and (pg_temp.r11_resp('rev-lapsed')#>'{details,preflight}') @>
         '[{"category":"revocation","outcome":"failed","reasonCode":"reviewer_authority_changed"}]'::jsonb,
-  'a counted approver whose standing cms.reviewer grant lapsed fails the revocation category: 422 preflight_failed (reviewer_authority_changed) [P2-S11-AC-096]');
+  'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]');
+select ok(
+  (pg_temp.p11_review('sr-grant')).state = 'invalidated' and (pg_temp.p11_review('sr-grant')).version = 3
+    and (pg_temp.p11_review('sr-grant')).invalidated_reason = 'reviewer_authority_changed'
+    and pg_temp.p11_sched('s-sr-grant') = 'cancelled/2/0/approval_invalidated/-'
+    and (select count(*) = 1 from platform_private.outbox_events event
+          where event.event_type = 'cms.entry.review-changed.v1' and event.aggregate_id = pg_temp.s11_id('rv-sr-grant'))
+    and (select count(*) = 1 from platform_private.cms_publication_schedules where revision_id = pg_temp.h11w_uuid('sr-grant:revision')),
+  'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command scheduled nothing [P2-S11-AC-096]');
+select is(pg_temp.p11_reservation((select request->>'idempotencyKey' from r11_req where label = 'lapsed')), 'completed/422',
+  'the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]');
+insert into r11_snap(label, effects) values ('lapsed', pg_temp.p11_effects());
+select pg_temp.p11_call('lapsed-replay', 'pub', 'cms_schedule_publication', (select request from r11_req where label = 'lapsed'));
+select ok(pg_temp.r11_out('lapsed-replay') = '00000:' and pg_temp.r11_resp('lapsed-replay') = pg_temp.r11_resp('rev-lapsed')
+    and pg_temp.p11_effects() = (select effects from r11_snap where label = 'lapsed'),
+  'an exact replay returns the same committed refusal with no further effect [P2-S11-AC-096]');
 
 select * from finish();
 rollback;

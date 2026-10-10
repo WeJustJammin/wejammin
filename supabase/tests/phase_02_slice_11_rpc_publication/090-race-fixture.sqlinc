@@ -12,6 +12,11 @@ select pg_temp.p11_approved(tag) from (values
   ('ex-twice'), ('ex-lock'), ('pe-1'), ('pe-2'), ('dp-1'), ('dp-2'), ('dp-3'), ('gt-a'), ('gt-b'), ('gt-c'),
   ('sa-1'), ('sa-2'), ('sa-3'), ('sa-4'), ('sa-5')) as t(tag);
 
+-- E8 of 014 (settings lock position): an OPEN review (version 1, one approval needed) with TWO independently valid
+-- assigned reviewers (rvA from the builder, rvB here); the publisher is `pub`.
+select pg_temp.p11_approved('lk-1', 'creator', '{}'::jsonb, '[]'::jsonb, 'none');
+select pg_temp.r11_assign_now('rv-lk-1-asg-b', 'rv-lk-1', 'rvB');
+
 select pg_temp.p11_schedule_row('s-' || tag, tag, jsonb_build_object(
   'resolved_at_utc', date_trunc('second', clock_timestamp()) + interval '30 days',
   'local_datetime', (date_trunc('second', clock_timestamp()) + interval '30 days') at time zone 'UTC'))

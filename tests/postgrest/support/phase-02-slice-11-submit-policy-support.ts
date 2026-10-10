@@ -118,8 +118,8 @@ export const expectSubmissionEvidence = (
     and a.target_type = 'cms_editorial_review' and a.decision = 'allowed'
     and a.reason_code = 'CMS_EDITORIAL_REVIEW_SUBMITTED')
     from platform_private.cms_command_accessibility_evidence e
-    join platform_private.outbox_events o on o.id = e.event_id
-    join audit_private.audit_events a on a.correlation_id = e.correlation_id
+    join platform_private.outbox_events o on o.id = e.outbox_event_id
+    join audit_private.audit_events a on a.id = e.audit_event_id
     where e.subject_id = '${review.id}' and e.operation_id = 'CMS-03B-05'`),
     'one exact review event and audit joined to accessibility evidence',
   ).toBe('t');

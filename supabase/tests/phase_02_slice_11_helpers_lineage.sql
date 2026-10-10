@@ -15,7 +15,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(79);
+select plan(101);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -260,6 +260,92 @@ select is((select schedule_id from platform_private.cms_publication_versions whe
   'the schedule id is stored on the row [P2-S11-AC-116]');
 select is((pg_temp.h11l_append(pg_temp.h11l_tombstone('sch', 'unpublish', 'public', jsonb_build_object('scheduleId', pg_temp.h11w_uuid('p1:entry'))))->>'error') like '23503:%', true,
   'an unknown schedule violates the foreign key [P2-S11-AC-116]');
+
+-- ---------------------------------------------------------------------------
+-- BE03b E3: the head a command OBSERVED before it serialized (expectedHead: {id, version}, both null for an absent head)
+-- is compared with the head under the lineage lock; any difference is 409 publication_conflict and nothing commits.
+-- ---------------------------------------------------------------------------
+select pg_temp.h11w_revision('x1');
+select pg_temp.h11l_review('x1');
+select is(platform_private.cms_lineage_head_observation(pg_temp.h11w_uuid('x1:entry'), 'en-US', 'public'),
+  '{"id": null, "version": null}'::jsonb,
+  'an empty lineage is observed as an explicit absent head (null id, null version) [P2-S11-AC-114]');
+create temp table h11l_x1 on commit drop as
+select pg_temp.h11l_append(pg_temp.h11l_publish('x1', 'public', '{"expectedHead": {"id": null, "version": null}}')) as resource;
+select is((select resource->>'version' || '/' || (resource->>'state') from h11l_x1), '1/active',
+  'a publish that observed an absent head and still finds none appends version 1 [P2-S11-AC-114]');
+select is(platform_private.cms_lineage_head_observation(pg_temp.h11w_uuid('x1:entry'), 'en-US', 'public'),
+  jsonb_build_object('id', (select resource->>'publicationVersionId' from h11l_x1), 'version', '1'),
+  'the observation of a lineage is its head: the head row id and its decimal lineage version [P2-S11-AC-114]');
+select pg_temp.h11w_revision('x2', 'creatorPerson', 'en-US', '[]'::jsonb, 'x1', 2);
+select pg_temp.h11l_review('x2', 'x1');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', '{"expectedHead": {"id": null, "version": null}}', 'x1')),
+  jsonb_build_object('error', 'P0001:publication_conflict'),
+  'a command that observed the lineage before it had a head loses once the head exists: publication_conflict, not a second row [P2-S11-AC-114]');
+select is(pg_temp.h11l_rows('x1'), '1:publish:active:-', 'the loser committed no row [P2-S11-AC-114]');
+select is((select count(*)::integer from platform_private.outbox_events
+            where event_type = 'cms.publication.changed.v1' and payload->>'entryId' = pg_temp.h11w_uuid('x1:entry')::text)
+        + (select count(*)::integer from audit_private.audit_events audit
+            where audit.action = 'cms.publication.publish' and audit.target_id in (select id from platform_private.cms_publication_versions
+                                                                                    where entry_id = pg_temp.h11w_uuid('x1:entry'))),
+  2, 'and no event or audit record: still exactly the winner''s one event and one audit record [P2-S11-AC-116]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', jsonb_build_object('expectedHead',
+    jsonb_build_object('id', (select resource->>'publicationVersionId' from h11l_x1), 'version', '2')), 'x1'))->>'error',
+  'P0001:publication_conflict', 'the right head id with another version is a different head: publication_conflict [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', jsonb_build_object('expectedHead',
+    jsonb_build_object('id', extensions.gen_random_uuid(), 'version', '1')), 'x1'))->>'error',
+  'P0001:publication_conflict', 'the right version with another head id is a different head: publication_conflict [P2-S11-AC-114]');
+create temp table h11l_x2 on commit drop as
+select pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', jsonb_build_object('expectedHead',
+  platform_private.cms_lineage_head_observation(pg_temp.h11w_uuid('x1:entry'), 'en-US', 'public')), 'x1')) as resource;
+select is((select resource->>'version' from h11l_x2), '2',
+  'a command that observed the current head appends the next version (a genuinely later command succeeds as H+1) [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_tombstone('x1', 'unpublish', 'public', jsonb_build_object('expectedHead',
+    jsonb_build_object('id', (select resource->>'publicationVersionId' from h11l_x1), 'version', '1')))),
+  jsonb_build_object('error', 'P0001:publication_conflict'),
+  'a tombstone that observed the superseded head loses as well (it would end a head that is no longer the head) [P2-S11-AC-115]');
+create temp table h11l_x3 on commit drop as
+select pg_temp.h11l_append(pg_temp.h11l_tombstone('x1', 'unpublish', 'public', jsonb_build_object('expectedHead',
+  platform_private.cms_lineage_head_observation(pg_temp.h11w_uuid('x1:entry'), 'en-US', 'public')))) as resource;
+select is((select resource->>'version' || '/' || (resource->>'state') from h11l_x3), '3/revoked',
+  'a tombstone that observed the current head appends the revoked row [P2-S11-AC-115]');
+select is(pg_temp.h11l_append(pg_temp.h11l_tombstone('x1', 'expire', 'public', jsonb_build_object('expectedHead',
+    jsonb_build_object('id', (select resource->>'publicationVersionId' from h11l_x2), 'version', '2')))),
+  jsonb_build_object('error', 'P0001:publication_conflict'),
+  'a stale observation is a conflict BEFORE the head is judged not active: the premise is refused first [P2-S11-AC-115]');
+select is(pg_temp.h11l_append(pg_temp.h11l_tombstone('x1', 'expire', 'public', jsonb_build_object('expectedHead',
+    platform_private.cms_lineage_head_observation(pg_temp.h11w_uuid('x1:entry'), 'en-US', 'public')))),
+  jsonb_build_object('error', 'P0001:publication_not_active'),
+  'a fresh observation of a revoked head is publication_not_active (the conflict check does not hide it) [P2-S11-AC-115]');
+select is(pg_temp.h11l_rows('x1'), '1:publish:active:-,2:publish:active:S,3:unpublish:revoked:S', 'the refused observations wrote nothing [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', '{"expectedHead": {"id": null}}', 'x1')), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'an observation naming only an id is INVALID_REQUEST [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', '{"expectedHead": {"id": null, "version": "1"}}', 'x1')), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'an absent id with a version (or the reverse) is INVALID_REQUEST [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', '{"expectedHead": {"id": null, "version": "0"}}', 'x1')), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'a version that is not a positive decimal is INVALID_REQUEST [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', '{"expectedHead": {"id": null, "version": null, "extra": 1}}', 'x1')), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'an observation with an unknown member is INVALID_REQUEST [P2-S11-AC-114]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('x2', 'public', '{"expectedHead": "none"}', 'x1')), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'an observation that is not an object is INVALID_REQUEST [P2-S11-AC-114]');
+
+-- The caller may choose the audit and outbox ids of the row it appends (so an evidence summary can name them).
+select pg_temp.h11w_revision('y1');
+select pg_temp.h11l_review('y1');
+create temp table h11l_y1(audit uuid, outbox uuid) on commit drop;
+insert into h11l_y1 values (extensions.gen_random_uuid(), extensions.gen_random_uuid());
+select is((pg_temp.h11l_append(pg_temp.h11l_publish('y1', 'public', jsonb_build_object(
+    'auditEventId', (select audit from h11l_y1), 'outboxEventId', (select outbox from h11l_y1)))) ->> 'version'), '1',
+  'an append accepts a caller-chosen audit event id and outbox event id [P2-S11-AC-116]');
+select ok(
+  exists (select 1 from audit_private.audit_events audit
+           where audit.id = (select audit from h11l_y1) and audit.action = 'cms.publication.publish'
+             and audit.target_id = (select id from platform_private.cms_publication_versions where entry_id = pg_temp.h11w_uuid('y1:entry')))
+    and exists (select 1 from platform_private.outbox_events event
+                 where event.id = (select outbox from h11l_y1) and event.event_type = 'cms.publication.changed.v1'),
+  'the appended row''s audit record and event carry exactly the chosen ids [P2-S11-AC-116]');
+select is(pg_temp.h11l_append(pg_temp.h11l_publish('y1', 'beta', '{"auditEventId": "not-a-uuid"}')), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'a malformed audit event id is INVALID_REQUEST [P2-S11-AC-116]');
 
 -- ---------------------------------------------------------------------------
 -- Lock discipline and posture.

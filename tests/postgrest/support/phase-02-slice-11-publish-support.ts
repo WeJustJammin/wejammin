@@ -156,8 +156,10 @@ export const expectPublicationAppend = (
           'publicationVersionId', '${rowId}')
         and e.correlation_id = '${requestId}')
     and exists (select 1 from platform_private.cms_command_accessibility_evidence a
-      join platform_private.outbox_events e on e.id = a.event_id
+      join platform_private.outbox_events e on e.id = a.outbox_event_id
+      join audit_private.audit_events au on au.id = a.audit_event_id
       where a.subject_id = '${rowId}' and a.revision_id = '${publication.revisionId}'
+        and au.target_id = '${rowId}' and au.action = 'cms.publication.publish'
         and a.operation_id = 'CMS-03B-09' and a.state = 'recorded' and a.version = 1
         and a.checker_key = 'cms.a11y.structural' and a.checker_version = ${evidence.providerVersion}
         and a.outcome = 'healthy' and a.blocking_count = 0

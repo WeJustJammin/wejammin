@@ -20,6 +20,20 @@
 -- recomputation, predecessor and head checks, separation of duties, active entry, approved review at
 -- the same dependency hash); a unique-key collision of two racing appends is 409 publication_conflict.
 --
+-- Racing commands (BE03b E3, finding 8 of the 2026-10-09 SQL2 reverification).  Taking the lineage lock and THEN
+-- reading the head would serialize two racing commands and let both commit (H+1, H+2).  A command therefore
+-- carries the head it OBSERVED (cms_lineage_head_observation: { id, version }, both null for an absent head)
+-- BEFORE the earliest shared serialization point (before the entry, authority, schema and review locks), and the
+-- append compares it with the head read under the lineage lock: any difference is 409 publication_conflict and
+-- nothing commits (the loser's reservation, audit record and event roll back with it).  A command that starts
+-- after the winner committed observes the new head and succeeds as the next version.  The observation is
+-- optional on the helper (a caller with no earlier premise appends to whatever the head is); the named commands
+-- always send it.  The caller may also choose the audit event id and the outbox event id of the row it appends
+-- (auditEventId, outboxEventId) so that the evidence summary of its command is keyed to them (DEC-159 (5)).
+--
+--   cms_record_audit_event(...)            the audit record cms_record_audit writes, ANSWERING its id
+--   cms_emit_event_ids(...)                the audit record + outbox event cms_emit_event writes, ANSWERING both ids
+--   cms_lineage_head_observation(entry, locale, audience)  the unlocked read of the head: { id, version }
 --   cms_publication_lineage_lock(entry, locale, audience)  position 7: the lineage advisory
 --       transaction lock (held to commit; idempotent per transaction); a leaf lock.
 --   cms_publication_row_state(row)  the DERIVED browser state: revoked (tombstone), superseded (a
@@ -54,6 +68,109 @@ $body$;
 
 comment on function platform_private.cms_publication_lineage_lock(uuid, text, text) is
   'BE03b E3 lock position 7: the lineage advisory transaction lock of (entry, locale, audience); idempotent per transaction; a leaf lock. Private.';
+
+create or replace function platform_private.cms_record_audit_event(
+  p_action text,
+  p_actor_id uuid,
+  p_acting_party_id uuid,
+  p_target_type text,
+  p_target_id uuid,
+  p_reason_code text,
+  p_correlation_id uuid,
+  p_audit_event_id uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $body$
+declare
+  audit_id uuid := coalesce(p_audit_event_id, extensions.gen_random_uuid());
+begin
+  -- The same row cms_record_audit writes, with a known id (the definer holds INSERT only, so the id is chosen
+  -- here instead of read back).
+  insert into audit_private.audit_events(
+    id, action, actor_id, acting_party_id, target_type, target_id,
+    decision, reason_code, correlation_id
+  ) values (
+    audit_id, p_action, p_actor_id, coalesce(p_acting_party_id, p_actor_id), p_target_type,
+    p_target_id, 'allowed'::platform_private.audit_decision, p_reason_code,
+    p_correlation_id
+  );
+  return audit_id;
+end;
+$body$;
+
+comment on function platform_private.cms_record_audit_event(text, uuid, uuid, text, uuid, text, uuid, uuid) is
+  'DEC-159 (5): writes the audit record cms_record_audit writes and ANSWERS its id (the caller may choose it with p_audit_event_id), so an evidence summary can be keyed to the exact audit event. The shared audit table and payload are untouched. Private.';
+
+create or replace function platform_private.cms_emit_event_ids(
+  p_action text,
+  p_actor_id uuid,
+  p_acting_party_id uuid,
+  p_target_type text,
+  p_target_id uuid,
+  p_reason_code text,
+  p_event_type text,
+  p_aggregate_type text,
+  p_aggregate_id uuid,
+  p_aggregate_version bigint,
+  p_payload jsonb,
+  p_correlation_id uuid,
+  p_audit_event_id uuid default null,
+  p_outbox_event_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $body$
+declare
+  audit_id uuid;
+  outbox_id uuid := coalesce(p_outbox_event_id, extensions.gen_random_uuid());
+begin
+  audit_id := platform_private.cms_record_audit_event(
+    p_action, p_actor_id, p_acting_party_id, p_target_type, p_target_id, p_reason_code, p_correlation_id,
+    p_audit_event_id
+  );
+  -- The same row cfg_emit_effects (cms_emit_event) writes, with a known id.
+  insert into platform_private.outbox_events(
+    id, event_type, schema_version, aggregate_type, aggregate_id,
+    aggregate_version, correlation_id, payload
+  ) values (
+    outbox_id, p_event_type, 1, p_aggregate_type, p_aggregate_id,
+    p_aggregate_version, p_correlation_id, p_payload
+  );
+  return pg_catalog.jsonb_build_object('auditEventId', audit_id, 'outboxEventId', outbox_id);
+end;
+$body$;
+
+comment on function platform_private.cms_emit_event_ids(text, uuid, uuid, text, uuid, text, text, text, uuid, bigint, jsonb, uuid, uuid, uuid) is
+  'DEC-159 (5): writes the audit record and the outbox event cms_emit_event writes and ANSWERS { auditEventId, outboxEventId } (the caller may choose either id). Private.';
+
+create or replace function platform_private.cms_lineage_head_observation(
+  p_entry_id uuid,
+  p_locale text,
+  p_audience text
+)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select coalesce(
+    (select pg_catalog.jsonb_build_object('id', head.id, 'version', head.version::text)
+       from platform_private.cms_publication_versions head
+      where head.entry_id = p_entry_id and head.locale = p_locale and head.audience = p_audience
+      order by head.version desc
+      limit 1),
+    pg_catalog.jsonb_build_object('id', null, 'version', null)
+  )
+$body$;
+
+comment on function platform_private.cms_lineage_head_observation(uuid, text, text) is
+  'BE03b E3: the head of an (entry, locale, audience) lineage as { id, version } (the head row id and its decimal lineage version), both null for an absent head. An unlocked read: a command takes it BEFORE the earliest shared serialization point and the lineage append compares it under the lineage lock. Private; STABLE.';
 
 create or replace function platform_private.cms_publication_row_state(p_row_id uuid)
 returns text
@@ -116,6 +233,9 @@ declare
   stamp timestamptz := pg_catalog.clock_timestamp();
   physical_state text;
   digest text;
+  expected_head_id uuid;
+  expected_head_version bigint;
+  observes_head boolean := false;
 begin
   -- ---- request: exact members per action; a tombstone never carries evidence --------
   if p_request is null or pg_catalog.jsonb_typeof(p_request) is distinct from 'object'
@@ -135,9 +255,9 @@ begin
        case when is_publish
          then array['entryId', 'revisionId', 'locale', 'audience', 'action', 'publisherPersonId',
                     'versionSet', 'dependencyHash', 'activationEvidenceHash', 'correlationId',
-                    'scheduleId', 'actorId']::text[]
+                    'scheduleId', 'actorId', 'expectedHead', 'auditEventId', 'outboxEventId']::text[]
          else array['entryId', 'locale', 'audience', 'action', 'publisherPersonId', 'correlationId',
-                    'scheduleId', 'actorId']::text[]
+                    'scheduleId', 'actorId', 'expectedHead', 'auditEventId', 'outboxEventId']::text[]
        end
      )
      or pg_catalog.jsonb_typeof(p_request->'entryId') is distinct from 'string'
@@ -155,7 +275,24 @@ begin
               or not platform_private.cms_valid_uuid(p_request->>'scheduleId')))
      or (p_request ? 'actorId' and p_request->'actorId' <> 'null'::jsonb
          and (pg_catalog.jsonb_typeof(p_request->'actorId') is distinct from 'string'
-              or not platform_private.cms_valid_uuid(p_request->>'actorId'))) then
+              or not platform_private.cms_valid_uuid(p_request->>'actorId')))
+     or (p_request ? 'auditEventId'
+         and (pg_catalog.jsonb_typeof(p_request->'auditEventId') is distinct from 'string'
+              or not platform_private.cms_valid_uuid(p_request->>'auditEventId')))
+     or (p_request ? 'outboxEventId'
+         and (pg_catalog.jsonb_typeof(p_request->'outboxEventId') is distinct from 'string'
+              or not platform_private.cms_valid_uuid(p_request->>'outboxEventId')))
+     or (p_request ? 'expectedHead'
+         and (pg_catalog.jsonb_typeof(p_request->'expectedHead') is distinct from 'object'
+              or not platform_private.cms_exact_keys(
+                p_request->'expectedHead', array['id', 'version']::text[], array['id', 'version']::text[])
+              or (pg_catalog.jsonb_typeof(p_request->'expectedHead'->'id') = 'null')
+                 is distinct from (pg_catalog.jsonb_typeof(p_request->'expectedHead'->'version') = 'null')
+              or (pg_catalog.jsonb_typeof(p_request->'expectedHead'->'id') <> 'null'
+                  and (pg_catalog.jsonb_typeof(p_request->'expectedHead'->'id') is distinct from 'string'
+                       or not platform_private.cms_valid_uuid(p_request->'expectedHead'->>'id')
+                       or pg_catalog.jsonb_typeof(p_request->'expectedHead'->'version') is distinct from 'string'
+                       or p_request->'expectedHead'->>'version' !~ '^[1-9][0-9]{0,17}$')))) then
     raise exception 'INVALID_REQUEST' using errcode = 'P0001';
   end if;
   if is_publish and (
@@ -200,6 +337,11 @@ begin
   if p_request ? 'actorId' and p_request->'actorId' <> 'null'::jsonb then
     actor := (p_request->>'actorId')::uuid;
   end if;
+  if p_request ? 'expectedHead' then
+    observes_head := true;
+    expected_head_id := (p_request->'expectedHead'->>'id')::uuid;
+    expected_head_version := (p_request->'expectedHead'->>'version')::bigint;
+  end if;
   perform pg_catalog.set_config('app.cms_rpc', 'true', true);
 
   select entry.* into entry_row
@@ -218,6 +360,12 @@ begin
      and head.audience = audience_value
    order by head.version desc
    limit 1;
+
+  -- The premise the command was built on (the head it observed before it serialized) must still be the head.
+  if observes_head and (head_row.id is distinct from expected_head_id
+                        or head_row.version is distinct from expected_head_version) then
+    raise exception 'publication_conflict' using errcode = 'P0001';
+  end if;
 
   if not is_publish then
     if head_row.id is null or head_row.state <> 'active' then
@@ -303,12 +451,14 @@ begin
       raise exception 'publication_conflict' using errcode = 'P0001';
   end;
 
-  perform platform_private.cms_emit_event(
+  perform platform_private.cms_emit_event_ids(
     'cms.publication.' || action_value, actor, entry_row.owner_id,
     'cms_publication_version', new_id, 'CMS_PUBLICATION_APPENDED',
     'cms.publication.changed.v1', 'cms_publication', lineage_id, next_version,
     pg_catalog.jsonb_build_object('entryId', entry_row.id, 'publicationVersionId', new_id),
-    correlation
+    correlation,
+    case when p_request ? 'auditEventId' then (p_request->>'auditEventId')::uuid end,
+    case when p_request ? 'outboxEventId' then (p_request->>'outboxEventId')::uuid end
   );
   return pg_catalog.jsonb_build_object(
     'id', lineage_id,
@@ -339,10 +489,16 @@ grant select on table
   to wejammin_cms_definer;
 
 grant create on schema platform_private to wejammin_cms_definer;
+alter function platform_private.cms_record_audit_event(text, uuid, uuid, text, uuid, text, uuid, uuid) owner to wejammin_cms_definer;
+alter function platform_private.cms_emit_event_ids(text, uuid, uuid, text, uuid, text, text, text, uuid, bigint, jsonb, uuid, uuid, uuid) owner to wejammin_cms_definer;
+alter function platform_private.cms_lineage_head_observation(uuid, text, text) owner to wejammin_cms_definer;
 alter function platform_private.cms_publication_lineage_lock(uuid, text, text) owner to wejammin_cms_definer;
 alter function platform_private.cms_publication_row_state(uuid) owner to wejammin_cms_definer;
 alter function platform_private.cms_append_publication_lineage(jsonb) owner to wejammin_cms_definer;
 revoke create on schema platform_private from wejammin_cms_definer;
+revoke all on function platform_private.cms_record_audit_event(text, uuid, uuid, text, uuid, text, uuid, uuid) from public, anon, authenticated, service_role;
+revoke all on function platform_private.cms_emit_event_ids(text, uuid, uuid, text, uuid, text, text, text, uuid, bigint, jsonb, uuid, uuid, uuid) from public, anon, authenticated, service_role;
+revoke all on function platform_private.cms_lineage_head_observation(uuid, text, text) from public, anon, authenticated, service_role;
 revoke all on function platform_private.cms_publication_lineage_lock(uuid, text, text) from public, anon, authenticated, service_role;
 revoke all on function platform_private.cms_publication_row_state(uuid) from public, anon, authenticated, service_role;
 revoke all on function platform_private.cms_append_publication_lineage(jsonb) from public, anon, authenticated, service_role;

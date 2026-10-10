@@ -3,18 +3,22 @@
 -- P2-S11-AC-101): the accessibility audit summary of a command.
 --
 -- audit_private.audit_events carries no payload column and is never altered, so the summary of the
--- Worker's PreflightEvidence is a CMS-owned, append-only side table.  One row per command event: the
+-- Worker's PreflightEvidence is a CMS-owned, append-only side table.  One row per command audit event: the
 -- command (CMS-03B-05 / -07 / -09 / -20), the subject it created (review, schedule or publication
--- version), the revision, the outbox event of the command (event_id) and the correlation id of its audit
--- record (the join to audit_private.audit_events), plus exactly the five summary members.  Nothing
--- else of the evidence is stored: no binding hash, no finding text.
+-- version), the revision, the EXACT audit event of the command (audit_event_id: NOT NULL, UNIQUE and a
+-- foreign key to audit_private.audit_events), the optional outbox event of the command (outbox_event_id,
+-- NULL when the outcome emitted none: a schedule acceptance, a blocked or retried execution) and the
+-- correlation id of the command, plus exactly the five summary members.  The audit key is the identity of
+-- the summary: a correlation id can be shared by two commands, an audit event id cannot (DEC-159 (5)).
+-- Nothing else of the evidence is stored: no binding hash, no finding text.
 --
 -- cms_record_command_accessibility_evidence(...) is the one writer.  A command calls it inside its
--- transaction right after cms_emit_event, passing the evidence it received: NULL evidence writes
--- nothing (a command without evidence cannot succeed: accessibility is then unavailable/checker_failed),
--- anything else must be a complete summary or the command is refused INVALID_REQUEST.  cms_submit_review
--- (this lane) calls it; S11-3b reuses it for schedule, publish and execute.  Private, SECURITY DEFINER,
--- owned by the CMS definer, no API grant.  Forward-only.
+-- transaction right after it wrote its audit record (cms_record_audit_event / cms_emit_event_ids answer the
+-- exact ids), passing the evidence it received: NULL evidence writes nothing (a command without evidence
+-- cannot succeed: accessibility is then unavailable/checker_failed), anything else must be a complete
+-- summary naming its audit event or the command is refused INVALID_REQUEST.  cms_submit_review,
+-- cms_schedule_publication, cms_publish_revision and cms_execute_publication_schedule call it.  Private,
+-- SECURITY DEFINER, owned by the CMS definer, no API grant.  Forward-only.
 begin;
 
 set local lock_timeout = '5s';
@@ -28,7 +32,9 @@ create table platform_private.cms_command_accessibility_evidence (
   subject_id uuid not null,
   revision_id uuid not null
     references platform_private.cms_entry_revisions(id),
-  event_id uuid not null,
+  audit_event_id uuid not null
+    references audit_private.audit_events(id),
+  outbox_event_id uuid,
   correlation_id uuid not null,
   checker_key text not null,
   checker_version bigint not null,
@@ -56,8 +62,13 @@ create table platform_private.cms_command_accessibility_evidence (
     check (input_hash ~ '^[a-f0-9]{64}$'),
   constraint cms_command_accessibility_evidence_time_check
     check (updated_at = created_at),
-  constraint cms_command_accessibility_evidence_event_key unique (event_id)
+  constraint cms_command_accessibility_evidence_audit_event_key unique (audit_event_id)
 );
+
+-- One summary per outbox event when the command emitted one.
+create unique index cms_command_accessibility_evidence_outbox_event_key
+  on platform_private.cms_command_accessibility_evidence (outbox_event_id)
+  where outbox_event_id is not null;
 
 create index cms_command_accessibility_evidence_subject_idx
   on platform_private.cms_command_accessibility_evidence (operation_id, subject_id);
@@ -87,7 +98,8 @@ create or replace function platform_private.cms_record_command_accessibility_evi
   p_operation_id text,
   p_subject_id uuid,
   p_revision_id uuid,
-  p_event_id uuid,
+  p_audit_event_id uuid,
+  p_outbox_event_id uuid,
   p_correlation_id uuid,
   p_evidence jsonb
 )
@@ -112,7 +124,7 @@ begin
      or pg_catalog.jsonb_typeof(p_evidence->'blockingCount') is distinct from 'number'
      or pg_catalog.jsonb_typeof(p_evidence->'inputHash') is distinct from 'string'
      or p_evidence->>'blockingCount' !~ '^[0-9]{1,4}$'
-     or p_event_id is null or p_correlation_id is null or p_subject_id is null then
+     or p_audit_event_id is null or p_correlation_id is null or p_subject_id is null then
     raise exception 'INVALID_REQUEST' using errcode = 'P0001';
   end if;
   select revision_item.owner_id into owner_party
@@ -122,12 +134,12 @@ begin
     raise exception 'NOT_FOUND' using errcode = 'P0001';
   end if;
   insert into platform_private.cms_command_accessibility_evidence(
-    id, owner_id, state, version, operation_id, subject_id, revision_id, event_id,
+    id, owner_id, state, version, operation_id, subject_id, revision_id, audit_event_id, outbox_event_id,
     correlation_id, checker_key, checker_version, outcome, blocking_count, input_hash,
     created_at, updated_at
   ) values (
     summary_id, owner_party, 'recorded', 1, p_operation_id, p_subject_id, p_revision_id,
-    p_event_id, p_correlation_id, p_evidence->>'providerKey',
+    p_audit_event_id, p_outbox_event_id, p_correlation_id, p_evidence->>'providerKey',
     (p_evidence->>'providerVersion')::bigint, p_evidence->>'outcome',
     (p_evidence->>'blockingCount')::integer, p_evidence->>'inputHash', recorded_at, recorded_at
   );
@@ -135,16 +147,16 @@ begin
 end;
 $body$;
 
-comment on function platform_private.cms_record_command_accessibility_evidence(text, uuid, uuid, uuid, uuid, jsonb) is
-  'DEC-159 (5): appends the { checkerKey, checkerVersion, outcome, blockingCount, inputHash } summary of a command''s non-null accessibility PreflightEvidence to cms_command_accessibility_evidence (NULL evidence writes nothing). Called inside the command transaction after cms_emit_event. Private.';
+comment on function platform_private.cms_record_command_accessibility_evidence(text, uuid, uuid, uuid, uuid, uuid, jsonb) is
+  'DEC-159 (5): appends the { checkerKey, checkerVersion, outcome, blockingCount, inputHash } summary of a command''s non-null accessibility PreflightEvidence to cms_command_accessibility_evidence, keyed to the command''s EXACT audit event (p_audit_event_id, from cms_record_audit_event / cms_emit_event_ids) with the optional outbox event (NULL evidence writes nothing). Called inside the command transaction after the audit record exists. Private.';
 
 -- SEC-2: held by the definer role alone; no API role may run the recorder.
 grant insert, select on table platform_private.cms_command_accessibility_evidence to wejammin_cms_definer;
 grant create on schema platform_private to wejammin_cms_definer;
-alter function platform_private.cms_record_command_accessibility_evidence(text, uuid, uuid, uuid, uuid, jsonb)
+alter function platform_private.cms_record_command_accessibility_evidence(text, uuid, uuid, uuid, uuid, uuid, jsonb)
   owner to wejammin_cms_definer;
 revoke create on schema platform_private from wejammin_cms_definer;
-revoke all on function platform_private.cms_record_command_accessibility_evidence(text, uuid, uuid, uuid, uuid, jsonb)
+revoke all on function platform_private.cms_record_command_accessibility_evidence(text, uuid, uuid, uuid, uuid, uuid, jsonb)
   from public, anon, authenticated, service_role;
 
 commit;

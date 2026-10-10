@@ -4,7 +4,7 @@
  * the production Worker routes, adapters, Kong, PostgREST and the newest SQL: a
  * 202 publish with Location/strong ETag and an exact replay, unconditional step-up,
  * the publisher capability gate, the E11 separation split, the stale-version,
- * stale-version-set and wrong-hash refusals, the COMMITTED dependency_changed
+ * stale-version-set and wrong-hash refusals, the COMMITTED version_set_stale
  * refusal (HTTP 200 on the wire) and the 503 outage whose command carries an
  * exactly-null evidence member.
  *
@@ -268,7 +268,7 @@ describe('CMS-03B-09 publish through the real stack', () => {
     );
   });
 
-  it('[CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409', async () => {
+  it('[CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409', async () => {
     const draft = await approvedDraft(stack, world, 'Drift subject');
     // Fixture drift (what pgTAP does with its trigger-bypassing raw exec): the frozen manifest no
     // longer equals the rebuilt one while the stored version set still matches the request.
@@ -289,33 +289,95 @@ describe('CMS-03B-09 publish through the real stack', () => {
     const response = await publish(draft, { key });
     expectStatus(response, 409);
     expect(response.body.details).toMatchObject({
-      reasonCode: 'dependency_changed',
-      dependencyHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      reasonCode: 'version_set_stale',
     });
+    expect(response.body.details).not.toHaveProperty('dependencyHash');
     const wire = stack.rpcs().find((rpc) => rpc.rpc === 'cms_publish_revision');
     expect(wire?.status).toBe(200);
     expect(wire?.response).toMatchObject({
       kind: 'refusal',
-      reasonCode: 'dependency_changed',
+      reasonCode: 'version_set_stale',
     });
     expect(
       psql(
-        `select state from platform_private.cms_editorial_reviews where id = '${draft.reviewId}'`,
+        `select state || '/' || invalidated_reason from platform_private.cms_editorial_reviews where id = '${draft.reviewId}'`,
       ),
-    ).toBe('invalidated');
+    ).toBe('invalidated/dependency_changed');
     expect(workflowEffects(draft.entryId).publications).toBe(0);
 
     const beforeReplay = snapshotDigest();
     const replay = await publish(draft, { key });
     expectStatus(replay, 409);
     expect(replay.body.details).toMatchObject({
-      reasonCode: 'dependency_changed',
+      reasonCode: 'version_set_stale',
     });
     expectUnchanged(
       beforeReplay,
       snapshotDigest(),
-      'committed dependency refusal replay has no additional effects',
+      'committed stale-manifest refusal replay has no additional effects',
     );
+  });
+
+  it('[CMS-03B-09] a counted approver whose standing grant lapsed is found lazily: the COMMITTED 422 preflight_failed refusal (HTTP 200 on the wire), the review invalidated reviewer_authority_changed and a replay answers the same 422', async () => {
+    const draft = await approvedDraft(stack, world, 'Lapse subject');
+    // A grant that lapsed without the eager revocation trigger (the lazy path BE03b names): the
+    // trigger-bypassing fixture drift the stale-manifest test uses, restored in `finally`.
+    const setReviewerGrant = (active: boolean) =>
+      psql(`
+        begin;
+        select set_config('app.cms_rpc', 'true', true);
+        alter table identity_private.organization_actor_grant disable trigger user;
+        update identity_private.organization_actor_grant
+           set active = ${active}
+         where person_id = '${world.reviewer.personId}' and capability_code = 'cms.reviewer';
+        alter table identity_private.organization_actor_grant enable trigger user;
+        commit;`);
+    setReviewerGrant(false);
+    try {
+      stack.as(world.publisher, 'fresh');
+      const key = `lapse-${draft.entryId}`;
+      stack.clearRpcs();
+      const response = await publish(draft, { key });
+      expectStatus(response, 422);
+      expect(response.body.details).toMatchObject({
+        reasonCode: 'preflight_failed',
+        preflight: expect.arrayContaining([
+          {
+            category: 'revocation',
+            outcome: 'failed',
+            reasonCode: 'reviewer_authority_changed',
+          },
+        ]),
+      });
+      const wire = stack
+        .rpcs()
+        .find((rpc) => rpc.rpc === 'cms_publish_revision');
+      expect(wire?.status).toBe(200);
+      expect(wire?.response).toMatchObject({
+        kind: 'refusal',
+        reasonCode: 'preflight_failed',
+      });
+      expect(
+        psql(
+          `select state || '/' || invalidated_reason from platform_private.cms_editorial_reviews where id = '${draft.reviewId}'`,
+        ),
+      ).toBe('invalidated/reviewer_authority_changed');
+      expect(workflowEffects(draft.entryId).publications).toBe(0);
+
+      const beforeReplay = snapshotDigest();
+      const replay = await publish(draft, { key });
+      expectStatus(replay, 422);
+      expect(replay.body.details).toMatchObject({
+        reasonCode: 'preflight_failed',
+      });
+      expectUnchanged(
+        beforeReplay,
+        snapshotDigest(),
+        'committed lapsed-approver refusal replay has no additional effects',
+      );
+    } finally {
+      setReviewerGrant(true);
+    }
   });
 
   it('[CMS-03B-09] an unavailable accessibility proof is 503 DEPENDENCY_UNAVAILABLE with Retry-After and nothing is committed', async () => {

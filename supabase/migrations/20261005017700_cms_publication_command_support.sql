@@ -27,14 +27,23 @@
 --                                              approved (CONFLICT)
 --   cms_publication_stale_refusal(review, actor, correlation)
 --                                              a frozen manifest that is no longer current COMMITS the review
---                                              invalidation (dependency_changed) and answers the committed-refusal
---                                              envelope { kind: 'refusal', reasonCode, details } (DEC-159)
---   cms_publication_preflight_verdict(phase, review, party, person, effectiveAt, evidence)
+--                                              invalidation (reason dependency_changed) and answers the
+--                                              committed-refusal envelope { kind: 'refusal', reasonCode:
+--                                              'version_set_stale', details: {} } (BE03b E1: the command is 409
+--                                              CONFLICT version_set_stale; DEC-159)
+--   cms_publication_preflight_verdict(phase, review, party, person, effectiveAt, evidence, actor, correlation)
 --                                              the schedule / publish phase of the 17-category registry with the
 --                                              Worker's accessibility proof; any failed category is
 --                                              422 preflight_failed {preflight}, else any unavailable one is
 --                                              503 DEPENDENCY_UNAVAILABLE {dependencyClass}; mis-bound proof is
---                                              409 dependency_changed {dependencyHash}
+--                                              409 dependency_changed {dependencyHash}.  A counted approver whose
+--                                              standing grant lapsed (the revocation category fails with
+--                                              reviewer_authority_changed) is found lazily: that COMMITS the
+--                                              reviewer_authority_changed invalidation (the review's pending and
+--                                              retry schedules are cancelled in the same transaction) and the
+--                                              verdict answers the committed-refusal envelope { kind: 'refusal',
+--                                              reasonCode: 'preflight_failed', details: { preflight } } instead of
+--                                              raising, so the caller completes its reservation with it
 --
 -- Refusals are `raise exception '<token>' using errcode = 'P0001'`; structured members ride in a
 -- JSON-OBJECT DETAIL from the DEC-159 member set.  Private; callers hold every earlier lock position
@@ -248,7 +257,6 @@ set search_path = ''
 as $body$
 declare
   review_row platform_private.cms_editorial_reviews%rowtype;
-  current_hash text;
 begin
   select review_item.* into review_row
     from platform_private.cms_editorial_reviews review_item
@@ -256,26 +264,21 @@ begin
   if not found then
     raise exception 'NOT_FOUND' using errcode = 'P0001';
   end if;
-  begin
-    current_hash := platform_private.cms_jcs_sha256(
-      platform_private.cms_build_dependency_manifest(review_row.revision_id));
-  exception when others then
-    current_hash := null;
-  end;
+  -- BE03b E1: the review is invalidated dependency_changed (the Review invalidation reason of a command that
+  -- finds the manifest or a frozen identity no longer current) while the command itself answers version_set_stale.
   perform platform_private.cms_invalidate_editorial_review(pg_catalog.jsonb_build_object(
     'reviewId', review_row.id, 'reasonCode', 'dependency_changed',
     'correlationId', p_correlation_id, 'actorId', p_actor_id));
   return pg_catalog.jsonb_build_object(
     'kind', 'refusal',
-    'reasonCode', 'dependency_changed',
-    'details', case when current_hash is null then '{}'::jsonb
-                    else pg_catalog.jsonb_build_object('dependencyHash', current_hash) end
+    'reasonCode', 'version_set_stale',
+    'details', '{}'::jsonb
   );
 end;
 $body$;
 
 comment on function platform_private.cms_publication_stale_refusal(uuid, uuid, uuid) is
-  'BE03b Review invalidation / DEC-159: commits the dependency_changed invalidation of a review whose frozen manifest is no longer current and returns the committed-refusal envelope { kind: refusal, reasonCode: dependency_changed, details: { dependencyHash: <current> } } (details {} when the manifest cannot be rebuilt). The caller completes its idempotency record with it. Private.';
+  'BE03b E1 / Review invalidation / DEC-159: commits the dependency_changed invalidation of a review whose frozen manifest is no longer current (a non-current identity or a differing recomputed manifest) and returns the committed-refusal envelope { kind: refusal, reasonCode: version_set_stale, details: {} } (the command is 409 CONFLICT version_set_stale). The caller completes its idempotency record with it. Private.';
 
 create or replace function platform_private.cms_publication_preflight_verdict(
   p_phase text,
@@ -283,7 +286,9 @@ create or replace function platform_private.cms_publication_preflight_verdict(
   p_acting_party_id uuid,
   p_person_id uuid,
   p_effective_at timestamptz,
-  p_evidence jsonb
+  p_evidence jsonb,
+  p_actor_id uuid,
+  p_correlation_id uuid
 )
 returns jsonb
 language plpgsql
@@ -321,6 +326,22 @@ begin
              'reasonCode', result.item->'reasonCode') order by result.ordinal)
       into summary
       from pg_catalog.jsonb_array_elements(report->'results') with ordinality result(item, ordinal);
+    -- BE03b Review invalidation: a counted approver's standing capability that LAPSED (or whose assignment was
+    -- revoked) is found lazily by the revocation preflight.  The approval can never be used again, so the
+    -- invalidation COMMITS (cancelling the review's pending and retry schedules) and the command answers the
+    -- committed refusal, never a rollback that would leave the dead approval standing.
+    if exists (
+      select 1 from pg_catalog.jsonb_array_elements(report->'results') result(item)
+       where result.item->>'category' = 'revocation' and result.item->>'outcome' = 'failed'
+         and result.item->>'reasonCode' = 'reviewer_authority_changed'
+    ) then
+      perform platform_private.cms_invalidate_editorial_review(pg_catalog.jsonb_build_object(
+        'reviewId', p_review.id, 'reasonCode', 'reviewer_authority_changed',
+        'correlationId', p_correlation_id, 'actorId', p_actor_id));
+      return pg_catalog.jsonb_build_object(
+        'kind', 'refusal', 'reasonCode', 'preflight_failed',
+        'details', pg_catalog.jsonb_build_object('preflight', summary));
+    end if;
     raise exception 'preflight_failed' using errcode = 'P0001',
       detail = pg_catalog.jsonb_build_object('preflight', summary)::text;
   end if;
@@ -335,8 +356,8 @@ begin
 end;
 $body$;
 
-comment on function platform_private.cms_publication_preflight_verdict(text, platform_private.cms_editorial_reviews, uuid, uuid, timestamptz, jsonb) is
-  'BE03b D19/D25 for CMS-03B-07 (schedule) and CMS-03B-09 (publish): evaluates all seventeen categories against the review''s frozen manifest with the Worker''s accessibility proof. Any failed category is 422 preflight_failed {preflight: <=17 {category, outcome, reasonCode}}, else any unavailable one is 503 DEPENDENCY_UNAVAILABLE {dependencyClass: preflight}; stale proof is preflight_evidence_stale; proof bound to other rows is dependency_changed {dependencyHash}. Returns the passed report. Private.';
+comment on function platform_private.cms_publication_preflight_verdict(text, platform_private.cms_editorial_reviews, uuid, uuid, timestamptz, jsonb, uuid, uuid) is
+  'BE03b D19/D25 for CMS-03B-07 (schedule) and CMS-03B-09 (publish): evaluates all seventeen categories against the review''s frozen manifest with the Worker''s accessibility proof. Any failed category is 422 preflight_failed {preflight: <=17 {category, outcome, reasonCode}}, else any unavailable one is 503 DEPENDENCY_UNAVAILABLE {dependencyClass: preflight}; stale proof is preflight_evidence_stale; proof bound to other rows is dependency_changed {dependencyHash}. A lapsed counted approver (revocation failed reviewer_authority_changed) COMMITS the reviewer_authority_changed invalidation and answers the committed-refusal envelope { kind: refusal, reasonCode: preflight_failed, details: { preflight } } instead of raising. Returns the passed report otherwise. Private.';
 
 -- SEC-2: what the helpers read, held by the definer role only.
 grant select on table platform_private.cms_editorial_decisions to wejammin_cms_definer;
@@ -349,7 +370,7 @@ alter function platform_private.cms_publication_lock_authority(uuid, uuid, uuid,
 alter function platform_private.cms_publication_lock_review(uuid) owner to wejammin_cms_definer;
 alter function platform_private.cms_publication_review_operand(platform_private.cms_editorial_reviews, bigint) owner to wejammin_cms_definer;
 alter function platform_private.cms_publication_stale_refusal(uuid, uuid, uuid) owner to wejammin_cms_definer;
-alter function platform_private.cms_publication_preflight_verdict(text, platform_private.cms_editorial_reviews, uuid, uuid, timestamptz, jsonb) owner to wejammin_cms_definer;
+alter function platform_private.cms_publication_preflight_verdict(text, platform_private.cms_editorial_reviews, uuid, uuid, timestamptz, jsonb, uuid, uuid) owner to wejammin_cms_definer;
 revoke create on schema platform_private from wejammin_cms_definer;
 revoke all on function
   platform_private.cms_activation_evidence_hash(uuid),
@@ -358,7 +379,7 @@ revoke all on function
   platform_private.cms_publication_lock_review(uuid),
   platform_private.cms_publication_review_operand(platform_private.cms_editorial_reviews, bigint),
   platform_private.cms_publication_stale_refusal(uuid, uuid, uuid),
-  platform_private.cms_publication_preflight_verdict(text, platform_private.cms_editorial_reviews, uuid, uuid, timestamptz, jsonb)
+  platform_private.cms_publication_preflight_verdict(text, platform_private.cms_editorial_reviews, uuid, uuid, timestamptz, jsonb, uuid, uuid)
   from public, anon, authenticated, service_role;
 
 commit;

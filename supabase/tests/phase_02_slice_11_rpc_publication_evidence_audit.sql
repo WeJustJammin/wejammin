@@ -3,9 +3,11 @@
 -- { checkerKey, checkerVersion, outcome, blockingCount, inputHash }; tracker P2-S11-AC-101).  The summary is
 -- the CMS-owned append-only side table platform_private.cms_command_accessibility_evidence, written through
 -- S11-3a's recorder in the command transaction whenever a VERIFIED non-null proof was received:
---   CMS-03B-07 (no event exists until execution: a fresh effect id),
+--   CMS-03B-07 (no outbox event exists until execution: the optional outbox id is null),
 --   CMS-03B-09 (the publication event it accompanied),
---   CMS-03B-20 (the publication event when completed, a fresh effect id when blocked or retried).
+--   CMS-03B-20 (the publication event when completed, no outbox id when blocked or retried).
+-- DEC-159 (5): every row is keyed to the EXACT audit event its command wrote (audit_event_id, a unique foreign key to
+-- audit_private.audit_events), never joined by a correlation id that two commands can share.
 -- A refused command rolls back with its summary; stale, mis-bound or absent proof is never summarized.
 -- RED before the recorder calls of 20261005017710 / 017720 / 017740.
 
@@ -15,7 +17,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(23);
+select plan(26);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -48,7 +50,7 @@ as $body$
 $body$;
 
 select pg_temp.p11_approved(tag) from (values ('ea-sched'), ('ea-pub'), ('ea-done'), ('ea-block'), ('ea-retry'), ('ea-null'),
-  ('ea-stale'), ('ea-refused'), ('ea-media')) as t(tag);
+  ('ea-stale'), ('ea-refused'), ('ea-media'), ('ea-reuse-1'), ('ea-reuse-2')) as t(tag);
 select pg_temp.h11w_value(pg_temp.h11w_uuid('ea-media:revision'), 'hero',
   jsonb_build_object('assetId', 'a9200000-0000-4000-8000-0000000000a1', 'assetVersion', '1'));
 
@@ -67,10 +69,14 @@ select ok(
        and summary.revision_id = pg_temp.h11w_uuid('ea-sched:revision') and summary.owner_id = pg_temp.s11_id('org')
        and summary.input_hash = (select request->'evidence'->>'inputHash' from r11_req where label = 's1')
        and summary.state = 'recorded' and summary.version = 1 and summary.updated_at = summary.created_at
+       and summary.audit_event_id = (select audit.id from audit_private.audit_events audit
+                                      where audit.action = 'cms.publication.schedule'
+                                        and audit.target_id = (pg_temp.r11_resp('s1')->>'id')::uuid)
+       and summary.outbox_event_id is null
        and summary.correlation_id = (select audit.correlation_id from audit_private.audit_events audit
                                       where audit.action = 'cms.publication.schedule'
                                         and audit.target_id = (pg_temp.r11_resp('s1')->>'id')::uuid)),
-  'the row is owner-scoped, carries the proof''s input hash and joins the command''s audit record by correlation id [P2-S11-AC-101]');
+  'the row is owner-scoped, carries the proof''s input hash, is keyed to the exact audit event of the schedule command and has no outbox event (none exists until execution) [P2-S11-AC-101]');
 select ok(
   not pg_temp.r11_leaks(pg_temp.r11_resp('s1'), array[
     (select request->'evidence'->>'inputHash' from r11_req where label = 's1'),
@@ -105,15 +111,15 @@ select pg_temp.p11_call('p1', 'pub', 'cms_publish_revision', (select request fro
 select is(pg_temp.p11_summary((pg_temp.r11_resp('p1')->>'publicationVersionId')::uuid), 'CMS-03B-09/healthy/0/cms.a11y.structural@1',
   'the publication wrote exactly one summary row against the lineage row [P2-S11-AC-101]');
 select ok(
-  (select summary.event_id from platform_private.cms_command_accessibility_evidence summary
+  (select summary.outbox_event_id from platform_private.cms_command_accessibility_evidence summary
     where summary.subject_id = (pg_temp.r11_resp('p1')->>'publicationVersionId')::uuid)
     = (select event.id from platform_private.outbox_events event
         where event.event_type = 'cms.publication.changed.v1' and event.aggregate_id = (pg_temp.r11_resp('p1')->>'id')::uuid)
-  and (select summary.correlation_id from platform_private.cms_command_accessibility_evidence summary
+  and (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary
         where summary.subject_id = (pg_temp.r11_resp('p1')->>'publicationVersionId')::uuid)
-    = (select audit.correlation_id from audit_private.audit_events audit
+    = (select audit.id from audit_private.audit_events audit
         where audit.action = 'cms.publication.publish' and audit.target_id = (pg_temp.r11_resp('p1')->>'publicationVersionId')::uuid),
-  'the row references the publication''s outbox event and joins its audit record by correlation id [P2-S11-AC-101]');
+  'the row references the publication''s outbox event and is keyed to the exact audit event of the lineage row [P2-S11-AC-101]');
 select pg_temp.p11_call('p1-replay', 'pub', 'cms_publish_revision', (select request from r11_req where label = 'p1'));
 select is((select count(*)::integer from platform_private.cms_command_accessibility_evidence where operation_id = 'CMS-03B-09'), 1,
   'an exact replay of the publication writes no second summary row [P2-S11-AC-101]');
@@ -137,9 +143,9 @@ select pg_temp.p11_exec('x-stale', pg_temp.p11_xreq('s-stale', '{}'::jsonb, '{}'
 select pg_temp.p11_exec('x-media', pg_temp.p11_xreq('s-media', '{}'::jsonb, '{}'::text[], pg_temp.r11_evidence(pg_temp.h11w_uuid('ea-media:revision'), 'blocked')));
 select is(
   (pg_temp.r11_resp('x-done')->>'outcome') || '|' || (pg_temp.r11_resp('x-block')->>'outcome') || '|' || (pg_temp.r11_resp('x-retry')->>'outcome')
-    || '|' || (pg_temp.r11_resp('x-null')->>'outcome') || '|' || (pg_temp.r11_resp('x-stale')->>'outcome') || '|' || (pg_temp.r11_resp('x-media')->>'outcome'),
-  'completed|blocked|failed_retryable|failed_retryable|failed_retryable|blocked',
-  'control: a completed, a blocked (publication_not_active), a retried (failed run), an unproven, a stale-proof and a failed-category execution');
+    || '|' || (pg_temp.r11_resp('x-null')->>'outcome') || '|' || pg_temp.r11_out('x-stale') || '|' || (pg_temp.r11_resp('x-media')->>'outcome'),
+  'completed|blocked|failed_retryable|failed_retryable|P0001:preflight_evidence_stale|blocked',
+  'control: a completed, a blocked (publication_not_active), a retried (failed run), an unproven and a failed-category execution, and a stale-proof execution refused with the typed conflict (DEC-158(c))');
 select is(pg_temp.p11_summary(pg_temp.s11_id('s-done')) || '|' || pg_temp.p11_summary(pg_temp.s11_id('s-block')) || '|'
     || pg_temp.p11_summary(pg_temp.s11_id('s-retry')) || '|' || pg_temp.p11_summary(pg_temp.s11_id('s-media')),
   'CMS-03B-20/healthy/0/cms.a11y.structural@1|CMS-03B-20/healthy/0/cms.a11y.structural@1|CMS-03B-20/failed/0/cms.a11y.structural@1|CMS-03B-20/blocked/2/cms.a11y.structural@1',
@@ -147,16 +153,61 @@ select is(pg_temp.p11_summary(pg_temp.s11_id('s-done')) || '|' || pg_temp.p11_su
 select is(pg_temp.p11_summary(pg_temp.s11_id('s-null')) || '|' || pg_temp.p11_summary(pg_temp.s11_id('s-stale')), '-|-',
   'absent proof and stale proof are never summarized (nothing was verified) [P2-S11-AC-101]');
 select ok(
-  (select summary.event_id from platform_private.cms_command_accessibility_evidence summary where summary.subject_id = pg_temp.s11_id('s-done'))
+  (select summary.outbox_event_id from platform_private.cms_command_accessibility_evidence summary where summary.subject_id = pg_temp.s11_id('s-done'))
     = (select event.id from platform_private.outbox_events event
         where event.event_type = 'cms.publication.changed.v1' and event.aggregate_id = (
           select row_item.publication_id from platform_private.cms_publication_versions row_item where row_item.schedule_id = pg_temp.s11_id('s-done')))
-  and (select count(distinct summary.event_id) = 4 from platform_private.cms_command_accessibility_evidence summary
-        where summary.operation_id = 'CMS-03B-20'),
-  'a completed execution''s row names the publication event; the blocked and retried outcomes (no event) carry distinct effect ids, one summary per outcome [P2-S11-AC-101]');
+  and (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary where summary.subject_id = pg_temp.s11_id('s-done'))
+    = (select audit.id from audit_private.audit_events audit
+        where audit.action = 'cms.publication.publish'
+          and audit.target_id = (select row_item.id from platform_private.cms_publication_versions row_item where row_item.schedule_id = pg_temp.s11_id('s-done'))),
+  'a completed execution''s row names the publication event and is keyed to the exact audit event of the lineage row it appended [P2-S11-AC-101]');
+select ok(
+  (select count(distinct summary.audit_event_id) = 4 from platform_private.cms_command_accessibility_evidence summary
+    where summary.operation_id = 'CMS-03B-20')
+  and (select count(*) = 3 from platform_private.cms_command_accessibility_evidence summary
+        where summary.operation_id = 'CMS-03B-20' and summary.outbox_event_id is null)
+  and (select audit.id from audit_private.audit_events audit
+        where audit.action = 'cms.publication.schedule.block' and audit.target_id = pg_temp.s11_id('s-block'))
+      = (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary where summary.subject_id = pg_temp.s11_id('s-block'))
+  and (select audit.id from audit_private.audit_events audit
+        where audit.action = 'cms.publication.schedule.retry' and audit.target_id = pg_temp.s11_id('s-retry'))
+      = (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary where summary.subject_id = pg_temp.s11_id('s-retry'))
+  and (select audit.id from audit_private.audit_events audit
+        where audit.action = 'cms.publication.schedule.block' and audit.target_id = pg_temp.s11_id('s-media'))
+      = (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary where summary.subject_id = pg_temp.s11_id('s-media')),
+  'the blocked and retried outcomes (no event) carry no outbox id and each summary is keyed to the exact block or retry audit event of its schedule: four summaries, four distinct audit events [P2-S11-AC-101]');
 select pg_temp.p11_exec('x-done-again', pg_temp.p11_xreq('s-done'));
 select is((select count(*)::integer from platform_private.cms_command_accessibility_evidence where operation_id = 'CMS-03B-20'), 4,
   'a repeated execution (already_completed) writes no further summary row [P2-S11-AC-101]');
+
+-- ---------------------------------------------------------------------------
+-- Two commands that SHARE a correlation id: the correlation join is ambiguous (two audit rows), the audit key is not.
+-- ---------------------------------------------------------------------------
+create temp table r11_shared(correlation uuid not null) on commit drop;
+insert into r11_shared values (extensions.gen_random_uuid());
+select pg_temp.p11_call('u1', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('ea-reuse-1',
+  jsonb_build_object('context', pg_temp.r11_ctx() || jsonb_build_object('correlationId', (select correlation from r11_shared)))));
+select pg_temp.p11_call('u2', 'pub', 'cms_schedule_publication', pg_temp.p11_sreq('ea-reuse-2',
+  jsonb_build_object('context', pg_temp.r11_ctx() || jsonb_build_object('correlationId', (select correlation from r11_shared)))));
+select ok(pg_temp.r11_out('u1') = '00000:' and pg_temp.r11_out('u2') = '00000:'
+    and (select count(*) = 2 from audit_private.audit_events audit
+          where audit.action = 'cms.publication.schedule' and audit.correlation_id = (select correlation from r11_shared)),
+  'control: two schedule commands reusing one correlation id each wrote their own audit record under it');
+select ok(
+  (select count(*) = 2 from platform_private.cms_command_accessibility_evidence summary
+    where summary.correlation_id = (select correlation from r11_shared))
+  and (select audit.id from audit_private.audit_events audit
+        where audit.action = 'cms.publication.schedule' and audit.target_id = (pg_temp.r11_resp('u1')->>'id')::uuid)
+      = (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary
+          where summary.subject_id = (pg_temp.r11_resp('u1')->>'id')::uuid)
+  and (select audit.id from audit_private.audit_events audit
+        where audit.action = 'cms.publication.schedule' and audit.target_id = (pg_temp.r11_resp('u2')->>'id')::uuid)
+      = (select summary.audit_event_id from platform_private.cms_command_accessibility_evidence summary
+          where summary.subject_id = (pg_temp.r11_resp('u2')->>'id')::uuid)
+  and (select count(distinct summary.audit_event_id) = 2 from platform_private.cms_command_accessibility_evidence summary
+        where summary.correlation_id = (select correlation from r11_shared)),
+  'with a shared correlation id each summary still points at ITS command''s audit event: the correlation id alone cannot tell them apart, the audit key can [P2-S11-AC-101]');
 
 select * from finish();
 rollback;
