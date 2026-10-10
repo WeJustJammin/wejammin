@@ -107,6 +107,26 @@ formatter/packages or nested agents.
 
 ## Evidence limits / next gate
 
+### QA amendment and legacy equivalence claims
+
+Initial actual import RED: two absent-module suites/no tests/232ms/exit1; not
+functional assertion proof. Root formatted A431>400, B382<=400; cases26/8 UNRUN.
+Checkpoint before next native wave. A may move only existing fixture/helpers to
+claimed-schema-migration-preparation-test-support.ts (new utility <=300), retain
+all26 cases/assertions and make concurrent tokens AND versions distinct. Sole
+A claims that support file plus its existing boundary spec; B stays frozen.
+
+C sole new claim: migration-worker-resolved-admission-equivalence.test.ts, <=400.
+Add otherwise valid foreign plan-ID with matching target/version, completed
+identity mismatch before terminal exception, nonadjacent completed version with
+exact successful event ACK, exact failed-terminal failure ACK, successful blocked
+release exactly once with acquired token/full identity/signal, and rejected
+in-flight eviction followed by successful fresh read. Keep old helpers unchanged;
+new support file needs an exact additional root claim. All commands root-owned.
+
+Existing22 legacy suites341/341/12.49s/exit0 are actual pre-extraction control.
+This additional QA is implementation-owned proof, not a product/ACK-policy change.
+
 BE03a2305-2329 requires real nonzero scan -> seal -> backfill -> verify -> complete
 without activation. Controlled unit histories do not establish SQL owner/lease
 authority, real public lifecycle or persisted completed report. Current queue
