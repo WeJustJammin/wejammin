@@ -12,6 +12,9 @@ SUPA=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/node_modules/.bin/supaba
 export PATH="/home/rob/.local/share/wejammin-toolchain/bin:$PATH"
 LOGS="$LANE/.lane-logs"; mkdir -p "$LOGS"; STAMP=$(date +%H%M%S)-$$
 [ "$(readlink -f "$ALT/supabase/migrations")" = "$(readlink -f "$LANE/supabase/migrations")" ] || { echo "[alt] alt stack is not linked to $LANE"; exit 5; }
+# Never run beside a canonical gate: wait while it holds /tmp/wejammin-quiet.lock exclusively.
+exec 7>/tmp/wejammin-quiet.lock
+flock -s --wait 7200 7 || { echo "[alt] quiet lock timeout"; exit 3; }
 exec 9>/tmp/wejammin-altdb.lock
 echo "[alt] waiting for lock $(date +%T)"; flock --wait 3600 9 || { echo "[alt] lock timeout"; exit 3; }
 echo "[alt] lock acquired $(date +%T)"

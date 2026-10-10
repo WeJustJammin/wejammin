@@ -70,9 +70,16 @@ your assignment.
   against either stack outside these runners. Other lanes share the worktree's migrations: a reset
   includes their in-progress files, so if a reset fails in a file you do not own, report it and wait.
 
+## Quiet host (added 2026-10-10 after a gate was corrupted by lane load)
+
+A canonical gate may be running; it holds `/tmp/wejammin-quiet.lock` exclusively. Prefix EVERY heavy
+command you run — `pnpm exec vitest`, `pnpm exec tsc`, `pnpm lint`/eslint, playwright, and anything that
+resets or tests a database — with `flock -s /tmp/wejammin-quiet.lock` (the alt runner already does this).
+It blocks until the gate finishes; keep authoring code and tests while you wait. Never bypass it.
+
 ## Report
 
-Before your final message, write `docs/handoffs/2026-10-10-claude-s11/lane-<your-lane>-report.md`:
+Before your final message, write `docs/handoffs/2026-10-10-claude-s11/lane-<your-lane>-report.md` (if the harness refuses that write, put the full report in your final message instead):
 files changed; for each finding: RED log path + exact failing assertion, the fix, GREEN log path +
 counts; every changed or added test title (old → new); spec lines satisfied; anything left open.
 Final message: at most 300 words with HEAD, report path, RED/GREEN summary and open items.
