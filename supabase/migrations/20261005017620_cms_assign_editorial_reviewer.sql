@@ -15,8 +15,13 @@
 --   3. concealment: an absent, cross-owner or non-member-scoped review is NOT_FOUND; a readable
 --      review whose caller is not the immutable owner receipt identity is 403 capability_missing,
 --      as is an owner without a currently valid `cms.editor` grant (the grantor authority end);
---      a revoke needs the owner receipt only;
---   4. the authority rows of the grantor and the reviewer FOR SHARE (global order position 1),
+--      a revoke needs the owner receipt only.  This proof reads the committed state and only
+--      decides whether the organization's authority rows may be locked at all;
+--   4. the authority rows of the grantor and the reviewer FOR SHARE (global order position 1), then
+--      the step 3 proof AGAIN under those locks (BE03b "Write-path lock order and authority
+--      fencing" rule 1, lock before write, capability re-proved under the locks): an owner scope,
+--      live acting identity or `cms.editor` grant lost by a revocation that committed while this
+--      command waited for the locks is refused with the step 3 token and nothing is reserved;
 --      then the idempotency reservation (an exact replay returns the stored response);
 --   5. the review row FOR UPDATE (position 5): review_not_open, then the CAS operand
 --      (VERSION_MISMATCH with the expected and current versions);
@@ -163,34 +168,43 @@ begin
   -- 2. the step-up proof, before the review is read and before the reservation (E6)
   perform platform_private.cms_editorial_step_up_instant(p_request);
 
-  -- 3. concealment (404) and the owner gate (403)
-  grantor_person := platform_private.identity_actor_person(actor_id);
-  select review_item.* into review_row
-    from platform_private.cms_editorial_reviews review_item
-   where review_item.id = requested_review;
-  if not found or review_row.owner_id is distinct from acting_party_id then
-    raise exception 'NOT_FOUND' using errcode = 'P0001';
-  end if;
-  scopes := platform_private.cms_editorial_review_scopes(review_row.id, actor_id, acting_party_id);
-  if pg_catalog.cardinality(scopes) = 0 then
-    raise exception 'NOT_FOUND' using errcode = 'P0001';
-  end if;
-  if not ('owner' = any (scopes)) then
-    raise exception 'capability_missing' using errcode = 'P0001';
-  end if;
-  if action = 'create' then
-    if not platform_private.cms_person_holds_capability(review_row.owner_id, grantor_person, 'cms.editor') then
+  -- 3.+4. concealment (404), the owner gate (403) and the authority rows (position 1), proved twice.
+  -- Pass 1 reads the committed state and decides whether this organization's authority rows may be
+  -- locked at all (a stranger, a foreign review or a non-owner locks nothing).  Pass 2 runs the SAME
+  -- proof under the position 1 locks (BE03b "Write-path lock order and authority fencing" rule 1: lock
+  -- before write, capability re-proved under the locks), so a revocation, tenure end or account loss
+  -- that committed while this command waited for them wins with the pass 1 token, and one that
+  -- arrives later waits for this command to commit.  Nothing is reserved or written before pass 2.
+  for authority_pass in 1..2 loop
+    grantor_person := platform_private.identity_actor_person(actor_id);
+    select review_item.* into review_row
+      from platform_private.cms_editorial_reviews review_item
+     where review_item.id = requested_review;
+    if not found or review_row.owner_id is distinct from acting_party_id then
+      raise exception 'NOT_FOUND' using errcode = 'P0001';
+    end if;
+    scopes := platform_private.cms_editorial_review_scopes(review_row.id, actor_id, acting_party_id);
+    if pg_catalog.cardinality(scopes) = 0 then
+      raise exception 'NOT_FOUND' using errcode = 'P0001';
+    end if;
+    if not ('owner' = any (scopes)) then
       raise exception 'capability_missing' using errcode = 'P0001';
     end if;
-  end if;
-
-  -- 4. the authority rows (position 1), then the idempotency reservation
-  perform platform_private.cms_lock_person_authority(
-    review_row.owner_id,
-    case when action = 'create' then array[grantor_person, reviewer_person]::uuid[]
-         else array[grantor_person]::uuid[] end,
-    array['cms.editor', 'cms.reviewer']::text[]
-  );
+    if action = 'create' then
+      if not platform_private.cms_person_holds_capability(review_row.owner_id, grantor_person, 'cms.editor') then
+        raise exception 'capability_missing' using errcode = 'P0001';
+      end if;
+    end if;
+    if authority_pass = 1 then
+      perform platform_private.cms_lock_person_authority(
+        review_row.owner_id,
+        case when action = 'create' then array[grantor_person, reviewer_person]::uuid[]
+             else array[grantor_person]::uuid[] end,
+        array['cms.editor', 'cms.reviewer']::text[]
+      );
+    end if;
+  end loop;
+  -- The idempotency reservation (an exact replay returns the stored response).
   reservation := platform_private.cms_reserve(p_request, actor_id, 'CMS-03B-18');
   if reservation.state = 'completed'::platform_private.idempotency_state then
     if reservation.response_ref->'safeHeaders' ? 'response' then

@@ -273,6 +273,58 @@ export const holdReviewLock = async (reviewId, label) => {
   };
 };
 
+/** Committed idempotency reservations of the CMS-03B-18 (assignment) command. */
+export const assignmentReservations = () =>
+  count(
+    `select count(*) from platform_private.idempotency_records where operation = 'CMS-03B-18';`,
+  );
+
+/**
+ * The application names of the sessions that currently block `appName` (a wait for a row, a
+ * tuple, a transaction id or an advisory lock), sorted; the empty array when nothing blocks it.
+ */
+export const blockedBy = (appName) =>
+  runValue(
+    `select coalesce(string_agg(distinct blocker.application_name, ',' order by blocker.application_name), '')
+       from pg_stat_activity waiter
+       join pg_stat_activity blocker on blocker.pid = any (pg_blocking_pids(waiter.pid))
+      where waiter.application_name = ${sql(appName)};`,
+  )
+    .split(',')
+    .filter(Boolean);
+
+/**
+ * True once the session has begun writing `relation` (a granted RowExclusiveLock, taken by the
+ * statement that writes it).  A session that still waits for a lock BEFORE its first write has none.
+ */
+export const holdsWriteLock = (appName, relation) =>
+  runValue(
+    `select exists (
+       select 1
+         from pg_locks held
+         join pg_stat_activity session_item on session_item.pid = held.pid
+        where session_item.application_name = ${sql(appName)}
+          and held.locktype = 'relation'
+          and held.relation = ${sql(relation)}::regclass
+          and held.mode = 'RowExclusiveLock'
+          and held.granted);`,
+  ) === 't';
+
+/** Runs `statement` (SQL ending in `;`) as one committed transaction in the RPC context. */
+export const commitStatement = (statement) =>
+  runValue(
+    `begin; select set_config('app.cms_rpc', 'true', true); ${statement} commit; select 'committed';`,
+    's11race-commit',
+  );
+
+/** UPDATE of one actor-grant row of the owner organization (`active` true restores, false revokes). */
+export const grantUpdate = (ids, who, capability, active) =>
+  `update identity_private.organization_actor_grant set active = ${active}, updated_at = clock_timestamp() where organization_id = ${sql(ids.org)}::uuid and person_id = ${sql(ids.actors[who].person)}::uuid and capability_code = ${sql(capability)};`;
+
+/** UPDATE that ends (`ended` true) or restores the confirmed membership tenure of one person. */
+export const tenureUpdate = (ids, who, ended) =>
+  `update identity_private.membership_tenure set state = ${ended ? "'ended'" : "'confirmed'"}, revoked_at = ${ended ? 'clock_timestamp()' : 'null'}, updated_at = clock_timestamp() where organization_id = ${sql(ids.org)}::uuid and person_id = ${sql(ids.actors[who].person)}::uuid;`;
+
 export const {
   installGateTrigger,
   closeGate,
@@ -283,6 +335,7 @@ export const {
   waitFor,
   waitEvent,
   isLockWaiting,
+  revokerScript,
   runValue: value,
   runCapture: capture,
   runAsync: spawnSession,

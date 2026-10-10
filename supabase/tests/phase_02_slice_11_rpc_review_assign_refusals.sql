@@ -9,7 +9,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(22);
+select plan(23);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -117,6 +117,22 @@ select pg_temp.h11_raw_exec('identity_private.organization_actor_grant', format(
 select is(pg_temp.r11_out('h-owner-no-editor') || '|' || pg_temp.r11_out('h-owner-no-editor-revoke'),
   'P0001:capability_missing|00000:',
   'an owner without a valid cms.editor grant is refused a create (no grantor authority end) but may still revoke [P2-S11-AC-069]');
+
+-- The owner scope is lost with the membership tenure: the review is concealed for create and revoke.  The
+-- command proves this twice, once on the committed state and once under the authority locks; the race
+-- runner 010-review-assignment-race.mjs (A5/A6) makes a revocation commit while the command waits.
+select pg_temp.h11_raw_exec('identity_private.membership_tenure', format(
+  $q$update identity_private.membership_tenure set state = 'ended', revoked_at = clock_timestamp(), ends_on = current_date + 1
+      where organization_id = %L and person_id = %L$q$, pg_temp.s11_id('org'), pg_temp.s11_id('creator')));
+select pg_temp.r11_acall('h-owner-ended-tenure', 'owner', pg_temp.r11_areq('r1', 'create'), false);
+select pg_temp.r11_acall('h-owner-ended-tenure-revoke', 'owner', pg_temp.r11_areq('r1', 'revoke',
+  jsonb_build_object('assignmentId', pg_temp.s11_id('r1-rvA-asg'))), false);
+select pg_temp.h11_raw_exec('identity_private.membership_tenure', format(
+  $q$update identity_private.membership_tenure set state = 'confirmed', revoked_at = null, ends_on = null
+      where organization_id = %L and person_id = %L$q$, pg_temp.s11_id('org'), pg_temp.s11_id('creator')));
+select is(pg_temp.r11_out('h-owner-ended-tenure') || '|' || pg_temp.r11_out('h-owner-ended-tenure-revoke'),
+  'P0001:NOT_FOUND|P0001:NOT_FOUND',
+  'an owner whose membership tenure has ended no longer holds the owner scope: the review is concealed NOT_FOUND for create and revoke [P2-S11-AC-069]');
 
 -- ---------------------------------------------------------------------------
 -- Review state and the CAS operand.
