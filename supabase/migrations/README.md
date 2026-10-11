@@ -624,6 +624,27 @@ Operations: `../../docs/runbooks/platform/cms-editorial.md`. Spec: `.memory/wiki
   `projectionState` from it instead of a literal; `165200` the service-role takedown RPC
   `platform_api.cms_takedown_preview_tokens` over the private `cms_revoke_preview_tokens` seam (AC-118).
 
+### Slice 11 forward migrations (`20261010130000`-`20261010166100`)
+
+Forward-only amendments written after the `20261005017000`-`20261005018100` set. Functions they replace are
+MD5-pinned by these files, so later changes to those functions must also be new forward migrations.
+
+- `130000` E7 / DEC-163: settings snapshots are initialized by the existing authorized write tails
+  (`cms_create_entry`, `cms_create_revision`, `cms_resolve_conflict`, `cms_restore_revision`,
+  `cms_author_locale_variant`); reads only look up (fail closed when missing).
+- `140000` the schedule executor fences null and expired leases before any stale-evidence handling.
+- `150000`-`154000` exact CMS-03B-07 instants (BE03b:266): private sub-microsecond remainders on
+  `cms_publication_schedules` (storage; the self-check excludes planner statistics so populated tables migrate),
+  nine-digit admission, due ordering, half-even deviation rounding over exact nanoseconds, and nine-digit
+  workflow reconstruction.
+- `161000`-`161100` sealed (encrypt-then-MAC) cursors for state-filtered revision history (DEC-168).
+- `162000`-`162200` audit-event-keyed accessibility summaries, committed lapse and `version_set_stale`
+  refusals at CMS-03B-07, and executor conflict propagation without consuming retries (DEC-169).
+- `164000`-`164100` dependency recheck: the review recheck relay and the bounded, idempotent
+  `cms.review.dependency_recheck` run (AC-113, DEC-166).
+- `166000`-`166100` Slice 09 performance: `cms_create_type_draft` compiles its definition once and the compiled
+  manifest bound is one jsonpath scan (P2-S09-AC-217), with byte-for-byte parity tests.
+
 ## Related links
 
 - `../tests/README.md`

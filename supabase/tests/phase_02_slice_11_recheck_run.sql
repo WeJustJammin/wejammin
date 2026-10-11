@@ -355,7 +355,9 @@ select is(pg_temp.rc_run('schema', pg_temp.h11w_version(), (select ids[1] from r
   'a superseded schema version invalidates the live reviews after the cursor [P2-S11-AC-113]');
 select is(
   (select string_agg(rank.tag || '=' || pg_temp.rc_state(rank.tag), ',' order by rank.rank) from rc_rank rank),
-  (select string_agg(rank.tag || '=' || case when rank.rank = 1 then 'open/-/v1'
+  -- The review before the cursor keeps its own state: r2 is the approved review at v2, the others are open at v1.
+  (select string_agg(rank.tag || '=' || case when rank.rank = 1
+        then (case when rank.tag = 'r2' then 'approved/-/v2' else 'open/-/v1' end)
       else 'invalidated/dependency_changed/v' || (case when rank.tag = 'r2' then 3 else 2 end) end, ',' order by rank.rank)
      from rc_rank rank),
   'the approved review is invalidated at its next version, the review before the cursor is untouched [P2-S11-AC-113]');
