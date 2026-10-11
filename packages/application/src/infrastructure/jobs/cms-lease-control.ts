@@ -60,6 +60,24 @@ const isVersion = (value: unknown): value is string =>
   VERSION_PATTERN.test(value) &&
   PositiveBigintDecimalSchema.safeParse(value).success;
 
+/**
+ * Whether the claim receipt is, on its identifiers and versions alone, the
+ * receipt of THIS delivery's claim: the pre-claim job, the original lease token
+ * and a positive server version that advances the pre-claim one. It says
+ * nothing about the clock, the capabilities or the receipt's expiry, so it is
+ * also what lets the consumer hand an unopened claim back by outcome CAS.
+ */
+export const isAttributableClaim = (
+  canonical: CanonicalJob,
+  receipt: JobLeaseClaimResult,
+  leaseToken: string,
+): boolean =>
+  receipt.jobId === canonical.id &&
+  receipt.leaseToken === leaseToken &&
+  receipt.expectedVersion === canonical.version &&
+  isVersion(receipt.version) &&
+  BigInt(receipt.version) > BigInt(canonical.version);
+
 const freshTime = (clock: () => number): number | null => {
   try {
     const now = clock();
@@ -72,7 +90,8 @@ const freshTime = (clock: () => number): number | null => {
 /**
  * Opens the private lease session for a verified CMS schema dry-run delivery.
  * Returns null when the claim receipt or a capability cannot be trusted; the
- * caller then retries before any effect, outcome, or processed write.
+ * caller then hands the unopened claim back (`isAttributableClaim`) or retries,
+ * before any effect or processed write.
  *
  * Checkpoints expose candidate operational facts only. The canonical reader is
  * token-blind, so a current snapshot never proves ownership; enduring stage
@@ -87,11 +106,7 @@ export const openCmsLeaseSession = (
   const initial = freshTime(clock);
   if (
     initial === null ||
-    receipt.jobId !== canonical.id ||
-    receipt.leaseToken !== input.leaseToken ||
-    receipt.expectedVersion !== canonical.version ||
-    !isVersion(receipt.version) ||
-    BigInt(receipt.version) <= BigInt(canonical.version) ||
+    !isAttributableClaim(canonical, receipt, input.leaseToken) ||
     !isFiniteTime(receipt.leaseUntilMs) ||
     receipt.leaseUntilMs <= initial
   ) {

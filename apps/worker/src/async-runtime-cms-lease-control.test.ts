@@ -230,9 +230,27 @@ describe('private CMS lease control through the real receiving composition', () 
     const times = [1_000, 400_000];
     const f = fixture({ now: () => times.shift() ?? 400_000 });
     await f.run();
-    expect(f.calls).toEqual([read, read, restore, restore, claim]);
+    // The session cannot open on the second reading (the lease is past), so nothing runs and the unopened claim is
+    // returned to queued at the claim version (BE00: a retryable pre-effect failure returns the Job to queued).
+    expect(f.calls).toEqual([
+      read,
+      read,
+      restore,
+      restore,
+      claim,
+      op('apply_job_outcome', {
+        p_job_id: JOB,
+        p_expected_version: '19',
+        p_lease_token: TOKEN,
+        p_next_state: 'queued',
+        p_result_ref: null,
+        p_error_code: 'LEASE_CONTROL_UNAVAILABLE',
+        p_retryable: true,
+      }),
+    ]);
     expect(f.prepareSchemaDryRun).not.toHaveBeenCalled();
     expect(f.retry).toHaveBeenCalledTimes(1);
+    expect(f.ack).not.toHaveBeenCalled();
   });
 
   it('keeps ordinary verification on one argument with no heartbeat', async () => {

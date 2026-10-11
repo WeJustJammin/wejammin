@@ -1,9 +1,9 @@
 import {
   CMS_SCHEDULE_CLAIM_BATCH_DEFAULT,
+  CMS_SCHEDULE_DEADLINE_MS,
   createCorrelationId,
   createRequestId,
   type ClaimedSchedule,
-  type PreflightEvidence,
 } from '@wejammin/contracts';
 import { createLogger, type Logger } from '@wejammin/observability/logging';
 
@@ -11,18 +11,16 @@ import type { AsyncWorkerBindings } from './async-entrypoint';
 import { createSupabaseRpc } from './async-runtime';
 import { AsyncRpcTransportError } from './async-runtime-support';
 import {
-  evaluateAccessibilityGate,
-  toPreflightEvidence,
-} from './cms-editorial/a11y-structural';
-import {
   claimDueSchedules,
   CmsScheduleResponseError,
   executeClaimedSchedule,
 } from './cms-publication-schedule-rpc';
 import {
-  loadQualityGateInput,
-  logQualityGateRun,
-} from './cms-editorial-production-quality-gate';
+  EVIDENCE_STALE_REFUSAL,
+  executeWithFreshEvidence,
+  isStaleEvidenceRefusal,
+  proofFor,
+} from './cms-publication-schedule-sweep-evidence';
 import { metricKey } from './content-schema-registry/route-metric-key';
 
 /**
@@ -33,15 +31,23 @@ import { metricKey } from './content-schema-registry/route-metric-key';
  * dependency set, then executes the schedule with the expected version and
  * lease. The retry ladder (15/60/300 s, then `retries_exhausted`), the lease
  * recheck and the lineage append are the database's; this module only drives
- * them, never writes publication state and never retries an execution itself.
+ * them and never writes publication state. The one execution it repeats is
+ * the one the database REFUSED as `preflight_evidence_stale`: that refusal
+ * rolls back and consumes nothing, so the proof is recomputed and the same
+ * claim executed again under the same lease (bounded, never past the job
+ * deadline). Any other failed execution has an unknown outcome and is never
+ * retried here.
+ *
+ * ONE tick is the job: the claim and every execute share a single 15,000 ms
+ * window (BE03b, Internal service operations) that opens when the tick starts.
+ * No schedule is started once it has passed; the lease and the database ladder
+ * own the claims that were left.
  *
  * It logs identifiers as hashes and counts only: no token, content, comment
  * or authority graph ever reaches telemetry.
  */
 
 const OPERATION = 'cms_publication_schedule_sweep';
-const GATE_OPERATION_ID = 'CMS-03B-20';
-const GATE_RESPONSE_BYTES = 256 * 1024;
 
 const sha256Hex = async (text: string): Promise<string> =>
   [
@@ -84,74 +90,43 @@ const recordManualReview = (
   });
 };
 
-/**
- * The accessibility proof of one claimed schedule, or null when the checker
- * produced none. The loaded revision must be exactly the claimed one under the
- * claimed frozen dependency hash: a proof bound to anything else would be
- * refused by the database as mis-bound, so none is sent.
- */
-const proofFor = async (
-  env: AsyncWorkerBindings,
-  claim: ClaimedSchedule,
-  logger: Logger,
-): Promise<PreflightEvidence | null> => {
-  const configuration = {
-    baseUrl: env.SUPABASE_URL.replace(/\/+$/u, ''),
-    secret: env.SUPABASE_SECRET_KEY,
-    fetchImpl: (url: string | URL | Request, init?: RequestInit) =>
-      globalThis.fetch(url, init),
-    maxResponseBytes: GATE_RESPONSE_BYTES,
-    now: Date.now,
-  };
-  const identity = {
-    operationId: GATE_OPERATION_ID,
-    requestId: createRequestId(undefined),
-    correlationId: claim.correlationId,
-  };
-  const run = await evaluateAccessibilityGate({
-    load: (signal) =>
-      loadQualityGateInput(
-        configuration,
-        {
-          phase: 'execute',
-          scheduleId: claim.scheduleId,
-          revisionId: claim.revisionId,
-          dependencyHash: claim.dependencyHash,
-        },
-        identity,
-        signal,
-      ),
-  });
-  logQualityGateRun(logger, identity, run);
-  return run.state !== 'failed' &&
-    run.input.revisionId === claim.revisionId &&
-    run.input.dependencyHash === claim.dependencyHash
-    ? toPreflightEvidence(run)
-    : null;
-};
-
 const scheduleFacts = async (claim: ClaimedSchedule) => ({
   correlationId: claim.correlationId,
   entityType: 'cms_publication_schedule',
   entityIdHash: `sha256:${await sha256Hex(claim.scheduleId)}`,
 });
 
-/** Execute one claim; a failure here never stops the rest of the batch. */
+/**
+ * Execute one claim; a failure here never stops the rest of the batch. The proof
+ * is computed fresh for each execution (see `executeWithFreshEvidence`), all of
+ * them under the tick's one job deadline signal.
+ */
 const executeOne = async (
   rpc: ReturnType<typeof createSupabaseRpc>,
   env: AsyncWorkerBindings,
   claim: ClaimedSchedule,
   logger: Logger,
+  signal: AbortSignal,
 ): Promise<void> => {
   const startedAt = Date.now();
   const facts = await scheduleFacts(claim);
   try {
-    const result = await executeClaimedSchedule(
-      rpc,
-      env,
-      claim,
-      await proofFor(env, claim, logger),
-    );
+    const result = await executeWithFreshEvidence({
+      signal,
+      prove: () => proofFor(env, claim, logger, signal),
+      execute: (evidence) =>
+        executeClaimedSchedule(rpc, env, claim, evidence, signal),
+      onStale: (reexecution) =>
+        logger.warn({
+          ...facts,
+          attempt: reexecution,
+          errorCode: EVIDENCE_STALE_REFUSAL,
+          eventName: `${OPERATION}.evidence_stale`,
+          operation: OPERATION,
+          outcome: 'retry',
+          retryable: true,
+        }),
+    });
     logger.info({
       ...facts,
       attributes: {
@@ -181,7 +156,9 @@ const executeOne = async (
     });
   } catch (error) {
     // The outcome of an execution that failed is unknown, so it is never
-    // retried here: the lease expires and the database ladder decides.
+    // retried here: the lease expires and the database ladder decides. The one
+    // known outcome, a stale proof refused again after the bounded
+    // recomputations, rolled back and is left to the lease the same way.
     const manual =
       error instanceof AsyncRpcTransportError &&
       error.disposition === 'manual_review';
@@ -193,7 +170,9 @@ const executeOne = async (
         ? 'MANUAL_REVIEW'
         : invalid
           ? 'DEPENDENCY_INVALID_RESPONSE'
-          : 'DEPENDENCY_UNAVAILABLE',
+          : isStaleEvidenceRefusal(error)
+            ? EVIDENCE_STALE_REFUSAL
+            : 'DEPENDENCY_UNAVAILABLE',
       eventName: `${OPERATION}.execute_failed`,
       metrics: {
         [metricKey('cms_schedule_attempt_total', { outcome: 'error' })]: 1,
@@ -206,30 +185,22 @@ const executeOne = async (
 };
 
 /**
- * One scheduled tick. A claim failure asks the platform to retry the tick (like
- * the other CMS sweeps); a failure to execute one schedule is logged and left
- * to the lease and the database retry ladder.
+ * The claim of one tick. A failure asks the platform to retry the tick, except
+ * a manual-review fault, which is recorded and rethrown as it is.
  */
-export const runProductionCmsPublicationScheduleSweep = async (
+const claimOrRetry = async (
+  rpc: ReturnType<typeof createSupabaseRpc>,
   env: AsyncWorkerBindings,
-): Promise<void> => {
-  const correlationId = createCorrelationId(
-    undefined,
-    createRequestId(undefined),
-  );
-  const logger = createLogger({
-    environment: env.APP_ENVIRONMENT,
-    release: env.APP_RELEASE,
-    service: 'wejammin-worker',
-  });
-  const rpc = createSupabaseRpc();
-
-  let claims: readonly ClaimedSchedule[];
+  logger: Logger,
+  correlationId: string,
+  signal: AbortSignal,
+): Promise<readonly ClaimedSchedule[]> => {
   try {
-    claims = await claimDueSchedules(
+    return await claimDueSchedules(
       rpc,
       env,
       CMS_SCHEDULE_CLAIM_BATCH_DEFAULT,
+      signal,
     );
   } catch (error) {
     if (
@@ -248,15 +219,67 @@ export const runProductionCmsPublicationScheduleSweep = async (
         : 'DEPENDENCY_UNAVAILABLE',
     );
   }
+};
 
-  for (const claim of claims) await executeOne(rpc, env, claim, logger);
-
-  logger.info({
-    attributes: { batch: CMS_SCHEDULE_CLAIM_BATCH_DEFAULT },
-    correlationId,
-    eventName: `${OPERATION}.completed`,
-    metrics: { cms_schedule_claim_batch_size: claims.length },
-    operation: OPERATION,
-    outcome: 'success',
+/**
+ * One scheduled tick, under one 15,000 ms job deadline (BE03b, Internal service
+ * operations): the claim and every execute share it, an execute gets only the
+ * time that is left, and no further schedule is started once it has passed (the
+ * lease and the database retry ladder own those claims). A claim failure asks
+ * the platform to retry the tick (like the other CMS sweeps); a failure to
+ * execute one schedule is logged and left to the lease and the ladder. No timer
+ * outlives the tick.
+ */
+export const runProductionCmsPublicationScheduleSweep = async (
+  env: AsyncWorkerBindings,
+): Promise<void> => {
+  const correlationId = createCorrelationId(
+    undefined,
+    createRequestId(undefined),
+  );
+  const logger = createLogger({
+    environment: env.APP_ENVIRONMENT,
+    release: env.APP_RELEASE,
+    service: 'wejammin-worker',
   });
+  const rpc = createSupabaseRpc();
+  const job = new AbortController();
+  const deadline = setTimeout(() => job.abort(), CMS_SCHEDULE_DEADLINE_MS);
+
+  try {
+    const claims = await claimOrRetry(
+      rpc,
+      env,
+      logger,
+      correlationId,
+      job.signal,
+    );
+    let started = 0;
+    for (const claim of claims) {
+      if (job.signal.aborted) break;
+      started += 1;
+      await executeOne(rpc, env, claim, logger, job.signal);
+    }
+    if (started < claims.length)
+      logger.error({
+        attributes: { unstarted: claims.length - started },
+        correlationId,
+        errorCode: 'JOB_DEADLINE_EXCEEDED',
+        eventName: `${OPERATION}.deadline_exceeded`,
+        operation: OPERATION,
+        outcome: 'retry',
+        retryable: true,
+      });
+
+    logger.info({
+      attributes: { batch: CMS_SCHEDULE_CLAIM_BATCH_DEFAULT },
+      correlationId,
+      eventName: `${OPERATION}.completed`,
+      metrics: { cms_schedule_claim_batch_size: claims.length },
+      operation: OPERATION,
+      outcome: 'success',
+    });
+  } finally {
+    clearTimeout(deadline);
+  }
 };

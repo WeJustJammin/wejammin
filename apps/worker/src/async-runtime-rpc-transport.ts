@@ -14,6 +14,7 @@ import {
   AsyncRpcTransportError,
 } from './async-runtime-rpc-errors';
 import {
+  httpFailure,
   parseResponseBody,
   readBoundedResponse,
   responseLength,
@@ -124,7 +125,7 @@ const fetchClient = (
         throw new AsyncRpcManualReviewError('malformed_response');
       }
       if (!response.ok) {
-        throw new AsyncRpcDependencyError('http_error');
+        throw await httpFailure(response, controller.signal);
       }
       responseLength(response, maxResponseBytes);
       const body = await readBoundedResponse(

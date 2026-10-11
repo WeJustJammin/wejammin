@@ -90,6 +90,14 @@ export const createProductionJobEffectDispatcher =
     try {
       let result: JobEffectResult;
       if (isPreparation) {
+        // BOUNDARY: production CMS preparation needs a contract that BE00 and BE03a do not state: the map from a
+        // MigrationWorkerResult outcome (completed, progress, retry, blocked, failed_*, dead_letter, ...) to the Job
+        // state, error code and `resultRef` type; where `control.checkpoint()` sits against the migration stage RPCs
+        // (the enduring SQL stage fence); and the source of the attempt number and the per-invocation budget.
+        // Sentinel: production-job-effect-dispatcher-cms-preparation.test.ts, "CMS with only object verification
+        // configured is unavailable without invoking it".
+        // Detail: docs/handoffs/2026-10-10-claude-s11/lane-reviewB-2-report.md (B-08).
+        // TRACKING: not yet opened (boundary tracking-issue creation awaits the owner's permission).
         if (typeof dependencies?.prepareSchemaDryRun !== 'function') {
           return manualReview('DEPENDENCY_UNAVAILABLE');
         }

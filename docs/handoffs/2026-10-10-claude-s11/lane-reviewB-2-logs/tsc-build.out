@@ -1,0 +1,20 @@
+  The types of 'transport.fetcher' are incompatible between these types.
+    Type 'Mock<Procedure | Constructable>' is not assignable to type 'Fetcher'.
+      Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' is not assignable to type 'Fetcher'.
+        Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' provides no match for the signature '(input: URL | RequestInfo, init?: RequestInit<CfProperties<unknown>> | undefined): Promise<Response>'.
+apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx(288,7): error TS2322: Type '{ transport: { fetcher: Mock<Procedure | Constructable>; documentRef: { cookie: string; }; }; newKey: () => string; storage: () => MemoryStorage; navigate: Mock<...>; }' is not assignable to type 'WorkflowCommandEnvironment'.
+  The types of 'transport.fetcher' are incompatible between these types.
+    Type 'Mock<Procedure | Constructable>' is not assignable to type 'Fetcher'.
+      Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' is not assignable to type 'Fetcher'.
+        Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' provides no match for the signature '(input: URL | RequestInfo, init?: RequestInit<CfProperties<unknown>> | undefined): Promise<Response>'.
+apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx(446,9): error TS2322: Type '{ transport: { fetcher: Mock<Procedure | Constructable>; documentRef: { cookie: string; }; }; newKey: () => string; storage: () => MemoryStorage; navigate: Mock<...>; }' is not assignable to type 'WorkflowCommandEnvironment'.
+  The types of 'transport.fetcher' are incompatible between these types.
+    Type 'Mock<Procedure | Constructable>' is not assignable to type 'Fetcher'.
+      Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' is not assignable to type 'Fetcher'.
+        Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' provides no match for the signature '(input: URL | RequestInfo, init?: RequestInit<CfProperties<unknown>> | undefined): Promise<Response>'.
+apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx(529,9): error TS2322: Type '{ transport: { fetcher: Mock<Procedure | Constructable>; documentRef: { cookie: string; }; }; newKey: () => string; storage: () => MemoryStorage; navigate: Mock<...>; }' is not assignable to type 'WorkflowCommandEnvironment'.
+  The types of 'transport.fetcher' are incompatible between these types.
+    Type 'Mock<Procedure | Constructable>' is not assignable to type 'Fetcher'.
+      Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' is not assignable to type 'Fetcher'.
+        Type 'MockInstance<Procedure | Constructable> & (new (...args: any[]) => any) & {}' provides no match for the signature '(input: URL | RequestInfo, init?: RequestInit<CfProperties<unknown>> | undefined): Promise<Response>'.
+timeout 1500 flock -s /tmp/wejammin-quiet.lock pnpm exec tsc --build --pretty  397.71s user 10.45s system 152% cpu 4:27.78 total

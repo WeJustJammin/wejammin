@@ -317,16 +317,11 @@ describe('production private CMS lease-control forwarding', () => {
   });
 
   it.each([
-    { clock: false },
-    { hb: false },
-    { now: NaN },
-    { now: 301_000 },
     { receipt: { jobId: FOREIGN } },
     { receipt: { leaseToken: FOREIGN } },
     { receipt: { expectedVersion: '8' } },
     { receipt: { version: '7' } },
     { receipt: { version: '1e3' } },
-    { receipt: { leaseUntilMs: NaN } },
     { receipt: { version: '6' } },
   ])(
     'refuses unusable capability or initial receipt %# before dispatcher effects',
@@ -341,6 +336,58 @@ describe('production private CMS lease-control forwarding', () => {
       same(f.execute.mock.calls, []);
       same(prepareSchemaDryRun.mock.calls, []);
       same(f.write.mock.calls, []);
+      same(f.processed.mock.calls, []);
+    },
+  );
+
+  // Review finding B-08 (BE00 `platform.job.execute`: a retryable pre-effect failure returns the Job to `queued`).
+  // These claims are attributable (their identifiers and versions descend from the pre-claim job), so a session that
+  // cannot open hands the unopened claim back at the claim version instead of leaving it `running` under an
+  // unrenewed lease. The six receipts above prove nothing about the row and make no write.
+  it.each([
+    { clock: false },
+    { hb: false },
+    { now: NaN },
+    { now: 301_000 },
+    { receipt: { leaseUntilMs: NaN } },
+  ])(
+    'returns an unopened claim to queued for an unusable capability or receipt expiry %# before dispatcher effects',
+    async (options) => {
+      const f = fixture(options);
+      const prepareSchemaDryRun = vi.fn<Effect>(async () => outcome());
+      f.execute.mockImplementation(
+        createProductionJobEffectDispatcher({ prepareSchemaDryRun }),
+      );
+      same(await f.run(), {
+        kind: 'completed',
+        outcome: {
+          kind: 'applied',
+          jobId: ID,
+          nextState: 'queued',
+          nextVersion: '"20"',
+        },
+        processed: null,
+      });
+      same(f.calls, [
+        ...f.prefix,
+        [
+          'apply',
+          {
+            currentState: 'running',
+            currentVersion: '"19"',
+            expectedVersion: '"19"',
+            jobId: ID,
+            leaseToken: TOKEN,
+            nextState: 'queued',
+            retryable: true,
+            resultRef: null,
+            errorCode: 'LEASE_CONTROL_UNAVAILABLE',
+            nextVersion: '"20"',
+          },
+        ],
+      ]);
+      same(f.execute.mock.calls, []);
+      same(prepareSchemaDryRun.mock.calls, []);
       same(f.processed.mock.calls, []);
     },
   );

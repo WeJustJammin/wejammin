@@ -1,0 +1,84 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts (14 tests | 7 failed) 108ms
+     × returns the job to queued at the claim version when there is no fresh clock, before any effect 51ms
+     × returns the job to queued at the claim version when there is no heartbeat port, before any effect 5ms
+     × returns the job to queued at the claim version when there is no readable clock, before any effect 5ms
+     × returns the job to queued at the claim version when there is no unexpired lease at the clock, before any effect 3ms
+     × returns the job to queued at the claim version when there is no finite receipt expiry, before any effect 5ms
+     × stays a retry with no processed marker when the release CAS finds the lease already gone 4ms
+     × stays the plain lease-conflict retry when the release CAS itself fails 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > returns the job to queued at the claim version when there is no fresh clock, before any effect
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > returns the job to queued at the claim version when there is no heartbeat port, before any effect
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > returns the job to queued at the claim version when there is no readable clock, before any effect
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > returns the job to queued at the claim version when there is no unexpired lease at the clock, before any effect
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > returns the job to queued at the claim version when there is no finite receipt expiry, before any effect
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ same packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support.ts:57:35
+     55| };
+     56| export const same = (actual: unknown, expected: unknown) =>
+     57|   expect(equal(actual, expected)).toBe(true);
+       |                                   ^
+     58| export const metadata = (value: object) => ({
+     59|   prototype: Object.getPrototypeOf(value),
+ ❯ packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts:58:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > stays a retry with no processed marker when the release CAS finds the lease already gone
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ same packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support.ts:57:35
+     55| };
+     56| export const same = (actual: unknown, expected: unknown) =>
+     57|   expect(equal(actual, expected)).toBe(true);
+       |                                   ^
+     58| export const metadata = (value: object) => ({
+     59|   prototype: Object.getPrototypeOf(value),
+ ❯ packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts:91:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts > a claimed CMS delivery whose lease session cannot open > stays the plain lease-conflict retry when the release CAS itself fails
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ same packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support.ts:57:35
+     55| };
+     56| export const same = (actual: unknown, expected: unknown) =>
+     57|   expect(equal(actual, expected)).toBe(true);
+       |                                   ^
+     58| export const metadata = (value: object) => ({
+     59|   prototype: Object.getPrototypeOf(value),
+ ❯ packages/application/src/infrastructure/jobs/consumer-cms-session-release.test.ts:112:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 7 passed (14)
+   Start at  17:11:57
+   Duration  8.07s (transform 4.73s, setup 0ms, import 7.30s, tests 108ms, environment 0ms)
+

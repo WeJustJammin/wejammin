@@ -2,6 +2,7 @@ import { QueueEnvelopeSchema } from '@wejammin/contracts';
 
 import {
   CMS_SCHEMA_DRY_RUN_JOB_TYPE,
+  isAttributableClaim,
   openCmsLeaseSession,
 } from './cms-lease-control.ts';
 import {
@@ -12,12 +13,14 @@ import {
 import { decideJobDispatch } from './dispatch.ts';
 import { canRunExternalEffect } from './restore.ts';
 import type {
+  CanonicalJob,
   CmsLeaseControl,
   JobConsumerDecision,
   JobConsumerInput,
   JobEffectInput,
   JobEffectPort,
   JobEffectResult,
+  JobLeaseClaimResult,
 } from './runtime-types.ts';
 
 const manualReview = (): JobConsumerDecision => ({
@@ -31,6 +34,48 @@ const leaseConflict = (): JobConsumerDecision => ({
   kind: 'retry',
   reason: 'lease_conflict',
 });
+
+/** The sanitized code recorded when a claimed CMS delivery cannot open its lease session. */
+const LEASE_CONTROL_UNAVAILABLE = 'LEASE_CONTROL_UNAVAILABLE';
+
+/**
+ * The private lease session could not be opened after a successful claim, so
+ * nothing has run: BE00 `platform.job.execute` makes that a retryable
+ * pre-effect failure, which returns the Job to `queued` rather than leaving it
+ * `running` under a lease nobody renews. The hand-back is the ordinary outcome
+ * CAS at the claim's own version and token, made only for a receipt that is
+ * attributable to this claim. Anything else (an unattributable receipt, a CAS
+ * that finds the lease gone or fails) is the plain lease-conflict retry. No
+ * effect, no processed marker, no acknowledgement.
+ */
+const releaseUnopenedClaim = async (
+  input: JobConsumerInput,
+  canonical: CanonicalJob,
+  receipt: JobLeaseClaimResult,
+): Promise<JobConsumerDecision> => {
+  if (!isAttributableClaim(canonical, receipt, input.leaseToken))
+    return leaseConflict();
+  const version = `"${receipt.version}"`;
+  try {
+    const outcome = await applyJobOutcomeCas({
+      persistence: input.persistence,
+      request: {
+        currentState: 'running',
+        currentVersion: version,
+        errorCode: LEASE_CONTROL_UNAVAILABLE,
+        expectedVersion: version,
+        jobId: canonical.id,
+        leaseToken: receipt.leaseToken,
+        nextState: 'queued',
+        resultRef: null,
+        retryable: true,
+      },
+    });
+    return { kind: 'completed', outcome, processed: null };
+  } catch {
+    return leaseConflict();
+  }
+};
 
 /** Runs the effect; null means it threw. A bare call keeps the legacy arity. */
 const runEffect = async (
@@ -126,7 +171,8 @@ export const executeJobDispatch = async (
           receipt: lease.lease,
         })
       : undefined;
-  if (session === null) return leaseConflict();
+  if (session === null)
+    return releaseUnopenedClaim(input, canonical, lease.lease);
 
   const effectResult = await runEffect(
     input.effect,
