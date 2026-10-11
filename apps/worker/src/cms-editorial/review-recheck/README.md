@@ -73,6 +73,13 @@ consumer, router and relay parsing follow from the table.
 - The job decides nothing the database does not: it never invalidates on the strength of an
   event, and the database invalidates only a review whose rebuilt manifest differs or whose
   frozen identity is no longer current.
+- A frozen locale-source identity is current only while its source revision is still served at the
+  frozen hash and no variant sourced from that revision and hash is `stale` (DEC-170,
+  `cms_manifest_identities_current`). The stale producer copies the source revision and hash into
+  the row it appends, so the rebuilt manifest alone never tells: without that rule the
+  `cms.localization.changed.v1` consumer could not invalidate anything.
+- The relay records an envelope it cannot build as a dead letter and completes its claim, so one
+  poison outbox row never blocks the rows behind it (`async-runtime-outbox-poison.ts`).
 - Tests carry the `[P2-S11-AC-113]` criterion tag.
 
 ## Related links

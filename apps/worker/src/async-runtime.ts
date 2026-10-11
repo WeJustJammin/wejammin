@@ -18,6 +18,11 @@ import {
   type AsyncJobRuntimeDependencies,
   type AsyncRpcClient,
 } from './async-runtime-support';
+import {
+  OUTBOX_RELAY_CONSUMER,
+  parsePoisonedOutboxRow,
+} from './async-runtime-outbox-poison';
+import { EVENT_CONSUMER_RPC } from './event-consumers/rpc-names';
 
 export {
   createSupabaseRpc,
@@ -151,6 +156,46 @@ export const createAsyncJobDependencies = (
     }
   };
 
+  /**
+   * A claimed row the Worker cannot turn into its queue envelope: recorded as a dead letter (identifiers
+   * and the closed reason INVALID_QUEUE_PAYLOAD only), then its claim is completed so the row leaves the
+   * claim set and the rows behind it are relayed. False (the sweep retries, nothing is dropped) when the
+   * row cannot be addressed under this sweep's lease, the record is not acknowledged, or the claim cannot
+   * be completed.
+   */
+  const settlePoisonedRow = async (
+    env: AsyncWorkerBindings,
+    row: unknown,
+    leaseToken: string,
+  ): Promise<boolean> => {
+    const poisoned = parsePoisonedOutboxRow(row, leaseToken);
+    if (poisoned === null) return false;
+    const acknowledgement = await rpc<unknown>(
+      env,
+      EVENT_CONSUMER_RPC.deadLetterEvent,
+      {
+        p_request: {
+          consumer: OUTBOX_RELAY_CONSUMER,
+          ...poisoned.identity,
+          reasonCode: 'INVALID_QUEUE_PAYLOAD',
+        },
+      },
+    );
+    if (
+      typeof acknowledgement !== 'object' ||
+      acknowledgement === null ||
+      Object.keys(acknowledgement).length !== 1 ||
+      (acknowledgement as { accepted?: unknown }).accepted !== true
+    )
+      return false;
+    return (
+      (await rpc<unknown>(env, 'complete_outbox_event', {
+        p_event_id: poisoned.outboxId,
+        p_lease_token: leaseToken,
+      })) === true
+    );
+  };
+
   const sweepOutbox = async ({
     env,
   }: {
@@ -176,7 +221,12 @@ export const createAsyncJobDependencies = (
       if (!Array.isArray(rows) || rows.length > batchSize) return 'retry';
       for (const row of rows) {
         const claim = parseOutboxClaim(row);
-        if (claim === null || claim.leaseToken !== leaseToken) return 'retry';
+        if (claim === null) {
+          // Poison (BE00 relay, review B-05): record it, complete its claim, go on with the next row.
+          if (!(await settlePoisonedRow(env, row, leaseToken))) return 'retry';
+          continue;
+        }
+        if (claim.leaseToken !== leaseToken) return 'retry';
         await env.PLATFORM_JOBS.send(claim.envelope);
         const completed = await rpc<unknown>(env, 'complete_outbox_event', {
           p_event_id: claim.outboxId,

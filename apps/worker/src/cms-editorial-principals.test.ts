@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   CMS_EDITORIAL_INTERNAL_OPERATIONS,
@@ -16,6 +16,13 @@ import {
 import { PREVIEW_TAKEDOWN_RPC } from './cms-editorial-production-preview-takedown';
 import { PREVIEW_VERIFIER_RPC } from './cms-editorial-production-preview-verifier';
 import { workflowHarness } from './cms-editorial/workflow-harness.test-support';
+import {
+  mentionsOfIdentifier,
+  RECHECK_IDENTIFIER_MENTIONS,
+  RECHECK_IMPORT_BOUNDARIES,
+  recheckBoundaryViolations,
+} from './cms-editorial-principal-boundaries.test-support';
+import { importEdges, importersOfModule } from './import-graph.test-support';
 
 /*
  * DEC-156: CMS-03B-19 and CMS-03B-20 are internal RPCs granted to the Worker
@@ -117,6 +124,59 @@ describe('principal boundaries', () => {
       expect(mentionsOf(workerRoot, `'${name}'`)).toEqual([
         'cms-editorial/review-recheck/rpc-names.ts',
       ]);
+  });
+
+  // DEC-156 / P2-S11-AC-113 / P2-S11-AC-118 (review B-03): the literals alone are pinned above; the next
+  // five tests pin the IMPORT GRAPH, so a module cannot call the actorless recheck RPCs by importing the
+  // wrappers (static, re-exported, dynamic or required) while the names stay in rpc-names.ts. The shared
+  // async RPC type lists the names through a type-only import, which the build erases. The allow-lists
+  // live in cms-editorial-principal-boundaries.test-support.ts, and
+  // cms-editorial-principals-mutation.test.ts proves they fail for each way of reaching a port.
+  const { names, ports, composition, takedown } = RECHECK_IMPORT_BOUNDARIES;
+
+  // Parsing the whole Worker tree once is the only slow step (seconds, minutes on a loaded host); the
+  // graph is cached, so the assertions below read it. A hook timeout, not the 15 s test default, bounds it.
+  beforeAll(() => {
+    importEdges(workerRoot);
+  }, 180_000);
+
+  it('lets only the recheck port import the recheck RPC names (the shared RPC type reads them type-only)', () => {
+    expect(importersOfModule(workerRoot, names.module)).toEqual({
+      value: names.value,
+      typeOnly: names.typeOnly,
+    });
+  });
+
+  it('lets only the recheck production composition import the recheck RPC ports', () => {
+    expect(importersOfModule(workerRoot, ports.module)).toEqual({
+      value: ports.value,
+      typeOnly: ports.typeOnly,
+    });
+  });
+
+  it('lets only the production async entrypoint import the recheck production composition', () => {
+    expect(importersOfModule(workerRoot, composition.module)).toEqual({
+      value: composition.value,
+      typeOnly: composition.typeOnly,
+    });
+  });
+
+  it('names the recheck RPC wrapper identifiers nowhere else (an alias or a copy would not be an import)', () => {
+    for (const [identifier, allowed] of Object.entries(
+      RECHECK_IDENTIFIER_MENTIONS,
+    ))
+      expect(mentionsOfIdentifier(workerRoot, identifier)).toEqual(allowed);
+  });
+
+  it('lets no Worker module import the preview takedown port in any form until its Shard 16 caller exists', () => {
+    expect(importersOfModule(workerRoot, takedown.module)).toEqual({
+      value: takedown.value,
+      typeOnly: takedown.typeOnly,
+    });
+  });
+
+  it('honours the whole recheck and takedown boundary', () => {
+    expect(recheckBoundaryViolations(workerRoot)).toEqual([]);
   });
 
   it('never exposes an internal RPC to the browser app', () => {

@@ -1,0 +1,5 @@
+[lane-api] exit=1 full log: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/api-153656.log
+     × is idempotent under redelivery: the same job finds no live review 1157ms
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database > is idempotent under redelivery: the same job finds no live review
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)

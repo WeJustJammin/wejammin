@@ -42,8 +42,11 @@
 --   cms_manifest_identities_current(manifest)         a frozen identity is CURRENT when its source
 --       still serves it (and only after the manifest passed cms_dependency_manifest_valid): the schema version is the content type's ACTIVE version with an equal
 --       artifact hash; template and pattern versions are `active` with equal hashes; blocks are
---       supported or deprecated (never withdrawn) with an equal digest; the settings snapshot equals
---       the owner's current one.  False (never an error) for a malformed manifest.
+--       supported or deprecated (never withdrawn) with an equal digest; a locale source is still
+--       served at its frozen revision and hash (DEC-170: the revision exists in that locale with that
+--       payload hash, the latest revision of the locale carries it, and no variant sourced from that
+--       revision and hash is `stale`); the settings snapshot equals the owner's current one.  False
+--       (never an error) for a malformed manifest.
 --   cms_frozen_dependencies_status(revision, frozen)  'current' only when the rebuilt manifest equals
 --       the frozen one bit-for-bit AND every frozen identity is current AND every taxonomy version
 --       the revision records is `active`; otherwise 'stale' (the caller answers 409 version_set_stale
@@ -727,6 +730,44 @@ begin
     end if;
   end loop;
 
+  -- Locale sources (DEC-170).  A frozen { locale, revisionId, hash } is current only while the source
+  -- still serves exactly that revision and hash: the revision exists in that locale with that payload
+  -- hash, the latest revision of that locale of the entry carries that hash (a different current source
+  -- hash is a changed dependency), and no variant sourced from that revision and hash is marked
+  -- `stale`.  The stale producer (CMS-03C-04) copies the previous variant row's source revision and hash
+  -- into the row it appends, so the rebuilt manifest of a variant whose source changed equals the frozen
+  -- one; only the stale marking tells.  A marking is never lifted, so a source edited and then reverted
+  -- to the frozen hash stays non-current.  A newer source revision with the SAME hash changes nothing.
+  if exists (
+    select 1
+      from pg_catalog.jsonb_array_elements(p_manifest->'localeSources') frozen(value)
+     where not exists (
+       select 1
+         from platform_private.cms_entry_revisions source
+        where source.id = (frozen.value->>'revisionId')::uuid
+          and pg_catalog.lower(source.locale) = pg_catalog.lower(frozen.value->>'locale')
+          and source.payload_hash::text = frozen.value->>'hash'
+          and (
+            select latest.payload_hash::text
+              from platform_private.cms_entry_revisions latest
+             where latest.entry_id = source.entry_id
+               and pg_catalog.lower(latest.locale) = pg_catalog.lower(source.locale)
+             order by latest.revision_number desc
+             limit 1
+          ) = frozen.value->>'hash'
+          and not exists (
+            select 1
+              from platform_private.cms_locale_variants variant
+             where variant.entry_id = source.entry_id
+               and variant.source_revision_id = source.id
+               and variant.source_hash::text = frozen.value->>'hash'
+               and variant.state = 'stale'
+          )
+     )
+  ) then
+    return false;
+  end if;
+
   current_snapshot := platform_private.cms_settings_snapshot(version_row.owner_id);
   return current_snapshot = p_manifest->'settings';
 exception
@@ -736,7 +777,7 @@ end;
 $body$;
 
 comment on function platform_private.cms_manifest_identities_current(jsonb) is
-  'BE03b E1: every identity a frozen manifest names is current (active schema version with an equal artifact hash; active template/pattern with equal hashes; supported or deprecated blocks with equal digests; settings snapshot equal to the owner''s current). False, never an error, for a malformed manifest. VOLATILE (records the settings snapshot); private.';
+  'BE03b E1: every identity a frozen manifest names is current (active schema version with an equal artifact hash; active template/pattern with equal hashes; supported or deprecated blocks with equal digests; each locale source still served at its frozen revision and hash with no stale variant sourced from it (DEC-170); settings snapshot equal to the owner''s current). False, never an error, for a malformed manifest. VOLATILE (records the settings snapshot); private.';
 
 create or replace function platform_private.cms_frozen_dependencies_status(
   p_revision_id uuid,

@@ -14,7 +14,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(87);
+select plan(88);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
@@ -510,9 +510,13 @@ select c.name, c.accepted
        'id', 'a9300000-0000-4000-8000-' || lpad(to_hex(g), 12, '0'), 'hash', repeat('a', 64)) order by g)
        from generate_series(1, 100) g)))
   ) as c(name, accepted);
+-- DEC-170: a locale source is current only while its revision exists and is still served, so the sorted
+-- localeSources control (fabricated source revisions) is structurally valid but no longer current.
 select is((select string_agg(name, '; ' order by name) from h11m_structure_controls
-            where pg_temp.h11m_current(accepted) <> 'true'),
+            where name <> 'sorted localeSources' and pg_temp.h11m_current(accepted) <> 'true'),
   null, 'control: a well-formed manifest (sorted, unique, populated optional groups) is still current [P2-S11-AC-090]');
+select is((select pg_temp.h11m_current(accepted) from h11m_structure_controls where name = 'sorted localeSources'),
+  'false', 'a well-formed manifest whose localeSources name revisions that do not exist is not current [P2-S11-AC-113]');
 select is((select string_agg(name, '; ' order by name) from h11m_structure_controls
             where pg_temp.h11_text(format('select platform_private.cms_dependency_manifest_valid(%L::jsonb)', accepted::text)) <> 'true'),
   null, 'control: cms_dependency_manifest_valid accepts them [P2-S11-AC-090]');

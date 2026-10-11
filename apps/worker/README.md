@@ -46,6 +46,17 @@ database. Its RPC port is importable only by that sweep, and the CMS-03B-19
 preview-token verifier only by the future delivery adapter
 (`src/cms-editorial-principals.test.ts` pins both).
 
+The outbox relay never lets one unparseable claimed row block the rows behind
+it. A row the Worker cannot turn into its queue envelope is recorded as a dead
+letter (`consumer_dead_letter_event`: identifiers and the closed reason
+`INVALID_QUEUE_PAYLOAD` under the consumer name `platform.outbox.sweep`) and
+its claim is completed; if the record cannot be written the sweep retries, so
+a poison row is never dropped (`src/async-runtime-outbox-poison.ts`). The two
+actorless dependency-recheck RPC wrappers and the preview takedown port are
+likewise importable only from their own composition. The tests pin their import
+graph (`src/cms-editorial-principals.test.ts`) and prove that every way of
+reaching them is reported (`src/cms-editorial-principals-mutation.test.ts`).
+
 Exercise the local queue without a provider call with:
 
 ```sh
