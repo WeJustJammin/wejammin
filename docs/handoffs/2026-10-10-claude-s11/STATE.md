@@ -79,3 +79,19 @@ memory DEC-164..169/PAT-025..027 (2c55d937); composition mock + node bound + rac
 - Owner wording batch to present: AC-041, AC-050/053/056/059 (502), AC-070 (DEC-161), AC-090 executor,
   AC-097 (DEC-169), AC-122 (DEC-171 7-column key); plus DEC-147 (recommend C), boundary-issue permission (A),
   EC-103 32-type cap and template-less instance cap (spec gaps).
+
+## Update 2026-10-11 ~23:10Z — owner ratified; review fixes landing
+
+- Owner (chat 2026-10-11): "A, draft the wording batch" then "approve all, C for DEC-147". Recorded DEC-147 (C),
+  DEC-172 (batch), DEC-170/171 as raw records (79da5863; compile pending). All 37 items applied (68f72608, dd1ee1ce).
+- Committed since: reviewB-1 locale currency/relay poison/import boundary (89f30363); reviewB-2 sweep stale-evidence
+  re-execute, sealed-cursor apispec, unopened-claim release, B-08 BOUNDARY (no production trigger in specs)
+  (b001ff2d); dep502 BAD_GATEWAY -> DEPENDENCY_UNAVAILABLE across CMS routes (65917070).
+- Still running: reviewA-1 (AC-069/083/RLS/051/084/091/081; owns race 032 + sweep grants SQL), e2e (S10 entry-list
+  + S11-RR-06 real-route failures, quiet re-runs), reviewA-2 (no-effect pgTAP, read benches, retain-input tests).
+- Open: boundary tracking-issue permission (two boundaries now: projection_id FK; claimed-preparation trigger) —
+  asked, unanswered; EC-103 32-type cap and template-less instance cap (spec gaps); x-cms-editorial-retryable header
+  still false for 502 (body says retryable true).
+- Next: when lanes finish -> commit -> ledger refresh #2 (review-A statuses + all new tests, S10 title changes from
+  dep502) -> compile memory -> quiet `pnpm db:verify` -> `pnpm validate` -> evidence runner 09/10/11 + guards ->
+  tracking close (slice/phase/index, depth ratio, completion signature, session log) -> draft PR.
