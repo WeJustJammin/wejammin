@@ -57,6 +57,16 @@ publication lineage/preflight (08/09/19), and workflow/detail/queue/assignment
 suites use the same `phase-02-slice-11-*.apispec.ts` prefix. Shared assertions hash
 the complete fourteen durable-effect groups without exposing raw resources.
 
+All Slice 11 suites commit into one database as the one operator-bootstrapped owner,
+and vitest orders the files by its result cache, so what a suite commits belongs to the
+world of every suite that runs after it. Two rules keep that world bounded.
+`prepareS11World()` shares ONE active content type (`s11shared_*`, found again by
+`support/phase-02-slice-11-type.ts`) because the CMS-03B-14 authoring-context read serves
+at most 32 creatable types and refuses the 33rd as INTERNAL_ERROR; a suite that supersedes
+or compares types asks for `prepareS11World({ fresh: true })`. And a suite never grants the
+shared owner a capability: an author with other capabilities is `addMember(...)` passed to
+`approvedDraft`. `phase-02-slice-11-world-isolation.apispec.ts` pins both rules.
+
 Claim-resolver QA is separate from lifecycle acceptance: the edge-grammar suite
 checks raw UUID relations, max-token identity, string versus raw numeric `1.0`
 schema versions, and legacy version limits. Its test-local raw request reuses the

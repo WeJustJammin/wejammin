@@ -151,8 +151,10 @@ let beforeJob: Readonly<{ open: string; approved: string; control: string }>;
 let dependenciesBefore: Readonly<{ open: number; approved: number }>;
 
 beforeAll(async () => {
-  world = await prepareS11World();
-  control = await prepareS11World();
+  // Each world owns its type: the activation below supersedes `world`'s version, and `control`
+  // must stay another, untouched content type (a shared type would be both).
+  world = await prepareS11World({ fresh: true });
+  control = await prepareS11World({ fresh: true });
   const stack = createS11Stack(world.owner);
   const draft = await seedDraft(stack, world, 'Recheck open review');
   const submitted = await submitForReview(stack, world, draft);

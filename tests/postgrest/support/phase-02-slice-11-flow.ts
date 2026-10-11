@@ -120,15 +120,23 @@ export const decide = async (
   return EditorialReviewResourceSchema.parse(response.body);
 };
 
-/** Draft -> submitted -> assigned -> approved, entirely through the production routes. */
+/**
+ * Draft -> submitted -> assigned -> approved, entirely through the production routes.
+ * `author` writes and submits the draft (default: the shared owner); the owner always assigns
+ * the reviewer (CMS-03B-18 derives from the owner initialization receipt). A suite that needs
+ * an author with different capabilities passes `addMember(...)` rather than granting the shared
+ * owner anything: a standing grant on the shared owner changes every later suite's world.
+ */
 export const approvedDraft = async (
   stack: S11Stack,
   world: S11World,
   title: string,
   reviewer: S11Actor = world.reviewer,
+  author: S11Actor = world.owner,
 ): Promise<ReviewedDraft> => {
-  const draft = await seedDraft(stack, world, title);
-  const submitted = await submitForReview(stack, world, draft);
+  const authoring: S11World = { ...world, owner: author };
+  const draft = await seedDraft(stack, authoring, title);
+  const submitted = await submitForReview(stack, authoring, draft);
   await assignReviewer(
     stack,
     world,

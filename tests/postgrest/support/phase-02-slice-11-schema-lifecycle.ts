@@ -135,10 +135,15 @@ const sealDryRun = async (schemaVersionId: string, migrationPlanId: string) => {
   return calls;
 };
 
-/** Fresh type each call; an optional source uses the public successor command. */
+/**
+ * Fresh type each call; an optional source uses the public successor command. `typeKeyPrefix`
+ * names the type key (`<prefix>_<uuid>`): the shared world type is the only one keyed
+ * `s11shared`, which is how a later suite finds it again (see `phase-02-slice-11-type.ts`).
+ */
 export const prepareS11SchemaCandidate = async (
   owner: CmsOwner,
   source?: Pick<EditorialWorld, 'contentTypeId' | 'contentTypeVersionId'>,
+  typeKeyPrefix = 's11',
 ): Promise<S11SchemaCandidate> => {
   const designer = await createS11Session({
     ...owner,
@@ -151,7 +156,7 @@ export const prepareS11SchemaCandidate = async (
     draft = await post(
       designer.app,
       '/api/v1/cms/content-types',
-      draftTypeBody(`s11_${randomUUID().replaceAll('-', '')}`),
+      draftTypeBody(`${typeKeyPrefix}_${randomUUID().replaceAll('-', '')}`),
       201,
     );
   } else {

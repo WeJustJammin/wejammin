@@ -28,7 +28,7 @@
     "contracts:check": "node infra/generate-openapi.mjs --check",
     "db:start": "supabase start --exclude gotrue,realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "supabase stop --no-backup",
-    "db:reset": "supabase db reset --local",
+    "db:reset": "node infra/reset-local-database.mjs",
     "db:lint": "supabase db lint --local --level warning --schema platform_private,audit_private,platform_api,public_api",
     "db:test": "supabase test db --local",
     "db:test:tap": "node infra/run-pgtap-verbose.mjs",

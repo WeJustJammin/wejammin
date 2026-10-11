@@ -33,6 +33,7 @@ import {
 } from './support/phase-02-slice-11-stack';
 import {
   type S11World,
+  addMember,
   prepareS11World,
   reservationCount,
   workflowEffects,
@@ -178,28 +179,23 @@ describe('CMS-03B-09 publish through the real stack', () => {
   });
 
   it('[CMS-03B-09] the author of the revision may not publish it even with a standing publisher grant: 403 separation_of_duties and no effects', async () => {
+    // A dedicated member authors the revision and holds a real standing cms.publisher grant, so
+    // the refusal is the E11 separation rule and not a missing capability. The shared owner is
+    // never granted anything: a standing publisher grant on it would make every later suite's
+    // "the owner is not a publisher" expectation (CMS-03B-07) fail in the same database.
+    const author = addMember(world.organizationId, world.owner.personId, [
+      'cms.author',
+      'cms.editor',
+      'cms.publisher',
+    ]);
     const draft = await approvedDraft(
       stack,
       world,
       'Author separation subject',
+      world.reviewer,
+      author,
     );
-    // The owner authored this revision (seedDraft acts as the owner). Give the owner a
-    // real standing cms.publisher grant so the refusal is the E11 separation rule and
-    // not a missing capability.
-    psql(`
-      insert into identity_private.organization_actor_grant(
-        organization_id, person_id, capability_code, valid_from, valid_through, active)
-      values ('${world.organizationId}', '${world.owner.personId}', 'cms.publisher',
-              current_date, null, true)
-      on conflict (organization_id, person_id, capability_code)
-      do update set active = true, valid_through = null`);
-    stack.as(
-      {
-        ...world.owner,
-        capabilities: [...world.owner.capabilities, 'cms.publisher'],
-      },
-      'fresh',
-    );
+    stack.as(author, 'fresh');
     const before = snapshotDigest();
     const response = await publish(draft);
     expectSafeError(response, {

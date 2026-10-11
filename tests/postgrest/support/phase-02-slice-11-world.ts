@@ -21,7 +21,10 @@ import { expectStatus } from './phase-02-slice-11-assert';
 
 import { type EditorialWorld, createEntryBody } from './cms-editorial-world';
 import { prepareGateWorld } from './claim-gate-world';
-import { ensureS11ContentType } from './phase-02-slice-11-type';
+import {
+  type S11TypeOptions,
+  ensureS11ContentType,
+} from './phase-02-slice-11-type';
 import type { S11Actor, S11Stack } from './phase-02-slice-11-stack';
 import { createPerson, psql } from './stack';
 
@@ -100,10 +103,17 @@ const strangerOf = (organizationId: string): S11Actor => {
   };
 };
 
-export const prepareS11World = async (): Promise<S11World> => {
+/**
+ * `typeOptions.fresh` commits a content type only this world uses; the default is the one
+ * type every Slice 11 world shares, so the shared owner's creatable types stay bounded
+ * (`phase-02-slice-11-type.ts` explains the 32-type authoring-context bound).
+ */
+export const prepareS11World = async (
+  typeOptions: S11TypeOptions = {},
+): Promise<S11World> => {
   // The bootstrap owner: CMS-03B-18 and the `owner` read scopes derive from its receipt.
   const bootstrap = prepareGateWorld().owner;
-  const editorial = await ensureS11ContentType(bootstrap);
+  const editorial = await ensureS11ContentType(bootstrap, typeOptions);
   const organizationId = bootstrap.organizationId;
   return {
     editorial,
