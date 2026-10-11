@@ -1,0 +1,105 @@
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:13: WARNING:  there is no transaction in progress
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:15: WARNING:  there is no transaction in progress
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:245: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:248: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:287: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:290: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:316: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:345: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:345: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:355: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:355: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_11_recheck_run.sql:364: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/w/supabase/tests/phase_02_slice_11_recheck_run.sql .. 
+1..52
+{"created": true, "personId": "dc8d04cb-adb5-4354-be93-184f80182d58", "contextKind": "self", "accountState": "active", "actingPartyId": "dc8d04cb-adb5-4354-be93-184f80182d58", "bindingVersion": 1}
+{"created": true, "personId": "7055b94d-7c60-4618-9404-b471abde2a6d", "contextKind": "self", "accountState": "active", "actingPartyId": "7055b94d-7c60-4618-9404-b471abde2a6d", "bindingVersion": 1}
+{"created": true, "personId": "295b474b-5fff-4483-a37c-ca1484415891", "contextKind": "self", "accountState": "active", "actingPartyId": "295b474b-5fff-4483-a37c-ca1484415891", "bindingVersion": 1}
+{"created": true, "personId": "eade447c-02b6-4097-a8f0-cb62fbe52e73", "contextKind": "self", "accountState": "active", "actingPartyId": "eade447c-02b6-4097-a8f0-cb62fbe52e73", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+a9200000-0000-4000-8000-e737cc29f22e
+a9200000-0000-4000-8000-2d2475f9de3a
+a9200000-0000-4000-8000-1fc775c92612
+a9200000-0000-4000-8000-387d6e9abf0f
+a9200000-0000-4000-8000-94f8fe48def3
+a9200000-0000-4000-8000-c2fce84d5b47
+a9200000-0000-4000-8000-8b6004df3050
+a9200000-0000-4000-8000-bc9316115916
+{"reviewId": "fa451333-e3c5-4928-bcf0-fcc2142b8301", "invalidated": true, "cancelledSchedules": 0, "revokedPreviewTokens": 0}
+ok 9 - the run, the event resolver and the lineage helper are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+ok 10 - the two platform_api wrappers are SECURITY DEFINER functions of the CMS definer executable by the service role only [P2-S11-AC-113]
+ok 11 - the run answers jsonb { examined, invalidated, nextCursor } [P2-S11-AC-113]
+ok 12 - lineage: an exact kind stands for the identity itself [P2-S11-AC-113]
+ok 13 - a non-object request is INVALID_REQUEST [P2-S11-AC-113]
+ok 14 - a request without the cursor member is INVALID_REQUEST [P2-S11-AC-113]
+ok 15 - a kind outside the nine is INVALID_REQUEST [P2-S11-AC-113]
+ok 16 - a malformed event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 17 - a non-string reference is INVALID_REQUEST [P2-S11-AC-113]
+ok 18 - a malformed cursor is INVALID_REQUEST [P2-S11-AC-113]
+ok 19 - an unknown request member (a caller-named review) is INVALID_REQUEST [P2-S11-AC-113]
+ok 20 - control: the refused requests emitted nothing [P2-S11-AC-113]
+ok 21 - the run selects the six LIVE reviews that name the schema version and invalidates none while every manifest still holds [P2-S11-AC-113]
+ok 22 - a review that still holds is left untouched, and a rejected or already invalidated review is not selected [P2-S11-AC-113]
+ok 23 - a run that invalidates nothing emits no event [P2-S11-AC-113]
+ok 24 - a reference no review froze selects nothing [P2-S11-AC-113]
+ok 25 - precondition: the withdrawn block leaves the rebuilt manifest equal to the frozen one but the identity is not current [P2-S11-AC-113]
+ok 26 - the withdrawn block invalidates the one review that froze it [P2-S11-AC-113]
+ok 27 - the review of the withdrawn block is invalidated dependency_changed (CAS version + 1) and the review of another block is untouched [P2-S11-AC-113]
+ok 28 - the invalidation writes one cms.entry.review-changed.v1 at the new version carrying the correlation id of the source event [P2-S11-AC-113]
+ok 29 - the invalidation writes its audit record with the same correlation id [P2-S11-AC-113]
+ok 30 - idempotent: a repeated run skips the review that is already invalidated [P2-S11-AC-113]
+ok 31 - idempotent: a repeated run emits no second event [P2-S11-AC-113]
+ok 32 - idempotent: a repeated run writes no second audit record [P2-S11-AC-113]
+ok 33 - precondition: the changed term makes the rebuilt manifest differ from the frozen one while every frozen identity is current [P2-S11-AC-113]
+ok 34 - inequality: the changed term invalidates the review that froze it [P2-S11-AC-113]
+ok 35 - inequality: the review is invalidated dependency_changed [P2-S11-AC-113]
+ok 36 - lineage: a pattern version stands for every version of its pattern key [P2-S11-AC-113]
+ok 37 - lineage: another pattern key is not part of it [P2-S11-AC-113]
+ok 38 - lineage: a version row that does not exist stands for itself [P2-S11-AC-113]
+ok 39 - the event of the NEW pattern version reaches the review that froze its superseded predecessor [P2-S11-AC-113]
+ok 40 - the review of the superseded pattern version is invalidated dependency_changed [P2-S11-AC-113]
+ok 41 - one event per invalidated review so far: block, term and pattern [P2-S11-AC-113]
+ok 42 - with no outbox row behind the event id the invalidation carries a fresh correlation id [P2-S11-AC-113]
+ok 43 - precondition: r1, r2 and r6 are the live reviews of the schema version [P2-S11-AC-113]
+ok 44 - a run continues after the cursor: only reviews with a greater id are selected [P2-S11-AC-113]
+ok 45 - a cursor on the last review selects nothing [P2-S11-AC-113]
+ok 46 - a superseded schema version invalidates the live reviews after the cursor [P2-S11-AC-113]
+ok 47 - the approved review is invalidated at its next version, the review before the cursor is untouched [P2-S11-AC-113]
+ok 48 - the run from the start finishes what is left: the review before the old cursor [P2-S11-AC-113]
+ok 49 - idempotent: with no live review left a run examines nothing [P2-S11-AC-113]
+ok 50 - a rejected review stays rejected and an earlier invalidation keeps its reason [P2-S11-AC-113]
+ok 51 - exactly one event per invalidated review: six invalidations, no duplicate from any repeated run [P2-S11-AC-113]
+ok 52 - the dependency rows of the invalidated reviews are retained as history [P2-S11-AC-113]
+ok
+All tests successful.
+Files=1, Tests=52,  2 wallclock secs ( 0.10 usr  0.02 sys +  0.06 cusr  0.03 csys =  0.21 CPU)
+Result: PASS
