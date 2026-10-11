@@ -20,25 +20,114 @@
 --   submit | workflow_read   the manifest rebuilt now (cms_build_dependency_manifest);
 --   schedule | publish       the frozen dependency_hash of the revision's approved review;
 --   execute                  the hash of the request (it must equal the schedule's frozen hash).
--- Nodes:
---   field   one per non-null top-level rich_text value of the revision in its locale, in the schema's field
---           order (editor order, then field key), carrying the stored value verbatim for the shared
---           rich_text.v1 validator (a rich_text property nested inside an `object` value is not addressable by
---           a stable field id and is not part of the Phase 2 structural input);
---   block   one per live (draft | active) composition instance, after the fields, in template slot order
---           (the slot's index in the revision's template; every instance when there is none), then path
---           (bytewise), then id; its pointer is /composition/<instance id>, its lifecycle the latest
---           lifecycle event of the registered block (supported when none) or `unregistered` when the registry
---           has no such key/version, its recordHash the block's release digest (the instance's recorded
---           digest when unregistered), nameRequired the manifest's accessibility_contract.nameRequired, and
---           accessibleNameFieldDefined / accessibleName the registry's accessible_name short_text prop
---           definition and the instance's string value of it.
--- renderPlanHash is the SHA-256 of the JCS { templateVersionId, nodes: [identity of every node in order] }: the
--- order the database chose, bound into the checker's inputHash.  A media node never exists in Phase 2.
+-- ONE derivation orders the document: platform_private.cms_revision_render_plan(revision) (BE05c "Document order";
+-- independent SQL review finding 4).  Its rows are the stable LOCATION IDENTITIES of everything the checker judges, in
+-- render order, and the load builds its nodes and its renderPlanHash from those rows and from nothing else:
+--   { kind: field, fieldId }                         a whole top-level rich_text value
+--   { kind: field, fieldId, propertyKey }            a rich_text property of an `object` field (DEC-133, depth 1)
+--   { kind: block, pointer, blockKey, blockVersion } a live (draft | active) composition instance
+-- Order: fields by editor position (editorConfig.order, field key bytewise, stable id), an object field's properties in
+-- the order its objectStructure DECLARES them (never the stored jsonb key order); then instances by template slot index,
+-- path (bytewise) and id.  No registry row binds a field to a template slot in Phase 2, so every field is in the leading
+-- root region; slot-bound field position is added here, in the one place the checker input and the projection compiler read.
+-- A node is its plan identity plus its payload (a field: fieldKind rich_text and the stored value, or that property's
+-- value; a block: lifecycle, recordHash, nameRequired, accessibleNameFieldDefined, accessibleName from the registry).
+-- renderPlanHash is the SHA-256 of the JCS { templateVersionId, nodes: [plan identity of every node in order] }, bound
+-- into the checker's inputHash.  A media node never exists in Phase 2.
 -- Forward-only.
 begin;
 
 set local lock_timeout = '5s';
+
+create or replace function platform_private.cms_revision_render_plan(p_revision_id uuid)
+returns table (
+  plan_position integer,
+  plan_kind text,
+  identity jsonb,
+  field_value_id uuid,
+  property_key text,
+  instance_id uuid
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  with revision_item as (
+    select revision_row.id, revision_row.locale, revision_row.template_version_id
+      from platform_private.cms_entry_revisions revision_row
+     where revision_row.id = p_revision_id
+  ),
+  template_item as (
+    select coalesce(template_row.slots, '[]'::jsonb) as slots
+      from revision_item
+      left join platform_private.cms_template_versions template_row on template_row.id = revision_item.template_version_id
+  ),
+  stored_field as (
+    select value_row.id as value_id, value_row.value, definition.kind as field_kind,
+           definition.field_key::text as field_key, definition.stable_field_id,
+           definition.constraints,
+           case when definition.editor_config->>'order' ~ '^[0-9]{1,9}$'
+                then (definition.editor_config->>'order')::integer else 0 end as editor_position
+      from revision_item
+      join platform_private.cms_entry_field_values value_row
+        on value_row.revision_id = revision_item.id and value_row.locale = revision_item.locale
+      join platform_private.cms_field_definition_versions definition on definition.id = value_row.field_definition_id
+     where value_row.value is not null
+       and pg_catalog.jsonb_typeof(value_row.value) <> 'null'
+  ),
+  planned as (
+    -- a whole top-level rich_text value
+    select 0 as region_no, stored.editor_position as rank_no, stored.field_key as sort_text,
+           stored.stable_field_id as sort_id, 0 as member_no, 'field'::text as node_kind,
+           stored.value_id as value_id, null::text as property, null::uuid as block_id,
+           pg_catalog.jsonb_build_object('kind', 'field',
+             'fieldId', pg_catalog.lower(stored.stable_field_id::text)) as node_identity
+      from stored_field stored
+     where stored.field_kind = 'rich_text'
+    union all
+    -- a rich_text property of an object field, in the order the structure declares its properties
+    select 0, stored.editor_position, stored.field_key, stored.stable_field_id,
+           declared.ordinality::integer, 'field', stored.value_id, declared.property->>'key', null::uuid,
+           pg_catalog.jsonb_build_object('kind', 'field',
+             'fieldId', pg_catalog.lower(stored.stable_field_id::text),
+             'propertyKey', declared.property->>'key')
+      from stored_field stored
+      cross join lateral pg_catalog.jsonb_array_elements(
+        case when pg_catalog.jsonb_typeof(stored.constraints->'objectStructure'->'properties') = 'array'
+             then stored.constraints->'objectStructure'->'properties' else '[]'::jsonb end
+      ) with ordinality declared(property, ordinality)
+     where stored.field_kind = 'object'
+       and pg_catalog.jsonb_typeof(stored.value) = 'object'
+       and declared.property->>'kind' = 'rich_text'
+       and coalesce(pg_catalog.jsonb_typeof(stored.value->(declared.property->>'key')), 'null') <> 'null'
+    union all
+    -- a live composition instance, by template slot, path and id
+    select 1,
+           case when revision_item.template_version_id is null then 0 else coalesce((
+             select slot.ordinality::integer
+               from pg_catalog.jsonb_array_elements(template_item.slots) with ordinality slot(value, ordinality)
+              where slot.value->>'key' = instance.slot_key
+           ), 100000) end,
+           instance.path::text, instance.id, 0, 'block', null::uuid, null::text, instance.id,
+           pg_catalog.jsonb_build_object('kind', 'block',
+             'pointer', '/composition/' || instance.id::text,
+             'blockKey', instance.block_key,
+             'blockVersion', instance.block_version::integer)
+      from revision_item
+      cross join template_item
+      join platform_private.cms_composition_instances instance on instance.revision_id = revision_item.id
+     where instance.state in ('draft', 'active')
+  )
+  select (pg_catalog.row_number() over (
+           order by planned.region_no, planned.rank_no, planned.sort_text collate "C", planned.sort_id, planned.member_no
+         ))::integer,
+         planned.node_kind, planned.node_identity, planned.value_id, planned.property, planned.block_id
+    from planned
+$body$;
+
+comment on function platform_private.cms_revision_render_plan(uuid) is
+  'BE05c render plan of one revision: the stable location identity of every rich_text value, DEC-133 object rich_text property and live composition instance the accessibility checker judges, in render order, with the keys that load its payload. The single derivation of document order; Phase 2 has no slot-bound field position, so fields (editor position, key, id; properties in declared order) precede the instances (slot, path, id). Private; STABLE.';
 
 create or replace function platform_private.cms_accessibility_checker_input(
   p_revision_id uuid, p_dependency_hash text
@@ -51,7 +140,6 @@ set search_path = ''
 as $body$
 declare
   revision_row platform_private.cms_entry_revisions%rowtype;
-  template_slots jsonb := '[]'::jsonb;
   nodes jsonb;
   identities jsonb;
 begin
@@ -61,77 +149,45 @@ begin
   if not found then
     raise exception 'NOT_FOUND' using errcode = 'P0001';
   end if;
-  if revision_row.template_version_id is not null then
-    select coalesce(template_item.slots, '[]'::jsonb) into template_slots
-      from platform_private.cms_template_versions template_item
-     where template_item.id = revision_row.template_version_id;
-  end if;
 
-  select coalesce(pg_catalog.jsonb_agg(ordered.node order by ordered.group_no, ordered.ordinal,
-                                       ordered.sort_text collate "C", ordered.sort_id), '[]'::jsonb),
-         coalesce(pg_catalog.jsonb_agg(ordered.identity order by ordered.group_no, ordered.ordinal,
-                                       ordered.sort_text collate "C", ordered.sort_id), '[]'::jsonb)
+  -- A node is its plan identity plus its payload, in plan order; the renderPlanHash covers the identities alone.
+  select coalesce(pg_catalog.jsonb_agg(planned.node order by planned.plan_position), '[]'::jsonb),
+         coalesce(pg_catalog.jsonb_agg(planned.identity order by planned.plan_position), '[]'::jsonb)
     into nodes, identities
     from (
-      select 0 as group_no,
-             case when definition.editor_config->>'order' ~ '^[0-9]{1,9}$'
-                  then (definition.editor_config->>'order')::integer else 0 end as ordinal,
-             definition.field_key::text as sort_text,
-             definition.stable_field_id as sort_id,
-             pg_catalog.jsonb_build_object(
-               'kind', 'field', 'fieldId', pg_catalog.lower(definition.stable_field_id::text),
-               'fieldKind', 'rich_text', 'value', value_row.value) as node,
-             pg_catalog.jsonb_build_object(
-               'kind', 'field', 'fieldId', pg_catalog.lower(definition.stable_field_id::text)) as identity
-        from platform_private.cms_entry_field_values value_row
-        join platform_private.cms_field_definition_versions definition on definition.id = value_row.field_definition_id
-       where value_row.revision_id = revision_row.id
-         and value_row.locale = revision_row.locale
-         and definition.kind = 'rich_text'
-         and value_row.value is not null
-         and pg_catalog.jsonb_typeof(value_row.value) <> 'null'
-      union all
-      select 1,
-             case when revision_row.template_version_id is null then 0 else coalesce((
-               select slot.ord::integer
-                 from pg_catalog.jsonb_array_elements(template_slots) with ordinality slot(value, ord)
-                where slot.value->>'key' = instance.slot_key
-             ), 100000) end,
-             instance.path::text,
-             instance.id,
-             pg_catalog.jsonb_build_object(
-               'kind', 'block',
-               'pointer', '/composition/' || instance.id::text,
-               'blockKey', instance.block_key,
-               'blockVersion', instance.block_version::integer,
-               'recordHash', coalesce(block.release_digest::text, instance.block_registry_digest::text),
-               'lifecycle', case when block.id is null then 'unregistered' else coalesce((
-                   select lifecycle.to_lifecycle
-                     from platform_private.cms_block_definition_lifecycle_events lifecycle
-                    where lifecycle.block_definition_version_id = block.id
-                    order by lifecycle.created_at desc, lifecycle.id desc
-                    limit 1
-                 ), 'supported') end,
-               'nameRequired', coalesce(block.accessibility_contract->'nameRequired' = 'true'::jsonb, false),
-               'accessibleNameFieldDefined', coalesce(exists (
-                   select 1
-                     from pg_catalog.jsonb_array_elements(
-                       case when pg_catalog.jsonb_typeof(block.props_schema_snapshot->'fields') = 'array'
-                            then block.props_schema_snapshot->'fields' else '[]'::jsonb end
-                     ) prop(value)
-                    where prop.value->>'name' = 'accessible_name' and prop.value->>'kind' = 'short_text'
-                 ), false),
-               'accessibleName', case when pg_catalog.jsonb_typeof(instance.props->'accessible_name') = 'string'
-                                      then instance.props->>'accessible_name' end),
-             pg_catalog.jsonb_build_object(
-               'kind', 'block', 'pointer', '/composition/' || instance.id::text,
-               'blockKey', instance.block_key, 'blockVersion', instance.block_version::integer)
-        from platform_private.cms_composition_instances instance
+      select plan.plan_position, plan.identity,
+             case plan.plan_kind
+               when 'field' then plan.identity || pg_catalog.jsonb_build_object(
+                 'fieldKind', 'rich_text',
+                 'value', case when plan.property_key is null then value_row.value
+                               else value_row.value->plan.property_key end)
+               else plan.identity || pg_catalog.jsonb_build_object(
+                 'recordHash', coalesce(block.release_digest::text, instance.block_registry_digest::text),
+                 'lifecycle', case when block.id is null then 'unregistered' else coalesce((
+                     select lifecycle.to_lifecycle
+                       from platform_private.cms_block_definition_lifecycle_events lifecycle
+                      where lifecycle.block_definition_version_id = block.id
+                      order by lifecycle.created_at desc, lifecycle.id desc
+                      limit 1
+                   ), 'supported') end,
+                 'nameRequired', coalesce(block.accessibility_contract->'nameRequired' = 'true'::jsonb, false),
+                 'accessibleNameFieldDefined', coalesce(exists (
+                     select 1
+                       from pg_catalog.jsonb_array_elements(
+                         case when pg_catalog.jsonb_typeof(block.props_schema_snapshot->'fields') = 'array'
+                              then block.props_schema_snapshot->'fields' else '[]'::jsonb end
+                       ) prop(value)
+                      where prop.value->>'name' = 'accessible_name' and prop.value->>'kind' = 'short_text'
+                   ), false),
+                 'accessibleName', case when pg_catalog.jsonb_typeof(instance.props->'accessible_name') = 'string'
+                                        then instance.props->>'accessible_name' end)
+             end as node
+        from platform_private.cms_revision_render_plan(revision_row.id) plan
+        left join platform_private.cms_entry_field_values value_row on value_row.id = plan.field_value_id
+        left join platform_private.cms_composition_instances instance on instance.id = plan.instance_id
         left join platform_private.cms_block_definition_versions block
           on block.block_key = instance.block_key and block.block_version = instance.block_version
-       where instance.revision_id = revision_row.id
-         and instance.state in ('draft', 'active')
-    ) ordered;
+    ) planned;
 
   return pg_catalog.jsonb_build_object(
     'revisionId', pg_catalog.lower(revision_row.id::text),
@@ -147,7 +203,7 @@ end;
 $body$;
 
 comment on function platform_private.cms_accessibility_checker_input(uuid, text) is
-  'BE05c cms.a11y.structural input for one revision: revision identity and locale, the revision content hash, the given dependency hash, the render-plan hash and the nodes (top-level rich_text values, then live composition instances) in render order. Private; STABLE.';
+  'BE05c cms.a11y.structural input for one revision: revision identity and locale, the revision content hash, the given dependency hash, the render-plan hash and the nodes (rich_text values and object rich_text properties, then live composition instances) in the order of cms_revision_render_plan. Private; STABLE.';
 
 create or replace function platform_private.cms_load_quality_gate_input(p_request jsonb)
 returns jsonb
@@ -316,11 +372,14 @@ grant select on table
   platform_private.cms_publication_schedules
   to wejammin_cms_definer;
 grant create on schema platform_private, platform_api to wejammin_cms_definer;
+alter function platform_private.cms_revision_render_plan(uuid) owner to wejammin_cms_definer;
 alter function platform_private.cms_accessibility_checker_input(uuid, text) owner to wejammin_cms_definer;
 alter function platform_private.cms_load_quality_gate_input(jsonb) owner to wejammin_cms_definer;
 alter function platform_api.cms_load_quality_gate_input(jsonb) owner to wejammin_cms_definer;
 revoke create on schema platform_private, platform_api from wejammin_cms_definer;
 
+revoke all on function platform_private.cms_revision_render_plan(uuid)
+  from public, anon, authenticated, service_role;
 revoke all on function platform_private.cms_accessibility_checker_input(uuid, text)
   from public, anon, authenticated, service_role;
 revoke all on function platform_private.cms_load_quality_gate_input(jsonb)

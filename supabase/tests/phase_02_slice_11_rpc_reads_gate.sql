@@ -104,7 +104,7 @@ select ok(
   'a field node is exactly { kind, fieldId, fieldKind rich_text, value } with the stored rich_text.v1 value verbatim; the short_text title is not a node [P2-S11-AC-101]');
 select is(pg_temp.r11g_nodes('submit', 'block'),
   '/composition/' || pg_temp.h11w_uuid('gt-i0') || ',/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i2'),
-  'block nodes are the live (draft | active) instances, fields first, ordered by path (a superseded and a pending_diff instance are not rendered) [P2-S11-AC-101]');
+  'block nodes are the live (draft | active) instances, after the revision''s field nodes (the render plan: fields, then instances by slot and path), ordered by path here (a superseded and a pending_diff instance are not rendered) [P2-S11-AC-101]');
 select ok(
   (select jsonb_build_object('kind', node->>'kind', 'blockKey', node->>'blockKey', 'blockVersion', node->'blockVersion', 'lifecycle', node->>'lifecycle',
             'recordHash', node->>'recordHash')

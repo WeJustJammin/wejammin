@@ -34,7 +34,11 @@ describe('structure.rich_text_invalid', () => {
       4,
     );
     expect(findings).toEqual([]);
-    expect(parsed).toMatchObject({ nodeIndex: 4, fieldId: fieldIdOf(7) });
+    expect(parsed).toMatchObject({
+      nodeIndex: 4,
+      fieldId: fieldIdOf(7),
+      propertyKey: null,
+    });
     expect(parsed?.document.blocks).toHaveLength(2);
   });
 
@@ -72,6 +76,38 @@ describe('structure.rich_text_invalid', () => {
           pointer: `/fields/${fieldIdOf(3)}`,
           fieldId: fieldIdOf(3),
           blockPath: null,
+        },
+      }),
+    ]);
+  });
+});
+
+describe('structure.rich_text_invalid: a rich_text property of an object field (DEC-133)', () => {
+  it('yields the parsed property and no finding for a valid value', () => {
+    const { parsed, findings } = evaluate(
+      fieldNode(7, richText(heading(2, span('Lead'))), 'lead'),
+      2,
+    );
+    expect(findings).toEqual([]);
+    expect(parsed).toMatchObject({
+      nodeIndex: 2,
+      fieldId: fieldIdOf(7),
+      propertyKey: 'lead',
+    });
+  });
+
+  it('reports an invalid property once, at the property, and skips it', () => {
+    const { parsed, findings } = evaluate(fieldNode(3, 'plain', 'lead'), 1);
+    expect(parsed).toBeNull();
+    expect(findings).toEqual([
+      expect.objectContaining({
+        ruleId: 'structure.rich_text_invalid',
+        severity: 'blocking',
+        location: {
+          kind: 'field',
+          pointer: `/fields/${fieldIdOf(3)}/lead`,
+          fieldId: fieldIdOf(3),
+          blockPath: '/lead',
         },
       }),
     ]);

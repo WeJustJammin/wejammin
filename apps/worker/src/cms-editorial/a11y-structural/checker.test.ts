@@ -248,3 +248,65 @@ describe('runAccessibilityChecker: determinism', () => {
     expect(JSON.stringify(input)).toBe(before);
   });
 });
+
+describe('runAccessibilityChecker: rich_text properties of object fields (DEC-133)', () => {
+  // meta.note (h2 + a generic link), meta.lead (h3) and the top-level body (h2),
+  // in the order the database's render plan gives them.
+  const note = () =>
+    fieldNode(
+      1,
+      richText(
+        heading(2, span('Note')),
+        paragraph(span('click here', httpsLink())),
+      ),
+      'note',
+    );
+  const lead = () => fieldNode(1, richText(heading(3, span('Lead'))), 'lead');
+  const body = () => fieldNode(2, richText(heading(2, span('Body'))));
+
+  it('judges nested headings and links and addresses them by field id and property key', async () => {
+    const result = await run(checkerInput([note(), lead(), body()]));
+    expect(result.state).toBe('blocked');
+    expect(summary(result.findings)).toEqual([
+      `link.text_generic ${at(1, '/note/blocks/1/spans/0')}`,
+    ]);
+  });
+
+  it('fails a nested first heading that is not level 2 (the revision cannot pass by hiding it in an object)', async () => {
+    const result = await run(
+      checkerInput([fieldNode(1, richText(heading(3, span('Lead'))), 'lead')]),
+    );
+    expect(result.state).toBe('blocked');
+    expect(summary(result.findings)).toEqual([
+      `heading.first_level ${at(1, '/lead/blocks/0')}`,
+    ]);
+  });
+
+  it('never re-derives order: the same nodes in another order give another verdict', async () => {
+    const planned = await run(checkerInput([note(), lead(), body()]));
+    const reversed = await run(checkerInput([lead(), note(), body()]));
+    expect(summary(reversed.findings)).toEqual(
+      expect.arrayContaining([
+        `heading.first_level ${at(1, '/lead/blocks/0')}`,
+      ]),
+    );
+    expect(summary(planned.findings)).not.toContain(
+      `heading.first_level ${at(1, '/lead/blocks/0')}`,
+    );
+  });
+
+  it('reports an invalid property value at the property, not at the field', async () => {
+    const result = await run(
+      checkerInput([fieldNode(1, { format: 'rich_text.v2' }, 'lead')]),
+    );
+    expect(summary(result.findings)).toEqual([
+      `structure.rich_text_invalid ${at(1, '/lead')}`,
+    ]);
+    expect(result.findings[0]?.location).toEqual({
+      kind: 'field',
+      pointer: at(1, '/lead'),
+      fieldId: fieldIdOf(1),
+      blockPath: '/lead',
+    });
+  });
+});

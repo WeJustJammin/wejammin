@@ -5,6 +5,7 @@ import {
   heading,
   paragraph,
   parsedField,
+  parsedPropertyField,
   span,
 } from './a11y-structural.test-support';
 import { createFindingCollector } from './findings';
@@ -189,6 +190,50 @@ describe('heading.level_skipped', () => {
   it('does not report a skip for the first heading (first_level covers it)', () => {
     expect(headingFindings(parsedField(1, 0, heading(4, span('A'))))).toEqual([
       { ruleId: 'heading.first_level', pointer: at(1, 0) },
+    ]);
+  });
+});
+
+describe('headings inside a rich_text property of an object field (DEC-133)', () => {
+  it('addresses a property heading by field id, property key and block index', () => {
+    expect(
+      headingFindings(
+        parsedPropertyField(
+          5,
+          'lead',
+          0,
+          paragraph(span('x')),
+          heading(3, span('T')),
+        ),
+      ),
+    ).toEqual([
+      {
+        ruleId: 'heading.first_level',
+        pointer: `/fields/${fieldIdOf(5)}/lead/blocks/1`,
+      },
+    ]);
+  });
+
+  it('carries the previous level from a property into the next field and back', () => {
+    const lead = parsedPropertyField(1, 'lead', 0, heading(2, span('A')));
+    const body = parsedField(2, 1, heading(4, span('B')));
+    expect(headingFindings(lead, body)).toEqual([
+      { ruleId: 'heading.level_skipped', pointer: at(2, 0) },
+    ]);
+    expect(
+      headingFindings(parsedField(2, 0, heading(2, span('B'))), lead),
+    ).toEqual([]);
+  });
+
+  it('reads the properties in the order the plan gave: h3 first is a violation, h2 first is not', () => {
+    const note = parsedPropertyField(1, 'note', 0, heading(2, span('Note')));
+    const lead = parsedPropertyField(1, 'lead', 1, heading(3, span('Lead')));
+    expect(headingFindings(note, lead)).toEqual([]);
+    expect(headingFindings(lead, note)).toEqual([
+      {
+        ruleId: 'heading.first_level',
+        pointer: `/fields/${fieldIdOf(1)}/lead/blocks/0`,
+      },
     ]);
   });
 });

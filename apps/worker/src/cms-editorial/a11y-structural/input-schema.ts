@@ -1,20 +1,25 @@
 import {
   Bcp47Schema,
   CmsBlockKeySchema,
+  CmsFieldKeySchema,
   CmsHashSchema,
   CmsUuidSchema,
   CmsVersionSchema,
 } from '@wejammin/contracts';
 
+import { renderIdentityKey, renderIdentityOf } from './render-plan';
 import { z } from './zod-runtime';
 
 /*
  * Input of the `cms.a11y.structural` checker (BE05c "Inputs"): the revision's
- * rich_text values and the block instances in RENDER ORDER. The checker never
- * re-derives order, so the array order is the document order. A node of any
- * other kind (in particular a media reference, which cannot exist before
- * Slice 14) is refused, which the gate reports as TARGET_UNREADABLE: the
- * checker fails closed instead of silently skipping what it cannot judge.
+ * rich_text values (whole top-level values and the rich_text properties of
+ * `object` fields, DEC-133) and the block instances in RENDER ORDER. The
+ * checker never re-derives order, so the array order is the document order;
+ * PostgreSQL `cms_revision_render_plan` is the one derivation of it and of each
+ * node's stable location identity (`render-plan.ts`). A node of any other kind
+ * (in particular a media reference, which cannot exist before Slice 14) is
+ * refused, which the gate reports as TARGET_UNREADABLE: the checker fails
+ * closed instead of silently skipping what it cannot judge.
  */
 
 /** The BE05c input load is bounded; a revision references at most this many nodes. */
@@ -48,6 +53,12 @@ const SafePointerSchema = z
 const FieldNodeSchema = z.strictObject({
   kind: z.literal('field'),
   fieldId: LowercaseUuidSchema,
+  /**
+   * Present only for a rich_text property of an object field; absent for a whole
+   * value. A DEC-133 property key has the grammar of a field key (lowercase,
+   * 2 to 64 characters), so it is safe in a pointer.
+   */
+  propertyKey: CmsFieldKeySchema.optional(),
   fieldKind: z.literal('rich_text'),
   /** Validated by the checker with the shared rich_text.v1 validator. */
   value: z.unknown(),
@@ -70,6 +81,14 @@ const NodeSchema = z.discriminatedUnion('kind', [
   BlockNodeSchema,
 ]);
 
+/** The member that names a node's location, for the issue path of a duplicate. */
+const identityMember = (
+  node: z.infer<typeof NodeSchema>,
+): 'pointer' | 'propertyKey' | 'fieldId' => {
+  if (node.kind === 'block') return 'pointer';
+  return node.propertyKey === undefined ? 'fieldId' : 'propertyKey';
+};
+
 export const AccessibilityCheckerInputSchema = z.strictObject({
   revisionId: LowercaseUuidSchema,
   revisionNumber: CmsVersionSchema,
@@ -83,18 +102,31 @@ export const AccessibilityCheckerInputSchema = z.strictObject({
     .array(NodeSchema)
     .max(ACCESSIBILITY_NODES_MAX)
     .superRefine((nodes, context) => {
-      const fieldIds = new Set<string>();
-      const pointers = new Set<string>();
+      const identities = new Set<string>();
+      const wholeFields = new Set<string>();
+      const objectFields = new Set<string>();
       nodes.forEach((node, index) => {
-        const seen = node.kind === 'field' ? fieldIds : pointers;
-        const key = node.kind === 'field' ? node.fieldId : node.pointer;
-        if (seen.has(key))
+        const identity = renderIdentityKey(renderIdentityOf(node));
+        if (identities.has(identity))
           context.addIssue({
             code: 'custom',
-            path: [index, node.kind === 'field' ? 'fieldId' : 'pointer'],
+            path: [index, identityMember(node)],
             message: 'duplicate_node_identity',
           });
-        seen.add(key);
+        identities.add(identity);
+        if (node.kind !== 'field') return;
+        // One field is either a whole rich_text value or an object with properties.
+        const [own, other] =
+          node.propertyKey === undefined
+            ? [wholeFields, objectFields]
+            : [objectFields, wholeFields];
+        if (other.has(node.fieldId))
+          context.addIssue({
+            code: 'custom',
+            path: [index, 'fieldId'],
+            message: 'field_identity_mixed',
+          });
+        own.add(node.fieldId);
       });
     }),
 });

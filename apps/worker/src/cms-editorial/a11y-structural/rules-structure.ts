@@ -19,6 +19,8 @@ import { blockNodeLocation, fieldValueLocation } from './locations';
 export type ParsedField = Readonly<{
   nodeIndex: number;
   fieldId: string;
+  /** The DEC-133 object property key; null for a whole top-level value. */
+  propertyKey: string | null;
   document: RichTextV1Document;
 }>;
 
@@ -37,12 +39,15 @@ export const evaluateStructure = (
       );
     return null;
   }
+  const field = {
+    fieldId: node.fieldId,
+    propertyKey: node.propertyKey ?? null,
+  };
   const verdict = validateRichTextV1(node.value);
-  if (verdict.ok)
-    return { nodeIndex, fieldId: node.fieldId, document: verdict.document };
+  if (verdict.ok) return { nodeIndex, ...field, document: verdict.document };
   collector.add(
     'structure.rich_text_invalid',
-    fieldValueLocation(node.fieldId),
+    fieldValueLocation(field),
     position,
   );
   return null;

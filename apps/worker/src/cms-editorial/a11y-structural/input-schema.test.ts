@@ -89,6 +89,58 @@ describe('AccessibilityCheckerInputSchema: field nodes', () => {
   });
 });
 
+describe('AccessibilityCheckerInputSchema: property nodes (DEC-133)', () => {
+  const PROPERTY = fieldNode(1, richText(paragraph(span('Lead'))), 'lead');
+
+  it('accepts a rich_text property of an object field, addressed by field id and property key', () => {
+    expect(accepts(checkerInput([PROPERTY]))).toBe(true);
+  });
+
+  it('accepts several properties of one field and the same key under another field', () => {
+    const note = fieldNode(1, richText(), 'note');
+    const otherLead = fieldNode(2, richText(), 'lead');
+    expect(accepts(checkerInput([PROPERTY, note, otherLead]))).toBe(true);
+  });
+
+  it.each([
+    'a',
+    'Lead',
+    '1lead',
+    'le-ad',
+    'le ad',
+    'le/ad',
+    'le~ad',
+    '',
+    `a${'b'.repeat(64)}`,
+  ])('refuses the property key %j', (propertyKey) => {
+    expect(accepts(checkerInput([{ ...PROPERTY, propertyKey }] as never))).toBe(
+      false,
+    );
+  });
+
+  it('accepts the shortest and the longest property key', () => {
+    for (const propertyKey of ['ab', `a${'b'.repeat(63)}`])
+      expect(accepts(checkerInput([{ ...PROPERTY, propertyKey }]))).toBe(true);
+  });
+
+  it('refuses a null property key and a property key that is not a string', () => {
+    for (const propertyKey of [null, 5, {}])
+      expect(
+        accepts(checkerInput([{ ...PROPERTY, propertyKey }] as never)),
+      ).toBe(false);
+  });
+
+  it('refuses the same property of the same field twice', () => {
+    expect(accepts(checkerInput([PROPERTY, PROPERTY]))).toBe(false);
+  });
+
+  it('refuses a field that is both a whole rich_text value and an object with properties', () => {
+    const whole = fieldNode(1, richText());
+    expect(accepts(checkerInput([whole, PROPERTY]))).toBe(false);
+    expect(accepts(checkerInput([PROPERTY, whole]))).toBe(false);
+  });
+});
+
 describe('AccessibilityCheckerInputSchema: block nodes', () => {
   const GOOD_POINTERS = [
     '/composition/0',

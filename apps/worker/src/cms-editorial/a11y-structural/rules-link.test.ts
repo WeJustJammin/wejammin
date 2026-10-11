@@ -6,6 +6,7 @@ import {
   httpsLink,
   paragraph,
   parsedField,
+  parsedPropertyField,
   span,
   type TestLink,
 } from './a11y-structural.test-support';
@@ -279,4 +280,38 @@ describe('link.text_unchecked_language (warning)', () => {
       expect(linkFindings(locale, only('Guide'))).toEqual([]);
     },
   );
+});
+
+describe('links inside a rich_text property of an object field (DEC-133)', () => {
+  it('flags a generic link text at the property span', () => {
+    const field = parsedPropertyField(
+      3,
+      'note',
+      0,
+      paragraph(span('Intro')),
+      paragraph(span('click here', httpsLink())),
+    );
+    expect(linkFindings('en', field)).toEqual([
+      {
+        ruleId: 'link.text_generic',
+        pointer: `/fields/${fieldIdOf(3)}/note/blocks/1/spans/0`,
+      },
+    ]);
+  });
+
+  it('puts the unchecked-language warning at the first link in the plan, property or field', () => {
+    const lead = parsedPropertyField(
+      1,
+      'lead',
+      0,
+      paragraph(span('Guide', httpsLink())),
+    );
+    const body = parsedField(2, 1, paragraph(span('Guide', httpsLink())));
+    expect(linkFindings('de', lead, body)).toEqual([
+      {
+        ruleId: 'link.text_unchecked_language',
+        pointer: `/fields/${fieldIdOf(1)}/lead/blocks/0/spans/0`,
+      },
+    ]);
+  });
 });

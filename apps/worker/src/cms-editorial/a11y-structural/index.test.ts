@@ -8,6 +8,7 @@ describe('cms.a11y.structural public surface', () => {
   it('exports exactly the documented values', () => {
     expect(Object.keys(surface).sort()).toEqual(
       [
+        'ACCESSIBILITY_CHECKER_REGISTRY',
         'ACCESSIBILITY_FINDINGS_STORED_MAX',
         'ACCESSIBILITY_GATE_RETRY_DELAY_MS',
         'ACCESSIBILITY_GATE_TIMEOUT_MIN_MS',
@@ -15,9 +16,13 @@ describe('cms.a11y.structural public surface', () => {
         'ACCESSIBILITY_RULE_CATALOG',
         'ACCESSIBILITY_RULE_IDS',
         'AccessibilityCheckerInputSchema',
+        'CMS_ENTRY_REVISION_TARGET_TYPE',
+        'CheckerRegistryError',
         'accessibilityBindingHash',
         'accessibilityInputHash',
         'auditRecordOf',
+        'checkerTargetOf',
+        'defineCheckerRegistry',
         'evaluateAccessibilityGate',
         'runAccessibilityChecker',
         'toPreflightEvidence',

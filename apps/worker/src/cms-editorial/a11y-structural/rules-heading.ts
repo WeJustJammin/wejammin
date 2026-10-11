@@ -23,7 +23,7 @@ export const createHeadingRule = (collector: FindingCollector): HeadingRule => {
     evaluate: (field) => {
       field.document.blocks.forEach((block, blockIndex) => {
         if (block.type !== 'heading') return;
-        const location = richTextBlockLocation(field.fieldId, blockIndex);
+        const location = richTextBlockLocation(field, blockIndex);
         const position = [field.nodeIndex, blockIndex, NO_POSITION] as const;
         if (!block.spans.some((span) => hasNonWhitespace(span.text)))
           collector.add('heading.empty', location, position);

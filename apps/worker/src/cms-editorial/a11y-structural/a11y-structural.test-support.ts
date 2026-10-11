@@ -62,9 +62,14 @@ export const httpsLink = (href = 'https://example.org/guide'): TestLink => ({
   href,
 });
 
-export const fieldNode = (seed: number, value: unknown): FieldNode => ({
+export const fieldNode = (
+  seed: number,
+  value: unknown,
+  propertyKey?: string,
+): FieldNode => ({
   kind: 'field',
   fieldId: fieldIdOf(seed),
+  ...(propertyKey === undefined ? {} : { propertyKey }),
   fieldKind: 'rich_text',
   value,
 });
@@ -113,8 +118,21 @@ export const parsedField = (
 ): ParsedField => {
   const verdict = validateRichTextV1(richText(...blocks));
   if (!verdict.ok) throw new Error('fixture rich text is invalid');
-  return { nodeIndex, fieldId: fieldIdOf(seed), document: verdict.document };
+  return {
+    nodeIndex,
+    fieldId: fieldIdOf(seed),
+    propertyKey: null,
+    document: verdict.document,
+  };
 };
+
+/** The same for a rich_text property of an `object` field (DEC-133). */
+export const parsedPropertyField = (
+  seed: number,
+  propertyKey: string,
+  nodeIndex: number,
+  ...blocks: Record<string, unknown>[]
+): ParsedField => ({ ...parsedField(seed, nodeIndex, ...blocks), propertyKey });
 
 /** 2026-10-08T12:00:00.000Z: the instant every gate test clock starts at. */
 export const CLOCK_START = Date.UTC(2026, 9, 8, 12, 0, 0);

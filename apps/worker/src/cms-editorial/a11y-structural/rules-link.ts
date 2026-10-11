@@ -98,7 +98,7 @@ export const createLinkRule = (
       field.document.blocks.forEach((block, blockIndex) => {
         for (const run of linkRuns(block.spans)) {
           const location = richTextSpanLocation(
-            field.fieldId,
+            field,
             blockIndex,
             run.firstSpanIndex,
           );

@@ -45,3 +45,14 @@ export {
   type BlockNode,
   type FieldNode,
 } from './input-schema';
+export {
+  ACCESSIBILITY_CHECKER_REGISTRY,
+  CMS_ENTRY_REVISION_TARGET_TYPE,
+  CheckerRegistryError,
+  checkerTargetOf,
+  defineCheckerRegistry,
+  type CheckerRegistration,
+  type CheckerRegistry,
+  type CheckerRegistryErrorCode,
+  type CheckerTarget,
+} from './registry';
