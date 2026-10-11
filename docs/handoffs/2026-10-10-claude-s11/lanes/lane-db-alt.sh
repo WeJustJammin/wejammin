@@ -6,6 +6,7 @@
 # for pgTAP files. API specs, races and full gates stay on the main stack via lane-db.sh/lane-api.sh.
 # Holds /tmp/wejammin-altdb.lock for the whole reset+test; never touches the main stack's lock or DB.
 set -uo pipefail
+# Two concurrent `supabase db reset` runs (main and alt stack) collided once; resets serialize on /tmp/wejammin-reset.lock.
 LANE="$1"; shift
 ALT=/home/rob/.codex/worktrees/phase2-slice10/orchestration/altdb
 SUPA=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/node_modules/.bin/supabase
@@ -18,7 +19,7 @@ flock -s --wait 7200 7 || { echo "[alt] quiet lock timeout"; exit 3; }
 exec 9>/tmp/wejammin-altdb.lock
 echo "[alt] waiting for lock $(date +%T)"; flock --wait 3600 9 || { echo "[alt] lock timeout"; exit 3; }
 echo "[alt] lock acquired $(date +%T)"
-if ! "$SUPA" db reset --local --workdir "$ALT" > "$LOGS/alt-reset-$STAMP.log" 2>&1; then
+if ! flock --wait 900 /tmp/wejammin-reset.lock "$SUPA" db reset --local --workdir "$ALT" > "$LOGS/alt-reset-$STAMP.log" 2>&1; then
   echo "[alt] RESET FAILED — last lines:"; grep -v '^$' "$LOGS/alt-reset-$STAMP.log" | tail -25; exit 2; fi
 echo "[alt] reset ok $(date +%T)"
 IMAGE=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -m1 'supabase/pg_prove:')

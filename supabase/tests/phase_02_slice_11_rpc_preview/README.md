@@ -10,12 +10,13 @@ transaction, includes the fragments with psql `\ir`, and rolls back.
 | `000-world.sqlinc`        | token builders (`r11p_token`, `r11p_revoke`, `r11p_revoke_hash`: rows written through the real guards for a given actor, age and binding), the CMS-03B-19 request builder and probe (`r11p_vreq`, `r11p_vcall`, `r11p_denial`), the CMS-03B-08 builders (`r11p_vs`, `r11p_mreq`, `r11p_mcall`, `r11p_derive`) and the Vault key (`r11p_key`) |
 | `090-race-fixture.sqlinc` | the committed entries and Vault key of `../phase_02_slice_11_races/020-preview-mint-race.mjs` (included by `infra/database-races/preview-kit.mjs`, never by a pgTAP file)                                                                                                                                                                    |
 
-| Entrypoint                                           | Covers                                                                                                        |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `../phase_02_slice_11_rpc_preview_verify.sql`        | CMS-03B-19: the valid result, byte-identical denials, `revoked` for the bound owner only, scopes, zero writes |
-| `../phase_02_slice_11_rpc_preview_mint.sql`          | CMS-03B-08 contract, derivation, hash-only persistence, audit without outbox, replay, key rotation, scopes    |
-| `../phase_02_slice_11_rpc_preview_mint_refusals.sql` | CMS-03B-08 structure, route grammar, concealment, 403, CAS, stale version set, missing key, no partial effect |
-| `../phase_02_slice_11_rpc_preview_revoke.sql`        | the private revocation seam: closed request, by entry / person / both, idempotence, no side effects           |
+| Entrypoint                                           | Covers                                                                                                                                                                                                          |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `../phase_02_slice_11_rpc_preview_verify.sql`        | CMS-03B-19: the valid result, byte-identical denials, `revoked` for the bound owner only, scopes, zero writes                                                                                                   |
+| `../phase_02_slice_11_rpc_preview_mint.sql`          | CMS-03B-08 contract, derivation, hash-only persistence, audit without outbox, replay, key rotation, scopes                                                                                                      |
+| `../phase_02_slice_11_rpc_preview_mint_refusals.sql` | CMS-03B-08 structure, route grammar, concealment, 403, CAS, stale version set, missing key, no partial effect                                                                                                   |
+| `../phase_02_slice_11_rpc_preview_revoke.sql`        | the private revocation seam: closed request, by entry / person / both, idempotence, no side effects                                                                                                             |
+| `../phase_02_slice_11_preview_takedown.sql`          | the service-role takedown RPC (`cms_takedown_preview_tokens`): service_role only, reason `takedown` only, CAS revocation by entry / person / both, and a real mint -> verify -> takedown -> revoked composition |
 
 ## Adding a test
 

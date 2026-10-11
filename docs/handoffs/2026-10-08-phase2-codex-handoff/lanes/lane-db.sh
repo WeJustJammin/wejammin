@@ -3,6 +3,7 @@
 # Resets the SHARED local Supabase DB to the checkout's migrations, then runs the given pgTAP files (all when none).
 # Holds /tmp/wejammin-supabase-ci.lock (also taken by CI's infra/verify-database.sh) for the whole reset+test.
 set -uo pipefail
+# Two concurrent `supabase db reset` runs (main and alt stack) collided once; resets serialize on /tmp/wejammin-reset.lock.
 LANE="$1"; shift
 SUPA=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/node_modules/.bin/supabase
 export PATH="/home/rob/.local/share/wejammin-toolchain/bin:$PATH"
@@ -10,7 +11,7 @@ LOGS="$LANE/.lane-logs"; mkdir -p "$LOGS"; STAMP=$(date +%H%M%S)
 exec 9>/tmp/wejammin-supabase-ci.lock
 echo "[lane-db] waiting for lock $(date +%T)"; flock --wait 3600 9 || { echo "[lane-db] lock timeout"; exit 3; }
 echo "[lane-db] lock acquired $(date +%T)"; cd "$LANE" || exit 4
-if ! "$SUPA" db reset --local --workdir "$LANE" > "$LOGS/reset-$STAMP.log" 2>&1; then
+if ! flock --wait 900 /tmp/wejammin-reset.lock "$SUPA" db reset --local --workdir "$LANE" > "$LOGS/reset-$STAMP.log" 2>&1; then
   echo "[lane-db] RESET FAILED — last lines:"; grep -v '^$' "$LOGS/reset-$STAMP.log" | tail -25; exit 2; fi
 echo "[lane-db] reset ok $(date +%T)"
 TAP="$LOGS/tap-$STAMP.tap"

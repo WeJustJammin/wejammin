@@ -752,6 +752,11 @@ export type Database = {
       }
       cms_decide_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_define_template: { Args: { p_request: Json }; Returns: Json }
+      cms_dependency_recheck_resolve_event: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      cms_dependency_recheck_run: { Args: { p_request: Json }; Returns: Json }
       cms_execute_publication_schedule: {
         Args: { p_request: Json }
         Returns: Json
@@ -841,6 +846,7 @@ export type Database = {
         Args: { p_batch: number }
         Returns: Json
       }
+      cms_takedown_preview_tokens: { Args: { p_request: Json }; Returns: Json }
       cms_template_context: { Args: { p_request: Json }; Returns: Json }
       cms_template_latest: { Args: { p_request: Json }; Returns: Json }
       cms_validate_locale_config: {
@@ -8800,6 +8806,53 @@ export type Database = {
         }
         Relationships: []
       }
+      projection_consumer_state: {
+        Row: {
+          attempts: number
+          consumer: string
+          expected_version: number
+          id: string
+          last_error_code: string | null
+          projection_id: string
+          publication_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          attempts?: number
+          consumer: string
+          expected_version: number
+          id?: string
+          last_error_code?: string | null
+          projection_id: string
+          publication_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Update: {
+          attempts?: number
+          consumer?: string
+          expected_version?: number
+          id?: string
+          last_error_code?: string | null
+          projection_id?: string
+          publication_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_consumer_state_publication_fk"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cms_publication_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_operation_intents: {
         Row: {
           acting_party_id: string
@@ -10104,6 +10157,15 @@ export type Database = {
         Args: { p_manifest: Json }
         Returns: boolean
       }
+      cms_dependency_recheck_event_ref: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      cms_dependency_recheck_lineage: {
+        Args: { p_kind: string; p_ref_id: string }
+        Returns: string[]
+      }
+      cms_dependency_recheck_run: { Args: { p_request: Json }; Returns: Json }
       cms_derive_schema_classification: {
         Args: { p_source_id: string; p_target_id: string }
         Returns: string
@@ -10766,6 +10828,10 @@ export type Database = {
         }
         Returns: Json
       }
+      cms_publication_projection_state: {
+        Args: { p_publication_version_id: string }
+        Returns: string
+      }
       cms_publication_review_operand: {
         Args: {
           p_expected_version: number
@@ -11220,6 +11286,17 @@ export type Database = {
       cms_revision_relation_values: {
         Args: { p_revision_id: string }
         Returns: Json
+      }
+      cms_revision_render_plan: {
+        Args: { p_revision_id: string }
+        Returns: {
+          field_value_id: string
+          identity: Json
+          instance_id: string
+          plan_kind: string
+          plan_position: number
+          property_key: string
+        }[]
       }
       cms_revision_version_set: {
         Args: { p_manifest: Json; p_revision_id: string }
