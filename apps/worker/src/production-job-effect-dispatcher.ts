@@ -1,4 +1,5 @@
 import type {
+  CmsLeaseControl,
   JobEffectInput,
   JobEffectPort,
   JobEffectResult,
@@ -21,8 +22,14 @@ export type PlatformVerificationDependencies =
 
 export type ProductionJobEffectDependencies = Readonly<{
   verifyObject?: ProductionVerificationDependencies['verifyObject'];
-  /** Executes only the private CMS schema preparation contract. */
-  prepareSchemaDryRun?: (input: JobEffectInput) => Promise<JobEffectResult>;
+  /**
+   * Executes only the private CMS schema preparation contract. It receives the
+   * private lease control when, and only when, the consumer supplied one.
+   */
+  prepareSchemaDryRun?: (
+    input: JobEffectInput,
+    control?: CmsLeaseControl,
+  ) => Promise<JobEffectResult>;
 }>;
 
 const manualReview = (errorCode: string): JobEffectResult => ({
@@ -69,11 +76,13 @@ const validResult = (value: unknown): value is JobEffectResult => {
 /**
  * Builds the production job effect boundary for exact internal verification
  * and CMS preparation families. Provider and arbitrary job names never select
- * a credential, adapter, or network effect.
+ * a credential, adapter, or network effect. The private lease control reaches
+ * only the CMS preparation callback; an absent control leaves its arity at one
+ * and verification callbacks never see it.
  */
 export const createProductionJobEffectDispatcher =
   (dependencies?: ProductionJobEffectDependencies): JobEffectPort['execute'] =>
-  async (input): Promise<JobEffectResult> => {
+  async (input, control): Promise<JobEffectResult> => {
     const isPreparation = input.job.type === 'cms.schema.dry_run';
     if (!isPreparation && !APPROVED_VERIFICATION_TYPES.has(input.job.type)) {
       return manualReview('UNSUPPORTED_JOB_TYPE');
@@ -84,7 +93,10 @@ export const createProductionJobEffectDispatcher =
         if (typeof dependencies?.prepareSchemaDryRun !== 'function') {
           return manualReview('DEPENDENCY_UNAVAILABLE');
         }
-        result = await dependencies.prepareSchemaDryRun(input);
+        result =
+          control === undefined
+            ? await dependencies.prepareSchemaDryRun(input)
+            : await dependencies.prepareSchemaDryRun(input, control);
       } else {
         if (typeof dependencies?.verifyObject !== 'function') {
           return manualReview('DEPENDENCY_UNAVAILABLE');

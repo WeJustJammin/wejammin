@@ -1,19 +1,51 @@
 import { QueueEnvelopeSchema } from '@wejammin/contracts';
 
 import {
+  CMS_SCHEMA_DRY_RUN_JOB_TYPE,
+  openCmsLeaseSession,
+} from './cms-lease-control.ts';
+import {
   acquireJobLease,
   applyJobOutcomeCas,
   recordProcessedEventIdempotently,
 } from './execution.ts';
 import { decideJobDispatch } from './dispatch.ts';
 import { canRunExternalEffect } from './restore.ts';
-import type { JobConsumerDecision, JobConsumerInput } from './runtime-types.ts';
+import type {
+  CmsLeaseControl,
+  JobConsumerDecision,
+  JobConsumerInput,
+  JobEffectInput,
+  JobEffectPort,
+  JobEffectResult,
+} from './runtime-types.ts';
 
 const manualReview = (): JobConsumerDecision => ({
   canonicalWrite: false,
   kind: 'manual_review',
   replayable: false,
 });
+
+const leaseConflict = (): JobConsumerDecision => ({
+  acknowledge: false,
+  kind: 'retry',
+  reason: 'lease_conflict',
+});
+
+/** Runs the effect; null means it threw. A bare call keeps the legacy arity. */
+const runEffect = async (
+  effect: JobEffectPort,
+  request: JobEffectInput,
+  control: CmsLeaseControl | undefined,
+): Promise<JobEffectResult | null> => {
+  try {
+    return control === undefined
+      ? await effect.execute(request)
+      : await effect.execute(request, control);
+  } catch {
+    return null;
+  }
+};
 
 export const executeJobDispatch = async (
   input: JobConsumerInput,
@@ -76,23 +108,49 @@ export const executeJobDispatch = async (
   if (lease.kind !== 'claimed') {
     return lease.kind === 'reject'
       ? { acknowledge: true, kind: 'dead_letter', reason: 'INVALID_ENVELOPE' }
-      : { acknowledge: false, kind: 'retry', reason: 'lease_conflict' };
+      : leaseConflict();
   }
 
-  let effectResult;
-  try {
-    effectResult = await input.effect.execute({
+  // Only a verified immutable CMS origin whose canonical job and event type are
+  // both the CMS dry-run type gets lease control; every other path is unchanged.
+  const session =
+    input.verifiedImmutableJobOrigin === true &&
+    canonical.type === CMS_SCHEMA_DRY_RUN_JOB_TYPE &&
+    input.eventJobType === CMS_SCHEMA_DRY_RUN_JOB_TYPE
+      ? openCmsLeaseSession({
+          persistence: input.persistence,
+          clock: input.leaseNow,
+          leaseSeconds: input.leaseSeconds,
+          leaseToken: input.leaseToken,
+          canonical,
+          receipt: lease.lease,
+        })
+      : undefined;
+  if (session === null) return leaseConflict();
+
+  const effectResult = await runEffect(
+    input.effect,
+    {
       envelope: decision.envelope,
       job: canonical,
       leaseToken: lease.lease.leaseToken,
       claimedLease: lease.lease,
-    });
-  } catch {
+    },
+    session?.control,
+  );
+  let leaseVersion = lease.lease.version;
+  if (session !== undefined) {
+    // Drain every accepted checkpoint before any disposition, so a lost or
+    // expired lease overrides success, manual review, and a thrown effect.
+    const settled = await session.settle();
+    if (settled.kind === 'lost') return leaseConflict();
+    leaseVersion = settled.version;
+  }
+  if (effectResult === null || effectResult.state === 'pending_manual_review') {
     return manualReview();
   }
-  if (effectResult.state === 'pending_manual_review') return manualReview();
 
-  const version = `"${lease.lease.version}"`;
+  const version = `"${leaseVersion}"`;
   const outcome = await applyJobOutcomeCas({
     persistence: input.persistence,
     request: {

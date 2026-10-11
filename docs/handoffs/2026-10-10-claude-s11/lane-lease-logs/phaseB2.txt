@@ -1,0 +1,8 @@
+phaseB2 start 05:17:31 HEAD=a2df2469
+amended
+b2-neighbours exit=0
+format-check exit=0
+eslint exit=0
+tsc-build exit=2
+coverage exit=1
+phaseB2 end 05:27:17

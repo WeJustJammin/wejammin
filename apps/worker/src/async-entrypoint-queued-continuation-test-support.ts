@@ -319,7 +319,20 @@ const fixture = (
           input.signal instanceof AbortSignal && !input.signal.aborted,
         ).toBe(true);
       }
-      same(effect.mock.calls, [[expectedEffect]]);
+      // The verified CMS origin hands the effect its input and private lease control.
+      same(
+        effect.mock.calls.map(([input]) => [input]),
+        [[expectedEffect]],
+      );
+      same(
+        effect.mock.calls.map((call) => call.length),
+        [2],
+      );
+      expect(
+        effect.mock.calls.every(
+          ([, control]) => typeof control?.checkpoint === 'function',
+        ),
+      ).toBe(true);
       same(ack.mock.calls, terminal ? [[]] : []);
       same(retry.mock.calls, terminal ? [] : [[]]);
       same(leaseToken.mock.calls, [[message]]);

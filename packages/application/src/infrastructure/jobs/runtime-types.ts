@@ -137,8 +137,33 @@ export type JobEffectResult = Readonly<{
   errorCode: string | null;
 }>;
 
+/**
+ * Candidate operational facts from a CMS lease checkpoint. The canonical reader
+ * is token-blind, so `current` never proves ownership or stage permission.
+ */
+export type CmsLeaseCheckpoint =
+  | Readonly<{
+      kind: 'current';
+      claimedJob: Readonly<{
+        jobId: string;
+        version: string;
+        leaseToken: string;
+      }>;
+      leaseUntilMs: number;
+    }>
+  | Readonly<{ kind: 'lost' }>;
+
+/** Private, per-delivery handle; closed for good once the effect settles. */
+export type CmsLeaseControl = Readonly<{
+  checkpoint(): Promise<CmsLeaseCheckpoint>;
+}>;
+
 export type JobEffectPort = Readonly<{
-  execute(input: JobEffectInput): Promise<JobEffectResult>;
+  /** `control` is passed only to a verified CMS schema dry-run effect. */
+  execute(
+    input: JobEffectInput,
+    control?: CmsLeaseControl,
+  ): Promise<JobEffectResult>;
 }>;
 
 export type JobAcceptanceRuntimeInput = JobAcceptanceInput &
@@ -189,7 +214,8 @@ export type JobConsumerInput = Readonly<{
     | 'claimJobLease'
     | 'applyJobOutcome'
     | 'recordProcessedEvent'
-  >;
+  > &
+    Partial<Pick<JobPersistencePort, 'heartbeatJobLease'>>;
   effect: JobEffectPort;
   envelope: unknown;
   leaseToken: string;
@@ -199,6 +225,8 @@ export type JobConsumerInput = Readonly<{
   eventJobType?: string;
   /** Private verified CMS origin identity, not current execution authority. */
   verifiedImmutableJobOrigin?: boolean;
+  /** Private fresh clock for CMS lease control; never `nowMs`. */
+  leaseNow?: () => number;
   eventPayload?: unknown;
 }>;
 

@@ -18,6 +18,15 @@ and return deterministic plans.
   preclaim job or original queue envelope; the receipt is not enduring authority.
 - `consumer-claimed-lease.test.ts` pins receipt identity, exact final CAS,
   non-adjacent controlled-port versions and existing refusal boundaries.
+- `cms-lease-control.ts` opens the private per-delivery lease session for a
+  verified immutable CMS schema dry-run origin only. The effect receives a
+  frozen `checkpoint()` that serializes a fresh-clock, restore-fence, heartbeat
+  and canonical-reread sequence and returns candidate facts, never ownership.
+  The consumer closes the control and drains accepted checkpoints before any
+  disposition; a lost or expired lease retries instead of writing an outcome.
+  The final compare-and-swap uses the tracked server version, not arithmetic.
+- `consumer-cms-lease-control.test.ts` and
+  `consumer-cms-lease-settlement.test.ts` pin that contract.
 - `offline.ts` revalidates temporary intents without treating local state as
   canonical.
 - `realtime.ts` coalesces identifier/version hints and authorizes canonical

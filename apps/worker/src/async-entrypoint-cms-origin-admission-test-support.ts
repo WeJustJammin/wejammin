@@ -266,10 +266,17 @@ const fixture = (options: Options = {}) => {
   };
   const check = (expected: unknown[][], readerCount: number) => {
     same(history, expected);
+    // Each verified CMS delivery hands the effect its input and private lease control.
     same(
-      effect.mock.calls,
+      effect.mock.calls.map(([input]) => [input]),
       expected.filter((x) => x[0] === 'effect').map((x) => [x[1]]),
     );
+    expect(
+      effect.mock.calls.every(
+        (call) =>
+          call.length === 2 && typeof call[1]?.checkpoint === 'function',
+      ),
+    ).toBe(true);
     for (const [input] of effect.mock.calls)
       expect(Object.isFrozen(input.envelope)).toBe(true);
     same(

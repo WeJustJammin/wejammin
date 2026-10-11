@@ -140,6 +140,7 @@ export const createAsyncJobDependencies = (
           ? {
               verifiedImmutableJobOrigin: true,
               eventJobType: 'cms.schema.dry_run',
+              leaseNow: now,
             }
           : {}),
       });

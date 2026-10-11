@@ -15,8 +15,11 @@ workers. The legacy factory binds activation; the named preparation factory
 binds private `dry_run` purpose without exposing a caller option. Both facades
 re-export the same functions. `production-job-effect-dispatcher.ts` selects
 only exact internal object-verification aliases or `cms.schema.dry_run`;
-provider and lookalike families never select a dependency. These construction
-seams do not themselves supply claimed-job resolution or persistent job fences.
+provider and lookalike families never select a dependency. The private CMS lease
+control the consumer supplies for a verified origin reaches only the preparation
+callback, and only when present; every other callback keeps one argument. These
+construction seams do not themselves supply claimed-job resolution or persistent
+job fences.
 
 ## Ownership
 
