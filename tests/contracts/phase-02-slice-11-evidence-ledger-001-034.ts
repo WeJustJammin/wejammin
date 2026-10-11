@@ -697,7 +697,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'a counted approver whose standing cms.reviewer grant lapsed fails the revocation category: 422 preflight_failed (reviewer_authority_changed) [P2-S11-AC-096]',
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]',
           },
           {
             tool: 'pgtap',
@@ -797,19 +803,80 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode, details} carrying only the CURRENT dependencyHash [P2-S11-AC-033]',
+              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-033]',
           },
           {
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'settings gate: a settings snapshot that differs from the frozen one invalidates the review dependency_changed and commits the 409 version_set_stale refusal [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'settings gate: the executor finds a changed settings snapshot, invalidates the review and blocks the schedule [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'schema gate: a superseded schema version invalidates the review dependency_changed, commits the 409 version_set_stale refusal and appends nothing [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'schema gate: the executor finds a superseded schema version, invalidates the review and blocks the schedule [P2-S11-AC-004]',
           },
         ],
       },
       {
         text: 'template, block',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: a template no longer compatible with the content type refuses the publication 422 preflight_failed, template failed, 16 of 17 passed [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: a retired template invalidates the review dependency_changed, commits the 409 version_set_stale refusal and appends nothing [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: the executor blocks a schedule whose template is no longer compatible [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: the executor finds a retired template, invalidates the review and blocks the schedule approval_invalidated [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'block gate: a withdrawn block invalidates the review dependency_changed, commits the 409 version_set_stale refusal and appends nothing [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'block gate: the executor finds a withdrawn block, invalidates the review and blocks the schedule approval_invalidated [P2-S11-AC-004]',
+          },
+        ],
       },
       {
         text: 'media',
@@ -830,12 +897,84 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'relation, route, locale, and privacy gates re-pass.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'relation gate: a block-policy relation whose target left active refuses 422 preflight_failed (relation_target_unavailable) [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'relation gate: a pinned relation target whose version moved refuses 422 preflight_failed (relation_version_changed) [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'relation gate: the executor blocks a schedule whose block-policy relation target left active [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'relation gate: the executor blocks a schedule whose pinned relation target moved [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'route gate: an internal rich-text link refuses 422 preflight_failed (route, provider_unbuilt_reference) [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'route gate: the executor blocks a schedule whose revision carries an internal link [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'locale gate: a schema that declares a no_fallback field refuses the publication 422 preflight_failed (locale) [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'locale gate: the executor blocks a schedule over a no_fallback field [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'privacy gate: a held relation target refuses 422 preflight_failed (privacy) while revocation and relation still pass [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'privacy gate: a deletion_pending relation target refuses 422 preflight_failed (privacy) [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'privacy gate: the executor blocks a schedule whose relation target is held [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'privacy gate: the executor blocks a schedule whose relation target is deletion_pending [P2-S11-AC-004]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Publish-phase refusal through cms_publish_revision is exercised only for revocation, accessibility, media and the version-set/manifest equality checks. The template and block gates, and the relation, route, locale and privacy gates, are proven failing only through the shared evaluator in the submit phase (supabase/tests/phase_02_slice_11_helpers_preflight.sql); no test drives the publish (or schedule) command, or the evaluator with phase publish, with a withdrawn block, inactive template, unavailable relation target, internal route link, no_fallback locale field or held entry, so those clauses are uncited. Settings and schema are cited through the version-set equality check, not through the preflight categories at publish phase.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-005',
@@ -2631,6 +2770,12 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             title:
               'transport statuses publishes the canonical 502, 504 and 500 envelopes',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs only closed labels for 'an internal failure'",
+          },
         ],
       },
       {
@@ -2818,12 +2963,72 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'redacted telemetry.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs only closed labels for 'an approval'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs only closed labels for 'a rejection'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs only closed labels for 'a stale MFA'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs only closed labels for 'a separation_of_duties refusal'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs only closed labels for 'an unavailable dependency'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction keeps the entry hash as the only identity of an accepted command",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-06' telemetry redaction logs no entry hash for a refusal, which names no entry",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'CMS-03B-06 decision labels counts the decision from the validated request and never from the reason',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'CMS-03B-06 decision labels counts only the closed invalidation reason for a committed dependency_changed refusal',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'the redaction check reports a leaked identifier, reason, upstream text, extra member, free-form label and foreign code',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'No test serializes the CMS-03B-06 telemetry event and asserts that the review id, the decision reason text, the reviewed hash and the reviewer identity are absent from it; only CMS-03B-05 (workflow-command-facts) and CMS-03B-08 (token) have an operation-specific redaction assertion, so the redaction half of this clause is unproven.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-017',
@@ -3663,7 +3868,7 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode, details} carrying only the CURRENT dependencyHash [P2-S11-AC-021]',
+              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-021]',
           },
           {
             tool: 'pgtap',
@@ -3756,6 +3961,12 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'apps/worker/src/cms-editorial/workflow-errors-typed.test.ts',
             title:
               'transport statuses publishes the canonical 502, 504 and 500 envelopes',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs only closed labels for 'an internal failure'",
           },
         ],
       },
@@ -3945,12 +4156,66 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'redacted telemetry.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs only closed labels for 'an accepted schedule'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs only closed labels for 'a stale MFA'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs only closed labels for 'a separation_of_duties refusal'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs only closed labels for 'a failed preflight'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs only closed labels for 'a stale version set'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction keeps the entry hash as the only identity of an accepted command",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-07' telemetry redaction logs no entry hash for a refusal, which names no entry",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'CMS-03B-07 and CMS-03B-09 preflight labels counts a refused schedule preflight by category, outcome and phase without its reason',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'the redaction check reports a leaked identifier, reason, upstream text, extra member, free-form label and foreign code',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'No test serializes the CMS-03B-07 telemetry event and asserts that request identifiers (entry, revision, review, schedule ids), frozen hashes and the schedule time members are absent from it; only CMS-03B-05 (workflow-command-facts) and CMS-03B-08 (token) have an operation-specific redaction assertion, so the redaction half of this clause is unproven.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-023',
@@ -5567,7 +5832,7 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
           },
           {
             tool: 'vitest',
@@ -5666,7 +5931,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
             title:
-              'E2: exactly one event and one audit record per appended row, no typed conflict and no deadlock',
+              'E3: both publishes are parked at their reservation insert while the lineage head is unchanged (absent) and nothing is reserved',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
+            title:
+              'E3: the loser left no committed reservation, row, event or audit record: one of each for the winner',
           },
           {
             tool: 'race',
@@ -5684,13 +5955,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
-              'L1: a second append to the same head BLOCKS on the lineage advisory lock while the first is parked before its insert',
+              'L1: a second append that observed the same head BLOCKS on the lineage advisory lock while the first is parked before its insert',
           },
           {
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
-              'L2: versions 1..6 exactly (no duplicate, no gap), each answered once, one event per row',
+              'L2: version 1 exactly (no duplicate, no gap), one event and one audit record',
           },
         ],
       },
@@ -5727,7 +5998,7 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
           },
           {
             tool: 'vitest',
@@ -5893,6 +6164,12 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             title:
               'transport statuses publishes the canonical 502, 504 and 500 envelopes',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs only closed labels for 'an internal failure'",
+          },
         ],
       },
       {
@@ -5914,7 +6191,7 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
           },
           {
             tool: 'vitest',
@@ -6017,19 +6294,25 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_evidence_audit.sql',
             title:
-              "the row references the publication's outbox event and joins its audit record by correlation id [P2-S11-AC-101]",
+              "the row references the publication's outbox event and is keyed to the exact audit event of the lineage row [P2-S11-AC-101]",
           },
           {
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
             title:
-              'E2: exactly one event and one audit record per appended row, no typed conflict and no deadlock',
+              'E2b: exactly one event and one audit record for the one appended row',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
+            title:
+              'E2a: one event, one audit record, the schedule completed once, and the losing publish committed no reservation',
           },
           {
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
-              'L1: exactly one cms.publication.changed.v1 per appended row',
+              'L1: exactly one row, one cms.publication.changed.v1 and one audit record: the loser committed nothing',
           },
         ],
       },
@@ -6052,7 +6335,7 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
           },
           {
             tool: 'pgtap',
@@ -6110,11 +6393,71 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'redacted telemetry.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs only closed labels for 'an accepted publication'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs only closed labels for 'a stale MFA'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs only closed labels for 'a separation_of_duties refusal'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs only closed labels for 'a failed preflight'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs only closed labels for 'a stale version set'",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction keeps the entry hash as the only identity of an accepted command",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              "'CMS-03B-09' telemetry redaction logs no entry hash for a refusal, which names no entry",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'CMS-03B-07 and CMS-03B-09 preflight labels counts a refused publish preflight by category, outcome and phase without its reason',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'CMS-03B-07 and CMS-03B-09 preflight labels counts a lineage conflict as a bare counter',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-telemetry-redaction.test.ts',
+            title:
+              'the redaction check reports a leaked identifier, reason, upstream text, extra member, free-form label and foreign code',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'No test serializes the CMS-03B-09 telemetry event and asserts that request identifiers (entry, revision, review, publication ids), frozen hashes and the version set are absent from it; only CMS-03B-05 (workflow-command-facts) and CMS-03B-08 (token) have an operation-specific redaction assertion, so the redaction half of this clause is unproven.',
+    status: 'verified',
+    limitation: '',
   },
 ];

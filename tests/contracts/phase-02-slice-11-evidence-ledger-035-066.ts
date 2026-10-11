@@ -318,12 +318,42 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'BE03b ledger 25.02.03.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              "[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers 'P2-S11-AC-035' points at BE03b ledger '25.02.03' and names operations that row owns",
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              "[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers the feature ledger assigns '25.02.03' to P2-S11",
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers owns each operation in exactly one BE03b ledger row',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers resolves every owned operation to a registered browser route or internal operation',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers keeps the Phase 2 plan assignment equal to the same three rows and their operations',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "BE03b ledger 25.02.03". It is a traceability reference to feature-ledger row 25.02.03, not a behavior; no test asserts the row assignment (grep finds the id only in specs and trackers). Either a repository traceability test that every Slice 11 operation is owned by its feature-ledger row, or an owner ruling that the pointer is not testable (DEC-155 already lists AC035 among the wording defects: the text also lags IA03 AC-CMS-08 on E6 and E11), settles it.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-036',
@@ -578,7 +608,62 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'focus stays until navigation',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-037] keeps focus on the activated control until the read lands, then moves it to the review heading only',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-037] keeps focus on the refusal alert while the refetch it triggered lands',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland focus [P2-S11-AC-037] keeps focus on Record approval until the read lands, then moves it to the decisions heading only',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Submit for review' [P2-S11-AC-037] Submit for review keeps focus on the activated control while its command is in flight",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Submit for review' [P2-S11-AC-037] Submit for review keeps focus through an unknown outcome and a reconciling read that is not verified",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Submit for review' [P2-S11-AC-037] Submit for review moves focus only to its named result heading once the canonical read has landed",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Record your decision' [P2-S11-AC-037] Record your decision keeps focus on the activated control while its command is in flight",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Record your decision' [P2-S11-AC-037] Record your decision keeps focus through an unknown outcome and a reconciling read that is not verified",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Record your decision' [P2-S11-AC-037] Record your decision moves focus only to its named result heading once the canonical read has landed",
+          },
+        ],
       },
       {
         text: 'named result heading',
@@ -1024,9 +1109,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "focus stays until navigation". No Slice 11 test asserts the negative property that focus is left where it is until a navigation or a named result heading (only the positive moves are tested: the refusal alert and the named result heading take focus). Needs a jsdom test per form that records document.activeElement before and after a pending command and after a refetch and asserts it is unchanged, like the Slice 10 "never moves focus" editor tests.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-038',
@@ -1080,7 +1164,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode, details} carrying only the CURRENT dependencyHash [P2-S11-AC-021]',
+              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-021]',
           },
           {
             tool: 'pgtap',
@@ -1215,12 +1299,42 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'BE03b ledger 25.02.04.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              "[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers 'P2-S11-AC-038' points at BE03b ledger '25.02.04' and names operations that row owns",
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              "[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers the feature ledger assigns '25.02.04' to P2-S11",
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers owns each operation in exactly one BE03b ledger row',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers resolves every owned operation to a registered browser route or internal operation',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers keeps the Phase 2 plan assignment equal to the same three rows and their operations',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "BE03b ledger 25.02.04". It is a traceability reference to feature-ledger row 25.02.04, not a behavior, and no test asserts the row assignment. Needs a repository traceability test that every Slice 11 operation is owned by its feature-ledger row, or an owner ruling that the pointer is not testable. DEC-155 also lists AC038 among the wording defects (the text ".," punctuation break and the step-up and author wording lag IA03 AC-CMS-09 on E6 and E11), still awaiting the owner wording batch.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-039',
@@ -1458,7 +1572,44 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'focus stays until navigation',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-040] keeps focus on Schedule until the read lands, then moves it to the schedules heading only',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.focus.test.tsx',
+            title:
+              'CmsEditorialScheduleForm focus [P2-S11-AC-040] keeps focus on the control the person is in while the zone data loads and the resolution changes',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.focus.test.tsx',
+            title:
+              'CmsEditorialScheduleForm focus [P2-S11-AC-040] moves focus to the local-error summary only on a refused submit, and typing afterwards does not pull it back',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Schedule publication' [P2-S11-AC-040] Schedule publication keeps focus on the activated control while its command is in flight",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Schedule publication' [P2-S11-AC-040] Schedule publication keeps focus through an unknown outcome and a reconciling read that is not verified",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Schedule publication' [P2-S11-AC-040] Schedule publication moves focus only to its named result heading once the canonical read has landed",
+          },
+        ],
       },
       {
         text: 'named result heading',
@@ -1796,9 +1947,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "focus stays until navigation". No Slice 11 test asserts the negative property that focus is left where it is until a navigation or a named result heading (only the positive moves are tested: the refusal alert and the named result heading take focus). Needs a jsdom test per form that records document.activeElement before and after a pending command and after a refetch and asserts it is unchanged, like the Slice 10 "never moves focus" editor tests.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-041',
@@ -1945,18 +2095,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode, details} carrying only the CURRENT dependencyHash [P2-S11-AC-033]',
+              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-033]',
           },
           {
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
           },
         ],
       },
       {
-        text: 'and a preflight rerun against current revocation sta',
+        text: 'and a preflight rerun against current revocation',
         citations: [
           {
             tool: 'pgtap',
@@ -1968,7 +2118,13 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'a counted approver whose standing cms.reviewer grant lapsed fails the revocation category: 422 preflight_failed (reviewer_authority_changed) [P2-S11-AC-096]',
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]',
           },
           {
             tool: 'vitest',
@@ -1983,6 +2139,10 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
               'CMS-03B-09 publication admission and preflight composition [CMS-03B-09] failed input load sends an own null proof and a strict preflight refusal without effects',
           },
         ],
+      },
+      {
+        text: 'sta',
+        citations: [],
       },
       {
         text: 'implement locked behavior and completion exactly',
@@ -2063,12 +2223,43 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'BE03b ledger 25.03.04.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              "[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers 'P2-S11-AC-041' points at BE03b ledger '25.03.04' and names operations that row owns",
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              "[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers the feature ledger assigns '25.03.04' to P2-S11",
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers owns each operation in exactly one BE03b ledger row',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers resolves every owned operation to a registered browser route or internal operation',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers keeps the Phase 2 plan assignment equal to the same three rows and their operations',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "BE03b ledger 25.03.04". It is a traceability reference to feature-ledger row 25.03.04, not a behavior, and no test asserts the row assignment. Needs a repository traceability test or an owner ruling. DEC-155 also lists AC041 among the wording defects: the text is truncated at "revocation sta" and lags IA03 AC-CMS-13 on E6 and E11, so the "preflight rerun against current revocation sta" clause is cited against the intended meaning (a publish-phase preflight rerun that fails on revoked authority or an unavailable entry), and the owner wording batch is still pending.',
+      'Unproven: "sta", the truncated tail of the criterion text "a preflight rerun against current revocation sta" (DEC-155: the text is cut inside the word; it lags IA03 AC-CMS-13, which reads "a preflight rerun across the registry of preflight categories against current revocation state"). The wording batch is still pending with the owner, so the clause is not cited as written. The evident reading, "a preflight rerun against current revocation", is cited under the preceding clause: the publish-phase tests of phase_02_slice_11_rpc_publication_publish_refusals.sql (a counted approver whose standing grant lapsed is found lazily by the revocation category and the lapse is a committed refusal; a failed category refuses 422 preflight_failed with all 17 entries) and phase-02-slice-11-publish-preflight.apispec.ts. Every other clause, including the BE03b ledger 25.03.04 pointer (phase-02-slice-11-feature-ledger.test.ts), is cited; the entry becomes verified when the owner ratifies the corrected wording and the clause is restated.',
   },
   {
     criterion: 'P2-S11-AC-042',
@@ -2157,7 +2348,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
-              'L2: versions 1..6 exactly (no duplicate, no gap), each answered once, one event per row',
+              'L2: version 1 exactly (no duplicate, no gap), one event and one audit record',
           },
         ],
       },
@@ -2255,7 +2446,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'the invalidation committed (review invalidated at version 3, one review-changed event) and no publication row or event exists [P2-S11-AC-111]',
+              'the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no publication row or event exists [P2-S11-AC-111]',
           },
           {
             tool: 'race',
@@ -2304,7 +2495,56 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'focus stays until navigation',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-043] leaves focus where the person moved it after the preview token took it, through the refetch',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-043] keeps focus on Confirm publish until the read lands, then moves it to the publications heading only',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Create a preview' [P2-S11-AC-043] Create a preview keeps focus on the activated control while its command is in flight",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Create a preview' [P2-S11-AC-043] Create a preview keeps focus through an unknown outcome and a reconciling read that is not verified",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Create a preview' [P2-S11-AC-043] Create a preview moves focus only to its named result heading once the canonical read has landed",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Confirm publication' [P2-S11-AC-043] Confirm publication keeps focus on the activated control while its command is in flight",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Confirm publication' [P2-S11-AC-043] Confirm publication keeps focus through an unknown outcome and a reconciling read that is not verified",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Confirm publication' [P2-S11-AC-043] Confirm publication moves focus only to its named result heading once the canonical read has landed",
+          },
+        ],
       },
       {
         text: 'named result heading',
@@ -2654,9 +2894,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "focus stays until navigation". No Slice 11 test asserts the negative property that focus is left where it is until a navigation or a named result heading (only the positive moves are tested: the refusal alert and the named result heading take focus). Needs a jsdom test per form that records document.activeElement before and after a pending command and after a refetch and asserts it is unchanged, like the Slice 10 "never moves focus" editor tests.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-044',
@@ -2677,7 +2916,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      'A process criterion that no test can attest before slice close: it is the order of work (contract, RED, implementation, GREEN, refactor), the retained RED evidence and a green canonical validation run (pnpm validate and the database, API and race gates). The Slice 11 tracker records full gates as pending and the Codex handoffs record RED and partial GREEN runs; the receipts the evidence guard needs for the whole-ledger run do not exist yet. Cite the canonical validation run and the retained RED receipts (docs/handoffs/2026-10-08-phase2-codex-handoff/s11/*.json) at slice close, or have the owner rule that the guard run itself is the proof.',
+      'A process criterion that no test can attest before slice close: it is the order of work (contract, RED, implementation, GREEN, refactor), the retained RED evidence and a green canonical validation run (pnpm validate and the database, API and race gates). The Slice 11 tracker records full gates as pending; RED and GREEN logs of each lane are kept under docs/handoffs/2026-10-10-claude-s11/ and the Codex receipts under docs/handoffs/2026-10-08-phase2-codex-handoff/s11/, but they are files, not citable tests, and the whole-ledger receipts do not exist yet. Cite the canonical validation run at slice close, or have the owner rule that the all-green guard run itself is the proof.',
   },
   {
     criterion: 'P2-S11-AC-045',
@@ -2694,7 +2933,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      'A tracking criterion that can only be proven at slice close, in the same change as the final tracker update: slice tracking, the feature-ledger assignments of 25.02.03, 25.02.04 and 25.03.04, the cms-publication runbook and the architecture graph. Related checks exist but do not prove it: tests/contracts/phase-02-slice-11-runbook.test.ts asserts the runbook covers every operation, and scripts/check-progress-consistency.mjs checks tracker counts, not feature-ledger assignment or graph freshness. No test greps the tree for BOUNDARY stubs or for undocumented drift. Needs the slice-close change itself plus a traceability/boundary guard.',
+      'A tracking criterion that can only be proven at slice close, in the same change as the final tracker update: slice tracking, the feature-ledger assignments of 25.02.03, 25.02.04 and 25.03.04, the cms-publication runbook and the architecture graph. Related checks exist but do not prove the clause as a whole: tests/contracts/phase-02-slice-11-feature-ledger.test.ts now asserts the three feature-ledger assignments and their operations (cited under AC-035, AC-038 and AC-041), tests/contracts/phase-02-slice-11-runbook.test.ts asserts the runbook covers every operation, and scripts/check-progress-consistency.mjs checks tracker counts; none checks slice tracking beyond counts or architecture-graph freshness. No test scans the tree for unresolved implementation boundaries or undocumented drift, and one boundary is open by design: platform_private.projection_consumer_state.projection_id has no foreign key until the delivery slice creates publication_projection (BOUNDARY in supabase/migrations/20261010165000_cms_projection_consumer_state.sql, sentinel in phase_02_slice_11_projection_state.sql; its GitHub tracking issue is not yet opened). Needs the slice-close change itself plus a boundary and drift guard.',
   },
   {
     criterion: 'P2-S11-AC-046',
@@ -3818,6 +4057,24 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'the owner of the entry (an assignee) sees assign_reviewer and preview, and no preparation for a revision under review [P2-S11-AC-054]',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a preparation for a revision that is not a draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a preparation for a draft that is not the current draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] serves a revision that is not a draft with no preparation and its own latest review',
+          },
         ],
       },
       {
@@ -3841,6 +4098,30 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'at most 16 schedules (newest first, a blocked one with its reason code) and 64 publications are served; a published revision is derived `published` [P2-S11-AC-050]',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 18 preflight results',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 17 schedules',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 65 publications',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] serves 16 schedules and 64 publications, one fewer than a refused list',
+          },
         ],
       },
       {
@@ -3858,12 +4139,54 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'the preparation serves the manifest, its hash, the version set, the risk class and the workflow policy exactly as the server rebuilds them, so a form can echo them unmodified [P2-S11-AC-089]',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a dependencyManifest whose blocks are out of canonical order',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a dependencyManifest whose schema artifact binds another schema version',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a dependencyManifest with a member the contract does not name',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a dependencyManifest with 129 blocks',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a versionSet that is not the projection of the dependencyManifest',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a versionSet with a member the contract does not name',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a versionSet whose block ids are out of canonical order',
+          },
         ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "refuses a response as a 422 response-contract failure". The contracts refuse every listed breach (cited: a preparation on a non-draft, more than 17 results, 16 schedules or 64 publications, a manifest or version set that breaks the Slice 10 contracts), but no code or test produces a 422 for a response-contract breach: the Worker answers a resource that fails the strict schema as 502 BAD_GATEWAY (apps/worker/src/cms-editorial/workflow-read.ts maps a null parse to BAD_GATEWAY; workflow-read-routes.test.ts port boundary "is 502 when the success payload breaks the resource contract"), and the SQL read raises no 422. Needs a wording ruling (same class as Slice 10 AC-089): amend the criterion to 502 BAD_GATEWAY or map response-contract failures to 422 with a typed test.',
+      'Unproven: "and refuses a response as a 422 response-contract failure", the status. The Worker refuses every listed breach and never serves it, but it answers 502 BAD_GATEWAY, not 422: each breach test of apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts (cited under the three "when" clauses) asserts status 502, no ETag, no-store, a fixed body without payload text and no served-resource metric, through the single token RESPONSE_BOUND_STATUS in workflow-read-breach.test-support.ts. BE03b (response bounds, error matrix) and this criterion say 422; BE00 (DEPENDENCY_UNAVAILABLE for an invalid upstream response) and every shipped route say 502. The clause stays uncited because the tested status contradicts it; it awaits the owner wording ruling (amend to 502, or map the breach to 422 and flip that one token).',
   },
   {
     criterion: 'P2-S11-AC-051',
@@ -4184,7 +4507,38 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'schedule and publication versions',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-etag.test.ts',
+            title:
+              'CMS-03B-15 composite ETag moves when a schedule version changes',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-etag.test.ts',
+            title:
+              'CMS-03B-15 composite ETag moves when a schedule changes state and when one appears or disappears',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-etag.test.ts',
+            title:
+              'CMS-03B-15 composite ETag moves when a publication version changes',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-etag.test.ts',
+            title:
+              'CMS-03B-15 composite ETag moves when a publication projection state or lineage row changes',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-etag.test.ts',
+            title:
+              'CMS-03B-15 composite ETag keeps the entry, revision and review prefix readable beside the digest',
+          },
+        ],
       },
       {
         text: 'read buckets of 300/min/user and 600/min/party',
@@ -4290,9 +4644,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "schedule and publication versions" in the composite ETag. The Worker validator (workflow-read-routes.ts accept) is entry id and version, revision id, review id and version plus a SHA-256 of the caller-scoped serialized body, so a schedule or publication change moves it by construction, but no test changes a schedule or publication and observes the ETag move (workflow-read-operations.test.ts builds its resources with `schedules: []`). The p95 < 1,200 ms and 8,000 ms values are cited as declared registry targets and the injected-deadline mechanism; no performance run measures them.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-053',
@@ -4563,7 +4916,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "a response-bound failure (422)". A resource that breaks the strict EntryWorkflowResource contract is answered 502 BAD_GATEWAY by the Worker (workflow-read.ts BAD_GATEWAY; workflow-read-routes.test.ts port boundary "is 502 when the success payload breaks the resource contract"); no code or test produces a 422 for it, although the registry row declares VALIDATION_FAILED 422 for the read envelope. Needs the same wording ruling as AC-050. Also note: the 500/502/504 envelope tests run through the publish row and every declared status of every Slice 11 row, not a dedicated CMS-03B-15 internal-failure case.',
+      'Unproven: "a response-bound failure (422)", the status. A resource that breaks the strict EntryWorkflowResource contract is refused and never served, but the Worker answers 502 BAD_GATEWAY, not 422: the breach tests of apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts (cited under AC-050 and not here, because their asserted status contradicts this clause) assert 502 through the single token RESPONSE_BOUND_STATUS in workflow-read-breach.test-support.ts, and the registry row declares VALIDATION_FAILED 422 for the read envelope while BE00 puts an invalid upstream response on 502. It awaits the same owner wording ruling as AC-050. The 500 and 502/504 envelope tests cited for this criterion run through the publish row and every declared status of every Slice 11 row, not a dedicated CMS-03B-15 internal-failure case.',
   },
   {
     criterion: 'P2-S11-AC-054',
@@ -4572,12 +4925,6 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       {
         text: 'CMS-03B-15 is consumed by the protected `CmsEditorialWorkflowPanel` and `CmsEditorialPreflightSummary`',
         citations: [
-          {
-            tool: 'vitest',
-            file: 'apps/web/src/pages/app/cms-content-modeling/entries/[entryId]/workflow-route.test.tsx',
-            title:
-              'CMS-03B-15 protected workflow page, composed serves the panel and the submit and preview forms of a submittable draft',
-          },
           {
             tool: 'vitest',
             file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx',
@@ -4729,11 +5076,54 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'closed vocabulary copy explains why a form is withheld when its action is not permitted',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx',
+            title:
+              'the workflow island passes the proven permission to the schedule form [P2-S11-AC-040] offers Publish when permittedNextActions includes publish',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx',
+            title:
+              'the workflow island passes the proven permission to the schedule form [P2-S11-AC-040] keeps the schedule form for an author whose permittedNextActions has schedule but not publish',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_read_hint_author_publisher.sql',
+            title:
+              'CMS-03B-15: the author who also holds cms.publisher is offered schedule and preview of the approved revision but NOT publish [P2-S11-AC-054]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_read_hint_author_publisher.sql',
+            title:
+              'CMS-03B-15 control: the same publisher on a revision someone else authored is offered schedule, preview and publish [P2-S11-AC-054]',
+          },
         ],
       },
       {
         text: 'keep focus on refetch',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-054] keeps focus where the person put it through a reconciling refetch, verified and then degraded',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland focus [P2-S11-AC-037] keeps focus on the refusal alert while the refetch it triggered lands',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Submit for review' [P2-S11-AC-037] Submit for review keeps focus through an unknown outcome and a reconciling read that is not verified",
+          },
+        ],
       },
       {
         text: 'and give later forms the served frozen hash, manifest and version set unmodified',
@@ -4938,9 +5328,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "keep focus on refetch". The workflow island documents that focus lands on a result heading only after a command and never on a refetch (CmsEditorialWorkflowIsland.tsx focusHeading), and the post-command focus is tested (CmsEditorialWorkflowIsland.test.tsx "refetches the canonical workflow after a commit and moves focus to the new review region"), but no test records document.activeElement across a plain refetch (or a degraded refetch) and asserts it is unchanged. Needs a jsdom test on CmsEditorialWorkflowIsland: focus a control, resolve a refetch that returns a new verified resource, and assert document.activeElement is still that control.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-055',
@@ -5254,6 +5643,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               '[P2-S11-AC-005][P2-S11-AC-011] EditorialReviewResource (CMS-03B-05, CMS-03B-06) ties invalidatedReason to the invalidated state in both directions',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses an invalidatedReason on a review that is not invalidated',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses an invalidated review with no invalidatedReason',
+          },
         ],
       },
       {
@@ -5270,6 +5671,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'packages/contracts/src/cms-editorial/workflow-resources.test.ts',
             title:
               '[P2-S11-AC-005][P2-S11-AC-011] EditorialReviewResource (CMS-03B-05, CMS-03B-06) ties decidedAt to the approved and rejected states in both directions',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a decidedAt on a review that is still open',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses an approved review with no decidedAt',
           },
         ],
       },
@@ -5288,6 +5701,12 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               '[P2-S11-AC-005][P2-S11-AC-011] EditorialReviewResource (CMS-03B-05, CMS-03B-06) bounds the required (1-8) and recorded (0-8) counts and keeps recorded within required',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses more recorded decisions than required',
+          },
         ],
       },
       {
@@ -5305,6 +5724,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               '[P2-S11-AC-055] EditorialReviewDetailResource inherits the review invariants (invalidated reason, decidedAt, counts, policy binding)',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a protected review requiring fewer than 2 decisions',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] serves a protected review requiring 2 decisions with one recorded',
+          },
         ],
       },
       {
@@ -5321,6 +5752,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'packages/contracts/src/cms-editorial/review-read.test.ts',
             title:
               '[P2-S11-AC-055] EditorialReviewDetailResource inherits the review invariants (invalidated reason, decidedAt, counts, policy binding)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a required count that is not the frozen workflow policy count',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a risk class that is not the frozen workflow policy class',
           },
         ],
       },
@@ -5345,6 +5788,24 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'assignment summaries are capped at 32, every active one first then the newest revoked, with one display label per reviewer (16) and never an identifier [P2-S11-AC-056]',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses 9 decisions',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses 33 assignments',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] serves 8 decisions and 32 assignments, one fewer than a refused list',
+          },
         ],
       },
       {
@@ -5362,12 +5823,24 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'a decision exposes id, decision, capability, decidedAt and mine, and its reason to its decider [P2-S11-AC-057]',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a decision with a member the contract does not name',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a decision reason on a decision that is not the caller own',
+          },
         ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "refuses a response as a 422 response-contract failure". The contracts refuse every listed breach (cited), but no code or test produces a 422 for a response-contract breach: the Worker answers a resource that fails the strict EditorialReviewDetailResource schema as 502 BAD_GATEWAY (workflow-read.ts BAD_GATEWAY; workflow-read-operations.test.ts "CMS-03B-16 review detail refuses a detail of another review" and workflow-read-routes.test.ts port boundary "is 502 when the success payload breaks the resource contract"), and the SQL read raises no 422. Same wording ruling as AC-050 (amend to 502 or map to 422 with a typed test).',
+      'Unproven: "and refuses a response as a 422 response-contract failure", the status. The Worker refuses every listed breach and never serves it, but it answers 502 BAD_GATEWAY, not 422: each breach test of apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts (cited under the "when it breaks", "carries more than" and "exposes a decision member" clauses) asserts status 502, no ETag, no-store, a fixed body without payload text and no served-resource metric, through the single token RESPONSE_BOUND_STATUS in workflow-read-breach.test-support.ts. BE03b (decisions / assignments row, error matrix) and this criterion say 422; BE00 and every shipped route say 502. The clause stays uncited because the tested status contradicts it; it awaits the same owner wording ruling as AC-050 (amend to 502, or map the breach to 422 and flip that one token).',
   },
   {
     criterion: 'P2-S11-AC-057',
@@ -6118,7 +6591,56 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and moves focus to the heading on navigation only',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/lib/route-heading-focus-install.test.ts',
+            title:
+              'installRouteHeadingFocus [P2-S11-AC-060] leaves the browser focus alone on the first page load',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/lib/route-heading-focus-install.test.ts',
+            title:
+              'installRouteHeadingFocus [P2-S11-AC-060] focuses the heading, without scrolling, on every navigation after the first load',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/lib/route-heading-focus-install.test.ts',
+            title:
+              'installRouteHeadingFocus [P2-S11-AC-060] keeps the browser fragment target when the location carries a fragment',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/lib/route-heading-focus-install.test.ts',
+            title:
+              'route-heading-focus module wiring [P2-S11-AC-060] installs on the document: the first page load keeps focus, a later navigation moves it to the heading',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/lib/route-heading-focus-install.test.ts',
+            title:
+              'route-heading-focus module wiring [P2-S11-AC-060] does not move focus on an ordinary initial load, with or without a fragment',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/app/cms-content-modeling/reviews/review-detail-route.test.tsx',
+            title:
+              'reviews/[reviewId].astro response invariants [P2-S11-AC-060] moves focus to the heading on navigation only: the page hands its heading to the shell that loads the heading-focus script',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland focus [P2-S11-AC-060] keeps focus where the person put it through a reconciling refetch, verified and then degraded',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland focus [P2-S11-AC-037] keeps focus on Record approval until the read lands, then moves it to the decisions heading only',
+          },
+        ],
       },
       {
         text: 'verification covers each reader scope',
@@ -6259,9 +6781,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "moves focus to the heading on navigation only". The detail island moves focus to the decisions heading only after a command (CmsEditorialReviewDetailIsland.test.tsx "refetches the review after a decision and moves focus to the decisions heading"; use-cms-workflow-canonical never focuses on a refetch), but the navigation half rests on the shared shell script lib/route-heading-focus.ts (included by CmsEditorialDocument.astro) whose installRouteHeadingFocus has no test in the repository (route-heading-focus.test.ts covers only the one-shot post-commit mark), and no test asserts that the review detail route focuses its heading on client navigation. Needs a jsdom test of installRouteHeadingFocus on astro:page-load plus a source assertion that the review route uses the shell.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-061',

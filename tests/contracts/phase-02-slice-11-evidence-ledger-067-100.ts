@@ -423,6 +423,12 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'CMS-03B-18 assignment lifecycle [CMS-03B-18] stale review closed review and concealed review refuse exactly without effects',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql',
+            title:
+              'an owner whose membership tenure has ended no longer holds the owner scope: the review is concealed NOT_FOUND for create and revoke [P2-S11-AC-069]',
+          },
         ],
       },
       {
@@ -1011,7 +1017,32 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and returns focus to the assignment list heading after commit',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland focus [P2-S11-AC-072] returns focus to the assignments heading after an assign commits and the review is refetched',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland focus [P2-S11-AC-072] returns focus to the assignments heading after a revoke commits and the review is refetched',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Assign a reviewer' [P2-S11-AC-072] Assign a reviewer moves focus only to its named result heading once the canonical read has landed",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx',
+            title:
+              "'Revoke an assignment' [P2-S11-AC-072] Revoke an assignment moves focus only to its named result heading once the canonical read has landed",
+          },
+        ],
       },
       {
         text: 'verification covers create and revoke, every eligibility refusal collapsing to `reviewer_not_eligible`, the seven-day, reviewer-grant-end and grantor-authority bounds, `assignment_exists`, `assignment_limit`, `review_not_open`, owner-only authority',
@@ -1097,9 +1128,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "returns focus to the assignment list heading after commit". The form test asserts only that onDone is called with the heading id review-assignments-title and the detail test that the heading is focusable; no test drives an assignment commit through CmsEditorialReviewDetailIsland and asserts document.activeElement is that heading (the island focus test covers only the decisions heading).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-073',
@@ -1253,12 +1283,60 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and its shape equals the BE04c `Shard 03 preview-token verifier` seam.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 request equals the BE04c seam request names exactly the six members of the seam row and no other',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 request equals the BE04c seam request types each member as the seam row does',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 request equals the BE04c seam request matches the seam audience grammar on every boundary',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 request equals the BE04c seam request bounds the route at 4,096 characters as the criterion states',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 result equals the BE04c seam response carries the seven members of the valid branch and rejects any other shape',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 result equals the BE04c seam response carries the denied branch with five null members and a boolean revoked',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 transport equals the BE04c seam timings declares the seam timeout, retries, read safety and circuit',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-preview-verifier-seam.test.ts',
+            title:
+              '[P2-S11-AC-073] the CMS-03B-19 transport equals the BE04c seam timings is one RPC for the Shard 04 delivery principal, as the seam prose names it',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "its shape equals the BE04c `Shard 03 preview-token verifier` seam". No test compares the declared request and result shape with the BE04c seam row (line 88 of .memory/wiki/specs/be/04c-public-delivery-cache.md); the tests prove the shape against the BE03b contract and the Worker adapter only. There is no Shard 04 consumer in the repository yet (the adapter has no importer until Slice 15).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-074',
@@ -2186,7 +2264,38 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "`version` equal to the schedule's `expected_version`, frozen hash and dependency hash equal to the schedule's)",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              "a review whose version is not the schedule's expected_version blocks the schedule approval_invalidated [P2-S11-AC-080]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              "a review whose dependency hash differs from the schedule's blocks the schedule approval_invalidated [P2-S11-AC-080]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              "a review whose frozen hash is no longer the revision's payload hash blocks the schedule approval_invalidated [P2-S11-AC-080]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              "a review whose activation evidence hash differs from the schedule's blocks the schedule approval_invalidated [P2-S11-AC-080]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'none of the four mismatches appended a lineage row or an event, and the blocked outcome left the forged reviews approved (the executor blocks the schedule, it does not rewrite the review) [P2-S11-AC-080]',
+          },
+        ],
       },
       {
         text: ', running all 17 preflight categories in the execute phase with the verified `PreflightEvidence` (current provider key and version, `evaluatedAt` within 60 seconds, recomputed `bindingHash`)',
@@ -2231,7 +2340,19 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'absent proof, a failed checker run, stale proof (over 60 s) and proof bound to other rows (DEC-158(c)) each make the schedule failed_retryable with attempt_count 1 and no reason, never a pass [P2-S11-AC-083]',
+              'absent proof and a failed checker run (unavailable accessibility) each make the schedule failed_retryable with attempt_count 1 and no reason, never a pass [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'stale proof (over 60 s), proof bound to other rows and proof from another provider version each refuse the execution with the typed conflict preflight_evidence_stale (DEC-158(c)) [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              "a stale or mis-bound proof consumes no retry state: each schedule is still executing at the claim's version and lease with attempt_count 0 and an unchanged row, and no schedule audit record or other effect exists [P2-S11-AC-083]",
           },
           {
             tool: 'vitest',
@@ -2271,9 +2392,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "`version` equal to the schedule\'s `expected_version`, frozen hash and dependency hash equal to the schedule\'s". The executor compares the review version, dependency hash, activation-evidence hash and the revision payload hash with the schedule row, but no test builds an approved review whose version or dependency hash or frozen hash differs from its schedule and shows the schedule blocked approval_invalidated; the cited tests reach approval_invalidated only through an invalidated review state and a drifted frozen manifest.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-081',
@@ -2481,7 +2601,32 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'runs claim and execute under the 15,000 ms job deadline',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
+            title:
+              'the 15,000 ms job deadline is the contract deadline the RPC transport enforces and never exceeds',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
+            title:
+              'the 15,000 ms job deadline aborts a claim that never answers at 15,000 ms and asks the platform to retry the tick',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
+            title:
+              'the 15,000 ms job deadline aborts an execute that never answers at 15,000 ms, logs it as retryable and finishes the tick',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
+            title:
+              'the 15,000 ms job deadline gives the claim and the execute each their own 15,000 ms',
+          },
+        ],
       },
       {
         text: 'and applies the retry ladder of 15 s, 60 s and 300 s for the first, second and third failure, a fourth consecutive retryable failure blocking the schedule with `retries_exhausted`.',
@@ -2525,9 +2670,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "runs claim and execute under the 15,000 ms job deadline". The 15,000 ms value is asserted only as the exported constant CMS_SCHEDULE_DEADLINE_MS (internal-rpc.test.ts); no test shows the sweep passing that deadline to its claim and execute RPC calls or aborting a hung claim/execute at 15,000 ms (async-runtime.test.ts proves abort only at an explicit 25 ms deadline).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-083',
@@ -2668,7 +2812,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'absent proof, a failed checker run, stale proof (over 60 s) and proof bound to other rows (DEC-158(c)) each make the schedule failed_retryable with attempt_count 1 and no reason, never a pass [P2-S11-AC-083]',
+              'absent proof and a failed checker run (unavailable accessibility) each make the schedule failed_retryable with attempt_count 1 and no reason, never a pass [P2-S11-AC-083]',
           },
           {
             tool: 'vitest',
@@ -3285,6 +3429,42 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'the resumed page lists the remaining matches and ends the walk with no cursor [P2-S11-AC-086]',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
+            title:
+              'the first filtered page lists the matches among the first 1,000 candidates [P2-S11-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
+            title:
+              'the bound-reached page carries a next cursor positioned after the last scanned candidate (rank 1000) [P2-S11-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
+            title:
+              'decoding the bound-ending cursor does not reveal the UUID of the concealed rank-1000 revision (0 = the UUID text is absent) [P2-S11-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
+            title:
+              'an empty filtered page whose whole scan was concealed or non-matching still answers a non-null cursor [P2-S11-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
+            title:
+              'the sealed cursor resumes exactly after the last scanned candidate: the remaining matches, then the end of the walk [P2-S11-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
+            title:
+              'the empty page resumes past the concealed rank-1000 revision and finds the visible published revision at rank 1150 [P2-S11-AC-086]',
+          },
         ],
       },
       {
@@ -3392,11 +3572,66 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'CMS-03B-05 frozen submission and admission contracts [CMS-03B-05] freezes exact hashes, manifest, version set, policy and dependency rows with six atomic effect groups; fresh-evidence replay changes none',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'there is exactly one builder and its only input is the revision id: no manifest, hash or version-set value can be passed in [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'no other function named like a manifest builder returns a manifest [P2-S11-AC-087]',
+          },
         ],
       },
       {
         text: 'reads canonical state under RLS',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'the builder is owned by the CMS definer role, which is neither superuser nor BYPASSRLS, so every read it makes is subject to row-level security [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'every table the builder reads has forced row-level security with a policy on the CMS RPC context [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'control: with the CMS RPC context the builder returns the nine-group manifest of the revision [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'without the CMS RPC context the revision is invisible under RLS: the builder answers NOT_FOUND [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'a context other than true is no context: NOT_FOUND [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'the context is evaluated per statement: restored, the same call returns the manifest again [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'outside the context the currency predicates see no canonical rows: the frozen manifest is stale and its identities are not current [P2-S11-AC-087]',
+          },
+        ],
       },
       {
         text: 'accepts no caller value',
@@ -3423,6 +3658,12 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
             title:
               'a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'there is exactly one builder and its only input is the revision id: no manifest, hash or version-set value can be passed in [P2-S11-AC-087]',
           },
         ],
       },
@@ -3537,9 +3778,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "reads canonical state under RLS". The builder is a private SECURITY DEFINER that runs inside the CMS RPC context, but no test shows that it reads through row-level security (for example that the same call outside the CMS RPC context, or for a caller whose RLS context excludes the revision, returns nothing or refuses); the pgTAP suite always sets app.cms_rpc first.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-088',
@@ -3895,7 +4135,60 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and a command that relies on a frozen set (CMS-03B-07, CMS-03B-09, the executor) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`',
+        text: 'and a command that relies on a frozen set (CMS-03B-07, CMS-03B-09',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-021]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-033]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
+            title:
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: a retired template invalidates the review dependency_changed, commits the 409 version_set_stale refusal and appends nothing [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'block gate: a withdrawn block invalidates the review dependency_changed, commits the 409 version_set_stale refusal and appends nothing [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'settings gate: a settings snapshot that differs from the frozen one invalidates the review dependency_changed and commits the 409 version_set_stale refusal [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'schema gate: a superseded schema version invalidates the review dependency_changed, commits the 409 version_set_stale refusal and appends nothing [P2-S11-AC-004]',
+          },
+        ],
+      },
+      {
+        text: 'the executor) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`',
         citations: [],
       },
       {
@@ -3905,13 +4198,13 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'the invalidation committed (review invalidated at version 3, one review-changed event) and no publication row or event exists [P2-S11-AC-111]',
+              'the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no publication row or event exists [P2-S11-AC-111]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'the invalidation committed (review invalidated at version 3, one review-changed event) and no schedule exists [P2-S11-AC-111]',
+              'the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no schedule exists [P2-S11-AC-111]',
           },
           {
             tool: 'pgtap',
@@ -3935,14 +4228,38 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
             title:
-              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 dependency_changed with the current hash for the browser, the review stays invalidated and a replay answers the same 409',
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale frozen manifest is the COMMITTED refusal: HTTP 200 on the wire, 409 version_set_stale for the browser (BE03b E1), the review stays invalidated dependency_changed and a replay answers the same 409',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: the executor finds a retired template, invalidates the review and blocks the schedule approval_invalidated [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'block gate: the executor finds a withdrawn block, invalidates the review and blocks the schedule approval_invalidated [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'settings gate: the executor finds a changed settings snapshot, invalidates the review and blocks the schedule [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'schema gate: the executor finds a superseded schema version, invalidates the review and blocks the schedule [P2-S11-AC-004]',
           },
         ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "returns 409 `CONFLICT` `version_set_stale`" for a command (CMS-03B-07, CMS-03B-09, the executor) that finds a non-current frozen identity or a differing recomputed manifest. The implemented and tested outcome is different: a stale frozen manifest is the COMMITTED refusal 409 `CONFLICT` `dependency_changed` carrying the current dependencyHash (and the executor blocks the schedule approval_invalidated), while `version_set_stale` is raised only when the caller\'s expectedVersionSet differs from the frozen or recomputed set. The tracker/BE03b wording (BE03b line 1773) and the code disagree: either the criterion text or the refusal token needs an orchestrator decision.',
+      'Unproven: "the executor) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`", for the executor only. CMS-03B-07 and CMS-03B-09 return the committed 409 version_set_stale (details {}) and invalidate the review dependency_changed (phase_02_slice_11_rpc_publication_schedule_refusals.sql, ..._publish_refusals.sql, phase-02-slice-11-publish.apispec.ts and phase_02_slice_11_criteria_publish_gates.sql, cited under the first clause). The executor (CMS-03B-20) is an internal RPC whose result type has no 409: on a non-current identity or a differing recomputed manifest it blocks the schedule approval_invalidated and invalidates the review dependency_changed (cited under the last clause), and the contract keeps that form. BE03b E1 and this criterion list the executor among the commands that return 409 version_set_stale; the clause stays uncited until an owner wording ruling amends it to the executor outcome (or gives the executor a 409 form).',
   },
   {
     criterion: 'P2-S11-AC-091',
@@ -4142,7 +4459,43 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "under the owner's advisory lock",
-        citations: [],
+        citations: [
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
+            title:
+              'L1: the parked first writer holds the owner settings advisory lock (it takes it before its insert)',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
+            title:
+              'L1: the second first-write of the owner waits on the owner advisory lock key held by the first',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
+            title: 'L1: nothing is inserted while the first is parked',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
+            title:
+              'L2: the second first-write, which computed a different snapshot, waits on the owner advisory lock key',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
+            title:
+              'L4: a write of a new value waits while another session holds the owner advisory lock key',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
+            title:
+              'L4: no snapshot is inserted while the lock is held by another session',
+          },
+        ],
       },
       {
         text: '(the first is ordinal 1)',
@@ -4248,9 +4601,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "under the owner\'s advisory lock". The ordinal-allocation path that inserts a new snapshot (the authorized save seam after DEC-163) is covered for its result (previous maximum plus one, first is ordinal 1, restoring earlier values reuses the earlier ordinal, rollback of the whole save) but no test shows the owner advisory lock being taken or two concurrent first saves serializing; the lookup tests only prove the read-only lookup retains no advisory lock. A race runner or a lock-observation pgTAP is missing.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-093',
@@ -4391,6 +4743,12 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
               'control: registry version 2 that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
+            title:
+              'a version-2 row of each of the seventeen providers is unavailable, none is evaluated as v1 [P2-S11-AC-093]',
           },
         ],
       },
@@ -4770,7 +5128,25 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'a counted approver whose standing cms.reviewer grant lapsed fails the revocation category: 422 preflight_failed (reviewer_authority_changed) [P2-S11-AC-096]',
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'an exact replay returns the same committed refusal with no further effect [P2-S11-AC-096]',
           },
           {
             tool: 'pgtap',
@@ -5045,7 +5421,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'absent proof, a failed checker run, stale proof (over 60 s) and proof bound to other rows (DEC-158(c)) each make the schedule failed_retryable with attempt_count 1 and no reason, never a pass [P2-S11-AC-083]',
+              'absent proof and a failed checker run (unavailable accessibility) each make the schedule failed_retryable with attempt_count 1 and no reason, never a pass [P2-S11-AC-083]',
           },
           {
             tool: 'vitest',
@@ -5100,7 +5476,62 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'with no network provider, DOM or Browser Rendering provider',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/purity.test.ts',
+            title:
+              'cms.a11y.structural has no network, DOM, Browser Rendering or environment dependency (P2-S11-AC-098) reads the production sources of the directory and the local modules they reach',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/purity.test.ts',
+            title:
+              'cms.a11y.structural has no network, DOM, Browser Rendering or environment dependency (P2-S11-AC-098) imports zod only through the zod-runtime seam',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/purity.test.ts',
+            title:
+              'cms.a11y.structural has no network, DOM, Browser Rendering or environment dependency (P2-S11-AC-098) detects what it forbids: a fixture that fetches, reads the DOM or reaches an env binding is flagged',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/gate-isolation.test.ts',
+            title:
+              'the accessibility gate with every network, DOM and browser global trapped traps are armed: reaching for fetch or document throws and is recorded',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/gate-isolation.test.ts',
+            title:
+              'the accessibility gate with every network, DOM and browser global trapped completes a healthy run',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/gate-isolation.test.ts',
+            title:
+              'the accessibility gate with every network, DOM and browser global trapped completes a blocked run',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/gate-isolation.test.ts',
+            title:
+              'the accessibility gate with every network, DOM and browser global trapped answers a failed load, an unreadable target and a throwing load with a typed failure',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/gate-isolation.test.ts',
+            title:
+              'the accessibility gate with every network, DOM and browser global trapped ends a load that never settles at its deadline without any network',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/gate-isolation.test.ts',
+            title:
+              'the accessibility gate with every network, DOM and browser global trapped only ever calls the load it was given',
+          },
+        ],
       },
       {
         text: ', registered as the `worker` provider of the `accessibility` preflight category and as the manifest `checker`',
@@ -5139,7 +5570,56 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: ', targeting `cms.entry_revision` by revision id and `revision_number`, with exactly one current version per target type, older versions readable',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'the Phase 2 accessibility registry row registers cms.a11y.structural version 1 for cms.entry_revision as the one current version',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'the Phase 2 accessibility registry row reads the registered version and knows it is current',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'checkerTargetOf: the cms.entry_revision target is the revision uuid and its revision_number',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'one current version per target type, older versions readable marks the newer version current and keeps the older one readable',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'one current version per target type, older versions readable lists every readable version of a checker, ascending by number, whatever the input order',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'one current version per target type, older versions readable refuses a target type with no current version',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'one current version per target type, older versions readable refuses a target type with two current versions, of one checker or of two',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/registry.test.ts',
+            title:
+              'one current version per target type, older versions readable accepts one current version for each of two target types',
+          },
+        ],
       },
       {
         text: 'and a `timeoutMs` of 2,000 wall-clock milliseconds covering input load and evaluation.',
@@ -5176,9 +5656,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: (1) "with no network provider, DOM or Browser Rendering provider": no test scans the module imports or runs the checker with fetch, DOM and Browser Rendering bindings forbidden; purity is shown only through determinism, no input mutation and no state between calls. (2) "targeting `cms.entry_revision` by revision id and `revision_number`, with exactly one current version per target type, older versions readable": these are the BE05c quality-checker request and registry rules (BE05c lines 1000-1001, owned by Slice 16); the Slice 11 module has no `cms.entry_revision` target type, no checker-version registry and no test of one current version per target type or of older versions staying readable. Proven only: the checker input is keyed by revisionId and revisionNumber (input-schema tests) and the binding hash covers the revision id, and the preflight registry keeps one current row per category (AC-093).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-099',
@@ -5533,6 +6012,29 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'runAccessibilityChecker: rule groups and ordering reports every group, blocking first, then render order, ruleId and pointer',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_checker_render_plan.sql',
+            title:
+              'the plan rows are the stable location identities in render order [P2-S11-AC-100]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_checker_render_plan.sql',
+            title: 'plan positions are 1..n without a gap [P2-S11-AC-100]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/sql-parity.test.ts',
+            title:
+              'the database document of an object field with rich text (SQL parity) is judged in the order the database gave it, nested links and headings included',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/sql-parity.test.ts',
+            title:
+              'the database document of an object field with rich text (SQL parity) would be judged differently in another order: the order is the database’s, not the Worker’s',
+          },
         ],
       },
       {
@@ -5630,6 +6132,42 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'apps/worker/src/cms-editorial/a11y-structural/checker.test.ts',
             title:
               'runAccessibilityChecker: determinism yields byte-identical output for identical input',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_checker_render_plan.sql',
+            title:
+              'renderPlanHash is the independent vector sha256 of {"nodes":[meta#note,meta#lead,body],"templateVersionId":null}: the value the Worker render-plan test pins [P2-S11-AC-100]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_checker_render_plan.sql',
+            title:
+              'and it is the hash of exactly the plan the rows name [P2-S11-AC-100]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_checker_render_plan.sql',
+            title:
+              'declaring lead before note moves the nodes and changes the render-plan hash [P2-S11-AC-100]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/render-plan.test.ts',
+            title:
+              'render-plan hash vectors (parity with PostgreSQL) matches the vector of meta#note, meta#lead and body with no template',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/render-plan.test.ts',
+            title:
+              'render-plan hash vectors (parity with PostgreSQL) depends on the order of the plan',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/a11y-structural/sql-parity.test.ts',
+            title:
+              'the database document of an object field with rich text (SQL parity) carries a render-plan hash that TypeScript reproduces from the node identities',
           },
         ],
       },

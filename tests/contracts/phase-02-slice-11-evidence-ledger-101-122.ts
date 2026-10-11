@@ -107,7 +107,7 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_evidence_audit.sql',
             title:
-              'the columns are the envelope, the command reference and exactly the five summary members (no finding text, no binding hash) [P2-S11-AC-101]',
+              'the columns are the envelope, the command reference (the exact audit event, the optional outbox event) and exactly the five summary members (no finding text, no binding hash) [P2-S11-AC-101]',
           },
           {
             tool: 'pgtap',
@@ -512,11 +512,82 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               '[P2-S11-AC-103][P2-S11-AC-105] cms_tzdb_version() returns CMS_TZDB_VERSION returns, in the last migration that defines it, the literal tag the contracts constant pins',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'control: the pin advances to 2026f the way a forward migration advances it (the function is redefined) [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'after the advance a request that still names the earlier tag is refused tzdb_version_mismatch carrying the new pin [P2-S11-AC-103]',
+          },
         ],
       },
       {
         text: 'with stored schedules keeping the version and instant they were accepted with and recording the tag only',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'control: the command stores the pinned tag it was accepted under [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              "a stored schedule's tzdb_version cannot be moved to the current pin: IMMUTABLE_RECORD [P2-S11-AC-103]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'nor to any other tag: IMMUTABLE_RECORD, and the stored row is unchanged [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'after the refused updates the stored tag, instant, local time and zone are exactly as accepted [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'an empty tzdb tag violates cms_publication_schedules_tzdb_version_check [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title: 'a 33-byte tzdb tag violates the same check [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title: 'control: a 32-byte tag is accepted [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'a schedule accepted before the pin advanced keeps its tag and its accepted instant [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'a schedule accepted after the advance records the new tag [P2-S11-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_schedule_tzdb_tag.sql',
+            title:
+              'a schedule accepted under 2025c executes after the pin advanced: completed, deviation measured from its stored instant, tag still 2025c [P2-S11-AC-103]',
+          },
+        ],
       },
       {
         text: 'per DEC-153 the Slice 11 contract lane pins the newest stable IANA release available when it starts and records the tag, the snapshot SHA-256 and the generation command in DEC-153.',
@@ -536,9 +607,8 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "with stored schedules keeping the version and instant they were accepted with and recording the tag only" is uncited. The accepted instant is proven immutable (phase_02_slice_11_schedules_schema.sql "the resolved instant is verified time authority and never moves") and the RPC stores tzdb_version = cms_tzdb_version() at acceptance (phase_02_slice_11_rpc_publication_schedule.sql "the schedule row stores ... the verified time fields"), but no test updates tzdb_version after acceptance and expects IMMUTABLE_RECORD, none proves a schedule accepted under an older tag keeps that tag (and still executes) after the pin advances, and none asserts the column stores the tag only (the cms_publication_schedules_tzdb_version_check constraint is never exercised). Clause "advanced only by code plus a forward migration" is cited through the parity tests only (a pin change without a new migration fails parity); there is no test that forbids another way of advancing.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-104',
@@ -1028,7 +1098,74 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'reproduces the spring-forward gap, fall-back fold, `UTC` and three-segment zone cases',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'resolveScheduleInput reports a nonexistent local time with the two alternatives the server states',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'resolveScheduleInput reports an ambiguous local time as a fold and resolves once earlier or later is chosen',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'resolveScheduleInput resolves an ordinary local time to one UTC instant with its offset',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx',
+            title:
+              'resolution shown beside the inputs offers the two alternatives of a nonexistent time and applies the chosen one',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx',
+            title:
+              'resolution shown beside the inputs offers earlier and later for an ambiguous time with both instants',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx',
+            title:
+              'schedule (CMS-03B-07) sends the resolved request and states Scheduled, not published',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'three-segment IANA zones [P2-S11-AC-106] resolves America/Argentina/Buenos_Aires to one UTC instant at UTC-03:00',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'three-segment IANA zones [P2-S11-AC-106] reproduces the spring-forward gap of a three-segment zone with its two alternatives',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'three-segment IANA zones [P2-S11-AC-106] reproduces the fall-back fold of a three-segment zone and resolves once earlier or later is chosen',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts',
+            title:
+              'three-segment IANA zones [P2-S11-AC-106] offers three-segment names as suggestions and refuses a fourth segment',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx',
+            title:
+              'three-segment IANA zones [P2-S11-AC-106] resolves, shows and sends America/Argentina/Buenos_Aires',
+          },
+        ],
       },
       {
         text: 'while the server re-resolves and stays authoritative.',
@@ -1056,7 +1193,7 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Two clauses are uncited. (1) "stays within the bundle-budget thresholds": the only budget gate is the build script scripts/verify-bundle-budget.mjs (pnpm bundle:check), which is not a vitest, pgTAP, Playwright or race test, never names the contracts-time-authority chunk, and so cannot be cited; apps/web/src/client-chunk-time-authority.test.ts proves the snapshot is split into its own lazy chunk but asserts no size. (2) "reproduces the spring-forward gap, fall-back fold, UTC and three-segment zone cases": the web tests (cms-workflow-schedule-resolution.test.ts, CmsEditorialScheduleForm.test.tsx) cover the gap, the fold and UTC, but no apps/web test resolves a three-segment zone such as America/Argentina/Buenos_Aires (only the Worker and contracts tests do).',
+      'Unproven: "stays within the bundle-budget thresholds". The only budget gate is the build script scripts/verify-bundle-budget.mjs (pnpm bundle:check), which is not a vitest, pgTAP, Playwright or race test and runs on a build, never names the contracts-time-authority chunk; tests/performance/bundle-budget.test.ts feeds the measurement functions synthetic fixtures, and apps/web/src/client-chunk-time-authority.test.ts proves the snapshot is split into its own lazy chunk (cited under "is lazy-loaded when the form opens") but asserts no size. A citable proof needs a test that measures the built contracts-time-authority chunk and the initial route against BUNDLE_BUDGETS (about 26 KB gzip against the 80 KiB lazy-chunk and 90 KiB initial-route thresholds), or an owner ruling that pnpm bundle:check is the proof.',
   },
   {
     criterion: 'P2-S11-AC-107',
@@ -1235,7 +1372,80 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'in this order:',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'concealment before the CAS operand: a hidden review with a stale If-Match is NOT_FOUND, not VERSION_MISMATCH [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'the effective-assignment check before the state: a lapsed assignment on an approved review is 403 capability_missing, not review_not_open [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'state before the dependency rebuild: an approved review with a drifted manifest is review_not_open and is not invalidated [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'state before separation: the submitter on an approved review is review_not_open, not separation_of_duties [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'the CAS operand before the dependency rebuild: a stale If-Match on a drifted manifest is VERSION_MISMATCH and commits no invalidation [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'the rebuild before separation: the submitter on a drifted manifest gets the committed dependency_changed, not separation_of_duties [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'the rebuild before separation: the revision author on a drifted manifest gets the committed dependency_changed [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'the rebuild before the standing grant: a lapsed cms.reviewer grant on a drifted manifest gets the committed dependency_changed, not capability_missing [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'separation before the standing grant: the submitter with a lapsed cms.reviewer grant is separation_of_duties, not capability_missing [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'duplicate_decision before the standing grant: a second decision with a lapsed grant is duplicate_decision, not capability_missing [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_order.sql',
+            title:
+              'the CAS operand before the standing grant: a stale If-Match with a lapsed grant is VERSION_MISMATCH, not capability_missing [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]',
+          },
+        ],
       },
       {
         text: 'the step-up proof',
@@ -1387,9 +1597,8 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "in this order" (the evaluation order of the seven steps) is uncited. Only three order facts are asserted: the step-up proof precedes concealment (rpc_review_decision_refusals.sql "ahead of concealment"), the open-state check precedes the If-Match CAS operand ("the state is evaluated before the CAS operand"), and the open-state check precedes the dependency rebuild (rpc_review_decision_invalidation.sql "the state check precedes the dependency rebuild"). No test fixes concealment before the open-state check, the CAS before the rebuild, the rebuild before separation, separation before the active cms.reviewer grant, or duplicate_decision against capability_missing for one caller who fails two steps at once.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-109',
@@ -1958,13 +2167,25 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'a counted approver whose standing cms.reviewer grant lapsed fails the revocation category: 422 preflight_failed (reviewer_authority_changed) [P2-S11-AC-096]',
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'a counted approver whose standing cms.reviewer grant lapsed fails the revocation category: 422 preflight_failed (reviewer_authority_changed) [P2-S11-AC-096]',
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command scheduled nothing [P2-S11-AC-096]',
           },
         ],
       },
@@ -1993,12 +2214,41 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the entry lifecycle leaving `active` (`archived`, `deletion_pending`, `held`) yields `entry_unavailable`.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_invalidation_states.sql',
+            title:
+              'archived: the approved review is invalidated entry_unavailable, its pending schedule cancelled, its token revoked, one event, one audit row [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_invalidation_states.sql',
+            title: 'deletion_pending: the same cascade [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_invalidation_states.sql',
+            title:
+              'held: the same cascade for an entry with a live approved review, a pending schedule and a token [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_invalidation_states.sql',
+            title:
+              'an open review is invalidated entry_unavailable (version 2) when its entry becomes archived, deletion_pending or held [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_invalidation_states.sql',
+            title:
+              'an entry update that keeps the entry active invalidates nothing [P2-S11-AC-112]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "the entry lifecycle leaving `active` (`archived`, `deletion_pending`, `held`) yields `entry_unavailable`" is uncited. phase_02_slice_11_helpers_invalidation.sql proves the transition only for lifecycle = archived (the live review becomes invalidated/entry_unavailable, the schedule is cancelled entry_unavailable, the token is revoked) and, for lifecycle = held, only that preview tokens are revoked when the entry has no live review; no test moves an entry to deletion_pending or to held while a live review exists and asserts entry_unavailable. The three-state set named in the clause is therefore not proven. (deletion_pending is only exercised by the separate preflight revocation check in helpers_preflight.sql.)',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-113',
@@ -2067,6 +2317,30 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               '[P2-S11-AC-113] review dependency index and recheck job indexes the nine frozen dependency kinds',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'cms_submit_review is the only function whose body inserts into the dependency index [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'one frozen manifest yields a dependency row of each of the nine kinds [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'the Worker service role cannot insert a dependency row directly [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'a signed-in human cannot insert a dependency row directly [P2-S11-AC-113]',
+          },
         ],
       },
       {
@@ -2113,28 +2387,349 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               "dependency: one row per (review, kind, identity), a real review owner, and the recheck job's (kind, ref) index [P2-S11-AC-113]",
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'no function updates or deletes a dependency row [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'the CMS definer role holds INSERT and SELECT on the index and nothing else: no UPDATE, DELETE or TRUNCATE [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_index.sql',
+            title:
+              'each (kind, ref_id) identity is listed once, which UNIQUE(review_id, kind, ref_id) requires [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'the dependency rows of the invalidated reviews are retained as history [P2-S11-AC-113]',
+          },
         ],
       },
       {
         text: 'the consumers of `cms.schema.activated.v1`, `cms.template.activated.v1`, `cms.pattern.activated.v1`, `cms.taxonomy.changed.v1`, `cms.localization.changed.v1` and `cms.block.lifecycle.changed.v1` enqueue the job `cms.review.dependency_recheck` with `{ eventId, kind, refId }`',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events cms.schema.activated.v1: rereads the committed event and enqueues cms.review.dependency_recheck with { eventId, kind, refId }',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events cms.template.activated.v1: rereads the committed event and enqueues cms.review.dependency_recheck with { eventId, kind, refId }',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events cms.pattern.activated.v1: rereads the committed event and enqueues cms.review.dependency_recheck with { eventId, kind, refId }',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events cms.taxonomy.changed.v1: rereads the committed event and enqueues cms.review.dependency_recheck with { eventId, kind, refId }',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events cms.localization.changed.v1: rereads the committed event and enqueues cms.review.dependency_recheck with { eventId, kind, refId }',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events cms.block.lifecycle.changed.v1: rereads the committed event and enqueues cms.review.dependency_recheck with { eventId, kind, refId }',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events names one registered consumer per source event type',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/source-consumers.test.ts',
+            title:
+              '[P2-S11-AC-113] the six consumers of the review recheck source events enqueues the identity the database resolved, never one read from the queue envelope',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/review-recheck.test.ts',
+            title:
+              '[P2-S11-AC-113] review recheck source events names exactly the six event types whose consumers enqueue cms.review.dependency_recheck',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/review-recheck.test.ts',
+            title:
+              '[P2-S11-AC-113] review recheck source events maps every event type to one dependency index kind and a registered producer',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/review-recheck.test.ts',
+            title:
+              '[P2-S11-AC-113] review recheck job message and RPC contracts wraps the strict { eventId, kind, refId } payload with a continuation cursor',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_relay.sql',
+            title:
+              'the relay claims each of the six recheck source events with its aggregate and registered producer [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/async-runtime-review-recheck-claim.test.ts',
+            title:
+              '[P2-S11-AC-113] the outbox relay claim of the review recheck source events sweeps the six events onto the platform queue and completes each outbox row',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/production-async-entrypoint-review-recheck.test.ts',
+            title:
+              '[P2-S11-AC-113] production async entrypoint review recheck wiring relays a source event and then its job through the real consumers, reusing one composition per environment',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-recheck.apispec.ts',
+            title:
+              '[P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database consumes the envelope: rereads the event and enqueues { eventId, kind, refId } for the activated version',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_event_resolve.sql',
+            title:
+              'cms.schema.activated.v1 names the activated schema version under the schema kind [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_event_resolve.sql',
+            title:
+              'cms.template.activated.v1 names the template version under the template kind [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_event_resolve.sql',
+            title:
+              'cms.pattern.activated.v1 names the pattern version under the pattern kind [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_event_resolve.sql',
+            title:
+              'cms.taxonomy.changed.v1 names the taxonomy version under the taxonomy_version kind [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_event_resolve.sql',
+            title:
+              'cms.block.lifecycle.changed.v1 names the block definition version under the block kind [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_event_resolve.sql',
+            title:
+              'cms.localization.changed.v1 names the SOURCE revision of the variant, not the variant revision the event carries [P2-S11-AC-113]',
+          },
+        ],
       },
       {
         text: 'which selects live reviews through the index, rebuilds each manifest, invalidates on inequality or a non-current identity',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'the run selects the six LIVE reviews that name the schema version and invalidates none while every manifest still holds [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'a review that still holds is left untouched, and a rejected or already invalidated review is not selected [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'the withdrawn block invalidates the one review that froze it [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'the review of the withdrawn block is invalidated dependency_changed (CAS version + 1) and the review of another block is untouched [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'inequality: the changed term invalidates the review that froze it [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'inequality: the review is invalidated dependency_changed [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'the event of the NEW pattern version reaches the review that froze its superseded predecessor [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-recheck.apispec.ts',
+            title:
+              '[P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database runs the job: both live reviews of the superseded version are invalidated dependency_changed and the control review is untouched',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs',
+            title:
+              'R1: both runs wait for the lowest review row, held FOR UPDATE by another session: only on that holder or on each other, one of them directly on the holder',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs',
+            title:
+              'R1: the dependency rows of the invalidated reviews are retained as history',
+          },
+        ],
       },
       {
         text: 'is idempotent (an `invalidated` review is skipped)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'idempotent: a repeated run skips the review that is already invalidated [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'idempotent: a repeated run emits no second event [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'idempotent: a repeated run writes no second audit record [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'idempotent: a repeated run finds no live review [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'idempotent: the repeated run emitted nothing [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-recheck.apispec.ts',
+            title:
+              '[P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database is idempotent under redelivery: the same event again enqueues a job that finds nothing and changes nothing',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs',
+            title:
+              'R3: the replays emit no second event and write no second audit record',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs',
+            title:
+              'R4: a review that still holds keeps its version and state and emits nothing, whatever the job names',
+          },
+        ],
       },
       {
         text: 'handles at most 500 reviews per run with a continuation cursor.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'a run handles at most 500 of the 501 live reviews and returns the 500th review id as its continuation cursor [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'the run that continues after the cursor handles the 501st review and returns no cursor [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'a run with exactly 500 reviews left handles all of them and returns no cursor [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'a run that invalidates handles at most 500 reviews too: 500 invalidated and a cursor [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'the continuation, called through the platform_api wrapper, invalidates the 501st review and returns no cursor [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_cap.sql',
+            title:
+              'all 501 reviews are invalidated dependency_changed [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_run.sql',
+            title:
+              'a run continues after the cursor: only reviews with a greater id are selected [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/review-recheck.test.ts',
+            title:
+              '[P2-S11-AC-113] review recheck job message and RPC contracts bounds a run at 500 reviews and allows a cursor only after a full run',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/job.test.ts',
+            title:
+              '[P2-S11-AC-113] the cms.review.dependency_recheck job continues from the cursor the previous run handed back',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/review-recheck/job.test.ts',
+            title:
+              '[P2-S11-AC-113] the cms.review.dependency_recheck job enqueues the continuation message with the new cursor before it acknowledges',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'The recheck job and its event consumers have no implementation, so four clauses are uncited: (1) "the consumers of cms.schema.activated.v1, cms.template.activated.v1, cms.pattern.activated.v1, cms.taxonomy.changed.v1, cms.localization.changed.v1 and cms.block.lifecycle.changed.v1 enqueue the job cms.review.dependency_recheck with { eventId, kind, refId }", (2) "selects live reviews through the index, rebuilds each manifest, invalidates on inequality or a non-current identity", (3) "is idempotent (an invalidated review is skipped)" and (4) "handles at most 500 reviews per run with a continuation cursor". Only the payload contract exists (packages/contracts/src/cms-editorial/jobs.ts, asserted by jobs-observability.test.ts at the schema level: the nine kinds, the strict { eventId, kind, refId } shape, the 500 constant and the job-type token); no Worker consumer, queue handler, SQL function or migration selects reviews by dependency or enqueues the job. The per-review invalidation primitive is idempotent (helpers_invalidation.sql "invalidating an already invalidated review is an idempotent no-op") but that is not the job.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-114',
@@ -2476,13 +3071,13 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
-              'L1: a second append to the same head BLOCKS on the lineage advisory lock while the first is parked before its insert',
+              'L1: a second append that observed the same head BLOCKS on the lineage advisory lock while the first is parked before its insert',
           },
           {
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
-              'L2: versions 1..6 exactly (no duplicate, no gap), each answered once, one event per row',
+              'L2: version 1 exactly (no duplicate, no gap), one event and one audit record',
           },
         ],
       },
@@ -2638,12 +3233,102 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`projectionState` is read from Shard 04 `projection_consumer_state` for the row id (`pending` while no consumer has reported, `converged` when every registered consumer reports the row, `degraded` when a consumer failed terminally) without ever rolling back canonical state.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'a row id no consumer has reported (no row at all) is pending [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'seven registered consumers reporting `active` while the eighth has not reported is still pending: converged needs every registered consumer [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'all eight consumers `ready` is pending: ready is built but not yet switched in [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'every registered consumer `active` is converged [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'a second row with all eight `active` is converged: the state is read per row id [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'one registered consumer `blocked` (terminal) is degraded although seven are active [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'a consumer that was blocked and has since reported `active` is converged: only the newest row of a consumer counts [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'a degraded or converged consumer state leaves every publication row as published: the read never rolls canonical state back [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              "the appended row's projectionState is read from projection_consumer_state: with every consumer reporting it is converged, not a literal pending [P2-S11-AC-116]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'the append answer equals the derivation for the appended row id [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'the lineage of a degraded row still appends: the unpublish tombstone is version 2, revoked, and its own state is pending [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state.sql',
+            title:
+              'the canonical lineage of the degraded row is intact: the published row is untouched and the tombstone is its successor [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state_reads.sql',
+            title:
+              'neither the workflow read nor the lineage append carries a literal pending projectionState any more [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state_reads.sql',
+            title:
+              'each publication carries the state derived from its own consumer rows: none reported pending, all eight active converged, one blocked degraded, three ready pending [P2-S11-AC-116]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_projection_state_reads.sql',
+            title:
+              'the canonical lineage rows are unchanged by every consumer state, degraded included [P2-S11-AC-116]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "`projectionState` is read from Shard 04 `projection_consumer_state` for the row id (`pending` while no consumer has reported, `converged` when every registered consumer reports the row, `degraded` when a consumer failed terminally) without ever rolling back canonical state" is uncited and its implementation is absent by decision: DEC-158(e) fixes projectionState at `pending` until a Shard 04 consumer reports (Slice 15). No migration references projection_consumer_state; supabase/migrations/20261005017590_cms_publication_lineage_append.sql and 20261005017900_cms_get_entry_workflow.sql emit the literal `pending`. Only the pending value is asserted (phase_02_slice_11_helpers_lineage.sql "the first publish is active, version 1, projectionState pending"); there is no read of consumer state, no converged or degraded branch and no test that a degraded consumer leaves canonical rows intact.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-117',
@@ -2991,7 +3676,84 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'through the service-role takedown RPC',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'cms_takedown_preview_tokens is a platform_api SECURITY DEFINER of the CMS definer (empty search_path) executable by service_role only, not by PUBLIC, anon or authenticated [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'the execute ACL is exactly the definer and service_role: no other role holds the takedown entry point [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'a takedown by entry answers { revokedTokens } counting the two unexpired active tokens of the entry (the expired and the already revoked are skipped) [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'each revoked token is CAS-revoked: state revoked, revoked_at set, version + 1 [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'an expired token and an already revoked token are not touched (no second version bump) [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              "a takedown by person revokes that minter's unexpired active tokens across entries (te, tg) [P2-S11-AC-118]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title: 'anon cannot execute the takedown [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title: 'authenticated cannot execute the takedown [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'composition: the service-role takedown of td-4 revokes the minted token [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'composition: the minted token is CAS-revoked (state revoked, revoked_at set, version 2) [P2-S11-AC-118]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_preview_takedown.sql',
+            title:
+              'composition: CMS-03B-19 answers valid false / revoked true for the bound owner of the taken-down token [P2-S11-AC-118]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-preview-takedown.apispec.ts',
+            title:
+              'the service-role takedown over actual PostgREST [P2-S11-AC-118] revokes the minted token by CAS and the verifier then reports it revoked for its owner, idempotently',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-preview-takedown.apispec.ts',
+            title:
+              'the service-role takedown over actual PostgREST [P2-S11-AC-118] revokes only the named minter across entries, and an entry takedown then revokes the rest',
+          },
+        ],
       },
       {
         text: 'a version-set movement does not revoke it.',
@@ -3010,9 +3772,8 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "through the service-role takedown RPC" is uncited. platform_private.cms_revoke_preview_tokens (accepts reasonCode takedown) is a database-internal seam with no platform_api wrapper and no API grant (phase_02_slice_11_rpc_preview_revoke.sql "nobody can execute and has no platform_api wrapper"); the service-role takedown RPC that calls it is the Shard 16 takedown RPC and does not exist in Slice 11. The seam is exercised with the takedown reason by entry target (rpc_preview_revoke.sql lines 77-86: count, CAS, idempotence) but never as a service_role caller, because nothing service-role callable exists.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-119',
@@ -3084,7 +3845,44 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '(advancing `version` and `updated_at`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_assignment_revoke.sql',
+            title:
+              'a revoke that leaves updated_at unchanged is refused: the revoke must advance updated_at [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_assignment_revoke.sql',
+            title:
+              'a revoke that moves updated_at backwards is refused [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_assignment_revoke.sql',
+            title:
+              'a revoke that advances updated_at is accepted [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_assignment_revoke.sql',
+            title:
+              'and leaves the assignment revoked at version 2 with updated_at later than created_at [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_assignment_revoke.sql',
+            title:
+              "the revoke response advances version (1 to 2) and updatedAt (later than the creation's) [P2-S11-AC-119]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_assignment_revoke.sql',
+            title:
+              'the stored row has version 2, state revoked and updated_at later than created_at [P2-S11-AC-119]',
+          },
+        ],
       },
       {
         text: 'with `capability_key` fixed to `cms.editorial_review`, `actions` fixed to `read` and `decide`',
@@ -3283,9 +4081,8 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "(advancing `version` and `updated_at`)" is uncited: the revoke advancing `version` by exactly one is proven (review_assignments_guard.sql "a revoke advances the CAS version by exactly one"), but no test asserts that `updated_at` advances on revoke. The guard only rejects an updated_at that moves backwards and every guard test supplies its own fresh updated_at, so a revoke that left updated_at unchanged would pass.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-120',
@@ -3316,6 +4113,12 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_reviews_guard.sql',
             title: 'review: the submitter is immutable [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'the revision, entry, dependency, activation, workflow-policy and approval evidence, the risk class, the capability list, the required count and the submitter are all immutable: IMMUTABLE_RECORD [P2-S11-AC-120]',
           },
         ],
       },
@@ -3441,11 +4244,59 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               'review: the recorded count never exceeds the required count [P2-S11-AC-120]',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a recorded count above the required count is refused [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a recorded count above 8 is refused even at the largest required count [P2-S11-AC-120]',
+          },
         ],
       },
       {
         text: '(1 to 8)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a required decision count of 0 or 9 is refused by the 1-to-8 CHECK [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a negative required decision count is refused by a CHECK (it also leaves the recorded count above the required one) [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title: 'the upper bound 8 is accepted [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a recorded count above the required count is refused [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a recorded count above 8 is refused even at the largest required count [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a recorded count equal to the required count of 8 is accepted [P2-S11-AC-120]',
+          },
+        ],
       },
       {
         text: 'a `protected` review to at least 2 decisions',
@@ -3478,7 +4329,38 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a non-empty `required_capabilities`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'an ordinary review with an empty required_capabilities is refused [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a protected review with an empty required_capabilities is refused by the protected-capabilities CHECK [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'required_capabilities that is not an array is refused [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a protected review with one required decision and a non-empty capability list is refused [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_review_ranges.sql',
+            title:
+              'a protected review with two decisions and a non-empty capability list is accepted [P2-S11-AC-120]',
+          },
+        ],
       },
       {
         text: 'with `submitted_by` and the policy evidence server-derived.',
@@ -3503,9 +4385,8 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Two clauses are uncited. (1) "(1 to 8)": no test inserts a review with required_decision_count 0, 9 or negative, or accepts 1 and 8 as the boundary values; phase_02_slice_11_reviews_schema.sql and phase_02_slice_11_reviews_guard.sql only exercise 1 and 2 (the recorded-count ceiling is proven, the 1..8 range of the required count is not). (2) "a non-empty `required_capabilities`": no test creates a review (protected or ordinary) with an empty or missing required_capabilities list and expects refusal; the row builder always supplies ["cms.reviewer"], and the only protected-review refusal (reviews_schema.sql "a protected review needs at least two decisions") fires the count rule alone.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-121',
@@ -3530,7 +4411,44 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`updated_at = created_at`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_snapshot_time.sql',
+            title:
+              'a decision whose updated_at is later than its created_at is refused by the snapshot-time CHECK [P2-S11-AC-121]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_snapshot_time.sql',
+            title:
+              'and one whose updated_at is earlier than its created_at [P2-S11-AC-121]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_snapshot_time.sql',
+            title:
+              'a single microsecond of difference is already refused [P2-S11-AC-121]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_snapshot_time.sql',
+            title:
+              'control: a decision whose created_at and updated_at agree is inserted through the guard [P2-S11-AC-121]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_snapshot_time.sql',
+            title:
+              'an UPDATE that would make updated_at differ from created_at is refused IMMUTABLE_RECORD [P2-S11-AC-121]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_decision_snapshot_time.sql',
+            title:
+              'the recorded decision has updated_at = created_at, version 1, state recorded, a decided_at and the verified step-up instant [P2-S11-AC-121]',
+          },
+        ],
       },
       {
         text: 'with `UNIQUE(review_id, reviewer_person_id)`',
@@ -3694,9 +4612,8 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "`updated_at = created_at`" (the second append-only member) is uncited: review_decisions_schema.sql proves that UPDATE and DELETE of a decision are refused ("decision evidence is append-only and is never edited" / "never deleted") but no test inserts a decision whose updated_at differs from created_at and expects refusal, and none asserts the stored equality. (phase_02_slice_11_review_dependencies_schema.sql asserts the same rule for dependency rows, not decisions.)',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-122',
