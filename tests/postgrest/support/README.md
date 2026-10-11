@@ -25,8 +25,18 @@
   ungranted, real and actorless service-principal callers); `claim-gate-check.ts`
   re-exports them so import sites are unchanged. Split to keep each module within
   the 300-line utility limit.
+- `claim-gate-outcome.ts`: how a call is compared with its expected outcome
+  (`<status>:<message>`); a fixture's optional `successKeys` also pins the member
+  names of a successful body, so a gate-less stub answering `{}` cannot pass for an
+  actorless operation whose only evidence is its own result shape.
 - `claim-gate-mutants.ts`: the shared-gate mutations, with the entries that must
   fail for each.
+- `claim-gate-restore.ts`: guaranteed restoration for the mutation suite. A
+  journal snapshots a function (definition, owner, comment, EXECUTE grants)
+  before it is mutated and restores and verifies it; a guard stops a body that is
+  past its own deadline or whose test timed out (vitest does not cancel it) and,
+  after every test, restores anything still mutated and compares a fingerprint of
+  every function of the gate schemas with the baseline.
 - `claim-gate-world.ts`: the committed fixtures the claim-gate suites share.
 - `phase-02-slice-11-assert.ts`: the DB/stack FACADE for the Slice 11 strict
   assertions; it re-exports the pure assertion core and the effect helpers so
@@ -119,11 +129,16 @@ fails until all four exist. Add a module only when two or more suites need the s
 it from production functions, never from a stand-in, and never set a GUC (claims
 travel only inside a minted JWT).
 
-An actorless internal operation (CMS-03B-20 execute) uses the `service-principal`
-family: it resolves no caller, so it is ineligible for the caller-binding
-ghost/forged probes and has no shared caller helper to mutate. Its boundary is the
-service_role EXECUTE grant plus the Worker module boundary (DEC-156), proven by the
-manifest suite's ACL check and `apps/worker/src/cms-editorial-principals.test.ts`.
+An actorless internal operation (CMS-03B-20 execute, the dependency recheck run)
+uses the `service-principal` family: it resolves no caller, so it is ineligible for
+the caller-binding ghost/forged probes and has no shared caller helper to mutate.
+Its boundary is the service_role EXECUTE grant plus the Worker module boundary
+(DEC-156), proven by the manifest suite's ACL check, the mutation suite's ACL
+mutant for every such entry, and `apps/worker/src/cms-editorial-principals.test.ts`.
+An RPC that reads no claims (for example `cms_dependency_recheck_resolve_event`
+and `cms_takedown_preview_tokens`) is NOT listed: the drift check fails a listed
+function that no longer reads claims. Its exposure is enumerated by the Slice 09
+API surface guard.
 
 ## Conventions and related material
 

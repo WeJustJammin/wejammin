@@ -50,6 +50,14 @@ dependencies moved.
   `../../production-async-entrypoint.ts` calls it.
 - `review-recheck.test-support.ts` - fixtures shared by the tests.
 
+## Ownership
+
+The Phase 2 CMS editorial workflow owns this directory (Slice 11, `P2-S11-AC-113`).
+The database half is `platform_api.cms_dependency_recheck_resolve_event` and
+`cms_dependency_recheck_run` (migration `20261010164100_cms_dependency_recheck.sql`);
+the job decides nothing the database does not. The producers of the six source events
+are Slices 09, 12 and 13.
+
 ## Extension
 
 A new source event: add its type to `REVIEW_RECHECK_SOURCES` in

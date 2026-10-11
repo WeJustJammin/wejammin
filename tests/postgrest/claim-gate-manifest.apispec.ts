@@ -183,9 +183,10 @@ describe('SEC-1 every manifest entry is exercised through the real API', () => {
     expect(refusals).toBeGreaterThanOrEqual(85);
     expect(controls).toBeGreaterThanOrEqual(270);
     expect(successes).toBeGreaterThanOrEqual(8);
-    // The eleven Slice 11 editorial commands: ten cfg-actor human readers plus the
-    // actorless service-principal execute. cms_list_editorial_reviews succeeds (an
-    // empty page); the rest reach their own post-gate next outcome (NOT_FOUND or
+    // The twelve Slice 11 editorial commands: ten cfg-actor human readers plus the two
+    // actorless service-principal operations (schedule execute, dependency recheck run).
+    // cms_list_editorial_reviews and cms_dependency_recheck_run succeed (an empty page, an
+    // empty run); the rest reach their own post-gate next outcome (NOT_FOUND or
     // STEP_UP_REQUIRED), never a request-validation refusal.
     const editorial = [
       'cms_submit_review',
@@ -199,6 +200,7 @@ describe('SEC-1 every manifest entry is exercised through the real API', () => {
       'cms_list_editorial_reviews',
       'cms_mint_preview',
       'cms_execute_publication_schedule',
+      'cms_dependency_recheck_run',
     ];
     const editorialProbes = editorial.flatMap((name) => {
       const fn = functions.find((candidate) => candidate.name === name);
@@ -227,6 +229,6 @@ describe('SEC-1 every manifest entry is exercised through the real API', () => {
     ).toBeGreaterThanOrEqual(9);
     expect(
       editorialProbes.filter((probe) => probe.expected === '200:').length,
-    ).toBeGreaterThanOrEqual(1);
+    ).toBeGreaterThanOrEqual(2);
   });
 });

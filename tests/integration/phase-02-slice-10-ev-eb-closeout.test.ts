@@ -72,6 +72,21 @@ const OPERATIONS = [
   'CMS-03B-14',
 ] as const;
 
+// Slice 11 added the nine editorial workflow operations to the same registry (BE03b CMS-03B-05..09 and
+// CMS-03B-15..18). The registry holds exactly the Slice 10 operations plus these; the runbook facet below
+// still checks that every Slice 10 operation is documented with its RPC.
+const SLICE_11_OPERATIONS = [
+  'CMS-03B-05',
+  'CMS-03B-06',
+  'CMS-03B-07',
+  'CMS-03B-08',
+  'CMS-03B-09',
+  'CMS-03B-15',
+  'CMS-03B-16',
+  'CMS-03B-17',
+  'CMS-03B-18',
+] as const;
+
 const TYPED_REASONS = [
   'comparison_too_large',
   'comparison_unavailable',
@@ -91,7 +106,9 @@ const runNode = (script: string, args: readonly string[] = []) =>
 describe('EB closeout: Slice 10 documentation and registry agreement', () => {
   it('EB closeout runbook: docs/runbooks/platform/cms-editorial.md documents every Slice 10 operation with its RPC', () => {
     const runbook = read('docs/runbooks/platform/cms-editorial.md');
-    expect(Object.keys(CMS_EDITORIAL_RPC).sort()).toEqual([...OPERATIONS]);
+    expect(Object.keys(CMS_EDITORIAL_RPC).sort()).toEqual(
+      [...OPERATIONS, ...SLICE_11_OPERATIONS].sort(),
+    );
     for (const operation of OPERATIONS) {
       expect(runbook, `runbook names ${operation}`).toContain(operation);
       expect(runbook, `runbook names the RPC of ${operation}`).toContain(
@@ -257,21 +274,33 @@ describe('EB closeout: Slice 10 documentation and registry agreement', () => {
     return graph;
   };
 
-  it('EB closeout: the compiled specification graph equals the graph rebuilt from the committed Slice 10 spec text', async () => {
-    expect(await rebuildSpecGraph()).toEqual(committedSpecGraph());
-  });
+  // Each rebuild copies the whole specification tree (about 45 MB in 1,568 files) and rebuilds the graph:
+  // 13-17 s measured on a loaded host, against the 15 s default, so the budget is explicit.
+  const SPEC_GRAPH_REBUILD_TIMEOUT_MS = 60_000;
 
-  it('EB closeout: a spec amendment that changes the graph is detected (negative control)', async () => {
-    const mutated = await rebuildSpecGraph((specsRoot) => {
-      // An amendment the committed graph has not seen: a new BE spec that links
-      // the editorial spec.
-      writeFileSync(
-        join(specsRoot, 'be/99-negative-control.md'),
-        '# Negative control — Backend Specification\n\nSee [BE03b](03b-editorial-workflow-publication.md).\n',
-      );
-    });
-    expect(mutated).not.toEqual(committedSpecGraph());
-  });
+  it(
+    'EB closeout: the compiled specification graph equals the graph rebuilt from the committed Slice 10 spec text',
+    async () => {
+      expect(await rebuildSpecGraph()).toEqual(committedSpecGraph());
+    },
+    SPEC_GRAPH_REBUILD_TIMEOUT_MS,
+  );
+
+  it(
+    'EB closeout: a spec amendment that changes the graph is detected (negative control)',
+    async () => {
+      const mutated = await rebuildSpecGraph((specsRoot) => {
+        // An amendment the committed graph has not seen: a new BE spec that links
+        // the editorial spec.
+        writeFileSync(
+          join(specsRoot, 'be/99-negative-control.md'),
+          '# Negative control — Backend Specification\n\nSee [BE03b](03b-editorial-workflow-publication.md).\n',
+        );
+      });
+      expect(mutated).not.toEqual(committedSpecGraph());
+    },
+    SPEC_GRAPH_REBUILD_TIMEOUT_MS,
+  );
 
   it('EB closeout tracking: all six Slice 10 gate lines are checked and the tracker carries the dated continuation and Depth Ratio', () => {
     const tracker = read(

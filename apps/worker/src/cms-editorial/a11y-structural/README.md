@@ -11,7 +11,7 @@ Slice 11 delivers it as the first `worker` preflight provider (category
 `quality_check` action, `quality_check_runs` persistence and the quality reads.
 Until then a gate call persists nothing.
 
-## What is here
+## Contents
 
 | File                                                                           | Purpose                                                                                                    |
 | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -136,7 +136,9 @@ environment name (`fetch`, `document`, `window`, `puppeteer`, `env`, `process`,
 (`zod` only in `zod-runtime.ts`). `gate-isolation.test.ts` runs the gate with
 the same globals replaced by throwing traps. Keep new code here free of both.
 
-## How to add a rule
+## Extension
+
+### How to add a rule
 
 Rules of version 1 are frozen: changing what an existing rule reports, or adding
 a rule, is a new checker version (BE05c: positive-integer versions, older
@@ -156,6 +158,14 @@ versions stay readable, one current version per target type). Register it in
    negative fixture per rule, built with `a11y-structural.test-support.ts`.
 5. Keep coverage at 100%, files under 300 lines (tests under 400), no `any`.
 
+## Ownership
+
+The Phase 2 CMS editorial workflow owns this module (Slice 11 delivers it as the
+first `worker` preflight provider; Slice 16 owns the `quality_check` action and
+the quality reads built on it). The PostgreSQL side of the contract is
+`platform_private.cms_revision_render_plan` and
+`cms_accessibility_binding_hash`; this directory never re-derives either.
+
 ## Conventions
 
 - Tests are colocated `*.test.ts`; helpers are `*.test-support.ts`.
@@ -163,7 +173,7 @@ versions stay readable, one current version per target type). Register it in
 - Hashes use the shared RFC 8785 module
   `apps/worker/src/content-schema-registry/migration-transform-jcs.ts`.
 
-## Related
+## Related links
 
 - Spec: `.memory/wiki/specs/be/05c-portability-quality-lifecycle.md`
   (Accessibility and content-quality checker) and

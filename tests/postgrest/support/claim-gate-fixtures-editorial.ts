@@ -1,7 +1,8 @@
 /**
  * Valid requests for the Slice 11 editorial commands whose caller is resolved by
  * `cms_actor` -> `cfg_actor` (family `cfg-actor`), plus the actorless internal
- * operation `cms_execute_publication_schedule` (family `service-principal`).
+ * operations `cms_execute_publication_schedule` and `cms_dependency_recheck_run`
+ * (family `service-principal`).
  *
  * Every member the function checks before it resolves the caller is present and well
  * formed, so the identity gate is the first thing that can refuse the request. The
@@ -137,12 +138,22 @@ export const CMS_EDITORIAL_FIXTURES: FixtureTable = {
 };
 
 /**
- * The actorless internal operation CMS-03B-20 execute: it resolves no caller, so a
- * valid actorless request reaches the schedule lookup and answers NOT_FOUND. Its
- * boundary is the service_role EXECUTE grant (ACL) plus the Worker module boundary
- * (DEC-156), never a body-level human gate (see claim-gate-manifest.ts).
+ * The actorless internal operations CMS-03B-20 execute and the dependency recheck run. They
+ * resolve no caller, so a valid actorless request reaches the function's own next step:
+ * the schedule lookup (NOT_FOUND) or an empty recheck run (a success). Their boundary is
+ * the service_role EXECUTE grant (ACL) plus the Worker module boundary (DEC-156), never a
+ * body-level human gate (see claim-gate-manifest.ts).
  */
 export const SERVICE_PRINCIPAL_FIXTURES: FixtureTable = {
+  // The dependency recheck job run (P2-S11-AC-113): the exact four-member request over
+  // an event and a dependency that name no live review, so the Worker credential gets a
+  // successful empty run ({ examined: 0, invalidated: 0, nextCursor: null }).
+  cms_dependency_recheck_run: {
+    request: { eventId: id(32), kind: 'schema', refId: id(33), cursor: null },
+    real: '200:',
+    // A gate-less stub answers 200 as well; only the run's own result shape tells them apart.
+    successKeys: ['examined', 'invalidated', 'nextCursor'],
+  },
   cms_execute_publication_schedule: {
     request: { scheduleId: id(30), expectedVersion: '1', leaseId: id(31) },
     real: NOT_FOUND,

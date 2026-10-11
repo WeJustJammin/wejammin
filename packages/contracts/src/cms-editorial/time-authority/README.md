@@ -20,6 +20,13 @@ used for the schedule rules.
 | `time-authority.ts`     | `createTimeAuthority` and `loadPinnedTimeAuthority`: hash verification at load and the resolver over the verified zones |
 | `index.ts`              | The `@wejammin/contracts/time-authority` subpath export                                                                 |
 
+## Ownership
+
+The Phase 2 CMS editorial workflow owns this directory (Slice 11, BE03b E8). The
+Worker's answer is authoritative; the schedule form runs the same code over the
+same bytes. `platform_private.cms_tzdb_version()` (a forward migration) carries
+the same tag as `CMS_TZDB_VERSION`.
+
 ## Import rules
 
 The light pin (`tzdb-pin.ts`) and `resolveScheduleTime` are exported from
@@ -51,6 +58,21 @@ The differential test compares the snapshot with the host ICU for 39 zones from
 2000 to 2040. When a new release changes a zone the host does not know yet, bound
 that zone in `COMPARE_UNTIL` and pin the new behavior with golden values in
 `tzdb-zone.test.ts` (Africa/Casablanca is the 2026e example).
+
+## Extension
+
+Changing the schedule rules is a change to `schedule-time.ts` with a failing
+golden-value test first. Changing the tz release is the pin advance below; never
+edit `tzdb-snapshot-data.ts` by hand.
+
+## Conventions
+
+- Production code is pure TypeScript: no `Intl` timezone data, no network and no
+  clock; every function takes its inputs explicitly. Only the differential test
+  reads the host ICU.
+- The generated snapshot is verified by SHA-256 at module load, never trusted.
+- Tests are colocated `*.test.ts`; golden values are independent of the code
+  under test.
 
 ## Related links
 

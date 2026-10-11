@@ -16,6 +16,7 @@
 import { CLAIM_GATE_FIXTURES, type GateFixture } from './claim-gate-fixtures';
 import { SUCCESS_CONTROLS } from './claim-gate-success';
 import { requestOf } from './claim-gate-fixtures-types';
+import { outcomeOf } from './claim-gate-outcome';
 import {
   CLAIM_ACTOR_FAMILY,
   CLAIM_GATED_API_FUNCTIONS,
@@ -29,7 +30,6 @@ import {
   tokenFor,
   userToken,
   type CmsOwner,
-  type RpcOutcome,
 } from './stack';
 
 export type GateContext = Readonly<{
@@ -44,9 +44,6 @@ export type GateContext = Readonly<{
   /** A real person with an organization, for the success controls. */
   owner?: CmsOwner;
 }>;
-
-const outcomeOf = (outcome: RpcOutcome): string =>
-  `${String(outcome.status)}:${outcome.message}`;
 
 const UNAUTHENTICATED = '400:UNAUTHENTICATED';
 
@@ -89,7 +86,10 @@ export const probesFor = (
     caller: Record<string, unknown> | null,
     extra: Record<string, unknown> = {},
   ): Promise<string> =>
-    outcomeOf(await callRpc(name, token, body(caller, extra)));
+    outcomeOf(
+      await callRpc(name, token, body(caller, extra)),
+      fixture.successKeys,
+    );
   const denied = (status: number): string =>
     `${String(status)}:permission denied for function ${name}`;
   const probes: Probe[] = [];

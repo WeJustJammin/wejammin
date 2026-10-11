@@ -106,6 +106,19 @@ describe('principal boundaries', () => {
     expect(PREVIEW_TAKEDOWN_RPC).toBe('cms_takedown_preview_tokens');
   });
 
+  it('keeps the dependency recheck RPC names inside the review-recheck names module', () => {
+    // P2-S11-AC-113: both recheck RPCs are actorless service_role operations (DEC-156).
+    // The SEC-1 manifest registers cms_dependency_recheck_run as a service-principal
+    // entry whose boundary is the EXECUTE grant plus this module boundary.
+    for (const name of [
+      'cms_dependency_recheck_resolve_event',
+      'cms_dependency_recheck_run',
+    ])
+      expect(mentionsOf(workerRoot, `'${name}'`)).toEqual([
+        'cms-editorial/review-recheck/rpc-names.ts',
+      ]);
+  });
+
   it('never exposes an internal RPC to the browser app', () => {
     for (const literal of [
       'cms_claim_due_publication_schedules',
@@ -113,6 +126,8 @@ describe('principal boundaries', () => {
       'cms_verify_preview_token',
       'cms_takedown_preview_tokens',
       'cms_load_quality_gate_input',
+      'cms_dependency_recheck_resolve_event',
+      'cms_dependency_recheck_run',
     ])
       expect(mentionsOf(webRoot, literal)).toEqual([]);
   });
