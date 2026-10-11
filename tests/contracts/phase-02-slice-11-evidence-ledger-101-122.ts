@@ -4617,7 +4617,7 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-122',
-    text: "Persistence `cms_publication_schedules`: `state` is one of `pending`, `executing`, `completed`, `failed_retryable`, `blocked`, `cancelled`; `reason_code` is non-null exactly for `blocked` and `cancelled` and one of the six closed tokens; `attempt_count` is 0 to 3; `audience` follows `^[a-z0-9_-]{1,48}$`; `expected_version` is the approved review's version at acceptance; `UNIQUE(entry_id, revision_id, action, local_datetime, timezone, audience)` prevents a duplicate schedule; the lease, retry and `actual_at_utc`/`deviation_seconds` columns exist; and `owner_id` and `created_by` are server-derived with worker and command CAS on `state` and `version`.",
+    text: "Persistence `cms_publication_schedules`: `state` is one of `pending`, `executing`, `completed`, `failed_retryable`, `blocked`, `cancelled`; `reason_code` is non-null exactly for `blocked` and `cancelled` and one of the six closed tokens; `attempt_count` is 0 to 3; `audience` follows `^[a-z0-9_-]{1,48}$`; `expected_version` is the approved review's version at acceptance; `UNIQUE(entry_id, revision_id, action, local_datetime, local_datetime_submicro_ns, timezone, audience)` prevents a duplicate schedule (the exact local datetime is the microsecond column plus its private sub-microsecond remainder); the lease, retry and `actual_at_utc`/`deviation_seconds` columns exist; and `owner_id` and `created_by` are server-derived with worker and command CAS on `state` and `version`.",
     clauses: [
       {
         text: 'Persistence `cms_publication_schedules`: `state` is one of `pending`, `executing`, `completed`, `failed_retryable`, `blocked`, `cancelled`',
@@ -4774,7 +4774,7 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: '`UNIQUE(entry_id, revision_id, action, local_datetime, timezone, audience)` prevents a duplicate schedule',
+        text: '`UNIQUE(entry_id, revision_id, action, local_datetime, local_datetime_submicro_ns, timezone, audience)` prevents a duplicate schedule (the exact local datetime is the microsecond column plus its private sub-microsecond remainder)',
         citations: [
           {
             tool: 'pgtap',
@@ -4799,6 +4799,12 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql',
             title:
               'a second schedule of the same action, local time, timezone and audience under another key is a CONFLICT and changes nothing [P2-S11-AC-020]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-schedule-precision.apispec.ts',
+            title:
+              'CMS schedule exact nanosecond storage and identity [CMS-03B-07][CMS-03B-15] identities one nanosecond apart coexist as two exact stored pairs and two exact workflow instants',
           },
         ],
       },

@@ -472,7 +472,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-070',
-    text: 'CMS-03B-18 requires an `Idempotency-Key` and the exact review-version `If-Match`, locks the review row, leaves the review `version` unchanged on create and revoke, enforces rate buckets of 10/min/user and 20/min/party, a 15,000 ms deadline, no-store and Tier 2, and commits the assignment change, its audit record and exactly one `cms.entry.review-changed.v1` atomically.',
+    text: "CMS-03B-18 requires an `Idempotency-Key` and the exact review-version `If-Match`, locks the review row, leaves the review `version` unchanged on create and on every revoke except that of a counted approver's assignment, which invalidates the open review `reviewer_authority_changed` in the same transaction (DEC-161; review `version` + 1, its own audit record and its own `cms.entry.review-changed.v1`), enforces rate buckets of 10/min/user and 20/min/party, a 15,000 ms deadline, no-store and Tier 2, and commits the assignment change, its audit record and exactly one `cms.entry.review-changed.v1` atomically (the invalidation adds its own record and event).",
     clauses: [
       {
         text: 'CMS-03B-18 requires an `Idempotency-Key` and the exact review-version `If-Match`',
@@ -521,7 +521,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'leaves the review `version` unchanged on create and revoke',
+        text: "leaves the review `version` unchanged on create and on every revoke except that of a counted approver's assignment",
         citations: [
           {
             tool: 'pgtap',
@@ -564,6 +564,41 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts',
             title:
               'CMS-03B-18 assignment lifecycle [CMS-03B-18] create and ordinary revoke replay identical resources with exact audit event and unchanged review operand',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'revoking the assignment of a reviewer who recorded no decision leaves the review open at the same version and emits only the revoke event [P2-S11-AC-070]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'revoking the assignment of an approve that already stopped counting leaves the review open at the same version [P2-S11-AC-070]',
+          },
+        ],
+      },
+      {
+        text: 'which invalidates the open review `reviewer_authority_changed` in the same transaction (DEC-161; review `version` + 1, its own audit record and its own `cms.entry.review-changed.v1`)',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'the open review is invalidated reviewer_authority_changed (version + 1, the recorded decision count kept) [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'the revoke emitted its review-changed event (at the review version it saw) and the invalidation emitted its own at the new version [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'both the revoke and the invalidation left an audit record [P2-S11-AC-112]',
           },
         ],
       },
@@ -614,7 +649,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'commits the assignment change, its audit record and exactly one `cms.entry.review-changed.v1` atomically.',
+        text: 'commits the assignment change, its audit record and exactly one `cms.entry.review-changed.v1` atomically (the invalidation adds its own record and event).',
         citations: [
           {
             tool: 'pgtap',
@@ -651,6 +686,18 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts',
             title:
               'CMS-03B-18 assignment lifecycle [CMS-03B-18] create and ordinary revoke replay identical resources with exact audit event and unchanged review operand',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'the revoke emitted its review-changed event (at the review version it saw) and the invalidation emitted its own at the new version [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_authority.sql',
+            title:
+              'both the revoke and the invalidation left an audit record [P2-S11-AC-112]',
           },
         ],
       },
@@ -4058,7 +4105,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-090',
-    text: 'Frozen dependency manifest (E1): a frozen identity is current only when its source still serves it (schema version `active` with an equal artifact hash; template and pattern versions `active` with equal hashes; taxonomy versions `active`; blocks `supported` or `deprecated`, never `withdrawn`; settings snapshot equal), and a command that relies on a frozen set (CMS-03B-07, CMS-03B-09, the executor) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale` and invalidates the review `dependency_changed`.',
+    text: 'Frozen dependency manifest (E1): a frozen identity is current only when its source still serves it (schema version `active` with an equal artifact hash; template and pattern versions `active` with equal hashes; taxonomy versions `active`; blocks `supported` or `deprecated`, never `withdrawn`; settings snapshot equal), and a command that relies on a frozen set (CMS-03B-07, CMS-03B-09) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`, while the executor (internal CMS-03B-20, which returns typed results instead of ApiError) returns its typed `blocked` result with `reasonCode` `approval_invalidated`; all three invalidate the review `dependency_changed`.',
     clauses: [
       {
         text: 'Frozen dependency manifest (E1): a frozen identity is current only when its source still serves it (schema version `active` with an equal artifact hash; template and pattern versions `active` with equal hashes; taxonomy versions `active`; blocks `supported` or `deprecated`, never `withdrawn`; settings snapshot equal)',
@@ -4135,7 +4182,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and a command that relies on a frozen set (CMS-03B-07, CMS-03B-09',
+        text: 'and a command that relies on a frozen set (CMS-03B-07, CMS-03B-09) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`',
         citations: [
           {
             tool: 'pgtap',
@@ -4188,11 +4235,42 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'the executor) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`',
-        citations: [],
+        text: 'while the executor (internal CMS-03B-20, which returns typed results instead of ApiError) returns its typed `blocked` result with `reasonCode` `approval_invalidated`',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'a frozen manifest that is no longer current invalidates the review (dependency_changed) and blocks the schedule approval_invalidated [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'schema gate: the executor finds a superseded schema version, invalidates the review and blocks the schedule [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'template gate: the executor finds a retired template, invalidates the review and blocks the schedule approval_invalidated [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'block gate: the executor finds a withdrawn block, invalidates the review and blocks the schedule approval_invalidated [P2-S11-AC-004]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_publish_gates.sql',
+            title:
+              'settings gate: the executor finds a changed settings snapshot, invalidates the review and blocks the schedule [P2-S11-AC-004]',
+          },
+        ],
       },
       {
-        text: 'and invalidates the review `dependency_changed`.',
+        text: 'all three invalidate the review `dependency_changed`.',
         citations: [
           {
             tool: 'pgtap',
@@ -4257,9 +4335,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "the executor) and finds a non-current identity or a differing recomputed manifest returns 409 `CONFLICT` `version_set_stale`", for the executor only. CMS-03B-07 and CMS-03B-09 return the committed 409 version_set_stale (details {}) and invalidate the review dependency_changed (phase_02_slice_11_rpc_publication_schedule_refusals.sql, ..._publish_refusals.sql, phase-02-slice-11-publish.apispec.ts and phase_02_slice_11_criteria_publish_gates.sql, cited under the first clause). The executor (CMS-03B-20) is an internal RPC whose result type has no 409: on a non-current identity or a differing recomputed manifest it blocks the schedule approval_invalidated and invalidates the review dependency_changed (cited under the last clause), and the contract keeps that form. BE03b E1 and this criterion list the executor among the commands that return 409 version_set_stale; the clause stays uncited until an owner wording ruling amends it to the executor outcome (or gives the executor a 409 form).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-091',
@@ -5255,7 +5332,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-097',
-    text: 'Publication preflight registry (D19): every category is evaluated with no short circuit and the report lists all 17; any `failed` category refuses the command 422 `VALIDATION_FAILED` `preflight_failed` with `details.preflight` of at most 17 `{ category, outcome, reasonCode }` entries and no counts or finding text; otherwise any `unavailable` category refuses it 503 `DEPENDENCY_UNAVAILABLE` with `dependencyClass` `preflight` and `retryable` true; in both cases nothing commits and no success idempotency record is retained, while at execution `failed` blocks the schedule and `unavailable` retries it.',
+    text: "Publication preflight registry (D19): every category is evaluated with no short circuit and the report lists all 17; any `failed` category refuses the command 422 `VALIDATION_FAILED` `preflight_failed` with `details.preflight` of at most 17 `{ category, outcome, reasonCode }` entries and no counts or finding text; otherwise any `unavailable` category refuses it 503 `DEPENDENCY_UNAVAILABLE` with `dependencyClass` `preflight` and `retryable` true; in both cases nothing commits and no success idempotency record is retained, except that a `failed` `revocation` category found lazily because a counted approver's standing grant lapsed commits the review invalidation `reviewer_authority_changed`, the cancellation of the review's `pending` and `failed_retryable` schedules (`approval_invalidated`) and the refusal itself as the replayable idempotency outcome (DEC-169), while at execution `failed` blocks the schedule and `unavailable` retries it.",
     clauses: [
       {
         text: 'Publication preflight registry (D19): every category is evaluated with no short circuit and the report lists all 17',
@@ -5405,6 +5482,59 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
               'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]',
+          },
+        ],
+      },
+      {
+        text: "except that a `failed` `revocation` category found lazily because a counted approver's standing grant lapsed commits the review invalidation `reviewer_authority_changed`, the cancellation of the review's `pending` and `failed_retryable` schedules (`approval_invalidated`) and the refusal itself as the replayable idempotency outcome (DEC-169)",
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command scheduled nothing [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_helpers_invalidation.sql',
+            title:
+              "the review's pending and failed_retryable schedules are cancelled in the same transaction [P2-S11-AC-111]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_helpers_invalidation.sql',
+            title:
+              'a failed_retryable schedule is cancelled too [P2-S11-AC-111]',
           },
         ],
       },

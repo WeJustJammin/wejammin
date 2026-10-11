@@ -1531,7 +1531,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-045',
-    text: 'Enforce CMS-03B-07: action; publish, unpublish, expire, or archive; 422. This is a contract-only preview-token rule until mint/open/revocation paths exist.',
+    text: 'Enforce CMS-03B-07: action; publish, unpublish, expire, or archive; 422. This is a contract-only publication-action rule until the protected operation exists.',
     clauses: [
       {
         text: 'Enforce CMS-03B-07: action;',
@@ -1579,13 +1579,38 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'This is a contract-only preview-token rule until mint/open/revocation paths exist.',
-        citations: [],
+        text: 'This is a contract-only publication-action rule until the protected operation exists.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
+            title:
+              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-07: it is neither a registered route operation nor a Worker RPC binding',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
+            title:
+              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
+            title:
+              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
+            title:
+              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+          },
+        ],
       },
     ],
-    status: 'partial',
+    status: 'contract-only',
     limitation:
-      'The final sentence "This is a contract-only preview-token rule until mint/open/revocation paths exist" is a CMS-03B-08/19 statement (BE03b :159), not a behavior of CMS-03B-07 (publication schedule), so no CMS-03B-07 test can prove it and the clause is uncited (EVIDENCE GAP EB R2 045-a: the tracker sentence is mis-scoped; owner to correct it or to rule it out of AC-045). Proven: the strict PublicationScheduleRequest action is exactly publish, unpublish, expire or archive and any other value is a 422 VALIDATION_FAILED at /action through the shared Worker body boundary. The schedule operation and the preview-token mint, open and revocation paths do not exist in Slice 10 and belong to Slice 11.',
+      'Contract-only by the tracker text: the strict PublicationScheduleRequest action is exactly publish, unpublish, expire or archive and any other value is a 422 VALIDATION_FAILED at /action through the shared Worker body boundary. The final sentence is the same scope statement AC-044 carries for CMS-03B-07 and is cited by the same scope tests; the owner replaced the earlier preview-token sentence (a CMS-03B-08/19 statement no CMS-03B-07 test could prove) under DEC-147 option C. The runtime action rule of the protected CMS-03B-07 operation is proven in Slice 11 (phase_02_slice_11_rpc_publication_schedule_refusals.sql rejects an action outside the four; phase_02_slice_11_rpc_publication_schedule.sql schedules unpublish, expire and archive).',
   },
   {
     criterion: 'P2-S10-AC-046',
@@ -1763,7 +1788,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-047',
-    text: 'Enforce CMS-03B-08: audience/route; audience 1–64 safe chars; route 1–2048 normalized path; no external URL; 422. This is a contract-only preview-binding rule until the protected preview path exists.',
+    text: 'Enforce CMS-03B-08: audience/route; audience `^[a-z0-9_-]{1,48}$` (matched as submitted, never trimmed); route 1–2048 normalized path; no external URL; 422. This is a contract-only preview-binding rule until the protected preview path exists.',
     clauses: [
       {
         text: 'Enforce CMS-03B-08: audience/route;',
@@ -1782,7 +1807,29 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: 'audience 1–64 safe chars;', citations: [] },
+      {
+        text: 'audience `^[a-z0-9_-]{1,48}$` (matched as submitted, never trimmed);',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/publication-schedule-contracts.test.ts',
+            title:
+              '[P2-S10-AC-047] CMS-03B-08 audience/route accepts exactly the shared audience grammar ^[a-z0-9_-]{1,48}$',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/publication-schedule-contracts.test.ts',
+            title:
+              '[P2-S10-AC-047] CMS-03B-08 audience/route refuses an audience with unsafe characters or outside 1-48',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'an audience outside ^[a-z0-9_-]{1,48}$ (case, padding, empty, 49 characters, space) is VALIDATION_FAILED at /audience, matched as submitted [P2-S11-AC-024]',
+          },
+        ],
+      },
       {
         text: 'route 1–2048 normalized path;',
         citations: [
@@ -1894,9 +1941,9 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
+    status: 'contract-only',
     limitation:
-      'pending DEC-147 forward-scope ruling. The clause "audience 1-64 safe chars" is unproven: the contract enforces ^[a-z0-9_-]{1,48}$ (DEC-145 D-13, BE04c) and refuses safe 49-64 character audiences, so no test proves the tracker bound of 64 and the tracker text is not reworded. Proven: route 1-2048 Unicode characters as a normalized site path with no external URL, backslash, control character, query, fragment, dot segment or percent-encoded separator, and their 422 at /route and /audience through the shared Worker body boundary. The preview operation is Slice 11 (CMS-03B-08).',
+      'Contract-only by the tracker text: the audience grammar ^[a-z0-9_-]{1,48}$ (DEC-145 D-13, BE04c; the earlier 1-64 bound contradicted the locked schema and was replaced under DEC-147 option C), the 1-2048 character normalized route with no external URL, and their 422 at /audience and /route through the shared Worker body boundary are proven. The protected preview operation (CMS-03B-08) is Slice 11; the same audience and route refusals are proven there by phase_02_slice_11_rpc_preview_mint_refusals.sql.',
   },
   {
     criterion: 'P2-S10-AC-048',

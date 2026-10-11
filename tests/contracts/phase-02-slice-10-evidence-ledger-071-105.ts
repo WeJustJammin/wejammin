@@ -1401,7 +1401,7 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-080',
-    text: 'TypeScript and PostgreSQL validators enforce the same DEC-133 object structure and value semantics across create, append, conflict resolution, restore, draft read, preview, and publication.',
+    text: 'TypeScript and PostgreSQL validators enforce the same DEC-133 object structure and value semantics across create, append, conflict resolution, restore, draft read, and publication (the preflight `contract` category in the submit, schedule and publish phases). Preview evaluates no field value; it binds the same frozen bytes (P2-S10-AC-079).',
     clauses: [
       {
         text: 'TypeScript and PostgreSQL validators enforce the same DEC-133 object structure and value semantics across create',
@@ -1621,17 +1621,34 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'preview',
+        text: 'publication (the preflight `contract` category in the submit, schedule and publish phases).',
         citations: [],
       },
       {
-        text: 'publication.',
+        text: 'Preview evaluates no field value',
         citations: [],
+      },
+      {
+        text: 'it binds the same frozen bytes (P2-S10-AC-079).',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'control: the exact recomputed version set at the current entry version mints [P2-S11-AC-089]',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'pending DEC-147 forward-scope ruling. Unproven clauses are the forward ones only: "preview" and "publication" have no passing test because no preview or publication runtime exists in Slice 10 (CMS-03B-07..09 are contract-only; runtime is Slice 11). Create, append, conflict resolution, restore and draft read are each compared with the TypeScript verdict over the DEC-133 object corpus through the real Worker/PostgREST boundary (restore: a corrupt source revision is fed the same 11 values and restores exactly when TypeScript admits them, refusing the rest with a typed 4xx that changes nothing).',
+      'Unproven: "publication (the preflight `contract` category in the submit, schedule and publish phases)" and "Preview evaluates no field value". The preflight contract category re-runs the same platform_private.cms_draft_field_value_valid validator as draft read (supabase/migrations/20261005017570_cms_preflight_evaluation.sql), but the existing publish-phase contract cases cover a number in a short_text field, relations and rich text, not a stored DEC-133 object value that violates the structure; one pgTAP case in step with the TypeScript verdict over the object corpus is still to be added. "Preview evaluates no field value" is a negative (BE03b: CMS-03B-08 runs no registry phase) that no test asserts. Create, append, conflict resolution, restore and draft read are each compared with the TypeScript verdict over the DEC-133 object corpus through the real Worker/PostgREST boundary, and the preview binding of the same frozen bytes is cited from the Slice 11 version-set tests.',
   },
   {
     criterion: 'P2-S10-AC-081',
@@ -2748,7 +2765,7 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-089',
-    text: 'CMS-03B-12 rejects malformed entry/conflict UUIDs, undeclared queries or bodies, and out-of-bound preimages before any existence or dependency work.',
+    text: 'CMS-03B-12 rejects malformed entry/conflict UUIDs and undeclared queries or bodies before any existence or dependency work, and refuses an out-of-bound preimage response (more than 128 paths, or a side over 256 KiB) as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
     clauses: [
       {
         text: 'CMS-03B-12 rejects malformed entry/conflict UUIDs',
@@ -2827,13 +2844,60 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'out-of-bound preimages before any existence or dependency work.',
+        text: 'before any existence or dependency work',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-089] rejects a malformed entry or conflict UUID as 400 before any dependency work',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-10-ev-ec-reads.apispec.ts',
+            title:
+              'EC CMS-03B-12 conflict detail through the real stack [EC-089] never reaches the database for malformed addressing or an undeclared query',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-089] rejects undeclared queries, request bodies, and mutation headers on the read',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/server/cms-editorial-platform-reads-app.test.ts',
+            title:
+              'cms-editorial conflict-detail read proxy (CMS-03B-12) refuses a query string and read mutation headers',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-ec-r1-read-boundary.test.ts',
+            title:
+              'EC-095 the safe reads refuse a body and mutation headers before any database call CMS-03B-12 refuses a declared request body (Content-Length) without calling the database',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-ec-r1-read-boundary.test.ts',
+            title:
+              'EC-095 the safe reads refuse a body and mutation headers before any database call CMS-03B-12 refuses a chunked request body (Transfer-Encoding) without calling the database',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-ec-r1-read-boundary.test.ts',
+            title:
+              'EC-095 the safe reads refuse a body and mutation headers before any database call CMS-03B-12 refuses a request media type (Content-Type) without calling the database',
+          },
+        ],
+      },
+      {
+        text: 'and refuses an out-of-bound preimage response (more than 128 paths, or a side over 256 KiB) as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
         citations: [],
       },
     ],
     status: 'partial',
     limitation:
-      'Clause "out-of-bound preimages before any existence or dependency work" is not satisfiable as worded: a preimage exists only in the dependency response, so its bound (128 paths, 256 KiB per side) is enforced as a response-contract check AFTER the read (Worker 502 on an out-of-bound or invalid resource, contract cap of 128 paths, SQL INTERNAL_ERROR on an over-bound stored side, and a bounded write-time `proposed_values` CHECK), never before it. Malformed UUIDs, undeclared queries and bodies ARE refused before any database call (EC R1 read-boundary suite). Needs a wording ruling: amend AC-089 so the "before any existence or dependency work" clause governs only addressing/queries/bodies. EVIDENCE GAP EC R1 089-a. R1b: no production change landed for this clause, and it is not a DEC-147 forward-scope item (preview/publication): the gap is the criterion wording itself, so it stays partial until the wording ruling.',
+      'Unproven: "and refuses an out-of-bound preimage response (more than 128 paths, or a side over 256 KiB) as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code. Today apps/worker/src/cms-editorial/conflict-detail-routes.test.ts asserts 502 BAD_GATEWAY for an invalid or out-of-bound dependency answer. Malformed UUIDs, undeclared queries and bodies ARE refused before any database call (EC R1 read-boundary suite).',
   },
   {
     criterion: 'P2-S10-AC-090',

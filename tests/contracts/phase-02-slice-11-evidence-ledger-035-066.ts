@@ -5,7 +5,7 @@ import type { EvidenceLedgerEntry } from './phase-02-evidence-ledger';
 export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   {
     criterion: 'P2-S11-AC-035',
-    text: 'CMS-08 Submit/review/approve: given Revision is in draft state on an entry the submitter may edit and its frozen hash and dependency manifest resolve; each decision requires a reviewer distinct from the author where the workflow says review, and a protected risk class additionally requires two distinct humans, the named specialist capability and recent MFA., implement locked behavior and completion exactly. Operations: CMS-03B-15 (workflow read), CMS-03B-16 (review detail), CMS-03B-17 (reviewer queue) and CMS-03B-18 (reviewer assignment), BE03b ledger 25.02.03.',
+    text: 'CMS-08 Submit/review/approve: given Revision is in draft state on an entry the submitter may edit and its frozen hash and dependency manifest resolve; each decision requires a reviewer distinct from the author and from the submitter where the workflow says review, every decision requires recent binding MFA, and a protected risk class additionally requires two distinct humans and the named specialist capability, implement locked behavior and completion exactly. Operations: CMS-03B-15 (workflow read), CMS-03B-16 (review detail), CMS-03B-17 (reviewer queue) and CMS-03B-18 (reviewer assignment), BE03b ledger 25.02.03.',
     clauses: [
       {
         text: 'CMS-08 Submit/review/approve: given Revision is in draft state on an entry the submitter may edit',
@@ -73,7 +73,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'each decision requires a reviewer distinct from the author where the workflow says review',
+        text: 'each decision requires a reviewer distinct from the author and from the submitter where the workflow says review',
         citations: [
           {
             tool: 'pgtap',
@@ -98,6 +98,34 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts',
             title:
               'CMS-03B-18 assignment lifecycle [CMS-03B-18] absent nonmember ungranted and submitter reviewers share one exact eligibility refusal without effects',
+          },
+        ],
+      },
+      {
+        text: 'every decision requires recent binding MFA',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title: 'control: a proof 590 s old is accepted [P2-S11-AC-108]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-decision-contracts.apispec.ts',
+            title:
+              'CMS-03B-06 exact decision contracts [CMS-03B-06] none proof returns exact STEP_UP_REQUIRED recovery before any RPC or reservation',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-decision-contracts.apispec.ts',
+            title:
+              'CMS-03B-06 exact decision contracts [CMS-03B-06] stale proof returns exact STEP_UP_REQUIRED recovery before any RPC or reservation',
           },
         ],
       },
@@ -156,34 +184,6 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_review_decision.sql',
             title:
               'the specialist approves: the first unfilled specialist slot they hold is satisfied and the review is approved [P2-S11-AC-109]',
-          },
-        ],
-      },
-      {
-        text: 'and recent MFA',
-        citations: [
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
-            title:
-              'a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]',
-          },
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
-            title: 'control: a proof 590 s old is accepted [P2-S11-AC-108]',
-          },
-          {
-            tool: 'vitest',
-            file: 'tests/postgrest/phase-02-slice-11-decision-contracts.apispec.ts',
-            title:
-              'CMS-03B-06 exact decision contracts [CMS-03B-06] none proof returns exact STEP_UP_REQUIRED recovery before any RPC or reservation',
-          },
-          {
-            tool: 'vitest',
-            file: 'tests/postgrest/phase-02-slice-11-decision-contracts.apispec.ts',
-            title:
-              'CMS-03B-06 exact decision contracts [CMS-03B-06] stale proof returns exact STEP_UP_REQUIRED recovery before any RPC or reservation',
           },
         ],
       },
@@ -1114,10 +1114,10 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-038',
-    text: 'CMS-09 Schedule publish/expire: given Actor holds the CMS publisher capability with any required step-up, the target revision is approved with its frozen hash and dependency set intact, and the request supplies a local datetime, IANA timezone, unambiguous resolved UTC instant and tzdb version., implement locked behavior and completion exactly. Operations: CMS-03B-20 (internal schedule claim and execute RPC), BE03b ledger 25.02.04.',
+    text: 'CMS-09 Schedule publish/expire: given Actor holds the CMS publisher capability with recent binding-bound MFA, is not the author of the revision when the action is `publish`, the target revision is approved with its frozen hash and dependency set intact, and the request supplies a local datetime, IANA timezone, unambiguous resolved UTC instant and tzdb version, implement locked behavior and completion exactly. Operations: CMS-03B-20 (internal schedule claim and execute RPC), BE03b ledger 25.02.04.',
     clauses: [
       {
-        text: 'CMS-09 Schedule publish/expire: given Actor holds the CMS publisher capability with any required step-up',
+        text: 'CMS-09 Schedule publish/expire: given Actor holds the CMS publisher capability with recent binding-bound MFA',
         citations: [
           {
             tool: 'pgtap',
@@ -1148,6 +1148,23 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'tests/postgrest/phase-02-slice-11-schedule.apispec.ts',
             title:
               'CMS-03B-07 schedule through the real stack [CMS-03B-07] a missing, stale or future-dated step-up is 401 before any RPC and reserves nothing',
+          },
+        ],
+      },
+      {
+        text: 'is not the author of the revision when the action is `publish`',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'the human who authored the revision cannot schedule its publish (E11) [P2-S11-AC-107]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql',
+            title:
+              'the revision author may schedule an expire: separation of duties (E11) binds only a publish [P2-S11-AC-107]',
           },
         ],
       },
@@ -1952,7 +1969,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-041',
-    text: 'CMS-13 Preview/diff/publish: given Preview requires a capability on the target entry and mints a token bound to user, acting context, revision, the full version set, audience/locale/route, expiry and nonce, rechecked on every open; publish additionally requires the CMS publisher capability, an approved revision whose frozen hash and dependency set still match, and a preflight rerun against current revocation sta, implement locked behavior and completion exactly. Operations: CMS-03B-19 (internal preview-token verifier RPC), BE03b ledger 25.03.04.',
+    text: "CMS-13 Preview/diff/publish: given Preview requires a capability on the target entry and mints a token bound to user, acting context, revision, the full version set, audience/locale/route, expiry and nonce, rechecked on every open; publish additionally requires the CMS publisher capability, an approved revision whose frozen hash and dependency set still match, recent binding-bound MFA, a publisher who is not the revision's author, and a preflight rerun across the registry of preflight categories against current revocation state, implement locked behavior and completion exactly. Operations: CMS-03B-19 (internal preview-token verifier RPC), BE03b ledger 25.03.04.",
     clauses: [
       {
         text: 'CMS-13 Preview/diff/publish: given Preview requires a capability on the target entry',
@@ -2106,7 +2123,35 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and a preflight rerun against current revocation',
+        text: 'recent binding-bound MFA',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
+            title:
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a missing, stale or future-dated step-up is 401 STEP_UP_REQUIRED before any RPC and any idempotency reservation',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-048]',
+          },
+        ],
+      },
+      {
+        text: "a publisher who is not the revision's author",
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'the human who authored the revision cannot publish it (E11) [P2-S11-AC-107]',
+          },
+        ],
+      },
+      {
+        text: 'and a preflight rerun across the registry of preflight categories against current revocation state',
         citations: [
           {
             tool: 'pgtap',
@@ -2139,10 +2184,6 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
               'CMS-03B-09 publication admission and preflight composition [CMS-03B-09] failed input load sends an own null proof and a strict preflight refusal without effects',
           },
         ],
-      },
-      {
-        text: 'sta',
-        citations: [],
       },
       {
         text: 'implement locked behavior and completion exactly',
@@ -2257,9 +2298,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "sta", the truncated tail of the criterion text "a preflight rerun against current revocation sta" (DEC-155: the text is cut inside the word; it lags IA03 AC-CMS-13, which reads "a preflight rerun across the registry of preflight categories against current revocation state"). The wording batch is still pending with the owner, so the clause is not cited as written. The evident reading, "a preflight rerun against current revocation", is cited under the preceding clause: the publish-phase tests of phase_02_slice_11_rpc_publication_publish_refusals.sql (a counted approver whose standing grant lapsed is found lazily by the revocation category and the lapse is a committed refusal; a failed category refuses 422 preflight_failed with all 17 entries) and phase-02-slice-11-publish-preflight.apispec.ts. Every other clause, including the BE03b ledger 25.03.04 pointer (phase-02-slice-11-feature-ledger.test.ts), is cited; the entry becomes verified when the owner ratifies the corrected wording and the clause is restated.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-042',
@@ -3922,7 +3962,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-050',
-    text: "CMS-03B-15 accepts only a UUID `entryId` path and an optional UUID `revisionId` query member (default: the entry's current draft revision), rejects any other query key as 400 and a body as 415, accepts neither `Idempotency-Key` nor `If-Match`, answers a `revisionId` of another entry with the same 404 as an absent one, and refuses a response as a 422 response-contract failure when `preparation` is non-null for a revision that is not a submittable `draft`, when it exceeds 17 preflight results, 16 schedules or 64 publications, or when the `dependencyManifest` or `versionSet` breaks the locked Slice 10 contracts.",
+    text: "CMS-03B-15 accepts only a UUID `entryId` path and an optional UUID `revisionId` query member (default: the entry's current draft revision), rejects any other query key as 400 and a body as 415, accepts neither `Idempotency-Key` nor `If-Match`, answers a `revisionId` of another entry with the same 404 as an absent one, and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure when `preparation` is non-null for a revision that is not a submittable `draft`, when it exceeds 17 preflight results, 16 schedules or 64 publications, or when the `dependencyManifest` or `versionSet` breaks the locked Slice 10 contracts.",
     clauses: [
       {
         text: "CMS-03B-15 accepts only a UUID `entryId` path and an optional UUID `revisionId` query member (default: the entry's current draft revision)",
@@ -4039,7 +4079,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and refuses a response as a 422 response-contract failure',
+        text: 'and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure',
         citations: [],
       },
       {
@@ -4186,7 +4226,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "and refuses a response as a 422 response-contract failure", the status. The Worker refuses every listed breach and never serves it, but it answers 502 BAD_GATEWAY, not 422: each breach test of apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts (cited under the three "when" clauses) asserts status 502, no ETag, no-store, a fixed body without payload text and no served-resource metric, through the single token RESPONSE_BOUND_STATUS in workflow-read-breach.test-support.ts. BE03b (response bounds, error matrix) and this criterion say 422; BE00 (DEPENDENCY_UNAVAILABLE for an invalid upstream response) and every shipped route say 502. The clause stays uncited because the tested status contradicts it; it awaits the owner wording ruling (amend to 502, or map the breach to 422 and flip that one token).',
+      'Unproven: "and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code.',
   },
   {
     criterion: 'P2-S11-AC-051',
@@ -4649,7 +4689,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-053',
-    text: 'CMS-03B-15 maps malformed path or query (400), missing or expired session (401), workflow read scope (403), concealment (404), a body sent (415), a response-bound failure (422), the read limit (429), read dependency or deadline (502/503/504) and an internal failure (500, empty details) to typed ApiError; it reports an unavailable preflight provider inside `preparation.preflight` as an `unavailable` result and never as a failure of the read; and it writes no audit or outbox effect, so concealment stays 404 on refetch.',
+    text: 'CMS-03B-15 maps malformed path or query (400), missing or expired session (401), workflow read scope (403), concealment (404), a body sent (415), a response-bound failure (502 `DEPENDENCY_UNAVAILABLE`), the read limit (429), read dependency or deadline (502/503/504) and an internal failure (500, empty details) to typed ApiError; it reports an unavailable preflight provider inside `preparation.preflight` as an `unavailable` result and never as a failure of the read; and it writes no audit or outbox effect, so concealment stays 404 on refetch.',
     clauses: [
       {
         text: 'CMS-03B-15 maps malformed path or query (400)',
@@ -4767,7 +4807,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'a response-bound failure (422)',
+        text: 'a response-bound failure (502 `DEPENDENCY_UNAVAILABLE`)',
         citations: [],
       },
       {
@@ -4916,7 +4956,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "a response-bound failure (422)", the status. A resource that breaks the strict EntryWorkflowResource contract is refused and never served, but the Worker answers 502 BAD_GATEWAY, not 422: the breach tests of apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts (cited under AC-050 and not here, because their asserted status contradicts this clause) assert 502 through the single token RESPONSE_BOUND_STATUS in workflow-read-breach.test-support.ts, and the registry row declares VALIDATION_FAILED 422 for the read envelope while BE00 puts an invalid upstream response on 502. It awaits the same owner wording ruling as AC-050. The 500 and 502/504 envelope tests cited for this criterion run through the publish row and every declared status of every Slice 11 row, not a dedicated CMS-03B-15 internal-failure case.',
+      'Unproven: "a response-bound failure (502 `DEPENDENCY_UNAVAILABLE`)", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code. The 500 and 502/504 envelope tests cited for this criterion run through the publish row and every declared status of every Slice 11 row, not a dedicated CMS-03B-15 internal-failure case.',
   },
   {
     criterion: 'P2-S11-AC-054',
@@ -5565,7 +5605,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-056',
-    text: 'CMS-03B-16 accepts only a UUID `reviewId` path with no query key (400 otherwise) and refuses a response as a 422 response-contract failure when it breaks the review invariants (`invalidatedReason` exactly when `invalidated`, `decidedAt` exactly when `approved` or `rejected`, `recordedDecisionCount` at most `requiredDecisionCount`, a `protected` review requiring at least 2 decisions, count and risk class equal to the frozen workflow policy), carries more than 8 decisions or 32 assignments, or exposes a decision member beyond `id`, `decision`, `capability`, `decidedAt`, `mine` and `reason`.',
+    text: 'CMS-03B-16 accepts only a UUID `reviewId` path with no query key (400 otherwise) and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure when it breaks the review invariants (`invalidatedReason` exactly when `invalidated`, `decidedAt` exactly when `approved` or `rejected`, `recordedDecisionCount` at most `requiredDecisionCount`, a `protected` review requiring at least 2 decisions, count and risk class equal to the frozen workflow policy), carries more than 8 decisions or 32 assignments, or exposes a decision member beyond `id`, `decision`, `capability`, `decidedAt`, `mine` and `reason`.',
     clauses: [
       {
         text: 'CMS-03B-16 accepts only a UUID `reviewId` path',
@@ -5625,7 +5665,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and refuses a response as a 422 response-contract failure',
+        text: 'and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure',
         citations: [],
       },
       {
@@ -5840,7 +5880,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "and refuses a response as a 422 response-contract failure", the status. The Worker refuses every listed breach and never serves it, but it answers 502 BAD_GATEWAY, not 422: each breach test of apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts (cited under the "when it breaks", "carries more than" and "exposes a decision member" clauses) asserts status 502, no ETag, no-store, a fixed body without payload text and no served-resource metric, through the single token RESPONSE_BOUND_STATUS in workflow-read-breach.test-support.ts. BE03b (decisions / assignments row, error matrix) and this criterion say 422; BE00 and every shipped route say 502. The clause stays uncited because the tested status contradicts it; it awaits the same owner wording ruling as AC-050 (amend to 502, or map the breach to 422 and flip that one token).',
+      'Unproven: "and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code.',
   },
   {
     criterion: 'P2-S11-AC-057',
@@ -6187,7 +6227,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-059',
-    text: 'CMS-03B-16 maps a malformed path or query, a missing or expired session, a missing review read scope, concealment, an unsupported body, a response-bound failure, the read limit, a read dependency or deadline and an internal failure to typed ApiError, writes no audit or outbox effect, and keeps a concealed review a 404 on every refetch.',
+    text: 'CMS-03B-16 maps a malformed path or query, a missing or expired session, a missing review read scope, concealment, an unsupported body, a response-bound failure (502 `DEPENDENCY_UNAVAILABLE`), the read limit, a read dependency or deadline and an internal failure to typed ApiError, writes no audit or outbox effect, and keeps a concealed review a 404 on every refetch.',
     clauses: [
       {
         text: 'CMS-03B-16 maps a malformed path or query',
@@ -6327,6 +6367,10 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
+        text: '(502 `DEPENDENCY_UNAVAILABLE`)',
+        citations: [],
+      },
+      {
         text: 'the read limit',
         citations: [
           {
@@ -6441,8 +6485,9 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven: "(502 `DEPENDENCY_UNAVAILABLE`)", the status and code named after "a response-bound failure", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code. The clause "a response-bound failure" itself is cited: the breach is mapped to a typed ApiError and never served.',
   },
   {
     criterion: 'P2-S11-AC-060',
