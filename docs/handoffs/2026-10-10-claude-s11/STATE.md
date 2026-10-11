@@ -62,3 +62,20 @@ memory DEC-164..169/PAT-025..027 (2c55d937); composition mock + node bound + rac
   changed).
 - Next: canonical db:verify exit 0 -> pnpm validate (quiet) -> evidence runner slices 09, 10, 11 -> guard green ->
   independent Opus refutation review -> tracking/close/PR.
+
+## Update 2026-11 (2026-10-11 ~14:55Z) — canonical db:verify PASS; reviews in
+
+- **Canonical `pnpm db:verify` PASS** at `48befba3` on a quiet host: SQL 360 files / 13,780; API 71 files / 843;
+  races 21/21; types match. Log `.lane-logs/claude-dbverify-20261011-082956.log` (SHA-256 484f9ac1…).
+- Diagnostic `pnpm validate` (every step, continue on failure) running: `.lane-logs/claude-validate-diag-*/summary.txt`.
+- Independent Opus reviews: `review-b-code.md` (0 blocking/1 major/8 minor) and `review-a-ledger-refutation.md`
+  (1 blocking/15 major/35 minor; corrected verified ≈95–104, not 113; receipts/guard still missing).
+- Fix lanes running: reviewB-1 (B-01 locale currency DEC-170, B-05 relay poison, B-03 import boundary),
+  reviewB-2 (B-02 sweep re-execute, B-06 sealed-cursor apispec, B-08 prep wiring or spec gap),
+  reviewA-1 (AC-069 revoke editor grant, AC-083, predicate RLS, AC-051/084/091/081),
+  reviewA-2 (vacuous no-effect pgTAP, read p95 benches, AC-082 job deadline, retain-input tests, stale citations).
+- After lanes: re-run ledger refresh with review-A corrections (AC-059/070/097/122/083 partial pending wording),
+  then quiet canonical db:verify + validate, then evidence runner slices 09/10/11 + guard, then tracking/PR.
+- Owner wording batch to present: AC-041, AC-050/053/056/059 (502), AC-070 (DEC-161), AC-090 executor,
+  AC-097 (DEC-169), AC-122 (DEC-171 7-column key); plus DEC-147 (recommend C), boundary-issue permission (A),
+  EC-103 32-type cap and template-less instance cap (spec gaps).
