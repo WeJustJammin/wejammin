@@ -5,6 +5,7 @@ import type {
   PlatformJobsMessage,
 } from './async-entrypoint';
 import type { CmsPublicationScheduleRpcName } from './cms-publication-schedule-rpc-names';
+import type { CmsReviewRecheckRpcName } from './cms-editorial/review-recheck/rpc-names';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
 import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
@@ -22,6 +23,7 @@ export type AsyncRpcOperation =
   | 'record_processed_event'
   | 'ac265_prepare_hosted_run'
   | CmsPublicationScheduleRpcName
+  | CmsReviewRecheckRpcName
   | EventConsumerRpcName
   | SchemaMigrationRpcName;
 

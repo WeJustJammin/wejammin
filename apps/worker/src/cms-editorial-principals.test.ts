@@ -13,6 +13,7 @@ import {
   CMS_CLAIM_DUE_SCHEDULES_RPC,
   CMS_EXECUTE_SCHEDULE_RPC,
 } from './cms-publication-schedule-rpc-names';
+import { PREVIEW_TAKEDOWN_RPC } from './cms-editorial-production-preview-takedown';
 import { PREVIEW_VERIFIER_RPC } from './cms-editorial-production-preview-verifier';
 import { workflowHarness } from './cms-editorial/workflow-harness.test-support';
 
@@ -21,6 +22,10 @@ import { workflowHarness } from './cms-editorial/workflow-harness.test-support';
  * service credential. The Worker enforces the registered principals at the
  * module boundary (only the scheduled sweep reaches claim/execute, only the
  * delivery adapter reaches the verifier) and neither is ever a browser route.
+ * The preview takedown RPC (BE03b: "the service-role takedown RPC owned by
+ * Shard 16"; P2-S11-AC-118) follows the same rule: only its port module names
+ * it, no Worker module imports that port until the Shard 16 caller exists, and
+ * the browser app never reaches it.
  */
 
 const workerRoot = dirname(fileURLToPath(import.meta.url));
@@ -79,6 +84,12 @@ describe('principal boundaries', () => {
     ).toEqual([]);
   });
 
+  it('lets no Worker module import the preview takedown port until its Shard 16 caller exists', () => {
+    expect(
+      importersOf(workerRoot, 'cms-editorial-production-preview-takedown'),
+    ).toEqual([]);
+  });
+
   it('keeps the RPC names inside their own modules and the sweep transport', () => {
     expect(
       mentionsOf(workerRoot, "'cms_claim_due_publication_schedules'"),
@@ -89,6 +100,10 @@ describe('principal boundaries', () => {
     expect(mentionsOf(workerRoot, "'cms_verify_preview_token'")).toEqual([
       'cms-editorial-production-preview-verifier.ts',
     ]);
+    expect(mentionsOf(workerRoot, "'cms_takedown_preview_tokens'")).toEqual([
+      'cms-editorial-production-preview-takedown.ts',
+    ]);
+    expect(PREVIEW_TAKEDOWN_RPC).toBe('cms_takedown_preview_tokens');
   });
 
   it('never exposes an internal RPC to the browser app', () => {
@@ -96,6 +111,7 @@ describe('principal boundaries', () => {
       'cms_claim_due_publication_schedules',
       'cms_execute_publication_schedule',
       'cms_verify_preview_token',
+      'cms_takedown_preview_tokens',
       'cms_load_quality_gate_input',
     ])
       expect(mentionsOf(webRoot, literal)).toEqual([]);

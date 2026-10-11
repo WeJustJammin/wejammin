@@ -37,6 +37,7 @@ export const RACE_RUNNERS = [
   'supabase/tests/phase_02_slice_11_races/015-schedule-accept-race.mjs',
   'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
   'supabase/tests/phase_02_slice_11_races/020-preview-mint-race.mjs',
+  'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
 ];
 
 /**

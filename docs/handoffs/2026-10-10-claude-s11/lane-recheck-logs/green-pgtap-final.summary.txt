@@ -1,0 +1,819 @@
+phase_02_slice_11_recheck_relay.sql ................ 
+ok 1 - cms.schema.activated.v1 resolves its registered producer cms.schema_registry [P2-S11-AC-113]
+ok 2 - cms.template.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 3 - cms.pattern.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 4 - cms.taxonomy.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 5 - cms.localization.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 6 - cms.block.lifecycle.changed.v1 resolves its registered producer cms.schema_registry [P2-S11-AC-113]
+ok 7 - the relay claims each of the six recheck source events with its aggregate and registered producer [P2-S11-AC-113]
+ok 8 - a wrong aggregate, a key that is not a registry key, a wrong schema version and an unlisted event are never claimed [P2-S11-AC-113]
+ok 9 - a claimed recheck source event carries its producer, its outbox instant and a first lease [P2-S11-AC-113]
+ok 10 - claiming leases the six rows to the caller without dispatching them [P2-S11-AC-113]
+ok 11 - the four tuples relayed before the widening are still claimed [P2-S11-AC-113]
+ok 12 - the claim still returns the identifier columns, occurred_at and the registered producer [P2-S11-AC-113]
+ok 13 - the private claim is still a VOLATILE SECURITY DEFINER of the platform definer with an empty search_path [P2-S11-AC-113]
+ok 14 - only the service role executes the platform_api claim and no API role the private one [P2-S11-AC-113]
+ok 15 - the newly registered prefixes are as immutable as the rest of the map [P2-S11-AC-113]
+phase_02_slice_11_recheck_event_resolve.sql ........ 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - the private resolver is a SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+ok 9 - the platform_api wrapper is executable by the service role only [P2-S11-AC-113]
+ok 10 - the resolver answers jsonb [P2-S11-AC-113]
+ok 11 - cms.schema.activated.v1 names the activated schema version under the schema kind [P2-S11-AC-113]
+ok 12 - cms.template.activated.v1 names the template version under the template kind [P2-S11-AC-113]
+ok 13 - cms.pattern.activated.v1 names the pattern version under the pattern kind [P2-S11-AC-113]
+ok 14 - cms.taxonomy.changed.v1 names the taxonomy version under the taxonomy_version kind [P2-S11-AC-113]
+ok 15 - cms.block.lifecycle.changed.v1 names the block definition version under the block kind [P2-S11-AC-113]
+ok 16 - cms.localization.changed.v1 names the SOURCE revision of the variant, not the variant revision the event carries [P2-S11-AC-113]
+ok 17 - the locale of a localization event is compared case-insensitively [P2-S11-AC-113]
+ok 18 - the latest version of the locale variant names its source revision [P2-S11-AC-113]
+ok 19 - the platform_api wrapper returns the resolved lookup [P2-S11-AC-113]
+ok 20 - control: the CMS RPC context set by the fixtures is restored by the wrapper [P2-S11-AC-113]
+ok 21 - an event row that does not exist is not found [P2-S11-AC-113]
+ok 22 - a null event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 23 - an event of another schema version is not found [P2-S11-AC-113]
+ok 24 - an event type outside the six is not found even when its payload looks right [P2-S11-AC-113]
+ok 25 - a payload without the published identity member is not found [P2-S11-AC-113]
+ok 26 - an identity member that is not a UUID is not found [P2-S11-AC-113]
+ok 27 - an identity member that is not a string is not found [P2-S11-AC-113]
+ok 28 - a non-canonical (uppercase) UUID is not found [P2-S11-AC-113]
+ok 29 - a localization event of a revision with no locale variant is not found [P2-S11-AC-113]
+ok 30 - a localization event of another locale than the variant is not found [P2-S11-AC-113]
+ok 31 - a localization event naming another entry than the variant is not found [P2-S11-AC-113]
+ok 32 - a localization payload without entryId is not found [P2-S11-AC-113]
+ok 33 - a localization payload without revisionId is not found [P2-S11-AC-113]
+ok 34 - a localization payload without locale is not found [P2-S11-AC-113]
+ok 35 - resolving every forged event wrote no outbox, audit or variant row [P2-S11-AC-113]
+phase_02_slice_11_recheck_run.sql .................. 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - the run, the event resolver and the lineage helper are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-
+ok 10 - the two platform_api wrappers are SECURITY DEFINER functions of the CMS definer executable by the service role only [P2-S11-AC-113]
+ok 11 - the run answers jsonb { examined, invalidated, nextCursor } [P2-S11-AC-113]
+ok 12 - lineage: an exact kind stands for the identity itself [P2-S11-AC-113]
+ok 13 - a non-object request is INVALID_REQUEST [P2-S11-AC-113]
+ok 14 - a request without the cursor member is INVALID_REQUEST [P2-S11-AC-113]
+ok 15 - a kind outside the nine is INVALID_REQUEST [P2-S11-AC-113]
+ok 16 - a malformed event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 17 - a non-string reference is INVALID_REQUEST [P2-S11-AC-113]
+ok 18 - a malformed cursor is INVALID_REQUEST [P2-S11-AC-113]
+ok 19 - an unknown request member (a caller-named review) is INVALID_REQUEST [P2-S11-AC-113]
+ok 20 - control: the refused requests emitted nothing [P2-S11-AC-113]
+ok 21 - the run selects the six LIVE reviews that name the schema version and invalidates none while every manifest still holds [P2-S11-AC-113]
+ok 22 - a review that still holds is left untouched, and a rejected or already invalidated review is not selected [P2-S11-AC-113]
+ok 23 - a run that invalidates nothing emits no event [P2-S11-AC-113]
+ok 24 - a reference no review froze selects nothing [P2-S11-AC-113]
+ok 25 - precondition: the withdrawn block leaves the rebuilt manifest equal to the frozen one but the identity is not current [P2-S11-AC-113]
+ok 26 - the withdrawn block invalidates the one review that froze it [P2-S11-AC-113]
+ok 27 - the review of the withdrawn block is invalidated dependency_changed (CAS version + 1) and the review of another block is untouched [P2-S11-AC-113]
+ok 28 - the invalidation writes one cms.entry.review-changed.v1 at the new version carrying the correlation id of the source event [P2-S11-AC-113]
+ok 29 - the invalidation writes its audit record with the same correlation id [P2-S11-AC-113]
+ok 30 - idempotent: a repeated run skips the review that is already invalidated [P2-S11-AC-113]
+ok 31 - idempotent: a repeated run emits no second event [P2-S11-AC-113]
+ok 32 - idempotent: a repeated run writes no second audit record [P2-S11-AC-113]
+ok 33 - precondition: the changed term makes the rebuilt manifest differ from the frozen one while every frozen identity is current [P2-S11-AC-113]
+ok 34 - inequality: the changed term invalidates the review that froze it [P2-S11-AC-113]
+ok 35 - inequality: the review is invalidated dependency_changed [P2-S11-AC-113]
+ok 36 - lineage: a pattern version stands for every version of its pattern key [P2-S11-AC-113]
+ok 37 - lineage: another pattern key is not part of it [P2-S11-AC-113]
+ok 38 - lineage: a version row that does not exist stands for itself [P2-S11-AC-113]
+ok 39 - the event of the NEW pattern version reaches the review that froze its superseded predecessor [P2-S11-AC-113]
+ok 40 - the review of the superseded pattern version is invalidated dependency_changed [P2-S11-AC-113]
+ok 41 - one event per invalidated review so far: block, term and pattern [P2-S11-AC-113]
+ok 42 - with no outbox row behind the event id the invalidation carries a fresh correlation id [P2-S11-AC-113]
+ok 43 - precondition: r1, r2 and r6 are the live reviews of the schema version [P2-S11-AC-113]
+ok 44 - a run continues after the cursor: only reviews with a greater id are selected [P2-S11-AC-113]
+ok 45 - a cursor on the last review selects nothing [P2-S11-AC-113]
+ok 46 - a superseded schema version invalidates the live reviews after the cursor [P2-S11-AC-113]
+ok 47 - the approved review is invalidated at its next version, the review before the cursor is untouched [P2-S11-AC-113]
+ok 48 - the run from the start finishes what is left: the review before the old cursor [P2-S11-AC-113]
+ok 49 - idempotent: with no live review left a run examines nothing [P2-S11-AC-113]
+ok 50 - a rejected review stays rejected and an earlier invalidation keeps its reason [P2-S11-AC-113]
+ok 51 - exactly one event per invalidated review: six invalidations, no duplicate from any repeated run [P2-S11-AC-113]
+ok 52 - the dependency rows of the invalidated reviews are retained as history [P2-S11-AC-113]
+phase_02_slice_11_recheck_cap.sql .................. 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - precondition: 501 live reviews name the schema version in the dependency index [P2-S11-AC-113]
+ok 10 - precondition: the walk order has 501 reviews [P2-S11-AC-113]
+ok 11 - a run handles at most 500 of the 501 live reviews and returns the 500th review id as its continuation cursor [P2-S11-AC-113]
+ok 12 - the run that continues after the cursor handles the 501st review and returns no cursor [P2-S11-AC-113]
+ok 13 - a run with exactly 500 reviews left handles all of them and returns no cursor [P2-S11-AC-113]
+ok 14 - while every manifest holds, no review changes state or version [P2-S11-AC-113]
+ok 15 - while every manifest holds, a walk of the whole index emits no event [P2-S11-AC-113]
+ok 16 - a run that invalidates handles at most 500 reviews too: 500 invalidated and a cursor [P2-S11-AC-113]
+ok 17 - exactly 500 reviews are invalidated dependency_changed at the next CAS version [P2-S11-AC-113]
+ok 18 - the 501st review is still live after the first run [P2-S11-AC-113]
+ok 19 - the continuation, called through the platform_api wrapper, invalidates the 501st review and returns no cursor [P2-S11-AC-113]
+ok 20 - all 501 reviews are invalidated dependency_changed [P2-S11-AC-113]
+ok 21 - one cms.entry.review-changed.v1 per invalidated review [P2-S11-AC-113]
+ok 22 - one audit record per invalidated review [P2-S11-AC-113]
+ok 23 - idempotent: a repeated run finds no live review [P2-S11-AC-113]
+ok 24 - idempotent: the repeated run emitted nothing [P2-S11-AC-113]
+ok 25 - idempotent: a run from a cursor in the middle finds none either [P2-S11-AC-113]
+phase_02_slice_11_recheck_index.sql ................ 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - no API role holds any privilege on the dependency index [P2-S11-AC-113]
+ok 9 - PUBLIC holds no privilege on the dependency index [P2-S11-AC-113]
+ok 10 - the CMS definer role holds INSERT and SELECT on the index and nothing else: no UPDATE, DELETE or TRUNCATE [P2-S11-AC-113]
+ok 11 - cms_submit_review is the only function whose body inserts into the dependency index [P2-S11-AC-113]
+ok 12 - no function updates or deletes a dependency row [P2-S11-AC-113]
+ok 13 - the Worker service role cannot insert a dependency row directly [P2-S11-AC-113]
+ok 14 - a signed-in human cannot insert a dependency row directly [P2-S11-AC-113]
+ok 15 - even the table owner is refused outside the CMS RPC context [P2-S11-AC-113]
+ok 16 - one frozen manifest yields a dependency row of each of the nine kinds [P2-S11-AC-113]
+ok 17 - each (kind, ref_id) identity is listed once, which UNIQUE(review_id, kind, ref_id) requires [P2-S11-AC-113]
+phase_02_slice_09_r8_api_surface.sql ............... 
+ok 1 - the original set is exactly eight named operations [P2-S09-AC-180]
+ok 2 - no function is both original and amendment [P2-S09-AC-180]
+ok 3 - the four sets are disjoint [P2-S09-AC-180]
+ok 4 - every cms_ function of platform_api and public_api is classified: no unreviewed RPC is exposed [P2-S09-AC-180]
+ok 5 - every classified function exists in platform_api, so the lists carry no stale name [P2-S09-AC-180]
+ok 6 - public_api exposes no cms_ function [P2-S09-AC-180]
+ok 7 - all eight original RPCs are SECURITY DEFINER and executable by the service role [P2-S09-AC-180]
+ok 8 - neither anon nor PUBLIC can execute any original RPC [P2-S09-AC-180]
+ok 9 - the authenticated role executes exactly the five signed-in-human originals, not the other three (the migration's grant of all eight is revoked before it ends) [P2-
+ok 10 - every amendment and supporting RPC is service-role only: never anon, PUBLIC or authenticated [P2-S09-AC-180]
+ok 11 - anon and authenticated hold no INSERT, UPDATE or DELETE on any platform_private.cms_ table [P2-S09-AC-180]
+ok 12 - no API role can execute a spec-named but uncalled cms_ function [P2-S09-AC-180]
+ok 13 - the API-executable cms_ set is exactly the enumerated original, amendment and supporting RPCs [P2-S09-AC-180]
+ok 14 - every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 54 [P2-S09-AC-180]
+phase_02_slice_09_sec2_definer_rls.sql ............. 
+ok 1 - the Slice 09 forced-table set is derived from the catalog [P2-S09-AC-181]
+ok 2 - the set of functions whose body names a forced Slice 09 table is derived from the live bodies [P2-S09-AC-181]
+ok 3 - RLS is enabled AND forced on every table of the set, including cms_workflow_policies (N/N) [P2-S09-AC-181] [P2-S09-AC-686]
+ok 4 - no API role (anon, authenticated, service_role) holds any table privilege on any table of the set (N/N) [P2-S09-AC-181] [P2-S09-AC-647] [P2-S09-AC-660] [P2-S09-AC-
+ok 5 - every function whose body reads or writes a forced Slice 09 table is owned by a NOLOGIN role with rolsuper = false and rolbypassrls = false (N/N over the live bodi
+ok 6 - every such SECURITY DEFINER function pins an empty search_path (N/N) [P2-S09-AC-181]
+ok 7 - the definer and the authority-reader roles exist as NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION [P2-S09-AC-181]
+ok 8 - no other role owns a function of the set: ownership is one of the two dedicated roles [P2-S09-AC-181]
+ok 9 - neither dedicated role is a member of any other role (no inherited privilege or bypass) [P2-S09-AC-181]
+ok 10 - no API role can SET ROLE to either dedicated role [P2-S09-AC-181]
+ok 11 - each dedicated role holds table privileges only on relations that a function it owns names (least privilege, N/N) [P2-S09-AC-181]
+ok 12 - neither dedicated role holds TRUNCATE, REFERENCES or TRIGGER on any table [P2-S09-AC-181]
+ok 13 - neither dedicated role may CREATE in any schema [P2-S09-AC-181]
+ok 14 - no table of the set carries a blanket USING (true) policy, except the SELECT-only reads of the code-owned registries and of the authority reader that owns the rea
+ok 15 - no write policy of any table of the set is a blanket true predicate [P2-S09-AC-181]
+ok 16 - the authority reader holds no write privilege on any table (it owns read-only helpers) [P2-S09-AC-181]
+ok 17 - fixture: two organizations and a frozen, assigned, decided review exist (provisioned through the real producers)
+ok 18 - control: the platform owner sees the review rows the fixture created
+ok 19 - control: at least seven of the nine scoped tables hold fixture rows created by real producers
+ok 20 - under the definer role, a forged published session (a non-member claiming the owner organization) with the RPC flag set reads NO foreign row from any scoped table
+ok 21 - under the definer role, no published session and no service role reads no scoped row [P2-S09-AC-181]
+ok 22 - under the definer role, a real session of ANOTHER organization reads none of the owner organization's scoped rows [P2-S09-AC-181]
+ok 23 - the once-per-statement policy scope equals the single-row cms_session_scope_ok oracle on every row of every scoped table, for a forged, a foreign, the owner, a re
+ok 24 - under the definer role a forged session's INSERT into each of the nine scoped tables is refused by WITH CHECK (SQLSTATE 42501 naming row-level security, N/N) [P2-
+ok 25 - positive control: with the authorized session the owner organization's inserts are admitted by the policy (N/N) [P2-S09-AC-181]
+ok 26 - positive control: under the authorized owner session every scoped table shows exactly the owner rows the platform owner sees [P2-S09-AC-181] [P2-S09-AC-647] [P2-S
+ok 27 - a forged session's UPDATE touches no review row [P2-S09-AC-647]
+ok 28 - a forged session's DELETE removes no capability grant [P2-S09-AC-660]
+ok 29 - a forged session's DELETE removes no review [P2-S09-AC-647]
+ok 30 - and the grants are intact for the platform owner [P2-S09-AC-660]
+ok 31 - the code-owned workflow-policy registry is readable under a human session [P2-S09-AC-686]
+ok 32 - a human session cannot insert a workflow policy: registry writes are system-scope only [P2-S09-AC-686]
+ok 33 - a human session's DELETE removes no workflow policy [P2-S09-AC-686]
+ok 34 - a human session's UPDATE changes no workflow policy [P2-S09-AC-686]
+ok 35 - a human session cannot insert a transform registry row [P2-S09-AC-181]
+ok 36 - the service-role system scope (no human session) is admitted by the registry policy [P2-S09-AC-181]
+ok 37 - under the definer role a published MFA subject that is not the row's account cannot INSERT into any of the three MFA tables (N/N) [P2-S09-AC-181]
+ok 38 - positive control: the published subject's own rows are admitted by the policy [P2-S09-AC-181]
+ok 39 - under the definer role a human session cannot write a notification intent (system scope only) [P2-S09-AC-181]
+ok 40 - every platform_api function was called under every API role (N/N) [P2-S09-AC-181]
+ok 41 - behaviour matches the ACL for every function and role: an executable function is reached, a non-executable one is refused at the function (N/N) [P2-S09-AC-181]
+ok 42 - grant design: anon reaches exactly the three public read projections [P2-S09-AC-181]
+ok 43 - grant design: authenticated reaches only the human identity, profile and CMS authoring surface, never a Worker or system command [P2-S09-AC-181]
+ok 44 - grant design: service_role reaches every Worker command (N/N) [P2-S09-AC-181]
+ok 45 - no reached call fails with a permission-denied inside the definer: every function runs with the privileges it needs (N/N) [P2-S09-AC-181]
+ok 46 - every platform_api function that sets or reaches the RPC flag restores the previous value on return (N/N) [P2-S09-AC-181]
+ok 47 - fixture: the owner reads the content types through CMS-03A-04
+ok 48 - after a CMS RPC returns, app.cms_rpc is restored to its previous value, not left set [P2-S09-AC-181]
+ok 49 - in the same transaction the definer role's direct write to a guarded table is refused by the write guard [P2-S09-AC-181]
+ok 50 - and, with the guard trigger out of the way, by the RPC-context policy itself [P2-S09-AC-181]
+ok 51 - and the platform owner's direct write to a guarded table is refused by the write guard [P2-S09-AC-181]
+ok 52 - fixture: an RPC that raises
+ok 53 - after a failed CMS RPC the flag is not left set [P2-S09-AC-181]
+ok 54 - an RPC called while the flag was already set restores that previous value [P2-S09-AC-181]
+phase_02_slice_09_sec2_all_schema_definer_rls.sql .. 
+ok 1 - fixture: a live step-up challenge exists for the target
+ok 2 - the definer functions that name a forced table are derived from the live bodies of every schema [P2-S09-AC-181]
+ok 3 - no SECURITY DEFINER function of any schema that reads or writes a forced table is owned by a BYPASSRLS, superuser or login role unless it is on the explicit legacy
+ok 4 - every legacy-list entry is still a bypass-owned definer that names a forced table: a converted or dropped function leaves the list (equality both ways) [P2-S09-AC-
+ok 5 - every Slice 09 definer function that names a forced table, named one by one (33 of 33, including both administrative MFA reset functions), is owned by a NOLOGIN no
+ok 6 - the exact set of forced tables that functions owned by the definer roles name is pinned (a new table, or a function that starts naming one, must be reviewed here) 
+ok 7 - the CMS definer, the authority reader and the platform definer exist as NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION [P2-S09-AC-181]
+ok 8 - a definer function that names a forced table is owned by bypass-free dedicated role only: one of the three [P2-S09-AC-181]
+ok 9 - no dedicated role is a member of another role and no API role can SET ROLE to one [P2-S09-AC-181]
+ok 10 - every forced table a dedicated role's function names is covered by a privilege of that role (N/N) [P2-S09-AC-181]
+ok 11 - every table privilege a dedicated role holds on a forced table has a permissive policy for that verb that admits the role (no dead grant, no write without a polic
+ok 12 - each dedicated role holds a privilege on a forced table only when a function it owns names that table, in every schema (least privilege, N/N) [P2-S09-AC-181]
+ok 13 - no dedicated role holds TRUNCATE, REFERENCES or TRIGGER on any table of any schema [P2-S09-AC-181]
+ok 14 - no dedicated role may CREATE in any schema [P2-S09-AC-181]
+ok 15 - the authority reader holds no write privilege on any table of any schema (it owns read-only helpers) [P2-S09-AC-181]
+ok 16 - every such definer function pins an empty search_path (N/N) [P2-S09-AC-181]
+ok 17 - no API role holds any privilege on any forced table the dedicated roles touch (N/N) [P2-S09-AC-181] [P2-S09-AC-946]
+ok 18 - every write policy of the CMS definer on the actor-grant projection (other than the row-lock policy) requires the CMS RPC context [P2-S09-AC-658] [P2-S09-AC-181]
+ok 19 - every policy of the administrative reset record requires the system scope (no blanket true) [P2-S09-AC-946]
+ok 20 - positive control: the system scope (service-role JWT, no published session) reaches the target's factor rows under the definer role [P2-S09-AC-946]
+ok 21 - a forged published CMS session (service-role JWT, actor published) reaches no factor row of the target under the definer role [P2-S09-AC-946]
+ok 22 - a foreign verified subject (another account) reaches no factor row of the target under the definer role [P2-S09-AC-946]
+ok 23 - positive control: the verified subject reaches their own factor rows under the definer role [P2-S09-AC-946]
+ok 24 - with no published session and no service role the definer reaches no step-up challenge row [P2-S09-AC-946]
+ok 25 - a forged published session's INSERT of a reset record is refused by row-level security (42501) [P2-S09-AC-946]
+ok 26 - positive control: under the system scope the same INSERT is not refused by row-level security [P2-S09-AC-946]
+ok 27 - identity.rpc_admin_reset_mfa_factors under a forged published session is refused by row-level security, not silently skipped (42501) [P2-S09-AC-946]
+ok 28 - identity.rpc_admin_reset_mfa_factors under a foreign verified subject is refused by row-level security (42501) [P2-S09-AC-946]
+ok 29 - the refused calls changed no factor, version, reset record or security event [P2-S09-AC-946]
+ok 30 - platform_api.admin_mfa_factor_reset under a forged published session is refused by row-level security (42501), not completed [P2-S09-AC-946]
+ok 31 - and the refused wrapper wrote no reset record, moved no factor and bumped no version [P2-S09-AC-946]
+ok 32 - positive control: the same reset under the verified system scope completes through the definer role [P2-S09-AC-946]
+ok 33 - and the policies admitted the factor moves the command exists to make (factors are reconciling) [P2-S09-AC-946]
+phase_02_slice_09_g1_consumer_boundary.sql ......... 
+ok 1 - platform_api.auth_mfa_factor_reconcile_read(uuid) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 2 - platform_api.auth_mfa_reconciling_age() is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 3 - platform_api.identity_security_notification_read(uuid) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 4 - platform_api.cms_capability_grant_read_current(uuid) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 5 - platform_api.consumer_dead_letter_event(jsonb) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 6 - fixture: two verified factors through the enrollment producers
+ok 7 - reconcile_read returns exactly {found, state, authUserId, providerFactorId, version} for a factor [P2-S09-AC-913]
+ok 8 - an unknown factor id is exactly {"found": false} [P2-S09-AC-913]
+ok 9 - a null factor id is {"found": false} [P2-S09-AC-913]
+ok 10 - no reconciling factor: count 0 and oldestAgeSeconds null [P2-S09-AC-908]
+ok 11 - fixture: one factor moved to reconciling by the producer
+ok 12 - one reconciling factor: count 1 and oldestAgeSeconds about its age, exactly two keys [P2-S09-AC-908]
+ok 13 - reconcile_read reports the reconciling state [P2-S09-AC-913]
+ok 14 - a mfa.enroll.verified event reads back exactly {found, reasonCode, requestId} [P2-S09-AC-916]
+ok 15 - an unknown security event id is {"found": false} [P2-S09-AC-916]
+ok 16 - an event outside the three notifiable actions is never readable as a notification [P2-S09-AC-916]
+ok 17 - precondition: the fixture holds at least one non-notifiable security event, so the negative is not vacuous [P2-S09-AC-916]
+ok 18 - fixture: a real active grant through CMS-03A-15
+ok 19 - an active grant reads back exactly {found, grantId, subjectPersonId, version, state, capabilityCode} [P2-S09-AC-689]
+ok 20 - fixture: the grant is revoked through CMS-03A-17
+ok 21 - a revoked grant reads state revoked and its new version [P2-S09-AC-689]
+ok 22 - the read carries the current aggregate version [P2-S09-AC-689]
+ok 23 - fixture: a second real grant
+ok 24 - a grant whose validThrough is before the current UTC date reads state lapsed [P2-S09-AC-689]
+ok 25 - an unknown grant id is {"found": false} [P2-S09-AC-689]
+ok 26 - consumer_dead_letters forces RLS and grants no API role any privilege [P2-S09-AC-689]
+ok 27 - a dead letter is recorded and acknowledged with exactly {accepted: true} [P2-S09-AC-689]
+ok 28 - replaying the same (consumer, eventId) is accepted again [P2-S09-AC-689]
+ok 29 - the replay wrote no second row (idempotent per consumer and event) [P2-S09-AC-689]
+ok 30 - another consumer with the same event id is its own row [P2-S09-AC-689]
+ok 31 - two consumers, two rows [P2-S09-AC-689]
+ok 32 - an unidentifiable payload (null event identity) is still recorded [P2-S09-AC-689]
+ok 33 - two null-identity records are both accepted: the unique index applies only to identified events [P2-S09-AC-689]
+ok 34 - null-identity records are not collapsed [P2-S09-AC-689]
+ok 35 - an unknown reason code is refused [P2-S09-AC-689]
+ok 36 - a malformed consumer name is refused [P2-S09-AC-689]
+ok 37 - an extra key (a queue body) is refused: only the closed identifier set is stored [P2-S09-AC-689]
+ok 38 - a missing key is refused: the request is exactly the eight named keys [P2-S09-AC-689]
+ok 39 - the job.requested job tuple is still claimed [P2-S09-AC-913]
+ok 40 - identity.mfa-factor.changed.v1 on a mfa_factor aggregate is claimed [P2-S09-AC-913]
+ok 41 - identity.security-notification.requested.v1 on a security_event aggregate is claimed [P2-S09-AC-916]
+ok 42 - cms.capability.grant.changed.v1 on a cms_capability_grant aggregate is claimed [P2-S09-AC-689]
+ok 43 - a wrong aggregate type, a wrong schema version and an unlisted event are never claimed [P2-S09-AC-913]
+ok 44 - precondition: claim_outbox_batch is a function, not a relation
+ok 45 - the returned column list is the identifier columns plus occurred_at and the registered producer (AC190) [P2-S09-AC-913]
+ok 46 - each claimed consumer event carries its registered producer [P2-S09-AC-190]
+ok 47 - every claimed row carries a producer and the outbox occurred_at [P2-S09-AC-190]
+ok 48 - the claimed occurred_at is the outbox row instant, not the claim time [P2-S09-AC-190]
+phase_02_slice_09_p240_outbox_producer.sql ......... 
+ok 1 - the event-type-prefix producer registry exists [P2-S09-AC-190]
+ok 2 - the registry has forced row level security [P2-S09-AC-190]
+ok 3 - no API role holds any privilege on the registry [P2-S09-AC-190]
+ok 4 - every registered prefix ends in a dot and every producer is a safe token [P2-S09-AC-190]
+ok 5 - the registered map is immutable: an UPDATE is refused even for the table owner [P2-S09-AC-190]
+ok 6 - the registered map is immutable: a DELETE is refused even for the table owner [P2-S09-AC-190]
+ok 7 - a write guard and an immutability guard back the policies when row security is bypassed [P2-S09-AC-190]
+ok 8 - cms.schema.draft.created.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 9 - cms.schema.dry_run.requested.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 10 - cms.schema.review.submitted.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 11 - cms.schema.review.decided.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 12 - cms.schema.review.assignment.changed.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 13 - cms.schema.review.invalidated.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 14 - cms.schema.activated.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 15 - cms.block.registered.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 16 - cms.block.lifecycle.changed.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 17 - cms.capability.grant.changed.v1 is produced by cms.schema_registry [P2-S09-AC-190]
+ok 18 - identity.mfa-factor.changed.v1 is produced by identity.authority [P2-S09-AC-190]
+ok 19 - identity.security-notification.requested.v1 is produced by identity.authority [P2-S09-AC-190]
+ok 20 - admin.mfa-factor.reset.v1 is produced by platform.admin [P2-S09-AC-190]
+ok 21 - job.requested is produced by platform.infrastructure [P2-S09-AC-190]
+ok 22 - the producer follows the longest registered prefix, not the version suffix [P2-S09-AC-190]
+ok 23 - an event type outside every registered prefix has no producer [P2-S09-AC-190]
+ok 24 - a null event type has no producer [P2-S09-AC-190]
+ok 25 - a bare family prefix that is not itself registered has no producer [P2-S09-AC-190]
+ok 26 - the producer lookup is not executable by any API role [P2-S09-AC-190]
+ok 27 - fixture: the real producers emitted the schema lifecycle events [P2-S09-AC-190]
+ok 28 - every outbox event type the real producers emitted resolves to a registered producer [P2-S09-AC-190]
+ok 29 - every cms.schema event is attributed to the schema registry [P2-S09-AC-190]
+ok 30 - the private claim returns occurred_at and producer beside the identifier columns [P2-S09-AC-190]
+ok 31 - the API claim returns the same columns [P2-S09-AC-190]
+phase_02_slice_10_ev_eb_publication_scope.sql ...... 
+ok 1 - EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or 
+ok 2 - EB scope: the only worker-facing review and decision functions are the 03A schema-review family and the named Slice 11 entry-review commands and reads
+ok 3 - EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers
+ok 4 - EB scope: the nine Slice 10 editorial operations are the nine worker-facing editorial RPCs
+ok 5 - EB scope: the review, decision, schedule, publication and preview-token storage is exactly the five Slice 10 tables plus the named Slice 11 review-assignment, revi
+ok 6 - EB scope: the only functions that build a dependency manifest, derive a version set or compare them are the six named private Slice 11 derivation helpers (no API o
+phase_02_slice_11_schema_posture.sql ............... 
+ok 1 - posture: all nine Slice 11 tables exist in the private schema [P2-S11-AC-119]
+ok 2 - posture: row-level security is enabled and forced on every Slice 11 table [P2-S11-AC-119]
+ok 3 - posture: anon, authenticated and service_role hold no privilege on any Slice 11 table [P2-S11-AC-119]
+ok 4 - posture: each Slice 11 table carries exactly its write, append-only and state guards in firing order, plus the AFTER preview-scope revocation trigger of the review
+ok 5 - posture: each Slice 11 table has exactly one policy, the CMS RPC-context gate [P2-S11-AC-119]
+ok 6 - posture: a write outside the CMS RPC context is refused before any constraint on every Slice 11 table [P2-S11-AC-119]
+ok 7 - posture: the nine guard functions are SECURITY INVOKER with an empty search_path and executable by no API role [P2-S11-AC-119]
+ok 8 - posture: the nine guard functions exist exactly once each [P2-S11-AC-119]
+phase_02_slice_11_review_dependencies_schema.sql ... 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - S11 dependency fixture: review1 is at its submission version and review2 has advanced
+ok 7 - dependency: the locked column set exists [P2-S11-AC-113]
+ok 8 - dependency: kind is the closed nine-member union of the frozen manifest identities [P2-S11-AC-113]
+ok 9 - dependency: one row per (review, kind, identity), a real review owner, and the recheck job's (kind, ref) index [P2-S11-AC-113]
+ok 10 - dependency: control - the canonical schema dependency image is accepted [P2-S11-AC-113]
+ok 11 - dependency: a kind outside the manifest groups is refused [P2-S11-AC-113]
+ok 12 - dependency: the row is version 1 forever [P2-S11-AC-113]
+ok 13 - dependency: updated_at equals created_at on immutable evidence [P2-S11-AC-113]
+ok 14 - dependency: the owner is the review owner, never another party [P2-S11-AC-113]
+ok 15 - dependency: the submission writes a manifest identity of a review at its submission version [P2-S11-AC-113]
+ok 16 - dependency: an identity is indexed once per review and kind [P2-S11-AC-113]
+ok 17 - dependency: every remaining manifest kind is accepted [P2-S11-AC-113]
+ok 18 - dependency: a review that has advanced past submission takes no further dependency rows [P2-S11-AC-113]
+ok 19 - dependency: the review is invalidated by a dependency change [P2-S11-AC-113]
+ok 20 - dependency: the rows persist after invalidation as history [P2-S11-AC-113]
+ok 21 - dependency: the frozen manifest index is never edited [P2-S11-AC-113]
+ok 22 - dependency: the frozen manifest index is never deleted [P2-S11-AC-113]
+phase_02_slice_11_rpc_review_submit.sql ............ 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - cms_submit_review is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-010]
+ok 11 - the platform_api wrapper is a SECURITY DEFINER of the CMS definer, executable by service_role only, not by PUBLIC, anon or authenticated [P2-S11-AC-010]
+ok 12 - control: the baseline revision passes all seventeen preflight categories (so a refusal below is about the case under test)
+ok 13 - an entry assignee freezes the current draft revision for review [P2-S11-AC-005]
+ok 14 - the response is exactly EditorialReviewResource (17 members) [P2-S11-AC-005]
+ok 15 - the review is open at version 1 and freezes the revision hash, the dependency hash, the activation evidence and the strictest-of workflow policy evidence of the m
+ok 16 - the response carries no submitter, author, owner, party or account identifier [P2-S11-AC-007]
+ok 17 - the row stores the server-derived submitter, owner, frozen hash, manifest, policy evidence and capability slots [P2-S11-AC-120]
+ok 18 - the ReviewDependency rows are exactly the (kind, ref_id) identities of the frozen manifest, written with the review [P2-S11-AC-113]
+ok 19 - a schema row names the schema version id and a settings row names the settings snapshot row [P2-S11-AC-113]
+ok 20 - submitting leaves the entry aggregate (version, draft pointer, updated_at) untouched [P2-S11-AC-005]
+ok 21 - the revision's derived state becomes submitted (E2) [P2-S11-AC-085]
+ok 22 - exactly one audit record and one identifier-only cms.entry.review-changed.v1 commit with the review [P2-S11-AC-010]
+ok 23 - the idempotency reservation is completed with the command [P2-S11-AC-008]
+ok 24 - an exact replay returns the stored response although the revision is now under review, and adds no second review, dependency, audit record or event [P2-S11-AC-008
+ok 25 - the same key with a changed request is IDEMPOTENCY_MISMATCH [P2-S11-AC-008]
+ok 26 - an editor assigned with cms.editor may submit; the submitter identity stays server-side [P2-S11-AC-007]
+ok 27 - control: an invalidated review returns the revision to draft (E2)
+ok 28 - the same revision is resubmitted after an invalidation: a second review row, the first kept as history [P2-S11-AC-085]
+ok 29 - a protected policy freezes riskClass protected, two required decisions and the specialist slot from the manifest evidence [P2-S11-AC-120]
+ok 30 - the protected review opens like any other: open at version 1 [P2-S11-AC-005]
+phase_02_slice_11_helpers_invalidation.sql ......... 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - the invalidation helpers are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-111]
+ok 10 - the writers are VOLATILE and the scope predicate is a STABLE read [P2-S11-AC-111]
+ok 11 - the authority-loss entry point returns the number of reviews transitioned [P2-S11-AC-112]
+ok 12 - an unknown request member is INVALID_REQUEST (server-built request only) [P2-S11-AC-111]
+ok 13 - a reason outside the closed four is INVALID_REQUEST [P2-S11-AC-111]
+ok 14 - a malformed review id is INVALID_REQUEST [P2-S11-AC-111]
+ok 15 - a malformed correlation id is INVALID_REQUEST [P2-S11-AC-111]
+ok 16 - a malformed actor id is INVALID_REQUEST [P2-S11-AC-111]
+ok 17 - an absent review is NOT_FOUND [P2-S11-AC-111]
+ok 18 - control: the failed requests changed nothing [P2-S11-AC-111]
+ok 19 - control: no event was emitted by the failed requests [P2-S11-AC-111]
+ok 20 - an open review is invalidated and the result names the review, the transition and the cascade counts [P2-S11-AC-111]
+ok 21 - state invalidated, the reason recorded, version + 1 [P2-S11-AC-111]
+ok 22 - one cms.entry.review-changed.v1 { reviewId, revisionId } at the new review version [P2-S11-AC-111]
+ok 23 - one audit row records the invalidation (no actor for a system producer) [P2-S11-AC-111]
+ok 24 - a system invalidation records no actor [P2-S11-AC-111]
+ok 25 - invalidating an already invalidated review is an idempotent no-op [P2-S11-AC-113]
+ok 26 - the no-op did not touch the review [P2-S11-AC-113]
+ok 27 - the no-op emitted no second event [P2-S11-AC-113]
+ok 28 - control: rv-appr is approved at version 2 with decided_at [P2-S11-AC-111]
+ok 29 - an approved review is invalidated as well [P2-S11-AC-111]
+ok 30 - approved -> invalidated clears decided_at and advances the version [P2-S11-AC-111]
+ok 31 - a supplied actor is recorded on the audit row [P2-S11-AC-111]
+ok 32 - a rejected review is terminal and is never invalidated [P2-S11-AC-111]
+ok 33 - the rejected review is unchanged [P2-S11-AC-111]
+ok 34 - all four closed reasons are accepted and recorded [P2-S11-AC-111]
+ok 35 - an invalidated review returns its revision to draft (E2) [P2-S11-AC-085]
+ok 36 - the review's pending and failed_retryable schedules are cancelled in the same transaction [P2-S11-AC-111]
+ok 37 - a cancelled schedule records approval_invalidated and advances its version [P2-S11-AC-111]
+ok 38 - a failed_retryable schedule is cancelled too [P2-S11-AC-111]
+ok 39 - an executing schedule is left to finish (the executor re-reads the approval) [P2-S11-AC-111]
+ok 40 - a completed schedule is history [P2-S11-AC-111]
+ok 41 - another review's schedule is untouched [P2-S11-AC-111]
+ok 42 - entry_unavailable cancels the schedule as well [P2-S11-AC-111]
+ok 43 - with the schedule reason entry_unavailable, not approval_invalidated [P2-S11-AC-111]
+ok 44 - a dependency change revokes no preview token (a version-set movement does not revoke it) [P2-S11-AC-118]
+ok 45 - the live token is still active [P2-S11-AC-118]
+ok 46 - entry_unavailable revokes the entry's unexpired active tokens (all minters) [P2-S11-AC-118]
+ok 47 - a revoked token is state revoked, revoked_at set, version + 1 (CAS) [P2-S11-AC-118]
+ok 48 - every minter's token on the entry is revoked [P2-S11-AC-118]
+ok 49 - an already expired token is left alone (expiry is derived) [P2-S11-AC-118]
+ok 50 - another entry's token is untouched [P2-S11-AC-118]
+ok 51 - cms_revoke_active_preview_tokens(entry, null) revokes the entry's active unexpired tokens and counts them [P2-S11-AC-118]
+ok 52 - the token is revoked [P2-S11-AC-118]
+ok 53 - a repeat is idempotent [P2-S11-AC-118]
+ok 54 - neither an entry nor a person is a malformed call [P2-S11-AC-118]
+ok 55 - a revision of another locale does not supersede the review (the chain is per locale) [P2-S11-AC-112]
+ok 56 - appending a newer revision of the same locale invalidates the older live review revision_superseded [P2-S11-AC-112]
+ok 57 - the invalidation emitted its review-changed event [P2-S11-AC-112]
+ok 58 - the newest review is superseded by the next append in turn [P2-S11-AC-112]
+ok 59 - a review of the newest revision stays live until a newer one lands [P2-S11-AC-112]
+ok 60 - a rejected review is terminal and is not touched by a newer revision [P2-S11-AC-112]
+ok 61 - the first revision of an entry supersedes nothing [P2-S11-AC-112]
+ok 62 - an entry update that keeps the entry active invalidates nothing [P2-S11-AC-112]
+ok 63 - the entry leaving active invalidates its live review entry_unavailable [P2-S11-AC-112]
+ok 64 - and cancels its schedule with entry_unavailable [P2-S11-AC-112]
+ok 65 - and revokes the entry's unexpired preview token [P2-S11-AC-118]
+ok 66 - an entry with no live review still has its tokens revoked when it leaves active (held) [P2-S11-AC-118]
+ok 67 - while the approver still qualifies nothing is invalidated (the call is safe to repeat) [P2-S11-AC-112]
+ok 68 - losing a capability the approver did not rely on (the policy slot) leaves the review approved [P2-S11-AC-112]
+ok 69 - revoking the standing capability of the satisfied slot invalidates the approved review in the revoking transaction [P2-S11-AC-112]
+ok 70 - every live review the approver counted in is invalidated [P2-S11-AC-112]
+ok 71 - a review counted by another approver is untouched [P2-S11-AC-112]
+ok 72 - a repeat after the trigger finds no live review: idempotent [P2-S11-AC-113]
+ok 73 - ending the approver's tenure invalidates the reviews they counted in [P2-S11-AC-112]
+ok 74 - the capability argument filters by the slot a decision satisfied: a policy-slot call ignores a base-slot approve [P2-S11-AC-112]
+ok 75 - the base-slot call finds the approve whose assignment is revoked and invalidates its review [P2-S11-AC-112]
+ok 76 - the review is invalidated [P2-S11-AC-112]
+ok 77 - a null person is a malformed call [P2-S11-AC-112]
+ok 78 - revoking a counted approver's assignment on an open review only recounts: no review version bump (CMS-03B-18) [P2-S11-AC-119]
+ok 79 - an entry assignee with the standing capability holds preview scope [P2-S11-AC-118]
+ok 80 - a member with no assignment, review assignment or publisher grant does not [P2-S11-AC-118]
+ok 81 - an owner-party cms.publisher holds preview scope without an assignment [P2-S11-AC-118]
+ok 82 - a revision that does not belong to the entry never carries scope [P2-S11-AC-118]
+ok 83 - an active reviewer assignee of a review of the revision holds preview scope [P2-S11-AC-118]
+ok 84 - ... only for the revision that review is of [P2-S11-AC-118]
+ok 85 - null arguments hold no scope [P2-S11-AC-118]
+ok 86 - revoking the creator's assignment revokes the creator's token on that entry [P2-S11-AC-118]
+ok 87 - the editor's token (own assignment) is untouched [P2-S11-AC-118]
+ok 88 - ending the publisher's tenure revokes the publisher's token [P2-S11-AC-118]
+ok 89 - deactivating the editor's standing grant (which also revokes the assignment, DEC-143) revokes the editor's token [P2-S11-AC-118]
+ok 90 - the producer triggers exist on the entry, the revision, the tenure and the actor grant [P2-S11-AC-112]
+ok 91 - the preview-scope triggers exist on the entry and review assignments [P2-S11-AC-118]
+ok 92 - exactly one overload of each invalidation helper exists [P2-S11-AC-111]
+phase_02_slice_11_helpers_manifest.sql ............. 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - the manifest helpers are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-087]
+ok 9 - builder, status and currency retain VOLATILE; bounds and the version set are STABLE [P2-S11-AC-087]
+ok 10 - the builder returns jsonb [P2-S11-AC-087]
+ok 11 - the status returns text [P2-S11-AC-090]
+ok 12 - the dependency-row projection returns (kind, ref_id) [P2-S11-AC-113]
+ok 13 - schema group: version id/definition hash, the compiled artifact, the frozen rich_text.v1 validator, the real workflow policy and the activation evidence [P2-S11-A
+ok 14 - the other eight groups of a clean revision: null template, empty lists, the empty-snapshot settings and the registry checker [P2-S11-AC-088]
+ok 15 - the manifest has exactly the nine contract groups [P2-S11-AC-087]
+ok 16 - the builder is deterministic: two builds of one revision are identical [P2-S11-AC-089]
+ok 17 - dependencyHash (the JCS SHA-256 of the manifest) is stable [P2-S11-AC-089]
+ok 18 - building reuses the save-initialized owner snapshot (ordinal 1), preserving the single-row count [P2-S11-AC-092]
+ok 19 - a null revision id is a malformed helper call [P2-S11-AC-087]
+ok 20 - an absent revision is NOT_FOUND [P2-S11-AC-087]
+ok 21 - a revision whose schema carries no resolvable workflow-policy evidence (the Slice 10 article fixture) is DEPENDENCY_UNAVAILABLE, never a partial manifest [P2-S11-
+ok 22 - template group: { id, hash } with the TemplateVersion content_hash [P2-S11-AC-088]
+ok 23 - a revision without a template has a JSON null template [P2-S11-AC-088]
+ok 24 - blocks reachable from the template slots are listed even with no composition instance (sorted by id) [P2-S11-AC-088]
+ok 25 - blocks: each identity once, ascending by id, hash = the registry release_digest, a retired instance contributes nothing [P2-S11-AC-088]
+ok 26 - patterns: each PatternVersion once, ascending by id, hash = content_hash [P2-S11-AC-088]
+ok 27 - an instance of a block with no registry record cannot be frozen (DEPENDENCY_UNAVAILABLE) [P2-S11-AC-088]
+ok 28 - terms: distinct terms of the active assignments, ascending by id, hash = SHA-256 of the JCS { id, termKey, lifecycle, version, successorId } of the term row [P2-S
+ok 29 - localeSources: the recorded source locale, source revision and sourceHash of the revision's LocaleVariant [P2-S11-AC-088]
+ok 30 - a source-locale revision has no localeSources entry [P2-S11-AC-088]
+ok 31 - relations: a pinned version wins over the current one, an unpinned target shows its current version, an unavailable omit/placeholder target is not listed while an
+ok 32 - the clean manifest is within bounds (4 entries) [P2-S11-AC-087]
+ok 33 - 128 blocks + 124 relations + 4 = exactly 256 entries is within bounds [P2-S11-AC-087]
+ok 34 - 257 entries is over the bound [P2-S11-AC-087]
+ok 35 - the 128-entry cap of one group holds even under 256 entries in total [P2-S11-AC-087]
+ok 36 - the 128 relation cap holds [P2-S11-AC-087]
+ok 37 - a manifest of exactly 32768 UTF-8 bytes is within bounds [P2-S11-AC-087]
+ok 38 - a manifest of 32769 bytes is over the bound [P2-S11-AC-087]
+ok 39 - a non-object is not a manifest within bounds [P2-S11-AC-087]
+ok 40 - null is not within bounds [P2-S11-AC-087]
+ok 41 - control: 128 reachable blocks (4 + 128 = 132 entries, at the group cap) still build [P2-S11-AC-087]
+ok 42 - 128 blocks + 128 relations + the singletons exceed 256 entries: dependency_manifest_too_large, no manifest [P2-S11-AC-087]
+ok 43 - the revision version set carries the revision's taxonomy ids sorted bytewise [P2-S11-AC-089]
+ok 44 - cms_revision_version_set is cms_version_set_of(manifest, the revision's taxonomy ids) [P2-S11-AC-089]
+ok 45 - the built version set matches the built manifest [P2-S11-AC-089]
+ok 46 - the version set of an absent revision is NOT_FOUND [P2-S11-AC-089]
+ok 47 - a freshly built manifest of a revision with template, blocks and patterns is current [P2-S11-AC-090]
+ok 48 - a moved settings ordinal is not current [P2-S11-AC-090]
+ok 49 - a different settings hash is not current [P2-S11-AC-090]
+ok 50 - a schema version whose definition hash differs is not current [P2-S11-AC-090]
+ok 51 - a schema artifact whose hash differs is not current [P2-S11-AC-090]
+ok 52 - a template whose digest differs is not current [P2-S11-AC-090]
+ok 53 - a pattern whose content hash differs is not current [P2-S11-AC-090]
+ok 54 - a block whose release digest differs is not current [P2-S11-AC-090]
+ok 55 - a block identity that no longer exists is not current [P2-S11-AC-090]
+ok 56 - an empty object is not a current manifest [P2-S11-AC-090]
+ok 57 - null is not a current manifest [P2-S11-AC-090]
+ok 58 - fixture: the current manifest carries a template, at least two blocks and a pattern for the ordering cases [P2-S11-AC-090]
+ok 59 - a structurally invalid manifest is never current: one case per missing group and per violated rule [P2-S11-AC-090]
+ok 60 - cms_dependency_manifest_valid rejects every one of those manifests [P2-S11-AC-090]
+ok 61 - control: a well-formed manifest (sorted, unique, populated optional groups) is still current [P2-S11-AC-090]
+ok 62 - control: cms_dependency_manifest_valid accepts them [P2-S11-AC-090]
+ok 63 - a schema version that is no longer active is not current [P2-S11-AC-090]
+ok 64 - control: reactivated, the manifest is current again [P2-S11-AC-090]
+ok 65 - a template version that is no longer active is not current [P2-S11-AC-090]
+ok 66 - a pattern version that is no longer active is not current [P2-S11-AC-090]
+ok 67 - a deprecated block is still current (supported or deprecated) [P2-S11-AC-090]
+ok 68 - status: a frozen manifest equal to the rebuilt one with every identity current is current [P2-S11-AC-090]
+ok 69 - status: another revision's manifest is stale [P2-S11-AC-090]
+ok 70 - status: a null frozen manifest is stale [P2-S11-AC-090]
+ok 71 - status: a malformed frozen manifest is stale [P2-S11-AC-090]
+ok 72 - status: a one-member drift (checker version) makes the frozen manifest stale [P2-S11-AC-090]
+ok 73 - status: an absent revision cannot be rebuilt, so its frozen set is stale [P2-S11-AC-090]
+ok 74 - status: a rebuilt manifest that differs from the frozen one is stale even though every frozen identity is current [P2-S11-AC-090]
+ok 75 - control: the wd manifest is current [P2-S11-AC-090]
+ok 76 - a withdrawn block leaves the manifest bytes unchanged (the digest is the release digest) [P2-S11-AC-090]
+ok 77 - a withdrawn block is not current [P2-S11-AC-090]
+ok 78 - status: an unchanged manifest with a withdrawn block is stale (non-current identity) [P2-S11-AC-090]
+ok 79 - status: a revision recording a taxonomy version that is not active is stale [P2-S11-AC-090]
+ok 80 - status: with the taxonomy version active the same frozen manifest is current [P2-S11-AC-090]
+ok 81 - dependency rows: schema, template, block (instances and template slots), pattern and the settings snapshot row id, one row per identity [P2-S11-AC-113]
+ok 82 - dependency rows: term, taxonomy_version (the revision's ids) and relation_target (distinct targets) kinds [P2-S11-AC-113]
+ok 83 - dependency rows: the locale_source kind names the source revision [P2-S11-AC-113]
+ok 84 - dependency rows of a malformed manifest are INVALID_REQUEST [P2-S11-AC-113]
+ok 85 - no helper creates a review row [P2-S11-AC-087]
+ok 86 - all of the above reused the owner's single settings snapshot (ordinal 1) [P2-S11-AC-092]
+ok 87 - exactly one overload of each manifest helper exists [P2-S11-AC-087]
+phase_02_slice_11_criteria_manifest_rls.sql ........ 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - the builder is owned by the CMS definer role, which is neither superuser nor BYPASSRLS, so every read it makes is subject to row-level security [P2-S11-AC-087]
+ok 9 - every table the builder reads has forced row-level security with a policy on the CMS RPC context [P2-S11-AC-087]
+ok 10 - control: with the CMS RPC context the builder returns the nine-group manifest of the revision [P2-S11-AC-087]
+ok 11 - without the CMS RPC context the revision is invisible under RLS: the builder answers NOT_FOUND [P2-S11-AC-087]
+ok 12 - a context other than true is no context: NOT_FOUND [P2-S11-AC-087]
+ok 13 - the context match is exact (TRUE is not true): NOT_FOUND [P2-S11-AC-087]
+ok 14 - the context is evaluated per statement: restored, the same call returns the manifest again [P2-S11-AC-087]
+ok 15 - outside the context the currency predicates see no canonical rows: the frozen manifest is stale and its identities are not current [P2-S11-AC-087]
+ok 16 - control: inside the context the same frozen manifest is current and its identities are current [P2-S11-AC-087]
+ok 17 - there is exactly one builder and its only input is the revision id: no manifest, hash or version-set value can be passed in [P2-S11-AC-087]
+ok 18 - no other function named like a manifest builder returns a manifest [P2-S11-AC-087]
+persistence_runtime.sql ............................ 
+ok 1 - authorized runtime job projection RPC exists
+ok 2 - internal canonical runtime job projection RPC exists
+ok 3 - typed canonical restore-fence RPC exists
+ok 4 - shared atomic job-read limiter RPC exists
+ok 5 - bounded outbox batch claim RPC exists
+ok 6 - outbox dispatch completion RPC exists
+ok 7 - job lease heartbeat RPC exists
+ok 8 - processed-event idempotency RPC exists
+ok 9 - lease-token-aware job outcome RPC exists
+ok 10 - runtime support tables exist in the private schema
+ok 11 - jobs persist the current lease token for CAS heartbeats
+ok 12 - runtime support tables enable and force RLS
+ok 13 - private runtime tables have no direct read grants
+ok 14 - job type registry rejects keys that do not start with a letter
+ok 15 - job type registry rejects keys longer than 64 characters
+ok 16 - runtime API functions are security definers with an explicit empty search path
+ok 17 - runtime RPCs are executable only by service_role
+ok 18 - registered object.verify acceptance atomically appends a scrubbed audit row
+ok 19 - unregistered job types are rejected before canonical or audit writes
+ok 20 - rejected job type leaves no job or audit row
+ok 21 - typed restore-fence baseline starts with matching epochs and open admission
+ok 22 - restore fence can enter reconciliation before releasing the checkpoint
+ok 23 - typed restore-fence snapshot rejects a missing consumer checkpoint while reconciling
+ok 24 - restore fence release advances the consumer checkpoint
+ok 25 - typed restore-fence snapshot opens only after matching checkpoint release
+ok 26 - restore fence rejects an older epoch after a newer checkpoint is released
+ok 27 - rejected older restore epoch is not inserted
+ok 28 - restore fence rejects replay of the current released epoch
+ok 29 - released restore epoch remains a single immutable checkpoint
+ok 30 - internal runtime read returns one bounded canonical job snapshot
+ok 31 - authorized runtime owner read returns one bounded canonical record
+ok 32 - wrong actor cannot read a job projection
+ok 33 - acting-party capability permits the matching party only
+ok 34 - operator reads require named capability, recent step-up, and reason
+ok 35 - job-read limiter atomically admits a user request at the fixed user ceiling
+ok 36 - job-read limiter atomically admits a party request and tracks both scopes
+ok 37 - job-read limiter rejects an exhausted user window without incrementing it
+ok 38 - outbox batch claim returns one bounded metadata-only lease
+ok 39 - outbox batch projection excludes raw payloads
+ok 40 - outbox completion accepts the owning lease once and is idempotent thereafter
+ok 41 - batch claim rejects a zero lease token
+ok 42 - outbox batch claim excludes events outside the platform job consumer tuple
+ok 43 - outbox events for other consumers remain unleased
+ok 44 - job heartbeat extends only the current lease and expected version
+ok 45 - heartbeat increments the canonical version while retaining the lease token
+ok 46 - job outcome rejects a non-owning lease token without changing canonical state
+ok 47 - terminal outcome clears the heartbeat token and closes the job
+ok 48 - terminal outcome clears the heartbeat token and closes the job
+ok 49 - processed-event RPC records a new event identity
+ok 50 - processed-event RPC makes identical delivery a no-op
+ok 51 - processed-event identity conflicts cannot be replayed as duplicates
+ok 52 - processed-event RPC rejects unregistered schema versions
+ok 53 - processed-event dedupe stores one immutable event row
+phase_02_slice_09_r3_grants_misc.sql ............... 
+ok 1 - fixture: the owner grants rev1 (an owner-organization member) cms.author through CMS-03A-15
+ok 2 - negative control: a forged row owned by ANOTHER organization names the owner-organization member rev1 as its subject [P2-S09-AC-616]
+ok 3 - the owner list succeeds: it never emits 404 for the other organization row [P2-S09-AC-616]
+ok 4 - the other organization row is omitted although its subject is a member of the owner organization: only owner_id scoping can hide it [P2-S09-AC-616]
+ok 5 - the owner own aggregate for the same subject is returned [P2-S09-AC-616]
+ok 6 - the list returns exactly the rows owned by the owner organization [P2-S09-AC-616]
+ok 7 - after cms_grant_capability the actor-grant row equals the aggregate (active, valid_through) [P2-S09-AC-658]
+ok 8 - and the projection row exists [P2-S09-AC-658]
+ok 9 - fixture: a failing outbox write fails the grant command
+ok 10 - a rolled-back grant leaves neither the aggregate nor the projection row [P2-S09-AC-658]
+ok 11 - fixture: a failing outbox write fails the renew command
+ok 12 - a rolled-back renewal leaves the aggregate and the projection both unchanged and equal [P2-S09-AC-658]
+ok 13 - and still at the original validThrough [P2-S09-AC-658]
+ok 14 - fixture: a failing outbox write fails the revoke command
+ok 15 - a rolled-back revocation leaves the projection active [P2-S09-AC-658]
+ok 16 - fixture: the renewal succeeds once the outbox works
+ok 17 - after cms_renew_capability_grant the actor-grant row equals the aggregate [P2-S09-AC-658]
+ok 18 - and carries the renewed validThrough [P2-S09-AC-658]
+ok 19 - fixture: the revocation succeeds
+ok 20 - after cms_revoke_capability_grant the actor-grant row equals the aggregate (inactive) [P2-S09-AC-658]
+ok 21 - and the projection is inactive [P2-S09-AC-658]
+ok 22 - role anon cannot INSERT into the actor-grant projection [P2-S09-AC-658]
+ok 23 - role authenticated cannot INSERT into the actor-grant projection [P2-S09-AC-658]
+ok 24 - role service_role cannot INSERT into the actor-grant projection [P2-S09-AC-658]
+ok 25 - role anon cannot UPDATE the actor-grant projection [P2-S09-AC-658]
+ok 26 - role authenticated cannot UPDATE the actor-grant projection [P2-S09-AC-658]
+ok 27 - role service_role cannot UPDATE the actor-grant projection [P2-S09-AC-658]
+ok 28 - role anon cannot DELETE from the actor-grant projection [P2-S09-AC-658]
+ok 29 - role authenticated cannot DELETE from the actor-grant projection [P2-S09-AC-658]
+ok 30 - role service_role cannot DELETE from the actor-grant projection [P2-S09-AC-658]
+ok 31 - the only writers of the actor-grant projection are the organization bootstrap, the owner initialization and cms_capability_grant_project [P2-S09-AC-658]
+ok 32 - only the grant, renew and revoke functions call the projection writer [P2-S09-AC-658]
+ok 33 - the exact writer set of the actor-grant projection over every schema is the organization bootstrap, the owner initialization and the single projection upsert [P2-
+ok 34 - no trigger on the actor-grant projection writes it back [P2-S09-AC-658]
+ok 35 - no rewrite rule redirects writes of the actor-grant projection [P2-S09-AC-658]
+ok 36 - no role other than the table owner and the NOLOGIN CMS definer that owns the single projection upsert holds a write privilege on the actor-grant projection [P2-S0
+ok 37 - the owner-initialization backfill writes the grant aggregate and never the actor-grant projection [P2-S09-AC-658]
+ok 38 - known answer 1: a scrambled-order policy member hashes to the independently computed canonical digest [P2-S09-AC-665]
+ok 39 - known answer 2: {"b":"é€","a":1} hashes over {"a":1,"b":"é€"} (UTF-8, no escaping of non-ASCII) [P2-S09-AC-665]
+ok 40 - known answer 3: RFC 8785 string escaping (\u000f, \n, quote, backslash, unescaped solidus) [P2-S09-AC-665]
+ok 41 - known answer 4: literals and arrays keep order while object keys sort [P2-S09-AC-665]
+ok 42 - known answer 5: empty array and object [P2-S09-AC-665]
+ok 43 - a one-value change changes the digest [P2-S09-AC-665]
+ok 44 - the BE03a-named API has exactly eighteen members [P2-S09-AC-685]
+ok 45 - every one of the eighteen named RPCs exists in platform_api [P2-S09-AC-685]
+ok 46 - all eighteen are SECURITY DEFINER [P2-S09-AC-685]
+ok 47 - the service role (the named capability grantee) can execute all eighteen [P2-S09-AC-685]
+ok 48 - neither anon nor PUBLIC can execute any of the eighteen [P2-S09-AC-685]
+ok 49 - the authenticated role can execute exactly the five signed-in-human RPCs (draft, field, relation, list, detail) and none of the other thirteen [P2-S09-AC-685]
+ok 50 - no platform_api cms_ function of any slice is non-definer or executable by anon/PUBLIC [P2-S09-AC-685]
+ok 51 - anon and authenticated hold no INSERT, UPDATE or DELETE on any platform_private.cms_ table [P2-S09-AC-685]
+ok 52 - every checked table has RLS enabled [P2-S09-AC-685]
+ok 53 - fixture: CMS-03A-09 wrote the template binding of the successor
+ok 54 - fixture: the bound version is active through the real chain
+ok 55 - fixture: one producer-made binding row on the activated version
+ok 56 - UPDATE of a binding of an activated version raises IMMUTABLE_RECORD with the guards enabled [P2-S09-AC-169]
+ok 57 - DELETE of a binding of an activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]
+ok 58 - INSERT of a binding into an activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]
+ok 59 - the activated version still has exactly its one binding [P2-S09-AC-169]
+ok 60 - fixture: CMS-03A-09 wrote the draft successor binding the unique pair probe overrides
+ok 61 - the unique (parent version, template version) pair rejects a duplicate and accepts a different template [P2-S09-AC-169]
+phase_02_slice_09_p240_authority.sql ............... 
+ok 1 - control: the owner designer changes the draft [P2-S09-AC-034]
+ok 2 - a human without cms.schema_designer is 403 FORBIDDEN on CMS-03A-02 and nothing changes [P2-S09-AC-034]
+ok 3 - a reader with only cms.schema_registry.read is 403 on the write [P2-S09-AC-034]
+ok 4 - another organization's designer gets a 404 for the real draft [P2-S09-AC-034]
+ok 5 - and the same 404 for an absent draft [P2-S09-AC-034]
+ok 6 - the concealed and the absent answers are indistinguishable: same token, no body, no detail [P2-S09-AC-034]
+ok 7 - a human without cms.schema_designer is 403 on CMS-03A-03 [P2-S09-AC-034]
+ok 8 - another organization gets a 404 on CMS-03A-03 for a real draft [P2-S09-AC-034]
+ok 9 - and for an absent one [P2-S09-AC-034]
+ok 10 - the two 404s are indistinguishable [P2-S09-AC-034]
+ok 11 - a human without cms.schema_designer is 403 on CMS-03A-04 and the candidate is untouched [P2-S09-AC-034] [P2-S09-AC-629]
+ok 12 - another organization's designer gets a 404 for the real candidate [P2-S09-AC-034]
+ok 13 - and the same 404 for an absent candidate [P2-S09-AC-034]
+ok 14 - the two activation 404s are indistinguishable [P2-S09-AC-034]
+ok 15 - no refusal changed the approved candidate [P2-S09-AC-034]
+ok 16 - control: the owner designer reads the version detail [P2-S09-AC-034]
+ok 17 - control: a member holding only cms.schema_registry.read reads the detail [P2-S09-AC-034]
+ok 18 - a human without registry read scope is 403 FORBIDDEN on CMS-03A-07 [P2-S09-AC-034]
+ok 19 - the same human gets the same 403 for an absent version: the capability gate never discloses existence [P2-S09-AC-034]
+ok 20 - the 403 for a real and an absent version is byte-identical [P2-S09-AC-034]
+ok 21 - another organization's designer gets a 404 for the real version [P2-S09-AC-034]
+ok 22 - and the same 404 for an absent version [P2-S09-AC-034]
+ok 23 - a real version under a type identifier it does not belong to is 404 even for the owner [P2-S09-AC-034]
+ok 24 - the concealed, the absent and the mismatched-type answers are indistinguishable [P2-S09-AC-034]
+ok 25 - CMS-03A-02 refuses the caller member ownerId as an unknown key and changes nothing [P2-S09-AC-036]
+ok 26 - CMS-03A-02 refuses the caller member createdBy as an unknown key and changes nothing [P2-S09-AC-036]
+ok 27 - CMS-03A-02 refuses the caller member actingPartyId as an unknown key and changes nothing [P2-S09-AC-036]
+ok 28 - CMS-03A-02 refuses the caller member actorId as an unknown key and changes nothing [P2-S09-AC-036]
+ok 29 - CMS-03A-02 refuses the caller member capability as an unknown key and changes nothing [P2-S09-AC-036]
+ok 30 - CMS-03A-02 refuses the caller member roles as an unknown key and changes nothing [P2-S09-AC-036]
+ok 31 - CMS-03A-02 refuses the caller member authUserId as an unknown key and changes nothing [P2-S09-AC-036]
+ok 32 - CMS-03A-03 refuses the caller member ownerId and changes nothing [P2-S09-AC-036]
+ok 33 - CMS-03A-03 refuses the caller member createdBy and changes nothing [P2-S09-AC-036]
+ok 34 - CMS-03A-03 refuses the caller member actingPartyId and changes nothing [P2-S09-AC-036]
+ok 35 - CMS-03A-03 refuses the caller member capability and changes nothing [P2-S09-AC-036]
+ok 36 - CMS-03A-04 refuses the caller member ownerId and the candidate stays approved [P2-S09-AC-036]
+ok 37 - CMS-03A-04 refuses the caller member approverCapability and the candidate stays approved [P2-S09-AC-036]
+ok 38 - CMS-03A-04 refuses the caller member actingPartyId and the candidate stays approved [P2-S09-AC-036]
+ok 39 - CMS-03A-04 refuses the caller member policyHash and the candidate stays approved [P2-S09-AC-036]
+ok 40 - the candidate is still approved after the refused metadata attempts [P2-S09-AC-036]
+ok 41 - control: designer2 lost the designer grant, so the server derives no create authority for her [P2-S09-AC-036]
+ok 42 - the stored owner is the acting organization and the creator the verified actor, both derived on the server [P2-S09-AC-036]
+ok 43 - an authenticated session whose request context names another user is refused: the verified JWT subject wins [P2-S09-AC-036]
+ok 44 - nor can it name another person [P2-S09-AC-036]
+ok 45 - every original BE03a table has one policy whose predicate and check are the schema-qualified RPC-context helper [P2-S09-AC-037]
+ok 46 - the helper is a SECURITY DEFINER function on an empty search_path; it is STABLE, not IMMUTABLE, because it reads the session context [P2-S09-AC-037]
+ok 47 - RLS is enabled and forced on all twelve tables [P2-S09-AC-037]
+ok 48 - no browser, public or service role may write any cms_ table directly: mutation exists only through the named RPCs [P2-S09-AC-037]
+ok 49 - every platform_api cms_ RPC is schema-qualified, SECURITY DEFINER with an empty search_path [P2-S09-AC-037]
+ok 50 - and no cms_ RPC is missing either property: the service role reaches only named, pinned functions [P2-S09-AC-182]
+ok 51 - no platform_private cms_ function is executable by the service role or a browser role: only the platform_api wrappers are [P2-S09-AC-182]
+ok 52 - the service role holds no table privilege on any cms_ table: workers cannot mutate or read tables directly [P2-S09-AC-182]
+ok 53 - a worker RPC accepts only its bounded identifiers, versions and counters: an unknown member (here SQL text) is refused [P2-S09-AC-182]
+ok 54 - no exposed platform_api RPC builds dynamic SQL from request data [P2-S09-AC-182]
+ok 55 - fixture: the real flows emitted at least six distinct CMS event types [P2-S09-AC-190]
+ok 56 - every CMS event carries an id, a versioned type, schema version 1, occurrence time, correlation id, aggregate type, aggregate id and a positive aggregate version,
+ok 57 - the aggregate version is a 64-bit integer that crosses the API as a decimal string [P2-S09-AC-190]
+ok 58 - a correlation id is never absent; causation is nullable [P2-S09-AC-190]
+ok 59 - the activation event payload is exactly the five members of SchemaActivatedEventPayload [P2-S09-AC-190]
+ok 60 - the lifecycle event payload is exactly the nine members of BlockLifecycleChangedEventPayload [P2-S09-AC-190]
+ok 61 - no payload carries field values, labels, private content, secrets, renderer code or snapshots: identifiers, hashes and enumerations only [P2-S09-AC-190]
+ok 62 - events carry no user, person or party identifier beyond the BE00-approved envelope [P2-S09-AC-190]
+ok 63 - the shared BE00 outbox has no producer column: the producer is the event-type prefix, a platform-wide shape this shard does not own [P2-S09-AC-190]
+ok 64 - the first consumer claim of an event is new [P2-S09-AC-192]
+ok 65 - the same claimant asking again while its lease holds is in progress, never a second processing [P2-S09-AC-192]
+ok 66 - a second consumer does not process an event whose claim is live: at-least-once delivery, one active processor [P2-S09-AC-192]
+ok 67 - the claimant acknowledges the processed event and the claim completes [P2-S09-AC-192]
+ok 68 - a redelivery after completion is a duplicate: events are deduplicated by event identity [P2-S09-AC-192]
+ok 69 - an event version the consumer does not know (schema version 2) matches no event and is not processed [P2-S09-AC-192]
+ok 70 - neither is an unknown event type version (v2) [P2-S09-AC-192]
+ok 71 - a claim whose plan identity differs from the event is a conflict [P2-S09-AC-192]
+ok 72 - an event routed to the dead-letter queue is answered with exactly the typed OK result [P2-S09-AC-192]
+ok 73 - every cms_ table carries the IA envelope (id, owner_id, state, version, created_at, updated_at) except exactly the eight documented exceptions: the entry and term
+ok 74 - every text state column is closed by a CHECK over a finite list and every other state column is a closed enum [P2-S09-AC-015]
+ok 75 - the one shared state enum is cms_definition_state, closed at eight members [P2-S09-AC-015]
+ok 76 - every version column is closed to non-positive values [P2-S09-AC-015]
+ok 77 - owner_id is an ownership reference, never a grant: a caller who simply names the owner's identifiers acquires no authority [P2-S09-AC-015]
+ok 78 - the capability checks never read owner_id: ownership does not authorize [P2-S09-AC-015]
+ok 79 - a failed audit write rolls back CMS-03A-03: no relation row, no version bump, no idempotency record [P2-S09-AC-212]
+ok 80 - a failed outbox write rolls back CMS-03A-04: the candidate stays approved, no version supersedes, no plan advances [P2-S09-AC-212]
+ok 81 - a failed audit write rolls back CMS-03A-04 as well [P2-S09-AC-212]
+ok 82 - after both rollbacks the candidate is still approved and not active [P2-S09-AC-212]
+ok 83 - the same request then commits: the failed attempts reserved nothing [P2-S09-AC-212]
+ok 84 - a failed audit write rolls back CMS-03A-01: no type, version, field, artifact, audit row or idempotency record [P2-S09-AC-212]
+ok 85 - a failed outbox write rolls back CMS-03A-01 as well [P2-S09-AC-212]
+ok 86 - after both rollbacks no part of the CMS-03A-01 aggregate exists [P2-S09-AC-212]
+ok 87 - the same CMS-03A-01 request then commits: the failed attempts reserved nothing [P2-S09-AC-212]
+ok 88 - a failed audit write rolls back CMS-03A-02: no field row, no version bump, no idempotency record [P2-S09-AC-212]
+ok 89 - the same CMS-03A-02 request then commits [P2-S09-AC-212]
+ok 90 - CMS-03A-02 emits no outbox event, so there is no outbox write whose failure could orphan the field row [P2-S09-AC-212]
+ok 91 - a failed audit write rolls back CMS-03A-05: no block row, no nonce claim, no outbox row or idempotency record [P2-S09-AC-212]
+ok 92 - a failed outbox write rolls back CMS-03A-05 as well [P2-S09-AC-212]
+ok 93 - the same signed CMS-03A-05 request then commits: the nonce was never consumed by the failed attempts [P2-S09-AC-212]
+ok 94 - a failed audit write rolls back CMS-03A-08: no lifecycle event, no nonce claim, no outbox row or idempotency record [P2-S09-AC-212]
+ok 95 - a failed outbox write rolls back CMS-03A-08 as well [P2-S09-AC-212]
+ok 96 - the same signed CMS-03A-08 request then commits all four effects together [P2-S09-AC-212]
+Files=20, Tests=797, 84 wallclock secs ( 0.54 usr  0.11 sys +  0.77 cusr  0.36 csys =  1.78 CPU)
+Result: PASS

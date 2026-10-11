@@ -617,6 +617,12 @@ Operations: `../../docs/runbooks/platform/cms-editorial.md`. Spec: `.memory/wiki
   draft read, the revision history, the entry list, entry create, revision append, conflict resolution, restore and the
   composition-instance guards take `EntryRevisionState` from `cms_revision_effective_state(s)`, and `018090` fixes the
   physical `cms_entry_revisions.state` to the constant `draft` (no other code computes or stores a revision state).
+- `165000`-`165200` (lane preview-projection, `../tests/phase_02_slice_11_projection_state*.sql` and
+  `_preview_takedown.sql`): `165000` the BE04c `projection_consumer_state` table (private, forced RLS, RPC-only
+  writes; `projection_id` keeps no foreign key until the delivery slice creates `publication_projection`) and the
+  `cms_publication_projection_state` derivation (AC-116); `165100` the lineage append and the workflow read serve
+  `projectionState` from it instead of a literal; `165200` the service-role takedown RPC
+  `platform_api.cms_takedown_preview_tokens` over the private `cms_revoke_preview_tokens` seam (AC-118).
 
 ## Related links
 

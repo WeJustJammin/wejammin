@@ -10,8 +10,10 @@
 --   result   { revokedTokens: integer }
 --
 -- Idempotent (an expired or already revoked token is skipped, a repeat answers 0).  A version-set movement
--- never revokes a token.  There is NO platform_api wrapper and no API grant: it is a database-internal
--- seam, and the caller owns the audit record of the cause it is revoking for.  Forward-only.
+-- never revokes a token.  There is NO platform_api wrapper of this function and no API grant: it is a
+-- database-internal seam, and the caller owns the audit record of the cause it is revoking for.  Its one API
+-- route is the service-role takedown RPC platform_api.cms_takedown_preview_tokens (20261010165200), which
+-- accepts the reason `takedown` alone and delegates here.  Forward-only.
 begin;
 
 set local lock_timeout = '5s';
@@ -57,7 +59,7 @@ end;
 $body$;
 
 comment on function platform_private.cms_revoke_preview_tokens(jsonb) is
-  'BE03b: the named private seam that revokes (CAS) the unexpired active preview tokens of an entry and/or a person for a closed reason (authority_lost, entry_unavailable, takedown); idempotent; { revokedTokens }. No API grant and no wrapper: called by authority-loss, lifecycle and takedown producers. Private.';
+  'BE03b: the named private seam that revokes (CAS) the unexpired active preview tokens of an entry and/or a person for a closed reason (authority_lost, entry_unavailable, takedown); idempotent; { revokedTokens }. No API grant and no wrapper of its own: called by authority-loss and lifecycle producers and, for the reason takedown, by platform_api.cms_takedown_preview_tokens. Private.';
 
 grant create on schema platform_private to wejammin_cms_definer;
 alter function platform_private.cms_revoke_preview_tokens(jsonb) owner to wejammin_cms_definer;

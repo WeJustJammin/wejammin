@@ -23,7 +23,7 @@ select is(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname in ('platform_api', 'public_api', 'public')
       and p.proname ~ '(preview|schedul|publication|publish)'),
-  'platform_api.cms_claim_due_publication_schedules, platform_api.cms_execute_publication_schedule, platform_api.cms_mint_preview, platform_api.cms_publish_revision, platform_api.cms_schedule_publication, platform_api.cms_verify_preview_token',
+  'platform_api.cms_claim_due_publication_schedules, platform_api.cms_execute_publication_schedule, platform_api.cms_mint_preview, platform_api.cms_publish_revision, platform_api.cms_schedule_publication, platform_api.cms_takedown_preview_tokens, platform_api.cms_verify_preview_token',
   'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)'
 );
 
@@ -33,7 +33,7 @@ select is(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'platform_api'
       and p.proname ~ '(review|decision)'),
-  'cms_assign_editorial_reviewer, cms_assign_schema_review, cms_decide_schema_review, cms_get_editorial_review, cms_get_schema_review, cms_list_editorial_reviews, cms_mint_preview, cms_record_review_decision, cms_submit_review, cms_submit_schema_review, cms_sweep_expired_review_authority, cms_verify_preview_token',
+  'cms_assign_editorial_reviewer, cms_assign_schema_review, cms_decide_schema_review, cms_get_editorial_review, cms_get_schema_review, cms_list_editorial_reviews, cms_mint_preview, cms_record_review_decision, cms_submit_review, cms_submit_schema_review, cms_sweep_expired_review_authority, cms_takedown_preview_tokens, cms_verify_preview_token',
   'EB scope: the only worker-facing review and decision functions are the 03A schema-review family and the named Slice 11 entry-review commands and reads'
 );
 
@@ -43,7 +43,7 @@ select is(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'platform_private'
       and p.proname ~ '(entry_review|editorial_review|editorial_decision|publication|preview_token|schedule_publication)'),
-  'cms_append_publication_lineage, cms_assign_editorial_reviewer, cms_claim_due_publication_schedules, cms_editorial_review_distinct_approvals, cms_editorial_review_qualifying_decisions, cms_editorial_review_resource, cms_editorial_review_scopes, cms_execute_publication_schedule, cms_get_editorial_review, cms_invalidate_editorial_review, cms_list_editorial_reviews, cms_list_editorial_reviews_signed, cms_preview_token_derive, cms_publication_lineage_lock, cms_publication_lock_authority, cms_publication_lock_review, cms_publication_preflight_verdict, cms_publication_review_operand, cms_publication_row_state, cms_publication_settings_effective_values, cms_publication_settings_keys, cms_publication_settings_registry_version, cms_publication_stale_refusal, cms_publication_target, cms_revoke_active_preview_tokens, cms_revoke_preview_tokens, cms_schedule_publication, cms_verify_preview_token',
+  'cms_append_publication_lineage, cms_assign_editorial_reviewer, cms_claim_due_publication_schedules, cms_editorial_review_distinct_approvals, cms_editorial_review_qualifying_decisions, cms_editorial_review_resource, cms_editorial_review_scopes, cms_execute_publication_schedule, cms_get_editorial_review, cms_invalidate_editorial_review, cms_list_editorial_reviews, cms_list_editorial_reviews_signed, cms_preview_token_derive, cms_publication_lineage_lock, cms_publication_lock_authority, cms_publication_lock_review, cms_publication_preflight_verdict, cms_publication_projection_state, cms_publication_review_operand, cms_publication_row_state, cms_publication_settings_effective_values, cms_publication_settings_keys, cms_publication_settings_registry_version, cms_publication_stale_refusal, cms_publication_target, cms_revoke_active_preview_tokens, cms_revoke_preview_tokens, cms_schedule_publication, cms_verify_preview_token',
   'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers'
 );
 

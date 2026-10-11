@@ -1,0 +1,25 @@
+GREEN batch 1 (alt stack, pg_prove -v) per file: ok / not ok  [source TAP: .lane-logs/alt-tap-202012-3345038.tap]
+  37 ok  0 not ok  phase_02_slice_11_preview_takedown.sql
+  53 ok  0 not ok  phase_02_slice_11_projection_state.sql
+  18 ok  0 not ok  phase_02_slice_11_projection_state_reads.sql
+  14 ok  0 not ok  phase_02_slice_09_r8_api_surface.sql
+   6 ok  0 not ok  phase_02_slice_10_ev_eb_publication_scope.sql
+  54 ok  0 not ok  phase_02_slice_09_sec2_definer_rls.sql
+  33 ok  0 not ok  phase_02_slice_09_sec2_all_schema_definer_rls.sql
+ 101 ok  0 not ok  phase_02_slice_11_helpers_lineage.sql
+  16 ok  0 not ok  phase_02_slice_11_helpers_lineage_append_only.sql
+  29 ok  0 not ok  phase_02_slice_11_rpc_publication_publish.sql
+  28 ok  0 not ok  phase_02_slice_11_rpc_publication_execute.sql
+  33 ok  0 not ok  phase_02_slice_11_rpc_publication_schedule.sql
+   6 ok  0 not ok  phase_02_slice_11_rpc_publication_lock_order.sql
+  33 ok  0 not ok  phase_02_slice_11_rpc_reads_workflow.sql
+  21 ok  0 not ok  phase_02_slice_11_rpc_preview_revoke.sql
+  43 ok  0 not ok  phase_02_slice_11_rpc_preview_verify.sql
+  37 ok  0 not ok  phase_02_slice_11_rpc_preview_mint.sql
+  95 ok  0 not ok  phase_02_slice_11_schedule_precision.sql
+   8 ok  0 not ok  phase_02_slice_11_schema_posture.sql
+  18 ok  0 not ok  phase_02_slice_11_criteria_manifest_rls.sql
+  18 ok  0 not ok  phase_02_slice_11_criteria_safe_read_effects.sql
+  92 ok  0 not ok  phase_02_slice_11_helpers_invalidation.sql
+total ok 793 not ok 0
+(the one file that did not complete, phase_02_slice_11_preview_takedown.sql, stopped at a test bug - is(char, text) - and was fixed and re-run: green-pgtap-takedown.log, 43/43)

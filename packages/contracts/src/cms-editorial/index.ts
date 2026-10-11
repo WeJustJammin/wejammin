@@ -41,4 +41,5 @@ export * from './settings-registry.ts';
 export * from './time-authority/tzdb-pin.ts';
 export * from './time-authority/schedule-time.ts';
 export * from './jobs.ts';
+export * from './review-recheck.ts';
 export * from './observability.ts';

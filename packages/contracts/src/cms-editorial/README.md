@@ -48,6 +48,7 @@ and they are never browser routes, registry rows or OpenAPI operations.
 | `settings-registry.ts`              | `CMS_PUBLICATION_SETTINGS_KEYS` (registry version 1, empty) and the settings snapshot shape (E7)                                                 |
 | `internal-rpc.ts`                   | CMS-03B-19/20 request and result schemas, the internal operation table and the verifier and sweep constants                                      |
 | `jobs.ts`, `observability.ts`       | The BE00 job types, the review dependency recheck job and the Slice 11 metric names with their label sets                                        |
+| `review-recheck.ts`                 | The six recheck source events, the job queue message with its cursor and the two recheck RPC shapes                                              |
 | `route-slo.ts`                      | The shared Tier 1 and Tier 2 SLO objects                                                                                                         |
 | `routes-review-publication.ts`      | The nine Slice 11 registry rows                                                                                                                  |
 | `time-authority/`                   | The pinned tz snapshot and the shared schedule time resolver (BE03b E8); see its README                                                          |

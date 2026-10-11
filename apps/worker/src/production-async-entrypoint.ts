@@ -5,6 +5,7 @@ import {
   type AsyncWorkerBindings,
 } from './async-entrypoint';
 import { createAsyncJobDependencies } from './async-runtime';
+import { createProductionReviewRecheckProcessor } from './cms-editorial/review-recheck/production';
 import { createSupabaseRpc, parseBoolean } from './async-runtime-support';
 import { CmsSchemaDryRunOriginRequestSchema } from './content-schema-registry/schema-dry-run-origin-request';
 import { createCmsSchemaDryRunOriginVerifier } from './content-schema-registry/schema-dry-run-origin-verifier';
@@ -63,6 +64,10 @@ export const createProductionAsyncEntrypoint = (
     >();
     const queueLoggers = new WeakMap<object, Logger>();
     const eventConsumers = new WeakMap<object, ProductionEventConsumers>();
+    const reviewRechecks = new WeakMap<
+      object,
+      ReturnType<typeof createProductionReviewRecheckProcessor>
+    >();
     const consumersFor = (
       env: AsyncWorkerBindings,
     ): ProductionEventConsumers => {
@@ -77,8 +82,29 @@ export const createProductionAsyncEntrypoint = (
       }
       return consumers;
     };
+    const recheckFor = (
+      env: AsyncWorkerBindings,
+    ): ReturnType<typeof createProductionReviewRecheckProcessor> => {
+      let processor = reviewRechecks.get(env);
+      if (processor === undefined) {
+        processor = createProductionReviewRecheckProcessor(
+          env,
+          fetchImpl,
+          eventConsumerOptions?.logger === undefined
+            ? {}
+            : { logger: eventConsumerOptions.logger },
+        );
+        reviewRechecks.set(env, processor);
+      }
+      return processor;
+    };
     return createAsyncEntrypoint({
       ...dependencies,
+      processReviewRecheck: ({ env, message }) =>
+        recheckFor(env).process({
+          body: message.body,
+          attempts: message.attempts,
+        }),
       processEventConsumer: ({ env, message }) =>
         consumersFor(env).registry.process({
           body: message.body,

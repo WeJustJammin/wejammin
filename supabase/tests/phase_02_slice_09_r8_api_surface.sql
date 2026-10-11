@@ -35,16 +35,20 @@ select no_plan();
 -- so neither has an API wrapper. Each is Worker-bound (the Worker is the
 -- only browser-facing boundary caller) and service-role only by migration
 -- grant.
--- Slice 11 adds thirteen service-role-only editorial workflow RPCs to the supporting
+-- Slice 11 adds fourteen service-role-only editorial workflow RPCs to the supporting
 -- set (BE03b CMS-03B-05..09 and the safe reads, DEC-149): review assignment, decision
 -- and submission (cms_assign_editorial_reviewer, cms_record_review_decision,
 -- cms_submit_review); schedule, publish, claim and execute (cms_schedule_publication,
 -- cms_publish_revision, cms_claim_due_publication_schedules,
--- cms_execute_publication_schedule); preview mint and verification (cms_mint_preview,
--- cms_verify_preview_token); and the review, workflow and quality-gate reads
+-- cms_execute_publication_schedule); preview mint, verification and takedown (cms_mint_preview,
+-- cms_verify_preview_token, cms_takedown_preview_tokens); and the review, workflow and quality-gate reads
 -- (cms_get_editorial_review, cms_list_editorial_reviews, cms_get_entry_workflow,
 -- cms_load_quality_gate_input).  Every one is a Worker-called command or read, so none
 -- is internal, and each is granted to service_role only.
+-- Slice 11 adds two more service-role-only RPCs for the dependency recheck (BE03b "Review
+-- invalidation", tracker P2-S11-AC-113): cms_dependency_recheck_resolve_event, which the six
+-- source-event consumers call to reread a committed event as a dependency index lookup, and
+-- cms_dependency_recheck_run, one bounded run of the cms.review.dependency_recheck job.
 
 create temp table r8a_original(fn text primary key, human boolean) on commit drop;
 insert into r8a_original values
@@ -115,11 +119,15 @@ insert into r8a_supporting values
   -- Slice 11: preview commands
   ('cms_mint_preview'),
   ('cms_verify_preview_token'),
+  ('cms_takedown_preview_tokens'),
   -- Slice 11: editorial reads
   ('cms_get_editorial_review'),
   ('cms_list_editorial_reviews'),
   ('cms_get_entry_workflow'),
-  ('cms_load_quality_gate_input');
+  ('cms_load_quality_gate_input'),
+  -- Slice 11: dependency recheck (consumers and the job)
+  ('cms_dependency_recheck_resolve_event'),
+  ('cms_dependency_recheck_run');
 
 create temp table r8a_internal(fn text primary key) on commit drop;
 insert into r8a_internal values
@@ -187,7 +195,7 @@ select is((select count(distinct p.proname)::integer
      where p.pronamespace = 'platform_api'::regnamespace and p.proname like 'cms\_%'
        and (has_function_privilege('service_role', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   (select count(*)::integer from (select fn from r8a_original union all select fn from r8a_amendment union all select fn from r8a_supporting) e),
-  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 51 [P2-S09-AC-180]');
+  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 54 [P2-S09-AC-180]');
 
 select * from finish();
 rollback;
