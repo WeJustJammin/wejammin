@@ -1,0 +1,39 @@
+[bench] waiting supabase-ci lock 21:26:14
+[bench] acquired 21:26:14
+[bench] reset ok 21:28:15
+[bench] quiet lock held exclusively 21:28:35
+[bench] run 1 load_before=4.73 4.42 4.83
+[bench] run 1 exit=1 load_after=4.65 4.44 4.83
+# activate p50=223.8ms p95=316.8ms max=326.8ms n=25
+# assign p50=12.4ms p95=15.5ms max=26.9ms n=25
+# create128 p50=302.4ms p95=372.8ms max=477.3ms n=25
+# decide p50=58.7ms p95=70.2ms max=95.8ms n=25
+# dry_run p50=105.3ms p95=151.5ms max=182.4ms n=25
+# submit p50=109.3ms p95=133.0ms max=171.5ms n=25
+# create128: 128-field create RPC p95=372.8ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 2 load_before=4.65 4.44 4.83
+[bench] run 2 exit=1 load_after=3.97 4.30 4.77
+# activate p50=219.2ms p95=294.0ms max=307.2ms n=25
+# assign p50=11.3ms p95=13.9ms max=30.9ms n=25
+# create128 p50=305.9ms p95=404.2ms max=419.7ms n=25
+# decide p50=56.9ms p95=76.5ms max=87.4ms n=25
+# dry_run p50=108.2ms p95=145.1ms max=169.0ms n=25
+# submit p50=105.1ms p95=144.9ms max=148.8ms n=25
+# create128: 128-field create RPC p95=404.2ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 3 load_before=3.97 4.30 4.77
+[bench] run 3 exit=1 load_after=3.86 4.25 4.74
+# activate p50=211.9ms p95=307.4ms max=362.3ms n=25
+# assign p50=10.9ms p95=18.2ms max=24.2ms n=25
+# create128 p50=279.9ms p95=443.0ms max=466.9ms n=25
+# decide p50=57.4ms p95=80.7ms max=105.3ms n=25
+# dry_run p50=111.3ms p95=169.1ms max=174.6ms n=25
+# submit p50=106.4ms p95=146.7ms max=159.1ms n=25
+# create128: 128-field create RPC p95=443.0ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL

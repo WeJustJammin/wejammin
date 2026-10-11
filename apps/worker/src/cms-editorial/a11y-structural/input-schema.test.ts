@@ -10,7 +10,11 @@ import {
   span,
 } from './a11y-structural.test-support';
 import {
+  ACCESSIBILITY_FIELDS_MAX,
   ACCESSIBILITY_NODES_MAX,
+  ACCESSIBILITY_OBJECT_PROPERTIES_MAX,
+  ACCESSIBILITY_SLOT_INSTANCES_MAX,
+  ACCESSIBILITY_TEMPLATE_SLOTS_MAX,
   AccessibilityCheckerInputSchema,
 } from './input-schema';
 
@@ -50,13 +54,63 @@ describe('AccessibilityCheckerInputSchema: envelope', () => {
     expect(accepts({ ...checkerInput([]), ...overrides })).toBe(false);
   });
 
-  it('bounds the node list at 256 entries', () => {
-    const at = (count: number) =>
-      Array.from({ length: count }, (_unused, index) =>
-        fieldNode(index + 1, richText()),
-      );
-    expect(accepts(checkerInput(at(ACCESSIBILITY_NODES_MAX)))).toBe(true);
-    expect(accepts(checkerInput(at(ACCESSIBILITY_NODES_MAX + 1)))).toBe(false);
+  it('derives the node bound from the locked maxima: 128 fields x 32 properties + 64 slots x 128 instances', () => {
+    expect(ACCESSIBILITY_FIELDS_MAX).toBe(128);
+    expect(ACCESSIBILITY_OBJECT_PROPERTIES_MAX).toBe(32);
+    expect(ACCESSIBILITY_TEMPLATE_SLOTS_MAX).toBe(64);
+    expect(ACCESSIBILITY_SLOT_INSTANCES_MAX).toBe(128);
+    expect(ACCESSIBILITY_NODES_MAX).toBe(
+      ACCESSIBILITY_FIELDS_MAX * ACCESSIBILITY_OBJECT_PROPERTIES_MAX +
+        ACCESSIBILITY_TEMPLATE_SLOTS_MAX * ACCESSIBILITY_SLOT_INSTANCES_MAX,
+    );
+    expect(ACCESSIBILITY_NODES_MAX).toBe(12_288);
+  });
+
+  it('accepts a revision at exactly the maximum node count and refuses one node more', () => {
+    // The largest revision the locked schemas admit: every one of the 128 fields an `object` field with 32 rich_text
+    // properties, and a template of 64 slots each holding 128 live instances.
+    const propertyNodes = Array.from(
+      { length: ACCESSIBILITY_FIELDS_MAX },
+      (_field, field) =>
+        Array.from(
+          { length: ACCESSIBILITY_OBJECT_PROPERTIES_MAX },
+          (_property, property) =>
+            fieldNode(
+              field + 1,
+              richText(),
+              `p${String(property + 1).padStart(2, '0')}`,
+            ),
+        ),
+    ).flat();
+    const blockNodes = (count: number) =>
+      Array.from({ length: count }, (_block, index) => blockNode(index + 1));
+    const full = [
+      ...propertyNodes,
+      ...blockNodes(
+        ACCESSIBILITY_TEMPLATE_SLOTS_MAX * ACCESSIBILITY_SLOT_INSTANCES_MAX,
+      ),
+    ];
+    expect(full).toHaveLength(ACCESSIBILITY_NODES_MAX);
+    expect(accepts(checkerInput(full))).toBe(true);
+    expect(
+      accepts(
+        checkerInput([
+          ...propertyNodes,
+          ...blockNodes(
+            ACCESSIBILITY_TEMPLATE_SLOTS_MAX *
+              ACCESSIBILITY_SLOT_INSTANCES_MAX +
+              1,
+          ),
+        ]),
+      ),
+    ).toBe(false);
+  });
+
+  it('accepts 257 nodes, which the former 256-node bound refused although a valid revision carries up to 4,096 property nodes', () => {
+    const nodes = Array.from({ length: 257 }, (_unused, index) =>
+      fieldNode(index + 1, richText()),
+    );
+    expect(accepts(checkerInput(nodes))).toBe(true);
   });
 });
 

@@ -1,0 +1,46 @@
+/tmp/claude-1000/-home-rob-Projects-WeJammin/7aaa9e49-fdde-440a-9c62-f82994358a13/scratchpad/main/supabase/tests/phase_02_slice_09_evidence_bench128.sql .. 
+{"created": true, "personId": "8402d241-c48b-4a9e-bd7e-a0885dc3d56d", "contextKind": "self", "accountState": "active", "actingPartyId": "8402d241-c48b-4a9e-bd7e-a0885dc3d56d", "bindingVersion": 1}
+{"created": true, "personId": "129b5377-b313-4507-82ad-984f7004af56", "contextKind": "self", "accountState": "active", "actingPartyId": "129b5377-b313-4507-82ad-984f7004af56", "bindingVersion": 1}
+{"created": true, "personId": "aa61d5fa-0a3a-4ed4-8696-a4159599cc24", "contextKind": "self", "accountState": "active", "actingPartyId": "aa61d5fa-0a3a-4ed4-8696-a4159599cc24", "bindingVersion": 1}
+{"created": true, "personId": "2980b804-326e-4896-8b36-a46659c4362c", "contextKind": "self", "accountState": "active", "actingPartyId": "2980b804-326e-4896-8b36-a46659c4362c", "bindingVersion": 1}
+{"created": true, "personId": "a054d9e0-3e95-4cb6-ae85-b267eabc611a", "contextKind": "self", "accountState": "active", "actingPartyId": "a054d9e0-3e95-4cb6-ae85-b267eabc611a", "bindingVersion": 1}
+{"created": true, "personId": "65a2e0de-5f32-4cf7-8eac-2374a61c7630", "contextKind": "self", "accountState": "active", "actingPartyId": "65a2e0de-5f32-4cf7-8eac-2374a61c7630", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+ok 1 - fixture: twenty-five 128-field definitions were created, reviewed and activated through the real producers [P2-S09-AC-217]
+ok 2 - each activated definition carries exactly 128 fields [P2-S09-AC-217]
+# activate p50=208.8ms p95=254.1ms max=263.7ms n=25
+# assign p50=11.2ms p95=15.5ms max=23.7ms n=25
+# create128 p50=291.2ms p95=336.7ms max=361.1ms n=25
+# decide p50=52.8ms p95=66.7ms max=81.0ms n=25
+# dry_run p50=103.3ms p95=129.3ms max=182.2ms n=25
+# submit p50=103.2ms p95=126.0ms max=148.4ms n=25
+ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 4 - assign on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+# Failed test 5: "create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]"
+ok 6 - decide on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 7 - dry_run on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 8 - submit on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 9 - create128: the p95 is taken over at least twenty samples (n=25) [P2-S09-AC-217]
+# create128: 128-field create RPC p95=336.7ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget [P2-S09-AC-217]
+ok 10 - activate: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 11 - assign: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 12 - create128: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 13 - decide: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 14 - dry_run: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 15 - submit: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+1..15
+# Looks like you failed 1 test of 15
+Failed 1/15 subtests 
+
+Test Summary Report
+-------------------
+/tmp/claude-1000/-home-rob-Projects-WeJammin/7aaa9e49-fdde-440a-9c62-f82994358a13/scratchpad/main/supabase/tests/phase_02_slice_09_evidence_bench128.sql (Wstat: 0 Tests: 15 Failed: 1)
+  Failed test:  5
+Files=1, Tests=15, 20 wallclock secs ( 0.04 usr  0.01 sys +  0.02 cusr  0.01 csys =  0.08 CPU)
+Result: FAIL
+psql:/tmp/claude-1000/-home-rob-Projects-WeJammin/7aaa9e49-fdde-440a-9c62-f82994358a13/scratchpad/main/supabase/tests/phase_02_slice_09_evidence_bench128.sql:2: WARNING:  there is no transaction in progress
+psql:/tmp/claude-1000/-home-rob-Projects-WeJammin/7aaa9e49-fdde-440a-9c62-f82994358a13/scratchpad/main/supabase/tests/phase_02_slice_09_evidence_bench128.sql:4: WARNING:  there is no transaction in progress

@@ -62,6 +62,14 @@ value }`, listed at the field's editor position in the order the object
   content, is unique per location, and is exactly what the render-plan hash
   covers; `render-plan.test.ts` and `phase_02_slice_11_checker_render_plan.sql`
   pin the same independent hash vector on both sides.
+- **Node bound (12,288).** `ACCESSIBILITY_NODES_MAX` is derived, not chosen:
+  128 fields x 32 `object` properties (4,096 field nodes) plus 64 template slots
+  x 128 instances (8,192 block nodes); `input-schema.ts` carries the derivation
+  and its sources. It is a validity bound: the 2,000 ms deadline covers the
+  database load and the evaluation, and the load answers a document above 1 MiB
+  as `NOT_FOUND`, so a revision near the maximum can still end as an unavailable
+  check (never a pass). `max-input.test.ts` runs the Worker side of the exact
+  maximum and one node more.
 - **Finding pointers.** `/fields/{fieldId}/blocks/{i}/spans/{j}` for a whole
   value and `/fields/{fieldId}/{propertyKey}/blocks/{i}/spans/{j}` for a
   property; `blockPath` is the pointer inside the field's value (`/{propertyKey}`

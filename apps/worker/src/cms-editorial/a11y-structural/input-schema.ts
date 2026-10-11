@@ -22,8 +22,38 @@ import { z } from './zod-runtime';
  * closed instead of silently skipping what it cannot judge.
  */
 
-/** The BE05c input load is bounded; a revision references at most this many nodes. */
-export const ACCESSIBILITY_NODES_MAX = 256;
+/*
+ * The node bound is DERIVED from the locked maxima, never a round number: a bound below what a valid revision can carry
+ * would fail closed (TARGET_UNREADABLE) and block the publish of a revision the specs admit. A node is one location the
+ * checker judges (render-plan.ts): a whole top-level rich_text value, one rich_text property of an `object` field
+ * (DEC-133, depth 1) or one live (draft | active) composition instance.
+ *
+ *   field nodes   A revision stores a value for at most 128 fields (BE03a CMS-03A-01 `fields` 0 to 128; the BE03b
+ *                 `values` object is bounded at 128 keys). A field is either one whole rich_text value (1 node) or an
+ *                 `object` field of at most 32 properties (DEC-133; BE03a CMS-03A-02) of which every rich_text one is a
+ *                 node, so a field is at most 32 nodes: 128 x 32 = 4,096. (The 256 KiB request-body bound of the
+ *                 values, BE03b "Security and abuse controls", admits fewer than 4,096 non-empty properties, but it
+ *                 counts bytes and depends on the smallest rich_text.v1 document; the structural maximum does not.)
+ *   block nodes   A template has at most 64 slots (BE03c CMS-03C-01 `slots`) and a slot holds at most 128 instances
+ *                 (`maxCount` 1 to 128): 64 x 128 = 8,192. The locked specs set no per-revision cap for an entry
+ *                 WITHOUT a template (one instance per (revision, path), paths unbounded), so the template maximum
+ *                 stands for every revision; the dependency manifest bounds distinct block versions (128), not
+ *                 instances.
+ *   total         4,096 + 8,192 = 12,288 nodes.
+ *
+ * This is a validity bound (what the schemas allow), not a promise that every such revision is evaluated: the 2,000 ms
+ * checker deadline (BE05c) covers the input load and the evaluation, and the PostgreSQL load answers a document of
+ * more than 1 MiB as the uniform NOT_FOUND. Both fail closed (an unavailable check, never a pass), and
+ * max-input.test.ts pins what the Worker side of the maximum costs.
+ */
+export const ACCESSIBILITY_FIELDS_MAX = 128;
+export const ACCESSIBILITY_OBJECT_PROPERTIES_MAX = 32;
+export const ACCESSIBILITY_TEMPLATE_SLOTS_MAX = 64;
+export const ACCESSIBILITY_SLOT_INSTANCES_MAX = 128;
+/** The BE05c input load is bounded; a revision references at most this many nodes (12,288). */
+export const ACCESSIBILITY_NODES_MAX =
+  ACCESSIBILITY_FIELDS_MAX * ACCESSIBILITY_OBJECT_PROPERTIES_MAX +
+  ACCESSIBILITY_TEMPLATE_SLOTS_MAX * ACCESSIBILITY_SLOT_INSTANCES_MAX;
 /** RFC 6901 pointer bounds of a block node (`/composition/...`). */
 export const ACCESSIBILITY_POINTER_MAX_CHARACTERS = 256;
 export const ACCESSIBILITY_POINTER_MAX_SEGMENTS = 32;
