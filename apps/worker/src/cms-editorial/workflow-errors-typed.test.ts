@@ -4,6 +4,7 @@ import {
   ApiErrorSchema,
   CmsEditorialRefusalDetailsSchema,
   CmsPreflightUnavailableDetailsSchema,
+  cmsEditorialDeclaredStatuses,
   cmsEditorialRoutePolicies,
 } from '@wejammin/contracts';
 
@@ -274,8 +275,8 @@ describe('transport statuses', () => {
   it('publishes the canonical 502, 504 and 500 envelopes', () => {
     expect(normalizedWorkflowError(failure(502), publish)).toMatchObject({
       status: 502,
-      code: 'BAD_GATEWAY',
-      details: { dependencyClass: 'cms_editorial', retryable: false },
+      code: 'DEPENDENCY_UNAVAILABLE',
+      details: { dependencyClass: 'cms_editorial', retryable: true },
     });
     expect(normalizedWorkflowError(failure(504), publish)).toMatchObject({
       status: 504,
@@ -332,7 +333,7 @@ describe('published envelope', () => {
   it('always validates as an ApiError and never carries dependency text', () => {
     for (const operationId of WORKFLOW_OPERATION_IDS) {
       const policy = policyOf(operationId);
-      for (const status of Object.values(policy.errors)) {
+      for (const status of cmsEditorialDeclaredStatuses(policy.errors)) {
         const projected = normalizedWorkflowError(failure(status), policy);
         expect(projected.message).not.toContain('private');
         expect(

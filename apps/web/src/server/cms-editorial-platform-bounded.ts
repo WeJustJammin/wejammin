@@ -1,4 +1,9 @@
-import { ApiErrorSchema } from '@wejammin/contracts';
+import {
+  ApiErrorSchema,
+  cmsEditorialDeclaredStatuses,
+  cmsEditorialDeclaresError,
+  type CmsEditorialErrorDeclaration,
+} from '@wejammin/contracts';
 
 import {
   CMS_EDITORIAL_DETAIL_POLICIES,
@@ -134,25 +139,28 @@ export type CmsEditorialDetailProjector = (
 export const cmsEditorialForwardedError = async (
   request: Request,
   upstream: Response,
-  allowedErrors: Readonly<Record<string, number>>,
+  allowedErrors: CmsEditorialErrorDeclaration,
   detailPolicy: CmsEditorialErrorDetailPolicy = CMS_EDITORIAL_DETAIL_POLICIES.read,
   projector?: CmsEditorialDetailProjector,
 ): Promise<Response> => {
   // Each BE03b operation publishes a closed code/status registry. A valid
   // ApiError envelope is not enough: an upstream 403 carrying INTERNAL_ERROR,
   // or a draft read returning an undeclared 409, must not be relayed as truth.
-  if (!Object.values(allowedErrors).includes(upstream.status))
+  if (!cmsEditorialDeclaredStatuses(allowedErrors).includes(upstream.status))
     return cmsEditorialLocalError(request, 502);
   const body = await cmsEditorialBoundedResponseJson(upstream);
   if (!body.ok) return cmsEditorialLocalError(request, upstream.status);
   const parsed = ApiErrorSchema.safeParse(body.value);
-  if (!parsed.success || allowedErrors[parsed.data.code] !== upstream.status)
+  if (
+    !parsed.success ||
+    !cmsEditorialDeclaresError(allowedErrors, parsed.data.code, upstream.status)
+  )
     return cmsEditorialLocalError(request, upstream.status);
   const headers = cmsEditorialCopyResponseHeaders(upstream);
   headers.set('x-request-id', parsed.data.requestId);
   const published = ApiErrorSchema.safeParse({
     code: parsed.data.code,
-    message: cmsEditorialErrorMessage(parsed.data.code),
+    message: cmsEditorialErrorMessage(parsed.data.code, upstream.status),
     details:
       projector === undefined
         ? projectCmsEditorialErrorDetails(

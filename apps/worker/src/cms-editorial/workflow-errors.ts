@@ -1,5 +1,7 @@
 import {
+  CMS_EDITORIAL_INVALID_ANSWER_DETAILS,
   CmsPreflightUnavailableDetailsSchema,
+  cmsEditorialDeclaredStatuses,
   type CmsEditorialOperationId,
   type CmsEditorialRoutePolicy,
 } from '@wejammin/contracts';
@@ -54,7 +56,7 @@ const CODE_BY_STATUS: Readonly<Record<number, string>> = {
   422: 'VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'BAD_GATEWAY',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
   504: 'GATEWAY_TIMEOUT',
 };
@@ -79,7 +81,7 @@ const STEP_UP_MESSAGE = 'Recent verification is required.';
 const DEFAULT_RETRY_AFTER_SECONDS = 5;
 
 const declaredStatuses = (policy: CmsEditorialRoutePolicy): Set<number> =>
-  new Set(Object.values(policy.errors) as readonly number[]);
+  new Set(cmsEditorialDeclaredStatuses(policy.errors));
 
 const published = (
   status: number,
@@ -177,10 +179,7 @@ export const normalizedWorkflowError = (
         ),
       });
     case 502:
-      return published(502, {
-        dependencyClass: 'cms_editorial',
-        retryable: false,
-      });
+      return published(502, { ...CMS_EDITORIAL_INVALID_ANSWER_DETAILS });
     case 503:
       return unavailable(source, policy);
     case 504:

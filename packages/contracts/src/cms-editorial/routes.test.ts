@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertCmsEditorialRouteRegistry,
   cmsEditorialCapabilitiesSatisfied,
+  cmsEditorialDeclaredStatuses,
   cmsEditorialRoutePolicies,
   editorialDraftDetailErrors,
   editorialEntryCreateErrors,
@@ -55,8 +56,7 @@ const revisionErrors = {
   UNSUPPORTED_MEDIA_TYPE: 415,
   VALIDATION_FAILED: 422,
   RATE_LIMITED: 429,
-  BAD_GATEWAY: 502,
-  DEPENDENCY_UNAVAILABLE: 503,
+  DEPENDENCY_UNAVAILABLE: [502, 503],
   GATEWAY_TIMEOUT: 504,
   INTERNAL_ERROR: 500,
 } as const;
@@ -177,8 +177,8 @@ describe('cms editorial route registry', () => {
         .filter(({ ifMatch }) => ifMatch === 'none')
         .map(({ operationId }) => operationId),
     ).toEqual(['CMS-03B-10']);
-    expect(Object.keys(createRoute.errors)).toHaveLength(12);
-    expect(Object.keys(detailRoute.errors)).toHaveLength(11);
+    expect(cmsEditorialDeclaredStatuses(createRoute.errors)).toHaveLength(12);
+    expect(cmsEditorialDeclaredStatuses(detailRoute.errors)).toHaveLength(11);
   });
 
   it('enforces the nine-operation discriminants', () => {

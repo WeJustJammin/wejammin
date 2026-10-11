@@ -1,5 +1,7 @@
 import {
   ApiErrorSchema,
+  CMS_EDITORIAL_INVALID_ANSWER_DETAILS,
+  cmsEditorialDeclaredStatuses,
   type CmsEditorialRoutePolicy,
 } from '@wejammin/contracts';
 
@@ -32,7 +34,7 @@ const READ_ERROR_CODE_BY_STATUS: Readonly<Record<number, string>> = {
   422: 'VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'BAD_GATEWAY',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
   504: 'GATEWAY_TIMEOUT',
 };
@@ -80,7 +82,7 @@ const normalizedReadError = (
   routePolicy: CmsEditorialRoutePolicy,
 ): CmsEditorialError => {
   const declaredStatuses = new Set(
-    Object.values(routePolicy.errors) as readonly number[],
+    cmsEditorialDeclaredStatuses(routePolicy.errors),
   );
   const status =
     declaredStatuses.has(error.status) &&
@@ -136,8 +138,7 @@ const normalizedReadError = (
   } else if (status === 401) {
     details.recoveryAction = 'reauthenticate';
   } else if (status === 502) {
-    details.dependencyClass = 'cms_editorial';
-    details.retryable = false;
+    Object.assign(details, CMS_EDITORIAL_INVALID_ANSWER_DETAILS);
   } else if (status === 503 || status === 504) {
     details.dependencyClass = 'cms_editorial';
     details.retryable = true;

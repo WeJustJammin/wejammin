@@ -1,6 +1,7 @@
 import { describe, it } from 'vitest';
 import {
   cmsEditorialRoutePolicies,
+  type CmsEditorialErrorDeclaration,
   type RevisionHistoryPage,
 } from '@wejammin/contracts';
 
@@ -280,7 +281,7 @@ describe('cms editorial production ports', () => {
     expect(result).toMatchObject({
       ok: false,
       status: 502,
-      code: 'BAD_GATEWAY',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 
@@ -311,7 +312,7 @@ describe('cms editorial production ports', () => {
       expect(policy?.location).toBe('none');
       expect(policy?.rateClass).toBe('cms-entry-read');
       expect(policy?.timeoutMs).toBe(8_000);
-      const errors = policy?.errors as Readonly<Record<string, number>>;
+      const errors = policy?.errors as CmsEditorialErrorDeclaration;
       expect(errors.NOT_FOUND).toBe(404);
       expect(errors.FORBIDDEN).toBe(403);
       // DEC-140 / BE03b error matrix: only the entry list owns a 409 (a

@@ -140,14 +140,6 @@ export const representationDigest = async (
     ),
   );
 
-/** The dependency answered a success payload that breaks the contract. */
-export const BAD_GATEWAY = {
-  ok: false,
-  status: 502,
-  code: 'BAD_GATEWAY',
-  message: 'The CMS editorial dependency returned invalid data.',
-} as const;
-
 /** The strict parse of a resource, or null when it breaks the contract. */
 export const parsedResource = <Resource>(
   schema: UnknownSchema,

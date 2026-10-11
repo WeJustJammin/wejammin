@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import {
   CMS_EDITORIAL_INTERNAL_OPERATIONS,
+  cmsEditorialDeclaredStatuses,
   cmsEditorialRoutePolicies,
   platformRegistrySet,
 } from '@wejammin/contracts';
@@ -334,7 +335,7 @@ describe('[P2-S11-AC-049] generated OpenAPI documents each Slice 11 operation', 
           operation.responses[status],
           `${operationId} ${status}`,
         ).toBeDefined();
-      const errorStatuses = [...new Set(Object.values(policy.errors))].map(
+      const errorStatuses = cmsEditorialDeclaredStatuses(policy.errors).map(
         String,
       );
       for (const status of errorStatuses)

@@ -321,7 +321,7 @@ describe('cms editorial error mapping', () => {
     expect(await viaRpc(504, {})).toMatchObject({ status: 504 });
     expect(await viaRpc(502, {})).toMatchObject({
       status: 502,
-      code: 'BAD_GATEWAY',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
     expect(await viaRpc(503, {})).toMatchObject({
       status: 503,
@@ -340,8 +340,8 @@ describe('cms editorial error mapping', () => {
     });
     expect(invalidResponse()).toMatchObject({
       status: 502,
-      code: 'BAD_GATEWAY',
-      details: { retryable: false },
+      code: 'DEPENDENCY_UNAVAILABLE',
+      details: { dependencyClass: 'cms_editorial', retryable: true },
     });
     expect(sessionUnavailable()).toMatchObject({
       details: { dependencyClass: 'authentication' },

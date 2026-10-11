@@ -137,7 +137,7 @@ describe('response invariants bind the resource to the request', () => {
     const { app } = workflowHarness({ port: { [port]: ok(value) } as never });
     const response = await postJson(app, path, body);
     expect(response.status).toBe(502);
-    expect((await errorBody(response)).code).toBe('BAD_GATEWAY');
+    expect((await errorBody(response)).code).toBe('DEPENDENCY_UNAVAILABLE');
   };
 
   it('CMS-03B-05 refuses another entry, another revision or a review that is not open', async () => {

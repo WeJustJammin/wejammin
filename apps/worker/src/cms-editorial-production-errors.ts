@@ -1,3 +1,5 @@
+import { CMS_EDITORIAL_INVALID_ANSWER_DETAILS } from '@wejammin/contracts';
+
 import type {
   CmsEditorialProductionError,
   CmsEditorialProductionResult,
@@ -65,12 +67,13 @@ export const deadlineExceeded = (dependencyClass = 'cms_editorial') =>
     5,
   );
 
+/** BE00:172/590: a contacted dependency answered invalid data. */
 export const invalidResponse = () =>
   errorResult(
     502,
-    'BAD_GATEWAY',
+    'DEPENDENCY_UNAVAILABLE',
     'The CMS editorial dependency returned an invalid response.',
-    { dependencyClass: 'cms_editorial', retryable: false },
+    { ...CMS_EDITORIAL_INVALID_ANSWER_DETAILS },
   );
 
 export const sessionUnavailable = () => unavailable('authentication');

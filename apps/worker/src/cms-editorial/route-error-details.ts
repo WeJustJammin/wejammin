@@ -1,4 +1,7 @@
-import { ApiErrorSchema } from '@wejammin/contracts';
+import {
+  ApiErrorSchema,
+  CMS_EDITORIAL_INVALID_ANSWER_DETAILS,
+} from '@wejammin/contracts';
 
 import {
   REGISTERED_CONFLICT_KINDS,
@@ -100,6 +103,19 @@ export const safeDetails = (
     : {};
 };
 
+/**
+ * A dependency that answered a success payload breaking its contract (BE00:590:
+ * a contacted dependency returned an invalid response): 502
+ * `DEPENDENCY_UNAVAILABLE`. BE00 defines no other code for it. Every route and
+ * adapter fails with this value so the answer is worded once.
+ */
+export const INVALID_DEPENDENCY_RESPONSE = {
+  ok: false,
+  status: 502,
+  code: 'DEPENDENCY_UNAVAILABLE',
+  message: 'The CMS editorial dependency returned invalid data.',
+} as const;
+
 export const normalizedError = (
   error: CmsEditorialError,
 ): CmsEditorialError => {
@@ -113,11 +129,8 @@ export const normalizedError = (
     };
   if (error.status === 502)
     return {
-      ok: false,
-      status: 502,
-      code: 'BAD_GATEWAY',
-      message: 'The CMS editorial dependency returned invalid data.',
-      details: { dependencyClass: 'cms_editorial', retryable: false },
+      ...INVALID_DEPENDENCY_RESPONSE,
+      details: { ...CMS_EDITORIAL_INVALID_ANSWER_DETAILS },
     };
   if (error.status === 504)
     return {

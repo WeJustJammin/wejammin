@@ -1,4 +1,8 @@
-import { ApiErrorSchema, createRequestId } from '@wejammin/contracts';
+import {
+  ApiErrorSchema,
+  CMS_EDITORIAL_INVALID_ANSWER_DETAILS,
+  createRequestId,
+} from '@wejammin/contracts';
 
 import { isStepUpRequiredCode } from '../components/step-up-required';
 import { cmsEditorialZodViolations } from './cms-editorial-platform-error-details';
@@ -96,7 +100,15 @@ export const cmsEditorialSameOriginRequest = (request: Request): boolean => {
   return true;
 };
 
-export const cmsEditorialErrorMessage = (code: string): string => {
+/**
+ * The fixed copy of a published code. BE00 (lines 172 and 590) publishes a 502
+ * (the dependency answered invalid data) and a 503 (unavailable) under the one
+ * code `DEPENDENCY_UNAVAILABLE`, so the status picks between the two texts.
+ */
+export const cmsEditorialErrorMessage = (
+  code: string,
+  status?: number,
+): string => {
   if (isStepUpRequiredCode(code))
     return 'Recent verification is required to continue.';
   switch (code) {
@@ -116,10 +128,10 @@ export const cmsEditorialErrorMessage = (code: string): string => {
       return 'Check the highlighted entry fields.';
     case 'RATE_LIMITED':
       return 'Too many entry changes. Try again shortly.';
-    case 'BAD_GATEWAY':
-      return 'The entry service returned invalid data.';
     case 'DEPENDENCY_UNAVAILABLE':
-      return 'The entry service is temporarily unavailable.';
+      return status === 502
+        ? 'The entry service returned invalid data.'
+        : 'The entry service is temporarily unavailable.';
     case 'GATEWAY_TIMEOUT':
       return 'The entry service did not respond in time.';
     default:
@@ -135,8 +147,7 @@ export const cmsEditorialErrorCodeForStatus = (status: number): string => {
   if (status === 415) return 'UNSUPPORTED_MEDIA_TYPE';
   if (status === 422) return 'VALIDATION_FAILED';
   if (status === 429) return 'RATE_LIMITED';
-  if (status === 502) return 'BAD_GATEWAY';
-  if (status === 503) return 'DEPENDENCY_UNAVAILABLE';
+  if (status === 502 || status === 503) return 'DEPENDENCY_UNAVAILABLE';
   if (status === 504) return 'GATEWAY_TIMEOUT';
   if (status >= 500) return 'INTERNAL_ERROR';
   return 'INVALID_REQUEST';
@@ -146,8 +157,10 @@ export const cmsEditorialLocalError = (
   request: Request,
   status: number,
   code = cmsEditorialErrorCodeForStatus(status),
-  message = cmsEditorialErrorMessage(code),
-  details: Readonly<Record<string, unknown>> = {},
+  message = cmsEditorialErrorMessage(code, status),
+  details: Readonly<Record<string, unknown>> = status === 502
+    ? { ...CMS_EDITORIAL_INVALID_ANSWER_DETAILS }
+    : {},
 ): Response => {
   const requestId = createRequestId(
     request.headers.get('x-request-id') ?? undefined,

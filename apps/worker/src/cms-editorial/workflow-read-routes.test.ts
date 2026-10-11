@@ -307,7 +307,12 @@ describe('port boundary', () => {
           [testCase.port]: async () => ({ ok: true as const, value: { x: 1 } }),
         },
       });
-      expect((await getJson(app, testCase.path)).status).toBe(502);
+      const refused = await getJson(app, testCase.path);
+      expect(refused.status).toBe(502);
+      expect(await errorBody(refused)).toMatchObject({
+        code: 'DEPENDENCY_UNAVAILABLE',
+        details: { dependencyClass: 'cms_editorial', retryable: true },
+      });
     });
   });
 

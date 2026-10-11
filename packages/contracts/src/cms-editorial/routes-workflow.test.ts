@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   cmsEditorialCapabilitiesSatisfied,
+  cmsEditorialDeclaredStatuses,
   cmsEditorialRoutePolicies,
   editorialConflictResolutionErrors,
   editorialRestoreErrors,
@@ -63,7 +64,7 @@ describe('CMS-03B-02 conflict resolution route row', () => {
     expect(conflictRoute.rateScope).toBe('user');
     expect(conflictRoute.cacheControl).toBe('no-store');
     expect(conflictRoute.errors).toEqual(editorialConflictResolutionErrors);
-    expect(Object.keys(conflictRoute.errors)).toHaveLength(12);
+    expect(cmsEditorialDeclaredStatuses(conflictRoute.errors)).toHaveLength(12);
     expect(editorialConflictResolutionErrors.CONFLICT).toBe(409);
     expect(editorialConflictResolutionErrors.UNSUPPORTED_MEDIA_TYPE).toBe(415);
   });
@@ -159,7 +160,7 @@ describe('CMS-03B-04 revision restore route row', () => {
     expect(restoreRoute.slo).toEqual(tier2Slo);
     expect(restoreRoute.eventType).toBe('cms.entry.revision-created.v1');
     expect(restoreRoute.errors).toEqual(editorialRestoreErrors);
-    expect(Object.keys(restoreRoute.errors)).toHaveLength(12);
+    expect(cmsEditorialDeclaredStatuses(restoreRoute.errors)).toHaveLength(12);
     expect(editorialRestoreErrors.CONFLICT).toBe(409);
   });
 });

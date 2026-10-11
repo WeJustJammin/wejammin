@@ -17,6 +17,7 @@ import {
   parseEditorialHeaders,
 } from './admission-headers';
 import { validHumanSession } from './admission-identity';
+import { INVALID_DEPENDENCY_RESPONSE } from './route-error-details';
 import { rateCheck } from './route-execution';
 import { commonHeaders, errorResponse, publishedError } from './route-errors';
 import { createRouteFinish, entryFacts } from './route-telemetry';
@@ -26,11 +27,7 @@ import {
   requireFreshStepUp,
   requireWorkflowCapability,
 } from './workflow-admission';
-import {
-  BAD_GATEWAY,
-  parsedResource,
-  type RegistryRoute,
-} from './workflow-support';
+import { parsedResource, type RegistryRoute } from './workflow-support';
 import type { WorkflowLabels } from './workflow-telemetry';
 import {
   CMS_EDITORIAL_PREVIEW_OPERATION_ID,
@@ -272,7 +269,7 @@ export const registerWorkflowCommand = <
     );
     const accepted =
       resource === null ? null : spec.accept(resource, path.value, body.value);
-    if (accepted === null) return fail(BAD_GATEWAY);
+    if (accepted === null) return fail(INVALID_DEPENDENCY_RESPONSE);
     const responseHeaders = commonHeaders(request, dependencies, requestId);
     responseHeaders.set('content-type', 'application/json; charset=UTF-8');
     if (policy.operationId === CMS_EDITORIAL_PREVIEW_OPERATION_ID)

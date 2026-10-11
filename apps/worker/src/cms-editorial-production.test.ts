@@ -186,7 +186,7 @@ describe('cms editorial production adapter transport', () => {
     expect(result).toMatchObject({
       ok: false,
       status: 502,
-      code: 'BAD_GATEWAY',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 

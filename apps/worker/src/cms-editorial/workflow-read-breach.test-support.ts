@@ -17,17 +17,25 @@ import {
  * require the route to answer a safe, fixed body (no payload text, no validator)
  * with the response-bound status.
  *
- * OWNER RULING PENDING: BE03b lines 290 and 292 and AC-050/053/056 say 422, and
- * BE00 line 590 and every shipped route say 502 BAD_GATEWAY. The status the
- * routes answer today is 502. It is written once, here, so the ruling flips this
- * one token (and selects the matching row of ENVELOPE) for every suite.
+ * The owner ratified (2026-10-11) that a response-contract breach is a 502 with
+ * the BE00 line 172/590 code `DEPENDENCY_UNAVAILABLE` and the details
+ * `{ dependencyClass, retryable: true }`; BE00 defines no other code. The
+ * status is written once, here, with the envelope row it selects, for every
+ * suite.
  */
 export const RESPONSE_BOUND_STATUS: 502 | 422 = 502;
 
-/** What the ruled status publishes: its code and the retryability header. */
+/**
+ * What the ruled status publishes: its code, its details and the Worker's
+ * automatic-retry header (a contract drift is not retried blindly).
+ */
 const ENVELOPE = {
-  502: { code: 'BAD_GATEWAY', retryable: 'false' },
-  422: { code: 'VALIDATION_FAILED', retryable: null },
+  502: {
+    code: 'DEPENDENCY_UNAVAILABLE',
+    details: { dependencyClass: 'cms_editorial', retryable: true },
+    retryable: 'false',
+  },
+  422: { code: 'VALIDATION_FAILED', details: undefined, retryable: null },
 } as const;
 
 export type BreachPort = Extract<
@@ -124,7 +132,10 @@ export const expectRefused = async (
   expect(response.headers.get('x-cms-editorial-retryable')).toBe(
     envelope.retryable,
   );
-  expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe(envelope.code);
+  const body = ApiErrorSchema.parse(JSON.parse(text));
+  expect(body.code).toBe(envelope.code);
+  if (envelope.details !== undefined)
+    expect(body.details).toEqual(envelope.details);
   const served = identifying(payload);
   expect(served.length).toBeGreaterThan(0);
   for (const leaf of served) expect(text).not.toContain(leaf);

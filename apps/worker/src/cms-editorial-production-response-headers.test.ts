@@ -185,8 +185,8 @@ describe('CMS-03B-08 public preview response headers', () => {
     expect(edge.calls.map((call) => call.name)).toEqual(['cms_mint_preview']);
     await expectError(response, {
       status: 502,
-      code: 'BAD_GATEWAY',
-      details: { dependencyClass: 'cms_editorial', retryable: false },
+      code: 'DEPENDENCY_UNAVAILABLE',
+      details: { dependencyClass: 'cms_editorial', retryable: true },
     });
     expect(response.headers.get('retry-after')).toBeNull();
     // No universal noindex assertion on error statuses: FE03 binds it to 201.
@@ -256,7 +256,7 @@ describe('CMS-03B-09 public publication response headers', () => {
   });
 
   it.each([
-    { status: 502, code: 'BAD_GATEWAY', malformed: true },
+    { status: 502, code: 'DEPENDENCY_UNAVAILABLE', malformed: true },
     { status: 500, code: 'INTERNAL_ERROR', malformed: false },
   ] as const)(
     'does not advertise Retry-After on nonretryable $status',
@@ -276,7 +276,7 @@ describe('CMS-03B-09 public publication response headers', () => {
         status,
         code,
         details: malformed
-          ? { dependencyClass: 'cms_editorial', retryable: false }
+          ? { dependencyClass: 'cms_editorial', retryable: true }
           : {},
       });
       expectPublishAdmission(rateLimit);

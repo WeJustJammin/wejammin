@@ -102,7 +102,7 @@ const setup = (steps: readonly Step[]) => {
 
 const failures: ReadonlyArray<readonly [string, Step]> = [
   ['a 500 INTERNAL_ERROR', apiError(500, 'INTERNAL_ERROR')],
-  ['a 502 BAD_GATEWAY', apiError(502, 'BAD_GATEWAY')],
+  ['a 502 DEPENDENCY_UNAVAILABLE', apiError(502, 'DEPENDENCY_UNAVAILABLE')],
   ['a 503 DEPENDENCY_UNAVAILABLE', apiError(503, 'DEPENDENCY_UNAVAILABLE')],
   ['a 504 GATEWAY_TIMEOUT', apiError(504, 'GATEWAY_TIMEOUT')],
   ['a network failure', new TypeError('Failed to fetch')],

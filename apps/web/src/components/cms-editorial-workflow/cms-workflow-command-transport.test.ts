@@ -239,7 +239,7 @@ describe('unknown outcomes keep the key', () => {
     });
     const marked = await send(
       testCase,
-      jsonResponse(502, apiError('BAD_GATEWAY'), {
+      jsonResponse(502, apiError('DEPENDENCY_UNAVAILABLE'), {
         'x-cms-editorial-outcome': 'unknown',
       }),
     );

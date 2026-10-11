@@ -17,6 +17,7 @@ import {
   requireEditorialCapability,
   validHumanSession,
 } from './admission-identity';
+import { INVALID_DEPENDENCY_RESPONSE } from './route-error-details';
 import { rateCheck } from './route-execution';
 import { createRouteFinish, entryFacts } from './route-telemetry';
 import {
@@ -208,13 +209,7 @@ export const registerCmsEditorialHistoryRoutes = <E extends Env>(
     );
     if (!result.ok) return fail(sanitizeReadError(result, policy));
     const parsed = RevisionHistoryPageSchema.safeParse(result.value);
-    if (!parsed.success)
-      return fail({
-        ok: false,
-        status: 502,
-        code: 'BAD_GATEWAY',
-        message: 'The CMS editorial dependency returned invalid data.',
-      });
+    if (!parsed.success) return fail(INVALID_DEPENDENCY_RESPONSE);
     const headers = commonHeaders(request, dependencies, requestId);
     headers.set('content-type', 'application/json; charset=UTF-8');
     headers.set('etag', `"${parsed.data.pageVersion}"`);

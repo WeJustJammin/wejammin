@@ -227,7 +227,9 @@ describe('CMS-03B-11 protected draft-detail route', () => {
       const response = await get(app);
       expect(response.status).toBe(502);
       const text = await response.text();
-      expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe('BAD_GATEWAY');
+      expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe(
+        'DEPENDENCY_UNAVAILABLE',
+      );
       expect(text).not.toContain('60000000-0000-4000-8000-000000000006');
       expect(text).not.toContain('Hidden target');
     },

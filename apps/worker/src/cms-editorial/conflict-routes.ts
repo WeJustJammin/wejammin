@@ -28,6 +28,7 @@ import {
   dependencyUnavailable,
   createRouteDeadline,
 } from './admission-deadline';
+import { INVALID_DEPENDENCY_RESPONSE } from './route-error-details';
 import { rateCheck } from './route-execution';
 import { createRouteFinish, entryFacts } from './route-telemetry';
 import { commonHeaders, errorResponse, publishedError } from './routes';
@@ -204,12 +205,7 @@ export const registerCmsEditorialConflictRoutes = <E extends Env>(
       parsed.data.parentRevisionIds.length !== 2 ||
       parsed.data.parentRevisionIds[0] === parsed.data.parentRevisionIds[1]
     )
-      return fail({
-        ok: false,
-        status: 502,
-        code: 'BAD_GATEWAY',
-        message: 'The CMS editorial dependency returned invalid data.',
-      });
+      return fail(INVALID_DEPENDENCY_RESPONSE);
 
     const responseHeaders = commonHeaders(request, dependencies, requestId);
     responseHeaders.set('content-type', 'application/json; charset=UTF-8');

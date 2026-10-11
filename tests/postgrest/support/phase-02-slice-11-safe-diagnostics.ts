@@ -28,7 +28,6 @@ export const SAFE_ERROR_CODES: ReadonlySet<string> = new Set([
   'VALIDATION_FAILED',
   'RATE_LIMITED',
   'INTERNAL_ERROR',
-  'BAD_GATEWAY',
   'DEPENDENCY_UNAVAILABLE',
   'GATEWAY_TIMEOUT',
 ]);

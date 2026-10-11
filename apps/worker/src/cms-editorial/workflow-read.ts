@@ -13,16 +13,13 @@ import {
 } from './admission-deadline';
 import { checkOrigin } from './admission-headers';
 import { validHumanSession } from './admission-identity';
+import { INVALID_DEPENDENCY_RESPONSE } from './route-error-details';
 import { rateCheck } from './route-execution';
 import { commonHeaders, errorResponse, publishedError } from './route-errors';
 import { createRouteFinish, entryFacts } from './route-telemetry';
 import { registerPreflight } from './workflow-admission';
 import type { WorkflowPrepareContext } from './workflow-command';
-import {
-  BAD_GATEWAY,
-  parsedResource,
-  type RegistryRoute,
-} from './workflow-support';
+import { parsedResource, type RegistryRoute } from './workflow-support';
 import type { WorkflowPreflightFact } from './workflow-telemetry';
 import type {
   CmsEditorialDependencies,
@@ -233,7 +230,7 @@ export const registerWorkflowRead = <
       resource === null
         ? null
         : await spec.accept(resource, path.value, query.value, identity.value);
-    if (accepted === null) return fail(BAD_GATEWAY);
+    if (accepted === null) return fail(INVALID_DEPENDENCY_RESPONSE);
     const headers = commonHeaders(request, dependencies, requestId);
     headers.set('content-type', 'application/json; charset=UTF-8');
     headers.set('etag', accepted.etag);

@@ -274,7 +274,7 @@ describe('port boundary', () => {
       });
       const response = await postJson(app, testCase.path, testCase.body);
       expect(response.status).toBe(502);
-      expect((await errorBody(response)).code).toBe('BAD_GATEWAY');
+      expect((await errorBody(response)).code).toBe('DEPENDENCY_UNAVAILABLE');
     });
   });
 
