@@ -1,0 +1,36 @@
+# prosrc md5=3713a2e62c973b749531b9a63b2f09ff owner=wejammin_cms_definer vol=v acl={wejammin_cms_definer=X/wejammin_cms_definer} config={"search_path=\"\""}
+# fields | Insert on cms_field_definition_versions (actual time=44.723..44.724 rows=0 loops=1)
+# fields |   Buffers: shared hit=2168 dirtied=7 written=7
+# fields |   ->  Function Scan on jsonb_array_elements field_entry (actual time=0.050..1.017 rows=128 loops=1)
+# fields | Planning:
+# fields |   Buffers: shared hit=3
+# fields | Planning Time: 0.158 ms
+# fields | Trigger for constraint cms_field_definition_versions_content_type_version_id_fkey: time=3.441 calls=128
+# fields | Trigger for constraint cms_field_definition_versions_created_by_fkey: time=2.636 calls=128
+# fields | Trigger cms_field_definition_versions_activation_review_invalidation: time=18.022 calls=128
+# fields | Trigger cms_field_definition_versions_parent_state_guard: time=16.491 calls=128
+# fields | Trigger cms_field_definition_versions_write_guard: time=1.080 calls=128
+# fields | Execution Time: 68.983 ms
+# -- | ---- end run 1
+# fields | Insert on cms_field_definition_versions (actual time=48.011..48.011 rows=0 loops=1)
+# fields |   Buffers: shared hit=2074 dirtied=12 written=12
+# fields |   ->  Function Scan on jsonb_array_elements field_entry (actual time=0.054..1.122 rows=128 loops=1)
+# fields | Planning Time: 0.163 ms
+# fields | Trigger for constraint cms_field_definition_versions_content_type_version_id_fkey: time=3.508 calls=128
+# fields | Trigger for constraint cms_field_definition_versions_created_by_fkey: time=2.468 calls=128
+# fields | Trigger cms_field_definition_versions_activation_review_invalidation: time=18.545 calls=128
+# fields | Trigger cms_field_definition_versions_parent_state_guard: time=16.805 calls=128
+# fields | Trigger cms_field_definition_versions_write_guard: time=1.066 calls=128
+# fields | Execution Time: 72.696 ms
+# -- | ---- end run 2
+# fields | Insert on cms_field_definition_versions (actual time=46.740..46.741 rows=0 loops=1)
+# fields |   Buffers: shared hit=2066 dirtied=8 written=8
+# fields |   ->  Function Scan on jsonb_array_elements field_entry (actual time=0.055..1.093 rows=128 loops=1)
+# fields | Planning Time: 0.166 ms
+# fields | Trigger for constraint cms_field_definition_versions_content_type_version_id_fkey: time=3.004 calls=128
+# fields | Trigger for constraint cms_field_definition_versions_created_by_fkey: time=2.182 calls=128
+# fields | Trigger cms_field_definition_versions_activation_review_invalidation: time=16.081 calls=128
+# fields | Trigger cms_field_definition_versions_parent_state_guard: time=16.445 calls=128
+# fields | Trigger cms_field_definition_versions_write_guard: time=1.038 calls=128
+# fields | Execution Time: 68.151 ms
+# -- | ---- end run 3

@@ -1,0 +1,90 @@
+[b2] diag waiting for EXCLUSIVE quiet lock 04:13:29
+[b2] diag locks held 05:09:46 load=5.26 4.85 3.93 HEAD=813fcafd dirty=7
+[b2] reset ok (fresh) 05:10:54
+[b2] probe fresh-prof (probe-prof.sql) load_after=1.48 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-fresh-prof.tap
+[b2] probe fresh-chain (probe-chain-prof.sql) load_after=1.60 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-fresh-chain.tap
+[b2] reset ok (v1) 05:13:47
+[b2] prefix (v1): 94 files, exit=0, 65s, failing: 0 05:14:52
+[b2] probe v1-state (probe-state.sql) load_after=1.40 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-v1-state.tap
+[b2] bench (v1-in-suite-pristine) exit=0 load_before=1.40 load_after=1.82 05:16:09
+# activate p50=236.8ms p95=278.2ms max=294.5ms n=25
+# assign p50=12.5ms p95=17.1ms max=21.0ms n=25
+# create128 p50=242.5ms p95=271.9ms max=280.9ms n=25
+# decide p50=57.8ms p95=80.9ms max=113.6ms n=25
+# dry_run p50=108.8ms p95=131.4ms max=166.1ms n=25
+# submit p50=108.5ms p95=140.8ms max=156.3ms n=25
+[b2] probe v1-prof (probe-prof.sql) load_after=1.48 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-v1-prof.tap
+[b2] probe v1-chain (probe-chain-prof.sql) load_after=1.48 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-v1-chain.tap
+[b2] probe v1-plans (probe-plans.sql) load_after=1.52 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-v1-plans.tap
+[b2] reset ok (v2) 05:19:07
+[b2] prefix (v2): 94 files, exit=0, 64s, failing: 0 05:20:11
+[b2] probe v2-analyze (probe-analyze.sql) load_after=1.47 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-v2-analyze.tap
+[b2] bench (v2-after-analyze) exit=1 load_before=1.47 load_after=2.20 05:24:04
+# activate p50=218.1ms p95=274.1ms max=314.1ms n=25
+# assign p50=11.6ms p95=15.5ms max=21.0ms n=25
+# create128 p50=223.0ms p95=305.3ms max=405.0ms n=25
+# decide p50=57.0ms p95=68.4ms max=69.6ms n=25
+# dry_run p50=103.6ms p95=133.4ms max=165.9ms n=25
+# submit p50=103.2ms p95=132.8ms max=138.1ms n=25
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+[b2] reset ok (v3) 05:25:09
+[b2] prefix (v3): 94 files, exit=0, 61s, failing: 0 05:26:10
+[b2] probe v3-vacuum (probe-vacuum-analyze.sql) load_after=1.44 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-v3-vacuum.tap
+[b2] bench (v3-after-vacuum-analyze) exit=0 load_before=1.44 load_after=2.16 05:28:53
+# activate p50=217.0ms p95=270.2ms max=290.3ms n=25
+# assign p50=11.4ms p95=19.7ms max=21.0ms n=25
+# create128 p50=219.2ms p95=276.6ms max=289.1ms n=25
+# decide p50=55.7ms p95=69.3ms max=97.3ms n=25
+# dry_run p50=101.9ms p95=133.1ms max=141.4ms n=25
+# submit p50=105.2ms p95=129.0ms max=180.1ms n=25
+[b2] reset ok (base2) 05:30:01
+[b2] prefix (base2): 94 files, exit=0, 59s, failing: 0 05:31:00
+[b2] bench (base2-in-suite-pristine) exit=0 load_before=1.47 load_after=1.78 05:32:45
+# activate p50=208.1ms p95=264.4ms max=269.2ms n=25
+# assign p50=10.5ms p95=13.5ms max=16.1ms n=25
+# create128 p50=209.3ms p95=236.8ms max=245.5ms n=25
+# decide p50=56.2ms p95=66.8ms max=68.6ms n=25
+# dry_run p50=98.7ms p95=113.6ms max=121.5ms n=25
+# submit p50=99.4ms p95=112.1ms max=119.9ms n=25
+[b2] reset ok (base3) 05:33:47
+[b2] prefix (base3): 94 files, exit=0, 61s, failing: 0 05:34:48
+[b2] bench (base3-in-suite-pristine) exit=0 load_before=1.40 load_after=1.75 05:36:02
+# activate p50=217.4ms p95=254.9ms max=265.1ms n=25
+# assign p50=11.5ms p95=14.3ms max=14.9ms n=25
+# create128 p50=214.1ms p95=247.9ms max=294.0ms n=25
+# decide p50=52.9ms p95=68.4ms max=72.6ms n=25
+# dry_run p50=96.5ms p95=117.5ms max=141.1ms n=25
+# submit p50=97.8ms p95=122.7ms max=125.4ms n=25
+[b2] diag job done 05:36:02
+[b2] reset ok (pfresh) 05:37:07
+[b2] probe fresh-prof2 (probe-prof.sql) load_after=1.51 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-fresh-prof2.tap
+[b2] probe fresh-chain2 (probe-chain-prof.sql) load_after=1.49 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-fresh-chain2.tap
+[b2] reset ok (psuite) 05:39:38
+[b2] prefix (psuite): 94 files, exit=0, 63s, failing: 0 05:40:41
+[b2] probe suite-prof2 (probe-prof.sql) load_after=1.56 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-suite-prof2.tap
+[b2] probe suite-chain2 (probe-chain-prof.sql) load_after=1.59 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-suite-chain2.tap
+[b2] probe suite-plans2 (probe-plans.sql) load_after=1.47 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-suite-plans2.tap
+[b2] statement-profile part done 05:42:08
+[b2] reset ok (ctrl1) 05:43:14
+[b2] bench (fresh-control1) exit=0 load_before=1.49 load_after=1.68 05:45:48
+# activate p50=213.1ms p95=252.6ms max=277.3ms n=25
+# assign p50=11.3ms p95=15.4ms max=22.5ms n=25
+# create128 p50=204.0ms p95=237.8ms max=262.5ms n=25
+# decide p50=53.7ms p95=63.4ms max=67.1ms n=25
+# dry_run p50=100.2ms p95=116.7ms max=144.4ms n=25
+# submit p50=101.5ms p95=115.7ms max=119.4ms n=25
+[b2] reset ok (ctrl2) 05:46:52
+[b2] bench (fresh-control2) exit=0 load_before=1.41 load_after=1.73 05:47:37
+# activate p50=210.4ms p95=270.1ms max=295.9ms n=25
+# assign p50=11.2ms p95=17.4ms max=18.3ms n=25
+# create128 p50=203.7ms p95=240.0ms max=302.4ms n=25
+# decide p50=53.6ms p95=72.9ms max=89.9ms n=25
+# dry_run p50=103.0ms p95=115.8ms max=154.4ms n=25
+# submit p50=102.8ms p95=124.0ms max=131.9ms n=25
+[b2] controls done 05:47:37
+[b2] reset ok (ffresh) 05:48:42
+[b2] probe fresh-func (probe-func-prof.sql) load_after=1.91 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-fresh-func.tap
+[b2] reset ok (fsuite) 05:51:08
+[b2] prefix (fsuite): 94 files, exit=0, 64s, failing: 0 05:52:12
+[b2] probe suite-func (probe-func-prof.sql) load_after=1.62 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/diag-20261011-041329-suite-func.tap
+[b2] function-profile part done 05:53:08

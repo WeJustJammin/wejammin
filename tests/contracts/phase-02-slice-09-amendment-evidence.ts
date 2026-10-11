@@ -2959,11 +2959,14 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
       'tests/performance/phase-02-slice-09-recovery-durable.test.ts',
       'tests/performance/phase-02-slice-09-recovery.test.ts',
       'supabase/tests/phase_02_slice_09_r14_json_bounded.sql',
+      'supabase/tests/phase_02_slice_09_create_draft_parity.sql',
+      'supabase/tests/phase_02_slice_09_create_draft_parity_manifest_bound.sql',
+      'supabase/tests/phase_02_slice_09_valid_field_input_fast_accept.sql',
     ],
     testMarkers: ['[P2-S09-AC-217]'],
     status: 'verified',
     limitation:
-      'create128 RPC p95 <300 ms is the binding BE03a gate, over at least twenty samples (n>=20), with the worst sample under the 1,200 ms Tier 2 command budget; p95 <200 ms stays diagnostic only (evidence_bench128, n=25, over twenty-five 128-field definitions created through the real producers), after migrations 20261003100000 (single-pass canonical JSON, equivalence-tested against the previous implementations over a document corpus) and 20261003100100 (batched field insert); the Worker adds a small fraction of the budget; old-active fallback, rollback, worker resume, DLQ replay and exactly-once switch are the 005d, 006, 009 and 009b pgTAP include files.',
+      'create128 RPC p95 <300 ms is the binding BE03a gate, over at least twenty samples (n>=20), with the worst sample under the 1,200 ms Tier 2 command budget; p95 <200 ms stays diagnostic only (evidence_bench128, n=25, over twenty-five 128-field definitions created through the real producers), after migrations 20261003100000 (single-pass canonical JSON, equivalence-tested against the previous implementations over a document corpus) and 20261003100100 (batched field insert), and 20261010166000/166100/167000 (single-compile type draft, one-scan manifest bound, fast-accept field validation, each proven byte-identical to the previous body by its parity suite); the Worker adds a small fraction of the budget; old-active fallback, rollback, worker resume, DLQ replay and exactly-once switch are the 005d, 006, 009 and 009b pgTAP include files.',
     supplementary: [
       'supabase/tests/phase_02_slice_09_scan/010-entry-lock-race.mjs',
       'supabase/tests/phase_02_slice_09_schema/009c-independent-sessions.mjs',

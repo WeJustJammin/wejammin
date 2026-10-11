@@ -1,0 +1,249 @@
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:3: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:4: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:5: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:89: ERROR:  # No tests run!
+CONTEXT:  PL/pgSQL function _finish(integer,integer,integer,boolean) line 12 at RAISE
+SQL function "finish" statement 1
+/w/scratch/bench2-lane/probe-func-prof.sql .. 
+{"created": true, "personId": "2e33f78e-e6b3-4d7e-916c-6fa63707fef3", "contextKind": "self", "accountState": "active", "actingPartyId": "2e33f78e-e6b3-4d7e-916c-6fa63707fef3", "bindingVersion": 1}
+{"created": true, "personId": "4f1e77f4-0a53-4c16-9006-252877ae55db", "contextKind": "self", "accountState": "active", "actingPartyId": "4f1e77f4-0a53-4c16-9006-252877ae55db", "bindingVersion": 1}
+{"created": true, "personId": "c9f445f4-8afe-42a3-9c4a-363439b2d091", "contextKind": "self", "accountState": "active", "actingPartyId": "c9f445f4-8afe-42a3-9c4a-363439b2d091", "bindingVersion": 1}
+{"created": true, "personId": "85d9c1bd-d0cc-480c-8de1-c39fda5f3570", "contextKind": "self", "accountState": "active", "actingPartyId": "85d9c1bd-d0cc-480c-8de1-c39fda5f3570", "bindingVersion": 1}
+{"created": true, "personId": "34b1bf43-da4f-4386-a97b-e28a5ccb140b", "contextKind": "self", "accountState": "active", "actingPartyId": "34b1bf43-da4f-4386-a97b-e28a5ccb140b", "bindingVersion": 1}
+{"created": true, "personId": "6ede9806-9ffd-4efd-a84a-38cc3a7fbf2f", "contextKind": "self", "accountState": "active", "actingPartyId": "6ede9806-9ffd-4efd-a84a-38cc3a7fbf2f", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+# CHAIN 1 create128 p50=217.9 p95=238.5 max=246.6 n=10
+# CHAIN 2 dry_run p50=101.3 p95=117.2 max=118.2 n=10
+# CHAIN 3 submit p50=106.4 p95=117.7 max=121.1 n=10
+# CHAIN 4 assign p50=11.9 p95=14.5 max=14.8 n=10
+# CHAIN 5 decide p50=54.4 p95=64.6 max=66.3 n=10
+# CHAIN 6 activate p50=229.4 p95=256.7 max=257.2 n=10
+# FUNC 1 create128 per-iter total=211.12 self=0.45 calls=1.0 | pg_temp_90.s09d_rpc
+# FUNC 1 create128 per-iter total=210.31 self=0.29 calls=1.0 | pg_temp_90.s09d_call
+# FUNC 1 create128 per-iter total=210.02 self=0.05 calls=1.0 | platform_api.cms_create_type_draft
+# FUNC 1 create128 per-iter total=209.98 self=26.15 calls=1.0 | platform_private.cms_create_type_draft
+# FUNC 1 create128 per-iter total=61.71 self=12.78 calls=128.0 | platform_private.cms_valid_field_input
+# FUNC 1 create128 per-iter total=35.44 self=35.44 calls=385.0 | platform_private.cms_json_bounded
+# FUNC 1 create128 per-iter total=29.75 self=27.94 calls=403.0 | platform_private.cms_jcs
+# FUNC 1 create128 per-iter total=20.20 self=12.68 calls=128.0 | platform_private.cms_active_parent_guard
+# FUNC 1 create128 per-iter total=19.42 self=19.42 calls=129.0 | platform_private.cms_reserved_key
+# FUNC 1 create128 per-iter total=19.02 self=6.81 calls=129.0 | platform_private.cms_activation_review_invalidation_trigger
+# FUNC 1 create128 per-iter total=16.51 self=16.51 calls=651.5 | platform_private.cms_rpc_context_valid
+# FUNC 1 create128 per-iter total=12.21 self=6.57 calls=128.0 | platform_private.cms_invalidate_activation_reviews
+# FUNC 1 create128 per-iter total=10.70 self=10.70 calls=2.0 | platform_private.cms_compiled_manifest_bounded
+# FUNC 1 create128 per-iter total=9.34 self=9.34 calls=257.0 | platform_private.cms_exact_keys
+# FUNC 1 create128 per-iter total=9.11 self=9.11 calls=128.0 | platform_private.cms_valid_uuid
+# FUNC 1 create128 per-iter total=4.57 self=2.64 calls=1.0 | platform_private.cms_type_version_resource
+# FUNC 1 create128 per-iter total=4.10 self=4.10 calls=1.0 | pg_temp_90.cp_reset
+# FUNC 1 create128 per-iter total=2.62 self=0.09 calls=1.0 | platform_private.cms_reserve
+# FUNC 1 create128 per-iter total=2.26 self=2.26 calls=1.0 | platform_private.cms_canonical_type_definition
+# FUNC 1 create128 per-iter total=1.81 self=1.81 calls=130.0 | platform_private.cms_jcs_number
+# FUNC 1 create128 per-iter total=1.78 self=1.67 calls=1.0 | platform_private.cms_request_hash
+# FUNC 1 create128 per-iter total=1.29 self=0.23 calls=2.0 | platform_private.cms_locale_config_hash
+# FUNC 2 dry_run per-iter total=103.45 self=0.15 calls=1.0 | pg_temp_90.s09d_dry_run
+# FUNC 2 dry_run per-iter total=102.52 self=0.04 calls=1.0 | pg_temp_90.s09d_rpc
+# FUNC 2 dry_run per-iter total=102.18 self=0.22 calls=1.0 | pg_temp_90.s09d_call
+# FUNC 2 dry_run per-iter total=101.96 self=0.05 calls=1.0 | platform_api.cms_start_schema_dry_run
+# FUNC 2 dry_run per-iter total=101.91 self=3.57 calls=1.0 | platform_private.cms_start_schema_dry_run
+# FUNC 2 dry_run per-iter total=83.42 self=0.59 calls=1.0 | platform_private.cms_compile_candidate
+# FUNC 2 dry_run per-iter total=71.31 self=1.06 calls=1.0 | platform_private.cms_definition_artifact_hash
+# FUNC 2 dry_run per-iter total=56.98 self=0.39 calls=4.0 | platform_private.cms_jcs_sha256
+# FUNC 2 dry_run per-iter total=56.32 self=52.92 calls=785.0 | platform_private.cms_jcs
+# FUNC 2 dry_run per-iter total=11.60 self=11.60 calls=6.0 | platform_private.cms_canonical_type_definition
+# FUNC 2 dry_run per-iter total=11.29 self=9.31 calls=1.0 | platform_private.cms_candidate_definition_request
+# FUNC 2 dry_run per-iter total=7.38 self=0.98 calls=1.0 | platform_private.cms_compiled_editor_manifest
+# FUNC 2 dry_run per-iter total=6.01 self=0.14 calls=1.0 | platform_private.cms_compiled_renderer_manifest
+# FUNC 2 dry_run per-iter total=5.48 self=3.39 calls=1.0 | platform_private.cms_lock_activation_graph
+# FUNC 2 dry_run per-iter total=5.06 self=5.06 calls=547.0 | platform_private.cms_rpc_context_valid
+# FUNC 2 dry_run per-iter total=3.91 self=3.91 calls=1.0 | pg_temp_90.cp_reset
+# FUNC 2 dry_run per-iter total=3.41 self=3.41 calls=256.0 | platform_private.cms_jcs_number
+# FUNC 2 dry_run per-iter total=2.08 self=1.76 calls=1.0 | platform_private.accept_job_with_outbox
+# FUNC 2 dry_run per-iter total=1.35 self=0.53 calls=1.0 | platform_private.cms_schema_dry_run_resource
+# FUNC 2 dry_run per-iter total=1.07 self=0.01 calls=1.0 | platform_private.cms_reserve_conflict
+# FUNC 2 dry_run per-iter total=1.06 self=0.08 calls=1.0 | platform_private.cms_reserve
+# FUNC 2 dry_run per-iter total=0.72 self=0.27 calls=3.0 | platform_private.cms_session_system_scope
+# FUNC 3 submit per-iter total=105.17 self=0.09 calls=1.0 | pg_temp_90.s09d_submit
+# FUNC 3 submit per-iter total=104.41 self=0.04 calls=1.0 | pg_temp_90.s09d_rpc
+# FUNC 3 submit per-iter total=104.06 self=0.24 calls=1.0 | pg_temp_90.s09d_call
+# FUNC 3 submit per-iter total=103.82 self=0.04 calls=1.0 | platform_api.cms_submit_schema_review
+# FUNC 3 submit per-iter total=103.78 self=3.19 calls=1.0 | platform_private.cms_submit_schema_review
+# FUNC 3 submit per-iter total=83.07 self=0.31 calls=1.0 | platform_private.cms_candidate_compiled_current
+# FUNC 3 submit per-iter total=71.29 self=1.00 calls=1.0 | platform_private.cms_definition_artifact_hash
+# FUNC 3 submit per-iter total=58.26 self=0.62 calls=7.0 | platform_private.cms_jcs_sha256
+# FUNC 3 submit per-iter total=57.35 self=53.89 calls=800.0 | platform_private.cms_jcs
+# FUNC 3 submit per-iter total=11.75 self=11.75 calls=6.0 | platform_private.cms_canonical_type_definition
+# FUNC 3 submit per-iter total=11.31 self=9.32 calls=1.0 | platform_private.cms_candidate_definition_request
+# FUNC 3 submit per-iter total=7.56 self=0.98 calls=1.0 | platform_private.cms_compiled_editor_manifest
+# FUNC 3 submit per-iter total=5.99 self=0.14 calls=1.0 | platform_private.cms_compiled_renderer_manifest
+# FUNC 3 submit per-iter total=5.30 self=3.26 calls=1.0 | platform_private.cms_lock_activation_graph
+# FUNC 3 submit per-iter total=4.91 self=4.91 calls=533.0 | platform_private.cms_rpc_context_valid
+# FUNC 3 submit per-iter total=4.18 self=4.18 calls=1.0 | pg_temp_90.cp_reset
+# FUNC 3 submit per-iter total=3.91 self=1.54 calls=1.0 | platform_private.cms_schema_review_resource
+# FUNC 3 submit per-iter total=3.47 self=3.47 calls=262.0 | platform_private.cms_jcs_number
+# FUNC 3 submit per-iter total=1.08 self=0.01 calls=1.0 | platform_private.cms_reserve_conflict
+# FUNC 3 submit per-iter total=1.07 self=0.08 calls=1.0 | platform_private.cms_reserve
+# FUNC 3 submit per-iter total=0.98 self=0.14 calls=1.0 | platform_private.cms_with_content_hash
+# FUNC 3 submit per-iter total=0.98 self=0.37 calls=4.0 | platform_private.cms_session_system_scope
+# FUNC 4 assign per-iter total=11.95 self=0.11 calls=1.0 | pg_temp_90.s09d_assign
+# FUNC 4 assign per-iter total=11.20 self=0.04 calls=1.0 | pg_temp_90.s09d_rpc
+# FUNC 4 assign per-iter total=10.87 self=0.22 calls=1.0 | pg_temp_90.s09d_call
+# FUNC 4 assign per-iter total=10.65 self=0.04 calls=1.0 | platform_api.cms_assign_schema_review
+# FUNC 4 assign per-iter total=10.61 self=1.53 calls=1.0 | platform_private.cms_assign_schema_review
+# FUNC 4 assign per-iter total=3.83 self=3.83 calls=1.0 | pg_temp_90.cp_reset
+# FUNC 4 assign per-iter total=1.34 self=0.54 calls=6.0 | platform_private.cms_session_system_scope
+# FUNC 4 assign per-iter total=1.30 self=0.48 calls=1.0 | platform_private.cms_schema_review_assignment_resource
+# FUNC 4 assign per-iter total=1.19 self=0.21 calls=1.0 | platform_private.cms_review_scope
+# FUNC 4 assign per-iter total=1.15 self=1.15 calls=18.0 | platform_private.cms_session_uuid
+# FUNC 4 assign per-iter total=1.09 self=0.01 calls=1.0 | platform_private.cms_reserve_conflict
+# FUNC 4 assign per-iter total=1.08 self=0.09 calls=1.0 | platform_private.cms_reserve
+# FUNC 4 assign per-iter total=1.06 self=1.06 calls=2.0 | platform_private.cms_person_holds_capability
+# FUNC 4 assign per-iter total=0.81 self=0.45 calls=6.0 | platform_private.cms_session_owner_scope
+# FUNC 4 assign per-iter total=0.67 self=0.10 calls=1.0 | platform_private.cms_review_owner_authority_end
+# FUNC 4 assign per-iter total=0.61 self=0.02 calls=1.0 | platform_private.cms_emit_event
+# FUNC 4 assign per-iter total=0.60 self=0.16 calls=1.0 | platform_private.cms_schema_review_assignment_guard
+# FUNC 4 assign per-iter total=0.59 self=0.55 calls=1.0 | platform_private.cfg_emit_effects
+# FUNC 4 assign per-iter total=0.56 self=0.26 calls=1.0 | platform_private.cms_review_person_eligible
+# FUNC 4 assign per-iter total=0.50 self=0.40 calls=1.0 | platform_private.cms_complete
+# FUNC 4 assign per-iter total=0.49 self=0.46 calls=1.0 | platform_private.identity_idempotency_reserve
+# FUNC 4 assign per-iter total=0.41 self=0.08 calls=1.0 | platform_private.cms_with_content_hash
+# FUNC 5 decide per-iter total=54.62 self=0.09 calls=1.0 | pg_temp_90.s09d_decide
+# FUNC 5 decide per-iter total=53.92 self=0.04 calls=1.0 | pg_temp_90.s09d_rpc
+# FUNC 5 decide per-iter total=53.56 self=0.22 calls=1.0 | pg_temp_90.s09d_call
+# FUNC 5 decide per-iter total=53.34 self=0.04 calls=1.0 | platform_api.cms_decide_schema_review
+# FUNC 5 decide per-iter total=53.30 self=4.52 calls=1.0 | platform_private.cms_decide_schema_review
+# FUNC 5 decide per-iter total=18.53 self=1.67 calls=17.0 | platform_private.cms_session_owner_scope
+# FUNC 5 decide per-iter total=15.86 self=15.86 calls=34.0 | platform_private.cms_person_holds_capability
+# FUNC 5 decide per-iter total=10.40 self=1.93 calls=3.0 | platform_private.cms_review_qualifying_approvers
+# FUNC 5 decide per-iter total=9.29 self=0.40 calls=2.0 | platform_private.cms_review_unsatisfied_slots
+# FUNC 5 decide per-iter total=8.48 self=4.43 calls=17.0 | platform_private.cms_session_reviewer_scope
+# FUNC 5 decide per-iter total=5.83 self=3.60 calls=1.0 | platform_private.cms_lock_activation_graph
+# FUNC 5 decide per-iter total=4.94 self=0.86 calls=1.0 | platform_private.cms_schema_review_approval_digest
+# FUNC 5 decide per-iter total=4.67 self=4.67 calls=85.0 | platform_private.cms_session_uuid
+# FUNC 5 decide per-iter total=4.19 self=0.44 calls=1.0 | platform_private.cms_schema_review_decision_guard
+# FUNC 5 decide per-iter total=3.87 self=1.54 calls=17.0 | platform_private.cms_session_system_scope
+# FUNC 5 decide per-iter total=3.85 self=3.85 calls=1.0 | pg_temp_90.cp_reset
+# FUNC 5 decide per-iter total=3.34 self=3.34 calls=282.0 | platform_private.cms_rpc_context_valid
+# FUNC 5 decide per-iter total=2.89 self=2.89 calls=130.5 | platform_private.cms_review_assignment_effective
+# FUNC 5 decide per-iter total=2.79 self=0.49 calls=1.0 | platform_private.cms_schema_review_decision_resource
+# FUNC 5 decide per-iter total=1.61 self=0.75 calls=3.0 | platform_private.cms_review_person_eligible
+# FUNC 5 decide per-iter total=1.06 self=0.01 calls=1.0 | platform_private.cms_reserve_conflict
+# FUNC 5 decide per-iter total=1.06 self=0.09 calls=1.0 | platform_private.cms_reserve
+# FUNC 6 activate per-iter total=227.77 self=0.04 calls=1.0 | pg_temp_90.s09d_activate
+# FUNC 6 activate per-iter total=226.69 self=0.07 calls=1.0 | pg_temp_90.s09d_rpc
+# FUNC 6 activate per-iter total=226.32 self=0.21 calls=1.0 | pg_temp_90.s09d_call
+# FUNC 6 activate per-iter total=226.11 self=0.12 calls=1.0 | platform_api.cms_activate_schema
+# FUNC 6 activate per-iter total=225.99 self=3.16 calls=1.0 | platform_private.cms_activate_schema
+# FUNC 6 activate per-iter total=183.22 self=38.26 calls=1.0 | platform_private.cms_activation_references_valid
+# FUNC 6 activate per-iter total=130.12 self=27.49 calls=256.0 | platform_private.cms_valid_field_input
+# FUNC 6 activate per-iter total=39.66 self=39.66 calls=256.0 | platform_private.cms_reserved_key
+# FUNC 6 activate per-iter total=24.62 self=24.62 calls=259.0 | platform_private.cms_json_bounded
+# FUNC 6 activate per-iter total=20.83 self=20.83 calls=517.0 | platform_private.cms_exact_keys
+# FUNC 6 activate per-iter total=20.13 self=20.13 calls=292.4 | platform_private.cms_valid_uuid
+# FUNC 6 activate per-iter total=15.86 self=15.86 calls=964.4 | platform_private.cms_rpc_context_valid
+# FUNC 6 activate per-iter total=15.48 self=1.48 calls=1.0 | platform_private.cms_advance_activation_plan
+# FUNC 6 activate per-iter total=9.58 self=0.95 calls=1.0 | platform_private.cms_resolve_activation_review
+# FUNC 6 activate per-iter total=7.66 self=1.59 calls=1.0 | platform_private.cms_migration_plan_ready
+# FUNC 6 activate per-iter total=5.45 self=3.37 calls=1.0 | platform_private.cms_lock_activation_graph
+# FUNC 6 activate per-iter total=4.98 self=1.97 calls=23.0 | platform_private.cms_session_system_scope
+# FUNC 6 activate per-iter total=4.42 self=1.62 calls=2.0 | platform_private.cms_review_qualifying_approvers
+# FUNC 6 activate per-iter total=4.39 self=4.39 calls=69.0 | platform_private.cms_session_uuid
+# FUNC 6 activate per-iter total=3.79 self=0.94 calls=1.0 | platform_private.cms_migration_source_unchanged
+# FUNC 6 activate per-iter total=3.75 self=3.75 calls=1.0 | pg_temp_90.cp_reset
+# FUNC 6 activate per-iter total=3.09 self=1.71 calls=23.0 | platform_private.cms_session_owner_scope
+# SELF 1 create128 per-iter self=35.44 total=35.44 calls=385.0 | platform_private.cms_json_bounded
+# SELF 1 create128 per-iter self=27.94 total=29.75 calls=403.0 | platform_private.cms_jcs
+# SELF 1 create128 per-iter self=26.15 total=209.98 calls=1.0 | platform_private.cms_create_type_draft
+# SELF 1 create128 per-iter self=19.42 total=19.42 calls=129.0 | platform_private.cms_reserved_key
+# SELF 1 create128 per-iter self=16.51 total=16.51 calls=651.5 | platform_private.cms_rpc_context_valid
+# SELF 1 create128 per-iter self=12.78 total=61.71 calls=128.0 | platform_private.cms_valid_field_input
+# SELF 1 create128 per-iter self=12.68 total=20.20 calls=128.0 | platform_private.cms_active_parent_guard
+# SELF 1 create128 per-iter self=10.70 total=10.70 calls=2.0 | platform_private.cms_compiled_manifest_bounded
+# SELF 1 create128 per-iter self=9.34 total=9.34 calls=257.0 | platform_private.cms_exact_keys
+# SELF 1 create128 per-iter self=9.11 total=9.11 calls=128.0 | platform_private.cms_valid_uuid
+# SELF 1 create128 per-iter self=6.81 total=19.02 calls=129.0 | platform_private.cms_activation_review_invalidation_trigger
+# SELF 1 create128 per-iter self=6.57 total=12.21 calls=128.0 | platform_private.cms_invalidate_activation_reviews
+# SELF 1 create128 per-iter self=4.10 total=4.10 calls=1.0 | pg_temp_90.cp_reset
+# SELF 1 create128 per-iter self=2.64 total=4.57 calls=1.0 | platform_private.cms_type_version_resource
+# SELF 2 dry_run per-iter self=52.92 total=56.32 calls=785.0 | platform_private.cms_jcs
+# SELF 2 dry_run per-iter self=11.60 total=11.60 calls=6.0 | platform_private.cms_canonical_type_definition
+# SELF 2 dry_run per-iter self=9.31 total=11.29 calls=1.0 | platform_private.cms_candidate_definition_request
+# SELF 2 dry_run per-iter self=5.06 total=5.06 calls=547.0 | platform_private.cms_rpc_context_valid
+# SELF 2 dry_run per-iter self=3.91 total=3.91 calls=1.0 | pg_temp_90.cp_reset
+# SELF 2 dry_run per-iter self=3.57 total=101.91 calls=1.0 | platform_private.cms_start_schema_dry_run
+# SELF 2 dry_run per-iter self=3.41 total=3.41 calls=256.0 | platform_private.cms_jcs_number
+# SELF 2 dry_run per-iter self=3.39 total=5.48 calls=1.0 | platform_private.cms_lock_activation_graph
+# SELF 2 dry_run per-iter self=1.76 total=2.08 calls=1.0 | platform_private.accept_job_with_outbox
+# SELF 2 dry_run per-iter self=1.06 total=71.31 calls=1.0 | platform_private.cms_definition_artifact_hash
+# SELF 2 dry_run per-iter self=0.98 total=7.38 calls=1.0 | platform_private.cms_compiled_editor_manifest
+# SELF 2 dry_run per-iter self=0.66 total=0.66 calls=1.0 | platform_private.cms_required_protected_validators
+# SELF 2 dry_run per-iter self=0.65 total=0.65 calls=9.0 | platform_private.cms_session_uuid
+# SELF 2 dry_run per-iter self=0.59 total=83.42 calls=1.0 | platform_private.cms_compile_candidate
+# SELF 3 submit per-iter self=53.89 total=57.35 calls=800.0 | platform_private.cms_jcs
+# SELF 3 submit per-iter self=11.75 total=11.75 calls=6.0 | platform_private.cms_canonical_type_definition
+# SELF 3 submit per-iter self=9.32 total=11.31 calls=1.0 | platform_private.cms_candidate_definition_request
+# SELF 3 submit per-iter self=4.91 total=4.91 calls=533.0 | platform_private.cms_rpc_context_valid
+# SELF 3 submit per-iter self=4.18 total=4.18 calls=1.0 | pg_temp_90.cp_reset
+# SELF 3 submit per-iter self=3.47 total=3.47 calls=262.0 | platform_private.cms_jcs_number
+# SELF 3 submit per-iter self=3.26 total=5.30 calls=1.0 | platform_private.cms_lock_activation_graph
+# SELF 3 submit per-iter self=3.19 total=103.78 calls=1.0 | platform_private.cms_submit_schema_review
+# SELF 3 submit per-iter self=1.54 total=3.91 calls=1.0 | platform_private.cms_schema_review_resource
+# SELF 3 submit per-iter self=1.00 total=71.29 calls=1.0 | platform_private.cms_definition_artifact_hash
+# SELF 3 submit per-iter self=0.98 total=7.56 calls=1.0 | platform_private.cms_compiled_editor_manifest
+# SELF 3 submit per-iter self=0.87 total=0.87 calls=12.0 | platform_private.cms_session_uuid
+# SELF 3 submit per-iter self=0.80 total=0.80 calls=1.0 | platform_private.cms_review_qualifying_approvers
+# SELF 3 submit per-iter self=0.68 total=0.68 calls=1.0 | platform_private.cms_required_protected_validators
+# SELF 4 assign per-iter self=3.83 total=3.83 calls=1.0 | pg_temp_90.cp_reset
+# SELF 4 assign per-iter self=1.53 total=10.61 calls=1.0 | platform_private.cms_assign_schema_review
+# SELF 4 assign per-iter self=1.15 total=1.15 calls=18.0 | platform_private.cms_session_uuid
+# SELF 4 assign per-iter self=1.06 total=1.06 calls=2.0 | platform_private.cms_person_holds_capability
+# SELF 4 assign per-iter self=0.55 total=0.59 calls=1.0 | platform_private.cfg_emit_effects
+# SELF 4 assign per-iter self=0.54 total=1.34 calls=6.0 | platform_private.cms_session_system_scope
+# SELF 4 assign per-iter self=0.48 total=1.30 calls=1.0 | platform_private.cms_schema_review_assignment_resource
+# SELF 4 assign per-iter self=0.46 total=0.49 calls=1.0 | platform_private.identity_idempotency_reserve
+# SELF 4 assign per-iter self=0.45 total=0.81 calls=6.0 | platform_private.cms_session_owner_scope
+# SELF 4 assign per-iter self=0.40 total=0.50 calls=1.0 | platform_private.cms_complete
+# SELF 4 assign per-iter self=0.36 total=0.36 calls=7.0 | platform_private.cms_rpc_context_valid
+# SELF 4 assign per-iter self=0.31 total=0.32 calls=1.0 | platform_private.cms_request_hash
+# SELF 4 assign per-iter self=0.30 total=0.30 calls=1.0 | platform_private.auth_user_usable
+# SELF 4 assign per-iter self=0.26 total=0.56 calls=1.0 | platform_private.cms_review_person_eligible
+# SELF 5 decide per-iter self=15.86 total=15.86 calls=34.0 | platform_private.cms_person_holds_capability
+# SELF 5 decide per-iter self=4.67 total=4.67 calls=85.0 | platform_private.cms_session_uuid
+# SELF 5 decide per-iter self=4.52 total=53.30 calls=1.0 | platform_private.cms_decide_schema_review
+# SELF 5 decide per-iter self=4.43 total=8.48 calls=17.0 | platform_private.cms_session_reviewer_scope
+# SELF 5 decide per-iter self=3.85 total=3.85 calls=1.0 | pg_temp_90.cp_reset
+# SELF 5 decide per-iter self=3.60 total=5.83 calls=1.0 | platform_private.cms_lock_activation_graph
+# SELF 5 decide per-iter self=3.34 total=3.34 calls=282.0 | platform_private.cms_rpc_context_valid
+# SELF 5 decide per-iter self=2.89 total=2.89 calls=130.5 | platform_private.cms_review_assignment_effective
+# SELF 5 decide per-iter self=1.93 total=10.40 calls=3.0 | platform_private.cms_review_qualifying_approvers
+# SELF 5 decide per-iter self=1.67 total=18.53 calls=17.0 | platform_private.cms_session_owner_scope
+# SELF 5 decide per-iter self=1.54 total=3.87 calls=17.0 | platform_private.cms_session_system_scope
+# SELF 5 decide per-iter self=0.86 total=4.94 calls=1.0 | platform_private.cms_schema_review_approval_digest
+# SELF 5 decide per-iter self=0.86 total=0.86 calls=3.0 | platform_private.auth_user_usable
+# SELF 5 decide per-iter self=0.75 total=1.61 calls=3.0 | platform_private.cms_review_person_eligible
+# SELF 6 activate per-iter self=39.66 total=39.66 calls=256.0 | platform_private.cms_reserved_key
+# SELF 6 activate per-iter self=38.26 total=183.22 calls=1.0 | platform_private.cms_activation_references_valid
+# SELF 6 activate per-iter self=27.49 total=130.12 calls=256.0 | platform_private.cms_valid_field_input
+# SELF 6 activate per-iter self=24.62 total=24.62 calls=259.0 | platform_private.cms_json_bounded
+# SELF 6 activate per-iter self=20.83 total=20.83 calls=517.0 | platform_private.cms_exact_keys
+# SELF 6 activate per-iter self=20.13 total=20.13 calls=292.4 | platform_private.cms_valid_uuid
+# SELF 6 activate per-iter self=15.86 total=15.86 calls=964.4 | platform_private.cms_rpc_context_valid
+# SELF 6 activate per-iter self=4.39 total=4.39 calls=69.0 | platform_private.cms_session_uuid
+# SELF 6 activate per-iter self=3.75 total=3.75 calls=1.0 | pg_temp_90.cp_reset
+# SELF 6 activate per-iter self=3.37 total=5.45 calls=1.0 | platform_private.cms_lock_activation_graph
+# SELF 6 activate per-iter self=3.16 total=225.99 calls=1.0 | platform_private.cms_activate_schema
+# SELF 6 activate per-iter self=1.97 total=4.98 calls=23.0 | platform_private.cms_session_system_scope
+# SELF 6 activate per-iter self=1.90 total=1.90 calls=2.0 | platform_private.cms_migration_affected_variants
+# SELF 6 activate per-iter self=1.86 total=2.02 calls=18.0 | platform_private.cms_jcs
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-func-prof.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  9 wallclock secs ( 0.05 usr  0.01 sys +  0.03 cusr  0.00 csys =  0.09 CPU)
+Result: FAIL

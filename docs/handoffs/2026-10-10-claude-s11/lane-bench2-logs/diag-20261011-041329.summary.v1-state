@@ -1,0 +1,98 @@
+# STATE version=PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
+# STATE preload=pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault jit=on
+# STATE autovacuum=on
+# STATE autovacuum_analyze_scale_factor=0.1
+# STATE autovacuum_analyze_threshold=50
+# STATE autovacuum_naptime=60s
+# STATE autovacuum_vacuum_cost_delay=2ms
+# STATE autovacuum_vacuum_scale_factor=0.2
+# STATE autovacuum_vacuum_threshold=50
+# STATE checkpoint_timeout=300s
+# STATE default_statistics_target=100
+# STATE effective_cache_size=163848kB
+# STATE fsync=on
+# STATE max_parallel_workers_per_gather=2
+# STATE max_wal_size=1024MB
+# STATE pg_stat_statements.track=top
+# STATE plan_cache_mode=auto
+# STATE random_page_cost=4
+# STATE seq_page_cost=1
+# STATE shared_buffers=163848kB
+# STATE synchronous_commit=on
+# STATE track_io_timing=off
+# STATE work_mem=4096kB
+# STATE database size=42 MB backends=3
+# STATE autovacuum workers running now=0
+# STATE xact_commit=2672 xact_rollback=96 blks_read=1372 blks_hit=2201025 temp_files=0
+# STATE tables total=210 dead_tuples_total=878 live_tuples_total=674 autovac_runs=47 autoanalyze_runs=8
+# STATE TOP-DEAD platform_private.cms_schema_review_assignments live=0 dead=50 ins=44 upd=6 del=0 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_approved_runner_mapping_resources live=0 dead=45 ins=45 upd=0 del=27 relpages=1 reltuples=0 total_size=48 kB vac= autovac= analyze= autoanalyze=09:14:35 avc=0 aac=1
+# STATE TOP-DEAD platform_private.ac265_runner_authorizations live=0 dead=40 ins=38 upd=2 del=19 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity.step_up_challenges live=0 dead=39 ins=20 upd=27 del=2 relpages=0 reltuples=-1 total_size=88 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.alias_party live=0 dead=38 ins=36 upd=2 del=0 relpages=0 reltuples=-1 total_size=48 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.alias_ownership_period live=0 dead=38 ins=37 upd=1 del=0 relpages=0 reltuples=-1 total_size=64 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity.mfa_verification_lockouts live=0 dead=37 ins=5 upd=32 del=0 relpages=0 reltuples=-1 total_size=32 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.handle_reservation live=0 dead=37 ins=37 upd=0 del=0 relpages=0 reltuples=-1 total_size=72 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_approved_registry_role_kinds live=0 dead=36 ins=36 upd=0 del=18 relpages=0 reltuples=-1 total_size=32 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.cms_schema_review_decisions live=0 dead=36 ins=35 upd=1 del=0 relpages=0 reltuples=-1 total_size=64 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_verified_candidates live=0 dead=28 ins=28 upd=0 del=13 relpages=0 reltuples=-1 total_size=112 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity_private.organization_party live=0 dead=26 ins=126 upd=9 del=0 relpages=0 reltuples=0 total_size=72 kB vac= autovac=09:14:35 analyze= autoanalyze= avc=1 aac=0
+# STATE TOP-DEAD platform_private.cms_owner_initialization live=0 dead=25 ins=25 upd=0 del=0 relpages=0 reltuples=-1 total_size=24 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_approved_safe_resources live=0 dead=21 ins=21 upd=0 del=12 relpages=0 reltuples=-1 total_size=112 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.cms_schema_artifacts live=0 dead=20 ins=97 upd=16 del=0 relpages=0 reltuples=0 total_size=160 kB vac= autovac=09:14:35 analyze= autoanalyze= avc=1 aac=0
+# STATE TOP-DEAD platform_private.cms_field_definition_versions live=0 dead=19 ins=645 upd=1 del=0 relpages=0 reltuples=0 total_size=264 kB vac= autovac=09:14:35 analyze= autoanalyze= avc=1 aac=0
+# STATE TOP-DEAD platform_private.cms_content_types live=0 dead=18 ins=92 upd=21 del=0 relpages=0 reltuples=0 total_size=112 kB vac= autovac=09:14:35 analyze= autoanalyze= avc=1 aac=0
+# STATE TOP-DEAD platform_private.ac265_approved_registry_resources live=0 dead=16 ins=16 upd=0 del=8 relpages=0 reltuples=-1 total_size=32 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_approved_outage_targets live=0 dead=16 ins=16 upd=0 del=5 relpages=0 reltuples=-1 total_size=48 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.jobs live=0 dead=13 ins=64 upd=11 del=0 relpages=0 reltuples=0 total_size=128 kB vac= autovac=09:14:35 analyze= autoanalyze= avc=1 aac=0
+# STATE TOP-DEAD platform_private.ac265_hosted_outage_leases live=0 dead=12 ins=8 upd=8 del=3 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_hosted_artifact_manifests live=0 dead=12 ins=12 upd=0 del=5 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD profile_private.claim_proof_attempts live=0 dead=11 ins=6 upd=5 del=0 relpages=0 reltuples=-1 total_size=96 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.cms_schema_reviews live=0 dead=11 ins=42 upd=40 del=0 relpages=1 reltuples=0 total_size=112 kB vac= autovac=09:14:36 analyze= autoanalyze= avc=1 aac=0
+# STATE TOP-DEAD platform_private.admin_mfa_factor_resets live=0 dead=10 ins=4 upd=6 del=0 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.cms_relation_definitions live=0 dead=9 ins=9 upd=0 del=0 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD profile_private.claim_cases live=0 dead=9 ins=7 upd=2 del=0 relpages=0 reltuples=-1 total_size=88 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.cms_content_entries live=0 dead=8 ins=4 upd=4 del=0 relpages=0 reltuples=-1 total_size=112 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity.login_identity_registry live=0 dead=7 ins=6 upd=1 del=0 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity.account_merge_cases live=0 dead=7 ins=2 upd=5 del=0 relpages=0 reltuples=-1 total_size=72 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.ac265_session_broker_handles live=0 dead=7 ins=7 upd=0 del=4 relpages=0 reltuples=-1 total_size=64 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity.auth_rate_limits live=0 dead=7 ins=7 upd=0 del=0 relpages=0 reltuples=-1 total_size=32 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD profile_private.shadow_party_contexts live=0 dead=6 ins=3 upd=3 del=0 relpages=0 reltuples=-1 total_size=96 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity.auth_intents live=0 dead=6 ins=3 upd=3 del=0 relpages=0 reltuples=-1 total_size=96 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.job_read_rate_limits live=0 dead=6 ins=2 upd=4 del=0 relpages=0 reltuples=-1 total_size=48 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.webhook_receipts live=0 dead=6 ins=3 upd=3 del=0 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.restore_fences live=0 dead=5 ins=3 upd=2 del=0 relpages=0 reltuples=-1 total_size=64 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD identity_private.organization_type_assignment live=0 dead=5 ins=4 upd=1 del=0 relpages=0 reltuples=-1 total_size=80 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.cfg_setting_value_versions live=0 dead=5 ins=2 upd=3 del=0 relpages=0 reltuples=-1 total_size=112 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-DEAD platform_private.admin_mfa_factor_reset_settlements live=0 dead=5 ins=5 upd=0 del=0 relpages=0 reltuples=-1 total_size=32 kB vac= autovac= analyze= autoanalyze= avc=0 aac=0
+# STATE TOP-SIZE supabase_migrations.schema_migrations total_size=2072 kB heap=168 kB live=348 dead=0 relpages=21 reltuples=348
+# STATE TOP-SIZE audit_private.audit_events total_size=512 kB heap=8192 bytes live=1 dead=0 relpages=1 reltuples=1
+# STATE TOP-SIZE platform_private.idempotency_records total_size=376 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.outbox_events total_size=328 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.cms_field_definition_versions total_size=264 kB heap=8192 bytes live=0 dead=19 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.cms_entry_revisions total_size=192 kB heap=8192 bytes live=0 dead=4 relpages=0 reltuples=-1
+# STATE TOP-SIZE platform_private.acting_context_binding total_size=168 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.cms_schema_artifacts total_size=160 kB heap=24 kB live=0 dead=20 relpages=0 reltuples=0
+# STATE TOP-SIZE auth.users total_size=160 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE identity_private.organization_actor_grant total_size=152 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.admin_audit_links total_size=144 kB heap=8192 bytes live=0 dead=3 relpages=0 reltuples=-1
+# STATE TOP-SIZE identity.security_events total_size=136 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.ac265_approved_runner_mapping_scenarios total_size=136 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.object_records total_size=128 kB heap=8192 bytes live=0 dead=4 relpages=0 reltuples=-1
+# STATE TOP-SIZE platform_private.jobs total_size=128 kB heap=8192 bytes live=0 dead=13 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.admin_capability_grants total_size=120 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.ac265_hosted_artifact_manifest_sources total_size=120 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE identity.mfa_factor_registry total_size=120 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.cms_content_type_versions total_size=120 kB heap=0 bytes live=0 dead=0 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.ac265_approved_safe_resources total_size=112 kB heap=16 kB live=0 dead=21 relpages=0 reltuples=-1
+# STATE TOP-SIZE platform_private.cms_content_entries total_size=112 kB heap=8192 bytes live=0 dead=8 relpages=0 reltuples=-1
+# STATE TOP-SIZE platform_private.cfg_setting_value_versions total_size=112 kB heap=8192 bytes live=0 dead=5 relpages=0 reltuples=-1
+# STATE TOP-SIZE platform_private.cms_content_types total_size=112 kB heap=8192 bytes live=0 dead=18 relpages=0 reltuples=0
+# STATE TOP-SIZE platform_private.cms_entry_field_values total_size=112 kB heap=8192 bytes live=0 dead=4 relpages=0 reltuples=-1
+# STATE TOP-SIZE platform_private.cms_schema_reviews total_size=112 kB heap=8192 bytes live=0 dead=11 relpages=1 reltuples=0
+# STATE COUNT platform_private.cms_preflight_registry=17
+# STATE COUNT platform_private.outbox_event_producers=17
+# STATE COUNT platform_private.cms_workflow_policies=8
+# STATE COUNT platform_private.cms_schema_transform_registry=2
+# STATE COUNT audit_private.audit_events=1
+# STATE non-empty tables counted=5 of 59
