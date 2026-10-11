@@ -20,9 +20,11 @@
 -- Providers (the registry row decides which one runs, by (provider_key, provider_version): every provider
 -- this migration implements is version 1.  A row this migration has no implementation for -- a newer
 -- database or worker provider of another slice, or another VERSION of a known key -- is unavailable,
--- never a silent pass.  The unavailable token is fixed by DEC-160: `provider_unavailable` for every
--- database and reference-gate category, `checker_failed` for category 11 (accessibility, the worker
--- provider) -- no other unavailable token exists):
+-- never a silent pass.  A database row whose key and version ARE implemented but whose category has
+-- no branch here is a registry/evaluator drift and raises INTERNAL_ERROR (fail closed).  The
+-- unavailable token is fixed by DEC-160: `provider_unavailable` for every database and
+-- reference-gate category, `checker_failed` for category 11 (accessibility, the worker provider) --
+-- no other unavailable token exists):
 --   reference_gate  passes at cms_revision_references(rev, reference_kind) = 0, else failed
 --                   provider_unbuilt_reference (blockingCount = the count, capped at 1000)
 --   contract        validators_changed (frozen protected validators != registry) | value_invalid (a stored
@@ -589,6 +591,12 @@ begin
         end if;
       end if;
       offenders := case when reason is null then 0 else 1 end;
+
+    else
+      -- Fail closed: a database row that names the implemented key and version of a category this
+      -- evaluator has no branch for is a drift between the registry and the evaluator.  It is not
+      -- unavailable (nothing is merely missing) and it must never be a silent pass.
+      raise exception 'INTERNAL_ERROR' using errcode = 'P0001';
     end if;
 
     -- DEC-160 (BE03b "Unavailable reasons"): `unavailable` carries provider_unavailable for every database
@@ -627,7 +635,7 @@ end;
 $body$;
 
 comment on function platform_private.cms_evaluate_preflight(jsonb) is
-  'BE03b D19/D25: evaluates the seventeen preflight categories in registry order (no short circuit) and returns the PreflightReport { evaluatedAt, passed, results }. Failed/unavailable results are data: the command aggregates (failed => 422 preflight_failed, else unavailable => 503). Raises only for a malformed request, an absent revision, an unresolvable manifest, and accessibility evidence that is stale or bound to other rows. Private; VOLATILE.';
+  'BE03b D19/D25: evaluates the seventeen preflight categories in registry order (no short circuit) and returns the PreflightReport { evaluatedAt, passed, results }. Failed/unavailable results are data: the command aggregates (failed => 422 preflight_failed, else unavailable => 503). Raises only for a malformed request, an absent revision, an unresolvable manifest, accessibility evidence that is stale or bound to other rows, and INTERNAL_ERROR for a database registry row the evaluator has no branch for (fail closed, never a silent pass). Private; VOLATILE.';
 
 grant select on table
   identity_private.membership_tenure,

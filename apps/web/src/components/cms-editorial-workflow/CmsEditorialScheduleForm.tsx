@@ -1,33 +1,26 @@
-import {
-  CMS_TZDB_VERSION,
-  CmsPublicationAudienceSchema,
-} from '@wejammin/contracts';
 import type { TimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 
-import CmsEditorialScheduleResolution, {
-  refusalMessage,
-} from './CmsEditorialScheduleResolution';
+import CmsEditorialScheduleFields from './CmsEditorialScheduleFields';
 import CmsWorkflowCommandFrame, {
   type WorkflowLocalError,
 } from './CmsWorkflowCommandFrame';
-import { WorkflowSelect, WorkflowTextField } from './CmsWorkflowFields';
 import { WORKFLOW_HEADING_IDS } from './CmsEditorialWorkflowPanel';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
 import { isCommitBlocked } from './cms-workflow-form-state';
-import {
-  PUBLICATION_ACTION_LABEL,
-  SCHEDULE_PUBLISH_WITHHELD_COPY,
-} from './cms-workflow-labels';
+import { PUBLICATION_ACTION_LABEL } from './cms-workflow-labels';
 import {
   effectiveScheduleAction,
   scheduleActionChoices,
 } from './cms-workflow-schedule-actions';
 import {
-  resolveScheduleInput,
-  zoneSuggestions,
-  type Disambiguation,
-} from './cms-workflow-schedule-resolution';
+  SCHEDULE_FIELD_IDS,
+  asDisambiguation,
+  scheduleLocalErrors,
+  scheduleSubmission,
+  type ScheduleTyped,
+} from './cms-workflow-schedule-form-model';
+import { resolveScheduleInput } from './cms-workflow-schedule-resolution';
 import { useTimeAuthority } from './use-cms-schedule-time';
 import { useDraftFields } from './use-cms-workflow-draft-fields';
 import {
@@ -58,12 +51,6 @@ export interface CmsEditorialScheduleFormProps {
 
 const browserZone = (): string =>
   Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-const asDisambiguation = (value: string | undefined): Disambiguation =>
-  value === 'earlier' || value === 'later' ? value : 'none';
-
-const AUDIENCE_HINT =
-  'Lowercase letters, digits, hyphens and underscores, up to 48 characters.';
 
 /**
  * CMS-03B-07. The person gives an action, a local date and time, a time zone and
@@ -112,97 +99,36 @@ export default function CmsEditorialScheduleForm({
     action: choices.defaultAction,
     timezone: authority?.hasZone(suggested) === true ? suggested : '',
   });
-  // A typed, restored or earlier `publish` never outlives the permission for it.
-  const action = effectiveScheduleAction(fields.value('action'), choices);
-  const local = fields.value('localDateTime');
-  const zone = fields.value('timezone');
-  const audience = fields.value('audience');
-  const disambiguation = asDisambiguation(fields.value('disambiguation'));
-
+  const typed: ScheduleTyped = {
+    // A typed, restored or earlier `publish` never outlives the permission for it.
+    action: effectiveScheduleAction(fields.value('action'), choices),
+    local: fields.value('localDateTime'),
+    zone: fields.value('timezone'),
+    audience: fields.value('audience'),
+    disambiguation: asDisambiguation(fields.value('disambiguation')),
+  };
   const resolution =
     authority === null
       ? ({ kind: 'empty' } as const)
       : resolveScheduleInput(
           authority,
-          { localDateTime: local, timezone: zone, disambiguation },
+          {
+            localDateTime: typed.local,
+            timezone: typed.zone,
+            disambiguation: typed.disambiguation,
+          },
           now(),
         );
   const blocked = isCommitBlocked(state, disabledReason);
-  const errorOf = (id: string): string | null =>
-    localErrors.find((error) => error.id === id)?.message ?? null;
-  const named = state.refusal?.fields ?? [];
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (blocked) return;
-    const found: WorkflowLocalError[] = [];
-    const add = (id: string, label: string, message: string): void => {
-      found.push({ id, label, message });
-    };
-    if (local === '')
-      add(
-        'schedule-local',
-        'Local date and time',
-        'Choose a local date and time.',
-      );
-    if (zone === '')
-      add('schedule-timezone', 'Time zone', 'Choose a time zone.');
-    if (audience === '')
-      add('schedule-audience', 'Audience', 'Enter an audience.');
-    else if (!CmsPublicationAudienceSchema.safeParse(audience).success)
-      add(
-        'schedule-audience',
-        'Audience',
-        `Use lowercase letters, digits, hyphens and underscores, up to 48 characters.`,
-      );
-    if (local !== '' && zone !== '') {
-      if (time.status !== 'ready')
-        add(
-          'schedule-local',
-          'Local date and time',
-          'The time zone data is not loaded yet.',
-        );
-      else if (resolution.kind === 'gap')
-        add(
-          'schedule-local',
-          'Local date and time',
-          'That local time does not exist in this time zone.',
-        );
-      else if (resolution.kind === 'fold')
-        add(
-          'schedule-disambiguation',
-          'Earlier or later',
-          'Choose the earlier or later time.',
-        );
-      else if (resolution.kind === 'refused')
-        add(
-          'schedule-local',
-          'Local date and time',
-          refusalMessage(resolution),
-        );
-    }
+    const found = scheduleLocalErrors(typed, time.status, resolution);
     setLocalErrors(found);
     if (found.length > 0 || resolution.kind !== 'resolved') return;
-    void controller.submit({
-      body: {
-        revisionId,
-        action,
-        localDateTime: local,
-        timezone: zone,
-        resolvedUtc: resolution.resolvedUtc,
-        tzdbVersion: CMS_TZDB_VERSION,
-        disambiguation: resolution.disambiguation,
-        audience,
-        expectedVersion: reviewVersion,
-      },
-      ifMatch: `"${reviewVersion}"`,
-      draft: {
-        action,
-        localDateTime: local,
-        timezone: zone,
-        audience,
-        disambiguation,
-      },
-    });
+    void controller.submit(
+      scheduleSubmission(revisionId, reviewVersion, typed, resolution),
+    );
   };
   return (
     <details
@@ -219,89 +145,26 @@ export default function CmsEditorialScheduleForm({
         committedLabel={(resource) =>
           `Scheduled, not published: ${PUBLICATION_ACTION_LABEL[resource.action]} for ${resource.audience} at ${resource.resolvedUtc}.`
         }
-        fieldIds={{
-          action: { id: 'schedule-action', label: 'Action' },
-          localDateTime: { id: 'schedule-local', label: 'Local date and time' },
-          timezone: { id: 'schedule-timezone', label: 'Time zone' },
-          disambiguation: {
-            id: 'schedule-disambiguation',
-            label: 'Earlier or later',
-          },
-          audience: { id: 'schedule-audience', label: 'Audience' },
-        }}
+        fieldIds={SCHEDULE_FIELD_IDS}
         localErrors={localErrors}
         disabledReason={disabledReason}
       >
         {time.status === 'failed' ? (
           <p>The time zone data could not be loaded.</p>
         ) : null}
-        <form onSubmit={submit}>
-          <WorkflowSelect
-            id="schedule-action"
-            label="Action"
-            value={action}
-            hint={publishPermitted ? undefined : SCHEDULE_PUBLISH_WITHHELD_COPY}
-            options={choices.options.map((value) => ({
-              value,
-              label: PUBLICATION_ACTION_LABEL[value],
-            }))}
-            onChange={(value) => fields.set('action', value)}
-          />
-          <WorkflowTextField
-            id="schedule-local"
-            label="Local date and time"
-            type="datetime-local"
-            value={local}
-            error={errorOf('schedule-local')}
-            invalid={named.includes('localDateTime')}
-            onChange={(value) => {
-              fields.set('localDateTime', value);
-              fields.set('disambiguation', 'none');
-            }}
-          />
-          <WorkflowTextField
-            id="schedule-timezone"
-            label="Time zone"
-            value={zone}
-            autoComplete="off"
-            listId="schedule-zones"
-            suggestions={authority === null ? [] : zoneSuggestions(authority)}
-            error={errorOf('schedule-timezone')}
-            invalid={named.includes('timezone')}
-            onChange={(value) => {
-              fields.set('timezone', value);
-              fields.set('disambiguation', 'none');
-            }}
-          />
-          <CmsEditorialScheduleResolution
-            resolution={resolution}
-            disambiguation={disambiguation}
-            onPickLocal={(value) => {
-              fields.set('localDateTime', value);
-              fields.set('disambiguation', 'none');
-            }}
-            onPickDisambiguation={(choice) =>
-              fields.set('disambiguation', choice)
-            }
-          />
-          <WorkflowTextField
-            id="schedule-audience"
-            label="Audience"
-            value={audience}
-            autoComplete="off"
-            hint={AUDIENCE_HINT}
-            error={errorOf('schedule-audience')}
-            invalid={named.includes('audience')}
-            onChange={(value) => fields.set('audience', value)}
-          />
-          <button
-            type="submit"
-            aria-disabled={blocked ? 'true' : 'false'}
-            aria-busy={state.phase === 'pending' ? 'true' : 'false'}
-          >
-            Schedule
-          </button>
-        </form>
+        <CmsEditorialScheduleFields
+          fields={fields}
+          typed={typed}
+          choices={choices}
+          publishPermitted={publishPermitted}
+          resolution={resolution}
+          authority={authority}
+          localErrors={localErrors}
+          named={state.refusal?.fields ?? []}
+          blocked={blocked}
+          pending={state.phase === 'pending'}
+          onSubmit={submit}
+        />
       </CmsWorkflowCommandFrame>
     </details>
   );

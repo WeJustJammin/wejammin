@@ -14,6 +14,10 @@ import {
   parseTzif,
   renderModule,
 } from '../../infra/generate-tzdb-snapshot.mjs';
+import {
+  AMERICA_NEW_YORK_TZIF,
+  AMERICA_NEW_YORK_TZIF_SHA256,
+} from './phase-02-slice-11-tzdb-pin-fixtures';
 
 /*
  * DEC-153 / BE03b E8: the pinned tz release, its generated snapshot and the
@@ -147,21 +151,55 @@ describe('[P2-S11-AC-103] the Slice 11 tz pin (DEC-153)', () => {
     }
   });
 
-  const host = '/usr/share/zoneinfo/America/New_York';
-  it.skipIf(!existsSync(host))(
-    'reads a real TZif file down to offsets, transitions and the POSIX footer',
-    () => {
-      const parsed = parseTzif(readFileSync(host), 'America/New_York');
-      expect(parsed.footer).toBe('EST5EDT,M3.2.0,M11.1.0');
-      expect(parsed.initialOffset).toBe(-17_762);
-      expect(parsed.times.length).toBeGreaterThan(100);
-      expect(parsed.times).toEqual(
-        [...parsed.times].sort((left, right) => left - right),
-      );
-      expect(parsed.offsets).toHaveLength(parsed.times.length);
-      expect(new Set(parsed.offsets)).toEqual(new Set([-18_000, -14_400]));
-    },
-  );
+  /*
+   * The TZif reader runs on committed bytes, never on the host's tzdata package:
+   * a missing or different system zoneinfo can neither skip nor change the proof.
+   */
+  it('commits the exact bytes of the real TZif file the reader test parses', () => {
+    expect(AMERICA_NEW_YORK_TZIF.byteLength).toBe(3552);
+    expect(
+      createHash('sha256').update(AMERICA_NEW_YORK_TZIF).digest('hex'),
+    ).toBe(AMERICA_NEW_YORK_TZIF_SHA256);
+    expect(AMERICA_NEW_YORK_TZIF_SHA256).toBe(
+      'e9ed07d7bee0c76a9d442d091ef1f01668fee7c4f26014c0a868b19fe6c18a95',
+    );
+  });
+
+  it('reads a real TZif file down to offsets, transitions and the POSIX footer', () => {
+    const parsed = parseTzif(AMERICA_NEW_YORK_TZIF, 'America/New_York');
+    expect(parsed.footer).toBe('EST5EDT,M3.2.0,M11.1.0');
+    expect(parsed.initialOffset).toBe(-17_762);
+    expect(parsed.times.length).toBe(236);
+    expect(parsed.times[0]).toBe(-2_717_650_800);
+    expect(parsed.times.at(-1)).toBe(2_140_668_000);
+    expect(parsed.times).toEqual(
+      [...parsed.times].sort((left, right) => left - right),
+    );
+    expect(parsed.offsets).toHaveLength(parsed.times.length);
+    expect(new Set(parsed.offsets)).toEqual(new Set([-18_000, -14_400]));
+  });
+
+  it('reads the very transitions, offsets and footer the pinned snapshot holds for the zone', () => {
+    const parsed = parseTzif(AMERICA_NEW_YORK_TZIF, 'America/New_York');
+    const snapshot = JSON.parse(CMS_TZDB_SNAPSHOT_JSON) as {
+      names: Record<string, number>;
+      zones: [number[], number, number[], number[], string][];
+    };
+    const zone = snapshot.zones[snapshot.names['America/New_York'] as number]!;
+    const [distinct, initial, deltas, indexes, footer] = zone;
+    let instant = 0;
+    const times = deltas.map((delta) => (instant += delta));
+    expect(times.length).toBe(175);
+    expect(parsed.footer).toBe(footer);
+    expect(parsed.initialOffset).toBe(distinct[initial]);
+    // The snapshot is the slim form (explicit transitions to 2007, the footer
+    // after); the committed file also writes the footer rule out to 2037.
+    expect(parsed.times.slice(0, times.length)).toEqual(times);
+    expect(parsed.offsets.slice(0, times.length)).toEqual(
+      indexes.map((index) => distinct[index]),
+    );
+    expect(parsed.times.length - times.length).toBe(61);
+  });
 
   it('refuses bytes that are not a TZif file or have no 64-bit block or footer', () => {
     expect(() =>

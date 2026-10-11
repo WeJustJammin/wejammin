@@ -104,6 +104,27 @@ describe('reviews/index.astro response invariants', () => {
     expect(source).not.toContain('client:');
   });
 
+  it('[P2-S11-AC-060] moves focus to the heading on navigation only: the page hands its heading to the shell that loads the heading-focus script', () => {
+    const shell = readFileSync(
+      fromHere(
+        '../../../../components/cms-editorial/CmsEditorialDocument.astro',
+      ),
+      'utf8',
+    );
+    const focusScript = readFileSync(
+      fromHere('../../../../lib/route-heading-focus.ts'),
+      'utf8',
+    );
+    // The page composes the shell with a heading prop and writes no script of its own.
+    expect(source).toMatch(/<CmsEditorialDocument[^>]*heading=\{heading\}/su);
+    expect(source).not.toContain('<script');
+    // The shell loads the focus script and owns the one element it focuses.
+    expect(shell).toContain('<script src="../../lib/route-heading-focus.ts">');
+    expect(shell).toContain('<h1 id="page-title" tabindex="-1">{heading}</h1>');
+    expect(focusScript).toContain("const PAGE_HEADING_ID = 'page-title'");
+    expect(focusScript).toContain("'astro:page-load'");
+  });
+
   it('maps a sign-in outcome to the allowlisted 303 only', () => {
     expect(source).toContain('Astro.redirect(outcome.location, 303)');
     expect(source).not.toContain('Astro.redirect(`');

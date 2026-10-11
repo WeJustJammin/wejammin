@@ -17,7 +17,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(162);
+select plan(165);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -510,6 +510,23 @@ select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok'
   'control: registry version 2 that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]');
 select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
   $$delete from platform_private.cms_preflight_registry where category = 'contract' and version = 2$$);
+
+-- A database row naming a key and version this migration implements for a category it has NO branch for is neither
+-- unavailable (the key and version are the implemented ones) nor a pass: the dispatch has no provider for it, a drift
+-- between the registry and this evaluator.  The evaluation fails closed with a typed internal error in every phase;
+-- it never reports the category as silently passed (a test-only newer `pattern` row, removed again at once).
+select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
+  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
+  'version', 2, 'category', 'pattern', 'owner_slice', 'slice-12', 'provider_key', 'preflight.pattern',
+  'provider_version', 1, 'provider_kind', 'database', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select is(pg_temp.h11p_err(pg_temp.h11p_request('submit', 'ok')), 'P0001:INTERNAL_ERROR',
+  'a database registry row with no implementation in the evaluator (preflight.pattern at version 1) fails closed with INTERNAL_ERROR in the submit phase, never a silent pass [P2-S11-AC-093]');
+select is(pg_temp.h11p_err(pg_temp.h11p_request('publish', 'ok')), 'P0001:INTERNAL_ERROR',
+  'and in the publish phase: the dispatch gap is a registry/evaluator drift, not a property of the phase [P2-S11-AC-093]');
+select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
+  $$delete from platform_private.cms_preflight_registry where category = 'pattern' and version = 2$$);
+select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok'))), '',
+  'control: with the unimplemented row removed the same request evaluates and passes again [P2-S11-AC-093]');
 
 -- Every kind and every category: a version-2 row of each of the seventeen current providers (database, reference_gate, worker).
 -- DEC-160 / BE03b "Unavailable reasons": an unavailable result carries provider_unavailable for every database or
