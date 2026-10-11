@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T04:31:05.682Z
 ---
-
 # Slice 11 unwired claimed entry contract QA gate
 
 **Tags**: slice-11, contract-first, claimed-entry, qa-gate

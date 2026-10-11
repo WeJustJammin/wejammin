@@ -5,7 +5,6 @@ agent: codex-gpt6.1-ultra
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-queued-origin-fixture-2026-10-10.md
 timestamp: 2026-10-10T11:56:06.011Z
 ---
-
 # Slice 11 origin24 GREEN regression seven stale queued fixtures
 
 **Tags**: phase2, slice11, cms, tdd, qa

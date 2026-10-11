@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T00:09:04.180Z
 ---
-
 # Slice 11 schema418 RED causes and UUIDv7 amendment gate
 
 **Tags**: phase-02, slice-11, schema-qa, red, root-cause, uuid-v7

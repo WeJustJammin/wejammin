@@ -5,7 +5,6 @@ agent: codex
 source: propagate-decision
 timestamp: 2026-10-10T01:14:42.434Z
 ---
-
 # Slice 11 provisional sourceCount wording follows DEC108
 
 **Tags**: slice-11, DEC-108, spec-clarification, provisional-fingerprint

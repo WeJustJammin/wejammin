@@ -1660,6 +1660,15 @@
 
 ## Structured Memory
 
+- pattern: PAT-027: Confirm a file is absent before creating it (2026-10-10) — 2026-10-11T01:23:47.712Z
+- pattern: PAT-026: Run canonical gates only on a quiet host (2026-10-10) — 2026-10-11T01:23:47.711Z
+- pattern: PAT-025: Verify forward migrations against a populated database, not only fresh resets (2026-10-10) — 2026-10-11T01:23:47.710Z
+- decision: DEC-169: Slice 11 publication refusal semantics after the independent SQL review (2026-10-10) — 2026-10-11T01:23:47.709Z
+- decision: DEC-168: State-filtered revision-history cursors are sealed with encrypt-then-MAC (2026-10-10) — 2026-10-11T01:23:47.708Z
+- decision: DEC-167: projectionState is read from BE04c projection_consumer_state built in Slice 11 (supersedes DEC-158(e)) (2026-10-10) — 2026-10-11T01:23:47.707Z
+- decision: DEC-166: Dependency recheck job is a typed platform-queue message, not a jobs-table row (2026-10-10) — 2026-10-11T01:23:47.705Z
+- decision: DEC-165: Checker render plan places fields as the leading root region until a field-to-slot binding exists (2026-10-10) — 2026-10-11T01:23:47.703Z
+- decision: DEC-164: FE03 schedule precondition excludes the revision author only for publish (2026-10-10) — 2026-10-11T01:23:47.699Z
 - decision: DEC-163: Missing legacy CMS settings fail closed until authorized save — 2026-10-09T19:57:15.438Z
 - decision: DEC-162: Narrow first-empty schema baseline representation — 2026-10-09T19:57:15.435Z
 - pattern: PAT-024: pgTAP green does not prove an RPC works through PostgREST (pg-safeupdate) (2026-10-08) — 2026-10-09T01:45:20.772Z

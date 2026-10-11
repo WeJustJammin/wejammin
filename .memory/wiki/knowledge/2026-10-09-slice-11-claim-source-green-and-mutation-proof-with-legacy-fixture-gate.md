@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-09T23:39:47.437Z
 ---
-
 # Slice 11 claim source GREEN and mutation proof with legacy fixture gate
 
 **Tags**: phase-02, slice-11, claim-source, mutation-proof, legacy-fixture-gate

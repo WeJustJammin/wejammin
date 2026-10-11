@@ -5,7 +5,6 @@ agent: gpt-6.1-sol
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-ac057-fixture-order-2026-10-10.md
 timestamp: 2026-10-10T10:14:26.528Z
 ---
-
 # Slice 11 AC057 assignment-label fixture correction
 
 **Tags**: phase-02, slice-11, native, pgTAP, fixture, first-failure

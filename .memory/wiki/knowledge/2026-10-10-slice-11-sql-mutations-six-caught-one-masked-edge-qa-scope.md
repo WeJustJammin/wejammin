@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T02:51:47.475Z
 ---
-
 # Slice 11 SQL mutations six caught one masked edge QA scope
 
 **Tags**: slice-11, sql-mutations, masked-survival, edge-qa, native-authors

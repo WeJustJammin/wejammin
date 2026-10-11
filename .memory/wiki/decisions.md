@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 164
-- **Unique decision titles**: 164
+- **Total decisions**: 170
+- **Unique decision titles**: 170
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2352,6 +2352,90 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: lane S11-3a cms_assign_editorial_reviewer revoke path (calls cms_invalidate_editorial_review), its pgTAP and the CMS-03B-18 Worker mapping (the revoke still answers 200 with the assignment resource; the review becomes invalidated and emits its own review-changed event).
 - **Reversibility**: High
 
+## DEC-164: FE03 schedule precondition excludes the revision author only for publish (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.699Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: FE03:1097 barred the revision author from CMS-03B-07 scheduling entirely; BE03b:270 bars the author only for action `publish` (403 `separation_of_duties`), and SQL review finding 12 showed authors offered an invalid publish default.
+- **Options considered**: (A) reconcile FE03 to BE03b and filter/default actions from the server hint; (B) amend BE03b to the blanket FE rule.
+- **Decision**: (A). BE03b is the authority-matrix source; FE03 row and changelog amended; the schedule form offers and defaults only server-permitted actions.
+- **Downstream**: FE03, CmsEditorialScheduleForm, read hints; P2-S11 AC-040.
+- **Reversibility**: High
+
+## DEC-165: Checker render plan places fields as the leading root region until a field-to-slot binding exists (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.703Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: BE05c canonical render order needs field positions; no Phase 2 table binds a field to a template slot.
+- **Options considered**: (A) fields lead the root region in schema order, object properties in declared order; (B) block publication until templates bind fields.
+- **Decision**: (A), derived by one SQL function `platform_private.cms_revision_render_plan` shared by the checker load and the Worker input.
+- **Downstream**: Slice 12 template work must extend the render plan if it introduces field-to-slot binding (receiving obligation).
+- **Reversibility**: High
+
+## DEC-166: Dependency recheck job is a typed platform-queue message, not a jobs-table row (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.705Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: BE03b says the six event consumers enqueue `cms.review.dependency_recheck`; `platform_private.jobs` requires a human actor and acting party a system recheck lacks.
+- **Options considered**: (A) typed message on the existing platform queue with { eventId, kind, refId }; (B) add a system-actor path to the jobs table.
+- **Decision**: (A); no new authority model. Runs are bounded at 500 reviews with a continuation cursor and idempotent on invalidated reviews.
+- **Downstream**: P2-S11-AC-113; Slice 12 producers must use the registered `cms.pattern.`/`cms.taxonomy.` prefixes.
+- **Reversibility**: Medium
+
+## DEC-167: projectionState is read from BE04c projection_consumer_state built in Slice 11 (supersedes DEC-158(e)) (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.707Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: P2-S11-AC-116 requires reading Shard 04 `projection_consumer_state`; DEC-158(e) had deferred it to Slice 15 and kept the literal `pending`.
+- **Options considered**: (A) create the BE04c table now and derive the state; (B) amend the criterion to defer.
+- **Decision**: (A) per the owner standing preference for more work now. `pending` while no consumer reported, `converged` when every registered consumer reported the row, `degraded` when one failed terminally; the publication id is the lineage version row id. `projection_id` carries a BOUNDARY note until `publication_projection` exists (Slice 13/15).
+- **Downstream**: Slice 13 AC-164 verifies the named schema; Slice 15 consumers write rows.
+- **Reversibility**: Medium
+
+## DEC-168: State-filtered revision-history cursors are sealed with encrypt-then-MAC (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.708Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: SQL review finding 3: the signed (base64 + HMAC) cursor revealed a concealed revision identity when a state-filtered scan ended on it (BE03b:2014, 2068 say signed cursor).
+- **Options considered**: (A) AES-256-CBC encrypt-then-HMAC fixed-width envelope with subkeys derived from the Vault history key; (B) strip identity from the cursor and rescan.
+- **Decision**: (A) for state-filtered requests; unfiltered cursors keep the Slice 10 signed envelope (their tail row is always visible).
+- **Downstream**: BE03b cursor wording should read "signed or sealed"; Slice 10 tests unchanged.
+- **Reversibility**: High
+
+## DEC-169: Slice 11 publication refusal semantics after the independent SQL review (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.709Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: findings 2, 6, 8, 10 and AC-090 needed exact refusal/effect semantics.
+- **Options considered**: conform to the locked BE03b text versus keep shipped behaviour.
+- **Decision**: conform. A non-current frozen set at CMS-03B-07/09 is committed 409 `version_set_stale` plus a `dependency_changed` invalidation (BE03b:1773; submit keeps `dependency_changed`); a lapsed counted approver is a committed `preflight_failed` refusal with a `reviewer_authority_changed` invalidation and schedule cancellation; a stale/mis-bound execution proof propagates its conflict without consuming retries; lineage appends compare an expected head observed before shared serialization (conflict outranks `publication_not_active`); accessibility summaries key to the exact audit event.
+- **Downstream**: Worker refusal mapping, publication tests, evidence ledger titles.
+- **Reversibility**: Medium
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -4558,6 +4642,84 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Decision**: (A). The general 'does not change the review version' rule covers assignment changes that touch no counted decision.
 - **Downstream**: lane S11-3a cms_assign_editorial_reviewer revoke path (calls cms_invalidate_editorial_review), its pgTAP and the CMS-03B-18 Worker mapping (the revoke still answers 200 with the assignment resource; the review becomes invalidated and emits its own review-changed event).
 - **Reversibility**: High
+
+### DEC-164: FE03 schedule precondition excludes the revision author only for publish (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.699Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: FE03:1097 barred the revision author from CMS-03B-07 scheduling entirely; BE03b:270 bars the author only for action `publish` (403 `separation_of_duties`), and SQL review finding 12 showed authors offered an invalid publish default.
+- **Options considered**: (A) reconcile FE03 to BE03b and filter/default actions from the server hint; (B) amend BE03b to the blanket FE rule.
+- **Decision**: (A). BE03b is the authority-matrix source; FE03 row and changelog amended; the schedule form offers and defaults only server-permitted actions.
+- **Downstream**: FE03, CmsEditorialScheduleForm, read hints; P2-S11 AC-040.
+- **Reversibility**: High
+
+### DEC-165: Checker render plan places fields as the leading root region until a field-to-slot binding exists (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.703Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: BE05c canonical render order needs field positions; no Phase 2 table binds a field to a template slot.
+- **Options considered**: (A) fields lead the root region in schema order, object properties in declared order; (B) block publication until templates bind fields.
+- **Decision**: (A), derived by one SQL function `platform_private.cms_revision_render_plan` shared by the checker load and the Worker input.
+- **Downstream**: Slice 12 template work must extend the render plan if it introduces field-to-slot binding (receiving obligation).
+- **Reversibility**: High
+
+### DEC-166: Dependency recheck job is a typed platform-queue message, not a jobs-table row (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.705Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: BE03b says the six event consumers enqueue `cms.review.dependency_recheck`; `platform_private.jobs` requires a human actor and acting party a system recheck lacks.
+- **Options considered**: (A) typed message on the existing platform queue with { eventId, kind, refId }; (B) add a system-actor path to the jobs table.
+- **Decision**: (A); no new authority model. Runs are bounded at 500 reviews with a continuation cursor and idempotent on invalidated reviews.
+- **Downstream**: P2-S11-AC-113; Slice 12 producers must use the registered `cms.pattern.`/`cms.taxonomy.` prefixes.
+- **Reversibility**: Medium
+
+### DEC-167: projectionState is read from BE04c projection_consumer_state built in Slice 11 (supersedes DEC-158(e)) (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.707Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: P2-S11-AC-116 requires reading Shard 04 `projection_consumer_state`; DEC-158(e) had deferred it to Slice 15 and kept the literal `pending`.
+- **Options considered**: (A) create the BE04c table now and derive the state; (B) amend the criterion to defer.
+- **Decision**: (A) per the owner standing preference for more work now. `pending` while no consumer reported, `converged` when every registered consumer reported the row, `degraded` when one failed terminally; the publication id is the lineage version row id. `projection_id` carries a BOUNDARY note until `publication_projection` exists (Slice 13/15).
+- **Downstream**: Slice 13 AC-164 verifies the named schema; Slice 15 consumers write rows.
+- **Reversibility**: Medium
+
+### DEC-168: State-filtered revision-history cursors are sealed with encrypt-then-MAC (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.708Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: SQL review finding 3: the signed (base64 + HMAC) cursor revealed a concealed revision identity when a state-filtered scan ended on it (BE03b:2014, 2068 say signed cursor).
+- **Options considered**: (A) AES-256-CBC encrypt-then-HMAC fixed-width envelope with subkeys derived from the Vault history key; (B) strip identity from the cursor and rescan.
+- **Decision**: (A) for state-filtered requests; unfiltered cursors keep the Slice 10 signed envelope (their tail row is always visible).
+- **Downstream**: BE03b cursor wording should read "signed or sealed"; Slice 10 tests unchanged.
+- **Reversibility**: High
+
+### DEC-169: Slice 11 publication refusal semantics after the independent SQL review (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.709Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: findings 2, 6, 8, 10 and AC-090 needed exact refusal/effect semantics.
+- **Options considered**: conform to the locked BE03b text versus keep shipped behaviour.
+- **Decision**: conform. A non-current frozen set at CMS-03B-07/09 is committed 409 `version_set_stale` plus a `dependency_changed` invalidation (BE03b:1773; submit keeps `dependency_changed`); a lapsed counted approver is a committed `preflight_failed` refusal with a `reviewer_authority_changed` invalidation and schedule cancellation; a stale/mis-bound execution proof propagates its conflict without consuming retries; lineage appends compare an expected head observed before shared serialization (conflict outranks `publication_not_active`); accessibility summaries key to the exact audit event.
+- **Downstream**: Worker refusal mapping, publication tests, evidence ledger titles.
+- **Reversibility**: Medium
 
 ### DEC-162: Narrow first-empty schema baseline representation
 

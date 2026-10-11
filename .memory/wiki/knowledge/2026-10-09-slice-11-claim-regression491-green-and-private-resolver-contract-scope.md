@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-09T23:45:14.464Z
 ---
-
 # Slice 11 claim regression491 GREEN and private resolver contract scope
 
 **Tags**: phase-02, slice-11, claim-regression491, private-contract-scope

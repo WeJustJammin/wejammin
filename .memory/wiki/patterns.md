@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 29
-- **Unique pattern titles**: 26
+- **Total patterns**: 32
+- **Unique pattern titles**: 29
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -393,6 +393,48 @@
 - **Context**: SQL RPCs verified only by pgTAP (psql session) and Worker adapters verified only against transport fakes.
 - **Pattern**: PostgREST sessions load pg-safeupdate, which refuses any DELETE or UPDATE without a WHERE clause; a psql/pgTAP session does not, so an unqualified `delete from pg_temp.scratch;` passes every pgTAP file and fails every real request. Slice 11's dependency-manifest builder (20261005017560) broke every manifest-rebuilding RPC this way, found only when lane S11-4R drove the production Worker adapters against real PostgREST. Always add a real-PostgREST apispec per RPC before calling it done, and scan new migrations for unqualified DELETE/UPDATE (use `where true` for deliberate full clears of scratch tables).
 - **Source**: lanes S11-4R and S11-5 real-stack runs, 2026-10-09; related memory e2e-mock-masked-production-defect.
+
+## PAT-025: Verify forward migrations against a populated database, not only fresh resets (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.710Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Type**: best-practice
+- **Confidence**: 0.5
+- **Context**: forward migrations that alter tables holding data (constraints, indexes, self-verifying DO blocks).
+- **Pattern**: park the new files, reset, seed real rows through the real API, restore, run `supabase migration up` without reset, gate on the migration exit code. The Slice 11 precision storage producer passed every fresh reset yet aborted on one real row because its catalog snapshot included planner statistics.
+- **Source**: 2026-10-10 Slice 11 precision producers.
+
+## PAT-026: Run canonical gates only on a quiet host (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.711Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: `pnpm db:verify` beside parallel implementation lanes.
+- **Pattern**: avoid. Under lane load the SEC-1 catalog-mutation suite timed out mid-mutation, left the catalog mutated and cascade-failed 39 API files. Hold `/tmp/wejammin-quiet.lock` exclusively during gates; lanes take it shared for heavy commands.
+- **Source**: 2026-10-10 invalid db:verify run.
+
+## PAT-027: Confirm a file is absent before creating it (2026-10-10)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T01:23:47.712Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: generating tracker or ledger files believed missing.
+- **Pattern**: a `| head` truncated listing hid a tracked 445-line tracker that was then overwritten (recovered from git). Use `git ls-files --error-unmatch` or `test -e` first.
+- **Source**: 2026-10-10 Slice 11 tracker.
 
 ## Full Log
 
@@ -797,3 +839,42 @@
 - **Context**: SQL RPCs verified only by pgTAP (psql session) and Worker adapters verified only against transport fakes.
 - **Pattern**: PostgREST sessions load pg-safeupdate, which refuses any DELETE or UPDATE without a WHERE clause; a psql/pgTAP session does not, so an unqualified `delete from pg_temp.scratch;` passes every pgTAP file and fails every real request. Slice 11's dependency-manifest builder (20261005017560) broke every manifest-rebuilding RPC this way, found only when lane S11-4R drove the production Worker adapters against real PostgREST. Always add a real-PostgREST apispec per RPC before calling it done, and scan new migrations for unqualified DELETE/UPDATE (use `where true` for deliberate full clears of scratch tables).
 - **Source**: lanes S11-4R and S11-5 real-stack runs, 2026-10-09; related memory e2e-mock-masked-production-defect.
+
+### PAT-025: Verify forward migrations against a populated database, not only fresh resets (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.710Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: pattern, slice-11
+
+- **Type**: best-practice
+- **Confidence**: 0.5
+- **Context**: forward migrations that alter tables holding data (constraints, indexes, self-verifying DO blocks).
+- **Pattern**: park the new files, reset, seed real rows through the real API, restore, run `supabase migration up` without reset, gate on the migration exit code. The Slice 11 precision storage producer passed every fresh reset yet aborted on one real row because its catalog snapshot included planner statistics.
+- **Source**: 2026-10-10 Slice 11 precision producers.
+
+### PAT-026: Run canonical gates only on a quiet host (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.711Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: pattern, slice-11
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: `pnpm db:verify` beside parallel implementation lanes.
+- **Pattern**: avoid. Under lane load the SEC-1 catalog-mutation suite timed out mid-mutation, left the catalog mutated and cascade-failed 39 API files. Hold `/tmp/wejammin-quiet.lock` exclusively during gates; lanes take it shared for heavy commands.
+- **Source**: 2026-10-10 invalid db:verify run.
+
+### PAT-027: Confirm a file is absent before creating it (2026-10-10)
+
+- **Timestamp**: 2026-10-11T01:23:47.712Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: pattern, slice-11
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: generating tracker or ledger files believed missing.
+- **Pattern**: a `| head` truncated listing hid a tracked 445-line tracker that was then overwritten (recovered from git). Use `git ls-files --error-unmatch` or `test -e` first.
+- **Source**: 2026-10-10 Slice 11 tracker.

@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T02:02:37.236Z
 ---
-
 # Slice 11 claimed SQL API69 GREEN one clock lint gate
 
 **Tags**: slice-11, sql-first-green, lint-clock-gate, catalog, native-authors

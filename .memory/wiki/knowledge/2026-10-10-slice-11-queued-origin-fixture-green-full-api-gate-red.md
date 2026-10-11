@@ -5,7 +5,6 @@ agent: codex-gpt6.1-ultra
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/queued-origin-fixture7-regression3585-gate-2026-10-10.json
 timestamp: 2026-10-10T12:29:52.595Z
 ---
-
 # Slice 11 queued origin fixture GREEN full API gate RED
 
 **Tags**: phase2, slice11, cms, tdd, qa

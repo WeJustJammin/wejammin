@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T01:26:31.567Z
 ---
-
 # Slice 11 API69 twenty resolver RED one graph fixture gap
 
 **Tags**: slice-11, genuine-api-red, graph-oracle, RLS-context, scope-amendment

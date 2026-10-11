@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T00:51:18.192Z
 ---
-
 # Slice 11 genuine API46 cap gate observer193 member count gap
 
 **Tags**: phase-02, slice-11, genuine-api-qa, cap-split, snapshot-decoder, mutation-proof-gap

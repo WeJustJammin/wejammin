@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T04:51:54.861Z
 ---
-
 # Slice 11 claimed entry amended import RED legacy6 GREEN producer gate
 
 **Tags**: slice-11, tdd-red, legacy-equivalence, producer-gate

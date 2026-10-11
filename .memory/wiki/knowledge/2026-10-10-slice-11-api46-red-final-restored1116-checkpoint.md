@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T01:08:01.788Z
 ---
-
 # Slice 11 API46 RED final restored1116 checkpoint
 
 **Tags**: slice-11, restored-regression, checkpoint

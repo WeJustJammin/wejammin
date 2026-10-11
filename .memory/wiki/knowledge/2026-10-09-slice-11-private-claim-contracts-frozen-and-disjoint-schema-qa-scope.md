@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-09T23:54:30.574Z
 ---
-
 # Slice 11 private claim contracts frozen and disjoint schema QA scope
 
 **Tags**: phase-02, slice-11, private-contracts, schema-qa-scope, rls-source-proof

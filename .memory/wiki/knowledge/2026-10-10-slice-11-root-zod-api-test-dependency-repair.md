@@ -5,7 +5,6 @@ agent: gpt-6.1-sol
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-root-zod-dependency-2026-10-10.md
 timestamp: 2026-10-10T10:55:34.247Z
 ---
-
 # Slice 11 root Zod API test dependency repair
 
 **Tags**: phase-02, slice-11, native, pnpm, dependency, api

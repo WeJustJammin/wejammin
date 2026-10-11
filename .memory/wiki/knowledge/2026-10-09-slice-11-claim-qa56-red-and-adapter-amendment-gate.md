@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-09T23:23:38.342Z
 ---
-
 # Slice 11 claim QA56 RED and adapter amendment gate
 
 **Tags**: phase-02, slice-11, claim-qa-red, oracle-depth, authority-limits

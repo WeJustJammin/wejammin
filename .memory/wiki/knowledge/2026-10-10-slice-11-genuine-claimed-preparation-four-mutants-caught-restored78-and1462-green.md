@@ -5,7 +5,6 @@ agent: gpt-6.1-sol
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/proof-s11-genuine-claimed-preparation-mutations4-restored78-1462-2026-10-10.md
 timestamp: 2026-10-10T06:21:09.941Z
 ---
-
 # Slice 11 genuine claimed preparation four mutants caught restored78 and1462 GREEN
 
 **Tags**: phase2, slice11, genuine-preparation, mutation-proof, checkpoint
@@ -31,11 +30,11 @@ No test or helper was edited to catch a mutant.
 Every mutant executed both genuine cases, not merely an import or setup phase.
 
 | Mutant | Failed/passed | Boolean assertion line | Restored control | Control duration |
-| ------ | ------------- | ---------------------: | ---------------- | ---------------- |
-| I1     | 2/0           |                    161 | 2/2              | 6.28s            |
-| I2     | 1/1           |                    358 | 2/2              | 6.49s            |
-| F1     | 2/0           |                    164 | 2/2              | 6.27s            |
-| F2     | 1/1           |                    360 | 2/2              | 6.25s            |
+| --- | --- | ---: | --- | --- |
+|I1|2/0|161|2/2|6.28s|
+|I2|1/1|358|2/2|6.49s|
+|F1|2/0|164|2/2|6.27s|
+|F2|1/1|360|2/2|6.25s|
 
 I1/F1 fail during initial sealing. I2/F2 preserve the first case and initial seal
 in the second, then independently fail the READY-replay identity/child-freeze

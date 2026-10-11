@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T04:40:38.567Z
 ---
-
 # Slice 11 claimed entry initial import RED cap legacy QA gate
 
 **Tags**: slice-11, tdd-red, qa-cap, legacy-equivalence

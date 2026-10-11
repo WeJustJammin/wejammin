@@ -5,7 +5,6 @@ agent: codex-gpt6.1-ultra
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/first-gate-fixture-focus35-gate-2026-10-10.json
 timestamp: 2026-10-10T13:36:57.231Z
 ---
-
 # Slice 11 first gate fixtures focus35 full API15 RED
 
 **Tags**: phase2, slice11, cms, tdd, qa, dec163

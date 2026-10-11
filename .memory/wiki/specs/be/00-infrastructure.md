@@ -703,14 +703,12 @@ Provider integrations and domain routes remain disabled until their owning specs
 | 2026-08-28 | Initial complete cross-cutting backend foundation authored from ambiguity-passed IA                                                                                                                                                | `/write-be-spec`      | All                  |
 | 2026-10-02 | DEC-111: `STEP_UP_REQUIRED` recovery routing — `recoveryAction: 'step_up'` routes the browser to `/step-up?returnTo=<current relative path>`; `allowedMethods` is the configured allowlisted method ids; shortfalls are always 401 | `/propagate-decision` | Error Detail Schemas |
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Derives from
-
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]
 
 ### References
-
 - [[specs/ia/00-infrastructure|Shard 00 — Cross-cutting platform foundation]]

@@ -5,7 +5,6 @@ agent: gpt-6.1-sol
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-cms-origin-receiving-tdd-2026-10-10.md
 timestamp: 2026-10-10T10:55:34.248Z
 ---
-
 # Slice 11 CMS immutable-origin receiving contract
 
 **Tags**: phase-02, slice-11, native, origin, receiving, tdd

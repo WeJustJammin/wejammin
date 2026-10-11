@@ -5,7 +5,6 @@ agent: gpt-6.1-sol
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/proof-s11-genuine-claimed-preparation-first2-green-2026-10-10.md
 timestamp: 2026-10-10T05:47:55.352Z
 ---
-
 # Slice 11 genuine claimed preparation initial2 GREEN and isolated QA hardening gate
 
 **Tags**: phase2, slice11, genuine-preparation, QA, checkpoint
@@ -51,10 +50,10 @@ All16 pre-existing production/pure/parser/QA SHA boundaries remained exact.
 
 ## Frozen initial pair
 
-| File                                                                       | Lines | SHA256                                                             |
-| -------------------------------------------------------------------------- | ----: | ------------------------------------------------------------------ |
-| `tests/postgrest/support/phase-02-slice-11-claimed-preparation-fixture.ts` |   150 | `9085f0638c76b56672c836e4096b14014690fea1c4b3b68324daf02fa916d137` |
-| `tests/postgrest/phase-02-slice-11-claimed-preparation.apispec.ts`         |   368 | `616ca3218619bddf7020e8733acf9d56d00eb810b32395c1c81adea9d348b3dd` |
+| File | Lines | SHA256 |
+| --- | ---: | --- |
+| `tests/postgrest/support/phase-02-slice-11-claimed-preparation-fixture.ts` |150| `9085f0638c76b56672c836e4096b14014690fea1c4b3b68324daf02fa916d137` |
+| `tests/postgrest/phase-02-slice-11-claimed-preparation.apispec.ts` |368| `616ca3218619bddf7020e8733acf9d56d00eb810b32395c1c81adea9d348b3dd` |
 
 ## Independent review and next sole-file amendment
 

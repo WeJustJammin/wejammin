@@ -5,7 +5,6 @@ agent: codex-gpt6.1-ultra
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/legacy-e7-fixtures-sql-green-api3-red-2026-10-10.json
 timestamp: 2026-10-10T16:09:34.182Z
 ---
-
 # Slice 11 legacy E7 fixtures SQL GREEN API3 RED
 
 **Tags**: phase2, slice11, cms, tdd, fixtures, dec163

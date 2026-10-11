@@ -5,7 +5,6 @@ agent: codex-gpt6.1-ultra
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/e7-inline-producer-first-gate-2026-10-10.json
 timestamp: 2026-10-10T15:05:02.264Z
 ---
-
 # Slice 11 E7 inline producer first gate
 
 **Tags**: phase2, slice11, cms, tdd, qa, dec163

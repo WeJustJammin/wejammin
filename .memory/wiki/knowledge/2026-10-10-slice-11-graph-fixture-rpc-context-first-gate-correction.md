@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T01:31:40.413Z
 ---
-
 # Slice 11 graph fixture RPC context first gate correction
 
 **Tags**: slice-11, genuine-api-red, graph-oracle, RPC-context, diagnosis-correction

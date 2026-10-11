@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T00:38:26.250Z
 ---
-
 # Slice 11 parser31 mutations910 GREEN genuine RPC QA scope
 
 **Tags**: phase-02, slice-11, mutation-proof, parser, genuine-rpc-qa, scope

@@ -5,7 +5,6 @@ agent: gpt-6.1-sol
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-queued-continuation-tdd-2026-10-10.md
 timestamp: 2026-10-10T09:45:38.278Z
 ---
-
 # Slice 11 queued-continuation TDD contract
 
 **Tags**: phase-02, slice-11, native, queued-continuation, tdd, contract

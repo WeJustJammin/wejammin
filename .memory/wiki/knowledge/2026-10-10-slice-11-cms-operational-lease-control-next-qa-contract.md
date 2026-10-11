@@ -5,7 +5,6 @@ agent: codex-gpt6.1-ultra
 source: docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-cms-lease-control-tdd-2026-10-10.md
 timestamp: 2026-10-10T11:10:52.931Z
 ---
-
 # Slice 11 CMS operational lease control next QA contract
 
 **Tags**: phase2, slice11, cms, heartbeat, lease, tdd

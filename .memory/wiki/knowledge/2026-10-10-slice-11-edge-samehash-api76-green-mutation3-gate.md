@@ -5,7 +5,6 @@ agent: codex
 source: implement-slice
 timestamp: 2026-10-10T03:09:16.751Z
 ---
-
 # Slice 11 edge samehash API76 green mutation3 gate
 
 **Tags**: slice-11, api76, same-hash, wire-grammar, mutation-gate

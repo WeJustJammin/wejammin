@@ -5,7 +5,6 @@ agent: Codex6.1/ultra
 source: implement-slice
 timestamp: 2026-10-10T17:43:01Z
 ---
-
 # Slice 11 native precision95 QA lease GREEN RED
 
 **Tags**: phase2, slice11, native-models, precision, lease, qa, first-failure
