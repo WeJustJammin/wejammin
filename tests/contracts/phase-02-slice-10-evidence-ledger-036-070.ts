@@ -1947,7 +1947,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-048',
-    text: 'Enforce CMS-03B-09: frozenHash/expectedVersionSet; 64 lowercase hex and strict version/hash set equal to approved candidate; 422/409. This is a contract-only unpublish/expire/archive rule until the protected operation exists.',
+    text: 'Enforce CMS-03B-09: frozenHash/expectedVersionSet; 64 lowercase hex and strict version/hash set equal to approved candidate; 422/409. This is a contract-only publication rule until the protected operation exists.',
     clauses: [
       {
         text: 'Enforce CMS-03B-09: frozenHash/expectedVersionSet;',
@@ -2026,7 +2026,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
       },
       { text: '409.', citations: [] },
       {
-        text: 'This is a contract-only unpublish/expire/archive rule until the protected operation exists.',
+        text: 'This is a contract-only publication rule until the protected operation exists.',
         citations: [
           {
             tool: 'vitest',

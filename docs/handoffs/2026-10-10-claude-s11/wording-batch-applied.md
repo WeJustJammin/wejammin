@@ -1,6 +1,6 @@
 # Wording batch applied
 
-Applied 2026-10-11 on the Slice 11 worktree. Source: `docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md`.
+Applied 2026-10-11 on the Slice 11 worktree (S3-048 added in a follow-up the same day at the orchestrator's request, since "approve all" includes it). Source: `docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md`.
 Ratification: owner ruling in chat 2026-10-11, "approve all" for the 37-item checklist (including the orchestrator note that 502 items name `DEPENDENCY_UNAVAILABLE` per BE00:172/590), and DEC-147 = option C (keep the Slice 10 criteria wording and prove it with the Slice 11 runtime; reword only the genuinely defective texts: P2-S10-AC-030, 045, 047, 089 and the defective part of 080).
 
 Nothing was committed. No test, production or migration file was touched. Spec and tracker text was applied by script from the draft's CURRENT/PROPOSED blocks, each CURRENT asserted equal to the file before replacement.
@@ -8,27 +8,26 @@ Nothing was committed. No test, production or migration file was touched. Spec a
 ## Deviations from the draft, read these first
 
 1. **Matrix cells say `DEPENDENCY_UNAVAILABLE`, not `BAD_GATEWAY` (S2-05, S2-06).** The draft's matrix replacement text ends `(BAD_GATEWAY)`. The orchestrator note the owner approved says 502 items name `DEPENDENCY_UNAVAILABLE`, and neither BE00 nor BE03b defines `BAD_GATEWAY` (zero occurrences in both). The cells now read `read dependency/deadline, response-contract breach (`DEPENDENCY_UNAVAILABLE`)`. If the owner wanted the literal draft text, it is a five-cell edit at BE03b lines 1914, 1915, 1917, 1918, 1919.
-2. **S3-048 was not applied.** It is the draft's optional, cosmetic label fix for P2-S10-AC-048. The owner ruling lists only 030, 045, 047, 089 and 080 as the texts to reword and says to leave the provable-now ones unchanged; the draft files 048 under "PROVABLE NOW". P2-S10-AC-048 is unchanged in the trackers, the plan and the ledger. Applying it later is one sentence in three files plus one re-tiled clause.
-3. **IA03:43 has no exact replacement in the draft** (the draft's N-2 lists it as out of scope; the orchestrator note says it is included). I derived the edit from the S1-02 text: "is not the author of the revision" became "is not the author of the revision when the action is `publish`". Nothing else in IA03 changed.
-4. **The shipped Worker code is `BAD_GATEWAY`**, so the draft's statements that the breach suites can be cited under the response clause (R-502 "Shared effect", N-1) do not hold yet. The clauses that name `502 DEPENDENCY_UNAVAILABLE` stay uncited until the conformance fix (Worker codes, web error mapping, breach tests) lands. See the ledger table.
+2. **IA03:43 has no exact replacement in the draft** (the draft's N-2 lists it as out of scope; the orchestrator note says it is included). I derived the edit from the S1-02 text: "is not the author of the revision" became "is not the author of the revision when the action is `publish`". Nothing else in IA03 changed.
+3. **The shipped Worker code is `BAD_GATEWAY`**, so the draft's statements that the breach suites can be cited under the response clause (R-502 "Shared effect", N-1) do not hold yet. The clauses that name `502 DEPENDENCY_UNAVAILABLE` stay uncited until the conformance fix (Worker codes, web error mapping, breach tests) lands. See the ledger table.
 
 ## Files changed
 
 | File | Change |
 | --- | --- |
-| `.memory/wiki/specs/phases/phase-2.md` | 16 criterion lines (11 Slice 11, 5 Slice 10): claim replaced, checkbox and source links kept |
+| `.memory/wiki/specs/phases/phase-2.md` | 17 criterion lines (11 Slice 11, 6 Slice 10): claim replaced, checkbox and source links kept |
 | `.memory/pipeline/progress/slices/phase-02-slice-11.md` | 11 criterion lines |
-| `.memory/pipeline/progress/slices/phase-02-slice-10.md` | 5 criterion lines |
+| `.memory/pipeline/progress/slices/phase-02-slice-10.md` | 6 criterion lines |
 | `.memory/wiki/specs/be/03b-editorial-workflow-publication.md` | S2-01 to S2-14 (16 lines edited, 1 changelog row added) |
 | `.memory/wiki/specs/ia/03-cms-content-modeling.md` | AC-CMS-09 (line 43) and one changelog row |
 | `tests/contracts/phase-02-slice-11-evidence-ledger-035-066.ts` | AC-035, 038, 041, 050, 053, 056, 059 |
 | `tests/contracts/phase-02-slice-11-evidence-ledger-067-100.ts` | AC-070, 090, 097 |
 | `tests/contracts/phase-02-slice-11-evidence-ledger-101-122.ts` | AC-122 |
 | `tests/contracts/phase-02-slice-10-evidence-ledger-001-035.ts` | AC-030 |
-| `tests/contracts/phase-02-slice-10-evidence-ledger-036-070.ts` | AC-045, 047 |
+| `tests/contracts/phase-02-slice-10-evidence-ledger-036-070.ts` | AC-045, 047, 048 |
 | `tests/contracts/phase-02-slice-10-evidence-ledger-071-105.ts` | AC-080, 089 |
 
-Ledger `text` equals the tracker claim byte for byte for all 16 (checked by script). Every changed entry was re-tiled (verbatim, ordered, non-overlapping clauses; gaps only separators and and/or). Existing citations stayed on the clauses they prove; newly cited tests are named in the table.
+Ledger `text` equals the tracker claim byte for byte for all 17 (checked by script). Every changed entry was re-tiled (verbatim, ordered, non-overlapping clauses; gaps only separators and and/or). Existing citations stayed on the clauses they prove; newly cited tests are named in the table.
 
 ## Item by item
 
@@ -82,19 +81,19 @@ The four partial entries (050, 053, 056, 059) carry this limitation: the 502 sta
 | S3-045 | P2-S10-AC-045 | final sentence replaced | last clause cites the same four scope tests AC-044's identical sentence cites | contract-only (was partial) |
 | S3-046 | P2-S10-AC-046 | unchanged | unchanged | partial |
 | S3-047 | P2-S10-AC-047 | audience bound replaced | audience clause cites the two Slice 10 grammar tests and the Slice 11 mint refusal ("matched as submitted") | contract-only (was partial) |
-| S3-048 | P2-S10-AC-048 | not applied (deviation 2) | unchanged | partial |
+| S3-048 | P2-S10-AC-048 | final sentence "contract-only unpublish/expire/archive rule" became "contract-only publication rule" | text and last clause re-worded, all 7 clauses and their citations (2, 3, 3, 0, 1, 0, 5) kept | partial (unchanged; the "equal to approved candidate" and "409" clauses are still uncited, pending Slice 11 citations) |
 | S3-079 | P2-S10-AC-079 | unchanged | unchanged | partial |
 | S3-080 | P2-S10-AC-080 | text replaced | publication clause and "Preview evaluates no field value" uncited; "it binds the same frozen bytes (P2-S10-AC-079)" cites two Slice 11 version-set tests | partial |
 | S3-089 | P2-S10-AC-089 | text replaced | UUID, query/body and "before any existence or dependency work" cited; the 502 `DEPENDENCY_UNAVAILABLE` preimage clause uncited | partial |
 
 Reasons the two S10 partials stay partial: AC-080's publication clause needs one new pgTAP case (a stored DEC-133 object value that violates the structure fails the publish-phase `contract` category, in step with the TypeScript verdict), and "Preview evaluates no field value" is a negative no test asserts. AC-089 needs the conformance fix.
 
-The six "provable now" Slice 10 criteria (038, 040, 042, 044, 046, 079) were left alone as instructed, so they are still partial in the Slice 10 ledger until their Slice 11 citations are added.
+The six "provable now" Slice 10 criteria (038, 040, 042, 044, 046, 079) were left alone as instructed, so they are still partial in the Slice 10 ledger until their Slice 11 citations are added. P2-S10-AC-048 gets its label fix only; its provable-now citations are the same separate work.
 
 ## Checks run
 
-- `node scripts/check-progress-consistency.mjs`: exit 0 ("Progress files consistent.").
-- `vitest run` of both evidence guards: 7 of 10 tests pass; the 3 failures are all receipt-class. Slice 10: stale receipt hashes (files changed since the run) and "no receipt" for the new citations. Slice 11: `tests/contracts/phase-02-slice-11-receipts.generated.jsonl` does not exist yet. No structural problem was reported by either guard (no text mismatch, tiling, status, limitation or citation-shape finding).
+- `node scripts/check-progress-consistency.mjs`: exit 0 ("Progress files consistent."), re-run after the S3-048 follow-up.
+- `vitest run` of both evidence guards: 7 of 10 tests pass (after the S3-048 follow-up the Slice 10 guard alone was re-run: 4 of 5 pass, 0 structural problems); the 3 failures are all receipt-class. Slice 10: stale receipt hashes (files changed since the run) and "no receipt" for the new citations. Slice 11: `tests/contracts/phase-02-slice-11-receipts.generated.jsonl` does not exist yet. No structural problem was reported by either guard (no text mismatch, tiling, status, limitation or citation-shape finding).
 - `prettier --check` on all seven ledger fragments clean before and after (the six edited were formatted with `--write`).
 
 ## Still to do (not done here)
