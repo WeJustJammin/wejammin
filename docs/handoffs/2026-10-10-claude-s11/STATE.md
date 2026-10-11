@@ -1,4 +1,4 @@
-# Slice 11 Claude orchestration — live state (updated 2026-10-11 ~01:45Z)
+# Slice 11 Claude orchestration — live state (updated 2026-10-11 ~10:30Z)
 
 Resume here if the session is cut off. Owner instructions: `docs/handoffs/2026-10-10-phase2-claude-prompt.md`.
 Source handoff (Codex): `docs/handoffs/2026-10-09-phase2-claude-handoff.md`. Tracker:
@@ -47,3 +47,18 @@ memory DEC-164..169/PAT-025..027 (2c55d937); composition mock + node bound + rac
 4. Fresh independent Opus refutation review (read-only) of ledger + code; fix confirmed findings RED→GREEN.
 5. Tracking (slice/phase/index/feature ledger/runbooks/architecture), session log, flush/compile, progress:check,
    depth ratio, completion signature; draft PR; then Slices 12–17.
+
+## Update 2026-10-11 ~10:30Z
+
+- Integrated since 000e4739: lease-control producer (3de29086), bigint schema fix (ab805427), SEC-1 recheck gate +
+  mutation-suite restore journal (00d2e739), S09 create-path perf (3bdddd82, adab4fde), rank-aware recheck test +
+  migrations README (813fcafd), ledger refresh 113V/7P/2U (6af4f106), API world isolation + reset retry (48befba3).
+- Diagnostics at 48befba3-equivalent: SQL only bench128 failed before adab4fde; API 71/843 pass; races 21/592 pass;
+  types check 0 (lane-order-report.md). Canonical `pnpm db:verify` on the quiet host is running at 48befba3.
+- Uncommitted: `tests/contracts/phase-02-slice-11-evidence-guard.test.ts` (commit with receipts).
+- Open owner questions: DEC-147 (recommend C), AC-050/053/056 422 vs 502 (recommend 502), AC-041 truncated text,
+  AC-090 executor clause wording (internal op returns typed result; executor already invalidates dependency_changed),
+  boundary tracking-issue permission (recommend A), EC-103 32-active-type authoring-context cap (product gap; not
+  changed).
+- Next: canonical db:verify exit 0 -> pnpm validate (quiet) -> evidence runner slices 09, 10, 11 -> guard green ->
+  independent Opus refutation review -> tracking/close/PR.
