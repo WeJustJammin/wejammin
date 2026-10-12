@@ -4852,11 +4852,60 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]',
           },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack every request of the five measured reads, warm-ups included, completed within the exact 8,000 ms read deadline [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'every call of the five measured reads completed within the exact 8,000 ms read deadline under stale planner statistics (50 calls) [P2-S11-AC-052]',
+          },
         ],
       },
       {
         text: 'and the Tier 2 p95 < 1,200 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack [CMS-03B-15] on a 128-field draft with the full preparation and 17-result preflight: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack [CMS-03B-15] on an entry at 16 schedules, 64 publications and an open review: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'CMS-03B-15 on a 128-field draft with the full preparation and 17-result preflight: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'CMS-03B-15 on an entry at 16 schedules, 64 publications and an open review: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-15 on a 128-field draft under stale planner statistics: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-15 on an entry at 16 schedules, 64 publications and an open review under stale planner statistics: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]',
+          },
+        ],
       },
       {
         text: '(which includes the 2,000 ms accessibility checker budget)',
@@ -4905,9 +4954,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: the Tier 2 p95 < 1,200 ms target as a read-route figure. supabase/tests/phase_02_slice_11_reads_bench128.sql measures the database RPC of the read (thirty samples at the declared bounds, p95 asserted against the target, worst sample against the 8,000 ms deadline) and every assertion passes with a wide margin, but no test measures the composed Worker, Kong and PostgREST read, and the registry-row test (routes-slice11.test.ts) only declares the target. The 2,000 ms accessibility checker budget that the text folds into the 1,200 ms figure runs in the Worker, outside the database measurement (the text is itself inconsistent: the budget alone exceeds the p95); the budget is cited under its own clause. Needs a composed-stack p95 measurement of the read, or an owner ruling that the p95 of a read is the protected-RPC figure.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-053',
@@ -6508,16 +6556,46 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]',
           },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack every request of the five measured reads, warm-ups included, completed within the exact 8,000 ms read deadline [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'every call of the five measured reads completed within the exact 8,000 ms read deadline under stale planner statistics (50 calls) [P2-S11-AC-052]',
+          },
         ],
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack [CMS-03B-16] at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'CMS-03B-16 at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-16 at 7 of 8 decisions and 32 assignment summaries under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: the Tier 1 p95 < 750 ms target as a read-route figure. supabase/tests/phase_02_slice_11_reads_bench128.sql measures the database RPC of the read (thirty samples at the declared bounds, p95 asserted against the target, worst sample against the 8,000 ms deadline) and every assertion passes with a wide margin, but no test measures the composed Worker, Kong and PostgREST read, and the registry-row test (routes-slice11.test.ts) only declares the target. Needs a composed-stack p95 measurement of the read, or an owner ruling that the p95 of a read is the protected-RPC figure.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-059',
@@ -7865,16 +7943,88 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]',
           },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack every request of the five measured reads, warm-ups included, completed within the exact 8,000 ms read deadline [P2-S11-AC-052]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'every call of the five measured reads completed within the exact 8,000 ms read deadline under stale planner statistics (50 calls) [P2-S11-AC-052]',
+          },
         ],
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack [CMS-03B-17] first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-read-latency.apispec.ts',
+            title:
+              'Slice 11 read latency through the real stack [CMS-03B-17] cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'CMS-03B-17 first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'CMS-03B-17 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-17 under stale planner statistics returns the maximum page of 50 items and a next cursor within the statement timeout [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-17 cursor page under stale planner statistics returns its 50 items within the statement timeout [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-17 first page reads a bounded number of tuples from the review and assignment tables per call (under 10,000 of 503 reviews and 237 assignments; the pathological plan read 27 million) [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-17 cursor page reads a bounded number of tuples from the review and assignment tables per call (under 10,000) [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-17 first page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_plan_stability.sql',
+            title:
+              'CMS-03B-17 cursor page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: the Tier 1 p95 < 750 ms target as a read-route figure. supabase/tests/phase_02_slice_11_reads_bench128.sql measures the database RPC of the read (thirty samples at the declared bounds, p95 asserted against the target, worst sample against the 8,000 ms deadline) and every assertion passes with a wide margin, but no test measures the composed Worker, Kong and PostgREST read, and the registry-row test (routes-slice11.test.ts) only declares the target. Needs a composed-stack p95 measurement of the read, or an owner ruling that the p95 of a read is the protected-RPC figure.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-065',

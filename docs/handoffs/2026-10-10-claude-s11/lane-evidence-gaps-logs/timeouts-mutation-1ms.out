@@ -1,0 +1,19 @@
+[alt] waiting for lock 01:46:02
+[alt] lock acquired 01:46:02
+[alt] reset ok 01:46:29
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-014602-1276756.tap
+psql:zz_evgaps_s09_bench_timeout1ms.sql:61: ERROR:  canceling statement due to statement timeout
+psql:zz_evgaps_recheck_cap_timeout1ms.sql:109: ERROR:  canceling statement due to statement timeout
+Test Summary Report
+-------------------
+zz_evgaps_s09_bench_timeout1ms.sql  (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+zz_evgaps_recheck_cap_timeout1ms.sql (Wstat: 768 (exited 3) Tests: 10 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: Bad plan.  You planned 25 tests but ran 10.
+Files=2, Tests=10,  5 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: FAIL
+Files=2, Tests=10,  5 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: FAIL
+bash docs/handoffs/2026-10-10-claude-s11/lanes/lane-db-alt.sh     5.40s user 1.82s system 22% cpu 31.698 total

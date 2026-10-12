@@ -2235,7 +2235,50 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '(`completed`, `blocked`, `failed_retryable`, `cancelled` with reason `entry_unavailable`, or `already_completed`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/schedule-execution-outcomes.test.ts',
+            title:
+              '[P2-S11-AC-079] ScheduleExecutionResult outcomes (CMS-03B-20, DEC-177) parses each of exactly five outcomes: completed, blocked, failed_retryable, cancelled and already_completed',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/schedule-execution-outcomes.test.ts',
+            title:
+              '[P2-S11-AC-079] ScheduleExecutionResult outcomes (CMS-03B-20, DEC-177) declares exactly those five outcome members in the schema the Worker and the database share',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/schedule-execution-outcomes.test.ts',
+            title:
+              '[P2-S11-AC-079] ScheduleExecutionResult outcomes (CMS-03B-20, DEC-177) refuses every other outcome, including the schedule states that are not execution outcomes',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/schedule-execution-outcomes.test.ts',
+            title:
+              '[P2-S11-AC-079] ScheduleExecutionResult outcomes (CMS-03B-20, DEC-177) accepts cancelled only with the reason entry_unavailable',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/schedule-execution-outcomes.test.ts',
+            title:
+              '[P2-S11-AC-079] ScheduleExecutionResult outcomes (CMS-03B-20, DEC-177) keeps entry_unavailable out of every other outcome and publication evidence out of cancelled',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/internal-rpc.test.ts',
+            title:
+              '[P2-S11-AC-079] CMS-03B-20 claim and execute contracts types the execution result with the closed outcome and reason coupling',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is answered cancelled entry_unavailable with no publication evidence (BE03b CMS-03B-20) [P2-S11-AC-083]',
+          },
+        ],
       },
       {
         text: 'neither is a browser route, proxy or client type.',
@@ -2267,9 +2310,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'The closed outcome list now includes `cancelled` with reason `entry_unavailable` (owner-ratified DEC-177 after DEC-173, BE03b CMS-03B-20 line 1898); no contract test yet parses exactly those five outcomes and refuses any other, so that clause is uncited until it lands.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-080',

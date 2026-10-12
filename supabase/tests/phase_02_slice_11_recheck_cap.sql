@@ -97,6 +97,12 @@ select is(
   'precondition: 501 live reviews name the schema version in the dependency index [P2-S11-AC-113]');
 select is((select cardinality(ids) from cap_ids), 501, 'precondition: the walk order has 501 reviews [P2-S11-AC-113]');
 
+-- A regression that gives the dependency walk a pathological plan must FAIL this file, not hang the gate (see
+-- phase_02_slice_11_reads_bench128.sql: the first such plan ran for 63 minutes).  The 501-review world above is built
+-- before the limit applies; every walk below is a statement of its own and a full 500-review walk takes about two seconds
+-- when healthy.
+set local statement_timeout = '120s';
+
 -- ---- every manifest still holds: examined is bounded, the cursor walks the rest ----------
 select is(pg_temp.cap_run(),
   jsonb_build_object('examined', 500, 'invalidated', 0, 'nextCursor', (select ids[500] from cap_ids)),

@@ -2934,7 +2934,68 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'or a side over 256 KiB)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound accepts a side whose serialized value is exactly 256 KiB and refuses one byte more',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound refuses a resource whose base side is over 256 KiB and serves the same resource at the bound',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound refuses a resource whose theirs side is over 256 KiB and serves the same resource at the bound',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound refuses a resource whose yours side is over 256 KiB and serves the same resource at the bound',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound counts serialized UTF-8 bytes, not characters, and covers a nested object value',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a base side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a theirs side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a yours side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side refuses a side of 256 KiB plus one byte (declared length) as 502 DEPENDENCY_UNAVAILABLE and serves nothing of it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side refuses a side of 256 KiB plus one byte (streamed without a declared length) as 502 DEPENDENCY_UNAVAILABLE and serves nothing of it',
+          },
+        ],
       },
       {
         text: 'as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
@@ -2975,12 +3036,35 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
             title:
               '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a base side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound serves the same answer when its base side is exactly 256 KiB (control)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side refuses a side of 256 KiB plus one byte (declared length) as 502 DEPENDENCY_UNAVAILABLE and serves nothing of it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side serves an answer of exactly 256 KiB and refuses the same answer one byte longer',
+          },
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "or a side over 256 KiB)". The database read RPC bounds each side at 262144 bytes (platform_private.cms_json_bounded in the CMS-03B-12 migrations), but no test feeds a side over 256 KiB to the RPC, the contract or the route, and the contract schema has no size member to assert. Proven: the 128-path bound (the strict resource schema refuses 129 paths and more than 128 changedPaths), and that the Worker answers a dependency answer that breaks the resource contract as 502 DEPENDENCY_UNAVAILABLE with a fixed, non-serving body and no validator (route tests for closed states, inconsistent paths, unbound ids and an open record with no paths; the shared 502 code is asserted by the dependency-code contract tests). Needs one over-bound side case (256 KiB plus one byte) at the route or the RPC.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-090',

@@ -19,6 +19,12 @@ select no_plan();
 \ir phase_02_slice_09_dec108/02-chain.sqlinc
 \ir phase_02_slice_09_dec108/03-support.sqlinc
 
+-- A regression that gives one of the protected RPCs a pathological plan must FAIL this file, not hang the gate (the first
+-- such plan, in the Slice 11 reads benchmark, ran for 63 minutes before it was terminated).  The statement below drives
+-- twenty-five definitions through six commands each and takes a few seconds when healthy; the world above is built
+-- before the limit applies.  Same 120 s limit as phase_02_slice_11_reads_bench128.sql; no budget or assertion changes.
+set local statement_timeout = '120s';
+
 create temp table s09e_timing(op text, ms numeric) on commit drop;
 create or replace function pg_temp.s09e_ms(p_t0 timestamptz) returns numeric language sql as $body$
   select extract(epoch from clock_timestamp() - p_t0) * 1000 $body$;

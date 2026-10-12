@@ -1,0 +1,13 @@
+[lane-api] exit=1 full log: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/api-015918.log
+     × [CMS-03B-15] on a 128-field draft with the full preparation and 17-result preflight: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052] 1745ms
+     × [CMS-03B-15] on an entry at 16 schedules, 64 publications and an open review: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052] 1304ms
+     × [CMS-03B-16] at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058] 360ms
+     × [CMS-03B-17] first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064] 377ms
+     × [CMS-03B-17] cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064] 358ms
+ FAIL  tests/postgrest/phase-02-slice-11-read-latency.apispec.ts > Slice 11 read latency through the real stack > [CMS-03B-15] on a 128-field draft with the full preparation and 17-result preflight: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]
+ FAIL  tests/postgrest/phase-02-slice-11-read-latency.apispec.ts > Slice 11 read latency through the real stack > [CMS-03B-15] on an entry at 16 schedules, 64 publications and an open review: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]
+ FAIL  tests/postgrest/phase-02-slice-11-read-latency.apispec.ts > Slice 11 read latency through the real stack > [CMS-03B-16] at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]
+ FAIL  tests/postgrest/phase-02-slice-11-read-latency.apispec.ts > Slice 11 read latency through the real stack > [CMS-03B-17] first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+ FAIL  tests/postgrest/phase-02-slice-11-read-latency.apispec.ts > Slice 11 read latency through the real stack > [CMS-03B-17] cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
