@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 179
-- **Unique decision titles**: 179
+- **Total decisions**: 182
+- **Unique decision titles**: 182
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2562,6 +2562,48 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
 
+## DEC-178: Slice 12 DEC-148 depth-floor cascade: floor 53 to 285, Phase 2 3314 authored / 3310 active (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T10:30:14.996Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: Slice 12 kept its pre-DEC-148 floor of 53 although BE03c defines CMS-03C-04 to CMS-03C-21 and five supporting reads, and IA flows CMS-15/CMS-16 and feature rows 25.05.03/25.05.04 belonged to no slice.
+- **Options considered**: (A) apply DEC-148/DEC-149 per operation plus DEC-154 unowned obligations plus DEC-114 IA-level rows, keeping every judgement-call row; (B) the same without the judgement-call rows (five supporting reads, CMS-03C-04/-05 rows, six IA-level rows, six FE page rows).
+- **Decision**: (A). New ids P2-S12-AC-054..AC-285 contiguous after AC-053: 135 per-operation (AC054-AC188), 91 cascade obligations (AC189-AC279), 6 IA-level (AC280-AC285). Slice 12 = 285 authored/active, 0 checked. Phase 2 = 3314 authored / 3310 active (AC209, AC211, AC265, AC266 stay outside the active denominator). The owner standing rule "more work now" decides every judgement-call row; derivation in .memory/pipeline/progress/verification/2026-10-11-slice-12-depth-floor.md.
+- **Downstream**: phase-2.md Slice 12 section and coverage tables, Slice 12 tracker, progress index/phase/spec-pipeline totals, scripts/check-progress-consistency.mjs constants, the Slice 09 completion-policy and pre-traceability tests and their receipt rows, a Slice 12 evidence ledger over 285 rows.
+- **Reversibility**: Medium
+
+## DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T10:30:14.997Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: BE03c and FE03 still carried text that DEC-172, DEC-158 and DEC-159 had corrected for Slice 11, and FE03 lists missed the 2026-10-07 cascade operations.
+- **Options considered**: (A) propagate the existing rulings verbatim; (B) leave the drift for the Slice 12 implementation lanes to reconcile.
+- **Decision**: (A). R1 response-contract failures are 502 DEPENDENCY_UNAVAILABLE (DEC-172); R2 decision reason char_length 1-2000 and assignment/retire reasons 1-256 NFC code points (DEC-158); R3 metric label subject_kind (DEC-159); R4 FE03 protected read lists include cmsPatternLatestRead, cmsTaxonomyVersionsRead and cmsTaxonomyTermsRead, the step-up command list includes CMS-03C-07/-08/-09, and the data-mapping row names CMS-03C-01..21.
+- **Downstream**: BE03c, FE03, Slice 12 rows that cite those lines.
+- **Reversibility**: High
+
+## DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T10:30:14.997Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: BE03c left implementation choices open and stated four statuses two ways (setup report sections 5 and 6).
+- **Options considered**: per item, the setup report recommendation versus leaving the item for the implementing lane.
+- **Decision**: G2 BE03c gains a lock-order paragraph placing every Slice 12 writer in the BE03b global order (extends DEC-157; BE03c no longer prescribes the order DEC-157 rejected); G3 activation and retirement events use the subject version row as outbox aggregate and term actions the term row; G4 CMS-03C-14 with no newer compatible version answers 200 with paths [], collisionCount 0, bulkEligible false, targetPatternVersion = pinnedPatternVersion; G6 cms_invalidate_governed_reviews_for_person mirrors BE03b:1872 and rule 7 of the BE03b lock order; G8 the exact impact set is compatibleTypeIds plus the block tuples behind blockRegistryDigest, and the undefined "approved impact-read scope" becomes the governed-review read scope; G9 cms.governed_review.recheck and cms.pattern.linked_update_scan are typed platform-queue messages (DEC-166), cms.taxonomy.merge_converge a BE00 jobs row; G11 submitting a taxonomy version with an unbuilt canonical domain is 422 canonical_source_unavailable with details.domain. R5: nested_pattern_not_active and pattern_version_not_active are 422 (request validation; 409 stays for stale CAS operands); every governed 409 is GOVERNED_REVIEW_VERSION_CONFLICT with the reason in details.reasonCode; the digest is an equality expectation the server recomputes and refuses on mismatch. Lane-derived drafts (non-node overrides key 422 at /overrides; PatternPlacementResource; G2 position 6 for cms_terms) stand until review. G5 is not applied: rewording BE03b:251/:1538 changes Slice 10 AC030 and goes to the owner wording batch.
+- **Downstream**: BE03c, FE03, IA03 consequences, Slice 12 rows AC065, AC068, AC073, AC085, AC114, AC201, AC202, AC204, AC212, AC226, AC248-AC250, AC261, AC262, AC276.
+- **Reversibility**: High
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -4963,6 +5005,45 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Decision**: owner chose (A) on 2026-10-12 ("A for AC-079"). Applied to the phase plan, Slice 11 tracker and evidence ledger.
 - **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
+
+### DEC-178: Slice 12 DEC-148 depth-floor cascade: floor 53 to 285, Phase 2 3314 authored / 3310 active (2026-10-12)
+
+- **Timestamp**: 2026-10-12T10:30:14.996Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, depth-floor
+
+- **Problem**: Slice 12 kept its pre-DEC-148 floor of 53 although BE03c defines CMS-03C-04 to CMS-03C-21 and five supporting reads, and IA flows CMS-15/CMS-16 and feature rows 25.05.03/25.05.04 belonged to no slice.
+- **Options considered**: (A) apply DEC-148/DEC-149 per operation plus DEC-154 unowned obligations plus DEC-114 IA-level rows, keeping every judgement-call row; (B) the same without the judgement-call rows (five supporting reads, CMS-03C-04/-05 rows, six IA-level rows, six FE page rows).
+- **Decision**: (A). New ids P2-S12-AC-054..AC-285 contiguous after AC-053: 135 per-operation (AC054-AC188), 91 cascade obligations (AC189-AC279), 6 IA-level (AC280-AC285). Slice 12 = 285 authored/active, 0 checked. Phase 2 = 3314 authored / 3310 active (AC209, AC211, AC265, AC266 stay outside the active denominator). The owner standing rule "more work now" decides every judgement-call row; derivation in .memory/pipeline/progress/verification/2026-10-11-slice-12-depth-floor.md.
+- **Downstream**: phase-2.md Slice 12 section and coverage tables, Slice 12 tracker, progress index/phase/spec-pipeline totals, scripts/check-progress-consistency.mjs constants, the Slice 09 completion-policy and pre-traceability tests and their receipt rows, a Slice 12 evidence ledger over 285 rows.
+- **Reversibility**: Medium
+
+### DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12)
+
+- **Timestamp**: 2026-10-12T10:30:14.997Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, spec-reconciliation
+
+- **Problem**: BE03c and FE03 still carried text that DEC-172, DEC-158 and DEC-159 had corrected for Slice 11, and FE03 lists missed the 2026-10-07 cascade operations.
+- **Options considered**: (A) propagate the existing rulings verbatim; (B) leave the drift for the Slice 12 implementation lanes to reconcile.
+- **Decision**: (A). R1 response-contract failures are 502 DEPENDENCY_UNAVAILABLE (DEC-172); R2 decision reason char_length 1-2000 and assignment/retire reasons 1-256 NFC code points (DEC-158); R3 metric label subject_kind (DEC-159); R4 FE03 protected read lists include cmsPatternLatestRead, cmsTaxonomyVersionsRead and cmsTaxonomyTermsRead, the step-up command list includes CMS-03C-07/-08/-09, and the data-mapping row names CMS-03C-01..21.
+- **Downstream**: BE03c, FE03, Slice 12 rows that cite those lines.
+- **Reversibility**: High
+
+### DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12)
+
+- **Timestamp**: 2026-10-12T10:30:14.997Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, implementation-decision
+
+- **Problem**: BE03c left implementation choices open and stated four statuses two ways (setup report sections 5 and 6).
+- **Options considered**: per item, the setup report recommendation versus leaving the item for the implementing lane.
+- **Decision**: G2 BE03c gains a lock-order paragraph placing every Slice 12 writer in the BE03b global order (extends DEC-157; BE03c no longer prescribes the order DEC-157 rejected); G3 activation and retirement events use the subject version row as outbox aggregate and term actions the term row; G4 CMS-03C-14 with no newer compatible version answers 200 with paths [], collisionCount 0, bulkEligible false, targetPatternVersion = pinnedPatternVersion; G6 cms_invalidate_governed_reviews_for_person mirrors BE03b:1872 and rule 7 of the BE03b lock order; G8 the exact impact set is compatibleTypeIds plus the block tuples behind blockRegistryDigest, and the undefined "approved impact-read scope" becomes the governed-review read scope; G9 cms.governed_review.recheck and cms.pattern.linked_update_scan are typed platform-queue messages (DEC-166), cms.taxonomy.merge_converge a BE00 jobs row; G11 submitting a taxonomy version with an unbuilt canonical domain is 422 canonical_source_unavailable with details.domain. R5: nested_pattern_not_active and pattern_version_not_active are 422 (request validation; 409 stays for stale CAS operands); every governed 409 is GOVERNED_REVIEW_VERSION_CONFLICT with the reason in details.reasonCode; the digest is an equality expectation the server recomputes and refuses on mismatch. Lane-derived drafts (non-node overrides key 422 at /overrides; PatternPlacementResource; G2 position 6 for cms_terms) stand until review. G5 is not applied: rewording BE03b:251/:1538 changes Slice 10 AC030 and goes to the owner wording batch.
+- **Downstream**: BE03c, FE03, IA03 consequences, Slice 12 rows AC065, AC068, AC073, AC085, AC114, AC201, AC202, AC204, AC212, AC226, AC248-AC250, AC261, AC262, AC276.
+- **Reversibility**: High
 
 ### DEC-162: Narrow first-empty schema baseline representation
 

@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-10-12T09:56:01.398Z",
+  "builtAt": "2026-10-12T10:30:16.253Z",
   "nodeCount": 1657,
-  "edgeCount": 10175,
+  "edgeCount": 10177,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -72542,6 +72542,18 @@
     },
     {
       "from": "phase-plan:phases/phase-2",
+      "to": "decision:d-3",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "phase-plan:phases/phase-2",
+      "to": "decision:d-4",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "phase-plan:phases/phase-2",
       "to": "phase-plan:phases/phase-1",
       "type": "references",
       "source": "wikilink"
@@ -72669,7 +72681,7 @@
     },
     "byEdgeType": {
       "phases_into": 116,
-      "constrained_by": 9045,
+      "constrained_by": 9047,
       "references": 941,
       "derives_from": 64,
       "implemented_by": 6,

@@ -1660,6 +1660,9 @@
 
 ## Structured Memory
 
+- decision: DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12) — 2026-10-12T10:30:14.997Z
+- decision: DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12) — 2026-10-12T10:30:14.997Z
+- decision: DEC-178: Slice 12 DEC-148 depth-floor cascade: floor 53 to 285, Phase 2 3314 authored / 3310 active (2026-10-12) — 2026-10-12T10:30:14.996Z
 - pattern: PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12) — 2026-10-12T09:56:00.747Z
 - decision: DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12) — 2026-10-12T05:26:46.711Z
 - decision: DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12) — 2026-10-12T04:52:06.387Z
