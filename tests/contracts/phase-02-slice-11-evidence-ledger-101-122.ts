@@ -1044,6 +1044,20 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               'time authority lazy chunk keeps the snapshot data out of the zod-free eager groups',
           },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-11-bundle-budget-real-route.spec.ts',
+            title:
+              '[P2-S11-AC-106] a cold load of the production workflow route fetches no Time authority byte',
+            project: 'real-route-chrome',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-11-bundle-budget-real-route.spec.ts',
+            title:
+              '[P2-S11-AC-106] opening the schedule form fetches the Time authority chunk once, within the lazy-chunk bundle threshold',
+            project: 'real-route-chrome',
+          },
         ],
       },
       {
@@ -1193,7 +1207,7 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "stays within the bundle-budget thresholds". The only budget gate is the build script scripts/verify-bundle-budget.mjs (pnpm bundle:check), which is not a vitest, pgTAP, Playwright or race test and runs on a build, never names the contracts-time-authority chunk; tests/performance/bundle-budget.test.ts feeds the measurement functions synthetic fixtures, and apps/web/src/client-chunk-time-authority.test.ts proves the snapshot is split into its own lazy chunk (cited under "is lazy-loaded when the form opens") but asserts no size. A citable proof needs a test that measures the built contracts-time-authority chunk and the initial route against BUNDLE_BUDGETS (about 26 KB gzip against the 80 KiB lazy-chunk and 90 KiB initial-route thresholds), or an owner ruling that pnpm bundle:check is the proof.',
+      'Unproven: "stays within the bundle-budget thresholds" for the route that hosts the form. Cited under the lazy-loading clause: two production-build Playwright tests show that the Time authority snapshot chunk is fetched only when the form opens, once, and that everything the open fetches is within the 80 KiB lazy-chunk threshold of scripts/verify-bundle-budget.mjs (pnpm bundle:check measures neither this route nor this chunk). Not met: the same production workflow route loads 144,220 gzip bytes of initial JavaScript against the 92,160 route threshold, and its island closure is about 79 KB against the 35 KiB island threshold, because the zod contracts chunk (about 53 KB) and the Astro client runtime load with every CMS editorial island (the Slice 10 islands and the Slice 09 capability console exceed alike). No passing test can cite the route thresholds. The owner must rule that the clause binds the Time authority module alone (then the two cited tests prove it and this entry becomes verified), or have the islands split, or ratify an architecture decision for the CMS editorial budgets (FE03: a feature exceeding a budget must split or obtain an originating decision). Measurements: docs/handoffs/2026-10-10-claude-s11/lane-last-gaps-report.md.',
   },
   {
     criterion: 'P2-S11-AC-107',

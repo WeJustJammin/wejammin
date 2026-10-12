@@ -889,6 +889,12 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
               'the same key with a changed request is IDEMPOTENCY_MISMATCH [P2-S11-AC-071]',
           },
           {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a retry of the create with the same key, a fresh correlation id and a fresh step-up instant returns the stored response, though the assignment was revoked since [P2-S11-AC-071]',
+          },
+          {
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts',
             title:
@@ -898,7 +904,80 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'retries the review event idempotently',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'each accepted assignment change commits exactly one identifier-only review-changed event with an identity of its own, though both are aggregated on the unchanged review version [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a retry of the create with the same key, a fresh correlation id and a fresh step-up instant returns the stored response, though the assignment was revoked since [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'the retry committed no second event and left both committed events, and every review, assignment, idempotency and audit row, byte-identical: the event keeps the correlation id of the attempt that committed it [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'the relay claims neither review-changed event while no consumer is registered for the family: both stay unleased at attempt 0 [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a delivery whose lease ended before it completed cannot finalize the event: the late completion is refused and the event stays undispatched [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'the redelivery carries the identical event - id, type, schema version, aggregate, aggregate version, correlation, causation, payload and occurrence instant - and moves only the attempt counter [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'the redelivery finalizes the event once: the earlier sender cannot complete it while the redelivery holds the lease, and after the redelivery completes it a second completion with either lease is refused [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'across the whole delivery the identity of both events and every canonical row are untouched, and the other event of the review was not dispatched with it [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a delivered review-changed event cannot be reopened for another dispatch [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a delivered review-changed event cannot have its payload rewritten by a consumer [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a delivered review-changed event cannot have its aggregate version rewritten, so a consumer deduplicating by identity and ordering by version sees one fixed pair [P2-S11-AC-071]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_event_delivery.sql',
+            title:
+              'a retry of the command after its event was delivered answers the stored response, emits no event and leaves the delivered event and every canonical row as they were [P2-S11-AC-071]',
+          },
+        ],
       },
       {
         text: 'treats an expired assignment as inert without a sweep.',
@@ -918,9 +997,8 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "retries the review event idempotently". No test replays or redelivers the cms.entry.review-changed.v1 outbox event of an assignment change and shows an idempotent outcome (the pgTAP replay tests prove only that a replayed COMMAND adds no second event, not that event delivery retries are idempotent); contracts events.test.ts proves only the event payload shape.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-072',

@@ -19,6 +19,7 @@ rolls back.
 | `../phase_02_slice_11_rpc_review_scopes.sql`                | `cms_editorial_review_scopes`: owner, submitter, reviewer, assignee, publisher and concealment                            |
 | `../phase_02_slice_11_rpc_review_assign.sql`                | CMS-03B-18 contract, committed effects, replay, revoke, reason, step-up                                                   |
 | `../phase_02_slice_11_rpc_review_assign_refusals.sql`       | CMS-03B-18 concealment, 403, state, CAS, eligibility, duplicate, capacity, expiry bounds, structure                       |
+| `../phase_02_slice_11_rpc_review_assign_event_delivery.sql` | CMS-03B-18 review event: stable identity per change, retry with fresh transport identifiers, redelivery completes once    |
 | `../phase_02_slice_11_rpc_review_decision.sql`              | CMS-03B-06 contract, committed effects, replay, reject, two-decision flow, specialist slots                               |
 | `../phase_02_slice_11_rpc_review_decision_refusals.sql`     | CMS-03B-06 AC-108 order: step-up, concealment, state, CAS, separation, duplicates, grant, request rules                   |
 | `../phase_02_slice_11_rpc_review_decision_invalidation.sql` | CMS-03B-06 committed invalidation outcomes (dependency drift, authority drift)                                            |

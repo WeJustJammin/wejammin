@@ -131,6 +131,19 @@ S11-3b), `phase_02_slice_11_rpc_preview/` and `phase_02_slice_11_rpc_reads/` (CM
 reads under the stale planner statistics a long run leaves; a pathological plan fails it instead of hanging the gate) share one
 world and run on a quiet host.
 
+Every file that times work runs under a `set local statement_timeout` (120 s in `phase_02_slice_11_reads_bench128.sql`,
+`phase_02_slice_09_evidence_bench128.sql` and `phase_02_slice_11_recheck_cap.sql`, 60 s in the plan-stability guard), set after its
+fixtures, so a regression that would hold the gate for an hour fails the file in seconds. A healthy run takes seconds: the cap is a
+hang guard and never a latency target; the targets are the p95 assertions inside the files. The plan-stability file is the guard
+for the planner: it rebuilds the bench world under deliberately stale statistics (autovacuum off for its tables), asserts that the
+statistics really are stale, that the reviewer-queue page reads a bounded number of tuples from the review and assignment tables
+(a count that does not depend on the host) and that the five reads still meet their declared latency tier.
+
+`phase_02_slice_11_rpc_review_assign_event_delivery.sql` proves what
+the CMS-03B-18 review event guarantees a consumer (one stable identity per accepted change, untouched by a retry with fresh
+transport identifiers, completed once however often it is redelivered); the relay does not claim that event family until a
+consumer is registered, and the file pins that so the day it changes this file is extended with the real claim.
+
 The guard files that pin the whole catalog carry the Slice 11 names as explicit allow-lists, so an unnamed function or
 table fails them: `phase_02_slice_09_r8_api_surface.sql` (the service-role-only supporting RPC set),
 `phase_02_slice_09_sec2_all_schema_definer_rls.sql` (the forced tables a definer function names) and

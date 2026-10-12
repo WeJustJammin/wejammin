@@ -67,6 +67,16 @@ or compares types asks for `prepareS11World({ fresh: true })`. And a suite never
 shared owner a capability: an author with other capabilities is `addMember(...)` passed to
 `approvedDraft`. `phase-02-slice-11-world-isolation.apispec.ts` pins both rules.
 
+The read-latency suite `phase-02-slice-11-read-latency.apispec.ts` (P2-S11-AC-052, AC-058, AC-064) times CMS-03B-15, -16
+and -17 through the same composed path (production Worker routes, production RPC adapter, Kong, PostgREST, the newest SQL)
+over the bounded world the SQL benchmark measures: three discarded warm-up requests, then thirty one-at-a-time samples per
+read, with the p95 taken as `percentile_cont` does and asserted against the BE03b Tier 1 (750 ms) and Tier 2 (1,200 ms)
+targets and the 8,000 ms read deadline. Its world is built by `support/phase-02-slice-11-latency-world.ts` (rows in
+`-latency-rows.ts`, the 128-field type in `-latency-type.ts`, the estimator in `-latency-stats.ts`): it commits about 500
+reviews and 240 assignments and one extra active type under fresh people of the shared owner, so run it right after
+`pnpm db:reset`, reset again afterwards, and run it only on a quiet host (the canonical gate holds `/tmp/wejammin-quiet.lock`
+exclusively; a lane takes it shared). A measurement that fails on a loaded host is a loaded host, not a threshold to raise.
+
 Claim-resolver QA is separate from lifecycle acceptance: the edge-grammar suite
 checks raw UUID relations, max-token identity, string versus raw numeric `1.0`
 schema versions, and legacy version limits. Its test-local raw request reuses the
