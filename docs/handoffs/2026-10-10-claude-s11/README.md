@@ -2,7 +2,7 @@
 
 ## Contents
 
-The live orchestration state (`STATE.md`), the implementation and ledger lane briefs (`impl-lane-brief.md`, `ledger-lane-brief.md`), one `lane-<name>-report.md` per lane, the ledger-gap lists (`ledger-gaps-*.md`), the second-stack runner `lanes/lane-db-alt.sh`, and the `lane-*-logs/` evidence directories.
+The live orchestration state (`STATE.md`), the implementation and ledger lane briefs (`impl-lane-brief.md`, `ledger-lane-brief.md`), one `lane-<name>-report.md` per lane, the ledger-gap lists (`ledger-gaps-*.md`), the second-stack runner `lanes/lane-db-alt.sh`, the `lane-*-logs/` evidence directories, and the closeout preparation report (`closeout-prep-report.md`: what the closure artifacts changed and what the orchestrator still owes).
 
 ## Ownership
 

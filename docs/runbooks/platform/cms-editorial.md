@@ -10,7 +10,11 @@ authoring-context read. Every one of those events carries
 `platform.on_call`, and alert class `cms_editorial_tier1` (reads) or
 `cms_editorial_tier2` (commands).
 
-This runbook covers the nine Slice 10 operations. The wiki runbook
+This runbook covers the nine Slice 10 operations. The Slice 11 review,
+scheduling, preview and publication operations, the schedule executor, the
+dependency recheck job, the outbox relay's poison rows and the sealed
+state-filtered history cursor are in [CMS editorial publication](./cms-publication.md).
+The wiki runbook
 [`.memory/wiki/operations/runbooks/cms-editorial.md`](../../../.memory/wiki/operations/runbooks/cms-editorial.md)
 keeps the wider BE03b contract (review, scheduling, preview, publication);
 use it for those. Local verification is not hosted acceptance: no Slice 10
@@ -42,9 +46,10 @@ An editor's unsent local values stay in that browser; do not ask for them.
   thresholds (`.memory/wiki/specs/be/03b-editorial-workflow-publication.md:2080`)
   are the intended alert contract; confirm a provider-side rule exists before
   treating silence as health.
-- The Worker emits no `cms_conflict_one_open_violation_total`, `cms_review_*`,
-  schedule, preview, publication, outbox or queue metric for these operations
-  (review, schedule, preview and publication belong to Slice 11 and later).
+- The Worker emits no `cms_conflict_one_open_violation_total`, outbox or queue
+  metric for these nine operations. The review, schedule, preview and
+  publication metrics belong to Slice 11 and are listed in
+  [CMS editorial publication](./cms-publication.md#observability).
 - Hosted composition, key rotation and drills are unverified. A missing signed
   cursor key, workflow-policy projection or protected-validator freeze fails
   closed with a typed 503 and no payload.
@@ -209,6 +214,17 @@ most 24 hours) opened and sealed by
 `cms_signed_cursor_seal_page` (`20261005010400_cms_revision_comparison_domains.sql`).
 The two cursor kinds sign under separate domains (`cms-03b-03`, `cms-03b-13`) but
 share one per-environment key.
+
+A CMS-03B-03 history request that names a `state` filter does not use that
+envelope. Its cursor can sit after a concealed revision, so it is sealed
+(encrypt-then-MAC, DEC-168; `20261010161000_cms_history_sealed_cursor.sql`): a
+fixed 273 bytes and 364 characters, first byte `0x01`, encrypted under a fresh
+nonce and authenticated before it is decrypted. The encryption and MAC keys are
+derived from the same Vault secrets below, so provisioning, rotation and the
+24-hour retired-key grace are unchanged. A malformed (wrong-length) sealed cursor
+is `400 INVALID_REQUEST`; a wrong key, tag, domain, payload or expiry, or a cursor
+replayed with another state, limit or locale, is `409 CONFLICT`. The unfiltered
+history and the CMS-03B-13 list keep the signed envelope.
 
 Secret names, exactly:
 

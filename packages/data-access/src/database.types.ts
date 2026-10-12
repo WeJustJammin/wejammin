@@ -11330,6 +11330,24 @@ export type Database = {
         Returns: Json
       }
       cms_rpc_context_valid: { Args: never; Returns: boolean }
+      cms_s11_assignment_readable: {
+        Args: { p_reviewer_person_id: string; p_state: string }
+        Returns: boolean
+      }
+      cms_s11_review_readable: {
+        Args: { p_review_id: string }
+        Returns: boolean
+      }
+      cms_s11_session_is_owner: { Args: never; Returns: boolean }
+      cms_s11_session_owner: { Args: never; Returns: string }
+      cms_s11_session_person: { Args: never; Returns: string }
+      cms_s11_session_unbound: { Args: never; Returns: boolean }
+      cms_s11_snapshot_readable: { Args: never; Returns: boolean }
+      cms_s11_token_readable: { Args: never; Returns: boolean }
+      cms_s11_workflow_readable: {
+        Args: { p_entry_id: string; p_revision_id: string }
+        Returns: boolean
+      }
       cms_schedule_block:
         | {
             Args: {
@@ -11368,6 +11386,25 @@ export type Database = {
             }
             Returns: Json
           }
+      cms_schedule_cancel: {
+        Args: {
+          p_audit_event_id: string
+          p_correlation_id: string
+          p_expected_version: number
+          p_reason_code: string
+          p_schedule_id: string
+        }
+        Returns: undefined
+      }
+      cms_schedule_cancelled_result: {
+        Args: {
+          p_audit_event_id?: string
+          p_correlation_id: string
+          p_reason_code: string
+          p_schedule: Database["platform_private"]["Tables"]["cms_publication_schedules"]["Row"]
+        }
+        Returns: Json
+      }
       cms_schedule_completed_result: {
         Args: { p_schedule_id: string }
         Returns: Json
