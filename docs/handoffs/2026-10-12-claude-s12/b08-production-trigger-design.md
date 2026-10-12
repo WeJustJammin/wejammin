@@ -82,8 +82,8 @@ F5. Consumer dispositions (`APP-JOBS/consumer.ts`, `WORKER/async-runtime.ts`). `
 returns `manual_review` (`consumer.ts:195-197`), which `queueOutcome` acknowledges (`async-runtime.ts:38-54`). `queued` writes the outcome CAS with
 `retryable:true`, records no processed marker (`consumer.ts:211-218`) and so becomes `message.retry()` with no delay. Terminal outcomes record the
 processed marker and then acknowledge. Therefore the shipped boundary (`production-job-effect-dispatcher.ts:101-103`, answering
-`pending_manual_review`/`DEPENDENCY_UNAVAILABLE`) leaves the claimed Job `running` and the message acknowledged: nothing re-delivers it, and no
-reaper exists (grep of `SQL` and `WORKER` finds none). This is the behaviour of every production CMS dry run today. (Reading, not run.)
+`pending_manual_review`/`DEPENDENCY_UNAVAILABLE`) leaves the claimed Job `running` and the message acknowledged: nothing re-delivers it, and I found no
+reaper (grep for requeue/reap patterns in `SQL` and `WORKER`; BE00:440 names only the outbox sweep as a scheduled driver). This is the behaviour of every production CMS dry run today. (Reading, not run.)
 
 F6. Queue budget. `apps/worker/wrangler.jsonc:28-33` sets `max_retries: 3` and the DLQ; BE00:548/552 and RUNBOOK:20 call that "four deliveries
 including the initial". BE00:548 also fixes retry delays 15 s, 60 s, 300 s with bounded jitter. The event-consumer path applies them
@@ -112,7 +112,7 @@ source-row count anywhere (searched BE03a, IA03 and the cms migrations): I could
 | --- | --- | --- | --- |
 | 1 (default) | 256 | 5 (exhausted) | 15 (exhausted) |
 | 2 | 512 | 3 | 7 (exhausted) |
-| 4 | 1,024 | 3 | 3 |
+| 4 | 1,024 | 1 | 3 |
 | 8 | 2,048 | 1 | 1 |
 | 32 | 8,192 | 1 | 1 |
 
@@ -198,6 +198,11 @@ otherwise the named fallback. `R` = `{type:'cms_schema_dry_run_report', id: repo
 
 Gap 3 overrides rows 2, 6, 7, 11 and 14 on the final delivery (`queued` -> `failed` `MIGRATION_RETRIES_EXHAUSTED`).
 
+Consequence to ratify with the table: rows 2, 7, 11 and 14 put an error code on a `queued` Job, and the status projection shows any non-null `error_code` as
+`error{code, retryable:false}` (F4), so a retrying Job polls as `queued` with an `error`. The alternative is `errorCode = null` on every `queued` row, which loses
+the reason from the Job row (the attempt summary still records it, BE00:338,559). Default in this design: keep the code (diagnosability; precedent `consumer.ts:65`);
+the owner may flip it, which changes four table cells and no code path.
+
 Owner question (single, ready to relay; the rest of the table is an implementation consequence):
 
 **When a dry run finishes with a sealed FAILING verdict (row errors), what should the Job status poll show?**
@@ -238,7 +243,7 @@ code equals the report's `failure_code`. "Reason code" below is the worker reaso
 | worker `stale`, `duplicate`, `dead_letter` (cannot occur for a claimed Job) | `failed` | `PREPARATION_OUTCOME_UNMAPPED` |
 | exception, or an environment that fails validation | `queued` | `DEPENDENCY_UNAVAILABLE` |
 
-1. A `succeeded` Job means the attempt's report is sealed `completed` with result `passed` and its plan is `ready` or `completed`. A sealed failing
+1. A `succeeded` Job means the attempt's report is sealed `completed` with a sealed pass and its plan is `ready` or `completed`. A sealed failing
    report, an unsealed report and a blocked plan are `failed` Jobs. The Job never states a pass or a count: the browser reads the result, counts and
    hashes only from the sealed report (FE03 DEC-108 dry-run states).
 2. `blocked` is the BE00 "block discovered after acceptance": `failed` with a registered non-retryable safe code. The domain recovery reference is the
@@ -251,7 +256,7 @@ BE00:546 append: "The `cms.schema.dry_run` effect's disposition vocabulary, erro
 
 Changelog row: `| 2026-10-DD | DEC-183 (owner): defined the preparation Job disposition (worker-outcome to BE00 Job-state map, safe error codes, resultRef type). | /propagate-decision | Migration scan protocol, BE00 Consumer Registry |`.
 
-Also on adoption: delete the first sentence of the BOUNDARY comment at `production-job-effect-dispatcher.ts:93-96` (the map is now stated) and replace
+Also on adoption: shorten the BOUNDARY comment at `production-job-effect-dispatcher.ts:93-100` (the map is now stated; section 6 removes it entirely) and replace
 `apps/worker/src/README.md:21-25` per section 6.
 
 ### (6) Tests (real composition, no stubbed ports)
@@ -296,7 +301,7 @@ Real stack (`tests/postgrest/phase-02-b08-preparation-job-disposition.apispec.ts
 a. Whether any worker stage RPC must verify the BE00 Job lease. BE03a:2551 names "private stage fences" without defining them. My reading (not a fact) is that they are the plan-lease/version/cursor CAS of
    BE03a:2313-2315, in which case the spec requires nothing more. The review note (B-08 gap 2) and the Codex note ("atomic current Job token/version/native expiry/origin/restore/fresh post-lock SQL stage
    fence ... unselected and unproven") read it as a requirement for a BE00-lease binding. The text does not settle it.
-b. Where `control.checkpoint()` is called relative to the stage RPCs (no text; `cms-lease-control.ts` "does not thread checkpoints into CMS stage execution").
+b. Where `control.checkpoint()` is called relative to the stage RPCs (no text; lane-reviewB-2-report.md:107 says the lease foundation "does not thread checkpoints into CMS stage execution", and a grep of `apps` and `packages` finds no production caller of `.checkpoint()`).
 c. What the entry does when a checkpoint is `lost`.
 d. Whether the plan-lease owner should be bound to the Job claim (F7: today it is per release, not per claim).
 
@@ -453,11 +458,11 @@ Add to BE00:552 "Success / retry / terminal failure" cell nothing; BE00 already 
 
 ### (6) Tests
 
-- Pure: delivery-number normalization (`0`, `1`, `4`, `NaN`, negative -> `max(1, ...)`/closed), budget arithmetic (`240000` cap, lease remaining 100 s -> 40000, remaining < 60 s -> immediate abort), deliveries formula D(N, m) over a table
+- Pure: delivery-number normalization (0, 1, 4, `NaN`, negative; note `Math.max(1, NaN)` is `NaN`, so the helper needs an explicit finite-integer guard), budget arithmetic (`240000` cap, lease remaining 100 s -> 40000, remaining < 60 s -> immediate abort), deliveries formula D(N, m) over a table
   including N = 0, 128, 129, 256, 257, 8,192, 8,193 and m = 1, 2, 32 (state the +-1 batch assumption for exact multiples).
 - Composition (production entrypoint over the real Worker queue handler): `message.attempts = 1..4` reaches the callback unchanged; retry-type outcomes call `message.retry({delaySeconds: 15 | 60 | 300})` for deliveries 1-3; `progress` calls `message.retry()` with no delay.
 - Real stack (`tests/postgrest/phase-02-b08-preparation-budget.apispec.ts`): (i) N = 300 rows with `m = 1` -> deliveries 1-4 end with plan rolled back (`failed_terminal` or `blocked` per state), Job `failed`
-  `MIGRATION_RETRIES_EXHAUSTED`, message acked, and a new CMS-03A-10 attempt for the same pair is admitted (not 409); (ii) the same data with `m = 4` -> Job `succeeded` in 3 deliveries, `attempt_count = 3`;
+  `MIGRATION_RETRIES_EXHAUSTED`, message acked, and a new CMS-03A-10 attempt for the same pair is admitted (not 409); (ii) the same 300 rows with `m = 4` -> Job `succeeded` in 1 delivery, and a 1,000-row type with `m = 4` -> `succeeded` in 3 deliveries with `attempt_count = 3`;
   (iii) deadline: a `fetch` wrapper that hangs one RPC past the budget -> `DEPENDENCY_DEADLINE_EXCEEDED` -> `queued`, no outcome write after lease expiry; (iv) the final-delivery rollback failing retryably still yields Job `failed`.
 - Mutation: drop the final-delivery override and expect (i) to fail; drop the delay and expect the delay test to fail.
 
@@ -529,7 +534,7 @@ File `apps/worker/src/production-job-effect-dispatcher.ts`: delete the `BOUNDARY
 5. Final plan record on `processed` and the exhaustion rollback (section 5), then real-stack suites for sections 3-5.
 6. Documentation: BE03a subsections + changelog rows, BE00:546 sentence, `apps/worker/src/README.md`, `APP-JOBS/README.md`, runbook one-liner in `docs/runbooks/platform/cms-publication.md` (one tick/one delivery budget), ledger wording.
 
-Steps 1, 2, 3 can be implemented before the owner answers anything, because rows are fixed by BE00/FE03/DB constraints except the single `blocked` question (Q1) and the ceiling (Q3), which change only table cells and one constant.
+Steps 1, 2, 3 can be implemented before the owner answers anything, because rows are fixed by BE00/FE03/DB constraints except the Gap 1 owner question (sealed failing scan) and the Gap 3 owner question (ceiling), which change only table cells and one constant.
 
 ## 8. What I could not determine
 
