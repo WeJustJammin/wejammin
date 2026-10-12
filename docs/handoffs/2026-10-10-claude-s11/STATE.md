@@ -95,3 +95,17 @@ memory DEC-164..169/PAT-025..027 (2c55d937); composition mock + node bound + rac
 - Next: when lanes finish -> commit -> ledger refresh #2 (review-A statuses + all new tests, S10 title changes from
   dep502) -> compile memory -> quiet `pnpm db:verify` -> `pnpm validate` -> evidence runner 09/10/11 + guards ->
   tracking close (slice/phase/index, depth ratio, completion signature, session log) -> draft PR.
+
+## Update 2026-10-12 ~02:10Z — host rebooted; resumed
+
+- Host rebooted ~01:52Z: `/tmp` scratchpad wiped (gate scripts now live in `lanes/gate-db-verify.sh`,
+  `lanes/gate-validate-diag.sh`); backup refs `refs/backup/s11-claude-wip-{1..4}` intact; Supabase stacks healthy.
+- Owner (chat): "yes, open the boundary tracking issues" -> #127 (projection_id FK), #128 (claimed-preparation
+  trigger), linked in code (0fd4bf31). Memory compiled with DEC-147/170-172 (1988e5ee).
+- Committed: reviewA-1 + reviewA-2 work (78b8e7a4); leftover probe removed (ad28fce9).
+- Running: finisher (AC-083 executor entry_unavailable cancel per BE03b:1898 superseding DEC-158(d) for that case;
+  relationship/assignment RLS predicates per BE03b:2015; full API + races run), e2e (resume; uncommitted
+  tests/e2e/* + max-input.test.ts), Slice 12 setup (docs only: DEC-148 cascade draft).
+- Orchestrator DECs to record after finisher: DEC-173 (AC-083 executor cancellation), DEC-174 (RLS predicate scope).
+- Next: ledger refresh #2 -> quiet gate-db-verify -> gate-validate-diag -> evidence runner 09/10/11 + guards ->
+  tracking close -> draft PR; then apply Slice 12 cascade (DEC) and start Slice 12 TDD.
