@@ -1388,16 +1388,41 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'preview',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'control: the exact recomputed version set at the current entry version mints [P2-S11-AC-089]',
+          },
+        ],
       },
       {
         text: 'publication bind the same bytes.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit.sql',
+            title:
+              'the review is open at version 1 and freezes the revision hash, the dependency hash, the activation evidence and the strictest-of workflow policy evidence of the manifest [P2-S11-AC-005]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. Unproven clauses are the forward ones only: "preview" and "publication bind the same bytes" have no passing test because no preview or publication runtime exists in Slice 10 (CMS-03B-07..09 are contract-only; runtime is Slice 11). Review, activation, write (create, append, conflict resolution), restore and the reads are each proven against the same artifact and definition-hash bytes, including the DEC-133 object structure (EC R1 079-a was fixed by migration 20261005015000; EC R1 079-b was a probe defect, every real structure drift is refused by the existing activation check).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-080',
@@ -2891,13 +2916,71 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and refuses an out-of-bound preimage response (more than 128 paths, or a side over 256 KiB) as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
+        text: 'and refuses an out-of-bound preimage response (more than 128 paths,',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail.test.ts',
+            title:
+              'conflict detail resource envelope caps paths at 128 entries',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail.test.ts',
+            title:
+              'conflict detail resource envelope bounds changedPaths at 1-128 unique entries',
+          },
+        ],
+      },
+      {
+        text: 'or a side over 256 KiB)',
         citations: [],
+      },
+      {
+        text: 'as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-088] treats a resolved or superseded payload as a dependency fault (DEC-139: only an open conflict is served)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P1-S10-API] rejects a dependency resource whose entry or conflict id is not bound to the request',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-092] refuses an open record with no paths and a closed record that still carries paths',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-092] maps a dependency timeout to 504 and an invalid response to 502',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/route-errors-dependency.test.ts',
+            title:
+              '[BE00:172][BE00:590] a 502 is published as DEPENDENCY_UNAVAILABLE on every editorial route CMS-03B-12 publishes a 502 as DEPENDENCY_UNAVAILABLE with a retryable cms_editorial dependency and no upstream text',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/routes-dependency-code.test.ts',
+            title:
+              '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "and refuses an out-of-bound preimage response (more than 128 paths, or a side over 256 KiB) as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code. Today apps/worker/src/cms-editorial/conflict-detail-routes.test.ts asserts 502 BAD_GATEWAY for an invalid or out-of-bound dependency answer. Malformed UUIDs, undeclared queries and bodies ARE refused before any database call (EC R1 read-boundary suite).',
+      'Unproven: "or a side over 256 KiB)". The database read RPC bounds each side at 262144 bytes (platform_private.cms_json_bounded in the CMS-03B-12 migrations), but no test feeds a side over 256 KiB to the RPC, the contract or the route, and the contract schema has no size member to assert. Proven: the 128-path bound (the strict resource schema refuses 129 paths and more than 128 changedPaths), and that the Worker answers a dependency answer that breaks the resource contract as 502 DEPENDENCY_UNAVAILABLE with a fixed, non-serving body and no validator (route tests for closed states, inconsistent paths, unbound ids and an open record with no paths; the shared 502 code is asserted by the dependency-code contract tests). Needs one over-bound side case (256 KiB plus one byte) at the route or the RPC.',
   },
   {
     criterion: 'P2-S10-AC-090',

@@ -1595,7 +1595,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-01' failure mapping through the production app and adapter CMS-03B-01 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-01' failure mapping through the production app and adapter CMS-03B-01 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -1854,7 +1854,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
           {
             tool: 'vitest',
@@ -2835,7 +2835,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -2933,7 +2933,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/components/cms-editorial/ev-ea-conflict-recovery.test.ts',
             title:
-              'EA conflict resolution recovers from every dependency failure a 502 BAD_GATEWAY keeps every choice, shows fixed copy and the retry replays the identical request under the same key',
+              'EA conflict resolution recovers from every dependency failure a 502 DEPENDENCY_UNAVAILABLE keeps every choice, shows fixed copy and the retry replays the identical request under the same key',
           },
           {
             tool: 'vitest',
@@ -3926,7 +3926,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-03' failure mapping through the production app and adapter CMS-03B-03 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-03' failure mapping through the production app and adapter CMS-03B-03 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -4169,7 +4169,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -5089,7 +5089,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },

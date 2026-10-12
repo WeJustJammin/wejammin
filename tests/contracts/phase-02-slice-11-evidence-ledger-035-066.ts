@@ -861,6 +861,54 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'CmsEditorialReviewQueue (CMS-03B-17) announces the count politely',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.status.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland confirmation [P2-S11-AC-037] still reads "Decision recorded." after the refetch removed the decision form, announced once',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.status.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland confirmation [P2-S11-AC-037] keeps the confirmation in the island line while the refetch is in flight, not in the form as well',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.status.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland confirmation [P2-S11-AC-037] says nothing in the island line while the outcome is unknown, then confirms once after the retry commits',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.status.test.tsx',
+            title:
+              'CmsEditorialReviewDetailIsland confirmation [P2-S11-AC-037] leaves the island line empty when a decision is refused',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland confirmation [P2-S11-AC-037] keeps one polite status line mounted outside every form before any command',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland confirmation [P2-S11-AC-037] still reads the submit confirmation after the refetch removed the submit form, announced once',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/use-cms-workflow-status.test.tsx',
+            title:
+              'the island confirmation line takes the sentence of a committed form, which then stops saying it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/use-cms-workflow-status.test.tsx',
+            title:
+              'the island confirmation line writes the line once for one commit, however often the island re-renders',
+          },
         ],
       },
       {
@@ -945,9 +993,27 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx',
             title:
-              'definite refusals rotates the key, refetches the canonical state and keeps the input on a stale conflict',
+              'CMS-03B-06 decision form keeps its entries [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx',
+            title:
+              'CMS-03B-06 decision form keeps its entries [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx',
+            title:
+              'CMS-03B-05 submit form re-sends the served preparation unchanged [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx',
+            title:
+              'CMS-03B-05 submit form re-sends the served preparation unchanged [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome',
           },
         ],
       },
@@ -1458,7 +1524,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'an executing schedule whose review was invalidated (a superseded revision, an unavailable entry) is blocked approval_invalidated, never cancelled by the executor (DEC-158(d)) [P2-S11-AC-083]',
+              'an executing schedule whose review was invalidated by a superseding revision of an ACTIVE entry is blocked approval_invalidated, never cancelled by the executor [P2-S11-AC-083]',
           },
           {
             tool: 'pgtap',
@@ -1501,6 +1567,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'an unpublish without an active head blocks the schedule with publication_not_active and appends nothing [P2-S11-AC-083]',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is cancelled entry_unavailable by the executor (BE03b CMS-03B-20, which supersedes DEC-158(d) for this case) [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is answered cancelled entry_unavailable with no publication evidence (BE03b CMS-03B-20) [P2-S11-AC-083]',
+          },
         ],
       },
       {
@@ -1522,12 +1600,6 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'a blocked outcome appends no lineage row and emits no publication event: the prior publication stays intact [P2-S11-AC-083]',
-          },
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
-            title:
               'the fourth consecutive retryable failure blocks the schedule with retries_exhausted [P2-S11-AC-082]',
           },
           {
@@ -1541,6 +1613,12 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'tests/postgrest/phase-02-slice-11-sweep-outcomes.apispec.ts',
             title:
               'CMS-03B-20 retryable and blocked outcomes [CMS-03B-20] unavailable load retries at 15 seconds while absent active head blocks with complete typed null fields',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'the blocked execution left the existing active v1 head, the lineage rows, their events, audit records and evidence summaries exactly as they were: no tombstone, no successor row [P2-S11-AC-083]',
           },
         ],
       },
@@ -1770,6 +1848,24 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'CmsWorkflowCommandFrame names its form by a focusable heading and keeps one persistent polite status region',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland confirmation [P2-S11-AC-040] still reads "Scheduled, not published" after the refetch removed the schedule form',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/use-cms-workflow-status.test.tsx',
+            title:
+              'the island confirmation line keeps the sentence when the form that committed it is removed',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/use-cms-workflow-status.test.tsx',
+            title:
+              'the island confirmation line withdraws the sentence when any form begins its next command',
+          },
         ],
       },
       {
@@ -1842,9 +1938,21 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx',
             title:
-              'definite refusals rotates the key, refetches the canonical state and keeps the input on a stale conflict',
+              'CMS-03B-07 schedule form keeps its entries [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx',
+            title:
+              'CMS-03B-07 schedule form keeps its entries [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx',
+            title:
+              'CMS-03B-07 schedule form keeps its entries [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key',
           },
         ],
       },
@@ -2740,6 +2848,30 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'CmsWorkflowCommandFrame names its form by a focusable heading and keeps one persistent polite status region',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland confirmation [P2-S11-AC-043] still reads the publication confirmation after the refetch removed the publish form',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx',
+            title:
+              'CmsEditorialWorkflowIsland confirmation [P2-S11-AC-043] confirms the preview once in the island line and withdraws it when the token is hidden',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/use-cms-workflow-status.test.tsx',
+            title:
+              'the island confirmation line keeps the sentence when the form that committed it is removed',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/use-cms-workflow-status.test.tsx',
+            title:
+              'the island confirmation line withdraws the sentence when any form begins its next command',
+          },
         ],
       },
       {
@@ -2806,9 +2938,27 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx',
             title:
-              'definite refusals rotates the key, refetches the canonical state and keeps the input on a stale conflict',
+              'CMS-03B-08 preview form keeps its entries [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx',
+            title:
+              'CMS-03B-08 preview form keeps its entries [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx',
+            title:
+              'CMS-03B-09 publish confirmation keeps its entry [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx',
+            title:
+              'CMS-03B-09 publish confirmation keeps its entry [P2-S11-AC-043] keeps the audience through an unknown outcome and re-sends it under the same key',
           },
         ],
       },
@@ -2973,7 +3123,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      'A tracking criterion that can only be proven at slice close, in the same change as the final tracker update: slice tracking, the feature-ledger assignments of 25.02.03, 25.02.04 and 25.03.04, the cms-publication runbook and the architecture graph. Related checks exist but do not prove the clause as a whole: tests/contracts/phase-02-slice-11-feature-ledger.test.ts now asserts the three feature-ledger assignments and their operations (cited under AC-035, AC-038 and AC-041), tests/contracts/phase-02-slice-11-runbook.test.ts asserts the runbook covers every operation, and scripts/check-progress-consistency.mjs checks tracker counts; none checks slice tracking beyond counts or architecture-graph freshness. No test scans the tree for unresolved implementation boundaries or undocumented drift, and one boundary is open by design: platform_private.projection_consumer_state.projection_id has no foreign key until the delivery slice creates publication_projection (BOUNDARY in supabase/migrations/20261010165000_cms_projection_consumer_state.sql, sentinel in phase_02_slice_11_projection_state.sql; its GitHub tracking issue is not yet opened). Needs the slice-close change itself plus a boundary and drift guard.',
+      'A tracking criterion that can only be proven at slice close, in the same change as the final tracker update: slice tracking, the feature-ledger assignments of 25.02.03, 25.02.04 and 25.03.04, the cms-publication runbook and the architecture graph. Related checks exist but do not prove the clause as a whole: tests/contracts/phase-02-slice-11-feature-ledger.test.ts now asserts the three feature-ledger assignments and their operations (cited under AC-035, AC-038 and AC-041), tests/contracts/phase-02-slice-11-runbook.test.ts asserts the runbook covers every operation, and scripts/check-progress-consistency.mjs checks tracker counts; none checks slice tracking beyond counts or architecture-graph freshness. No test scans the tree for unresolved implementation boundaries or undocumented drift, and two boundaries are open by design, each with its tracking issue: platform_private.projection_consumer_state.projection_id has no foreign key until the delivery slice creates publication_projection (BOUNDARY in supabase/migrations/20261010165000_cms_projection_consumer_state.sql, sentinel in phase_02_slice_11_projection_state.sql, issue #127), and the production trigger of the claimed schema-migration preparation entry is not defined by a locked spec (BOUNDARY in apps/worker/src/production-job-effect-dispatcher.ts, sentinel in production-job-effect-dispatcher-cms-preparation.test.ts, issue #128). Needs the slice-close change itself plus a boundary and drift guard.',
   },
   {
     criterion: 'P2-S11-AC-046',
@@ -3027,7 +3177,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
             title:
-              'every refusal above left no decision, review change, reservation, audit record or outbox event behind [P2-S11-AC-015]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]',
           },
           {
             tool: 'vitest',
@@ -3277,7 +3427,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'every raised refusal above left no schedule, review change, lineage row, reservation, event or audit record behind [P2-S11-AC-018]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]',
           },
           {
             tool: 'pgtap',
@@ -3496,7 +3646,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]',
           },
           {
             tool: 'pgtap',
@@ -4080,7 +4230,44 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-routes.test.ts',
+            title:
+              'port boundary is 502 when the success payload breaks the resource contract CMS-03B-15',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 18 preflight results',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 65 publications',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a preparation for a revision that is not a draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/route-errors-dependency.test.ts',
+            title:
+              '[BE00:172][BE00:590] a 502 is published as DEPENDENCY_UNAVAILABLE on every editorial route CMS-03B-15 publishes a 502 as DEPENDENCY_UNAVAILABLE with a retryable cms_editorial dependency and no upstream text',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/routes-dependency-code.test.ts',
+            title:
+              '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
+          },
+        ],
       },
       {
         text: 'when `preparation` is non-null for a revision that is not a submittable `draft`',
@@ -4224,9 +4411,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-051',
@@ -4334,6 +4520,30 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'CMS-03B-15 scoped preparation [CMS-03B-15] assignee publisher and reviewer scopes read the same frozen candidate and submission moves the composite ETag',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql',
+            title:
+              'control: an active reviewer assignee reads the workflow of the revision of its review (the review is served, no preparation) [P2-S11-AC-051]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql',
+            title:
+              'an active assignee of a review of another revision of the entry holds no read scope on this revision (default and named): 403 capability_missing [P2-S11-AC-051]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql',
+            title:
+              'an active assignee of a review of ANOTHER entry holds no read scope on this entry: 403 capability_missing [P2-S11-AC-051]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql',
+            title:
+              'a reviewer whose assignment was REVOKED holds no read scope: 403 capability_missing, not a concealed 404 and not a served workflow [P2-S11-AC-051]',
+          },
         ],
       },
       {
@@ -4402,6 +4612,18 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             file: 'apps/worker/src/cms-editorial/workflow-read-routes.test.ts',
             title:
               'port boundary conceals a hidden target as an empty 404 and keeps a visible 403 typed CMS-03B-15',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql',
+            title:
+              'a reviewer whose assignment was REVOKED holds no read scope: 403 capability_missing, not a concealed 404 and not a served workflow [P2-S11-AC-051]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql',
+            title:
+              'the revoked reviewer is told 403 (a visible entry without scope) while a non-member is concealed 404: the two are not conflated [P2-S11-AC-051]',
           },
         ],
       },
@@ -4624,18 +4846,17 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'port boundary is 504 when the port outlives the route deadline CMS-03B-15',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]',
+          },
         ],
       },
       {
         text: 'and the Tier 2 p95 < 1,200 ms target',
-        citations: [
-          {
-            tool: 'vitest',
-            file: 'packages/contracts/src/cms-editorial/routes-slice11.test.ts',
-            title:
-              '[P2-S11-AC-049][P2-S11-AC-052] CMS-03B-15 workflow read row limits 300/600 per minute, 8 s and the Tier 2 p95 target',
-          },
-        ],
+        citations: [],
       },
       {
         text: '(which includes the 2,000 ms accessibility checker budget)',
@@ -4684,8 +4905,9 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven: the Tier 2 p95 < 1,200 ms target as a read-route figure. supabase/tests/phase_02_slice_11_reads_bench128.sql measures the database RPC of the read (thirty samples at the declared bounds, p95 asserted against the target, worst sample against the 8,000 ms deadline) and every assertion passes with a wide margin, but no test measures the composed Worker, Kong and PostgREST read, and the registry-row test (routes-slice11.test.ts) only declares the target. The 2,000 ms accessibility checker budget that the text folds into the 1,200 ms figure runs in the Worker, outside the database measurement (the text is itself inconsistent: the budget alone exceeds the p95); the budget is cited under its own clause. Needs a composed-stack p95 measurement of the read, or an owner ruling that the p95 of a read is the protected-RPC figure.',
   },
   {
     criterion: 'P2-S11-AC-053',
@@ -4808,7 +5030,44 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a response-bound failure (502 `DEPENDENCY_UNAVAILABLE`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-routes.test.ts',
+            title:
+              'port boundary is 502 when the success payload breaks the resource contract CMS-03B-15',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 18 preflight results',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses 65 publications',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-workflow.test.ts',
+            title:
+              'CMS-03B-15 response bounds are refused, never served [P2-S11-AC-050] [P2-S11-AC-053] refuses a preparation for a revision that is not a draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/route-errors-dependency.test.ts',
+            title:
+              '[BE00:172][BE00:590] a 502 is published as DEPENDENCY_UNAVAILABLE on every editorial route CMS-03B-15 publishes a 502 as DEPENDENCY_UNAVAILABLE with a retryable cms_editorial dependency and no upstream text',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/routes-dependency-code.test.ts',
+            title:
+              '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
+          },
+        ],
       },
       {
         text: 'the read limit (429)',
@@ -4954,9 +5213,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "a response-bound failure (502 `DEPENDENCY_UNAVAILABLE`)", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code. The 500 and 502/504 envelope tests cited for this criterion run through the publish row and every declared status of every Slice 11 row, not a dedicated CMS-03B-15 internal-failure case.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-054',
@@ -5666,7 +5924,44 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-routes.test.ts',
+            title:
+              'port boundary is 502 when the success payload breaks the resource contract CMS-03B-16',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses 9 decisions',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses more recorded decisions than required',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a decision with a member the contract does not name',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/route-errors-dependency.test.ts',
+            title:
+              '[BE00:172][BE00:590] a 502 is published as DEPENDENCY_UNAVAILABLE on every editorial route CMS-03B-16 publishes a 502 as DEPENDENCY_UNAVAILABLE with a retryable cms_editorial dependency and no upstream text',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/routes-dependency-code.test.ts',
+            title:
+              '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
+          },
+        ],
       },
       {
         text: 'when it breaks the review invariants (`invalidatedReason` exactly when `invalidated`',
@@ -5878,9 +6173,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "and refuses a response as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-057',
@@ -6208,22 +6502,22 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'port boundary is 504 when the port outlives the route deadline CMS-03B-16',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]',
+          },
         ],
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target.',
-        citations: [
-          {
-            tool: 'vitest',
-            file: 'packages/contracts/src/cms-editorial/routes-slice11.test.ts',
-            title:
-              '[P2-S11-AC-055][P2-S11-AC-058] CMS-03B-16 review detail row is a safe Tier 1 read resolved by the RPC scope',
-          },
-        ],
+        citations: [],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven: the Tier 1 p95 < 750 ms target as a read-route figure. supabase/tests/phase_02_slice_11_reads_bench128.sql measures the database RPC of the read (thirty samples at the declared bounds, p95 asserted against the target, worst sample against the 8,000 ms deadline) and every assertion passes with a wide margin, but no test measures the composed Worker, Kong and PostgREST read, and the registry-row test (routes-slice11.test.ts) only declares the target. Needs a composed-stack p95 measurement of the read, or an owner ruling that the p95 of a read is the protected-RPC figure.',
   },
   {
     criterion: 'P2-S11-AC-059',
@@ -6368,7 +6662,44 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '(502 `DEPENDENCY_UNAVAILABLE`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-routes.test.ts',
+            title:
+              'port boundary is 502 when the success payload breaks the resource contract CMS-03B-16',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses 9 decisions',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses more recorded decisions than required',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/workflow-read-breach-review.test.ts',
+            title:
+              'CMS-03B-16 response bounds are refused, never served [P2-S11-AC-056] [P2-S11-AC-059] refuses a decision with a member the contract does not name',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/route-errors-dependency.test.ts',
+            title:
+              '[BE00:172][BE00:590] a 502 is published as DEPENDENCY_UNAVAILABLE on every editorial route CMS-03B-16 publishes a 502 as DEPENDENCY_UNAVAILABLE with a retryable cms_editorial dependency and no upstream text',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/routes-dependency-code.test.ts',
+            title:
+              '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
+          },
+        ],
       },
       {
         text: 'the read limit',
@@ -6485,9 +6816,8 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven: "(502 `DEPENDENCY_UNAVAILABLE`)", the status and code named after "a response-bound failure", the code. The 502 status itself is proven (the breach tests cited under the other clauses assert status 502 and a fixed, non-serving body), but the Worker answers it with the code BAD_GATEWAY, not the DEPENDENCY_UNAVAILABLE the owner-ratified wording names (BE00:172/590 map a 502 to DEPENDENCY_UNAVAILABLE with retryable true). The conformance fix (Worker codes, web error mapping and the breach tests) is queued implementation work; the clause is cited once it lands and the breach tests assert the ratified code. The clause "a response-bound failure" itself is cited: the breach is mapped to a typed ApiError and never served.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-060',
@@ -7529,22 +7859,22 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             title:
               'port boundary is 504 when the port outlives the route deadline CMS-03B-17',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_reads_bench128.sql',
+            title:
+              'the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]',
+          },
         ],
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target.',
-        citations: [
-          {
-            tool: 'vitest',
-            file: 'packages/contracts/src/cms-editorial/routes-slice11.test.ts',
-            title:
-              '[P2-S11-AC-061][P2-S11-AC-064] CMS-03B-17 reviewer queue row lists only the caller scopes: no 403 or 404, and a cursor 409',
-          },
-        ],
+        citations: [],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven: the Tier 1 p95 < 750 ms target as a read-route figure. supabase/tests/phase_02_slice_11_reads_bench128.sql measures the database RPC of the read (thirty samples at the declared bounds, p95 asserted against the target, worst sample against the 8,000 ms deadline) and every assertion passes with a wide margin, but no test measures the composed Worker, Kong and PostgREST read, and the registry-row test (routes-slice11.test.ts) only declares the target. Needs a composed-stack p95 measurement of the read, or an owner ruling that the p95 of a read is the protected-RPC figure.',
   },
   {
     criterion: 'P2-S11-AC-065',

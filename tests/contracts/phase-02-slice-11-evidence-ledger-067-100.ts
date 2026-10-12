@@ -315,7 +315,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql',
             title:
-              'an owner without a valid cms.editor grant is refused a create (no grantor authority end) but may still revoke [P2-S11-AC-069]',
+              'an owner without a valid cms.editor grant is refused both a create and a revoke: 403 capability_missing (BE03b CMS-03B-18, review of finding A-B1) [P2-S11-AC-069]',
           },
           {
             tool: 'vitest',
@@ -334,6 +334,24 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'packages/contracts/src/content-schema-registry/grants.contract.test.ts',
             title:
               'grantable CMS capability registry is the closed DEC-119 set',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql',
+            title:
+              'an owner whose cms.editor grant has lapsed (its valid_through day passed) is refused both a create and a revoke: 403 capability_missing [P2-S11-AC-069]',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/010-review-assignment-race.mjs',
+            title:
+              'A7: a revoke whose unlocked check passes BLOCKS on the authority rows held by an uncommitted revocation of the owner cms.editor grant',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/010-review-assignment-race.mjs',
+            title:
+              'A7: the refused revoke left the assignment active at version 1 and wrote no event or idempotency reservation',
           },
         ],
       },
@@ -517,6 +535,12 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_races/010-review-assignment-race.mjs',
             title:
               'A4: a create BLOCKS behind a session holding the review row FOR UPDATE (the command takes the review lock)',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/010-review-assignment-race.mjs',
+            title:
+              "A2: neither parked create has written the assignments table yet: both wait on the command's own review lock, not on the insert guard",
           },
         ],
       },
@@ -798,13 +822,19 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql',
             title:
-              'every refusal above left no assignment, review change, reservation, audit record or outbox event behind [P2-S11-AC-071]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of assignment, review, decision, reservation, audit record, outbox event and the rest), observed inside its own call before the probe rolled back; only the five successful controls wrote [P2-S11-AC-071]',
           },
           {
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts',
             title:
               'CMS-03B-18 refusals through the real stack [CMS-03B-18] step-up, eligibility, duplicates, expiry bounds, revoke and conflict',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql',
+            title:
+              'control: the observation sees a write - an accepted assignment changes the assignment, reservation, event and audit tables inside its probe [P2-S11-AC-071]',
           },
         ],
       },
@@ -2116,7 +2146,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_claim.sql',
             title:
-              'a batch outside 1..100, a non-integer, a missing batch, an extra key and a non-object are INVALID_REQUEST and change nothing [P2-S11-AC-079]',
+              'a batch outside 1..100, a non-integer, a missing batch, an extra key and a non-object are INVALID_REQUEST and change no durable table (observed inside each call before it rolled back) [P2-S11-AC-079]',
           },
           {
             tool: 'pgtap',
@@ -2145,7 +2175,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and `platform_private.cms_execute_publication_schedule(schedule_id, expected_version, lease_id, evidence)` returning the strict `ScheduleExecutionResult` (`completed`, `blocked`, `failed_retryable` or `already_completed`)',
+        text: 'and `platform_private.cms_execute_publication_schedule(schedule_id, expected_version, lease_id, evidence)` returning the strict `ScheduleExecutionResult`',
         citations: [
           {
             tool: 'vitest',
@@ -2169,7 +2199,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute.sql',
             title:
-              'an unknown key, a missing member, a malformed id or version and a non-object proof are INVALID_REQUEST, an absent schedule is NOT_FOUND, and nothing changes [P2-S11-AC-079]',
+              'an unknown key, a missing member, a malformed id or version and a non-object proof are INVALID_REQUEST, an absent schedule is NOT_FOUND, and none of them changed a durable table (observed inside each call before it rolled back) [P2-S11-AC-079]',
           },
           {
             tool: 'pgtap',
@@ -2187,7 +2217,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'an executing schedule whose review was invalidated (a superseded revision, an unavailable entry) is blocked approval_invalidated, never cancelled by the executor (DEC-158(d)) [P2-S11-AC-083]',
+              'an executing schedule whose review was invalidated by a superseding revision of an ACTIVE entry is blocked approval_invalidated, never cancelled by the executor [P2-S11-AC-083]',
           },
           {
             tool: 'pgtap',
@@ -2202,6 +2232,10 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
               'executeClaimedSchedule executes with the claimed schedule version, the lease and the proof',
           },
         ],
+      },
+      {
+        text: '(`completed`, `blocked`, `failed_retryable` or `already_completed`)',
+        citations: [],
       },
       {
         text: 'neither is a browser route, proxy or client type.',
@@ -2233,8 +2267,9 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven as written: the closed outcome list "(`completed`, `blocked`, `failed_retryable` or `already_completed`)". DEC-173 (2026-10-12, BE03b CMS-03B-20 line 1898 over DEC-158(d)) gives the executor a fifth outcome, `cancelled` with reason `entry_unavailable`, so the shipped ScheduleExecutionResult has five outcomes and the contract test (internal-rpc.test.ts, "types the execution result with the closed outcome and reason coupling") asserts exactly five; no test can show the list of four. The strict result type, the executor signature, the claim RPC and the private/browser separation are cited. Needs an owner wording ruling that adds `cancelled` to the criterion text and to the BE03b ScheduleExecutionResult schema; BE03b lines 1505-1512, 1844, 1867 and 2073 still describe four outcomes.',
   },
   {
     criterion: 'P2-S11-AC-080',
@@ -2276,7 +2311,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute.sql',
             title:
-              'a stale lease, a stale version and a schedule that was never claimed are refused (CONFLICT / VERSION_MISMATCH) with no effect [P2-S11-AC-080]',
+              'a stale lease, a stale version and a schedule that was never claimed are refused (CONFLICT / VERSION_MISMATCH) and none of them changed a durable table (observed inside each call before it rolled back) [P2-S11-AC-080]',
           },
           {
             tool: 'vitest',
@@ -2293,7 +2328,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'an executing schedule whose review was invalidated (a superseded revision, an unavailable entry) is blocked approval_invalidated, never cancelled by the executor (DEC-158(d)) [P2-S11-AC-083]',
+              'an executing schedule whose review was invalidated by a superseding revision of an ACTIVE entry is blocked approval_invalidated, never cancelled by the executor [P2-S11-AC-083]',
           },
           {
             tool: 'pgtap',
@@ -2407,6 +2442,18 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'CMS-03B-20 sweep through the real RPCs [CMS-03B-20] the tick executes due schedules: real checker evidence completes one publication, a missing proof is failed_retryable (never a pass) and a lapsed publisher grant blocks',
           },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-sweep-stale-evidence.apispec.ts',
+            title:
+              'CMS-03B-20 stale accessibility proof through the real RPCs [CMS-03B-20] a proof the database refuses as stale is recomputed and the same claim completes under the same lease with the attempt count unchanged',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts',
+            title:
+              'a stale accessibility proof at execution recomputes fresh checker evidence and executes the same claim again under the same lease',
+          },
         ],
       },
       {
@@ -2484,6 +2531,54 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'apps/worker/src/cms-editorial-principals.test.ts',
             title:
               'principal boundaries keeps the RPC names inside their own modules and the sweep transport',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_sweep_grants.sql',
+            title:
+              'the execute ACL of each sweep function is exactly its definer and, for the platform_api wrappers, service_role: no other grantee and no PUBLIC [P2-S11-AC-081]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_sweep_grants.sql',
+            title:
+              'no role other than the definer and (for the wrappers) service_role - nor a role that inherits from them - can execute any sweep function: anon, authenticated, authenticator and every Supabase service role are refused [P2-S11-AC-081]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_sweep_grants.sql',
+            title:
+              'the private claim and execute functions are reachable by the definer role alone, service_role included [P2-S11-AC-081]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_sweep_grants.sql',
+            title:
+              'the named browser and platform roles (anon, authenticated, authenticator, supabase_auth_admin, supabase_storage_admin, dashboard_user, pgbouncer) hold no EXECUTE on any sweep function [P2-S11-AC-081]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-import-graph.test.ts',
+            title:
+              'CMS-03B-20 module boundary (import graph) lets only the scheduled sweep import the claim/execute port, in any form',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-import-graph.test.ts',
+            title:
+              'CMS-03B-20 module boundary (import graph) lets no module but the Worker entrypoint import the sweep, in any form',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-import-graph.test.ts',
+            title:
+              'CMS-03B-20 module boundary (import graph) value-imports the RPC-name constants in the port alone; the shared RPC type module reaches them only as a type',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-import-graph.test.ts',
+            title:
+              'CMS-03B-20 module boundary (import graph) mentions the RPC names and their constants in no other non-test source of any workspace',
           },
         ],
       },
@@ -2621,6 +2716,18 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'C2: once the lock is released the next claim takes the skipped schedule, and only it',
           },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: sweeper B runs and COMPLETES while sweeper A is parked holding its row locks: it does not wait for A (SKIP LOCKED)',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: the two claim sets are disjoint and together are all eight due schedules: none claimed twice, none lost',
+          },
         ],
       },
       {
@@ -2671,7 +2778,19 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
             title:
-              'the 15,000 ms job deadline gives the claim and the execute each their own 15,000 ms',
+              'the 15,000 ms job deadline shares ONE 15,000 ms job deadline between the claim and the execute: a claim that takes 10,000 ms leaves 5,000 ms',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
+            title:
+              'the 15,000 ms job deadline starts no further schedule once the job deadline has passed and logs how many were left unstarted',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts',
+            title:
+              'the 15,000 ms job deadline leaves no timer behind when the tick finishes inside the deadline',
           },
         ],
       },
@@ -2783,7 +2902,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'an executing schedule whose review was invalidated (a superseded revision, an unavailable entry) is blocked approval_invalidated, never cancelled by the executor (DEC-158(d)) [P2-S11-AC-083]',
+              'an executing schedule whose review was invalidated by a superseding revision of an ACTIVE entry is blocked approval_invalidated, never cancelled by the executor [P2-S11-AC-083]',
           },
           {
             tool: 'pgtap',
@@ -2810,12 +2929,6 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
               'the fourth consecutive retryable failure blocks the schedule with retries_exhausted [P2-S11-AC-082]',
           },
           {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
-            title:
-              'a blocked outcome appends no lineage row and emits no publication event: the prior publication stays intact [P2-S11-AC-083]',
-          },
-          {
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-sweep-outcomes.apispec.ts',
             title:
@@ -2826,6 +2939,24 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'tests/postgrest/phase-02-slice-11-sweep-outcomes.apispec.ts',
             title:
               'CMS-03B-20 retryable and blocked outcomes [CMS-03B-20] real 60-second and 300-second retries end at fourth failure with prior publication intact',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'the scheduled publish over an existing head fails the preflight and the schedule is blocked preflight_failed [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'the blocked execution left the existing active v1 head, the lineage rows, their events, audit records and evidence summaries exactly as they were: no tombstone, no successor row [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an invalidated approval of an ACTIVE entry (a superseded revision) is still blocked approval_invalidated, not cancelled [P2-S11-AC-083]',
           },
         ],
       },
@@ -2849,6 +2980,42 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_helpers_invalidation.sql',
             title:
               'and cancels its schedule with entry_unavailable [P2-S11-AC-112]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is cancelled entry_unavailable by the executor (BE03b CMS-03B-20, which supersedes DEC-158(d) for this case) [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is answered cancelled entry_unavailable with no publication evidence (BE03b CMS-03B-20) [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              "the schedule is cancelled in the executor's own transaction: reason entry_unavailable, version + 1 (CAS), attempt count unchanged, lease released [P2-S11-AC-083]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an entry that is held (not active) cancels the claimed schedule entry_unavailable [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an unpublish schedule of an unavailable entry is cancelled entry_unavailable too: the action does not matter [P2-S11-AC-083]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-sweep-composition.apispec.ts',
+            title:
+              'CMS-03B-20 real lineage and replay [CMS-03B-20] an entry archived after the actual claim cancels the schedule entry_unavailable through the real Worker sweep with exact effects',
           },
         ],
       },
@@ -3002,6 +3169,48 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'C3: two concurrent sweepers recovered each schedule once: exactly one audit record per recovery',
           },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: sweeper A is parked inside its transaction on the gate, after its claim UPDATE and before its commit',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: to every other session all eight schedules are still pending at version 1: A has claimed nothing durable yet',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: sweeper B runs and COMPLETES while sweeper A is parked holding its row locks: it does not wait for A (SKIP LOCKED)',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: A is STILL parked after B finished: the two sweepers genuinely overlapped',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D1: the two claim sets are disjoint and together are all eight due schedules: none claimed twice, none lost',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D2: sweeper B runs and COMPLETES while A is parked holding the recovering row: it skips the locked row instead of waiting for it',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D2: B recovered and claimed nothing, and A is still parked: no second recovery of the same lease',
+          },
         ],
       },
       {
@@ -3018,6 +3227,12 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_races/013-schedule-claim-race.mjs',
             title:
               'C3: each expired lease was returned to failed_retryable exactly once (attempt_count 1, version 3); the live lease is untouched',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+            title:
+              'D2: sweeper A is parked after recovering the expired lease: it row-locks the schedule (a third session cannot lock it) and nothing is committed (still executing at version 2)',
           },
         ],
       },
@@ -3051,7 +3266,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
             title:
-              'an executing schedule whose review was invalidated (a superseded revision, an unavailable entry) is blocked approval_invalidated, never cancelled by the executor (DEC-158(d)) [P2-S11-AC-083]',
+              'an executing schedule whose review was invalidated by a superseding revision of an ACTIVE entry is blocked approval_invalidated, never cancelled by the executor [P2-S11-AC-083]',
           },
           {
             tool: 'pgtap',
@@ -3082,6 +3297,24 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_helpers_invalidation.sql',
             title:
               'with the schedule reason entry_unavailable, not approval_invalidated [P2-S11-AC-111]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is cancelled entry_unavailable by the executor (BE03b CMS-03B-20, which supersedes DEC-158(d) for this case) [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              'an executing schedule whose entry was archived after the claim is answered cancelled entry_unavailable with no publication evidence (BE03b CMS-03B-20) [P2-S11-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql',
+            title:
+              "the schedule is cancelled in the executor's own transaction: reason entry_unavailable, version + 1 (CAS), attempt count unchanged, lease released [P2-S11-AC-083]",
           },
         ],
       },
@@ -3511,6 +3744,24 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_e2_scan_history_cursor_privacy.sql',
             title:
               'the empty page resumes past the concealed rank-1000 revision and finds the visible published revision at rank 1150 [P2-S11-AC-086]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-history-sealed-cursor.apispec.ts',
+            title:
+              'CMS-03B-03 state-filtered history paged with the sealed cursor through the Worker route [CMS-03B-03] a draft filter pages the six draft revisions two at a time: each cursor resumes exactly after the last scanned candidate and the last page has none',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-history-sealed-cursor.apispec.ts',
+            title:
+              'CMS-03B-03 state-filtered history paged with the sealed cursor through the Worker route [CMS-03B-03] the cursor of a filtered page is the fixed-length sealed envelope, canonical base64 that carries URL-significant characters, and discloses no identifier',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-history-sealed-cursor.apispec.ts',
+            title:
+              'CMS-03B-03 state-filtered history paged with the sealed cursor through the Worker route [CMS-03B-03] the Worker hands the RPC the exact cursor the browser sent (percent-decoding included) and returns the cursor the RPC answered',
           },
         ],
       },
@@ -4383,13 +4634,13 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_settings.sql',
             title:
-              'the evaluation goes through cfg_resolve_effective_value with consumer key cms.publication [P2-S11-AC-091]',
+              'each registered key is resolved through cfg_resolve_effective_value with consumer key cms.publication, for the owner party and the given instant, in ascending bytewise order (observed on a spy resolver) [P2-S11-AC-091]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_settings.sql',
             title:
-              'registered keys are evaluated in ascending bytewise order [P2-S11-AC-091]',
+              'keys registered out of order (b, a, B) come back in ascending bytewise order (B, a, b) as { key, definitionVersionId, sourceValueVersionId, valueHash } members, a contract default carrying a null source value version [P2-S11-AC-091]',
           },
           {
             tool: 'pgtap',
@@ -5469,19 +5720,19 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
             title:
-              'every refusal above left no review, dependency row, reservation, audit record or outbox event behind [P2-S11-AC-009]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'every raised refusal above left no schedule, review change, lineage row, reservation, event or audit record behind [P2-S11-AC-018]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]',
           },
         ],
       },

@@ -438,7 +438,23 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: 'must equal normalized revision hash;', citations: [] },
+      {
+        text: 'must equal normalized revision hash;',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
+            title:
+              'a frozen hash that is not the stored payload hash is VALIDATION_FAILED at /frozenHash [P2-S11-AC-005]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-review-refusals.apispec.ts',
+            title:
+              'CMS-03B-05 refusals through the real stack [CMS-03B-05] a tampered manifest is 409 dependency_changed with the current dependency hash and a wrong frozenHash is 422 at /frozenHash',
+          },
+        ],
+      },
       {
         text: '422/',
         citations: [
@@ -462,7 +478,29 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: '409.', citations: [] },
+      {
+        text: '409.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
+            title:
+              'a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
+            title:
+              'a superseded revision and a revision under an open, approved or rejected review are 409 revision_not_submittable [P2-S11-AC-005]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-review-refusals.apispec.ts',
+            title:
+              'CMS-03B-05 refusals through the real stack [CMS-03B-05] a second submission of an under-review revision is 409 revision_not_submittable',
+          },
+        ],
+      },
       {
         text: 'This is a contract-only dependency-manifest rule;',
         citations: [
@@ -476,7 +514,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-05: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-05: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
@@ -493,38 +531,55 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-05: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-05: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no function builds a dependency manifest, derives a version set or a frozen hash, or compares them (server derivation is Slice 11)',
+              'EB scope: the only functions that build a dependency manifest, derive a version set or compare them are the six named private Slice 11 derivation helpers (no API or public function exposes them)',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts',
+            title:
+              'CMS-03B-05 frozen submission and admission contracts [CMS-03B-05] freezes exact hashes, manifest, version set, policy and dependency rows with six atomic effect groups; fresh-evidence replay changes none',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-review-chain.apispec.ts',
+            title:
+              'CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack [CMS-03B-05] submit freezes the preparation into an open review (201, Location, strong ETag) exactly once',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-review-chain.apispec.ts',
+            title:
+              'CMS-03B-15 -> 05 -> 18 -> 06 -> 16 -> 17 through the real stack [CMS-03B-15] the workflow read of a draft serves its preparation and passes the strict resource schema',
           },
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. Contract-only by the tracker text, but two clauses cannot be proven in Slice 10: "must equal normalized revision hash" (equality with the stored revision payload hash is a runtime comparison; only a documentation array names it) and "409" (revision_not_submittable and dependency_changed are not registered reason codes and no CMS-03B-05 route or RPC exists; the S10 scope tests pin that absence). Proven: the strict 64-lowercase-hex frozenHash, its 422 VALIDATION_FAILED at /frozenHash through the shared Worker body boundary, and the scope statement. Runtime is Slice 11 (CMS-03B-05).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-039',
@@ -863,7 +918,7 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-05: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-05: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
@@ -880,38 +935,55 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-05: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-05: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no function builds a dependency manifest, derives a version set or a frozen hash, or compares them (server derivation is Slice 11)',
+              'EB scope: the only functions that build a dependency manifest, derive a version set or compare them are the six named private Slice 11 derivation helpers (no API or public function exposes them)',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql',
+            title:
+              'there is exactly one builder and its only input is the revision id: no manifest, hash or version-set value can be passed in [P2-S11-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
+            title:
+              'a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts',
+            title:
+              'CMS-03B-05 frozen submission and admission contracts [CMS-03B-05] freezes exact hashes, manifest, version set, policy and dependency rows with six atomic effect groups; fresh-evidence replay changes none',
           },
         ],
       },
     ],
-    status: 'contract-only',
-    limitation:
-      'Contract-only by the tracker text: the strict DependencyManifest (unknown keys, UUID/hash/version grammar per group including the nested schema artifact and validator refs, per-group caps, unique identities, 256 total entries, 32 KiB) and its 422 at the shared Worker body boundary are proven, and the scope tests prove that no S10 route, RPC mapping or database function builds the manifest from canonical state; server rebuild, JCS equality (409 dependency_changed) and the CMS-03B-05 route are Slice 11. The contract carries a single checker entry per DEC-145 D-13 (a plural checkers member is refused).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-040',
@@ -993,7 +1065,26 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`riskClass` is server-derived from frozen policy and dependencies;',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit.sql',
+            title:
+              'a protected policy freezes riskClass protected, two required decisions and the specialist slot from the manifest evidence [P2-S11-AC-120]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit.sql',
+            title:
+              'the review is open at version 1 and freezes the revision hash, the dependency hash, the activation evidence and the strictest-of workflow policy evidence of the manifest [P2-S11-AC-005]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
+            title:
+              'a caller riskClass or owner, a missing member, a malformed id and an If-Match that disagrees with the entry version are INVALID_REQUEST [P2-S11-AC-006]',
+          },
+        ],
       },
       {
         text: 'any caller-supplied `riskClass` is an unknown key.',
@@ -1013,9 +1104,8 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. Unproven: "`riskClass` is server-derived from frozen policy and dependencies" (the strictest-of derivation from the frozen workflow policy and the dependencies needs the CMS-03B-05 route and RPC, which are Slice 11; the scope tests pin that no S10 function derives it). Proven at contract level: riskClass is not a request member (unknown key, 422), the manifest policy evidence accepts exactly ordinary or protected and refuses a protected policy with fewer than two decisions.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-041',
@@ -1150,32 +1240,43 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-06: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-06: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-decision-policy.apispec.ts',
+            title:
+              'CMS-03B-06 ordinary decision policy and persistence [CMS-03B-06] approve appends one assignment-bound decision with exact policy, count, privacy and atomic effects; replay is inert',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision.sql',
+            title:
+              'the assigned reviewer approves an open review [P2-S11-AC-011]',
           },
         ],
       },
     ],
-    status: 'contract-only',
-    limitation:
-      'Contract-only by the tracker text: the strict EditorialDecisionRequest (approve or reject, a 1-2000 code-point NFC reason free of control, separator, bidirectional and markup-delimiter characters) and its 422 VALIDATION_FAILED at /decision and /reason through the shared Worker body boundary are proven, and the scope tests prove no CMS-03B-06 route, RPC mapping or database function exists. Reviewer assignment, MFA and the protected decision operation are Slice 11 (CMS-03B-06).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-042',
@@ -1198,8 +1299,39 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: 'ISO timestamp within configured MFA freshness;', citations: [] },
-      { text: 'named reviewer capability', citations: [] },
+      {
+        text: 'ISO timestamp within configured MFA freshness;',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title: 'control: a proof 590 s old is accepted [P2-S11-AC-108]',
+          },
+        ],
+      },
+      {
+        text: 'named reviewer capability',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a lapsed or deactivated standing cms.reviewer grant is 403 capability_missing; an ended membership leaves no scope at all (404) [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a readable review without an EFFECTIVE assignment (window over, not started, submitter, publisher, owner) is 403 capability_missing [P2-S11-AC-013]',
+          },
+        ],
+      },
       {
         text: 'never caller-selected authority;',
         citations: [
@@ -1223,7 +1355,35 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: '401/403/422.', citations: [] },
+      {
+        text: '401/403/422.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-review.test.ts',
+            title:
+              'EB publication boundary AC-041/AC-042: CMS-03B-06 decision is a 422 at the Worker body boundary EB boundary CMS-03B-06 stepUpAt/capability: a caller-supplied stepUpAt, capability or authority is 422 unknown_field',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-decision-contracts.apispec.ts',
+            title:
+              'CMS-03B-06 exact decision contracts [CMS-03B-06] stale proof returns exact STEP_UP_REQUIRED recovery before any RPC or reservation',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-decision-refusals.apispec.ts',
+            title:
+              'CMS-03B-06 refusals through the real stack [CMS-03B-06] step-up, the Worker gate, the assignment gate, a stale version and a decided review',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]',
+          },
+        ],
+      },
       {
         text: 'The caller supplies neither `stepUpAt` nor `capability`;',
         citations: [
@@ -1243,12 +1403,30 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'every CMS-03B-06 decision requires server-verified recent binding-bound MFA and eligible assigned-reviewer capability.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'a readable review without an EFFECTIVE assignment (window over, not started, submitter, publisher, owner) is 403 capability_missing [P2-S11-AC-013]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-decision-policy.apispec.ts',
+            title:
+              'CMS-03B-06 ordinary decision policy and persistence [CMS-03B-06] revoked assignment loses decision authority and concealed review matches absence',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. runtime enforcement is Slice 11 (CMS-03B-05/06): MFA freshness (600 s window), the named reviewer capability and assignment check, the 401/403/422 mapping and server verification of binding-bound MFA need the CMS-03B-06 route and RPC, which do not exist in Slice 10. Proven at contract level: the strict EditorialDecisionRequest has no stepUpAt, capability or authority member (each is a 422 unknown_field).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-043',
@@ -1348,32 +1526,43 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-07: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-07: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-schedule.apispec.ts',
+            title:
+              'CMS-03B-07 schedule through the real stack [CMS-03B-07] accepts a future UTC schedule (202 scheduled, never published; Location; strong ETag) and a replay adds nothing',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql',
+            title:
+              'the owner-party publisher schedules a publish of an approved revision [P2-S11-AC-017]',
           },
         ],
       },
     ],
-    status: 'contract-only',
-    limitation:
-      'Contract-only by the tracker text: an offset-free local ISO datetime with every component range-checked and a 1-64 character IANA-shaped timezone grammar, and their 422 VALIDATION_FAILED at /localDateTime and /timezone through the shared Worker body boundary, are proven. Membership of the timezone in the pinned tzdb (unknown_timezone) and the schedule persistence path are Slice 11 (CMS-03B-07); the contract tests only name that check as a seam.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-044',
@@ -1465,7 +1654,23 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: 'nonexistent local time rejected;', citations: [] },
+      {
+        text: 'nonexistent local time rejected;',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/time-authority/schedule-time.test.ts',
+            title:
+              '[P2-S11-AC-104] Time authority steps 3-6: gaps, folds and disambiguation refuses a nonexistent local time with the earlier and later alternatives',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-schedule-time.apispec.ts',
+            title:
+              'CMS-03B-07 pinned time authority through the real stack [CMS-03B-07] a nonexistent local time is the Worker 422 with its two alternatives and reaches no RPC',
+          },
+        ],
+      },
       {
         text: '422.',
         citations: [
@@ -1502,32 +1707,43 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-07: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-07: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-schedule.apispec.ts',
+            title:
+              'CMS-03B-07 schedule through the real stack [CMS-03B-07] accepts a future UTC schedule (202 scheduled, never published; Location; strong ETag) and a replay adds nothing',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql',
+            title:
+              'the owner-party publisher schedules a publish of an approved revision [P2-S11-AC-017]',
           },
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. The clause "nonexistent local time rejected" is unproven and not enforced in Slice 10: the contract test asserts a spring-forward gap time is admitted (rejection needs the pinned tzdb, Slice 11 CMS-03B-07 time authority). Also runtime of Slice 11: resolvedUtc equality with the local time and zone and tzdb pin equality (no CMS-03B-07 route is registered in Slice 10). Proven: the offset ISO instant, the 1-32 character tzdb version, the none/earlier/later disambiguation and their 422 at /resolvedUtc, /tzdbVersion and /disambiguation through the shared Worker body boundary.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-045',
@@ -1585,32 +1801,43 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-07: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-07: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
+            title:
+              'every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most nine fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql',
+            title:
+              'unpublish, expire and archive are scheduled against an approved review too [P2-S11-AC-017]',
           },
         ],
       },
     ],
-    status: 'contract-only',
-    limitation:
-      'Contract-only by the tracker text: the strict PublicationScheduleRequest action is exactly publish, unpublish, expire or archive and any other value is a 422 VALIDATION_FAILED at /action through the shared Worker body boundary. The final sentence is the same scope statement AC-044 carries for CMS-03B-07 and is cited by the same scope tests; the owner replaced the earlier preview-token sentence (a CMS-03B-08/19 statement no CMS-03B-07 test could prove) under DEC-147 option C. The runtime action rule of the protected CMS-03B-07 operation is proven in Slice 11 (phase_02_slice_11_rpc_publication_schedule_refusals.sql rejects an action outside the four; phase_02_slice_11_rpc_publication_schedule.sql schedules unpublish, expire and archive).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-046',
@@ -1739,7 +1966,17 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: 'stale set 409.', citations: [] },
+      {
+        text: 'stale set 409.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]',
+          },
+        ],
+      },
       {
         text: 'This is a contract-only bounded version-set rule until server derivation and revalidation exist.',
         citations: [
@@ -1753,38 +1990,48 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-08: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-08: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no function builds a dependency manifest, derives a version set or a frozen hash, or compares them (server derivation is Slice 11)',
+              'EB scope: the only functions that build a dependency manifest, derive a version set or compare them are the six named private Slice 11 derivation helpers (no API or public function exposes them)',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-preview.apispec.ts',
+            title:
+              'CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real stack [CMS-03B-08] mints a once-only token (201, no-store, no Location), replays it byte-identically and the verifier adapter accepts the bound binding',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint.sql',
+            title: 'an entry assignee mints a preview token [P2-S11-AC-023]',
           },
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. The clause "stale set 409" is unproven: stale-set detection (version_set_stale, recomputation of the version set) is pure runtime of Slice 11 (CMS-03B-08/09); no S10 seam, reason code, test or code exists, and the scope tests pin that no function derives or compares a version set. Proven: the strict, bounded VersionSet and its 422 at the version-set pointers through the shared Worker body boundary.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-047',
@@ -1918,32 +2165,42 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-08: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-08: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-preview.apispec.ts',
+            title:
+              'CMS-03B-08 preview mint and the CMS-03B-19 verifier through the real stack [CMS-03B-08] mints a once-only token (201, no-store, no Location), replays it byte-identically and the verifier adapter accepts the bound binding',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint.sql',
+            title: 'an entry assignee mints a preview token [P2-S11-AC-023]',
           },
         ],
       },
     ],
-    status: 'contract-only',
-    limitation:
-      'Contract-only by the tracker text: the audience grammar ^[a-z0-9_-]{1,48}$ (DEC-145 D-13, BE04c; the earlier 1-64 bound contradicted the locked schema and was replaced under DEC-147 option C), the 1-2048 character normalized route with no external URL, and their 422 at /audience and /route through the shared Worker body boundary are proven. The protected preview operation (CMS-03B-08) is Slice 11; the same audience and route refusals are proven there by phase_02_slice_11_rpc_preview_mint_refusals.sql.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-048',
@@ -2012,7 +2269,17 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: 'equal to approved candidate;', citations: [] },
+      {
+        text: 'equal to approved candidate;',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]',
+          },
+        ],
+      },
       {
         text: '422/',
         citations: [
@@ -2024,7 +2291,23 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
-      { text: '409.', citations: [] },
+      {
+        text: '409.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
+            title:
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] a stale expected version set is 409 version_set_stale and a wrong frozenHash is 422 at /frozenHash',
+          },
+        ],
+      },
       {
         text: 'This is a contract-only publication rule until the protected operation exists.',
         citations: [
@@ -2032,38 +2315,49 @@ export const S10_EVIDENCE_LEDGER_036_070: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope CMS-03B-09: it is neither a registered route operation nor a Worker RPC binding',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope CMS-03B-09: it is a registered route operation and a Worker RPC binding on its named method and path',
           },
           {
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-eb-publication-boundary-schedule.test.ts',
             title:
-              'EB publication scope: no Slice 10 operation, Worker RPC binding or route serves CMS-03B-05..09 or the preview-token paths EB publication scope: the registered editorial operations are exactly the nine of Slice 10',
+              'EB publication scope: the Slice 10 operations plus the explicit Slice 11 allow-list are the only registered editorial operations, Worker RPC bindings and routes EB publication scope: the registered editorial operations are exactly the nine of Slice 10 plus the nine named Slice 11 operations',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no worker-facing function mints, opens, revokes, schedules or publishes (no preview, schedule or publication RPC exists)',
+              'EB scope: the only worker-facing functions that mint, open, schedule, claim, execute or publish are the six named Slice 11 commands (no other preview, schedule or publication RPC exists)',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no private command exists for an entry review, an editorial decision, a publication or a preview token',
+              'EB scope: the private entry-review, editorial-decision, publication and preview-token functions are exactly the named Slice 11 commands and helpers',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_eb_publication_scope.sql',
             title:
-              'EB scope: no function builds a dependency manifest, derives a version set or a frozen hash, or compares them (server derivation is Slice 11)',
+              'EB scope: the only functions that build a dependency manifest, derive a version set or compare them are the six named private Slice 11 derivation helpers (no API or public function exposes them)',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-publish.apispec.ts',
+            title:
+              'CMS-03B-09 publish through the real stack [CMS-03B-09] publishes an approved review (202, Location, strong ETag) exactly once and a replay adds nothing',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish.sql',
+            title:
+              'the owner-party publisher publishes an approved revision [P2-S11-AC-029]',
           },
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. Contract-only by the tracker text, but two clauses cannot be proven in Slice 10: "equal to approved candidate" (equality with the approved review and the recomputed current version set is a runtime comparison) and "409" (version_set_stale is not a registered reason code and no CMS-03B-09 route or RPC exists; the scope tests pin that absence). Proven: the strict 64-lowercase-hex frozenHash and strict expectedVersionSet, and their 422 at /frozenHash and /expectedVersionSet through the shared Worker body boundary. Runtime is Slice 11 (CMS-03B-09).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-049',

@@ -2309,7 +2309,7 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
             title:
-              'every refusal above left no review, dependency row, reservation, audit record or outbox event behind [P2-S11-AC-009]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]',
           },
           {
             tool: 'vitest',
@@ -2542,6 +2542,18 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               'cms.localization.changed.v1 names the SOURCE revision of the variant, not the variant revision the event carries [P2-S11-AC-113]',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_locale_source.sql',
+            title:
+              'the consumer resolves the event to the source revision the review froze, not to the variant revision [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-recheck.apispec.ts',
+            title:
+              '[P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database consumes the envelope: resolves the SOURCE revision the review froze, not the variant revision, and enqueues the job',
+          },
         ],
       },
       {
@@ -2607,6 +2619,36 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             title:
               'R1: the dependency rows of the invalidated reviews are retained as history',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_locale_source.sql',
+            title:
+              'an edited source, and one edited then reverted to the frozen hash, make the frozen locale-source identity non-current; an untouched source and a newer revision with the same hash do not [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_locale_source.sql',
+            title:
+              'a locale source that does not exist, carries another hash or is another locale is not current; the unchanged manifest is [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_locale_source.sql',
+            title:
+              'the approved review is invalidated dependency_changed at its next version [P2-S11-AC-113]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_locale_source.sql',
+            title:
+              'a source reverted to the frozen hash is still invalidated: the stale marking is never lifted [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-recheck.apispec.ts',
+            title:
+              '[P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database runs the job: the approved review whose source changed is invalidated dependency_changed',
+          },
         ],
       },
       {
@@ -2659,6 +2701,18 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs',
             title:
               'R4: a review that still holds keeps its version and state and emits nothing, whatever the job names',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_recheck_locale_source.sql',
+            title:
+              'idempotent: a repeated run finds no live review [P2-S11-AC-113]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-11-recheck.apispec.ts',
+            title:
+              '[P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database is idempotent under redelivery: the same job finds no live review',
           },
         ],
       },
@@ -3078,6 +3132,18 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
               'L2: version 1 exactly (no duplicate, no gap), one event and one audit record',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
+            title:
+              'E3: both publishes are parked at their reservation insert while the lineage head is unchanged (absent) and nothing is reserved',
+          },
+          {
+            tool: 'race',
+            file: 'supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs',
+            title:
+              'E3: the loser left no committed reservation, row, event or audit record: one of each for the winner',
           },
         ],
       },
@@ -4076,7 +4142,31 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_schema_posture.sql',
             title:
-              'posture: each Slice 11 table has exactly one policy, the CMS RPC-context gate [P2-S11-AC-119]',
+              'posture: each Slice 11 table has exactly its CMS RPC-context gate plus its named restrictive session-scope policies (tenant, relationship, exclusive-writer, owner, system), never an unnamed one - proved row by row in phase_02_slice_11_rls_session_scope.sql [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'every tenant-scoped Slice 11 table carries a RESTRICTIVE policy for ALL commands that reads and re-checks the verified session party in USING and WITH CHECK [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'every tenant-scoped Slice 11 table carries a RESTRICTIVE SELECT policy for the relationship / assignment / capability scope that exempts only the CMS definer role (whose bodies own the 404 / 403 split and the cascades) [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'the CMS RPC-context gate is still present on all ten tables: the session policies are in addition to it, never instead [P2-S11-AC-119]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'row-level security stays enabled and forced on all ten tables [P2-S11-AC-119]',
           },
         ],
       },
@@ -4656,6 +4746,18 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_schedules_schema.sql',
             title: 'schedule: a completed schedule is terminal [P2-S11-AC-122]',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_schedules_schema.sql',
+            title:
+              'schedule: the executor cancels an executing schedule whose entry is no longer active, reason entry_unavailable, lease released, attempts unchanged [P2-S11-AC-122]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_schedules_schema.sql',
+            title:
+              'schedule: a cancelled schedule is cancelled only by approval invalidation or an unavailable entry [P2-S11-AC-122]',
+          },
         ],
       },
       {
@@ -4690,6 +4792,12 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_schedules_schema.sql',
             title:
               'schedule: control - a blocked schedule with a closed reason is accepted [P2-S11-AC-122]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_schedules_schema.sql',
+            title:
+              'schedule: an unavailable entry cancels and never blocks [P2-S11-AC-122]',
           },
         ],
       },
@@ -4886,13 +4994,13 @@ export const S11_EVIDENCE_LEDGER_101_122: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_schedules_schema.sql',
             title:
-              'schedule: an executing schedule is never cancelled, an invalidated approval blocks it (DEC-158 d) [P2-S11-AC-122]',
+              'schedule: an executing schedule is cancelled only for an unavailable entry; an invalidated approval blocks it, never cancels it (BE03b CMS-03B-20, DEC-158 d) [P2-S11-AC-122]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_execute.sql',
             title:
-              'a stale lease, a stale version and a schedule that was never claimed are refused (CONFLICT / VERSION_MISMATCH) with no effect [P2-S11-AC-080]',
+              'a stale lease, a stale version and a schedule that was never claimed are refused (CONFLICT / VERSION_MISMATCH) and none of them changed a durable table (observed inside each call before it rolled back) [P2-S11-AC-080]',
           },
           {
             tool: 'pgtap',

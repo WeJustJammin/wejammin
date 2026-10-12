@@ -1225,7 +1225,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
             title:
-              'every refusal above left no review, dependency row, reservation, audit record or outbox event behind [P2-S11-AC-009]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -1352,6 +1358,36 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit.sql',
             title:
               'cms_submit_review is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-010]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ scoped: the receipt-derived owner reads all three reviews (owner scope), both assignments, both decisions, both dependency rows and the workflow rows it is assigned to, and no preview token [P2-S11-AC-007]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ denied: a caller who is not a member of the acting party reads no row of any tenant table (the code-owned registry stays readable) [P2-S11-AC-007]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              "WRITE allowed: the owner's session updates the rows of its party that it may also read in all nine tenant tables (an UPDATE that reads a column is narrowed by the relationship policy: no preview token) [P2-S11-AC-007]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'WRITE denied: a non-member acting in the party updates no row of any tenant table [P2-S11-AC-007]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'WRITE denied: a non-member deletes no row of any tenant table [P2-S11-AC-007]',
           },
         ],
       },
@@ -1802,7 +1838,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
             title:
-              'every refusal above left no review, dependency row, reservation, audit record or outbox event behind [P2-S11-AC-009]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -1838,13 +1880,19 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql',
             title:
-              'every refusal above left no review, dependency row, reservation, audit record or outbox event behind [P2-S11-AC-009]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]',
           },
           {
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-11-review-refusals.apispec.ts',
             title:
               'CMS-03B-05 refusals through the real stack [CMS-03B-05] an archived entry fails the revocation preflight category: preflight_failed with the 17-entry report and no review',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -2206,7 +2254,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
             title:
-              'every refusal above left no decision, review change, reservation, audit record or outbox event behind [P2-S11-AC-015]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -2357,6 +2411,54 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_review_decisions_schema.sql',
             title:
               "decision: another reviewer's assignment cannot authorize this reviewer [P2-S11-AC-121]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ scoped: the submitter / entry assignee reads the two reviews it submitted or is assigned to (not the third, whose entry assignment was revoked), their decisions and dependency rows, no assignment and no token [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ scoped: an assigned reviewer reads the two reviews it is assigned to and their rows, and its own two assignments, never the unassigned review [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ equals the RPC: the reviews a role reads directly are exactly the reviews cms_get_editorial_review serves it (200), for the owner, editor, both reviewers, the publisher, a capability-less member and a stranger [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ denied: a member whose membership tenure ended reads no row (the predicate re-resolves the membership on every statement) [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'INSERT denied: a review is written for the session person only - the submitter cannot attribute a submission to someone else [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'INSERT denied: a decision is written for the session person only - a reviewer cannot record a decision as another reviewer [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'INSERT denied: a member who is not the receipt-derived owner cannot write a reviewer assignment, even naming itself the grantor (CMS-03B-18 is owner-only) [P2-S11-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'UPDATE denied: a member who is not the owner revokes (updates) no reviewer assignment [P2-S11-AC-013]',
           },
         ],
       },
@@ -2839,7 +2941,25 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
             title:
-              'every refusal above left no decision, review change, reservation, audit record or outbox event behind [P2-S11-AC-015]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'the observation reports a call that returned and wrote (the wrapper and the real command) and none for a silent call or for the two calls that raised, including a write that was raised away [P2-S11-AC-015]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
+            title:
+              'control: the observation sees a write - an accepted decision changes the decision, review, reservation, event and audit tables inside its probe [P2-S11-AC-015]',
           },
         ],
       },
@@ -2882,13 +3002,19 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql',
             title:
-              'every refusal above left no decision, review change, reservation, audit record or outbox event behind [P2-S11-AC-015]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]',
           },
           {
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/011-review-decision-race.mjs',
             title:
               'B1: one decision row, the review open at version 2 with one recorded decision, one event',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -3375,12 +3501,18 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'every raised refusal above left no schedule, review change, lineage row, reservation, event or audit record behind [P2-S11-AC-018]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title: 'the refused time rules scheduled nothing [P2-S11-AC-105]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -3513,6 +3645,36 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql',
             title:
               'cms_schedule_publication is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-022]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ scoped: the owner-party publisher reads all three reviews (publisher scope) and the workflow rows, but no assignment and no token [P2-S11-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'INSERT denied: a schedule is created for the session person only [P2-S11-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'INSERT allowed: the same schedule naming the session publisher passes row-level security [P2-S11-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'composition: the real CMS-03B-07 command still schedules an approved review as the publisher under the session policies, attributing the schedule to the publisher [P2-S11-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'composition: the same command by a non-member is still the concealed NOT_FOUND under the session policies [P2-S11-AC-019]',
           },
         ],
       },
@@ -4092,7 +4254,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql',
             title:
-              'every raised refusal above left no schedule, review change, lineage row, reservation, event or audit record behind [P2-S11-AC-018]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -4531,7 +4699,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
             title:
-              'every refusal and every probed success was rolled back: no token, reservation, audit record, event or settings snapshot remains [P2-S11-AC-027]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -4664,6 +4838,36 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint.sql',
             title:
               'cms_mint_preview is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-028]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ denied: a confirmed member with no CMS capability and no assignment reads no row of any tenant table (the code-owned registry stays readable) [P2-S11-AC-025]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              "READ denied: the owner's own session sees nothing outside a CMS RPC context - the gate still applies in addition to the session policy [P2-S11-AC-025]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ denied for everyone: a preview token is never directly selectable - not by its minter, the owner, the publisher or a service path with no session (BE03b; the open recheck is the definer verifier) [P2-S11-AC-025]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'INSERT denied: a preview token is minted for the session person only [P2-S11-AC-025]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'composition: a member with no scope still gets the 403 capability_missing from cms_get_editorial_review (not a concealed 404) while its direct read of the review table is empty [P2-S11-AC-025]',
           },
         ],
       },
@@ -5160,13 +5364,25 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
             title:
-              'every refusal and every probed success was rolled back: no token, reservation, audit record, event or settings snapshot remains [P2-S11-AC-027]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint.sql',
             title:
               'a replay after the token was revoked is the typed preview_expired [P2-S11-AC-117]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'control: the observation sees a write - a minted preview changes the token, reservation and audit tables inside its probe [P2-S11-AC-027]',
           },
         ],
       },
@@ -5215,12 +5431,18 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
             title:
-              'every refusal and every probed success was rolled back: no token, reservation, audit record, event or settings snapshot remains [P2-S11-AC-027]',
+              'every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]',
           },
           {
             tool: 'race',
             file: 'supabase/tests/phase_02_slice_11_races/020-preview-mint-race.mjs',
             title: 'M1: one token row and one audit record exist',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -5552,7 +5774,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -5679,6 +5907,30 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish.sql',
             title:
               'cms_publish_revision is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-034]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ denied: the owner acting in ANOTHER party (its own person party) reads no row of the organization [P2-S11-AC-031]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'WRITE denied: the owner acting in another party updates no row of the organization [P2-S11-AC-031]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              "INSERT denied: the owner's session cannot write a row owned by another party into any tenant table (WITH CHECK) [P2-S11-AC-031]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rls_session_scope.sql',
+            title:
+              'READ denied: a session published for only one of actor and party, or with a malformed party, is not "no session": it reads nothing [P2-S11-AC-031]',
           },
         ],
       },
@@ -6239,7 +6491,13 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
@@ -6288,7 +6546,7 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
             title:
-              'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]',
+              'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]',
           },
           {
             tool: 'pgtap',
@@ -6313,6 +6571,12 @@ export const S11_EVIDENCE_LEDGER_001_034: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_races/016-lineage-append-race.mjs',
             title:
               'L1: exactly one row, one cms.publication.changed.v1 and one audit record: the loser committed nothing',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_effect_oracle.sql',
+            title:
+              'a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]',
           },
         ],
       },
