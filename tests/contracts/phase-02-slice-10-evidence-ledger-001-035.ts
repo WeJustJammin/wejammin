@@ -5497,7 +5497,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-030',
-    text: 'Enforce CMS-03B-01: changedPaths; 1–128 unique JSON Pointers, each `/fields/{stableFieldId}` (lowercase UUID, 44 characters; every field kind including relation); `/blocks/...` and every other pointer is refused until a composition write path exists; 422. Relation changes are keyed by stable field ID rather than version-specific relation-definition ID.',
+    text: 'Enforce CMS-03B-01: changedPaths; 1–128 unique JSON Pointers, each `/fields/{stableFieldId}` (lowercase UUID, 44 characters; every field kind including relation); `/blocks/...` and every other pointer is refused (composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate `version` and are reported by comparison, never accepted as `changedPaths`); 422. Relation changes are keyed by stable field ID rather than version-specific relation-definition ID.',
     clauses: [
       {
         text: 'Enforce CMS-03B-01: changedPaths',
@@ -5581,7 +5581,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: '`/blocks/...` and every other pointer is refused until a composition write path exists',
+        text: '`/blocks/...` and every other pointer is refused',
         citations: [
           {
             tool: 'vitest',
@@ -5620,6 +5620,10 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
               'CMS-03B-01 request validation through the real stack a /blocks changed path is a 422 with its stable pointer and code and nothing is written',
           },
         ],
+      },
+      {
+        text: '(composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate `version` and are reported by comparison, never accepted as `changedPaths`)',
+        citations: [],
       },
       {
         text: '422.',
@@ -5674,8 +5678,9 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven: "(composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate `version` and are reported by comparison, never accepted as `changedPaths`)" (DEC-182). CMS-03C-02 and CMS-03C-15 are Slice 12 operations and Slice 10 ships no composition write path, so this entry cites no test for that clause until the Slice 12 evidence for those two operations exists. The refusal itself is proven: every `/blocks/...` and other non-field pointer is a 422 and nothing is written (the tests cited under the refusal clause).',
   },
   {
     criterion: 'P2-S10-AC-031',
