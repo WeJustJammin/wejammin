@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 182
-- **Unique decision titles**: 182
+- **Total decisions**: 183
+- **Unique decision titles**: 183
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2604,6 +2604,20 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: BE03c, FE03, IA03 consequences, Slice 12 rows AC065, AC068, AC073, AC085, AC114, AC201, AC202, AC204, AC212, AC226, AC248-AC250, AC261, AC262, AC276.
 - **Reversibility**: High
 
+## DEC-181: A top-level nested pattern reference is expanded at placement (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T16:51:24.933Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: DEC-175 stores one composition row per root node of a pattern forest, each with a NOT NULL block identity, but BE03c:676-713 lets a root node be a nested pattern reference (`kind: pattern`) with no block of its own.
+- **Options considered**: (A) expand a top-level nested reference into that pattern's own top-level blocks, recursively, so every row carries a block; (B) refuse 422 when a pattern version puts a nested pattern at the top level; (C) relax block_key/block_version to nullable for a reference row.
+- **Decision**: owner chose (A) on 2026-10-12. A placement writes one row per block root after recursively expanding top-level nested pattern references; every row stays pinned to the placed (patternId, patternVersion), whose pinned tree already fixes each nested version. The CMS-03C-02 items list may therefore exceed 32 rows; the existing bound of at most 512 nodes after expansion bounds it. Nested references below a block root stay inside that root's pinned tree.
+- **Downstream**: BE03c CMS-03C-02 contract (items bound), composition-row rule, path suffix of expanded roots, render plan and diff; Slice 12 rows AC216-AC219 and AC247.
+- **Reversibility**: Medium
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -5044,6 +5058,19 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Decision**: G2 BE03c gains a lock-order paragraph placing every Slice 12 writer in the BE03b global order (extends DEC-157; BE03c no longer prescribes the order DEC-157 rejected); G3 activation and retirement events use the subject version row as outbox aggregate and term actions the term row; G4 CMS-03C-14 with no newer compatible version answers 200 with paths [], collisionCount 0, bulkEligible false, targetPatternVersion = pinnedPatternVersion; G6 cms_invalidate_governed_reviews_for_person mirrors BE03b:1872 and rule 7 of the BE03b lock order; G8 the exact impact set is compatibleTypeIds plus the block tuples behind blockRegistryDigest, and the undefined "approved impact-read scope" becomes the governed-review read scope; G9 cms.governed_review.recheck and cms.pattern.linked_update_scan are typed platform-queue messages (DEC-166), cms.taxonomy.merge_converge a BE00 jobs row; G11 submitting a taxonomy version with an unbuilt canonical domain is 422 canonical_source_unavailable with details.domain. R5: nested_pattern_not_active and pattern_version_not_active are 422 (request validation; 409 stays for stale CAS operands); every governed 409 is GOVERNED_REVIEW_VERSION_CONFLICT with the reason in details.reasonCode; the digest is an equality expectation the server recomputes and refuses on mismatch. Lane-derived drafts (non-node overrides key 422 at /overrides; PatternPlacementResource; G2 position 6 for cms_terms) stand until review. G5 is not applied: rewording BE03b:251/:1538 changes Slice 10 AC030 and goes to the owner wording batch.
 - **Downstream**: BE03c, FE03, IA03 consequences, Slice 12 rows AC065, AC068, AC073, AC085, AC114, AC201, AC202, AC204, AC212, AC226, AC248-AC250, AC261, AC262, AC276.
 - **Reversibility**: High
+
+### DEC-181: A top-level nested pattern reference is expanded at placement (2026-10-12)
+
+- **Timestamp**: 2026-10-12T16:51:24.933Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, owner-decision
+
+- **Problem**: DEC-175 stores one composition row per root node of a pattern forest, each with a NOT NULL block identity, but BE03c:676-713 lets a root node be a nested pattern reference (`kind: pattern`) with no block of its own.
+- **Options considered**: (A) expand a top-level nested reference into that pattern's own top-level blocks, recursively, so every row carries a block; (B) refuse 422 when a pattern version puts a nested pattern at the top level; (C) relax block_key/block_version to nullable for a reference row.
+- **Decision**: owner chose (A) on 2026-10-12. A placement writes one row per block root after recursively expanding top-level nested pattern references; every row stays pinned to the placed (patternId, patternVersion), whose pinned tree already fixes each nested version. The CMS-03C-02 items list may therefore exceed 32 rows; the existing bound of at most 512 nodes after expansion bounds it. Nested references below a block root stay inside that root's pinned tree.
+- **Downstream**: BE03c CMS-03C-02 contract (items bound), composition-row rule, path suffix of expanded roots, render plan and diff; Slice 12 rows AC216-AC219 and AC247.
+- **Reversibility**: Medium
 
 ### DEC-162: Narrow first-empty schema baseline representation
 
