@@ -624,7 +624,7 @@ Operations: `../../docs/runbooks/platform/cms-editorial.md`. Spec: `.memory/wiki
   `projectionState` from it instead of a literal; `165200` the service-role takedown RPC
   `platform_api.cms_takedown_preview_tokens` over the private `cms_revoke_preview_tokens` seam (AC-118).
 
-### Slice 11 forward migrations (`20261010130000`-`20261010170200`)
+### Slice 11 forward migrations (`20261010130000`-`20261010171000`)
 
 Forward-only amendments written after the `20261005017000`-`20261005018100` set. Functions they replace are
 MD5-pinned by these files, so later changes to those functions must also be new forward migrations.
@@ -665,6 +665,14 @@ MD5-pinned by these files, so later changes to those functions must also be new 
   session is exactly a row the read RPCs would show it (the five review scopes, the CMS-03B-15 workflow read scopes, owner or
   own-assignee assignments, workflow participants for settings snapshots, preview tokens never). They bind every role except
   the CMS definer role, whose bodies decide 404 versus 403 and run the invalidation and recount cascades under any session.
+- `171000` (lane queue-perf, `../tests/phase_02_slice_11_reads_plan_stability.sql`): the CMS-03B-17 reviewer queue reader is
+  linear whatever the planner believes (AC-064). The canonical gate sat 63 minutes in one queue-page statement: the reader joined
+  `cms_editorial_reviews` twice and, once autovacuum had left `relpages > 0, reltuples = 0` behind a long run of rolled-back
+  fixtures, the planner estimated one row per table and chose review(503) x [assignment(201) x review(503)], 27 million tuples
+  and 65 s per call. The page now reads the caller's active assignment ids first (one array), probes the reviews once by id,
+  applies the keyset order and LIMIT before the four decoration joins and looks the assignment end up per page row. Two MD5-pinned,
+  reversible anchors; owner, ACL, `search_path`, comment and signature unchanged. The relationship policies of `170200` are not the
+  cause (dropped, the same statistics take 62.6 s against 65.0 s) and are untouched.
 
 ## Related links
 

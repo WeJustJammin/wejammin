@@ -25,61 +25,12 @@ select no_plan();
 -- target and against the 8,000 ms application read deadline for the worst sample.  Run it on a quiet host:
 -- the numbers below are the database share of the declared tier figures, so a loaded host lengthens them.
 
-\ir phase_02_slice_10_rpc/000-helpers.sqlinc
-\ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
-\ir phase_02_slice_10_rpc/001-fixtures.sqlinc
-\ir phase_02_slice_11_schema/000-helpers.sqlinc
-\ir phase_02_slice_11_schema/001-fixture.sqlinc
-\ir phase_02_slice_11_schema/002-row-builders.sqlinc
-\ir phase_02_slice_11_helpers/000-helpers.sqlinc
-\ir phase_02_slice_11_helpers/001-world.sqlinc
-\ir phase_02_slice_11_helpers/002-reviews.sqlinc
-\ir phase_02_slice_11_rpc_review/000-world.sqlinc
-\ir phase_02_slice_11_rpc_review/020-decision.sqlinc
-\ir phase_02_slice_11_rpc_review/030-submit.sqlinc
-\ir phase_02_slice_11_rpc_reads/000-world.sqlinc
-\ir phase_02_slice_11_reads_bench128/000-world.sqlinc
+\ir phase_02_slice_11_reads_bench128/010-fixtures.sqlinc
 
-select vault.create_secret(repeat('a1', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only CMS-03B-17 bench key');
-
--- ---------------------------------------------------------------------------
--- Fixtures at the declared bounds.
--- ---------------------------------------------------------------------------
--- CMS-03B-15: bw-draft is a current draft of 128 fields (the preparation path); bw-bounds has an open review, 20
--- schedules (16 are returned) and 70 publication rows (64 are returned).
-select pg_temp.b11_entry('bw-draft');
-select pg_temp.b11_entry('bw-bounds');
-select pg_temp.r11r_review('bwr', 'bw-bounds', 'editor');
-select pg_temp.r11_assign_now('bwr-rvA', 'bwr', 'rvA');
-select pg_temp.h11r_raw_insert('platform_private.cms_publication_schedules', pg_temp.s11_schedule_row(jsonb_build_object(
-  'entry_id', pg_temp.h11w_uuid('bw-bounds:entry'), 'revision_id', pg_temp.h11w_uuid('bw-bounds:revision'), 'review_id', pg_temp.s11_id('bwr'),
-  'local_datetime', timestamp '2027-02-01 09:00:00' + (n * interval '1 minute'), 'resolved_at_utc', timestamptz '2027-02-01 08:00:00+00' + (n * interval '1 minute'),
-  'created_at', timestamptz '2026-10-05 10:00:00+00' + (n * interval '1 minute'), 'updated_at', timestamptz '2026-10-05 10:00:00+00' + (n * interval '1 minute'),
-  'audience', 'sched' || lpad(n::text, 2, '0'), 'state', 'completed',
-  'actual_at_utc', timestamptz '2027-02-01 08:00:01+00' + (n * interval '1 minute'), 'deviation_seconds', 1)))
-  from generate_series(1, 20) n;
-select pg_temp.h11r_raw_insert('platform_private.cms_publication_versions', pg_temp.s11_publication_row(jsonb_build_object(
-  'id', ('a9400000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid, 'publication_id', ('a9400000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
-  'entry_id', pg_temp.h11w_uuid('bw-bounds:entry'), 'revision_id', pg_temp.h11w_uuid('bw-bounds:revision'),
-  'audience', 'aud' || lpad(n::text, 2, '0'), 'publication_hash', pg_temp.h11_sha256('bw-pub-' || n),
-  'created_at', timestamptz '2026-10-05 12:00:00+00' + (n * interval '1 minute'), 'updated_at', timestamptz '2026-10-05 12:00:00+00' + (n * interval '1 minute'))))
-  from generate_series(1, 70) n;
-
--- CMS-03B-16: a review of 8 required decisions, 7 recorded, 16 active assignments and 20 assign/revoke cycles of a 17th
--- reviewer.  The cycles come first: the database refuses a 17th ACTIVE assignment (assignment_limit), and each cycle
--- ends revoked, so the 16 active rows are added after them.
-select pg_temp.b11_entry('bd-entry');
-select pg_temp.r11r_review('bd', 'bd-entry', 'editor', jsonb_build_object('required_decision_count', 8));
-select pg_temp.b11_cycle(n) from generate_series(1, 20) n;
-select pg_temp.h11r_assign('bd-' || lpad(n::text, 2, '0'), 'bd', 'reviewer' || lpad(n::text, 2, '0')) from generate_series(1, 16) n;
-select pg_temp.h11r_decide('bd-dec-' || lpad(n::text, 2, '0'), 'bd', 'reviewer' || lpad(n::text, 2, '0'), 'bd-' || lpad(n::text, 2, '0'), 'approve')
-  from generate_series(1, 7) n;
-
--- CMS-03B-17: 200 reviews assigned to rvA among 500 (300 belong to other people).
-select pg_temp.b11_entry('bq-entry');
-select pg_temp.r11r_review('bq', 'bq-entry', 'editor');
-select pg_temp.b11_clone_reviews('bq', 200, 'rvA', 'editor');
-select pg_temp.b11_clone_reviews('bq', 300, null, 'reviewer05');
+-- A regression that gives one of the reads a pathological plan must FAIL this file, not hang the gate: the first such
+-- plan ran for 63 minutes before it was terminated.  Every legitimate statement below takes seconds; the fixtures above
+-- are built before the limit applies.
+set local statement_timeout = '120s';
 
 select is(
   (select count(*)::integer from platform_private.cms_field_definition_versions field

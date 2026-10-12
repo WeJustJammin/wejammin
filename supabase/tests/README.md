@@ -127,7 +127,9 @@ independent locale-only initial predicate remain unproven there. Fragment direct
 `phase_02_slice_11_rpc_review/` (CMS-03B-05, 06, 18; S11-3a), `phase_02_slice_11_rpc_publication/` (CMS-03B-07, 09, 20;
 S11-3b), `phase_02_slice_11_rpc_preview/` and `phase_02_slice_11_rpc_reads/` (CMS-03B-08, 15, 16, 17, 19; S11-3c) and
 `phase_02_slice_11_e2/` (the derived revision state, S11-3d). The independent-session runners are
-`phase_02_slice_11_races/` (`pnpm db:races`).
+`phase_02_slice_11_races/` (`pnpm db:races`). `phase_02_slice_11_reads_bench128.sql` (latency targets) and `phase_02_slice_11_reads_plan_stability.sql` (the same
+reads under the stale planner statistics a long run leaves; a pathological plan fails it instead of hanging the gate) share one
+world and run on a quiet host.
 
 The guard files that pin the whole catalog carry the Slice 11 names as explicit allow-lists, so an unnamed function or
 table fails them: `phase_02_slice_09_r8_api_surface.sql` (the service-role-only supporting RPC set),

@@ -1,0 +1,246 @@
+psql:/w/supabase/tests/zz_diag_queue_perf.sql:2: WARNING:  there is no transaction in progress
+psql:/w/supabase/tests/zz_diag_queue_perf.sql:4: WARNING:  there is no transaction in progress
+--- P1 custom plan (plain EXPLAIN) after poisoning stats (role wejammin_cms_definer, generic f)
+Aggregate  (cost=34.47..34.48 rows=1 width=32)
+  ->  Subquery Scan on page_row  (cost=32.64..34.46 rows=1 width=236)
+        ->  Limit  (cost=32.64..34.45 rows=1 width=252)
+              InitPlan 5
+                ->  Result  (cost=0.00..0.26 rows=1 width=1)
+              InitPlan 6
+                ->  Result  (cost=0.00..0.26 rows=1 width=1)
+              InitPlan 7
+                ->  Result  (cost=0.00..0.26 rows=1 width=16)
+              ->  Result  (cost=31.86..33.67 rows=1 width=252)
+                    ->  Sort  (cost=31.86..31.87 rows=1 width=236)
+                          Sort Key: "*SELECT* 1".key_ts DESC, "*SELECT* 1".review_id DESC
+                          ->  Nested Loop  (cost=2.19..31.85 rows=1 width=236)
+                                Join Filter: (revision_item.schema_version_id = version_item.id)
+                                ->  Nested Loop  (cost=2.19..30.83 rows=1 width=252)
+                                      Join Filter: (entry_item.content_type_id = type_item.id)
+                                      ->  Nested Loop  (cost=2.19..29.82 rows=1 width=236)
+                                            Join Filter: (entry_item.id = review_item.entry_id)
+                                            ->  Nested Loop  (cost=2.19..28.81 rows=1 width=220)
+                                                  Join Filter: (revision_item.id = review_item.revision_id)
+                                                  ->  Nested Loop  (cost=2.19..27.79 rows=1 width=164)
+                                                        Join Filter: ("*SELECT* 1".review_id = review_item.id)
+                                                        ->  Index Scan using cms_editorial_reviews_entry_state_idx on cms_editorial_reviews review_item  (cost=0.12..8.65 rows=1 width=132)
+                                                              Filter: (((InitPlan 6).col1 OR (owner_id = (InitPlan 7).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 5).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                        ->  Subquery Scan on "*SELECT* 1"  (cost=2.06..19.13 rows=1 width=32)
+                                                              ->  Nested Loop  (cost=2.06..19.12 rows=1 width=32)
+                                                                    Join Filter: (review_scoped.id = assignment_item.review_id)
+                                                                    InitPlan 8
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                    InitPlan 9
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                    InitPlan 10
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                                    InitPlan 11
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                    InitPlan 12
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                    InitPlan 13
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                                    ->  Index Scan using cms_editorial_review_assignments_active_reviewer_unique on cms_editorial_review_assignments assignment_item  (cost=0.25..8.78 rows=1 width=24)
+                                                                          Index Cond: (reviewer_person_id = '95582885-e1c7-402e-bbfa-b0dca6c5a194'::uuid)
+                                                                          Filter: (((InitPlan 9).col1 OR (owner_id = (InitPlan 10).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 8).col1 OR platform_private.cms_s11_assignment_readable(reviewer_person_id, state)) END AND platform_private.cms_rpc_context_valid())
+                                                                    ->  Index Scan using cms_editorial_reviews_id_revision_key on cms_editorial_reviews review_scoped  (cost=0.25..8.77 rows=1 width=24)
+                                                                          Filter: (((InitPlan 12).col1 OR (owner_id = (InitPlan 13).col1)) AND (owner_id = 'c56e30cc-f5b3-480f-a118-5b9e6ef2f3a2'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 11).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                  ->  Seq Scan on cms_entry_revisions revision_item  (cost=0.00..1.00 rows=1 width=72)
+                                                        Filter: platform_private.cms_rpc_context_valid()
+                                            ->  Seq Scan on cms_content_entries entry_item  (cost=0.00..1.00 rows=1 width=32)
+                                                  Filter: platform_private.cms_rpc_context_valid()
+                                      ->  Seq Scan on cms_content_types type_item  (cost=0.00..1.00 rows=1 width=48)
+                                            Filter: platform_private.cms_rpc_context_valid()
+                                ->  Seq Scan on cms_content_type_versions version_item  (cost=0.00..1.00 rows=1 width=48)
+                                      Filter: platform_private.cms_rpc_context_valid()
+                    SubPlan 4
+                      ->  Limit  (cost=0.78..1.78 rows=1 width=32)
+                            InitPlan 1
+                              ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                            InitPlan 2
+                              ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                            InitPlan 3
+                              ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                            ->  Seq Scan on cms_editorial_decisions decision_item  (cost=0.00..1.00 rows=1 width=32)
+                                  Filter: (((InitPlan 2).col1 OR (owner_id = (InitPlan 3).col1)) AND (review_id = review_item.id) AND (reviewer_person_id = '95582885-e1c7-402e-bbfa-b0dca6c5a194'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 1).col1 OR platform_private.cms_s11_review_readable(review_id)) END AND platform_private.cms_rpc_context_valid())
+Planning Time: 2.134 ms
+--- P1 custom plan (plain EXPLAIN) after poisoning stats took 6.4 ms
+--- P2 generic plan (plain EXPLAIN) after poisoning stats (role wejammin_cms_definer, generic t)
+Aggregate  (cost=44.07..44.08 rows=1 width=32)
+  ->  Subquery Scan on page_row  (cost=42.25..44.06 rows=1 width=236)
+        ->  Limit  (cost=42.25..44.05 rows=1 width=252)
+              InitPlan 5
+                ->  Result  (cost=0.00..0.26 rows=1 width=1)
+              InitPlan 6
+                ->  Result  (cost=0.00..0.26 rows=1 width=1)
+              InitPlan 7
+                ->  Result  (cost=0.00..0.26 rows=1 width=16)
+              ->  Result  (cost=41.47..43.27 rows=1 width=252)
+                    ->  Sort  (cost=41.47..41.47 rows=1 width=236)
+                          Sort Key: "*SELECT* 1".key_ts DESC, "*SELECT* 1".review_id DESC
+                          ->  Nested Loop  (cost=2.19..41.46 rows=1 width=236)
+                                Join Filter: (revision_item.schema_version_id = version_item.id)
+                                ->  Nested Loop  (cost=2.19..40.43 rows=1 width=252)
+                                      Join Filter: (entry_item.content_type_id = type_item.id)
+                                      ->  Nested Loop  (cost=2.19..39.42 rows=1 width=236)
+                                            Join Filter: (entry_item.id = review_item.entry_id)
+                                            ->  Nested Loop  (cost=2.19..38.41 rows=1 width=220)
+                                                  Join Filter: (revision_item.id = review_item.revision_id)
+                                                  ->  Nested Loop  (cost=2.19..37.40 rows=1 width=164)
+                                                        Join Filter: ("*SELECT* 1".review_id = review_item.id)
+                                                        ->  Index Scan using cms_editorial_reviews_entry_state_idx on cms_editorial_reviews review_item  (cost=0.12..8.65 rows=1 width=132)
+                                                              Filter: (((InitPlan 6).col1 OR (owner_id = (InitPlan 7).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 5).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                        ->  Append  (cost=2.06..28.72 rows=2 width=32)
+                                                              ->  Subquery Scan on "*SELECT* 1"  (cost=2.06..19.14 rows=1 width=32)
+                                                                    ->  Result  (cost=2.06..19.13 rows=1 width=32)
+                                                                          One-Time Filter: ($3 = 'assigned'::text)
+                                                                          InitPlan 8
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                          InitPlan 9
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                          InitPlan 10
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                                          InitPlan 11
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                          InitPlan 12
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                          InitPlan 13
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                                          ->  Nested Loop  (cost=0.50..17.57 rows=1 width=32)
+                                                                                Join Filter: (review_scoped.id = assignment_item.review_id)
+                                                                                ->  Index Scan using cms_editorial_review_assignments_active_reviewer_unique on cms_editorial_review_assignments assignment_item  (cost=0.25..8.78 rows=1 width=24)
+                                                                                      Index Cond: (reviewer_person_id = $1)
+                                                                                      Filter: (((InitPlan 9).col1 OR (owner_id = (InitPlan 10).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 8).col1 OR platform_private.cms_s11_assignment_readable(reviewer_person_id, state)) END AND platform_private.cms_rpc_context_valid())
+                                                                                ->  Index Scan using cms_editorial_reviews_id_revision_key on cms_editorial_reviews review_scoped  (cost=0.25..8.78 rows=1 width=24)
+                                                                                      Filter: (((InitPlan 12).col1 OR (owner_id = (InitPlan 13).col1)) AND (($4 IS NULL) OR (state = $4)) AND (owner_id = $2) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 11).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                              ->  Subquery Scan on "*SELECT* 2"  (cost=1.03..9.57 rows=1 width=32)
+                                                                    ->  Result  (cost=1.03..9.56 rows=1 width=32)
+                                                                          One-Time Filter: ($3 = 'submitted'::text)
+                                                                          InitPlan 14
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                          InitPlan 15
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                                                          InitPlan 16
+                                                                            ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                                          ->  Index Scan using cms_editorial_reviews_submitter_updated_idx on cms_editorial_reviews submitted  (cost=0.25..8.78 rows=1 width=24)
+                                                                                Index Cond: (submitted_by = $1)
+                                                                                Filter: (((InitPlan 15).col1 OR (owner_id = (InitPlan 16).col1)) AND (($4 IS NULL) OR (state = $4)) AND (owner_id = $2) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 14).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                  ->  Seq Scan on cms_entry_revisions revision_item  (cost=0.00..1.00 rows=1 width=72)
+                                                        Filter: platform_private.cms_rpc_context_valid()
+                                            ->  Seq Scan on cms_content_entries entry_item  (cost=0.00..1.00 rows=1 width=32)
+                                                  Filter: platform_private.cms_rpc_context_valid()
+                                      ->  Seq Scan on cms_content_types type_item  (cost=0.00..1.00 rows=1 width=48)
+                                            Filter: platform_private.cms_rpc_context_valid()
+                                ->  Seq Scan on cms_content_type_versions version_item  (cost=0.00..1.00 rows=1 width=48)
+                                      Filter: platform_private.cms_rpc_context_valid()
+                    SubPlan 4
+                      ->  Limit  (cost=0.78..1.78 rows=1 width=32)
+                            InitPlan 1
+                              ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                            InitPlan 2
+                              ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                            InitPlan 3
+                              ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                            ->  Seq Scan on cms_editorial_decisions decision_item  (cost=0.00..1.00 rows=1 width=32)
+                                  Filter: (((InitPlan 2).col1 OR (owner_id = (InitPlan 3).col1)) AND (review_id = review_item.id) AND (reviewer_person_id = $1) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 1).col1 OR platform_private.cms_s11_review_readable(review_id)) END AND platform_private.cms_rpc_context_valid())
+Planning Time: 1.319 ms
+--- P2 generic plan (plain EXPLAIN) after poisoning stats took 3.3 ms
+--- P3 custom plan ANALYZE after poisoning stats (role wejammin_cms_definer, generic f)
+Aggregate  (cost=34.47..34.48 rows=1 width=32) (actual time=64976.678..64976.689 rows=1 loops=1)
+  Buffers: shared hit=27172079
+  ->  Subquery Scan on page_row  (cost=32.64..34.46 rows=1 width=236) (actual time=64976.102..64976.226 rows=51 loops=1)
+        Buffers: shared hit=27172079
+        ->  Limit  (cost=32.64..34.45 rows=1 width=252) (actual time=64976.097..64976.203 rows=51 loops=1)
+              Buffers: shared hit=27172079
+              InitPlan 5
+                ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+              InitPlan 6
+                ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.051..0.051 rows=1 loops=1)
+              InitPlan 7
+                ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.209..0.209 rows=1 loops=1)
+                      Buffers: shared hit=4
+              ->  Result  (cost=31.86..33.67 rows=1 width=252) (actual time=64976.096..64976.196 rows=51 loops=1)
+                    Buffers: shared hit=27172079
+                    ->  Sort  (cost=31.86..31.87 rows=1 width=236) (actual time=64975.735..64975.748 rows=51 loops=1)
+                          Sort Key: "*SELECT* 1".key_ts DESC, "*SELECT* 1".review_id DESC
+                          Sort Method: top-N heapsort  Memory: 51kB
+                          Buffers: shared hit=27172024
+                          ->  Nested Loop  (cost=2.19..31.85 rows=1 width=236) (actual time=0.934..64975.199 rows=201 loops=1)
+                                Join Filter: (revision_item.schema_version_id = version_item.id)
+                                Rows Removed by Join Filter: 402
+                                Buffers: shared hit=27172024
+                                ->  Nested Loop  (cost=2.19..30.83 rows=1 width=252) (actual time=0.885..64972.041 rows=201 loops=1)
+                                      Join Filter: (entry_item.content_type_id = type_item.id)
+                                      Rows Removed by Join Filter: 402
+                                      Buffers: shared hit=27171823
+                                      ->  Nested Loop  (cost=2.19..29.82 rows=1 width=236) (actual time=0.847..64969.528 rows=201 loops=1)
+                                            Join Filter: (entry_item.id = review_item.entry_id)
+                                            Rows Removed by Join Filter: 1204
+                                            Buffers: shared hit=27171622
+                                            ->  Nested Loop  (cost=2.19..28.81 rows=1 width=220) (actual time=0.809..64965.306 rows=201 loops=1)
+                                                  Join Filter: (revision_item.id = review_item.revision_id)
+                                                  Rows Removed by Join Filter: 1405
+                                                  Buffers: shared hit=27171421
+                                                  ->  Nested Loop  (cost=2.19..27.79 rows=1 width=164) (actual time=0.762..64959.629 rows=201 loops=1)
+                                                        Join Filter: ("*SELECT* 1".review_id = review_item.id)
+                                                        Rows Removed by Join Filter: 100902
+                                                        Buffers: shared hit=27171220
+                                                        ->  Index Scan using cms_editorial_reviews_entry_state_idx on cms_editorial_reviews review_item  (cost=0.12..8.65 rows=1 width=132) (actual time=0.292..3.510 rows=503 loops=1)
+                                                              Filter: (((InitPlan 6).col1 OR (owner_id = (InitPlan 7).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 5).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                              Buffers: shared hit=158
+                                                        ->  Subquery Scan on "*SELECT* 1"  (cost=2.06..19.13 rows=1 width=32) (actual time=0.015..129.122 rows=201 loops=503)
+                                                              Buffers: shared hit=27171062
+                                                              ->  Nested Loop  (cost=2.06..19.12 rows=1 width=32) (actual time=0.015..129.099 rows=201 loops=503)
+                                                                    Join Filter: (review_scoped.id = assignment_item.review_id)
+                                                                    Rows Removed by Join Filter: 52789
+                                                                    Buffers: shared hit=27171062
+                                                                    InitPlan 8
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                                                    InitPlan 9
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.058..0.058 rows=1 loops=1)
+                                                                    InitPlan 10
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.165..0.165 rows=1 loops=1)
+                                                                            Buffers: shared hit=4
+                                                                    InitPlan 11
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                                                    InitPlan 12
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.050..0.050 rows=1 loops=1)
+                                                                    InitPlan 13
+                                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.113..0.113 rows=1 loops=1)
+                                                                            Buffers: shared hit=4
+                                                                    ->  Index Scan using cms_editorial_review_assignments_active_reviewer_unique on cms_editorial_review_assignments assignment_item  (cost=0.25..8.78 rows=1 width=24) (actual time=0.007..0.520 rows=201 loops=503)
+                                                                          Index Cond: (reviewer_person_id = '95582885-e1c7-402e-bbfa-b0dca6c5a194'::uuid)
+                                                                          Filter: (((InitPlan 9).col1 OR (owner_id = (InitPlan 10).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 8).col1 OR platform_private.cms_s11_assignment_readable(reviewer_person_id, state)) END AND platform_private.cms_rpc_context_valid())
+                                                                          Buffers: shared hit=91550
+                                                                    ->  Index Scan using cms_editorial_reviews_id_revision_key on cms_editorial_reviews review_scoped  (cost=0.25..8.77 rows=1 width=24) (actual time=0.004..0.621 rows=264 loops=101103)
+                                                                          Filter: (((InitPlan 12).col1 OR (owner_id = (InitPlan 13).col1)) AND (owner_id = 'c56e30cc-f5b3-480f-a118-5b9e6ef2f3a2'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 11).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                                                          Buffers: shared hit=27079512
+                                                  ->  Seq Scan on cms_entry_revisions revision_item  (cost=0.00..1.00 rows=1 width=72) (actual time=0.008..0.022 rows=8 loops=201)
+                                                        Filter: platform_private.cms_rpc_context_valid()
+                                                        Buffers: shared hit=201
+                                            ->  Seq Scan on cms_content_entries entry_item  (cost=0.00..1.00 rows=1 width=32) (actual time=0.006..0.018 rows=7 loops=201)
+                                                  Filter: platform_private.cms_rpc_context_valid()
+                                                  Buffers: shared hit=201
+                                      ->  Seq Scan on cms_content_types type_item  (cost=0.00..1.00 rows=1 width=48) (actual time=0.006..0.009 rows=3 loops=201)
+                                            Filter: platform_private.cms_rpc_context_valid()
+                                            Buffers: shared hit=201
+                                ->  Seq Scan on cms_content_type_versions version_item  (cost=0.00..1.00 rows=1 width=48) (actual time=0.006..0.010 rows=3 loops=201)
+                                      Filter: platform_private.cms_rpc_context_valid()
+                                      Buffers: shared hit=201
+                    SubPlan 4
+                      ->  Limit  (cost=0.78..1.78 rows=1 width=32) (actual time=0.008..0.008 rows=0 loops=51)
+                            Buffers: shared hit=55
+                            InitPlan 1
+                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                            InitPlan 2
+                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.138..0.138 rows=1 loops=1)
+                            InitPlan 3
+                              ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.198..0.199 rows=1 loops=1)
+                                    Buffers: shared hit=4
+                            ->  Seq Scan on cms_editorial_decisions decision_item  (cost=0.00..1.00 rows=1 width=32) (actual time=0.008..0.008 rows=0 loops=51)
+                                  Filter: (((InitPlan 2).col1 OR (owner_id = (InitPlan 3).col1)) AND (review_id = review_item.id) AND (reviewer_person_id = '95582885-e1c7-402e-bbfa-b0dca6c5a194'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 1).col1 OR platform_private.cms_s11_review_readable(review_id)) END AND platform_private.cms_rpc_context_valid())
+                                  Rows Removed by Filter: 7
+                                  Buffers: shared hit=55
+Planning Time: 0.780 ms
+Execution Time: 64976.877 ms
+--- P3 custom plan ANALYZE after poisoning stats took 64979.4 ms

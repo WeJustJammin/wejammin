@@ -1,0 +1,9 @@
+[alt-bench] quiet lock held exclusively 01:33:25
+[alt] waiting for lock 01:33:25
+[alt] lock acquired 01:33:25
+[alt] reset ok 01:33:52
+[alt-bench] load average before the run: 1.40 1.33 1.27
+[alt] pg_prove exit=0  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-013325-1224288.tap
+All tests successful.
+Files=1, Tests=24,  2 wallclock secs ( 0.01 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.02 CPU)
+Result: PASS
