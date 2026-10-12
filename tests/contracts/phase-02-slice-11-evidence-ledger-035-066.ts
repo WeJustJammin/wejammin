@@ -3093,37 +3093,238 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'Execute Contract → QA-RED → data, API, SSR and island implementation → QA-GREEN → refactor',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) every required work package records its contract first, then a RED entry with an observed failure, then GREEN',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) the required work packages cover the data, API, SSR and island layers and at least three record a refactor',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) refuses a record that drops a work package, a RED line, a GREEN line, an observed failure, the contract line or a source',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) refuses a GREEN written before the RED and a contract line that names a file that does not exist',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) refuses a layer that no required work package covers and a record with fewer than three refactors',
+          },
+        ],
       },
       {
         text: 'retain failing-test evidence',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) the red-green record exists, names its lane-report sources and carries the sections and the canonical validate line',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) the record holds no work package the guard does not require',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) every RED identity named by the record still exists as a test title or fragment in its file',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) refuses a RED identity that was renamed, whose quotes are gone, or whose file is gone',
+          },
+        ],
       },
       {
         text: 'run canonical validation.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) the canonical-validate line records pnpm validate exit 0 with its date and every gate count, and the tracker carries the same date',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) refuses the placeholder, a non-zero exit, a missing date or count, a run before the record and a tracker without the closure date',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) pnpm validate contains every canonical gate',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) the Slice 11 evidence guard runs inside the vitest gate of pnpm validate',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-process-record.test.ts',
+            title:
+              'Slice 11 process record (P2-S11-AC-044) refuses a validate without the vitest gate, a filtered vitest gate, an unconfigured guard and a skipped guard',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation:
-      'A process criterion that no test can attest before slice close: it is the order of work (contract, RED, implementation, GREEN, refactor), the retained RED evidence and a green canonical validation run (pnpm validate and the database, API and race gates). The Slice 11 tracker records full gates as pending; RED and GREEN logs of each lane are kept under docs/handoffs/2026-10-10-claude-s11/ and the Codex receipts under docs/handoffs/2026-10-08-phase2-codex-handoff/s11/, but they are files, not citable tests, and the whole-ledger receipts do not exist yet. Cite the canonical validation run at slice close, or have the owner rule that the all-green guard run itself is the proof.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S11-AC-045',
     text: 'Update slice tracking, feature-ledger assignments, applicable runbooks, and architecture graph in the same change; leave no unresolved implementation boundary or undocumented drift.',
     clauses: [
       {
-        text: 'Update slice tracking, feature-ledger assignments, applicable runbooks, and architecture graph in the same change',
-        citations: [],
+        text: 'Update slice tracking',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 tracking and feature ledger (P2-S11-AC-045) tracking: the six Slice 11 gate lines are checked, the dated Depth Ratio names every criterion the ledger does not verify, and a Completion Signature exists exactly when the ledger verifies all of them',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 tracking and feature ledger (P2-S11-AC-045) tracking: the progress checker reports slice, phase and index agreement with no drift',
+          },
+        ],
       },
       {
-        text: 'leave no unresolved implementation boundary or undocumented drift.',
-        citations: [],
+        text: 'feature-ledger assignments',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 tracking and feature ledger (P2-S11-AC-045) feature ledger: exactly 25.02.03, 25.02.04 and 25.03.04 are assigned to P2-S11, complete in IA/BE/FE, listed by the phase plan, and carry the implementation note',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers assigns exactly these three feature rows to P2-S11 and no other',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-feature-ledger.test.ts',
+            title:
+              '[P2-S11-AC-035] [P2-S11-AC-038] [P2-S11-AC-041] the BE03b feature-ledger pointers keeps the Phase 2 plan assignment equal to the same three rows and their operations',
+          },
+        ],
+      },
+      {
+        text: 'applicable runbooks',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 runbooks (P2-S11-AC-045) runbook: cms-publication names every Slice 11 operation with its RPC, and the internal operations with theirs',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 runbooks (P2-S11-AC-045) runbook: cms-publication triages every typed Slice 11 reason',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 runbooks (P2-S11-AC-045) runbook: cms-publication has a section for every Slice 11 behaviour change an operator needs',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 runbooks (P2-S11-AC-045) runbook: every repository path the runbooks cite exists, and the sealed cursor reaches the Slice 10 and wiki runbooks',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-runbook.test.ts',
+            title:
+              '[P2-S11-AC-049] the runbook qualifies the browser guards per operation class keeps the route table and every operation in it',
+          },
+        ],
+      },
+      {
+        text: 'and architecture graph',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 architecture map and generated contracts (P2-S11-AC-045) architecture map: the Slice 11 delta names all eleven operations and every repository path it cites exists',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 architecture map and generated contracts (P2-S11-AC-045) architecture map: the header no longer calls Slice 11 dependency-locked, and the tracked boundaries are named',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 architecture map and generated contracts (P2-S11-AC-045) architecture graph: the compiled specification graph equals the graph rebuilt from the committed spec text',
+          },
+        ],
+      },
+      { text: 'in the same change;', citations: [] },
+      { text: 'leave no unresolved implementation boundary', citations: [] },
+      {
+        text: 'or undocumented drift.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 architecture map and generated contracts (P2-S11-AC-045) contracts: the committed OpenAPI document equals the one generated from the route registry (no undocumented drift)',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 implementation boundaries (P2-S11-AC-045) boundaries: the scan covers the Slice 11 production sources and both migration ranges',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-closeout.test.ts',
+            title:
+              'Slice 11 implementation boundaries (P2-S11-AC-045) boundaries: no TODO, FIXME, not-implemented or unwired marker remains in the Slice 11 production sources',
+          },
+        ],
       },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'A tracking criterion that can only be proven at slice close, in the same change as the final tracker update: slice tracking, the feature-ledger assignments of 25.02.03, 25.02.04 and 25.03.04, the cms-publication runbook and the architecture graph. Related checks exist but do not prove the clause as a whole: tests/contracts/phase-02-slice-11-feature-ledger.test.ts now asserts the three feature-ledger assignments and their operations (cited under AC-035, AC-038 and AC-041), tests/contracts/phase-02-slice-11-runbook.test.ts asserts the runbook covers every operation, and scripts/check-progress-consistency.mjs checks tracker counts; none checks slice tracking beyond counts or architecture-graph freshness. No test scans the tree for unresolved implementation boundaries or undocumented drift, and two boundaries are open by design, each with its tracking issue: platform_private.projection_consumer_state.projection_id has no foreign key until the delivery slice creates publication_projection (BOUNDARY in supabase/migrations/20261010165000_cms_projection_consumer_state.sql, sentinel in phase_02_slice_11_projection_state.sql, issue #127), and the production trigger of the claimed schema-migration preparation entry is not defined by a locked spec (BOUNDARY in apps/worker/src/production-job-effect-dispatcher.ts, sentinel in production-job-effect-dispatcher-cms-preparation.test.ts, issue #128). Needs the slice-close change itself plus a boundary and drift guard.',
+      'Two clauses are not proven. "in the same change" is a property of the commit that carries the slice close (tracker, feature-ledger note, runbooks, architecture map and spec graph land together in that commit and its pull request); no test can attest it. "leave no unresolved implementation boundary" is not met on its exact text: two tracked boundaries remain open, each a typed interface with a tracking issue and a sentinel test as .claude/rules/boundary-not-placeholder.md requires, and the closeout boundary tests prove only that these two are the complete open set and are documented: #127, platform_private.projection_consumer_state.projection_id has no foreign key until the delivery slice creates publication_projection (Slice 13, P2-S13-AC-164; BOUNDARY in supabase/migrations/20261010165000_cms_projection_consumer_state.sql, sentinel in supabase/tests/phase_02_slice_11_projection_state.sql); #128, the production trigger of the claimed schema-migration preparation entry is not defined by any locked specification and needs an architecture decision on the Job-state result map (BOUNDARY in apps/worker/src/production-job-effect-dispatcher.ts, sentinel in apps/worker/src/production-job-effect-dispatcher-cms-preparation.test.ts). Cited for the clause as context, not proof: Slice 11 implementation boundaries (P2-S11-AC-045) boundaries: the only BOUNDARY: markers in the Slice 11 sources and migrations are the two tracked ones, each with its issue, typed interface and sentinel test. The clause closes when both boundaries are resolved or the owner rules that tracked boundaries satisfy it.',
   },
   {
     criterion: 'P2-S11-AC-046',

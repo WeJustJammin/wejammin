@@ -25,6 +25,7 @@ import {
   slice11ProductionSources,
   trackingIssues,
 } from './phase-02-slice-11-closeout.test-support';
+import { S11_EVIDENCE_LEDGER } from './phase-02-slice-11-evidence-ledger';
 
 /**
  * Guard for P2-S11-AC-045: "Update slice tracking, feature-ledger assignments, applicable
@@ -92,7 +93,7 @@ const citedPaths = (text: string): string[] => [
 ];
 
 describe('Slice 11 tracking and feature ledger (P2-S11-AC-045)', () => {
-  it('tracking: the six Slice 11 gate lines are checked, and the tracker carries a dated Depth Ratio and Completion Signature', () => {
+  it('tracking: the six Slice 11 gate lines are checked, the dated Depth Ratio names every criterion the ledger does not verify, and a Completion Signature exists exactly when the ledger verifies all of them', () => {
     const tracker = read(TRACKER);
     const tasks = section(tracker, '## Tasks', '## Acceptance Criteria');
     const gates = [
@@ -105,13 +106,28 @@ describe('Slice 11 tracking and feature ledger (P2-S11-AC-045)', () => {
     ];
     for (const gate of gates)
       expect(tasks, `gate line "${gate}"`).toContain(`- [x] ${gate}`);
-    const depth = fromHeading(tracker, '## Depth Ratio');
+    const depth = section(tracker, '## Depth Ratio', '## Completion Signature');
     expect(depth).toMatch(/^## Depth Ratio$/mu);
-    expect(depth).toMatch(/^- \d{4}-\d{2}-\d{2}: depth floor \d+/mu);
+    const dated = /^- (\d{4}-\d{2}-\d{2}): depth floor \d+.*$/mu.exec(depth);
+    expect(dated, 'a dated depth-floor line').not.toBeNull();
+    const open = S11_EVIDENCE_LEDGER.filter(
+      (entry) => entry.status !== 'verified',
+    ).map((entry) => entry.criterion.replace('P2-S11-', ''));
+    for (const criterion of open)
+      expect(dated?.[0], `the depth line names ${criterion}`).toContain(
+        criterion,
+      );
     const signature = fromHeading(tracker, '## Completion Signature');
-    expect(signature).toMatch(/^## Completion Signature$/mu);
-    expect(signature).toMatch(/^- Completed: \d{4}-\d{2}-\d{2}$/mu);
-    expect(signature).toMatch(/^- Verifier: .*exit 0/mu);
+    if (open.length === 0) {
+      expect(tracker).toMatch(/^\*\*Status\*\*: complete\s*$/mu);
+      expect(signature).toMatch(/^## Completion Signature$/mu);
+      expect(signature).toMatch(/^- Completed: \d{4}-\d{2}-\d{2}$/mu);
+      expect(signature).toMatch(/^- Verifier: .*exit 0/mu);
+    } else {
+      // A slice with an open criterion is not complete and must not be signed.
+      expect(tracker).toMatch(/^\*\*Status\*\*: in-progress\s*$/mu);
+      expect(signature).toBe('');
+    }
   });
 
   it('tracking: the progress checker reports slice, phase and index agreement with no drift', () => {

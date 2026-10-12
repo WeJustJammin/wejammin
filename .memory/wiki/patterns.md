@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 32
-- **Unique pattern titles**: 29
+- **Total patterns**: 33
+- **Unique pattern titles**: 30
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -435,6 +435,20 @@
 - **Context**: generating tracker or ledger files believed missing.
 - **Pattern**: a `| head` truncated listing hid a tracked 445-line tracker that was then overwritten (recovered from git). Use `git ls-files --error-unmatch` or `test -e` first.
 - **Source**: 2026-10-10 Slice 11 tracker.
+
+## PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T09:56:00.747Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 11 closure)
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Slice-close guards that run inside `pnpm validate` (process-record attestation, tracker closeout).
+- **Pattern**: A closeout guard drafted to require a Completion Signature would have forced either a false completion claim or a permanently red validate while P2-S11-AC-045 stays partial. Tie closure assertions to the evidence ledger both ways: the Depth Ratio line must name every non-verified criterion, the status must be `in-progress` and the signature absent while any criterion is open, and the signature is required once every criterion is verified. The canonical-validate attestation that a guard inside `pnpm validate` checks has a circular dependency (the run needs the line, the line records the run): write the line with the counts a prior full run produced, regenerate receipts, then let the canonical run itself verify the line; rewrite and rerun if any count differs. Never fill it from a non-canonical run and never leave the placeholder in a committed close.
+- **Source**: Slice 11 closeout lane test (2026-10-12) required `- Completed:` unconditionally.
 
 ## Full Log
 
@@ -878,3 +892,16 @@
 - **Context**: generating tracker or ledger files believed missing.
 - **Pattern**: a `| head` truncated listing hid a tracked 445-line tracker that was then overwritten (recovered from git). Use `git ls-files --error-unmatch` or `test -e` first.
 - **Source**: 2026-10-10 Slice 11 tracker.
+
+### PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12)
+
+- **Timestamp**: 2026-10-12T09:56:00.747Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 11 closure)
+- **Tags**: pattern, tracking, evidence
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: Slice-close guards that run inside `pnpm validate` (process-record attestation, tracker closeout).
+- **Pattern**: A closeout guard drafted to require a Completion Signature would have forced either a false completion claim or a permanently red validate while P2-S11-AC-045 stays partial. Tie closure assertions to the evidence ledger both ways: the Depth Ratio line must name every non-verified criterion, the status must be `in-progress` and the signature absent while any criterion is open, and the signature is required once every criterion is verified. The canonical-validate attestation that a guard inside `pnpm validate` checks has a circular dependency (the run needs the line, the line records the run): write the line with the counts a prior full run produced, regenerate receipts, then let the canonical run itself verify the line; rewrite and rerun if any count differs. Never fill it from a non-canonical run and never leave the placeholder in a committed close.
+- **Source**: Slice 11 closeout lane test (2026-10-12) required `- Completed:` unconditionally.

@@ -109,3 +109,19 @@ memory DEC-164..169/PAT-025..027 (2c55d937); composition mock + node bound + rac
 - Orchestrator DECs to record after finisher: DEC-173 (AC-083 executor cancellation), DEC-174 (RLS predicate scope).
 - Next: ledger refresh #2 -> quiet gate-db-verify -> gate-validate-diag -> evidence runner 09/10/11 + guards ->
   tracking close -> draft PR; then apply Slice 12 cascade (DEC) and start Slice 12 TDD.
+
+## Update 2026-10-12 ~10:40Z — closure sequence
+
+- Committed: regenerated database types + closeout lane output (6aa968fb): process record (AC-044), closeout guard
+  (AC-045), runbooks, architecture delta, feature-ledger note. Ledger AC-044 verified (pending the attestation line),
+  AC-045 partial ("in the same change"; tracked boundaries #127/#128 are unresolved on the exact text).
+- Closeout guard changed: Completion Signature exists exactly when the ledger verifies every criterion; while AC-045
+  is open the tracker stays `in-progress`, unsigned, and its dated Depth Ratio line names AC-045 (PAT-028).
+- Memory compiled with DEC-173..177 and PAT-028.
+- Running: canonical `pnpm db:verify` at 6aa968fb (`lanes/gate-db-verify.sh`).
+- Next: `lanes/refresh-receipts.sh` (full vitest+coverage, evidence s09, verbose pgTAP, races, both Playwright
+  configs, S09 collect, S10/S11 run-slice-evidence, guards) -> fix failures -> fill the canonical-validate line with
+  that run's counts -> S11 vitest receipts refresh -> canonical `pnpm validate` verifies the line -> tick S10 (11) and
+  S11 (121) criteria, gates, Depth Ratio, phase/index counts, session log, progress:check -> commit -> draft PR.
+- Owner item to report: AC-045 boundary clause (rule that tracked boundaries satisfy it, or keep partial until #127
+  lands in Slice 13 and #128 gets its Job-state result-map architecture decision).

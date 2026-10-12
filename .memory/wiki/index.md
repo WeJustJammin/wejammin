@@ -1660,6 +1660,12 @@
 
 ## Structured Memory
 
+- pattern: PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12) — 2026-10-12T09:56:00.747Z
+- decision: DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12) — 2026-10-12T05:26:46.711Z
+- decision: DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12) — 2026-10-12T04:52:06.387Z
+- decision: DEC-175: A pattern placement stores one composition row per root node of the pinned pattern (2026-10-12) — 2026-10-12T04:49:08.470Z
+- decision: DEC-174: Slice 11 relationship RLS predicates bind every role except the CMS definer (2026-10-12) — 2026-10-12T03:27:19.263Z
+- decision: DEC-173: The schedule executor cancels a claimed schedule whose entry left active (supersedes DEC-158(d) for that case) (2026-10-12) — 2026-10-12T03:27:19.262Z
 - decision: DEC-172: Owner ratifies the Slice 11 criteria wording batch (2026-10-11) — 2026-10-11T21:36:40.758Z
 - decision: DEC-171: The CMS-03B-07 schedule identity key includes the private sub-microsecond remainder (2026-10-11) — 2026-10-11T21:36:40.756Z
 - decision: DEC-170: A frozen locale source is current only while its variant still serves the frozen source revision and hash (2026-10-11) — 2026-10-11T21:36:40.754Z

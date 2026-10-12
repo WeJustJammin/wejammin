@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 174
-- **Unique decision titles**: 174
+- **Total decisions**: 179
+- **Unique decision titles**: 179
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2492,6 +2492,76 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: phase-2 plan, Slice 10/11 trackers and ledgers, BE03b, IA03, CMS Worker error codes.
 - **Reversibility**: Medium
 
+## DEC-173: The schedule executor cancels a claimed schedule whose entry left active (supersedes DEC-158(d) for that case) (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T03:27:19.262Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: independent review A-M7: BE03b:1898 says the executor cancels with entry_unavailable; DEC-158(d) said ScheduleExecutionResult omits cancelled because cancellation happens only in the invalidation transaction, leaving a race when a claim precedes the entry leaving active.
+- **Options considered**: (A) executor cancels in its own transaction with a typed cancelled outcome; (B) keep blocking and rely on invalidation.
+- **Decision**: (A). State guard allows executing -> cancelled only for entry_unavailable; the Worker sweep counts it as an attempt outcome, never as blocked.
+- **Downstream**: migrations 20261010170000/170100, ScheduleExecutionResult contract, sweep telemetry, AC-083.
+- **Reversibility**: Medium
+
+## DEC-174: Slice 11 relationship RLS predicates bind every role except the CMS definer (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T03:27:19.263Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: BE03b:2015-2016 require RLS predicates on verified session, acting party, relationship/assignment and capability, with positive/negative tests.
+- **Options considered**: (A) relationship predicates on all roles including wejammin_cms_definer; (B) relationship predicates for every role except the definer, which stays tenant-scoped while definer RPC bodies enforce relationship scope.
+- **Decision**: (B). A live mutant showed binding the definer breaks entry-archive and approval semantics and the 404/403 split; today the table ACL grants only postgres and the definer, so the predicates bind any future grantee and the session probe.
+- **Downstream**: migration 20261010170200; any new grant on Slice 11 tables inherits the predicates.
+- **Reversibility**: Medium
+
+## DEC-175: A pattern placement stores one composition row per root node of the pinned pattern (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T04:49:08.470Z
+- **Agents**: claude
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+- **Problem**: BE03c does not define what a pattern placement stores when a pattern (a forest of 1-32 root blocks) is inserted into an entry composition (Slice 12 setup Q1).
+- **Options considered**: (A) one row per root node pinned to (patternId, patternVersion) with its own block identity, the 201 returning an items list; (B) one row per insertion with nullable block identity; (C) one row per insertion using the first root.
+- **Decision**: owner chose (A) on 2026-10-12. Keeps the Slice 11 checker input, the D5 block comparison hash (BE03b:1704) and the append-only composition table valid; follows the CMS-03C-15 items precedent. BE03c gains the rule that override keys are normalized node paths under the inserted root.
+- **Downstream**: CMS-03C-02 success shape, composition instance list, Slice 12 criteria and tests.
+- **Reversibility**: Medium
+
+## DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T04:52:06.387Z
+- **Agents**: claude
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+- **Problem**: IA03 AC-CMS-12 (IA03:46, :67) and BE03c:90 say "revision/template draft", but the contract (BE03c:365), the composition table (revision_id FK), the IA data model (DD03:230) and the render plan address entry revisions only; a template version holds slots and bindings, not a composition (Slice 12 setup Q2).
+- **Options considered**: (A) entry revisions only, rewording IA03:46/:67, BE03c:90 and P2-S12-AC-026/AC-043; (B) specify a template-draft composition (new data model, hash, digest and render rule with no spec).
+- **Decision**: owner chose (A) on 2026-10-12. B would be new feature design, not implementation of a locked spec.
+- **Downstream**: IA03, BE03c, Slice 12 criteria AC-026 and AC-043 (applied with the Slice 12 DEC-148 cascade).
+- **Reversibility**: Medium
+
+## DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T05:26:46.711Z
+- **Agents**: claude
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+- **Problem**: AC-079 enumerated ScheduleExecutionResult as completed, blocked, failed_retryable or already_completed; DEC-173 implemented BE03b:1898 and added cancelled with reason entry_unavailable.
+- **Options considered**: (A) amend AC-079 to include cancelled; (B) revert DEC-173 so the executor blocks.
+- **Decision**: owner chose (A) on 2026-10-12 ("A for AC-079"). Applied to the phase plan, Slice 11 tracker and evidence ledger.
+- **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
+- **Reversibility**: Medium
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -4827,6 +4897,71 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: (A) ratify drafted rewordings aligned to the cited rules; (B) keep wording and leave them partial; (C) change code to match the old text.
 - **Decision**: owner chose (A) and approved all 37 items of docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md on 2026-10-11, including 502 DEPENDENCY_UNAVAILABLE per BE00:172/590 for response-contract failures and the BE03b/IA03 alignment edits. CMS routes emitting BAD_GATEWAY are a conformance defect being fixed.
 - **Downstream**: phase-2 plan, Slice 10/11 trackers and ledgers, BE03b, IA03, CMS Worker error codes.
+- **Reversibility**: Medium
+
+### DEC-173: The schedule executor cancels a claimed schedule whose entry left active (supersedes DEC-158(d) for that case) (2026-10-12)
+
+- **Timestamp**: 2026-10-12T03:27:19.262Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: independent review A-M7: BE03b:1898 says the executor cancels with entry_unavailable; DEC-158(d) said ScheduleExecutionResult omits cancelled because cancellation happens only in the invalidation transaction, leaving a race when a claim precedes the entry leaving active.
+- **Options considered**: (A) executor cancels in its own transaction with a typed cancelled outcome; (B) keep blocking and rely on invalidation.
+- **Decision**: (A). State guard allows executing -> cancelled only for entry_unavailable; the Worker sweep counts it as an attempt outcome, never as blocked.
+- **Downstream**: migrations 20261010170000/170100, ScheduleExecutionResult contract, sweep telemetry, AC-083.
+- **Reversibility**: Medium
+
+### DEC-174: Slice 11 relationship RLS predicates bind every role except the CMS definer (2026-10-12)
+
+- **Timestamp**: 2026-10-12T03:27:19.263Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: BE03b:2015-2016 require RLS predicates on verified session, acting party, relationship/assignment and capability, with positive/negative tests.
+- **Options considered**: (A) relationship predicates on all roles including wejammin_cms_definer; (B) relationship predicates for every role except the definer, which stays tenant-scoped while definer RPC bodies enforce relationship scope.
+- **Decision**: (B). A live mutant showed binding the definer breaks entry-archive and approval semantics and the 404/403 split; today the table ACL grants only postgres and the definer, so the predicates bind any future grantee and the session probe.
+- **Downstream**: migration 20261010170200; any new grant on Slice 11 tables inherits the predicates.
+- **Reversibility**: Medium
+
+### DEC-175: A pattern placement stores one composition row per root node of the pinned pattern (2026-10-12)
+
+- **Timestamp**: 2026-10-12T04:49:08.470Z
+- **Agent**: claude
+- **Source**: human-approval
+- **Tags**: decision, slice-12
+
+- **Problem**: BE03c does not define what a pattern placement stores when a pattern (a forest of 1-32 root blocks) is inserted into an entry composition (Slice 12 setup Q1).
+- **Options considered**: (A) one row per root node pinned to (patternId, patternVersion) with its own block identity, the 201 returning an items list; (B) one row per insertion with nullable block identity; (C) one row per insertion using the first root.
+- **Decision**: owner chose (A) on 2026-10-12. Keeps the Slice 11 checker input, the D5 block comparison hash (BE03b:1704) and the append-only composition table valid; follows the CMS-03C-15 items precedent. BE03c gains the rule that override keys are normalized node paths under the inserted root.
+- **Downstream**: CMS-03C-02 success shape, composition instance list, Slice 12 criteria and tests.
+- **Reversibility**: Medium
+
+### DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12)
+
+- **Timestamp**: 2026-10-12T04:52:06.387Z
+- **Agent**: claude
+- **Source**: human-approval
+- **Tags**: decision, slice-12
+
+- **Problem**: IA03 AC-CMS-12 (IA03:46, :67) and BE03c:90 say "revision/template draft", but the contract (BE03c:365), the composition table (revision_id FK), the IA data model (DD03:230) and the render plan address entry revisions only; a template version holds slots and bindings, not a composition (Slice 12 setup Q2).
+- **Options considered**: (A) entry revisions only, rewording IA03:46/:67, BE03c:90 and P2-S12-AC-026/AC-043; (B) specify a template-draft composition (new data model, hash, digest and render rule with no spec).
+- **Decision**: owner chose (A) on 2026-10-12. B would be new feature design, not implementation of a locked spec.
+- **Downstream**: IA03, BE03c, Slice 12 criteria AC-026 and AC-043 (applied with the Slice 12 DEC-148 cascade).
+- **Reversibility**: Medium
+
+### DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12)
+
+- **Timestamp**: 2026-10-12T05:26:46.711Z
+- **Agent**: claude
+- **Source**: human-approval
+- **Tags**: decision, slice-11
+
+- **Problem**: AC-079 enumerated ScheduleExecutionResult as completed, blocked, failed_retryable or already_completed; DEC-173 implemented BE03b:1898 and added cancelled with reason entry_unavailable.
+- **Options considered**: (A) amend AC-079 to include cancelled; (B) revert DEC-173 so the executor blocks.
+- **Decision**: owner chose (A) on 2026-10-12 ("A for AC-079"). Applied to the phase plan, Slice 11 tracker and evidence ledger.
+- **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
 
 ### DEC-162: Narrow first-empty schema baseline representation
