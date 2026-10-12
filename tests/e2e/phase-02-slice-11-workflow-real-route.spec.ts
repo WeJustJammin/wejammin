@@ -23,6 +23,12 @@ import {
   signInS11,
   type S11Actor,
 } from './support/s11-real-browser';
+import { nextSpringForwardGap } from './support/s11-dst-gap';
+import {
+  expectStatusAnnounced,
+  recordedStatusTexts,
+  startRecordingStatusTexts,
+} from './support/s11-status-recorder';
 import { ownerPrincipal, provisionMember } from './support/s11-real-world';
 
 /*
@@ -34,6 +40,9 @@ import { ownerPrincipal, provisionMember } from './support/s11-real-world';
  * instant (the ceremony itself is the Slice 09 suites' subject). Local loopback
  * only; never hosted evidence.
  */
+
+/** Longer than the 366 day schedule horizon (CMS-03B-07). */
+const PUBLISHER_GRANT_DAYS = 400;
 
 const ENTRY_PAGE = (entryId: string): string =>
   `/app/cms-content-modeling/entries/${entryId}/workflow`;
@@ -73,8 +82,16 @@ test.beforeAll(async ({ browser }) => {
     reviewer: actor(provisionMember(world, 's11-reviewer', ['cms.reviewer']), [
       'cms.reviewer',
     ]),
+    // A schedule is refused when the publisher's grant ends before the day it
+    // takes effect, and S11-RR-07 schedules months ahead: this publisher holds
+    // the grant for longer than the 366 day schedule horizon.
     publisher: actor(
-      provisionMember(world, 's11-publisher', ['cms.publisher']),
+      provisionMember(
+        world,
+        's11-publisher',
+        ['cms.publisher'],
+        PUBLISHER_GRANT_DAYS,
+      ),
       ['cms.publisher'],
     ),
     owner: actor(ownerPrincipal(world), ['cms.editorial_review.assign']),
@@ -122,10 +139,18 @@ test('[S11-RR-05] the author submits the current draft from the workflow page an
   const page = authorSession.page;
   await gotoHydrated(page, ENTRY_PAGE(entry.entryId));
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await startRecordingStatusTexts(page);
   await page.getByRole('button', { name: /^Submit for review/u }).click();
+  // The confirmation lasts only until the canonical read that follows (see
+  // s11-status-recorder.ts), so it is observed as announced, and the page that
+  // replaced it is asserted separately.
+  await expectStatusAnnounced(
+    page,
+    'Review submitted. It is open for decisions.',
+  );
   await expect(
-    page.getByText('Review submitted. It is open for decisions.'),
-  ).toBeVisible();
+    page.getByRole('region', { name: 'Review', exact: true }),
+  ).toContainText('Open. Risk class:');
   const view = await readWorkflow(authorSession.client, entry.entryId);
   expect(view.reviewState, view.text).toBe('open');
   expect(authorSession.browserErrors).toEqual([]);
@@ -217,8 +242,17 @@ test('[S11-RR-06] a review decision interrupted by step-up returns to its draft,
   );
   const mid = await readWorkflow(authorSession.client, entry.entryId);
   expect(mid.reviewState, 'no automatic replay').toBe('open');
+  await startRecordingStatusTexts(page);
   await page.getByRole('button', { name: 'Record approval' }).click();
-  await expect(page.getByText('Decision recorded.')).toBeVisible();
+  // The confirmation was announced (it lasts only until the canonical read that
+  // follows, see s11-status-recorder.ts) ...
+  await expectStatusAnnounced(page, 'Decision recorded.');
+  // ... and the canonical read that followed shows the approved review with the
+  // reviewer's own decision.
+  await expect(page.getByText(/State: Approved/u)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Decisions' })).toContainText(
+    'Your decision: approve',
+  );
   const after = await readWorkflow(authorSession.client, entry.entryId);
   expect(after.reviewState, after.text).toBe('approved');
   expect(reviewer.browserErrors).toEqual([]);
@@ -240,12 +274,21 @@ test('[S11-RR-09] publish now records a pending publication and never claims pub
   const publish = disclosure(page, 'Publish now');
   await publish.locator('summary').click();
   await publish.getByLabel('Audience').fill('public');
+  await startRecordingStatusTexts(page);
   await publish.getByRole('button', { name: 'Confirm publish' }).click();
-  const status = page.getByText(/^Publication recorded as version/u);
-  await expect(status).toBeVisible();
+  const announced = await expectStatusAnnounced(
+    page,
+    /^Publication recorded as version/u,
+  );
+  expect(announced).toContain('not confirmed visible to readers');
+  // The canonical read that follows lists the publication, still unconfirmed.
+  await expect(
+    page.getByRole('region', { name: 'Publications', exact: true }),
+  ).toContainText('not confirmed visible to readers');
   const text = await readoutAfter(page);
-  expect(text).toContain('not confirmed visible to readers');
   expect(text).not.toMatch(/now live|is live|publicly visible/iu);
+  for (const shown of await recordedStatusTexts(page))
+    expect(shown).not.toMatch(/now live|is live|publicly visible/iu);
   expect(publisher.browserErrors).toEqual([]);
   await publisher.context.close();
 });
@@ -264,16 +307,23 @@ test('[S11-RR-07] a schedule resolves the local time, blocks a nonexistent one, 
   await gotoHydrated(page, ENTRY_PAGE(flow.entry.entryId));
   const schedule = disclosure(page, 'Schedule publication');
   await schedule.locator('summary').click();
-  await schedule.getByLabel('Time zone').fill('America/New_York');
+  // The next real spring-forward gap inside the schedule horizon, read from the
+  // host's tz data: a fixed calendar date would go stale.
+  const gap = nextSpringForwardGap(new Date());
+  await schedule.getByLabel('Time zone').fill(gap.zone);
   await schedule.getByLabel('Audience').fill('public');
-  // 2027-03-14 02:30 does not exist in New York (spring forward).
-  await schedule.getByLabel('Local date and time').fill('2027-03-14T02:30');
+  // The skipped hour of a spring-forward day does not exist in that zone.
+  await schedule.getByLabel('Local date and time').fill(gap.nonexistentLocal);
   await expect(
     page.getByText('That local time does not exist in this time zone.'),
   ).toBeVisible();
-  await schedule.getByLabel('Local date and time').fill('2027-03-15T10:00');
+  await schedule.getByLabel('Local date and time').fill(gap.validLocal);
+  await startRecordingStatusTexts(page);
   await schedule.getByRole('button', { name: 'Schedule', exact: true }).click();
-  await expect(page.getByText(/^Scheduled, not published:/u)).toBeVisible();
+  await expectStatusAnnounced(page, /^Scheduled, not published:/u);
+  await expect(
+    page.getByRole('region', { name: 'Schedules', exact: true }),
+  ).toContainText('Scheduled, not published');
   expect(publisher.browserErrors).toEqual([]);
   await publisher.context.close();
 });

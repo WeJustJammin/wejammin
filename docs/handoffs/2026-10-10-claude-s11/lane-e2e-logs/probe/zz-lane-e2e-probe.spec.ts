@@ -116,23 +116,6 @@ const approvedEntry = async (title: string) => {
   return { entry, review };
 };
 
-/** An approved review for a fresh entry, made through the first-party routes. */
-const approvedEntry = async (title: string) => {
-  const entry = await seedEntry(authorSession.client, cast.world, title);
-  const review = await submitReviewViaApi(authorSession.client, entry);
-  await completeStepUp(ownerSession.context, cast.world, cast.owner);
-  const assigned = await assignReviewerViaApi(
-    ownerSession.client,
-    review,
-    cast.reviewer.principal.personId,
-  );
-  expect(assigned.status, assigned.text).toBe(201);
-  await completeStepUp(reviewerSession.context, cast.world, cast.reviewer);
-  const decided = await approveViaApi(reviewerSession.client, review);
-  expect(decided.status, decided.text).toBe(200);
-  return { entry, review };
-};
-
 /** The collapsed section whose summary reads `summary` (each form owns an Audience field). */
 const disclosure = (page: Page, summary: string) =>
   page
@@ -191,6 +174,69 @@ for (const attempt of [1, 2, 3, 4, 5]) {
     );
     note(`PROBE-RR-06 attempt=${attempt}: ${rows.join(' | ')}`);
     await reviewer.context.close();
+  });
+}
+
+/** The lifetimes recorded since `recordStatusLifetimes`, as one line per status text. */
+const lifetimeRows = async (page: Page): Promise<string> => {
+  const result = await page.evaluate(() => ({
+    lifetimes: Reflect.get(window, '__lifetimes') as Record<string, { appearedAt: number; goneAt: number | null }>,
+    marks: Reflect.get(window, '__marks') as Record<string, number>,
+  }));
+  const click = result.marks['click'] ?? 0;
+  return Object.entries(result.lifetimes)
+    .map(
+      ([text, life]) => `${JSON.stringify(text)} appeared +${Math.round(life.appearedAt - click)}ms after the click, left ${life.goneAt === null ? 'never' : `+${Math.round(life.goneAt - click)}ms`}, visible ${life.goneAt === null ? 'still' : `${Math.round(life.goneAt - life.appearedAt)}ms`}`,
+    )
+    .join(' | ');
+};
+
+for (const attempt of [1, 2, 3, 4, 5]) {
+  test(`[PROBE-RR-05-${attempt}] how long the submit confirmation stays on the page`, async () => {
+    const entry = await seedEntry(authorSession.client, cast.world, `Submit me ${attempt}`);
+    const page = authorSession.page;
+    await gotoHydrated(page, ENTRY_PAGE(entry.entryId));
+    await recordStatusLifetimes(page);
+    await page.getByRole('button', { name: /^Submit for review/u }).click();
+    await page.waitForTimeout(2_000);
+    note(`PROBE-RR-05 attempt=${attempt}: ${await lifetimeRows(page)}`);
+  });
+}
+
+for (const attempt of [1, 2, 3, 4, 5]) {
+  test(`[PROBE-RR-09-${attempt}] how long the publish confirmation stays on the page`, async ({ browser }) => {
+    const flow = await approvedEntry(`Publish me ${attempt}`);
+    const publisher = await signInS11(browser, cast.world, cast.publisher, new Date());
+    const page = publisher.page;
+    await gotoHydrated(page, ENTRY_PAGE(flow.entry.entryId));
+    const publish = disclosure(page, 'Publish now');
+    await publish.locator('summary').click();
+    await publish.getByLabel('Audience').fill('public');
+    await recordStatusLifetimes(page);
+    await publish.getByRole('button', { name: 'Confirm publish' }).click();
+    await page.waitForTimeout(2_000);
+    note(`PROBE-RR-09 attempt=${attempt}: ${await lifetimeRows(page)}`);
+    await publisher.context.close();
+  });
+}
+
+for (const attempt of [1, 2, 3]) {
+  test(`[PROBE-RR-07-${attempt}] how long the schedule confirmation stays on the page`, async ({ browser }) => {
+    const flow = await approvedEntry(`Schedule me ${attempt}`);
+    const publisher = await signInS11(browser, cast.world, cast.publisher, new Date());
+    const page = publisher.page;
+    await gotoHydrated(page, ENTRY_PAGE(flow.entry.entryId));
+    const schedule = disclosure(page, 'Schedule publication');
+    await schedule.locator('summary').click();
+    const gap = nextSpringForwardGap(new Date());
+    await schedule.getByLabel('Time zone').fill(gap.zone);
+    await schedule.getByLabel('Audience').fill('public');
+    await schedule.getByLabel('Local date and time').fill(gap.validLocal);
+    await recordStatusLifetimes(page);
+    await schedule.getByRole('button', { name: 'Schedule', exact: true }).click();
+    await page.waitForTimeout(2_000);
+    note(`PROBE-RR-07 attempt=${attempt}: ${await lifetimeRows(page)}`);
+    await publisher.context.close();
   });
 }
 

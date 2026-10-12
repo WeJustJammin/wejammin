@@ -52,9 +52,15 @@ const authorWithEntries = async (
   return { author, entries };
 };
 
+/**
+ * The entry ids the list shows. A row carries two links since Slice 11: the
+ * entry link ("Entry {id}") and the "Review and publish" link to the entry's
+ * workflow page; only the first names an entry.
+ */
 const listedEntryIds = async (page: Page): Promise<string[]> =>
   page
     .locator('main ul > li > a')
+    .filter({ hasText: /^Entry / })
     .evaluateAll((links) =>
       links.map((link) => (link.textContent ?? '').replace(/^Entry /u, '')),
     );

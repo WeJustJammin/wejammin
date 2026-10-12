@@ -17,26 +17,38 @@ import { s10Session, type S10Principal, type S10World } from './s10-real-world';
 import { S10_CAPABILITIES_CLAIM, S10_PARTY_CLAIM } from './s10-session-claims';
 import { S11_PERSON_CLAIM, S11_STEP_UP_CLAIM } from './s11-session-claims';
 
+/** The default life of a test grant, in days; a spec that needs more passes `grantDays`. */
+export const S11_GRANT_DAYS = 30;
+
 const grant = (
   world: S10World,
   person: S10Principal,
   capabilities: readonly string[],
+  grantDays: number,
 ): void => {
+  if (!Number.isInteger(grantDays) || grantDays < 1)
+    throw new RangeError('grantDays must be a positive whole number of days');
   psql(`
     insert into identity_private.organization_actor_grant(
       organization_id, person_id, capability_code, valid_from, valid_through, active)
     select '${world.owner.organizationId}', '${person.personId}', capability,
-           current_date, current_date + 30, true
+           current_date, current_date + ${grantDays}, true
       from (values ${capabilities.map((capability) => `('${capability}')`).join(', ')}) as capabilities(capability)
     on conflict (organization_id, person_id, capability_code)
     do update set active = true, valid_through = excluded.valid_through`);
 };
 
-/** A confirmed member of the owning organization holding `capabilities`. */
+/**
+ * A confirmed member of the owning organization holding `capabilities` for
+ * `grantDays` days from today. A schedule is refused when the publisher's grant
+ * ends before the day it takes effect (`authority_ends_before_schedule`), so a
+ * spec that schedules months ahead provisions its publisher for longer.
+ */
 export const provisionMember = (
   world: S10World,
   label: string,
   capabilities: readonly string[],
+  grantDays: number = S11_GRANT_DAYS,
 ): S10Principal => {
   const authUserId = createAuthUser(randomUUID());
   const person: S10Principal = {
@@ -51,7 +63,7 @@ export const provisionMember = (
     values (gen_random_uuid(), '${world.owner.organizationId}', '${person.personId}',
             'confirmed', 'invitation', 'ungoverned', current_date,
             clock_timestamp(), '${world.owner.personId}', 1)`);
-  grant(world, person, capabilities);
+  grant(world, person, capabilities, grantDays);
   return person;
 };
 
@@ -62,7 +74,7 @@ export const ownerPrincipal = (world: S10World): S10Principal => {
     personId: world.owner.personId,
     label: 'owner',
   };
-  grant(world, owner, ['cms.editor']);
+  grant(world, owner, ['cms.editor'], S11_GRANT_DAYS);
   return owner;
 };
 
