@@ -36,6 +36,14 @@
  *       settings key; once the first decision commits the stale decision is `review_not_open` (rolled back, its key
  *       reusable) and the publish commits version 1: no deadlock, only the first decision remains.
  *
+ *   E9  a claim precedes the entry leaving `active` (CMS-03B-20 / AC-083, BE03b: "A schedule whose entry is not `active` at
+ *       execution is `cancelled` with `entry_unavailable`"): the executor reads the entry lifecycle under the entry row
+ *       FOR SHARE.  E9a: an execution parked right before its lineage insert (entry still active, FOR SHARE held)
+ *       BLOCKS an archive; the execution commits `completed`, then the archive commits - no publication after the
+ *       archive, nothing cancelled.  E9b: an archive parked after its UPDATE (entry row held, uncommitted) BLOCKS the
+ *       execution at its FOR SHARE; once the archive commits the execution reads `archived` and CANCELS the schedule
+ *       `entry_unavailable` in its own transaction (one audit record, no lineage row, no publication event).
+ *
  * Run only against the disposable local database right after `pnpm db:reset`.
  */
 import * as kit from '../../../infra/database-races/publication-kit.mjs';
@@ -49,6 +57,7 @@ const APPEND_GATE = 7702;
 const LINEAGE_GATE = 7703;
 const RESERVE_GATE = 7704;
 const DECISION_GATE = 7705;
+const ARCHIVE_GATE = 7706;
 const PUBLISH = 'cms_publish_revision';
 const tokens = (outcomes) =>
   outcomes.map((outcome) => outcome.token ?? 'ok').join(',');
@@ -508,6 +517,107 @@ try {
   );
   runTerminate(settingsApp);
   await settingsHolder.done;
+  // ------------------------------------------------------------ E9 ----
+  // CMS-03B-20 / AC-083: the claim precedes the entry leaving `active`.  The executor reads the lifecycle under the entry
+  // row FOR SHARE (global lock order position 0), so a lifecycle change and an execution serialize on that row.
+  const archiveScript = (tag, gate) =>
+    `begin; select set_config('app.cms_rpc', 'true', true); update platform_private.cms_content_entries set lifecycle = 'archived' where id = ${kit.sql(ids.entries[tag])}; ${gate === null ? '' : `select pg_catalog.pg_advisory_xact_lock_shared(${gate});`} commit;`;
+  const lifecycleOf = (tag) =>
+    kit.runValue(
+      `select lifecycle from platform_private.cms_content_entries where id = ${kit.sql(ids.entries[tag])};`,
+    );
+
+  // E9a: the execution is first (parked right before its lineage insert, entry active, FOR SHARE held).
+  kit.makeDue(ids, ['ex-arch-a']);
+  const claimA = kit
+    .claim(25, 's11race-claim-e9a')
+    .response.find((entry) => entry.scheduleId === ids.schedules['ex-arch-a']);
+  await kit.closeGate(LINEAGE_GATE);
+  const execAppA = `s11race-lineage-${LINEAGE_GATE}-exec-e9a`;
+  const executingA = kit.executeAsync(
+    kit.executeRequest(claimA, kit.proofFor(ids, 'ex-arch-a')),
+    execAppA,
+  );
+  await kit.waitParked(execAppA);
+  const archiveAppA = 's11race-e9a-archive';
+  const archivingA = kit.spawnSession(
+    archiveAppA,
+    archiveScript('ex-arch-a', null),
+  );
+  check(
+    (await kit.blockedOrCompleted(archiveAppA, archivingA)) === 'blocked',
+    'E9a: an archive BLOCKS behind a schedule execution parked right before its lineage insert (it holds the entry row FOR SHARE)',
+  );
+  await kit.openGate(LINEAGE_GATE);
+  const [doneA, archivedA] = await Promise.all([
+    executingA.done,
+    archivingA.done,
+  ]);
+  check(
+    doneA.code === 0 &&
+      archivedA.code === 0 &&
+      doneA.response.outcome === 'completed' &&
+      kit.scheduleState(ids, 'ex-arch-a') === 'completed/3/0/-/-' &&
+      kit.lineage(ids, 'ex-arch-a') === '1:publish:active' &&
+      kit.publicationEvents(ids, 'ex-arch-a') === 1 &&
+      lifecycleOf('ex-arch-a') === 'archived',
+    `E9a: the execution committed first (completed, one lineage row, one event) and the archive after it; nothing was published after the archive and nothing cancelled (${tokens([doneA, archivedA])})`,
+  );
+
+  // E9b: the archive is first (parked after its UPDATE: entry row held, uncommitted).
+  kit.makeDue(ids, ['ex-arch-b']);
+  const claimB = kit
+    .claim(25, 's11race-claim-e9b')
+    .response.find((entry) => entry.scheduleId === ids.schedules['ex-arch-b']);
+  await kit.closeGate(ARCHIVE_GATE);
+  const archiveAppB = 's11race-e9b-archive';
+  const archivingB = kit.spawnSession(
+    archiveAppB,
+    archiveScript('ex-arch-b', ARCHIVE_GATE),
+  );
+  await kit.waitParked(archiveAppB);
+  const execAppB = 's11race-exec-e9b';
+  const executingB = kit.executeAsync(
+    kit.executeRequest(claimB, kit.proofFor(ids, 'ex-arch-b')),
+    execAppB,
+  );
+  check(
+    (await kit.blockedOrCompleted(execAppB, executingB.session)) === 'blocked',
+    'E9b: the execution BLOCKS at the entry row FOR SHARE behind an archive that updated the lifecycle and has not committed',
+  );
+  check(
+    kit.scheduleState(ids, 'ex-arch-b').startsWith('executing/2/0/-/lease'),
+    'E9b: while blocked the execution has changed nothing: the schedule is still executing at the claim version and lease',
+  );
+  await kit.openGate(ARCHIVE_GATE);
+  const [doneB, archivedB] = await Promise.all([
+    executingB.done,
+    archivingB.done,
+  ]);
+  check(
+    doneB.code === 0 &&
+      archivedB.code === 0 &&
+      doneB.response.outcome === 'cancelled' &&
+      doneB.response.reasonCode === 'entry_unavailable' &&
+      doneB.response.publicationVersionId === null,
+    `E9b: once the archive commits the execution reads the entry as archived and answers cancelled entry_unavailable (${tokens([doneB, archivedB])})`,
+  );
+  check(
+    kit.scheduleState(ids, 'ex-arch-b') ===
+      'cancelled/3/0/entry_unavailable/-' &&
+      kit.lineage(ids, 'ex-arch-b') === '-' &&
+      kit.publicationEvents(ids, 'ex-arch-b') === 0 &&
+      kit.scheduleAudits(
+        ids,
+        'ex-arch-b',
+        'cms.publication.schedule.cancel',
+      ) === 1 &&
+      kit.scheduleAudits(ids, 'ex-arch-b', 'cms.publication.schedule.block') ===
+        0 &&
+      kit.reviewState(ids.reviews['ex-arch-b']) ===
+        'invalidated/3/1/entry_unavailable',
+    `E9b: the schedule is cancelled in the executor's own transaction (version 3, lease released, attempts unchanged): one cancel audit record, no block record, no lineage row, no publication event; the archive had already invalidated the review (${kit.scheduleState(ids, 'ex-arch-b')} | ${kit.reviewState(ids.reviews['ex-arch-b'])})`,
+  );
   console.log(
     '# all publication / execution race assertions passed; run `pnpm db:reset` before the pgTAP suite',
   );

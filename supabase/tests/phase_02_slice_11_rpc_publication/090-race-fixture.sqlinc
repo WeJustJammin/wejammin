@@ -10,7 +10,7 @@ select pg_temp.p11_approved(tag) from (values
   ('cr-1'), ('cr-2'), ('cr-3'), ('cr-4'), ('cr-5'), ('cr-6'), ('cr-7'), ('cr-8'), ('cr-9'), ('cr-10'), ('cr-11'), ('cr-12'),
   ('sk-1'), ('sk-2'), ('sk-3'), ('lx-1'), ('lx-2'), ('lx-3'), ('lx-4'),
   ('ex-twice'), ('ex-lock'), ('pe-1'), ('pe-2'), ('dp-1'), ('dp-2'), ('dp-3'), ('gt-a'), ('gt-b'), ('gt-c'),
-  ('sa-1'), ('sa-2'), ('sa-3'), ('sa-4'), ('sa-5')) as t(tag);
+  ('sa-1'), ('sa-2'), ('sa-3'), ('sa-4'), ('sa-5'), ('ex-arch-a'), ('ex-arch-b')) as t(tag);
 
 -- E8 of 014 (settings lock position): an OPEN review (version 1, one approval needed) with TWO independently valid
 -- assigned reviewers (rvA from the builder, rvB here); the publisher is `pub`.
@@ -23,7 +23,7 @@ select pg_temp.p11_schedule_row('s-' || tag, tag, jsonb_build_object(
 from (values
   ('cr-1'), ('cr-2'), ('cr-3'), ('cr-4'), ('cr-5'), ('cr-6'), ('cr-7'), ('cr-8'), ('cr-9'), ('cr-10'), ('cr-11'), ('cr-12'),
   ('sk-1'), ('sk-2'), ('sk-3'), ('lx-1'), ('lx-2'), ('lx-3'), ('lx-4'), ('ex-twice'), ('ex-lock'), ('pe-1'), ('pe-2'),
-  ('gt-a'), ('gt-b'), ('gt-c')) as t(tag);
+  ('gt-a'), ('gt-b'), ('gt-c'), ('ex-arch-a'), ('ex-arch-b')) as t(tag);
 
 with review_ids as (
   select substr(ids.key, 4) as tag, review.id as review_id, review.entry_id, review.revision_id

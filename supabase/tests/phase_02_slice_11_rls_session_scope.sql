@@ -10,13 +10,20 @@
 -- platform_private.cms_acting_party() publishes it (app.cms_session_actor / app.cms_session_party); the gate
 -- (app.cms_rpc) is on, so every row seen or refused here is the SESSION predicate's doing.
 --
--- What is proved, per role of the world (owner = receipt-derived owner, editor = submitter, outsider = a member with
--- no CMS capability, rvA = reviewer, pub = publisher, stranger = not a member):
---   * READ: every confirmed member of the acting party reads the party's rows of every table (the relationship
---     scopes - the five review scopes, the read scopes - are enforced in the definer RPC bodies and proved in
---     their suites; see the migration header for why they are not row predicates); a non-member, a member acting
---     in another party, a member whose tenure ended and a half-published session read nothing; a transaction with
---     no published session (the service paths) is admitted by the gate alone; the gate still applies.
+-- What is proved, per role of the world (owner = receipt-derived owner, editor = submitter and entry assignee,
+-- outsider = a member with no CMS capability, rvA / rvB = reviewers, pub = publisher, stranger = not a member):
+--   * READ (tenant): a non-member, a member acting in another party, a member whose tenure ended and a
+--     half-published session read nothing; a transaction with no published session (the service paths) is
+--     admitted by the gate alone; the gate still applies.
+--   * READ (relationship / assignment / capability, orchestrator ruling 2026-10-11 over A-M2): a confirmed member
+--     reads exactly the rows the read RPCs would show it - a review, its decisions and its dependency rows to the
+--     holders of one of the five review scopes (owner, submitter, non-revoked reviewer assignee, entry assignee,
+--     owner-party publisher); a schedule, a publication row and an accessibility summary to the holders of a
+--     workflow read scope; an assignment to the owner and to its own non-revoked assignee; a settings snapshot to the
+--     workflow participants; a preview token to nobody (never directly selectable).  The CMS definer role that owns
+--     the RPC bodies stays tenant-scoped only (its bodies compute the 404 / 403 split and run the invalidation and
+--     recount cascades in the transaction of whoever caused them): proved by composition below.  Every role of the
+--     world is checked against the real read RPCs as the oracle.
 --   * WRITE: no row can be written (INSERT/UPDATE) or deleted outside the session's party; the exclusive writers
 --     (submitter, decider, creator, minter, grantor) must name the session person; assignments need the owner.
 --   * The registry is readable by every gated session and writable only under the system scope.
@@ -28,7 +35,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(57);
+select plan(68);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -44,6 +51,7 @@ select plan(57);
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
 \ir phase_02_slice_11_rpc_preview/000-world.sqlinc
 \ir phase_02_slice_11_rpc_publication/000-world.sqlinc
+\ir phase_02_slice_11_rpc_reads/000-world.sqlinc
 
 -- ----------------------------------------------------------------------------------------------- fixture --
 -- rls1: an APPROVED review (assignment of rvA, decision of rvA) plus a schedule, a dependency row, a publication
@@ -58,6 +66,15 @@ select pg_temp.h11r_raw_insert('platform_private.cms_publication_versions', pg_t
   'entry_id', pg_temp.h11w_uuid('rls1:entry'), 'revision_id', pg_temp.h11w_uuid('rls1:revision'),
   'publisher_person_id', pg_temp.s11_id('pub'), 'publication_hash', pg_temp.h11_sha256('rls1-publication'))));
 select pg_temp.r11p_token('t-rls1', 'rls1', 'owner');
+-- rls3: an OPEN review submitted by rvB with no reviewer assignment and no assignment of the editor to its entry, so
+-- the roles separate: only rvB (submitter), the owner (receipt, author assignee) and the publisher read it.
+select pg_temp.r11_entry('rls3');
+select pg_temp.r11r_review('rv-rls3', 'rls3', 'rvB');
+select pg_temp.h11r_raw_insert('platform_private.cms_editorial_review_dependencies',
+  pg_temp.s11_dependency_row(jsonb_build_object('review_id', pg_temp.s11_id('rv-rls3'))));
+select pg_temp.h11_raw_exec('platform_private.cms_entry_assignments', format(
+  $q$update platform_private.cms_entry_assignments set state = 'revoked', version = version + 1
+      where entry_id = %L and assignee_person_id = %L$q$, pg_temp.h11w_uuid('rls3:entry'), pg_temp.s11_id('editor')));
 -- The accessibility audit summary of a command (DEC-159 (5)): it names an existing audit event.
 select pg_temp.h11_raw_exec('platform_private.cms_command_accessibility_evidence', format(
   $q$insert into platform_private.cms_command_accessibility_evidence(
@@ -74,7 +91,9 @@ create temp table s11rls_helper_posture on commit drop as
 select p.proname::text as proname
   from pg_proc p
  where p.pronamespace = 'platform_private'::regnamespace
-   and p.proname in ('cms_s11_session_unbound', 'cms_s11_session_owner', 'cms_s11_session_person', 'cms_s11_session_is_owner')
+   and p.proname in ('cms_s11_session_unbound', 'cms_s11_session_owner', 'cms_s11_session_person', 'cms_s11_session_is_owner',
+                     'cms_s11_review_readable', 'cms_s11_assignment_readable', 'cms_s11_workflow_readable', 'cms_s11_snapshot_readable',
+                     'cms_s11_token_readable')
    and (not p.prosecdef or p.provolatile <> 's'
         or pg_get_userbyid(p.proowner) <> 'wejammin_cms_definer'
         or not (coalesce(p.proconfig, array[]::text[]) @> array['search_path=""'])
@@ -186,6 +205,8 @@ begin
         p_table, p_table, (image || p_overrides)::text);
       outcome := 'ok';
     elsif p_verb = 'update' then
+      -- The statement reads a column of the row (several tables hold updated_at = created_at by CHECK), so the SELECT
+      -- (relationship) policies also narrow it, exactly as PostgreSQL applies SELECT policies to a reading UPDATE.
       execute format('update platform_private.%I set updated_at = updated_at', p_table);
       get diagnostics touched = row_count;
       outcome := 'rows:' || touched;
@@ -210,6 +231,69 @@ begin
 end;
 $body$;
 
+-- The ids of one table's rows as the non-bypass probe role reads them under a published session (comma list, sorted).
+create or replace function pg_temp.s11rls_ids(p_actor text, p_table text, p_column text default 'id', p_role text default 's11_rls_probe')
+returns text
+language plpgsql
+as $body$
+declare
+  result text;
+begin
+  perform pg_temp.s11rls_publish(p_actor, pg_temp.s11_id('org')::text);
+  perform set_config('app.cms_rpc', 'true', true);
+  execute format('set local role %I', p_role);
+  begin
+    execute format('select coalesce(string_agg(%I::text, '','' order by %I::text), '''') from platform_private.%I', p_column, p_column, p_table)
+      into result;
+  exception when others then
+    result := 'ERR:' || sqlstate;
+  end;
+  reset role;
+  perform pg_temp.s11rls_publish(null, null);
+  return result;
+end;
+$body$;
+
+-- The reviews, as ids, that the real CMS-03B-16 read serves to a role (a 403 or 404 serves nothing).
+create or replace function pg_temp.s11rls_rpc_reviews(p_role text)
+returns text
+language plpgsql
+as $body$
+declare
+  tag text;
+  ids text[] := '{}';
+begin
+  foreach tag in array array['rv-rls1', 'rv-rls2', 'rv-rls3'] loop
+    perform pg_temp.r11r_call('or-' || p_role || '-' || tag, 'cms_get_editorial_review', p_role,
+      jsonb_build_object('reviewId', pg_temp.s11_id(tag), 'context', pg_temp.r11_ctx()));
+    if pg_temp.r11_out('or-' || p_role || '-' || tag) = '00000:' then
+      ids := ids || pg_temp.s11_id(tag)::text;
+    end if;
+  end loop;
+  return coalesce((select string_agg(i, ',' order by i) from unnest(ids) i), '');
+end;
+$body$;
+
+-- The schedules and publication rows, as ids, that the real CMS-03B-15 read serves to a role for the rls1 revision.
+create or replace function pg_temp.s11rls_rpc_workflow(p_role text)
+returns text
+language plpgsql
+as $body$
+declare
+  label text := 'ow-' || p_role;
+begin
+  perform pg_temp.r11r_call(label, 'cms_get_entry_workflow', p_role, jsonb_build_object(
+    'entryId', pg_temp.h11w_uuid('rls1:entry'), 'revisionId', pg_temp.h11w_uuid('rls1:revision'), 'context', pg_temp.r11_ctx()));
+  if pg_temp.r11_out(label) <> '00000:' then
+    return 'schedules=|publications=';
+  end if;
+  return 'schedules=' || coalesce((select string_agg(item->>'id', ',' order by item->>'id')
+                                     from jsonb_array_elements(pg_temp.r11_resp(label)->'schedules') item), '')
+      || '|publications=' || coalesce((select string_agg(item->>'publicationVersionId', ',' order by item->>'publicationVersionId')
+                                         from jsonb_array_elements(pg_temp.r11_resp(label)->'publications') item), '');
+end;
+$body$;
+
 -- Control: every table has rows of the party, and the unrestricted oracle sees them all.
 create temp table s11rls_full(counts text not null) on commit drop;
 insert into s11rls_full select pg_temp.s11rls_counts(null, null, false);
@@ -220,6 +304,30 @@ select regexp_replace(split_part(counts, ';registry=', 1), '=[0-9]+', '=0', 'g')
   from s11rls_full;
 create temp table s11rls_gated_off(counts text not null) on commit drop;
 insert into s11rls_gated_off select regexp_replace(counts, '=[0-9]+', '=0', 'g') from s11rls_full;
+-- The rows each role of the world reads (relationship / assignment / capability), the registry being readable by every gated
+-- session.  Totals: 3 reviews, 2 assignments, 2 decisions, 2 dependency rows, 1 snapshot, 1 schedule, 1 publication row,
+-- 1 token and 1 accessibility summary.
+create or replace function pg_temp.s11rls_expect(
+  p_assignments int, p_decisions int, p_dependencies int, p_evidence int, p_reviews int, p_schedules int,
+  p_snapshots int, p_tokens int, p_versions int
+)
+returns text
+language sql
+stable
+as $body$
+  select format('assignments=%s;decisions=%s;dependencies=%s;evidence=%s;reviews=%s;schedules=%s;snapshots=%s;tokens=%s;versions=%s;registry=%s',
+    p_assignments, p_decisions, p_dependencies, p_evidence, p_reviews, p_schedules, p_snapshots, p_tokens, p_versions,
+    split_part((select counts from s11rls_full), ';registry=', 2))
+$body$;
+-- The same expectation as the row counts an UPDATE reports ('reviews=3' -> 'reviews=rows:3'), without the registry.
+create or replace function pg_temp.s11rls_as_rows(p_counts text)
+returns text
+language sql
+immutable
+as $body$
+  select string_agg(split_part(kv, '=', 1) || '=rows:' || split_part(kv, '=', 2), ';' order by split_part(kv, '=', 1))
+    from unnest(string_to_array(split_part(p_counts, ';registry=', 1), ';')) kv
+$body$;
 select ok(
   (select counts !~ '=0(;|$)' from s11rls_full),
   'fixture: all nine tenant tables and the registry hold rows (the world builds a review, an assignment, a decision, a dependency, a snapshot, a schedule, a publication, a token and an accessibility audit summary)');
@@ -277,12 +385,25 @@ select is(
 select is(
   (select string_agg(proname, ',' order by proname) from s11rls_helper_posture),
   null,
-  'the four session-scope helpers exist as STABLE SECURITY DEFINER functions of the CMS definer with an empty search_path and no EXECUTE for anyone else [P2-S11-AC-119]');
+  'the nine session-scope helpers (four tenant / person / owner, five relationship) exist as STABLE SECURITY DEFINER functions of the CMS definer with an empty search_path and no EXECUTE for anyone else [P2-S11-AC-119]');
 select is(
   (select count(*)::integer from pg_proc p
     where p.pronamespace = 'platform_private'::regnamespace
-      and p.proname in ('cms_s11_session_unbound', 'cms_s11_session_owner', 'cms_s11_session_person', 'cms_s11_session_is_owner')),
-  4, 'exactly one overload of each session-scope helper exists [P2-S11-AC-119]');
+      and p.proname in ('cms_s11_session_unbound', 'cms_s11_session_owner', 'cms_s11_session_person', 'cms_s11_session_is_owner',
+                        'cms_s11_review_readable', 'cms_s11_assignment_readable', 'cms_s11_workflow_readable', 'cms_s11_snapshot_readable',
+                     'cms_s11_token_readable')),
+  9, 'exactly one overload of each session-scope helper exists [P2-S11-AC-119]');
+select is(
+  (select string_agg(t.tbl, ',' order by t.tbl)
+     from s11rls_tables t
+    where not exists (
+      select 1 from pg_policies p
+       where p.schemaname = 'platform_private' and p.tablename = t.tbl
+         and p.policyname = t.tbl || '_session_relationship'
+         and p.permissive = 'RESTRICTIVE' and p.cmd = 'SELECT'
+         and p.qual ~ 'wejammin_cms_definer')),
+  null,
+  'every tenant-scoped Slice 11 table carries a RESTRICTIVE SELECT policy for the relationship / assignment / capability scope that exempts only the CMS definer role (whose bodies own the 404 / 403 split and the cascades) [P2-S11-AC-119]');
 select ok(
   (select bool_and(c.relrowsecurity and c.relforcerowsecurity)
      from (select tbl from s11rls_tables union all select 'cms_preflight_registry') t
@@ -290,27 +411,56 @@ select ok(
   'row-level security stays enabled and forced on all ten tables [P2-S11-AC-119]');
 
 -- --------------------------------------------------------------------------- reads: who sees which rows --
+-- Tenant: the acting party's rows only.  Relationship: only the rows the role holds a scope on.
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('owner'), pg_temp.s11_id('org')::text),
-  (select counts from s11rls_full),
-  'READ allowed: the receipt-derived owner acting in its party reads every row of the nine tenant tables and the registry [P2-S11-AC-007]');
+  pg_temp.s11rls_expect(2, 2, 2, 1, 3, 1, 1, 0, 1),
+  'READ scoped: the receipt-derived owner reads all three reviews (owner scope), both assignments, both decisions, both dependency rows and the workflow rows it is assigned to, and no preview token [P2-S11-AC-007]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('editor'), pg_temp.s11_id('org')::text),
-  (select counts from s11rls_full),
-  'READ allowed: the submitter (cms.editor) reads the party''s rows [P2-S11-AC-013]');
+  pg_temp.s11rls_expect(0, 2, 1, 1, 2, 1, 1, 0, 1),
+  'READ scoped: the submitter / entry assignee reads the two reviews it submitted or is assigned to (not the third, whose entry assignment was revoked), their decisions and dependency rows, no assignment and no token [P2-S11-AC-013]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('rvA'), pg_temp.s11_id('org')::text),
-  (select counts from s11rls_full),
-  'READ allowed: an assigned reviewer reads the party''s rows (the five review scopes are the RPC layer''s: the recount a decision runs must see every assignment and decision) [P2-S11-AC-013]');
+  pg_temp.s11rls_expect(2, 2, 1, 1, 2, 1, 1, 0, 1),
+  'READ scoped: an assigned reviewer reads the two reviews it is assigned to and their rows, and its own two assignments, never the unassigned review [P2-S11-AC-013]');
+select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('rvB'), pg_temp.s11_id('org')::text),
+  pg_temp.s11rls_expect(0, 0, 1, 0, 1, 0, 1, 0, 0),
+  'READ scoped: a submitter with no assignment reads only the review it submitted and its dependency rows - no decision, schedule, publication or summary of other reviews [P2-S11-AC-013]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('pub'), pg_temp.s11_id('org')::text),
-  (select counts from s11rls_full),
-  'READ allowed: the publisher reads the party''s rows [P2-S11-AC-019]');
+  pg_temp.s11rls_expect(0, 2, 2, 1, 3, 1, 1, 0, 1),
+  'READ scoped: the owner-party publisher reads all three reviews (publisher scope) and the workflow rows, but no assignment and no token [P2-S11-AC-019]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('outsider'), pg_temp.s11_id('org')::text),
-  (select counts from s11rls_full),
-  'READ allowed at the row level: a confirmed member with no CMS capability reads the party''s rows (its 403 is the definer RPCs'' capability check, proved in their suites) [P2-S11-AC-025]');
+  (select counts from s11rls_denied),
+  'READ denied: a confirmed member with no CMS capability and no assignment reads no row of any tenant table (the code-owned registry stays readable) [P2-S11-AC-025]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('stranger'), pg_temp.s11_id('org')::text),
   (select counts from s11rls_denied),
   'READ denied: a caller who is not a member of the acting party reads no row of any tenant table (the code-owned registry stays readable) [P2-S11-AC-007]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('owner'), pg_temp.s11_id('creator')::text),
   (select counts from s11rls_denied),
   'READ denied: the owner acting in ANOTHER party (its own person party) reads no row of the organization [P2-S11-AC-031]');
+
+-- Exactly what the read RPCs show: the oracle is the real CMS-03B-16 / CMS-03B-15 read, per role, taken once here.
+create temp table s11rls_oracle(role text primary key, reviews text not null, workflow text not null) on commit drop;
+insert into s11rls_oracle
+select r.role, pg_temp.s11rls_rpc_reviews(r.role), pg_temp.s11rls_rpc_workflow(r.role)
+  from (values ('owner'), ('editor'), ('rvA'), ('rvB'), ('pub'), ('outsider'), ('stranger')) r(role);
+select is(
+  (select string_agg(r.role || '=' || pg_temp.s11rls_ids(pg_temp.s11rls_auth(r.role), 'cms_editorial_reviews'), ';' order by r.role)
+     from s11rls_oracle r),
+  (select string_agg(r.role || '=' || r.reviews, ';' order by r.role) from s11rls_oracle r),
+  'READ equals the RPC: the reviews a role reads directly are exactly the reviews cms_get_editorial_review serves it (200), for the owner, editor, both reviewers, the publisher, a capability-less member and a stranger [P2-S11-AC-013]');
+select is(
+  (select string_agg(r.role || '=schedules=' || pg_temp.s11rls_ids(pg_temp.s11rls_auth(r.role), 'cms_publication_schedules')
+                       || '|publications=' || pg_temp.s11rls_ids(pg_temp.s11rls_auth(r.role), 'cms_publication_versions'), ';' order by r.role)
+     from s11rls_oracle r),
+  (select string_agg(r.role || '=' || r.workflow, ';' order by r.role) from s11rls_oracle r),
+  'READ equals the RPC: the schedules and publication rows a role reads directly are exactly those cms_get_entry_workflow serves it for the revision [P2-S11-AC-051]');
+select is(
+  (select string_agg(r.role || '=' || pg_temp.s11rls_ids(pg_temp.s11rls_auth(r.role), 'cms_editorial_decisions', 'review_id'), ';' order by r.role)
+     from s11rls_oracle r),
+  (select string_agg(r.role || '=' || coalesce((select string_agg(d.review_id::text, ',' order by d.review_id::text)
+                                                  from platform_private.cms_editorial_decisions d
+                                                 where position(d.review_id::text in r.reviews) > 0), ''), ';' order by r.role)
+     from s11rls_oracle r),
+  'READ equals the RPC: a role reads a decision exactly when it reads the review the decision belongs to [P2-S11-AC-013]');
 
 -- A member whose tenure ended is no longer a member.
 select pg_temp.h11_raw_exec('identity_private.membership_tenure', format(
@@ -323,8 +473,19 @@ select pg_temp.h11_raw_exec('identity_private.membership_tenure', format(
   $q$update identity_private.membership_tenure set state = 'confirmed', revoked_at = null, ends_on = null
       where organization_id = %L and person_id = %L$q$, pg_temp.s11_id('org'), pg_temp.s11_id('editor')));
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('editor'), pg_temp.s11_id('org')::text),
-  (select counts from s11rls_full),
-  'READ allowed again: once the tenure is confirmed again the same session reads the party''s rows (the verdict is per statement, not remembered) [P2-S11-AC-013]');
+  pg_temp.s11rls_expect(0, 2, 1, 1, 2, 1, 1, 0, 1),
+  'READ scoped again: once the tenure is confirmed again the same session reads its scoped rows (the verdict is per statement, not remembered) [P2-S11-AC-013]');
+
+-- A revoked reviewer assignment confers nothing (BE03b: a reviewer may read while the assignment is not revoked).
+select pg_temp.h11_raw_exec('platform_private.cms_editorial_review_assignments', format(
+  $q$update platform_private.cms_editorial_review_assignments set state = 'revoked', version = version + 1 where id = %L$q$,
+  pg_temp.s11_id('rv-rls2-asg')));
+select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('rvA'), pg_temp.s11_id('org')::text),
+  pg_temp.s11rls_expect(1, 1, 1, 1, 1, 1, 1, 0, 1),
+  'READ narrows on revocation: once one assignment is revoked the reviewer reads one review, one assignment and one decision less - and keeps the workflow rows of the review it is still assigned to [P2-S11-AC-051]');
+select pg_temp.h11_raw_exec('platform_private.cms_editorial_review_assignments', format(
+  $q$update platform_private.cms_editorial_review_assignments set state = 'active', version = version + 1 where id = %L$q$,
+  pg_temp.s11_id('rv-rls2-asg')));
 
 select is(
   pg_temp.s11rls_counts(pg_temp.s11rls_auth('owner'), null)
@@ -333,19 +494,31 @@ select is(
   (select counts || ' | ' || counts || ' | ' || counts from s11rls_denied),
   'READ denied: a session published for only one of actor and party, or with a malformed party, is not "no session": it reads nothing [P2-S11-AC-031]');
 select is(pg_temp.s11rls_counts(null, null),
-  (select counts from s11rls_full),
-  'READ allowed: a transaction with NO published session (the service paths: sweep, recheck, verifier, takedown) is admitted by the RPC-context gate alone, as before [P2-S11-AC-019]');
+  pg_temp.s11rls_expect(2, 2, 2, 1, 3, 1, 1, 0, 1),
+  'READ allowed: a transaction with NO published session (the service paths: sweep, recheck, verifier, takedown) is admitted by the RPC-context gate alone, as before - except that a preview token is never directly selectable [P2-S11-AC-019]');
 select is(pg_temp.s11rls_counts(pg_temp.s11rls_auth('owner'), pg_temp.s11_id('org')::text, true, false),
   (select counts from s11rls_gated_off),
   'READ denied: the owner''s own session sees nothing outside a CMS RPC context - the gate still applies in addition to the session policy [P2-S11-AC-025]');
+select is(
+  (select string_agg(r.role || '=' || pg_temp.s11rls_ids(pg_temp.s11rls_auth(r.role), 'cms_preview_tokens'), ';' order by r.role)
+     from (values ('owner'), ('editor'), ('rvA'), ('rvB'), ('pub'), ('outsider')) r(role))
+    || ';none=' || pg_temp.s11rls_ids(null, 'cms_preview_tokens'),
+  'editor=;outsider=;owner=;pub=;rvA=;rvB=;none=',
+  'READ denied for everyone: a preview token is never directly selectable - not by its minter, the owner, the publisher or a service path with no session (BE03b; the open recheck is the definer verifier) [P2-S11-AC-025]');
+
+-- The CMS definer role that owns the RPC bodies is bound to the tenant only: its bodies decide 404 versus 403 and run
+-- the invalidation and recount cascades in the transaction of whoever caused them.
+select is(
+  pg_temp.s11rls_ids(pg_temp.s11rls_auth('outsider'), 'cms_editorial_reviews', 'id', 'wejammin_cms_definer'),
+  (select string_agg(id::text, ',' order by id::text) from platform_private.cms_editorial_reviews),
+  'READ by the CMS definer role is the tenant: under a capability-less member''s session it still reads the party''s three reviews, which is what lets its bodies conceal (404), refuse (403) and cascade [P2-S11-AC-025]');
 
 -- -------------------------------------------------------------------------------- writes: UPDATE and DELETE --
 select is(
   (select string_agg(t.short || '=' || pg_temp.s11rls_write(t.tbl, 'update', '{}'::jsonb, pg_temp.s11rls_auth('owner'), pg_temp.s11_id('org')::text), ';' order by t.short)
      from s11rls_tables t),
-  (select string_agg(t.short || '=rows:' || (select (regexp_match((select counts from s11rls_full), t.short || '=([0-9]+)'))[1]), ';' order by t.short)
-     from s11rls_tables t),
-  'WRITE allowed: the owner''s session updates every row of its party in all nine tenant tables [P2-S11-AC-007]');
+  pg_temp.s11rls_as_rows(pg_temp.s11rls_expect(2, 2, 2, 1, 3, 1, 1, 0, 1)),
+  'WRITE allowed: the owner''s session updates the rows of its party that it may also read in all nine tenant tables (an UPDATE that reads a column is narrowed by the relationship policy: no preview token) [P2-S11-AC-007]');
 select is(
   (select string_agg(t.short || '=' || pg_temp.s11rls_write(t.tbl, 'update', '{}'::jsonb, pg_temp.s11rls_auth('stranger'), pg_temp.s11_id('org')::text), ';' order by t.short)
      from s11rls_tables t),
@@ -364,9 +537,8 @@ select is(
 select is(
   (select string_agg(t.short || '=' || pg_temp.s11rls_write(t.tbl, 'update', '{}'::jsonb, null, null), ';' order by t.short)
      from s11rls_tables t),
-  (select string_agg(t.short || '=rows:' || (select (regexp_match((select counts from s11rls_full), t.short || '=([0-9]+)'))[1]), ';' order by t.short)
-     from s11rls_tables t),
-  'WRITE allowed: with no published session (a service path) the gate alone admits the update, as before [P2-S11-AC-019]');
+  pg_temp.s11rls_as_rows(pg_temp.s11rls_expect(2, 2, 2, 1, 3, 1, 1, 0, 1)),
+  'WRITE allowed: with no published session (a service path) the gate alone admits the update, as before - a preview token is never directly selectable, so a reading UPDATE touches none [P2-S11-AC-019]');
 
 -- ----------------------------------------------------------------------------------- writes: INSERT bounds --
 select is(
@@ -502,6 +674,49 @@ select pg_temp.p11_call('c-stranger', 'stranger', 'cms_schedule_publication', pg
 select is(pg_temp.r11_out('c-stranger') || '|' || coalesce(pg_temp.r11_detail('c-stranger'), 'null'),
   'P0001:NOT_FOUND|null',
   'composition: the same command by a non-member is still the concealed NOT_FOUND under the session policies [P2-S11-AC-019]');
+
+-- The definer paths still work for a member who holds NO scope on the review: the RPC answers the 403 (a visible review
+-- without a read scope), not the concealed 404, and the cascade that must invalidate a review runs in the transaction of
+-- whoever changed the entry - here a capability-less member's session - and reaches the review it cannot read directly.
+select pg_temp.r11r_call('c-outsider-403', 'cms_get_editorial_review', 'outsider',
+  jsonb_build_object('reviewId', pg_temp.s11_id('rv-rls3'), 'context', pg_temp.r11_ctx()));
+select is(pg_temp.r11_out('c-outsider-403') || '|' || pg_temp.s11rls_ids(pg_temp.s11rls_auth('outsider'), 'cms_editorial_reviews'),
+  'P0001:capability_missing|',
+  'composition: a member with no scope still gets the 403 capability_missing from cms_get_editorial_review (not a concealed 404) while its direct read of the review table is empty [P2-S11-AC-025]');
+select pg_temp.s11rls_publish(pg_temp.s11rls_auth('outsider'), pg_temp.s11_id('org')::text);
+update platform_private.cms_content_entries set lifecycle = 'archived' where id = pg_temp.h11w_uuid('rls3:entry');
+select pg_temp.s11rls_publish(null, null);
+select ok((pg_temp.p11_review('rls3')).state = 'invalidated' and (pg_temp.p11_review('rls3')).invalidated_reason = 'entry_unavailable',
+  'composition: the lifecycle cascade invalidates a review the changing session holds no scope on - the definer-owned trigger reads and updates it under the tenant policy only [P2-S11-AC-111]');
+
+-- NEGATIVE CONTROL (a live mutant, rolled back with the transaction): bind the CMS definer to the relationship predicate
+-- too - the policy without its definer exemption - and fire the same cascade under a session that holds no scope on the
+-- review.  The trigger's UPDATE then matches no visible row, which is not an error: the entry is archived and the
+-- approval survives, so it could still be scheduled or published.  This is why the relationship predicate cannot bind
+-- the definer role.
+alter policy cms_editorial_reviews_session_relationship on platform_private.cms_editorial_reviews
+  using ((select platform_private.cms_s11_session_unbound()) or platform_private.cms_s11_review_readable(id));
+create or replace function pg_temp.s11rls_archive_as(p_actor text, p_entry uuid)
+returns text
+language plpgsql
+as $body$
+begin
+  perform pg_temp.s11rls_publish(p_actor, pg_temp.s11_id('org')::text);
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    update platform_private.cms_content_entries set lifecycle = 'archived' where id = p_entry;
+    perform pg_temp.s11rls_publish(null, null);
+    return 'archived';
+  exception when others then
+    perform pg_temp.s11rls_publish(null, null);
+    return 'refused:' || sqlstate || ':' || sqlerrm;
+  end;
+end;
+$body$;
+select is(
+  pg_temp.s11rls_archive_as(pg_temp.s11rls_auth('outsider'), pg_temp.h11w_uuid('rls1:entry')) || '/' || (pg_temp.p11_review('rls1')).state,
+  'archived/approved',
+  'negative control: with the definer bound to the relationship predicate the same lifecycle cascade archives the entry and the approval SURVIVES (an UPDATE that matches no visible row is not an error) - the definer exemption is load-bearing [P2-S11-AC-111]');
 
 select * from finish();
 rollback;

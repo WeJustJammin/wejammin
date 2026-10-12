@@ -19,7 +19,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(35);
+select plan(36);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -97,9 +97,14 @@ select ok(
     and pg_temp.r11_resp('i-inval')->>'reasonCode' = 'approval_invalidated'
     and pg_temp.r11_keys(pg_temp.r11_resp('i-inval')) = 'actualUtc,deviationSeconds,outcome,publicationVersionId,reasonCode,scheduleId'
     and pg_temp.r11_resp('i-inval')->'publicationVersionId' = 'null'::jsonb
-    and pg_temp.p11_sched('s-xr-inval') = 'blocked/3/0/approval_invalidated/-'
-    and pg_temp.r11_resp('i-arch')->>'reasonCode' = 'approval_invalidated' and pg_temp.p11_sched('s-xr-arch') = 'blocked/3/0/approval_invalidated/-',
-  'an executing schedule whose review was invalidated (a superseded revision, an unavailable entry) is blocked approval_invalidated, never cancelled by the executor (DEC-158(d)) [P2-S11-AC-083]');
+    and pg_temp.p11_sched('s-xr-inval') = 'blocked/3/0/approval_invalidated/-',
+  'an executing schedule whose review was invalidated by a superseding revision of an ACTIVE entry is blocked approval_invalidated, never cancelled by the executor [P2-S11-AC-083]');
+select is(
+  pg_temp.r11_out('i-arch') || '|' || coalesce(pg_temp.r11_resp('i-arch')->>'outcome', '-') || '|' || coalesce(pg_temp.r11_resp('i-arch')->>'reasonCode', '-')
+    || '|' || coalesce(pg_temp.r11_keys(pg_temp.r11_resp('i-arch')), '-')
+    || '|' || (pg_temp.r11_resp('i-arch')->'publicationVersionId' = 'null'::jsonb)::text || '|' || pg_temp.p11_sched('s-xr-arch'),
+  '00000:|cancelled|entry_unavailable|actualUtc,deviationSeconds,outcome,publicationVersionId,reasonCode,scheduleId|true|cancelled/3/0/entry_unavailable/-',
+  'an executing schedule whose entry was archived after the claim is cancelled entry_unavailable by the executor (BE03b CMS-03B-20, which supersedes DEC-158(d) for this case) [P2-S11-AC-083]');
 select pg_temp.p11_exec('i-dep', pg_temp.p11_xreq('s-xr-dep'));
 select ok(
   pg_temp.r11_resp('i-dep')->>'outcome' = 'blocked' and pg_temp.r11_resp('i-dep')->>'reasonCode' = 'approval_invalidated'

@@ -624,7 +624,7 @@ Operations: `../../docs/runbooks/platform/cms-editorial.md`. Spec: `.memory/wiki
   `projectionState` from it instead of a literal; `165200` the service-role takedown RPC
   `platform_api.cms_takedown_preview_tokens` over the private `cms_revoke_preview_tokens` seam (AC-118).
 
-### Slice 11 forward migrations (`20261010130000`-`20261010169000`)
+### Slice 11 forward migrations (`20261010130000`-`20261010170200`)
 
 Forward-only amendments written after the `20261005017000`-`20261005018100` set. Functions they replace are
 MD5-pinned by these files, so later changes to those functions must also be new forward migrations.
@@ -652,6 +652,19 @@ MD5-pinned by these files, so later changes to those functions must also be new 
   writable only under the system scope. A transaction with no published session (the service paths) is admitted by the gate
   alone. The same review changed `017620` in place (never deployed): the owner's valid `cms.editor` grant is required for a
   revoke as well as a create (BE03b CMS-03B-18).
+- `170000`-`170100` (finisher lane, `../tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql`): an
+  executing schedule whose entry is no longer `active` is CANCELLED `entry_unavailable` by the executor in its own
+  transaction (BE03b "Schedule execution", CMS-03B-20, AC-083; the orchestrator ruling of 2026-10-11 supersedes DEC-158(d)
+  for this one case and closes the race of a claim that precedes the entry leaving `active`). `170000` lets the schedule
+  state guard admit `executing -> cancelled` with `entry_unavailable` only; `170100` adds `cms_schedule_cancel` /
+  `cms_schedule_cancelled_result` and changes `cms_execute_publication_schedule` by three MD5-pinned, reversible anchors
+  (the lifecycle is read under the entry row's `FOR SHARE` lock and checked before the review is re-read). Every other
+  invalidation still blocks an executing schedule `approval_invalidated`.
+- `170200` (finisher lane, `../tests/phase_02_slice_11_rls_session_scope.sql`): the relationship / assignment / capability
+  predicates on SELECT (A-M2): `<table>_session_relationship` restrictive policies so a row read directly under a verified
+  session is exactly a row the read RPCs would show it (the five review scopes, the CMS-03B-15 workflow read scopes, owner or
+  own-assignee assignments, workflow participants for settings snapshots, preview tokens never). They bind every role except
+  the CMS definer role, whose bodies decide 404 versus 403 and run the invalidation and recount cascades under any session.
 
 ## Related links
 

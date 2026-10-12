@@ -209,11 +209,15 @@ export const ExecuteScheduleRequestSchema = z
   .readonly();
 
 /**
- * BE03b `ScheduleExecutionResult`: exactly four outcomes. Cancellation happens
- * only inside the review-invalidation transaction (DEC-158), so the executor
- * never reports `cancelled`; an executing schedule whose approval was
- * invalidated is `blocked` with `approval_invalidated`. A `blocked` outcome
- * carries the closed schedule `reasonCode`; a `failed_retryable` outcome stays
+ * BE03b `ScheduleExecutionResult`: exactly five outcomes. A schedule whose entry
+ * is no longer `active` at execution is `cancelled` with `entry_unavailable` by
+ * the executor, in its own transaction (BE03b "Schedule execution", CMS-03B-20;
+ * the orchestrator ruling of 2026-10-11 supersedes DEC-158(d)'s "no `cancelled`"
+ * for this one case, which closes the race of a claim that precedes the entry
+ * leaving `active`). Every other invalidation still reaches an executing
+ * schedule as `blocked` with `approval_invalidated`. A `blocked` outcome carries
+ * the closed schedule `reasonCode` (never `entry_unavailable`); a `cancelled`
+ * outcome carries exactly `entry_unavailable`; a `failed_retryable` outcome stays
  * reasonless (the retry ladder is the schedule's own `attempt_count`).
  */
 export const ScheduleExecutionResultSchema = z
@@ -222,6 +226,7 @@ export const ScheduleExecutionResultSchema = z
     outcome: z.enum([
       'completed',
       'blocked',
+      'cancelled',
       'failed_retryable',
       'already_completed',
     ]),
@@ -231,11 +236,28 @@ export const ScheduleExecutionResultSchema = z
     deviationSeconds: z.number().int().nullable(),
   })
   .superRefine((value, context) => {
-    if ((value.outcome === 'blocked') !== (value.reasonCode !== null))
+    if (
+      (value.outcome === 'blocked' || value.outcome === 'cancelled') !==
+      (value.reasonCode !== null)
+    )
       context.addIssue({
         code: 'custom',
         path: ['reasonCode'],
-        message: 'reasonCode exists exactly for a blocked outcome',
+        message: 'reasonCode exists exactly for a blocked or cancelled outcome',
+      });
+    if (value.outcome === 'cancelled' && value.reasonCode !== null) {
+      if (value.reasonCode !== 'entry_unavailable')
+        context.addIssue({
+          code: 'custom',
+          path: ['reasonCode'],
+          message: 'the executor cancels only for an unavailable entry',
+        });
+    }
+    if (value.outcome === 'blocked' && value.reasonCode === 'entry_unavailable')
+      context.addIssue({
+        code: 'custom',
+        path: ['reasonCode'],
+        message: 'an unavailable entry cancels a schedule, it never blocks it',
       });
     if (value.outcome === 'completed') {
       if (value.publicationVersionId === null)

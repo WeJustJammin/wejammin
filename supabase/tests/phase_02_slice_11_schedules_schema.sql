@@ -9,7 +9,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(84);
+select plan(87);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -25,7 +25,8 @@ insert into s11_ids(key, value) values
   ('schedule1', 'a9110000-0000-4000-8000-000000000701'),
   ('schedule2', 'a9110000-0000-4000-8000-000000000702'),
   ('schedule3', 'a9110000-0000-4000-8000-000000000703'),
-  ('schedule4', 'a9110000-0000-4000-8000-000000000704');
+  ('schedule4', 'a9110000-0000-4000-8000-000000000704'),
+  ('schedule5', 'a9110000-0000-4000-8000-000000000705');
 
 -- approvedReview (revision A1) and approvedB (revision B1) are approved at
 -- version 2; openReview (revision A2) stays open.
@@ -294,10 +295,22 @@ select is(pg_temp.s11_outcome(pg_temp.s11_upd(pg_temp.s11_id('schedule3'),
   '00000', 'schedule: an unpublish schedule is claimed the same way [P2-S11-AC-122]');
 select is(pg_temp.s11_outcome(pg_temp.s11_upd(pg_temp.s11_id('schedule3'),
     'state = ''cancelled'', reason_code = ''approval_invalidated'', lease_id = null, lease_until = null, version = 3')),
-  'P0001:CONFLICT', 'schedule: an executing schedule is never cancelled, an invalidated approval blocks it (DEC-158 d) [P2-S11-AC-122]');
+  'P0001:CONFLICT', 'schedule: an executing schedule is cancelled only for an unavailable entry; an invalidated approval blocks it, never cancels it (BE03b CMS-03B-20, DEC-158 d) [P2-S11-AC-122]');
 select is(pg_temp.s11_outcome(pg_temp.s11_upd(pg_temp.s11_id('schedule3'),
     'state = ''blocked'', reason_code = ''publication_not_active'', lease_id = null, lease_until = null, version = 3')),
   '00000', 'schedule: an absent active head blocks the action with publication_not_active [P2-S11-AC-122]');
+
+-- BE03b CMS-03B-20 (orchestrator ruling 2026-10-11 over DEC-158(d)): an executing schedule whose entry is no longer
+-- active is CANCELLED entry_unavailable by the executor, releasing the lease at version + 1.
+select is(pg_temp.s11_sched_ins(jsonb_build_object('id', pg_temp.s11_id('schedule5'), 'audience', 'unavailable-entry')), '00000',
+  'schedule: a fifth schedule is accepted for the executor cancellation [P2-S11-AC-122]');
+select is(pg_temp.s11_outcome(pg_temp.s11_upd(pg_temp.s11_id('schedule5'),
+    format('state = ''executing'', lease_id = %L, lease_until = clock_timestamp() + interval ''5 minutes'', job_id = %L, version = 2',
+      gen_random_uuid(), gen_random_uuid()))),
+  '00000', 'schedule: the claim moves the fifth schedule to executing [P2-S11-AC-122]');
+select is(pg_temp.s11_outcome(pg_temp.s11_upd(pg_temp.s11_id('schedule5'),
+    'state = ''cancelled'', reason_code = ''entry_unavailable'', lease_id = null, lease_until = null, version = 3')),
+  '00000', 'schedule: the executor cancels an executing schedule whose entry is no longer active, reason entry_unavailable, lease released, attempts unchanged [P2-S11-AC-122]');
 
 -- The retry ladder end to end: three counted failures, each claimed again, then the fourth failure blocks.
 create or replace function pg_temp.s11_ladder(p_id uuid)

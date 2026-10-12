@@ -197,6 +197,53 @@ describe('executing claims', () => {
     );
   });
 
+  it('accepts the executor cancelling a schedule whose entry is no longer active and counts it as an attempt outcome, never as a block (BE03b CMS-03B-20)', async () => {
+    const [first, second] = [claimFor(1), claimFor(2)];
+    const edge = stubEdge({
+      cms_claim_due_publication_schedules: () => Response.json([first, second]),
+      // The archived entry is NOT_FOUND to the quality-gate load: no proof is sent, and the executor still cancels.
+      cms_load_quality_gate_input: () =>
+        new Response('{}', {
+          status: 404,
+          headers: { 'content-type': 'application/json' },
+        }),
+      cms_execute_publication_schedule: (body) => {
+        const { scheduleId } = body.p_request as { scheduleId: string };
+        return scheduleId === first.scheduleId
+          ? Response.json({
+              scheduleId,
+              outcome: 'cancelled',
+              reasonCode: 'entry_unavailable',
+              publicationVersionId: null,
+              actualUtc: null,
+              deviationSeconds: null,
+            })
+          : Response.json(completed({ scheduleId }));
+      },
+    });
+    const logged = logs();
+    await runProductionCmsPublicationScheduleSweep(bindings);
+    // The cancelled outcome is final: the second claim is executed, the first is not executed again.
+    expect(
+      edge.calls.filter(
+        (call) => call.name === 'cms_execute_publication_schedule',
+      ),
+    ).toHaveLength(2);
+    expect(
+      (edge.calls[2]!.body.p_request as { evidence: unknown }).evidence,
+    ).toBeNull();
+    const text = logged();
+    expect(text).toContain('cms_publication_schedule_sweep.executed');
+    expect(text).toContain(
+      '"cms_schedule_attempt_total{outcome=\\"cancelled\\"}":1',
+    );
+    expect(text).toContain('"reason":"entry_unavailable"');
+    // A cancellation is not a blocked schedule: the blocked counter (which alerts) is never incremented for it.
+    expect(text).not.toContain('cms_schedule_blocked_total');
+    expect(text).not.toContain('execute_failed');
+    expect(text).not.toContain(first.scheduleId);
+  });
+
   it('sends no proof when the revision cannot be loaded or is not the claimed one', async () => {
     const claim = claimFor(1);
     for (const load of [

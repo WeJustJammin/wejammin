@@ -417,19 +417,25 @@ describe('[P2-S11-AC-079] CMS-03B-20 claim and execute contracts', () => {
         }).success,
         reasonCode,
       ).toBe(true);
-    // DEC-158: cancellation happens only inside the review-invalidation transaction,
-    // so the executor's result has exactly the four BE03b outcomes and no `cancelled`.
+    // BE03b CMS-03B-20 (orchestrator ruling over DEC-158(d)): the executor cancels a schedule whose entry is no longer
+    // active, so the result has exactly five outcomes and `cancelled` carries exactly `entry_unavailable`.
     for (const outcome of [
       'completed',
       'blocked',
       'failed_retryable',
       'already_completed',
+      'cancelled',
     ])
       expect(
         ScheduleExecutionResultSchema.safeParse({
           ...validExecutionCompleted,
           outcome,
-          reasonCode: outcome === 'blocked' ? 'approval_invalidated' : null,
+          reasonCode:
+            outcome === 'blocked'
+              ? 'approval_invalidated'
+              : outcome === 'cancelled'
+                ? 'entry_unavailable'
+                : null,
           ...(outcome === 'completed' || outcome === 'already_completed'
             ? {}
             : {
@@ -440,10 +446,27 @@ describe('[P2-S11-AC-079] CMS-03B-20 claim and execute contracts', () => {
         }).success,
         outcome,
       ).toBe(true);
+    for (const reasonCode of [null, 'approval_invalidated', 'preflight_failed'])
+      expect(
+        refused(ScheduleExecutionResultSchema, {
+          ...base,
+          outcome: 'cancelled',
+          reasonCode,
+        }),
+        `cancelled with ${String(reasonCode)}`,
+      ).toBe(true);
+    expect(
+      refused(ScheduleExecutionResultSchema, {
+        ...validExecutionCompleted,
+        outcome: 'cancelled',
+        reasonCode: 'entry_unavailable',
+      }),
+    ).toBe(true);
+    // A blocked schedule never carries entry_unavailable: the database refuses that pairing too.
     expect(
       refused(ScheduleExecutionResultSchema, {
         ...base,
-        outcome: 'cancelled',
+        outcome: 'blocked',
         reasonCode: 'entry_unavailable',
       }),
     ).toBe(true);

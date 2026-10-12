@@ -234,11 +234,12 @@ select is((select count(*)::integer from pg_policies p
     where p.schemaname = 'platform_private' and p.tablename like 'cms\_%' and p.tablename <> 'cms_operational_alert_deliveries'
       and p.permissive = 'RESTRICTIVE'
       -- Slice 11 (20261010169000, phase_02_slice_11_rls_session_scope.sql): the exclusive-writer policies of its tables are
-      -- named _session_<writer> (submitter, decider, creator, minter, grantor, owner_update) beside the _session_scope ones.
-      and (p.policyname !~ '_session_(scope(_insert|_update|_delete)?|submitter|decider|creator|minter|grantor|owner_update)$'
+      -- named _session_<writer> (submitter, decider, creator, minter, grantor, owner_update) beside the _session_scope ones, and
+      -- _session_relationship is the relationship / assignment / capability SELECT policy (the cms_s11_*_readable lookups).
+      and (p.policyname !~ '_session_(scope(_insert|_update|_delete)?|relationship|submitter|decider|creator|minter|grantor|owner_update)$'
            -- SEC-2: evaluated once per statement through the session scope lookups (cms_session_scope_ok is their single-row oracle);
            -- Slice 11: the cms_s11_session_* lookups resolve the verified session the same way (membership, person, owner receipt)
-           or coalesce(p.qual, '') || coalesce(p.with_check, '') !~ 'platform_private\.cms_(session_(owner_scope|reviewer_scope|report_scope|scope_ok)|s11_session_(unbound|owner|person|is_owner))')), 0,
+           or coalesce(p.qual, '') || coalesce(p.with_check, '') !~ 'platform_private\.cms_(session_(owner_scope|reviewer_scope|report_scope|scope_ok)|s11_(session_(unbound|owner|person|is_owner)|(review|assignment|workflow|token)_readable|snapshot_readable))')), 0,
   'every other cms_ policy is a RESTRICTIVE session-scope policy (AND-ed with the RPC gate) that calls the session-resolving helper [P2-S09-AC-181]');
 select ok((select p.prosecdef and p.proconfig @> array['search_path=""'] from pg_proc p where p.oid = 'platform_private.cms_rpc_context_valid()'::regprocedure),
   'the gate is SECURITY DEFINER with a pinned empty search_path [P2-S09-AC-181]');

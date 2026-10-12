@@ -43,8 +43,8 @@ select ok(to_regclass('platform_private.cms_command_accessibility_evidence') is 
 select ok(pg_temp.s11_rls_forced('platform_private.cms_command_accessibility_evidence')
     and pg_temp.s11_api_privileges('platform_private.cms_command_accessibility_evidence') = ''
     and pg_temp.s11_policies('platform_private.cms_command_accessibility_evidence')
-      = 'cms_command_accessibility_evidence_rpc_policy,cms_command_accessibility_evidence_session_scope',
-  'RLS is enabled and forced, anon / authenticated / service_role hold no privilege and the policies are the CMS RPC-context gate plus the restrictive session-scope (tenant) policy [P2-S11-AC-101]');
+      = 'cms_command_accessibility_evidence_rpc_policy,cms_command_accessibility_evidence_session_relationship,cms_command_accessibility_evidence_session_scope',
+  'RLS is enabled and forced, anon / authenticated / service_role hold no privilege and the policies are the CMS RPC-context gate plus the restrictive session-scope (tenant) and relationship (workflow read scope) policies [P2-S11-AC-101]');
 select is(pg_temp.s11_triggers('platform_private.cms_command_accessibility_evidence'),
   'cms_command_accessibility_evidence_immutable_guard:cms_immutable_guard:27,cms_command_accessibility_evidence_write_guard:cms_write_guard:7',
   'the table carries exactly the write guard and the append-only guard [P2-S11-AC-101]');

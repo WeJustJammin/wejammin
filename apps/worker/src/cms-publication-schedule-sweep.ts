@@ -138,7 +138,9 @@ const executeOne = async (
       metrics: {
         [metricKey('cms_schedule_attempt_total', { outcome: result.outcome })]:
           1,
-        ...(result.reasonCode === null
+        // Only a BLOCKED schedule counts (and alerts) as blocked; a cancellation for an unavailable
+        // entry is an attempt outcome whose closed reason is logged as an attribute.
+        ...(result.outcome !== 'blocked' || result.reasonCode === null
           ? {}
           : {
               [metricKey('cms_schedule_blocked_total', {

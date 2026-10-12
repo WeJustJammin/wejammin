@@ -9,8 +9,8 @@
  * The fixture is the SAME pgTAP fragments the pgTAP suites include (Slice 10 identity / organization
  * fixture, Slice 11 data-model fixture, the h11doc world with the real editorial policy, the receipt-derived
  * owner, the reviewer accounts, the publication world) executed once in a script that COMMITS, plus
- * supabase/tests/phase_02_slice_11_rpc_publication/090-race-fixture.sqlinc (34 entries, each with an approved
- * review, and 26 pending schedules dated 30 days ahead).  Producers are driven only through the named
+ * supabase/tests/phase_02_slice_11_rpc_publication/090-race-fixture.sqlinc (36 entries, each with an approved
+ * review, and 28 pending schedules dated 30 days ahead).  Producers are driven only through the named
  * commands (`platform_api.cms_*`) exactly as the Worker calls them: a service-role session publishing the
  * actor's verified claims for the browser commands, no actor at all for the scheduled sweep.
  */

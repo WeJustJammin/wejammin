@@ -284,4 +284,64 @@ describe('CMS-03B-20 real lineage and replay', () => {
       from platform_private.cms_publication_schedules where id = '${schedule.id}'`),
     ).toBe('blocked/3/approval_invalidated');
   }, 150_000);
+
+  it('[CMS-03B-20] an entry archived after the actual claim cancels the schedule entry_unavailable through the real Worker sweep with exact effects', async () => {
+    const draft = await approvedDraft(stack, world, 'Archived after claim');
+    stack.as(world.publisher, 'fresh');
+    const response = await postSchedule(
+      stack,
+      draft,
+      utcScheduleBody(
+        draft,
+        75_000,
+        psql('select platform_private.cms_tzdb_version()'),
+      ),
+    );
+    expectStatus(response, 202);
+    const schedule = PublicationScheduleResourceSchema.parse(response.body);
+    await sleepUntil(schedule.resolvedUtc);
+    let beforeExecute: ReturnType<typeof snapshotDigest> | undefined;
+    const trace = await tick([], async (request) => {
+      if (request.scheduleId !== schedule.id) return;
+      // The claim and the proof load already happened against an active entry. There is no public archive route in
+      // this slice, so the lifecycle change is the actual lifecycle write (its trigger invalidates the approved review
+      // and revokes the entry's tokens in the same transaction, exactly as the owning command will); no schedule or
+      // review row is edited here.
+      psql(`begin;
+        select set_config('app.cms_rpc', 'true', true);
+        update platform_private.cms_content_entries set lifecycle = 'archived'
+         where id = '${draft.entryId}' and lifecycle = 'active';
+        commit;`);
+      beforeExecute = snapshotDigest();
+    });
+    expectOperandChain(trace);
+    expectSafeEqual(
+      executionOf(trace, schedule.id).result,
+      {
+        scheduleId: schedule.id,
+        outcome: 'cancelled',
+        reasonCode: 'entry_unavailable',
+        publicationVersionId: null,
+        actualUtc: null,
+        deviationSeconds: null,
+      },
+      'the executor cancels a claimed schedule whose entry left active: strict typed result',
+    );
+    if (beforeExecute === undefined)
+      throw new Error('actual execution barrier was not reached');
+    // One schedule row changed (state cancelled), one audit record written; no outbox event, no lineage row, no
+    // accessibility summary and no idempotency record.
+    expectScheduleEffects(beforeExecute, snapshotDigest(), {
+      'platform_private.cms_publication_schedules': 0,
+      'audit_private.audit_events': 1,
+    });
+    expect(
+      psql(`select state || '/' || version || '/' || coalesce(reason_code, '-') || '/' || (lease_id is null)::text
+      from platform_private.cms_publication_schedules where id = '${schedule.id}'`),
+    ).toBe('cancelled/3/entry_unavailable/true');
+    expect(
+      psql(`select count(*) from platform_private.cms_publication_versions
+      where entry_id = '${draft.entryId}'`),
+    ).toBe('0');
+  }, 150_000);
 });

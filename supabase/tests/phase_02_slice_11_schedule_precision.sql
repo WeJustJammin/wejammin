@@ -32,10 +32,30 @@ select ok(exists (
 from (values ('local_datetime_submicro_ns'), ('resolved_utc_submicro_ns')) columns(column_name);
 -- Exact hashes from root's captured PostgreSQL 17.6 baseline receipt named in
 -- schedule-nanosecond-implementation-contract-2026-10-10.md (not a runtime cache).
-select ok((select md5(prosrc) = 'be0cf18d76840b6722c28d7f85170dfb'
-    and md5(definition) = '904d575199e4e15058531f7ba5065e43'
+-- 20261010170000 (AC-083, orchestrator ruling 2026-10-11 over DEC-158(d)) adds exactly ONE transition to the guard, executing ->
+-- cancelled with reason entry_unavailable.  The baseline stays pinned: undoing that single anchor must restore the baseline
+-- source and definition byte for byte, so the precision migrations (and anything else) changed nothing else in it.
+select ok((select md5(replace(prosrc, $new$      or (old.state = 'executing'
+            and new.state in ('completed', 'failed_retryable', 'blocked'))
+      -- BE03b CMS-03B-20 (orchestrator ruling 2026-10-11 over DEC-158(d)): the executor cancels a claimed schedule whose
+      -- entry is no longer active.  No other reason cancels an executing schedule: an invalidated approval blocks it.
+      or (old.state = 'executing' and new.state = 'cancelled'
+            and new.reason_code = 'entry_unavailable')
+    ) then$new$, $old$      or (old.state = 'executing'
+            and new.state in ('completed', 'failed_retryable', 'blocked'))
+    ) then$old$)) = 'be0cf18d76840b6722c28d7f85170dfb'
+    and md5(replace(definition, $new$      or (old.state = 'executing'
+            and new.state in ('completed', 'failed_retryable', 'blocked'))
+      -- BE03b CMS-03B-20 (orchestrator ruling 2026-10-11 over DEC-158(d)): the executor cancels a claimed schedule whose
+      -- entry is no longer active.  No other reason cancels an executing schedule: an invalidated approval blocks it.
+      or (old.state = 'executing' and new.state = 'cancelled'
+            and new.reason_code = 'entry_unavailable')
+    ) then$new$, $old$      or (old.state = 'executing'
+            and new.state in ('completed', 'failed_retryable', 'blocked'))
+    ) then$old$)) = '904d575199e4e15058531f7ba5065e43'
+    and position('new.reason_code = ''entry_unavailable''' in prosrc) > 0
   from h11p_catalog where signature = 'platform_private.cms_schedule_state_guard()'),
-  'metadata: immutable schedule guard source and definition remain byte-exact');
+  'metadata: immutable schedule guard source and definition remain byte-exact apart from the one executing -> cancelled (entry_unavailable) transition of 20261010170000');
 
 select ok(valid, 'extraction is unique complete and SELECT-only: ' || key)
 from h11p_expressions order by key; -- 8 validity assertions, never substitutes for values.
