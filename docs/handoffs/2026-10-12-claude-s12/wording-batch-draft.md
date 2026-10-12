@@ -264,7 +264,7 @@ DELTA (exact fragments replaced):
 
 LOCKED TEXT IT MUST MATCH: BE03c:160, 1343 (the route registry row and the placement paragraph)
 
-WHY: DEC-175 (owner, 2026-10-12) makes the CMS-03C-02 success an `items` list of 1-32 rows, one per root node of the pinned pattern; AC010 still names the single-resource shape.
+WHY: DEC-175 (owner, 2026-10-12) makes the CMS-03C-02 success an `items` list, one row per block root of the pinned pattern, and DEC-181 (owner, 2026-10-12) expands a top-level nested pattern reference into its own block roots, so the list holds one or more rows bounded by the 512-node cap after expansion; AC010 still names the single-resource shape.
 
 EFFECT: No code change beyond the DEC-175 implementation. The AC010 evidence must prove the list shape.
 
