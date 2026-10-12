@@ -14,16 +14,17 @@ rolls back.
 | `030-submit.sqlinc`       | CMS-03B-05 builders: entries with a revision whose payload hash is the true projection hash (`r11_entry`), the manifest, the accessibility evidence (binding hash from the literal JCS), request builder and call probe                                                                                                                                      |
 | `090-race-fixture.sqlinc` | the committed reviews, assignments and entries of `../phase_02_slice_11_races/` (included by `infra/database-races/review-kit.mjs`, never by a pgTAP file)                                                                                                                                                                                                   |
 
-| Entrypoint                                                  | Covers                                                                                                  |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `../phase_02_slice_11_rpc_review_scopes.sql`                | `cms_editorial_review_scopes`: owner, submitter, reviewer, assignee, publisher and concealment          |
-| `../phase_02_slice_11_rpc_review_assign.sql`                | CMS-03B-18 contract, committed effects, replay, revoke, reason, step-up                                 |
-| `../phase_02_slice_11_rpc_review_assign_refusals.sql`       | CMS-03B-18 concealment, 403, state, CAS, eligibility, duplicate, capacity, expiry bounds, structure     |
-| `../phase_02_slice_11_rpc_review_decision.sql`              | CMS-03B-06 contract, committed effects, replay, reject, two-decision flow, specialist slots             |
-| `../phase_02_slice_11_rpc_review_decision_refusals.sql`     | CMS-03B-06 AC-108 order: step-up, concealment, state, CAS, separation, duplicates, grant, request rules |
-| `../phase_02_slice_11_rpc_review_decision_invalidation.sql` | CMS-03B-06 committed invalidation outcomes (dependency drift, authority drift)                          |
-| `../phase_02_slice_11_rpc_review_submit.sql`                | CMS-03B-05 contract, committed effects, dependency index, replay, resubmission                          |
-| `../phase_02_slice_11_rpc_review_submit_refusals.sql`       | CMS-03B-05 structure, concealment, 403, CAS, not-submittable, hash, manifest, preflight, evidence       |
+| Entrypoint                                                  | Covers                                                                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `../phase_02_slice_11_rpc_review_scopes.sql`                | `cms_editorial_review_scopes`: owner, submitter, reviewer, assignee, publisher and concealment                            |
+| `../phase_02_slice_11_rpc_review_assign.sql`                | CMS-03B-18 contract, committed effects, replay, revoke, reason, step-up                                                   |
+| `../phase_02_slice_11_rpc_review_assign_refusals.sql`       | CMS-03B-18 concealment, 403, state, CAS, eligibility, duplicate, capacity, expiry bounds, structure                       |
+| `../phase_02_slice_11_rpc_review_decision.sql`              | CMS-03B-06 contract, committed effects, replay, reject, two-decision flow, specialist slots                               |
+| `../phase_02_slice_11_rpc_review_decision_refusals.sql`     | CMS-03B-06 AC-108 order: step-up, concealment, state, CAS, separation, duplicates, grant, request rules                   |
+| `../phase_02_slice_11_rpc_review_decision_invalidation.sql` | CMS-03B-06 committed invalidation outcomes (dependency drift, authority drift)                                            |
+| `../phase_02_slice_11_rpc_review_submit.sql`                | CMS-03B-05 contract, committed effects, dependency index, replay, resubmission                                            |
+| `../phase_02_slice_11_rpc_review_submit_refusals.sql`       | CMS-03B-05 structure, concealment, 403, CAS, not-submittable, hash, manifest, preflight, evidence                         |
+| `../phase_02_slice_11_effect_oracle.sql`                    | the in-call durable-effect observation of `r11_try` is not blind: it names a write that returns, none for one that raises |
 
 ## Adding a test
 
@@ -41,6 +42,17 @@ builder fragment of the command.
   `pg_temp.h11_raw_exec` (the eager `cms_invalidate_reviews_for_person` trigger would otherwise run); the
   calendar lapse of a grant has no UPDATE event, which is the path `cms_record_review_decision` detects.
 - Deactivating a grant revokes the person's entry assignments for the capabilities no longer held (DEC-143).
+- A refusal battery proves "left nothing behind" with the in-call observation, never with an end-of-file digest: the
+  probes run with `p_keep` false, whose sentinel rolls a success back exactly as it rolls a refusal back, so a digest
+  taken after them equals the one taken before whatever the calls did. Include
+  `../phase_02_slice_11_criteria/000-effect-digest.sqlinc`, arm `pg_temp.r11_watch('pg_temp.c11_snapshot()')` once
+  the world is built, and `r11_try` digests the fourteen durable tables BEFORE and AFTER each call inside its own
+  transaction (before the sentinel). End the battery with
+  `is(pg_temp.r11_effect_verdict(array[<labels of the successful controls>]), 'clean', ...)`: it is clean only when
+  every probe was observed and the probes that returned and wrote are exactly the declared controls; a failing
+  assertion shows the full `r11_effect_report`. `r11_changed(label)` names the tables one probe changed and
+  `r11_no_effect(labels)` is the boolean form. A raised call is rolled back by its own savepoint and always shows
+  no change; the failure the observation exists to catch is a refusal that writes and RETURNS.
 - Keep each file below 400 lines.
 
 ## Related paths

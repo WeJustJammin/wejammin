@@ -192,7 +192,7 @@ describe('starting over', () => {
 });
 
 describe('definite refusals', () => {
-  it('rotates the key, refetches the canonical state and keeps the input on a stale conflict', async () => {
+  it('rotates the key and refetches the canonical state on a stale conflict, then commits a new submit', async () => {
     const { controller, refetch } = harness([
       refusalResult(409, { reason: 'dependency_changed' }),
       COMMITTED,

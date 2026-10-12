@@ -30,7 +30,8 @@ create temp table r11_probe(
   state text,
   message text,
   detail text,
-  response jsonb
+  response jsonb,
+  changed text
 ) on commit drop;
 
 insert into auth.users(id)
@@ -123,6 +124,14 @@ $body$;
 
 -- Probe: run a single-value statement, record state/message/detail/response.  With
 -- p_keep false the effects of a success are rolled back (a violation probe).
+--
+-- THE DURABLE-EFFECT OBSERVATION.  A rolled-back probe cannot be judged by a digest taken after it:
+-- the sentinel erases a success exactly as it erases a refusal, so "nothing changed" is then true of
+-- every call and proves nothing.  When a watch is armed (pg_temp.r11_watch), the digest is taken
+-- BEFORE the call and AFTER it, in the call's own transaction and before the sentinel, so a call that
+-- returned (a success, a committed refusal, or a refusal that wrongly wrote and returned) shows the
+-- tables it changed in `changed`, while a call that raised is rolled back by its own savepoint and
+-- shows ''.  `changed` is NULL when no watch is armed.
 create or replace function pg_temp.r11_try(p_label text, p_sql text, p_keep boolean default true)
 returns void
 language plpgsql
@@ -132,8 +141,15 @@ declare
   observed_message text;
   observed_detail text;
   observed_response jsonb;
+  watch text := nullif(pg_catalog.current_setting('r11.watch', true), '');
+  digest_before jsonb;
+  digest_after jsonb;
+  changed_tables text;
 begin
   begin
+    if watch is not null then
+      execute 'select ' || watch into digest_before;
+    end if;
     begin
       execute p_sql into observed_response;
     exception
@@ -144,6 +160,13 @@ begin
         observed_message := sqlerrm;
         observed_response := null;
     end;
+    if watch is not null then
+      execute 'select ' || watch into digest_after;
+      select coalesce(string_agg(split_part(after_item.key, '.', 2), ',' order by after_item.key), '')
+        into changed_tables
+        from jsonb_each_text(digest_after) after_item
+       where digest_before->>after_item.key is distinct from after_item.value;
+    end if;
     if not p_keep then
       raise exception 'R11_SENTINEL_5c1f' using errcode = 'P0001';
     end if;
@@ -151,12 +174,85 @@ begin
     when others then
       if sqlerrm <> 'R11_SENTINEL_5c1f' then raise; end if;
   end;
-  insert into r11_probe(label, state, message, detail, response)
-  values (p_label, observed_state, observed_message, observed_detail, observed_response)
+  insert into r11_probe(label, state, message, detail, response, changed)
+  values (p_label, observed_state, observed_message, observed_detail, observed_response, changed_tables)
   on conflict (label) do update
     set state = excluded.state, message = excluded.message,
-        detail = excluded.detail, response = excluded.response;
+        detail = excluded.detail, response = excluded.response, changed = excluded.changed;
 end;
+$body$;
+
+-- Arm the durable-effect observation of r11_try: p_digest is a SQL expression returning a jsonb object
+-- { '<schema.table>': '<digest>' } (pg_temp.c11_snapshot(), phase_02_slice_11_criteria/000-effect-digest.sqlinc).
+-- Every probe after this call records the tables it changed.  That the oracle is not blind (it reports a
+-- write that returns and no write that raises) is proved by phase_02_slice_11_effect_oracle.sql.
+create or replace function pg_temp.r11_watch(p_digest text)
+returns void
+language plpgsql
+as $body$
+declare
+  armed jsonb;
+begin
+  execute 'select ' || p_digest into armed;
+  if armed is null or armed = '{}'::jsonb then
+    raise exception 'r11_watch: the digest % is empty', p_digest;
+  end if;
+  perform set_config('r11.watch', p_digest, true);
+end;
+$body$;
+
+-- Probe outcomes of the armed watch, for the no-effect assertions.
+--   raised  = the call raised (the probe state is not 00000); returned = it returned (success or committed refusal).
+--   A raised call that shows a changed table, and any returned call outside the declared writers, are the failures.
+create or replace function pg_temp.r11_changed(p_label text) returns text language sql stable as $body$
+  select (select changed from r11_probe where label = p_label) $body$;
+
+-- One line summarizing the observed probes (all of them, or only p_labels):
+--   raised=<n probes that raised and were observed>;raised_writers=<raised probes that changed a table>;
+--   returned_writers=<probes that returned and changed a table>;returned_silent=<probes that returned and changed none>;
+--   unobserved=<probes recorded without an armed watch>.
+-- A refusal is clean exactly when raised_writers is empty and every returned writer is a declared control.
+create or replace function pg_temp.r11_effect_report(p_labels text[] default null)
+returns text
+language sql
+as $body$
+  select 'raised=' || count(*) filter (where state <> '00000' and changed is not null)
+      || ';raised_writers=' || coalesce(string_agg(label, ',' order by label) filter (where state <> '00000' and changed <> ''), '')
+      || ';returned_writers=' || coalesce(string_agg(label, ',' order by label) filter (where state = '00000' and changed <> ''), '')
+      || ';returned_silent=' || coalesce(string_agg(label, ',' order by label) filter (where state = '00000' and changed = ''), '')
+      || ';unobserved=' || count(*) filter (where changed is null)
+  from r11_probe
+  where p_labels is null or label = any (p_labels)
+$body$;
+
+-- True when every labelled probe was observed by an armed watch and none changed a durable table.
+create or replace function pg_temp.r11_no_effect(p_labels text[])
+returns boolean
+language sql
+as $body$
+  select count(*) = cardinality(p_labels) and coalesce(bool_and(coalesce(changed = '', false)), false)
+  from r11_probe
+  where label = any (p_labels)
+$body$;
+
+-- The verdict of the whole battery: 'clean' exactly when every probe was observed by an armed watch, at least one
+-- probe was made, no probe that raised shows a change, and the probes that returned and changed a durable table are
+-- EXACTLY the declared successful controls (p_writers, none for a battery of refusals only).  Otherwise the full
+-- r11_effect_report, so a failing assertion shows which probe wrote or went unobserved.  The count of probes is not
+-- pinned: adding a refusal needs no edit here, but a new returned write must be declared.
+create or replace function pg_temp.r11_effect_verdict(p_writers text[] default array[]::text[])
+returns text
+language sql
+as $body$
+  select case
+    when (select count(*) from r11_probe) > 0
+     and (select count(*) from r11_probe where changed is null) = 0
+     and (select count(*) from r11_probe where state <> '00000' and changed <> '') = 0
+     and coalesce((select array_agg(label order by label) from r11_probe where state = '00000' and changed <> ''), array[]::text[])
+       = (select coalesce(array_agg(declared order by declared), array[]::text[]) from unnest(p_writers) as declared)
+    then 'clean'
+    else pg_temp.r11_effect_report()
+  end
 $body$;
 
 create or replace function pg_temp.r11_state(p_label text) returns text language sql stable as $body$

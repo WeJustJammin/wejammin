@@ -152,7 +152,9 @@ select is(
 
 select pg_temp.c11_lapse('rvX', true);
 select pg_temp.c11_lapse('rvB', true);
-select pg_temp.c11_take('start');
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 
 -- ---------------------------------------------------------------------------
 -- Raised refusals: the earlier step wins, and nothing is committed.
@@ -173,8 +175,9 @@ select is(pg_temp.c11_d('I', 'rvX', 'oI', '{"expectedVersion":"1","ifMatch":"1"}
   'the CAS operand before the standing grant: a stale If-Match with a lapsed grant is VERSION_MISMATCH, not capability_missing [P2-S11-AC-108]');
 select is(pg_temp.c11_d('H', 'rvB', 'oH'), 'P0001:duplicate_decision|open/2/1|decisions=1',
   'duplicate_decision before the standing grant: a second decision with a lapsed grant is duplicate_decision, not capability_missing [P2-S11-AC-108]');
-select is(pg_temp.c11_delta('start'), '',
-  'every raised refusal above left no decision, review change, reservation, audit record, event or snapshot behind [P2-S11-AC-108]');
+select is(pg_temp.r11_effect_report(array['A', 'B', 'J1', 'J2', 'D', 'G', 'I', 'H']),
+  'raised=8;raised_writers=;returned_writers=;returned_silent=;unobserved=0',
+  'every raised refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, schedule, lineage, token, snapshot, evidence, reservation, event, audit, entry and revision), observed inside its own call before the probe rolled back [P2-S11-AC-108]');
 
 -- ---------------------------------------------------------------------------
 -- Committed refusals: the rebuild precedes separation and the standing grant, and records no decision.

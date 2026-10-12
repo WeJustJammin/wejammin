@@ -270,7 +270,9 @@ select is(
 -- ---------------------------------------------------------------------------
 -- CMS-03B-09, the publish-phase preflight: exactly the drifted category fails, the other sixteen pass.
 -- ---------------------------------------------------------------------------
-select pg_temp.c11_take('raised');
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 select is(pg_temp.c11_run_p('tpl-incompat', false),
   'template:failed:template_incompatible => P0001:preflight_failed|template:failed:template_incompatible|passed=16/17',
   'template gate: a template no longer compatible with the content type refuses the publication 422 preflight_failed, template failed, 16 of 17 passed [P2-S11-AC-004]');
@@ -289,8 +291,9 @@ select is(pg_temp.c11_run_p('priv-held', false),
 select is(pg_temp.c11_run_p('priv-del', false),
   'privacy:failed:provider_unbuilt_reference => P0001:preflight_failed|privacy:failed:provider_unbuilt_reference|passed=16/17',
   'privacy gate: a deletion_pending relation target refuses 422 preflight_failed (privacy) [P2-S11-AC-004]');
-select is(pg_temp.c11_delta('raised'), '',
-  'every raised publish refusal above left no lineage row, review change, schedule, reservation, event, audit record, snapshot or evidence summary behind [P2-S11-AC-004]');
+select is(pg_temp.r11_effect_report(array['p-tpl-incompat', 'p-rel-unavail', 'p-rel-version', 'p-route', 'p-priv-held', 'p-priv-del']),
+  'raised=6;raised_writers=;returned_writers=;returned_silent=;unobserved=0',
+  'every raised publish refusal above changed none of the fourteen durable tables (lineage row, review, schedule, reservation, event, audit record, snapshot, evidence summary and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-004]');
 
 -- ---------------------------------------------------------------------------
 -- CMS-03B-20, the execute-phase preflight: the schedule is blocked preflight_failed and nothing is published.

@@ -1,0 +1,137 @@
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:4: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:72: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:80: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:105: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:105: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:105: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:106: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql:142: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql .. 
+{"created": true, "personId": "f96dc9cf-bf28-4eab-8ff9-572112f930d1", "contextKind": "self", "accountState": "active", "actingPartyId": "f96dc9cf-bf28-4eab-8ff9-572112f930d1", "bindingVersion": 1}
+{"created": true, "personId": "198f7356-9a10-49ea-9759-314d367ff64a", "contextKind": "self", "accountState": "active", "actingPartyId": "198f7356-9a10-49ea-9759-314d367ff64a", "bindingVersion": 1}
+{"created": true, "personId": "a24f0c5e-5dc7-4521-8257-8c11d0284939", "contextKind": "self", "accountState": "active", "actingPartyId": "a24f0c5e-5dc7-4521-8257-8c11d0284939", "bindingVersion": 1}
+{"created": true, "personId": "305aeb15-d996-42de-b98f-eab8423ca42e", "contextKind": "self", "accountState": "active", "actingPartyId": "305aeb15-d996-42de-b98f-eab8423ca42e", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "4f26c350-1680-4f74-afb3-4972db80f6be", "contextKind": "self", "accountState": "active", "actingPartyId": "4f26c350-1680-4f74-afb3-4972db80f6be", "bindingVersion": 1}
+{"created": true, "personId": "63fd7537-2404-43a6-ae17-98118aefdc46", "contextKind": "self", "accountState": "active", "actingPartyId": "63fd7537-2404-43a6-ae17-98118aefdc46", "bindingVersion": 1}
+{"created": true, "personId": "b5eb9f14-85d8-4bc3-96b3-8d51993ffba6", "contextKind": "self", "accountState": "active", "actingPartyId": "b5eb9f14-85d8-4bc3-96b3-8d51993ffba6", "bindingVersion": 1}
+{"created": true, "personId": "f937f116-60e7-4946-a6d3-ae2a45a8141f", "contextKind": "self", "accountState": "active", "actingPartyId": "f937f116-60e7-4946-a6d3-ae2a45a8141f", "bindingVersion": 1}
+{"created": true, "personId": "df4af835-d938-4cfe-b3a5-03552470e42b", "contextKind": "self", "accountState": "active", "actingPartyId": "df4af835-d938-4cfe-b3a5-03552470e42b", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+true
+22cb2eb3-e9d4-4304-b9d0-da204c134ad4
+a9200000-0000-4000-8000-679878a9a754
+a9200000-0000-4000-8000-e16a4a4af66c
+a9200000-0000-4000-8000-fd3a8f988adb
+a9200000-0000-4000-8000-33d173aa7abf
+ok 10 - fixture: the benchmark content type has exactly 128 fields [P2-S11-AC-052]
+ok 11 - fixture: the benchmark revision carries 128 field values [P2-S11-AC-052]
+ok 12 - fixture: the detail review has 36 assignment rows (16 active, 20 revoked) and 7 recorded decisions [P2-S11-AC-058]
+ok 13 - fixture: at least 503 reviews exist and 200 reviews besides the open one are assigned to the benchmark reviewer [P2-S11-AC-064]
+ok 14 - the draft read returns the preparation with the 17-result submit-phase preflight [P2-S11-AC-052]
+ok 15 - the bounds read returns the latest review, 16 schedules and 64 publications [P2-S11-AC-052]
+ok 16 - the detail read returns 32 assignment summaries and 7 decisions [P2-S11-AC-058]
+ok 17 - the queue returns the maximum page of 50 items and a next cursor [P2-S11-AC-064]
+# queue_page1_limit50 p50=912.0ms p95=975.0ms max=1023.7ms n=30
+# queue_page2_cursor p50=909.7ms p95=1015.1ms max=1034.5ms n=30
+# review_detail p50=866.3ms p95=889.3ms max=898.0ms n=30
+# workflow_bounds p50=245.9ms p95=275.1ms max=302.3ms n=30
+# workflow_draft128 p50=350.3ms p95=386.8ms max=392.4ms n=30
+ok 18 - every operation is measured over thirty samples, so each p95 is taken over at least twenty [P2-S11-AC-052]
+ok 19 - CMS-03B-15 on a 128-field draft with the full preparation and 17-result preflight: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]
+ok 20 - CMS-03B-15 on an entry at 16 schedules, 64 publications and an open review: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]
+not ok 21 - CMS-03B-16 at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]
+# Failed test 21: "CMS-03B-16 at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]"
+not ok 22 - CMS-03B-17 first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+# Failed test 22: "CMS-03B-17 first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]"
+not ok 23 - CMS-03B-17 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+# Failed test 23: "CMS-03B-17 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]"
+ok 24 - the worst sample of every read is under the exact 8,000 ms read deadline [P2-S11-AC-052]
+1..24
+# Looks like you failed 3 tests of 24
+Failed 3/24 subtests 
+
+Test Summary Report
+-------------------
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_a2_mutant_bench.sql (Wstat: 0 Tests: 24 Failed: 3)
+  Failed tests:  21-23
+Files=1, Tests=24, 108 wallclock secs ( 0.18 usr  0.04 sys +  0.11 cusr  0.06 csys =  0.39 CPU)
+Result: FAIL

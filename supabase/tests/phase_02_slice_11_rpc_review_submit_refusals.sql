@@ -25,8 +25,7 @@ select plan(25);
 \ir phase_02_slice_11_rpc_review/000-world.sqlinc
 \ir phase_02_slice_11_rpc_review/020-decision.sqlinc
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
-
-create temp table r11_snap(label text primary key, effects text not null) on commit drop;
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 -- One entry per scenario (each submission consumes the entry's current draft).
 select pg_temp.r11_entry(tag) from (values ('ref-base'), ('ref-live'), ('ref-approved'), ('ref-rejected'),
@@ -86,7 +85,9 @@ select ok(
     and platform_private.cms_revision_effective_state(pg_temp.h11w_uuid('ref-approved:revision')) = 'approved'
     and platform_private.cms_revision_effective_state(pg_temp.h11w_uuid('ref-rejected:revision')) = 'rejected',
   'control: three revisions are under an open, approved and rejected review (derived state submitted, approved, rejected)');
-insert into r11_snap(label, effects) values ('start', pg_temp.r11_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 
 -- ---------------------------------------------------------------------------
 -- Structure.
@@ -231,8 +232,8 @@ select is(pg_temp.r11_out('f-lapsed-author') || '|' || coalesce(pg_temp.r11_deta
   'P0001:capability_missing|null',
   'a deactivated cms.author grant revokes the creator''s assignments (DEC-143) and the submit is 403 capability_missing [P2-S11-AC-007]');
 
-select is(pg_temp.r11_effects(), (select effects from r11_snap where label = 'start'),
-  'every refusal above left no review, dependency row, reservation, audit record or outbox event behind [P2-S11-AC-009]');
+select is(pg_temp.r11_effect_verdict(), 'clean',
+  'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]');
 
 select * from finish();
 rollback;

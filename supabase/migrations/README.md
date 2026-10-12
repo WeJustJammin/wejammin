@@ -624,7 +624,7 @@ Operations: `../../docs/runbooks/platform/cms-editorial.md`. Spec: `.memory/wiki
   `projectionState` from it instead of a literal; `165200` the service-role takedown RPC
   `platform_api.cms_takedown_preview_tokens` over the private `cms_revoke_preview_tokens` seam (AC-118).
 
-### Slice 11 forward migrations (`20261010130000`-`20261010166100`)
+### Slice 11 forward migrations (`20261010130000`-`20261010169000`)
 
 Forward-only amendments written after the `20261005017000`-`20261005018100` set. Functions they replace are
 MD5-pinned by these files, so later changes to those functions must also be new forward migrations.
@@ -644,6 +644,14 @@ MD5-pinned by these files, so later changes to those functions must also be new 
   `cms.review.dependency_recheck` run (AC-113, DEC-166).
 - `166000`-`166100` Slice 09 performance: `cms_create_type_draft` compiles its definition once and the compiled
   manifest bound is one jsonpath scan (P2-S09-AC-217), with byte-for-byte parity tests.
+- `169000` (lane reviewA-1, `../tests/phase_02_slice_11_rls_session_scope.sql`): predicate RLS (BE03b "Permission, RLS and
+  grants", AC-007/013/019/025/031/119). RESTRICTIVE session-scope policies on the nine Slice 11 tables and the accessibility
+  audit summary, in addition to the CMS RPC-context gate: a published CMS session may only see and write rows of its acting
+  party and only as a live member of it; the exclusive writers (submitter, decider, schedule creator, preview minter,
+  assignment grantor) must name the session person; reviewer assignments need the owner receipt; the preflight registry is
+  writable only under the system scope. A transaction with no published session (the service paths) is admitted by the gate
+  alone. The same review changed `017620` in place (never deployed): the owner's valid `cms.editor` grant is required for a
+  revoke as well as a create (BE03b CMS-03B-18).
 
 ## Related links
 

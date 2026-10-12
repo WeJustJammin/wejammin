@@ -14,9 +14,10 @@
 --      reservation (E6);
 --   3. concealment: an absent, cross-owner or non-member-scoped review is NOT_FOUND; a readable
 --      review whose caller is not the immutable owner receipt identity is 403 capability_missing,
---      as is an owner without a currently valid `cms.editor` grant (the grantor authority end);
---      a revoke needs the owner receipt only.  This proof reads the committed state and only
---      decides whether the organization's authority rows may be locked at all;
+--      as is an owner without a currently valid `cms.editor` grant (the grantor authority end),
+--      for a create and for a revoke alike (BE03b CMS-03B-18: "an owner without a valid
+--      `cms.editor` grant is refused 403 `capability_missing`").  This proof reads the committed
+--      state and only decides whether the organization's authority rows may be locked at all;
 --   4. the authority rows of the grantor and the reviewer FOR SHARE (global order position 1), then
 --      the step 3 proof AGAIN under those locks (BE03b "Write-path lock order and authority
 --      fencing" rule 1, lock before write, capability re-proved under the locks): an owner scope,
@@ -190,10 +191,9 @@ begin
     if not ('owner' = any (scopes)) then
       raise exception 'capability_missing' using errcode = 'P0001';
     end if;
-    if action = 'create' then
-      if not platform_private.cms_person_holds_capability(review_row.owner_id, grantor_person, 'cms.editor') then
-        raise exception 'capability_missing' using errcode = 'P0001';
-      end if;
+    -- The grantor authority: the owner's current valid cms.editor grant, for a create and for a revoke alike.
+    if not platform_private.cms_person_holds_capability(review_row.owner_id, grantor_person, 'cms.editor') then
+      raise exception 'capability_missing' using errcode = 'P0001';
     end if;
     if authority_pass = 1 then
       perform platform_private.cms_lock_person_authority(

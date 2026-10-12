@@ -1,0 +1,19 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts (6 tests) 1754ms
+     ✓ aborts an execute that never answers at 15,000 ms, logs it as retryable and finishes the tick  1228ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts (12 tests) 2089ms
+     ✓ claims the bounded batch once and logs only the count  756ms
+     ✓ runs the checker then executes each claim in order with the bound proof  655ms
+     ✓ sends no proof when the revision cannot be loaded or is not the claimed one  416ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts (12 tests) 128ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts (9 tests) 1514ms
+     ✓ recomputes fresh checker evidence and executes the same claim again under the same lease  835ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-wiring.test.ts (4 tests) 124ms
+
+ Test Files  5 passed (5)
+      Tests  43 passed (43)
+   Start at  17:57:48
+   Duration  84.16s (transform 60.19s, setup 0ms, import 125.11s, tests 5.61s, environment 14ms)
+

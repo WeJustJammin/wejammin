@@ -25,8 +25,14 @@ and return deterministic plans.
   The consumer closes the control and drains accepted checkpoints before any
   disposition; a lost or expired lease retries instead of writing an outcome.
   The final compare-and-swap uses the tracked server version, not arithmetic.
-- `consumer-cms-lease-control.test.ts` and
-  `consumer-cms-lease-settlement.test.ts` pin that contract.
+  When the session cannot open after a successful claim (no fresh clock, no
+  heartbeat port, an unusable receipt expiry) nothing has run, so BE00's
+  "retryable pre-effect failure returns the job to queued" applies: the consumer
+  hands the claim back by outcome CAS (`LEASE_CONTROL_UNAVAILABLE`) when the
+  receipt is attributable to this claim (`isAttributableClaim`), and otherwise
+  makes no write and retries.
+- `consumer-cms-lease-control.test.ts`, `consumer-cms-lease-settlement.test.ts`
+  and `consumer-cms-session-release.test.ts` pin that contract.
 - `offline.ts` revalidates temporary intents without treating local state as
   canonical.
 - `realtime.ts` coalesces identifier/version hints and authorizes canonical

@@ -30,6 +30,7 @@ select plan(36);
 \ir phase_02_slice_11_rpc_review/020-decision.sqlinc
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
 \ir phase_02_slice_11_rpc_publication/000-world.sqlinc
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 create temp table r11_snap(label text primary key, effects text not null) on commit drop;
 
@@ -68,7 +69,9 @@ select ok(
     and platform_private.cms_frozen_dependencies_status(pg_temp.h11w_uuid('pr-main:revision'), (pg_temp.p11_review('pr-main')).dependency_manifest) = 'current',
   'control: approved, rejected, open and invalidated reviews exist, pr-dep has a stale frozen manifest and pr-main a current one');
 
-insert into r11_snap(label, effects) values ('start', pg_temp.p11_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 
 -- ---------------------------------------------------------------------------
 -- Structure.
@@ -221,8 +224,8 @@ select ok(
     and pg_temp.r11_detail('e-bound')::jsonb = jsonb_build_object('dependencyHash', (pg_temp.p11_review('pr-evi')).dependency_hash),
   'evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]');
 
-select is(pg_temp.p11_effects(), (select effects from r11_snap where label = 'start'),
-  'every raised refusal above left no lineage row, review change, schedule, reservation, event or audit record behind [P2-S11-AC-030]');
+select is(pg_temp.r11_effect_verdict(), 'clean',
+  'every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]');
 
 -- ---------------------------------------------------------------------------
 -- A stale frozen manifest COMMITS the review invalidation (DEC-157, DEC-159): the committed-refusal envelope.

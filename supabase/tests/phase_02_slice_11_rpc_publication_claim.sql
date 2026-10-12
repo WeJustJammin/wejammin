@@ -28,6 +28,7 @@ select plan(27);
 \ir phase_02_slice_11_rpc_review/020-decision.sqlinc
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
 \ir phase_02_slice_11_rpc_publication/000-world.sqlinc
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 create temp table r11_snap(label text primary key, effects text not null) on commit drop;
 
@@ -85,7 +86,9 @@ select ok(pg_temp.r11_posture('platform_private', 'cms_claim_due_publication_sch
   'cms_claim_due_publication_schedules is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-081]');
 select ok(pg_temp.r11_posture('platform_api', 'cms_claim_due_publication_schedules(jsonb)'),
   'the platform_api wrapper is executable by service_role only, not by PUBLIC, anon or authenticated [P2-S11-AC-081]');
-insert into r11_snap(label, effects) values ('before-structure', pg_temp.p11_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 select pg_temp.r11_try('b-zero', $$select platform_api.cms_claim_due_publication_schedules('{"batch":0}'::jsonb)$$, false);
 select pg_temp.r11_try('b-big', $$select platform_api.cms_claim_due_publication_schedules('{"batch":101}'::jsonb)$$, false);
 select pg_temp.r11_try('b-string', $$select platform_api.cms_claim_due_publication_schedules('{"batch":"5"}'::jsonb)$$, false);
@@ -96,8 +99,8 @@ select pg_temp.r11_try('b-array', $$select platform_api.cms_claim_due_publicatio
 select ok(
   (select bool_and(pg_temp.r11_out(label) = 'P0001:INVALID_REQUEST')
      from (values ('b-zero'), ('b-big'), ('b-string'), ('b-fraction'), ('b-missing'), ('b-extra'), ('b-array')) as t(label))
-    and pg_temp.p11_effects() = (select effects from r11_snap where label = 'before-structure'),
-  'a batch outside 1..100, a non-integer, a missing batch, an extra key and a non-object are INVALID_REQUEST and change nothing [P2-S11-AC-079]');
+    and pg_temp.r11_no_effect(array['b-zero', 'b-big', 'b-string', 'b-fraction', 'b-missing', 'b-extra', 'b-array']),
+  'a batch outside 1..100, a non-integer, a missing batch, an extra key and a non-object are INVALID_REQUEST and change no durable table (observed inside each call before it rolled back) [P2-S11-AC-079]');
 
 -- ---------------------------------------------------------------------------
 -- One claim: recovery of expired leases, then the due schedules.

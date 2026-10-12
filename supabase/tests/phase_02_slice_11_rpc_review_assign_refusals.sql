@@ -9,7 +9,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(23);
+select plan(25);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -21,8 +21,7 @@ select plan(23);
 \ir phase_02_slice_11_helpers/002-reviews.sqlinc
 \ir phase_02_slice_11_rpc_review/000-world.sqlinc
 \ir phase_02_slice_11_rpc_review/010-assign.sqlinc
-
-create temp table r11_snap(label text primary key, effects text not null) on commit drop;
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 -- Every revision of entry A is inserted BEFORE any review: a newer revision of the entry invalidates
 -- the older live reviews (revision_superseded, the Slice 11 producer trigger).
@@ -74,7 +73,9 @@ from generate_series(1, 15) as n;
 select pg_temp.h11r_assign('r1-rvA-asg', 'r1', 'rvA');
 select pg_temp.h11r_assign('rvB-expired-active', 'r1', 'rvB');
 
-insert into r11_snap(label, effects) values ('start', pg_temp.r11_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 
 -- ---------------------------------------------------------------------------
 -- Concealment (404) and the owner gate (403).
@@ -115,8 +116,30 @@ select pg_temp.h11_raw_exec('identity_private.organization_actor_grant', format(
   $q$update identity_private.organization_actor_grant set active = true
       where organization_id = %L and person_id = %L and capability_code = 'cms.editor'$q$, pg_temp.s11_id('org'), pg_temp.s11_id('creator')));
 select is(pg_temp.r11_out('h-owner-no-editor') || '|' || pg_temp.r11_out('h-owner-no-editor-revoke'),
-  'P0001:capability_missing|00000:',
-  'an owner without a valid cms.editor grant is refused a create (no grantor authority end) but may still revoke [P2-S11-AC-069]');
+  'P0001:capability_missing|P0001:capability_missing',
+  'an owner without a valid cms.editor grant is refused both a create and a revoke: 403 capability_missing (BE03b CMS-03B-18, review of finding A-B1) [P2-S11-AC-069]');
+
+-- The same refusal for a grant that is not deactivated but has LAPSED (its valid_through day passed): the grantor
+-- authority is the owner's CURRENT valid cms.editor grant, for a revoke exactly as for a create.
+create temp table r11_editor_grant_saved on commit drop as
+select grant_item.valid_from, grant_item.valid_through
+  from identity_private.organization_actor_grant grant_item
+ where grant_item.organization_id = pg_temp.s11_id('org') and grant_item.person_id = pg_temp.s11_id('creator')
+   and grant_item.capability_code = 'cms.editor';
+select pg_temp.h11_raw_exec('identity_private.organization_actor_grant', format(
+  $q$update identity_private.organization_actor_grant set valid_from = current_date - 5, valid_through = current_date - 1
+      where organization_id = %L and person_id = %L and capability_code = 'cms.editor'$q$, pg_temp.s11_id('org'), pg_temp.s11_id('creator')));
+select pg_temp.r11_acall('h-owner-lapsed-editor', 'owner', pg_temp.r11_areq('r1', 'create'), false);
+select pg_temp.r11_acall('h-owner-lapsed-editor-revoke', 'owner', pg_temp.r11_areq('r1', 'revoke',
+  jsonb_build_object('assignmentId', pg_temp.s11_id('r1-rvA-asg'))), false);
+select pg_temp.h11_raw_exec('identity_private.organization_actor_grant', format(
+  $q$update identity_private.organization_actor_grant set
+        valid_from = (select saved.valid_from from r11_editor_grant_saved saved),
+        valid_through = (select saved.valid_through from r11_editor_grant_saved saved)
+      where organization_id = %L and person_id = %L and capability_code = 'cms.editor'$q$, pg_temp.s11_id('org'), pg_temp.s11_id('creator')));
+select is(pg_temp.r11_out('h-owner-lapsed-editor') || '|' || pg_temp.r11_out('h-owner-lapsed-editor-revoke'),
+  'P0001:capability_missing|P0001:capability_missing',
+  'an owner whose cms.editor grant has lapsed (its valid_through day passed) is refused both a create and a revoke: 403 capability_missing [P2-S11-AC-069]');
 
 -- The owner scope is lost with the membership tenure: the review is concealed for create and revoke.  The
 -- command proves this twice, once on the committed state and once under the authority locks; the race
@@ -317,8 +340,10 @@ select is(
 -- ---------------------------------------------------------------------------
 -- No partial effects.
 -- ---------------------------------------------------------------------------
-select is(pg_temp.r11_effects(), (select effects from r11_snap where label = 'start'),
-  'every refusal above left no assignment, review change, reservation, audit record or outbox event behind [P2-S11-AC-071]');
+select is(pg_temp.r11_effect_verdict(array['e-control', 'l-expired-free', 'x-grantor-edge', 'x-reviewer-edge', 'x-seven-ok']), 'clean',
+  'every refusal above changed none of the fourteen durable tables (whole-row digests of assignment, review, decision, reservation, audit record, outbox event and the rest), observed inside its own call before the probe rolled back; only the five successful controls wrote [P2-S11-AC-071]');
+select is(pg_temp.r11_changed('e-control'), 'audit_events,cms_editorial_review_assignments,idempotency_records,outbox_events',
+  'control: the observation sees a write - an accepted assignment changes the assignment, reservation, event and audit tables inside its probe [P2-S11-AC-071]');
 
 select * from finish();
 rollback;

@@ -31,6 +31,7 @@ select plan(28);
 \ir phase_02_slice_11_rpc_review/020-decision.sqlinc
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
 \ir phase_02_slice_11_rpc_publication/000-world.sqlinc
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 create temp table r11_snap(label text primary key, effects text not null) on commit drop;
 
@@ -65,7 +66,9 @@ select ok(pg_temp.r11_posture('platform_private', 'cms_execute_publication_sched
   'cms_execute_publication_schedule is a private SECURITY DEFINER of the CMS definer (empty search_path) that no API role, service_role included, can execute [P2-S11-AC-081]');
 select ok(pg_temp.r11_posture('platform_api', 'cms_execute_publication_schedule(jsonb)'),
   'the platform_api wrapper is executable by service_role only, not by PUBLIC, anon or authenticated [P2-S11-AC-081]');
-insert into r11_snap(label, effects) values ('start', pg_temp.p11_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 select pg_temp.p11_exec('b-extra', pg_temp.p11_xreq('s-fence', jsonb_build_object('context', '{}'::jsonb)), false);
 select pg_temp.p11_exec('b-missing', pg_temp.p11_xreq('s-fence', '{}'::jsonb, array['leaseId']), false);
 select pg_temp.p11_exec('b-uuid', pg_temp.p11_xreq('s-fence', jsonb_build_object('scheduleId', 'nope')), false);
@@ -75,8 +78,8 @@ select pg_temp.p11_exec('b-absent', pg_temp.p11_xreq('s-fence', jsonb_build_obje
 select ok(
   (select bool_and(pg_temp.r11_out(label) = 'P0001:INVALID_REQUEST') from (values ('b-extra'), ('b-missing'), ('b-uuid'), ('b-version'), ('b-evidence')) as t(label))
     and pg_temp.r11_out('b-absent') = 'P0001:NOT_FOUND'
-    and pg_temp.p11_effects() = (select effects from r11_snap where label = 'start'),
-  'an unknown key, a missing member, a malformed id or version and a non-object proof are INVALID_REQUEST, an absent schedule is NOT_FOUND, and nothing changes [P2-S11-AC-079]');
+    and pg_temp.r11_no_effect(array['b-extra', 'b-missing', 'b-uuid', 'b-version', 'b-evidence', 'b-absent']),
+  'an unknown key, a missing member, a malformed id or version and a non-object proof are INVALID_REQUEST, an absent schedule is NOT_FOUND, and none of them changed a durable table (observed inside each call before it rolled back) [P2-S11-AC-079]');
 
 -- ---------------------------------------------------------------------------
 -- The fence: only the claim's version and lease execute; a refused call has no effect.
@@ -88,8 +91,8 @@ select ok(
   pg_temp.r11_out('f-lease') = 'P0001:CONFLICT' and pg_temp.r11_out('f-pending') = 'P0001:CONFLICT'
     and pg_temp.r11_out('f-version') = 'P0001:VERSION_MISMATCH'
     and pg_temp.r11_detail('f-version')::jsonb = '{"expectedVersion":"1","currentVersion":"2"}'::jsonb
-    and pg_temp.p11_effects() = (select effects from r11_snap where label = 'start'),
-  'a stale lease, a stale version and a schedule that was never claimed are refused (CONFLICT / VERSION_MISMATCH) with no effect [P2-S11-AC-080]');
+    and pg_temp.r11_no_effect(array['f-lease', 'f-version', 'f-pending']),
+  'a stale lease, a stale version and a schedule that was never claimed are refused (CONFLICT / VERSION_MISMATCH) and none of them changed a durable table (observed inside each call before it rolled back) [P2-S11-AC-080]');
 
 -- ---------------------------------------------------------------------------
 -- A publish: completes with the appended head.

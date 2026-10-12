@@ -77,6 +77,18 @@ then offers `unpublish`, `expire` and `archive` (defaulting to the first) with t
 fixed second-person note; it never hides the form. A stored or earlier `publish`
 choice is replaced by the default once `publish` is no longer offered.
 
+## Retain input (FE03, AC-037, AC-040, AC-043)
+
+A refusal or a lost answer never costs a person what they typed. The forms keep the entries in their own
+state (`use-cms-workflow-draft-fields.ts`, or the preview form's `useState`), never in the controller, so the
+controller specs cannot prove retention. `cms-workflow-input-retention.test.tsx` (decision, submit, preview)
+and `cms-workflow-input-retention-time.test.tsx` (schedule, publish) mount each form with real fetches, enter
+values, drive a definite 409 or 422 and an unknown 504, assert the controls still hold exactly what was
+entered, press the commit control again and assert the second request carries the same body (and, after an
+unknown outcome, the same `Idempotency-Key`). Their shared fetch queue, environment and request readers are
+in `cms-workflow-input-retention.test-support.ts`. To cover a new form add a `describe` to the file with room
+(each stays under 400 lines) and assert the entered values, not a phase.
+
 ## Conventions
 
 Island tests use `// @vitest-environment jsdom` with the native-DOM driver in

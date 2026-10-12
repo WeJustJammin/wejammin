@@ -11,7 +11,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(27);
+select plan(28);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -25,6 +25,7 @@ select plan(27);
 \ir phase_02_slice_11_rpc_review/000-world.sqlinc
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
 \ir phase_02_slice_11_rpc_preview/000-world.sqlinc
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 create temp table r11_snap(label text primary key, effects text not null) on commit drop;
 
@@ -52,7 +53,9 @@ $body$;
 
 -- Look up the owner snapshot already initialized by the world saved-resource fixture.
 select pg_temp.r11p_vs('mr-1');
-insert into r11_snap(label, effects) values ('before', pg_temp.r11p_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 
 -- ---------------------------------------------------------------------------
 -- Structure.
@@ -225,8 +228,10 @@ select ok(pg_temp.r11_out('key-missing') = 'P0001:DEPENDENCY_UNAVAILABLE'
 -- ---------------------------------------------------------------------------
 -- No partial effect: the whole refusal battery left no row behind.
 -- ---------------------------------------------------------------------------
-select ok(pg_temp.r11p_effects() = (select effects from r11_snap where label = 'before'),
-  'every refusal and every probed success was rolled back: no token, reservation, audit record, event or settings snapshot remains [P2-S11-AC-027]');
+select is(pg_temp.r11_effect_verdict(array['cap-reviewer-own', 'exact-set', 'ok-route-dir', 'ok-route-max', 'ok-route-pct', 'ok-route-root', 'ok-route-unicode']), 'clean',
+  'every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]');
+select is(pg_temp.r11_changed('exact-set'), 'audit_events,cms_preview_tokens,idempotency_records',
+  'control: the observation sees a write - a minted preview changes the token, reservation and audit tables inside its probe [P2-S11-AC-027]');
 
 -- A refused request leaves no reservation, so the same key is free for the corrected request.
 select pg_temp.r11p_key(repeat('c3', 32));

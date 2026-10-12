@@ -23,6 +23,12 @@ select plan(35);
 \ir phase_02_slice_11_helpers/000-helpers.sqlinc
 
 select set_config('app.cms_rpc', 'true', true);
+-- The S10 fixture ran real commands in this one transaction, and a command publishes its verified session
+-- (app.cms_session_actor / app.cms_session_party) for the rest of the transaction.  In production each command is
+-- its own transaction; this file tests the settings helpers directly, for several owners, as a service path with no
+-- published session, so the leftover session is cleared (the Slice 11 session-scope policies,
+-- 20261010169000, would otherwise confine the helper to the fixture's party).
+select set_config('app.cms_session_actor', '', true), set_config('app.cms_session_party', '', true);
 
 create or replace function pg_temp.h11s_org()
 returns uuid language sql stable as $body$
@@ -213,15 +219,67 @@ select is(
   'a registered key the resolver cannot serve makes the snapshot unavailable (never a partial snapshot) [P2-S11-AC-091]');
 select is(pg_temp.h11s_rows('a9200000-0000-4000-8000-0000000000e5'::uuid), '',
   'a failed evaluation records nothing [P2-S11-AC-092]');
+-- A spy resolver replaces cfg_resolve_effective_value for the rest of this rolled-back transaction (registry version 1
+-- has no members, so no real key can be served): it appends every request it is asked to serve to the transaction-local
+-- setting s11.spy and answers a typed result whose identity depends on the key (cms.h11.b has no source value version:
+-- a contract default).  The registry is replaced by keys registered OUT OF ORDER, with an upper-case key whose bytewise
+-- position differs from its locale position.  Everything the proof observes is the function's behaviour: the requests
+-- the resolver receives and the array it returns.
+create or replace function pg_temp.h11s_spy_run(p_keys text, p_owner uuid, p_at timestamptz)
+returns jsonb
+language plpgsql
+as $body$
+begin
+  execute format(
+    'create or replace function platform_private.cms_publication_settings_keys() returns text[] language sql immutable set search_path = '''' as $f$ select %L::text[] $f$',
+    p_keys);
+  execute $spy$
+    create or replace function platform_private.cfg_resolve_effective_value(p_request jsonb)
+    returns jsonb
+    language plpgsql security definer set search_path = ''
+    as $g$
+    begin
+      perform pg_catalog.set_config('s11.spy',
+        coalesce(nullif(pg_catalog.current_setting('s11.spy', true), ''), '')
+          || (p_request->>'key') || '|' || (p_request->>'consumerKey') || '|' || (p_request->>'partyId') || '|'
+          || (p_request->>'at') || ';', true);
+      return pg_catalog.jsonb_build_object(
+        'definitionVersionId', pg_catalog.md5('definition:' || (p_request->>'key'))::uuid,
+        'sourceValueVersionId', case when p_request->>'key' = 'cms.h11.b' then null
+                                     else pg_catalog.md5('source:' || (p_request->>'key'))::uuid end,
+        'typedValue', pg_catalog.to_jsonb('value-of-' || (p_request->>'key')));
+    end
+    $g$
+  $spy$;
+  perform set_config('s11.spy', '', true);
+  return platform_private.cms_publication_settings_effective_values(p_owner, p_at);
+end;
+$body$;
+
+create temp table h11s_spy_result(result jsonb not null, calls text not null, instant timestamptz not null) on commit drop;
+with run as materialized (
+  select pg_temp.h11s_spy_run('{cms.h11.b,cms.h11.a,cms.h11.B}', pg_temp.h11s_org(), timestamptz '2026-10-11 12:34:56.789012+00') as result
+)
+insert into h11s_spy_result(result, calls, instant)
+select run.result, current_setting('s11.spy', true), timestamptz '2026-10-11 12:34:56.789012+00' from run;
+
 select is(
-  (select count(*)::integer from pg_catalog.pg_proc p
-    where p.oid = to_regprocedure('platform_private.cms_publication_settings_effective_values(uuid, timestamp with time zone)')
-      and pg_get_functiondef(p.oid) like '%cfg_resolve_effective_value%'
-      and pg_get_functiondef(p.oid) like '%cms.publication%'),
-  1, 'the evaluation goes through cfg_resolve_effective_value with consumer key cms.publication [P2-S11-AC-091]');
-select ok(
-  (select pg_get_functiondef(to_regprocedure('platform_private.cms_publication_settings_effective_values(uuid, timestamp with time zone)')) like '%collate "C"%'),
-  'registered keys are evaluated in ascending bytewise order [P2-S11-AC-091]');
+  (select string_agg(split_part(item.txt, '|', 1) || '/' || split_part(item.txt, '|', 2) || '/'
+                     || (split_part(item.txt, '|', 3) = pg_temp.h11s_org()::text)::text || '/'
+                     || (split_part(item.txt, '|', 4)::timestamptz = spy.instant)::text, ',' order by item.ord)
+     from h11s_spy_result spy
+     cross join lateral unnest(string_to_array(trim(trailing ';' from spy.calls), ';')) with ordinality as item(txt, ord)),
+  'cms.h11.B/cms.publication/true/true,cms.h11.a/cms.publication/true/true,cms.h11.b/cms.publication/true/true',
+  'each registered key is resolved through cfg_resolve_effective_value with consumer key cms.publication, for the owner party and the given instant, in ascending bytewise order (observed on a spy resolver) [P2-S11-AC-091]');
+select is(
+  (select result from h11s_spy_result),
+  (select jsonb_agg(jsonb_build_object(
+            'key', k.key,
+            'definitionVersionId', md5('definition:' || k.key)::uuid,
+            'sourceValueVersionId', case when k.key = 'cms.h11.b' then null else md5('source:' || k.key)::uuid end,
+            'valueHash', pg_temp.h11_sha256(to_jsonb('value-of-' || k.key)::text)) order by k.key collate "C")
+     from unnest(array['cms.h11.b', 'cms.h11.a', 'cms.h11.B']) as k(key)),
+  'keys registered out of order (b, a, B) come back in ascending bytewise order (B, a, b) as { key, definitionVersionId, sourceValueVersionId, valueHash } members, a contract default carrying a null source value version [P2-S11-AC-091]');
 
 -- ---------------------------------------------------------------------------
 -- Table posture is the data-model lane''s; the helper never deletes or updates.

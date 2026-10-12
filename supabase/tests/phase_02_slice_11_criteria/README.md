@@ -27,7 +27,9 @@ Include the prelude of the suite you extend (see `../phase_02_slice_11_rpc_publi
 ## Conventions
 
 - Existing world fixtures are included read-only; a criteria suite never edits another suite's file or helper.
-- A no-effect proof uses `c11_take` / `c11_delta`, not a row counter.
+- A no-effect proof uses `c11_take` / `c11_delta`, not a row counter. Where the calls are probes that roll back
+  (`r11_try` with `p_keep` false), arm `r11_watch('pg_temp.c11_snapshot()')` instead: a delta taken after a
+  rolled-back probe is always empty (see `../phase_02_slice_11_rpc_review/README.md`).
 - Keep each file below 400 lines.
 
 ## Related paths

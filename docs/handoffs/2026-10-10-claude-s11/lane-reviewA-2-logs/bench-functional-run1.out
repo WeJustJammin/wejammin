@@ -1,0 +1,15 @@
+[alt] waiting for lock 18:07:02
+[alt] lock acquired 18:07:02
+[alt] reset ok 18:10:39
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-180702-1857052.tap
+psql:phase_02_slice_11_reads_bench128/000-world.sqlinc:206: ERROR:  relation "b11_timing" does not exist
+Test Summary Report
+-------------------
+phase_02_slice_11_reads_bench128.sql            (Wstat: 768 (exited 3) Tests: 9 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=3, Tests=62, 19 wallclock secs ( 0.25 usr  0.05 sys +  0.37 cusr  0.17 csys =  0.84 CPU)
+Result: FAIL
+Files=3, Tests=62, 19 wallclock secs ( 0.25 usr  0.05 sys +  0.37 cusr  0.17 csys =  0.84 CPU)
+Result: FAIL
+exit=1

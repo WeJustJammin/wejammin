@@ -10,7 +10,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(25);
+select plan(26);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -23,8 +23,7 @@ select plan(25);
 \ir phase_02_slice_11_helpers/002-reviews.sqlinc
 \ir phase_02_slice_11_rpc_review/000-world.sqlinc
 \ir phase_02_slice_11_rpc_review/020-decision.sqlinc
-
-create temp table r11_snap(label text primary key, effects text not null) on commit drop;
+\ir phase_02_slice_11_criteria/000-effect-digest.sqlinc
 
 -- rBase: open v1.  rvA decides (window covers now); rvB's window is over (expired, not revoked);
 -- rvS's window has not started; rvX's assignment is revoked.
@@ -77,7 +76,9 @@ select is(
      join platform_private.cms_editorial_reviews review on review.id = pg_temp.s11_id(id.key)),
   'rApproved=approved/2/1,rBase=open/1/0,rInvalid=invalidated/2/0,rRejected=rejected/2/1,rSep=open/1/0,rTwo=open/2/1',
   'control: the six review fixtures are in the intended states');
-insert into r11_snap(label, effects) values ('start', pg_temp.r11_effects());
+-- Arm the in-call durable-effect observation: every probe below records the tables it changed, taken before
+-- and after the call inside its own transaction (a probe that is rolled back afterwards is still observed).
+select pg_temp.r11_watch('pg_temp.c11_snapshot()');
 
 -- ---------------------------------------------------------------------------
 -- 1. The step-up proof comes first (even before a hidden review is concealed).
@@ -206,8 +207,10 @@ select is(
   'v-capability=P0001:INVALID_REQUEST;v-missing-reason=P0001:INVALID_REQUEST;v-review-key=P0001:INVALID_REQUEST;v-stepup-key=P0001:INVALID_REQUEST',
   'a caller capability or stepUpAt is an unknown key, and a missing reason or malformed review id is INVALID_REQUEST [P2-S11-AC-012]');
 
-select is(pg_temp.r11_effects(), (select effects from r11_snap where label = 'start'),
-  'every refusal above left no decision, review change, reservation, audit record or outbox event behind [P2-S11-AC-015]');
+select is(pg_temp.r11_effect_verdict(array['cap-control', 'su-ok-edge', 'v-2000-emoji']), 'clean',
+  'every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]');
+select is(pg_temp.r11_changed('su-ok-edge'), 'audit_events,cms_editorial_decisions,cms_editorial_reviews,idempotency_records,outbox_events',
+  'control: the observation sees a write - an accepted decision changes the decision, review, reservation, event and audit tables inside its probe [P2-S11-AC-015]');
 
 select * from finish();
 rollback;

@@ -1,3 +1,5 @@
+import type { CmsEditorialErrorDeclaration } from '@wejammin/contracts';
+
 import {
   cmsEditorialForwardedError,
   type CmsEditorialDetailProjector,
@@ -101,7 +103,7 @@ export const dispatchCmsEditorialWrite = async (
 export const relayCmsEditorialWriteFailure = async (
   request: Request,
   upstream: Response,
-  allowedErrors: Readonly<Record<string, number>>,
+  allowedErrors: CmsEditorialErrorDeclaration,
   detailPolicy: CmsEditorialErrorDetailPolicy,
   projector?: CmsEditorialDetailProjector,
 ): Promise<Response> => {

@@ -6,12 +6,14 @@
 (`r11r_review`), one `platform_api` read through the probe (`r11r_call`) and the counters a safe read must leave
 alone (`r11r_effects`). It is an include, not a discovered test.
 
-| Entrypoint                                    | Covers                                                                                                          |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `../phase_02_slice_11_rpc_reads_review.sql`   | CMS-03B-16: reader scopes, own reason only, owner-only assignments, live recount, next actions, 404 / 403       |
-| `../phase_02_slice_11_rpc_reads_queue.sql`    | CMS-03B-17: assigned / submitted scopes, millisecond keyset order, signed cursor and its DEC-140 fault classes  |
-| `../phase_02_slice_11_rpc_reads_workflow.sql` | CMS-03B-15: preparation and preflight, evidence degradation, derived states, schedule / publication bounds      |
-| `../phase_02_slice_11_rpc_reads_gate.sql`     | the quality-gate load: node shapes and order, per-phase dependency hash, binding-hash vector, uniform NOT_FOUND |
+| Entrypoint                                                   | Covers                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `../phase_02_slice_11_rpc_reads_review.sql`                  | CMS-03B-16: reader scopes, own reason only, owner-only assignments, live recount, next actions, 404 / 403                                                                                                                                                                                    |
+| `../phase_02_slice_11_rpc_reads_queue.sql`                   | CMS-03B-17: assigned / submitted scopes, millisecond keyset order, signed cursor and its DEC-140 fault classes                                                                                                                                                                               |
+| `../phase_02_slice_11_rpc_reads_workflow.sql`                | CMS-03B-15: preparation and preflight, evidence degradation, derived states, schedule / publication bounds                                                                                                                                                                                   |
+| `../phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql` | CMS-03B-15 reviewer scope: a revoked assignment, a review of another revision and a review of another entry confer no read scope (403); the active assignee reads its revision                                                                                                               |
+| `../phase_02_slice_11_rpc_reads_gate.sql`                    | the quality-gate load: node shapes and order, per-phase dependency hash, binding-hash vector, uniform NOT_FOUND                                                                                                                                                                              |
+| `../phase_02_slice_11_reads_bench128.sql`                    | p95 of CMS-03B-15, -16 and -17 at their declared bounds (128 fields, 16 schedules, 64 publications, 36 assignment rows, a 50-item page of 200 assigned reviews) against the Tier 2 (1,200 ms) and Tier 1 (750 ms) targets; world in `../phase_02_slice_11_reads_bench128/` (quiet host only) |
 
 ## Adding a test
 

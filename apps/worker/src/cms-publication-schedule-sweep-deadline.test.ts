@@ -9,11 +9,15 @@ import { runProductionCmsPublicationScheduleSweep } from './cms-publication-sche
 
 /*
  * P2-S11-AC-082: the CMS-03B-20 sweep "runs claim and execute under the
- * 15,000 ms job deadline". The constant `CMS_SCHEDULE_DEADLINE_MS` is declared
- * by the contract; this suite proves the sweep really applies it: a claim or an
- * execute RPC that never answers is aborted at exactly 15,000 ms (not before),
- * the claim then asks the platform to retry the tick, and the execute is logged
- * as retryable and left to the lease and the database retry ladder.
+ * 15,000 ms job deadline" (BE03b, Internal service operations). ONE tick of the
+ * `scheduled` sweep is the job: its claim and every execute share a single
+ * 15,000 ms window that opens when the tick starts. The constant
+ * `CMS_SCHEDULE_DEADLINE_MS` is declared by the contract; this suite proves the
+ * sweep applies it as a whole-job budget: a claim or an execute RPC that never
+ * answers is aborted at exactly 15,000 ms of job time (not before), an execute
+ * gets only the time the claim left, no further schedule is started once the
+ * deadline has passed (the lease and the database retry ladder own the rest),
+ * and no timer outlives the tick.
  */
 
 const secret = 'sb_secret_schedule_sweep_deadline_test_only';
@@ -177,51 +181,90 @@ describe('the 15,000 ms job deadline', () => {
     expect(text).not.toContain(secret);
   });
 
-  it('gives the claim and the execute each their own 15,000 ms', async () => {
+  it('shares ONE 15,000 ms job deadline between the claim and the execute: a claim that takes 10,000 ms leaves 5,000 ms', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const claimStarted = deferred<void>();
     const executeSignal = deferred<AbortSignal>();
-    const slow = <T>(body: T, delayMs: number) =>
-      new Promise<Response>((resolve) => {
-        setTimeout(() => resolve(Response.json(body)), delayMs);
-      });
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
         const name = String(input).split('/rpc/')[1] as string;
         if (name === 'cms_claim_due_publication_schedules') {
           claimStarted.resolve();
-          return slow([claim], CMS_SCHEDULE_DEADLINE_MS - 1);
+          return new Promise<Response>((resolve) => {
+            setTimeout(() => resolve(Response.json([claim])), 10_000);
+          });
         }
         if (name === 'cms_load_quality_gate_input') return Response.json(gate);
         executeSignal.resolve(init?.signal as AbortSignal);
-        return slow(
-          {
-            scheduleId: claim.scheduleId,
-            outcome: 'completed',
-            reasonCode: null,
-            publicationVersionId: '423e4567-e89b-42d3-a456-426614174000',
-            actualUtc: '2026-11-01T14:30:03Z',
-            deviationSeconds: 3,
-          },
-          CMS_SCHEDULE_DEADLINE_MS - 1,
-        );
+        return new Promise<Response>(() => undefined);
       }),
     );
     const logged = logs();
-    const { outcome } = startSweep();
+    const { state, outcome } = startSweep();
     await claimStarted.promise;
 
-    // The claim answers 1 ms before its deadline: the tick goes on.
-    await vi.advanceTimersByTimeAsync(CMS_SCHEDULE_DEADLINE_MS - 1);
+    await vi.advanceTimersByTimeAsync(10_000);
     const signal = await executeSignal.promise;
     expect(signal.aborted).toBe(false);
-    // The execute started a fresh window: 14,999 ms more is still in time.
-    await vi.advanceTimersByTimeAsync(CMS_SCHEDULE_DEADLINE_MS - 1);
-    await expect(outcome).resolves.toBe('resolved');
+    // The execute does NOT get a fresh 15,000 ms: only the 5,000 ms the job has left.
+    await vi.advanceTimersByTimeAsync(4_999);
     expect(signal.aborted).toBe(false);
-    expect(logged()).toContain(
-      '"cms_schedule_attempt_total{outcome=\\"completed\\"}":1',
+    expect(state.settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal.aborted).toBe(true);
+    await expect(outcome).resolves.toBe('resolved');
+    const text = logged();
+    expect(text).toContain('cms_publication_schedule_sweep.execute_failed');
+    expect(text).toContain('"retryable":true');
+  });
+
+  it('starts no further schedule once the job deadline has passed and logs how many were left unstarted', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const second = {
+      ...claim,
+      scheduleId: '123e4567-e89b-42d3-a456-426614174002',
+      leaseId: '223e4567-e89b-42d3-a456-426614174002',
+    };
+    const edge = stubEdge(
+      {
+        cms_claim_due_publication_schedules: () =>
+          Response.json([claim, second]),
+        cms_load_quality_gate_input: () => Response.json(gate),
+      },
+      'cms_execute_publication_schedule',
     );
+    const logged = logs();
+    const { outcome } = startSweep();
+
+    const signal = await edge.hungSignal;
+    await vi.advanceTimersByTimeAsync(CMS_SCHEDULE_DEADLINE_MS);
+    expect(signal.aborted).toBe(true);
+    await expect(outcome).resolves.toBe('resolved');
+    // The first schedule's execute was the only execute: the second was never loaded or sent.
+    expect(edge.calls).toEqual([
+      'cms_claim_due_publication_schedules',
+      'cms_load_quality_gate_input',
+      'cms_execute_publication_schedule',
+    ]);
+    const text = logged();
+    expect(text).toContain('cms_publication_schedule_sweep.deadline_exceeded');
+    expect(text).toContain('"unstarted":1');
+    expect(text).toContain('cms_publication_schedule_sweep.completed');
+    expect(text).not.toContain(second.scheduleId);
+  });
+
+  it('leaves no timer behind when the tick finishes inside the deadline', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    stubEdge(
+      {
+        cms_claim_due_publication_schedules: () => Response.json([]),
+      },
+      'never_called',
+    );
+    logs();
+    const { outcome } = startSweep();
+    await expect(outcome).resolves.toBe('resolved');
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

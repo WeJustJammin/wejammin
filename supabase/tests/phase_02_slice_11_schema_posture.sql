@@ -26,31 +26,31 @@ create temp table s11_posture(
 insert into s11_posture(tbl, triggers, policies) values
   ('cms_editorial_reviews',
    'cms_editorial_reviews_write_guard:cms_write_guard:31,cms_editorial_reviews_z_state_guard:cms_review_cas_guard:31',
-   'cms_editorial_reviews_rpc_policy'),
+   'cms_editorial_reviews_rpc_policy,cms_editorial_reviews_session_scope,cms_editorial_reviews_session_submitter'),
   ('cms_editorial_review_assignments',
    'cms_editorial_review_assignments_preview_scope:cms_preview_scope_review_assignment_trigger:25,cms_editorial_review_assignments_write_guard:cms_write_guard:31,cms_editorial_review_assignments_z_state_guard:cms_review_assignment_guard:31',
-   'cms_editorial_review_assignments_rpc_policy'),
+   'cms_editorial_review_assignments_rpc_policy,cms_editorial_review_assignments_session_grantor,cms_editorial_review_assignments_session_owner_update,cms_editorial_review_assignments_session_scope'),
   ('cms_editorial_decisions',
    'cms_editorial_decisions_immutable_guard:cms_immutable_guard:27,cms_editorial_decisions_write_guard:cms_write_guard:31,cms_editorial_decisions_z_binding_guard:cms_decision_binding_guard:7',
-   'cms_editorial_decisions_rpc_policy'),
+   'cms_editorial_decisions_rpc_policy,cms_editorial_decisions_session_decider,cms_editorial_decisions_session_scope'),
   ('cms_editorial_review_dependencies',
    'cms_editorial_review_dependencies_immutable_guard:cms_immutable_guard:27,cms_editorial_review_dependencies_write_guard:cms_write_guard:7,cms_editorial_review_dependencies_z_review_guard:cms_review_dependency_guard:7',
-   'cms_editorial_review_dependencies_rpc_policy'),
+   'cms_editorial_review_dependencies_rpc_policy,cms_editorial_review_dependencies_session_scope'),
   ('cms_publication_settings_snapshots',
    'cms_publication_settings_snapshots_immutable_guard:cms_immutable_guard:27,cms_publication_settings_snapshots_write_guard:cms_write_guard:7,cms_publication_settings_snapshots_z_snapshot_guard:cms_settings_snapshot_guard:7',
-   'cms_publication_settings_snapshots_rpc_policy'),
+   'cms_publication_settings_snapshots_rpc_policy,cms_publication_settings_snapshots_session_scope'),
   ('cms_preflight_registry',
    'cms_preflight_registry_immutable_guard:cms_immutable_guard:27,cms_preflight_registry_write_guard:cms_write_guard:7,cms_preflight_registry_z_newer_guard:cms_preflight_registry_guard:7',
-   'cms_preflight_registry_rpc_policy'),
+   'cms_preflight_registry_rpc_policy,cms_preflight_registry_session_scope_delete,cms_preflight_registry_session_scope_insert,cms_preflight_registry_session_scope_update'),
   ('cms_publication_schedules',
    'cms_publication_schedules_write_guard:cms_write_guard:31,cms_publication_schedules_z_state_guard:cms_schedule_state_guard:31',
-   'cms_publication_schedules_rpc_policy'),
+   'cms_publication_schedules_rpc_policy,cms_publication_schedules_session_creator,cms_publication_schedules_session_scope'),
   ('cms_publication_versions',
    'cms_publication_versions_a_version_lock_guard:cms_entry_version_lock_guard:7,cms_publication_versions_immutable_guard:cms_immutable_guard:27,cms_publication_versions_write_guard:cms_write_guard:31,cms_publication_versions_z_lineage_guard:cms_lineage_append_guard:7',
-   'cms_publication_versions_rpc_policy'),
+   'cms_publication_versions_rpc_policy,cms_publication_versions_session_scope'),
   ('cms_preview_tokens',
    'cms_preview_tokens_write_guard:cms_write_guard:31,cms_preview_tokens_z_state_guard:cms_preview_state_guard:31',
-   'cms_preview_tokens_rpc_policy');
+   'cms_preview_tokens_rpc_policy,cms_preview_tokens_session_minter,cms_preview_tokens_session_scope');
 
 select is(
   (select count(*)::integer from s11_posture p
@@ -85,7 +85,7 @@ select is(
   (select string_agg(p.tbl, ',' order by p.tbl) from s11_posture p
     where pg_temp.s11_policies('platform_private.' || p.tbl) is distinct from p.policies),
   null,
-  'posture: each Slice 11 table has exactly one policy, the CMS RPC-context gate [P2-S11-AC-119]'
+  'posture: each Slice 11 table has exactly its CMS RPC-context gate plus its named restrictive session-scope policies (tenant, exclusive-writer, owner, system), never an unnamed one - proved row by row in phase_02_slice_11_rls_session_scope.sql [P2-S11-AC-119]'
 );
 
 create or replace function pg_temp.s11_direct_insert(p_table text)

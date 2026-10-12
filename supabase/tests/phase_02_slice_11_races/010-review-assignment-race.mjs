@@ -26,8 +26,12 @@
  *       after the grant is restored.
  *   A6  the owner scope is re-proved the same way: a revoke blocked behind the owner's membership
  *       tenure end is NOT_FOUND (concealed) once the tenure end commits; the assignment stays active.
- *   A7  control for A5/A6: a REVOKE needs the owner receipt only, so a revoke blocked behind the
- *       revocation of the owner's cms.editor grant still commits (200).
+ *   A7  the same re-proof for a REVOKE (BE03b CMS-03B-18: "an owner without a valid cms.editor grant is
+ *       refused 403 capability_missing", for create and revoke alike): a revoke whose unlocked check passes
+ *       and that BLOCKS behind an uncommitted revocation of the owner's cms.editor grant is
+ *       capability_missing once the revocation commits - the assignment stays active at version 1, no event
+ *       or idempotency reservation is written - and the identical request (same key) succeeds after the
+ *       grant is restored.
  *
  * Run only against the disposable local database right after `pnpm db:reset`.
  */
@@ -316,17 +320,20 @@ try {
   kit.commitStatement(kit.tenureUpdate(ids, 'owner', false));
 
   // ------------------------------------------------------------ A7 ----
-  // Control: a revoke needs the owner receipt only, so the loss of the cms.editor grant that stops a
-  // create (A5) does not stop a revoke that was waiting behind it.
+  // BE03b CMS-03B-18: the grantor authority (a valid cms.editor grant of the owner) gates the revoke exactly as the
+  // create (A5).  The loss of the grant is committed WHILE a revoke waits for the authority locks.
+  const revokeEvents = kit.eventCount(a1);
+  const revokeReservations = kit.assignmentReservations();
   const revokeLoss = await parkAuthorityLoss(
     'a7-revoke-editor',
     kit.grantUpdate(ids, 'owner', 'cms.editor', false),
   );
+  const revokeRequest = kit.revokeRequest(ids, a1, 1, target);
   const revokeAnyway = kit.callAsync(
     ids,
     ASSIGN,
     'owner',
-    kit.revokeRequest(ids, a1, 1, target),
+    revokeRequest,
     's11race-a7-revoke',
   );
   check(
@@ -335,25 +342,41 @@ try {
       revokeAnyway.session,
     )) === 'blocked' &&
       kit.blockedBy('s11race-a7-revoke').join() === revokeLoss.app,
-    'A7: a revoke BLOCKS on the authority rows held by an uncommitted revocation of the owner cms.editor grant',
+    'A7: a revoke whose unlocked check passes BLOCKS on the authority rows held by an uncommitted revocation of the owner cms.editor grant',
   );
   const revokeLost = await revokeLoss.commit();
-  const revoked = await revokeAnyway.done;
+  const refusedRevoke = await revokeAnyway.done;
   check(
-    revokeLost.code === 0 &&
-      revoked.code === 0 &&
-      revoked.response?.state === 'revoked',
-    `A7: the waiting revoke still commits after the cms.editor grant was lost: a revoke needs the owner receipt only (${revoked.token ?? 'ok'})`,
+    revokeLost.code === 0 && refusedRevoke.token === 'capability_missing',
+    `A7: once the revocation commits, the waiting revoke re-proves the grantor under its locks and is refused capability_missing (${refusedRevoke.token ?? 'ok'})`,
   );
   check(
     kit.value(
       `select state || '/' || version from platform_private.cms_editorial_review_assignments where id = ${kit.sql(target)}::uuid;`,
-    ) === 'revoked/2' &&
+    ) === 'active/1' &&
       kit.reviewState(a1) === 'open/1/0/-' &&
-      kit.eventCount(a1) === tenureEvents + 1,
-    'A7: the assignment is revoked at version 2, the review version never moved and one event was emitted',
+      kit.eventCount(a1) === revokeEvents &&
+      kit.assignmentReservations() === revokeReservations,
+    'A7: the refused revoke left the assignment active at version 1 and wrote no event or idempotency reservation',
   );
   kit.commitStatement(kit.grantUpdate(ids, 'owner', 'cms.editor', true));
+  const revokeRetried = kit.call(
+    ids,
+    ASSIGN,
+    'owner',
+    revokeRequest,
+    's11race-a7-retry',
+  );
+  check(
+    revokeRetried.code === 0 &&
+      revokeRetried.response?.state === 'revoked' &&
+      kit.value(
+        `select state || '/' || version from platform_private.cms_editorial_review_assignments where id = ${kit.sql(target)}::uuid;`,
+      ) === 'revoked/2' &&
+      kit.reviewState(a1) === 'open/1/0/-' &&
+      kit.eventCount(a1) === revokeEvents + 1,
+    `A7: the very same request (same key) succeeds once the grant is restored: the assignment is revoked at version 2, the review version never moved and one event was emitted (${revokeRetried.token ?? 'ok'})`,
+  );
   console.log(
     '# all review-assignment race assertions passed; run `pnpm db:reset` before the pgTAP suite',
   );

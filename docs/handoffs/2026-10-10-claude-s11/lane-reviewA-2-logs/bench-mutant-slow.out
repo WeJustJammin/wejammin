@@ -1,0 +1,15 @@
+[alt] waiting for lock 18:15:22
+[alt] lock acquired 18:15:22
+[alt] (no reset) 18:15:22
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-181522-1894607.tap
+not ok 21 - CMS-03B-16 at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]
+not ok 22 - CMS-03B-17 first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+not ok 23 - CMS-03B-17 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+Test Summary Report
+-------------------
+zz_a2_mutant_bench.sql (Wstat: 0 Tests: 24 Failed: 3)
+  Failed tests:  21-23
+Files=1, Tests=24, 108 wallclock secs ( 0.18 usr  0.04 sys +  0.11 cusr  0.06 csys =  0.39 CPU)
+Result: FAIL
+Files=1, Tests=24, 108 wallclock secs ( 0.18 usr  0.04 sys +  0.11 cusr  0.06 csys =  0.39 CPU)
+Result: FAIL
