@@ -194,6 +194,7 @@ describe('production exact CMS preparation job family dispatch', () => {
     },
   );
 
+  // BOUNDARY sentinel for the undefined production preparation trigger. TRACKING: #128
   it('CMS with only object verification configured is unavailable without invoking it', async () => {
     const verifyObject = vi.fn<Effect>(async () => verified);
     const dispatch = createProductionJobEffectDispatcher({ verifyObject });

@@ -30,7 +30,7 @@
 -- creates publication_projection adds it:
 --   ALTER TABLE platform_private.projection_consumer_state ADD CONSTRAINT projection_consumer_state_projection_fk
 --     FOREIGN KEY (projection_id) REFERENCES <publication_projection>(id);
--- TRACKING: Slice 13 P2-S13-AC-164 (named source schemas PublicationProjection and ProjectionConsumerState).
+-- TRACKING: #127 (Slice 13 P2-S13-AC-164; named source schemas PublicationProjection and ProjectionConsumerState).
 -- SENTINEL: supabase/tests/phase_02_slice_11_projection_state.sql ("BOUNDARY sentinel") fails the day that
 -- constraint lands.
 --

@@ -97,7 +97,7 @@ export const createProductionJobEffectDispatcher =
         // Sentinel: production-job-effect-dispatcher-cms-preparation.test.ts, "CMS with only object verification
         // configured is unavailable without invoking it".
         // Detail: docs/handoffs/2026-10-10-claude-s11/lane-reviewB-2-report.md (B-08).
-        // TRACKING: not yet opened (boundary tracking-issue creation awaits the owner's permission).
+        // TRACKING: #128
         if (typeof dependencies?.prepareSchemaDryRun !== 'function') {
           return manualReview('DEPENDENCY_UNAVAILABLE');
         }

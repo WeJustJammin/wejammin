@@ -10,6 +10,7 @@
 -- and it is a read: it never touches canonical state.  RED before 20261010165000 (table + function) and
 -- 20261010165100 (the lineage append and the workflow read call it).
 --
+-- TRACKING: #127
 -- BOUNDARY: projection_id keeps no foreign key until publication_projection exists (BE04c names it,
 -- BE04a's delivery.route_manifest_version, which it references, is defined nowhere; Slice 13 P2-S13-AC-164).
 -- The sentinel assertion below fails the day that constraint lands, so this test is replaced with it.
