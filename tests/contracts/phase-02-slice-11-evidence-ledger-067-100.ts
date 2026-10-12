@@ -2107,7 +2107,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S11-AC-079',
-    text: 'CMS-03B-20 is exactly two database RPCs: `platform_private.cms_claim_due_publication_schedules(batch)` taking an integer 1-100 and returning at most `batch` strict `ClaimedSchedule` records, and `platform_private.cms_execute_publication_schedule(schedule_id, expected_version, lease_id, evidence)` returning the strict `ScheduleExecutionResult` (`completed`, `blocked`, `failed_retryable` or `already_completed`); neither is a browser route, proxy or client type.',
+    text: 'CMS-03B-20 is exactly two database RPCs: `platform_private.cms_claim_due_publication_schedules(batch)` taking an integer 1-100 and returning at most `batch` strict `ClaimedSchedule` records, and `platform_private.cms_execute_publication_schedule(schedule_id, expected_version, lease_id, evidence)` returning the strict `ScheduleExecutionResult` (`completed`, `blocked`, `failed_retryable`, `cancelled` with reason `entry_unavailable`, or `already_completed`); neither is a browser route, proxy or client type.',
     clauses: [
       {
         text: 'CMS-03B-20 is exactly two database RPCs: `platform_private.cms_claim_due_publication_schedules(batch)` taking an integer 1-100 and returning at most `batch` strict `ClaimedSchedule` records',
@@ -2234,7 +2234,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: '(`completed`, `blocked`, `failed_retryable` or `already_completed`)',
+        text: '(`completed`, `blocked`, `failed_retryable`, `cancelled` with reason `entry_unavailable`, or `already_completed`)',
         citations: [],
       },
       {
@@ -2269,7 +2269,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven as written: the closed outcome list "(`completed`, `blocked`, `failed_retryable` or `already_completed`)". DEC-173 (2026-10-12, BE03b CMS-03B-20 line 1898 over DEC-158(d)) gives the executor a fifth outcome, `cancelled` with reason `entry_unavailable`, so the shipped ScheduleExecutionResult has five outcomes and the contract test (internal-rpc.test.ts, "types the execution result with the closed outcome and reason coupling") asserts exactly five; no test can show the list of four. The strict result type, the executor signature, the claim RPC and the private/browser separation are cited. Needs an owner wording ruling that adds `cancelled` to the criterion text and to the BE03b ScheduleExecutionResult schema; BE03b lines 1505-1512, 1844, 1867 and 2073 still describe four outcomes.',
+      'The closed outcome list now includes `cancelled` with reason `entry_unavailable` (owner-ratified DEC-177 after DEC-173, BE03b CMS-03B-20 line 1898); no contract test yet parses exactly those five outcomes and refuses any other, so that clause is uncited until it lands.',
   },
   {
     criterion: 'P2-S11-AC-080',
