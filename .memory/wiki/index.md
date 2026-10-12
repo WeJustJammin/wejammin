@@ -1660,6 +1660,10 @@
 
 ## Structured Memory
 
+- decision: DEC-172: Owner ratifies the Slice 11 criteria wording batch (2026-10-11) — 2026-10-11T21:36:40.758Z
+- decision: DEC-171: The CMS-03B-07 schedule identity key includes the private sub-microsecond remainder (2026-10-11) — 2026-10-11T21:36:40.756Z
+- decision: DEC-170: A frozen locale source is current only while its variant still serves the frozen source revision and hash (2026-10-11) — 2026-10-11T21:36:40.754Z
+- decision: DEC-147: Slice 10 forward-scope criteria are proven with the Slice 11 runtime; only defective texts are reworded (2026-10-11) — 2026-10-11T21:36:40.742Z
 - pattern: PAT-027: Confirm a file is absent before creating it (2026-10-10) — 2026-10-11T01:23:47.712Z
 - pattern: PAT-026: Run canonical gates only on a quiet host (2026-10-10) — 2026-10-11T01:23:47.711Z
 - pattern: PAT-025: Verify forward migrations against a populated database, not only fresh resets (2026-10-10) — 2026-10-11T01:23:47.710Z

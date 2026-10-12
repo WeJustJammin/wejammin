@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 170
-- **Unique decision titles**: 170
+- **Total decisions**: 174
+- **Unique decision titles**: 174
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2436,6 +2436,62 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: Worker refusal mapping, publication tests, evidence ledger titles.
 - **Reversibility**: Medium
 
+## DEC-147: Slice 10 forward-scope criteria are proven with the Slice 11 runtime; only defective texts are reworded (2026-10-11)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T21:36:40.742Z
+- **Agents**: claude
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+- **Problem**: twelve Slice 10 criteria (AC-030, 038, 040, 042, 044, 045, 046, 047, 048, 079, 080, 089) could not be proven in Slice 10 as worded because they need the CMS-03B-05..09 runtime or had defective text.
+- **Options considered**: (A) reword to Slice 10 scope and add receiving criteria in Slices 11/12; (B) leave open; (C) keep the wording, prove them with the Slice 11 runtime now built, and reword only genuinely defective text.
+- **Decision**: owner chose (C) on 2026-10-11 ("C for DEC-147"). Reworded only AC-030, AC-045, AC-047, AC-089 and the defective part of AC-080, using the minimal texts in docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md Section 3.
+- **Downstream**: Slice 10 evidence ledger; those criteria close when cited Slice 11 runtime tests carry receipts.
+- **Reversibility**: Medium
+
+## DEC-170: A frozen locale source is current only while its variant still serves the frozen source revision and hash (2026-10-11)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T21:36:40.754Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: independent review B-01: BE03b:1773 omitted locale sources from currency, so a changed locale source could never invalidate a review, contradicting the review-invalidation rule that approval never survives a changed dependency.
+- **Options considered**: (A) define locale-source currency and enforce it in commands and the recheck job; (B) treat the localization consumer as informational.
+- **Decision**: (A). Current only while the source revision still exists in that locale at the frozen hash, the latest revision of that locale carries that hash and no variant sourced from it is stale. BE03b currency text amended.
+- **Downstream**: cms_manifest_identities_current, CMS-03B-07/09 version_set_stale, dependency recheck (AC-113).
+- **Reversibility**: Medium
+
+## DEC-171: The CMS-03B-07 schedule identity key includes the private sub-microsecond remainder (2026-10-11)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T21:36:40.756Z
+- **Agents**: claude
+- **Sources**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Index**: [[index]]
+
+- **Problem**: the precision producers store nine-digit instants as a microsecond column plus a private remainder; the six-column identity key would merge schedules 1 ns apart.
+- **Options considered**: (A) add local_datetime_submicro_ns to the unique key; (B) keep six columns and reject sub-microsecond distinct schedules.
+- **Decision**: (A); BE03b schema row amended and AC-122 wording ratified with the owner batch.
+- **Downstream**: migration 20261010150000, schedule schema tests, AC-122.
+- **Reversibility**: Low
+
+## DEC-172: Owner ratifies the Slice 11 criteria wording batch (2026-10-11)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-11T21:36:40.758Z
+- **Agents**: claude
+- **Sources**: human-approval
+- **Index**: [[index]]
+
+- **Problem**: Slice 11 criteria AC-035, 038, 041, 050, 053, 056, 059, 070, 090, 097 and 122 conflicted with locked global rules or ratified decisions, or had defective text.
+- **Options considered**: (A) ratify drafted rewordings aligned to the cited rules; (B) keep wording and leave them partial; (C) change code to match the old text.
+- **Decision**: owner chose (A) and approved all 37 items of docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md on 2026-10-11, including 502 DEPENDENCY_UNAVAILABLE per BE00:172/590 for response-contract failures and the BE03b/IA03 alignment edits. CMS routes emitting BAD_GATEWAY are a conformance defect being fixed.
+- **Downstream**: phase-2 plan, Slice 10/11 trackers and ledgers, BE03b, IA03, CMS Worker error codes.
+- **Reversibility**: Medium
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -4719,6 +4775,58 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: conform to the locked BE03b text versus keep shipped behaviour.
 - **Decision**: conform. A non-current frozen set at CMS-03B-07/09 is committed 409 `version_set_stale` plus a `dependency_changed` invalidation (BE03b:1773; submit keeps `dependency_changed`); a lapsed counted approver is a committed `preflight_failed` refusal with a `reviewer_authority_changed` invalidation and schedule cancellation; a stale/mis-bound execution proof propagates its conflict without consuming retries; lineage appends compare an expected head observed before shared serialization (conflict outranks `publication_not_active`); accessibility summaries key to the exact audit event.
 - **Downstream**: Worker refusal mapping, publication tests, evidence ledger titles.
+- **Reversibility**: Medium
+
+### DEC-147: Slice 10 forward-scope criteria are proven with the Slice 11 runtime; only defective texts are reworded (2026-10-11)
+
+- **Timestamp**: 2026-10-11T21:36:40.742Z
+- **Agent**: claude
+- **Source**: human-approval
+- **Tags**: decision, slice-11
+
+- **Problem**: twelve Slice 10 criteria (AC-030, 038, 040, 042, 044, 045, 046, 047, 048, 079, 080, 089) could not be proven in Slice 10 as worded because they need the CMS-03B-05..09 runtime or had defective text.
+- **Options considered**: (A) reword to Slice 10 scope and add receiving criteria in Slices 11/12; (B) leave open; (C) keep the wording, prove them with the Slice 11 runtime now built, and reword only genuinely defective text.
+- **Decision**: owner chose (C) on 2026-10-11 ("C for DEC-147"). Reworded only AC-030, AC-045, AC-047, AC-089 and the defective part of AC-080, using the minimal texts in docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md Section 3.
+- **Downstream**: Slice 10 evidence ledger; those criteria close when cited Slice 11 runtime tests carry receipts.
+- **Reversibility**: Medium
+
+### DEC-170: A frozen locale source is current only while its variant still serves the frozen source revision and hash (2026-10-11)
+
+- **Timestamp**: 2026-10-11T21:36:40.754Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: independent review B-01: BE03b:1773 omitted locale sources from currency, so a changed locale source could never invalidate a review, contradicting the review-invalidation rule that approval never survives a changed dependency.
+- **Options considered**: (A) define locale-source currency and enforce it in commands and the recheck job; (B) treat the localization consumer as informational.
+- **Decision**: (A). Current only while the source revision still exists in that locale at the frozen hash, the latest revision of that locale carries that hash and no variant sourced from it is stale. BE03b currency text amended.
+- **Downstream**: cms_manifest_identities_current, CMS-03B-07/09 version_set_stale, dependency recheck (AC-113).
+- **Reversibility**: Medium
+
+### DEC-171: The CMS-03B-07 schedule identity key includes the private sub-microsecond remainder (2026-10-11)
+
+- **Timestamp**: 2026-10-11T21:36:40.756Z
+- **Agent**: claude
+- **Source**: implement-slice phase-2 slice-11 (Claude orchestration)
+- **Tags**: decision, slice-11
+
+- **Problem**: the precision producers store nine-digit instants as a microsecond column plus a private remainder; the six-column identity key would merge schedules 1 ns apart.
+- **Options considered**: (A) add local_datetime_submicro_ns to the unique key; (B) keep six columns and reject sub-microsecond distinct schedules.
+- **Decision**: (A); BE03b schema row amended and AC-122 wording ratified with the owner batch.
+- **Downstream**: migration 20261010150000, schedule schema tests, AC-122.
+- **Reversibility**: Low
+
+### DEC-172: Owner ratifies the Slice 11 criteria wording batch (2026-10-11)
+
+- **Timestamp**: 2026-10-11T21:36:40.758Z
+- **Agent**: claude
+- **Source**: human-approval
+- **Tags**: decision, slice-11
+
+- **Problem**: Slice 11 criteria AC-035, 038, 041, 050, 053, 056, 059, 070, 090, 097 and 122 conflicted with locked global rules or ratified decisions, or had defective text.
+- **Options considered**: (A) ratify drafted rewordings aligned to the cited rules; (B) keep wording and leave them partial; (C) change code to match the old text.
+- **Decision**: owner chose (A) and approved all 37 items of docs/handoffs/2026-10-10-claude-s11/wording-batch-draft.md on 2026-10-11, including 502 DEPENDENCY_UNAVAILABLE per BE00:172/590 for response-contract failures and the BE03b/IA03 alignment edits. CMS routes emitting BAD_GATEWAY are a conformance defect being fixed.
+- **Downstream**: phase-2 plan, Slice 10/11 trackers and ledgers, BE03b, IA03, CMS Worker error codes.
 - **Reversibility**: Medium
 
 ### DEC-162: Narrow first-empty schema baseline representation

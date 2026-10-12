@@ -2281,20 +2281,17 @@ None.
 - [Data Placement Strategy](../data-placement-strategy.md)
 - [DEC-100 — bounded allowlisted cross-shard projections](../../decisions.md#dec-100-shard-02-accepts-bounded-inbound-evidence-and-policy-commands-without-upward-store-reads-2026-08-28)
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Phases into
-
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
 ### Constrained by
-
 - [[decisions.md#d-11|D-11]]
 - [[decisions.md#d-3|D-3]]
 - [[decisions.md#d-4|D-4]]
 
 ### References
-
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
