@@ -23,6 +23,7 @@ import {
   apiError,
   revisionCreated,
 } from './cms-editorial-editor-fixtures.test-support';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import { settleAsyncWork } from './cms-editorial-fake-clock.test-support';
 import {
   posts,
@@ -31,6 +32,7 @@ import {
 } from './CmsEditorialEntryEditorIsland.test-support';
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 
 beforeEach(() => {

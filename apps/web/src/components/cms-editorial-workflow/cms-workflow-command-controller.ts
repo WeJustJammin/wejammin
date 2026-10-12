@@ -109,12 +109,25 @@ const MISSING_TOKEN =
   'Your session is missing its security token. Reload the page.';
 const INVALID_REQUEST =
   'This request could not be sent. Reload the page and try again.';
+const VALIDATORS_UNAVAILABLE =
+  'This request could not be checked before sending, so nothing was sent. Check your connection and try again.';
+
+const LOCAL_REFUSAL_MESSAGES: Readonly<
+  Record<
+    Extract<WorkflowCommandResult<unknown>, { kind: 'local' }>['reason'],
+    string
+  >
+> = {
+  csrf_missing: MISSING_TOKEN,
+  request_invalid: INVALID_REQUEST,
+  validators_unavailable: VALIDATORS_UNAVAILABLE,
+};
 
 const localRefusal = (
-  reason: 'csrf_missing' | 'request_invalid',
+  reason: Extract<WorkflowCommandResult<unknown>, { kind: 'local' }>['reason'],
 ): ClassifiedRefusal => ({
   kind: 'invalid',
-  message: reason === 'csrf_missing' ? MISSING_TOKEN : INVALID_REQUEST,
+  message: LOCAL_REFUSAL_MESSAGES[reason],
   rotateKey: false,
   refetch: false,
   fields: [],

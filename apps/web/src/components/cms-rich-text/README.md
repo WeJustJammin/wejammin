@@ -20,11 +20,15 @@ the editor lets only a canonical document reach `onChange`.
 
 ## Module map
 
-- `cms-rich-text-contracts.ts` — the slice-named re-export of the shared
-  grammar (spans, marks, https/mailto/internal links and the document schema)
-  from `@wejammin/contracts`; no second copy of the grammar exists, so the
-  browser, the Worker and PostgreSQL cannot drift on a bound or on what `jsonb`
-  can store (no lone surrogate, no NUL).
+- `cms-rich-text-contracts.ts` — the slice-named, zod-free projection of the
+  shared grammar (marks, link and document guards) from
+  `@wejammin/contracts/client`: the walker of
+  `structured-values-rules.ts`, whose leaf rules the zod schemas import and whose
+  verdicts a differential test proves equal to the schemas', so the browser, the
+  Worker and PostgreSQL cannot drift on a bound or on what `jsonb` can store (no
+  lone surrogate, no NUL). The editors ship no zod (AC-106).
+- `cms-rich-text-schemas.ts` — the zod schemas of the same projection, imported
+  only by the parity tests.
 - `CmsRichTextRenderer.tsx` — typed SSR-capable output only (`<p>`,
   `<h2>`–`<h4>`, grouped `<ul>`/`<ol>`, `<blockquote>`, `<strong>`, `<em>`,
   `<code>`, links with `rel="noopener noreferrer"`). It never uses

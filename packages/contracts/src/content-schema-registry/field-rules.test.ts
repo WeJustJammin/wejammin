@@ -24,6 +24,7 @@ import {
   CmsWorkflowKeySchema,
   cmsLabelCharacters,
   isCmsLabel,
+  isCmsUuid,
   isCmsVersion,
 } from './primitives.ts';
 
@@ -117,10 +118,12 @@ describe('[P2-S09-AC-248] registry field syntax rules agree with the generated r
   });
 
   it('[P2-S09-AC-248] uuid', () => {
-    for (const value of UUIDS)
+    for (const value of UUIDS) {
       expect(CMS_UUID_PATTERN.test(value), value).toBe(
         verdict(CmsUuidSchema)(value),
       );
+      expect(isCmsUuid(value), value).toBe(verdict(CmsUuidSchema)(value));
+    }
   });
 
   it('[P2-S09-AC-248] hash', () => {

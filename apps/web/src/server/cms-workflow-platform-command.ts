@@ -2,6 +2,7 @@ import {
   cmsEditorialIfMatchEqualsExpectedVersion,
   cmsEditorialRoutePolicies,
 } from '@wejammin/contracts';
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 
 import {
   WORKFLOW_COMMAND_SPECS,
@@ -78,7 +79,8 @@ const forward = async <TPath extends Record<string, string>, TBody, TResource>(
   const admitted = admitCmsEditorialWrite(request, binding);
   if (admitted instanceof Response) return admitted;
 
-  const path = spec.pathSchema.safeParse(params);
+  const schemas = spec.schemas(validators);
+  const path = schemas.pathSchema.safeParse(params);
   if (!path.success)
     return cmsEditorialValidationError(request, 400, path.error.issues);
   if (new URL(request.url).search !== '')
@@ -87,7 +89,7 @@ const forward = async <TPath extends Record<string, string>, TBody, TResource>(
   if (csrfToken instanceof Response) return csrfToken;
   const media = cmsEditorialJsonMedia(request);
   if (media instanceof Response) return media;
-  const headers = spec.headersSchema.safeParse({
+  const headers = schemas.headersSchema.safeParse({
     contentType: media,
     idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
     ifMatch: request.headers.get('if-match') ?? undefined,
@@ -97,7 +99,7 @@ const forward = async <TPath extends Record<string, string>, TBody, TResource>(
 
   const body = await cmsEditorialBoundedRequestJson(request);
   if (!body.ok) return cmsEditorialLocalError(request, 400);
-  const parsed = spec.requestSchema.safeParse(body.value);
+  const parsed = schemas.requestSchema.safeParse(body.value);
   if (!parsed.success)
     return cmsEditorialValidationError(request, 422, parsed.error.issues);
   const mismatched = spec.mismatchedId(path.data, parsed.data);
@@ -150,12 +152,18 @@ const forward = async <TPath extends Record<string, string>, TBody, TResource>(
 
   const answer = await cmsEditorialBoundedResponseJson(upstream);
   if (!answer.ok) return cmsEditorialUnverifiedSuccess(request);
-  const committed = verifyCommandSuccess(spec, path.data, parsed.data, {
-    status: upstream.status,
-    json: answer.value,
-    etag: upstream.headers.get('etag'),
-    location: upstream.headers.get('location'),
-  });
+  const committed = verifyCommandSuccess(
+    spec,
+    validators,
+    path.data,
+    parsed.data,
+    {
+      status: upstream.status,
+      json: answer.value,
+      etag: upstream.headers.get('etag'),
+      location: upstream.headers.get('location'),
+    },
+  );
   if (committed === null) return cmsEditorialUnverifiedSuccess(request);
   const etag = spec.etag(committed);
   const location = spec.location(path.data, parsed.data, committed);

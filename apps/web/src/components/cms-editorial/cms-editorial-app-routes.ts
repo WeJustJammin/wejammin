@@ -1,4 +1,4 @@
-import { CmsUuidSchema } from '@wejammin/contracts';
+import { isCmsUuid } from '@wejammin/contracts/client';
 
 /**
  * The APP (page) routes of the CMS editorial surfaces. A committed command
@@ -11,7 +11,7 @@ export const CMS_EDITORIAL_APP_ENTRIES_PATH =
   '/app/cms-content-modeling/entries';
 
 const withUuid = (build: (id: string) => string, id: string): string | null =>
-  CmsUuidSchema.safeParse(id).success ? build(id) : null;
+  isCmsUuid(id) ? build(id) : null;
 
 /** The draft editor for one entry, or null when the id is not a UUID. */
 export const cmsEditorialAppEntryPath = (entryId: string): string | null =>
@@ -29,8 +29,7 @@ export const cmsEditorialAppConflictPath = (
   entryId: string,
   conflictId: string,
 ): string | null =>
-  CmsUuidSchema.safeParse(entryId).success &&
-  CmsUuidSchema.safeParse(conflictId).success
+  isCmsUuid(entryId) && isCmsUuid(conflictId)
     ? `${CMS_EDITORIAL_APP_ENTRIES_PATH}/${entryId}/conflicts/${conflictId}`
     : null;
 

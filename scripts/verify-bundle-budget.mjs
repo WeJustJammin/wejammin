@@ -14,6 +14,128 @@ export const BUNDLE_BUDGETS = Object.freeze({
   lazyChunkGzipBytes: 80 * 1024,
 });
 
+/**
+ * Every page of the CMS content-modeling route tree
+ * (`apps/web/src/pages/app/cms-content-modeling`), the React island it
+ * hydrates and the scripts its document shell adds to the route. `pnpm
+ * bundle:check` charges each measured route against `BUNDLE_BUDGETS`; a test
+ * (`tests/performance/cms-editorial-bundle-budget.test.ts`) fails when a page
+ * or island is missing from this table, so a new route cannot ship unmeasured.
+ *
+ * - `routeScripts: 'cms-editorial-document'`: the page renders
+ *   `CmsEditorialDocument.astro`, whose three bundled scripts (route heading
+ *   focus, cross-tab auth scope, page actions) load with every such route.
+ * - `routeScripts: 'page-shell'`: the page carries its own route-heading and
+ *   auth-scope `<script src>` tags; `pageScript` is the emitted script stem.
+ * - `measuredBy`: the route is measured by an existing measurement in `main`.
+ *
+ * @typedef {{
+ *   name: string,
+ *   page: string,
+ *   island: string|null,
+ *   routeScripts: 'cms-editorial-document'|'page-shell',
+ *   pageScript?: string,
+ *   measuredBy?: 'content-schema-registry',
+ * }} CmsEditorialRoute
+ */
+export const CMS_EDITORIAL_ROUTES = Object.freeze(
+  /** @type {readonly CmsEditorialRoute[]} */ ([
+    {
+      name: 'Content schema registry',
+      page: 'index.astro',
+      island: REGISTRY_ENTRY_STEM,
+      routeScripts: 'page-shell',
+      pageScript: 'index',
+      measuredBy: 'content-schema-registry',
+    },
+    {
+      name: 'Content schema registry version',
+      page: '[contentTypeId]/versions/[versionId].astro',
+      island: REGISTRY_ENTRY_STEM,
+      routeScripts: 'page-shell',
+      pageScript: '_versionId_',
+      measuredBy: 'content-schema-registry',
+    },
+    {
+      name: 'Content schema registry review',
+      page: 'schema-reviews/[reviewId].astro',
+      island: REGISTRY_ENTRY_STEM,
+      routeScripts: 'page-shell',
+      pageScript: '_reviewId_',
+      measuredBy: 'content-schema-registry',
+    },
+    {
+      name: 'CMS capability grants',
+      page: 'capability-grants.astro',
+      island: 'CmsCapabilityGrantConsoleIsland',
+      routeScripts: 'page-shell',
+      pageScript: 'capability-grants',
+    },
+    {
+      name: 'CMS entry list',
+      page: 'entries/index.astro',
+      island: null,
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS entry create',
+      page: 'entries/new.astro',
+      island: 'CmsEditorialEntryCreateIsland',
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS entry editor',
+      page: 'entries/[entryId].astro',
+      island: 'CmsEditorialEntryEditorIsland',
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS revision history',
+      page: 'entries/[entryId]/revisions.astro',
+      island: null,
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS entry workflow',
+      page: 'entries/[entryId]/workflow.astro',
+      island: 'CmsEditorialWorkflowIsland',
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS conflict resolve',
+      page: 'entries/[entryId]/conflicts/[conflictId].astro',
+      island: 'CmsEditorialConflictResolveIsland',
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS review queue',
+      page: 'reviews/index.astro',
+      island: null,
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS review detail',
+      page: 'reviews/[reviewId].astro',
+      island: 'CmsEditorialReviewDetailIsland',
+      routeScripts: 'cms-editorial-document',
+    },
+    {
+      name: 'CMS template create',
+      page: 'templates/new.astro',
+      island: 'CmsTemplateDesigner',
+      routeScripts: 'page-shell',
+      pageScript: 'new',
+    },
+    {
+      name: 'CMS template edit',
+      page: 'templates/[templateKey].astro',
+      island: 'CmsTemplateEditDesigner',
+      routeScripts: 'page-shell',
+      pageScript: '_templateKey_',
+    },
+  ]),
+);
+
 const resolveSourceRevision = () => {
   const configuredRevision =
     process.env.SOURCE_REVISION ?? process.env.GITHUB_SHA;
@@ -270,11 +392,42 @@ function findInfrastructureRouteAssets(clientAssets) {
 }
 
 /**
+ * The scripts a CMS route loads beside its island. A route fails closed when
+ * the build holds none of them: a renamed shell script would otherwise leave
+ * the route silently undercounted.
+ *
  * @param {string[]} clientAssets
- * @param {string} entryStem
+ * @param {CmsEditorialRoute} route
  * @returns {string[]}
  */
-function findRouteAssets(clientAssets, entryStem) {
+function findCmsRouteScriptAssets(clientAssets, route) {
+  const stem =
+    route.routeScripts === 'cms-editorial-document'
+      ? 'CmsEditorialDocument'
+      : route.pageScript;
+  if (!stem) throw new Error(`${route.name} declares no route script stem`);
+  const escapedStem = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    `^${escapedStem}\\.astro_astro_type_script_index_\\d+_lang\\.[^/]+\\.(?:js|mjs)$`,
+    'u',
+  );
+  const scripts = clientAssets.filter((path) => pattern.test(basename(path)));
+  if (scripts.length === 0) {
+    throw new Error(
+      `${route.name} route scripts (${stem}) are missing from the build`,
+    );
+  }
+  return scripts;
+}
+
+/**
+ * @param {string[]} clientAssets
+ * @param {string|null} entryStem
+ * @param {CmsEditorialRoute|null} [route]
+ * @returns {string[]}
+ */
+function findRouteAssets(clientAssets, entryStem, route = null) {
+  if (route) return findCmsRouteScriptAssets(clientAssets, route);
   if (entryStem === 'InfrastructureWorkbench') {
     return findInfrastructureRouteAssets(clientAssets);
   }
@@ -702,14 +855,78 @@ function measureAsset(distDirectory, path) {
 }
 
 /**
+ * The island entry, its static closure and their measured sizes.
+ *
+ * @param {{
+ *   entryStem: string,
+ *   normalizedInitialAssets: string[],
+ *   measuredInitial: BundleAsset[],
+ *   clientAssets: string[],
+ *   resolvedDistDirectory: string,
+ *   absoluteAssetSet: Set<string>,
+ *   clientDirectory: string,
+ * }} input
+ * @returns {{ workbench: BundleAsset, workbenchAssets: string[], measuredWorkbench: BundleAsset[] }}
+ */
+function measureWorkbench({
+  entryStem,
+  normalizedInitialAssets,
+  measuredInitial,
+  clientAssets,
+  resolvedDistDirectory,
+  absoluteAssetSet,
+  clientDirectory,
+}) {
+  const escapedEntryStem = entryStem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const workbenchPattern = new RegExp(
+    `^${escapedEntryStem}\\.[^/]+\\.(?:js|mjs)$`,
+  );
+  const workbenchPath = normalizedInitialAssets.find((path) =>
+    workbenchPattern.test(basename(path)),
+  );
+  if (!workbenchPath) {
+    throw new Error(`${entryStem} browser entry is not an initial asset`);
+  }
+  const workbench = measuredInitial.find(
+    (asset) => asset.path === workbenchPath,
+  );
+  if (!workbench) {
+    throw new Error(`${entryStem} browser entry could not be measured`);
+  }
+  const workbenchClosure = promoteImmediateHydrationAssets(
+    collectBuiltStaticClosure(
+      [resolve(resolvedDistDirectory, workbenchPath)],
+      absoluteAssetSet,
+      clientDirectory,
+    ),
+    absoluteAssetSet,
+    clientDirectory,
+  );
+  const workbenchAssets = [...workbenchClosure]
+    .map((path) => relative(resolvedDistDirectory, path))
+    .filter((path) => clientAssets.includes(path))
+    .sort();
+  const measuredWorkbench = workbenchAssets.map((path) =>
+    measureAsset(resolvedDistDirectory, path),
+  );
+  return { workbench, workbenchAssets, measuredWorkbench };
+}
+
+/**
  * Measure the InfrastructureWorkbench island and its route's initial browser
  * JavaScript. The initial total includes the island, Astro/React runtimes,
  * and manifest-declared static imports. Lazy chunks are reported separately.
  *
+ * A CMS editorial `route` (see `CMS_EDITORIAL_ROUTES`) adds the scripts its
+ * document shell loads with the island and names the route in failures; a
+ * route with no island (`entryName: null`) loads no Astro or React runtime and
+ * is charged for those scripts alone.
+ *
  * @param {{
  *   distDirectory?: string,
  *   manifestPath?: string,
- *   entryName?: string,
+ *   entryName?: string|null,
+ *   route?: CmsEditorialRoute|null,
  * }} [options]
  * @returns {BundleBudgetReport}
  */
@@ -717,16 +934,20 @@ export function measureBundleBudget({
   distDirectory = 'apps/web/dist',
   manifestPath,
   entryName = DEFAULT_ENTRY_NAME,
+  route = null,
 } = {}) {
-  const entryStem = entryName.replace(/\.[^.]+$/u, '');
+  const entryStem =
+    entryName === null ? null : entryName.replace(/\.[^.]+$/u, '');
   const routeLabel =
-    entryStem === 'InfrastructureWorkbench'
-      ? 'Infrastructure'
-      : entryStem === 'SettingsFlagsRuntimeWorkbench'
-        ? 'Platform configuration'
-        : entryStem === REGISTRY_ENTRY_STEM
-          ? 'Content schema registry'
-          : entryStem;
+    route !== null
+      ? route.name
+      : entryStem === 'InfrastructureWorkbench'
+        ? 'Infrastructure'
+        : entryStem === 'SettingsFlagsRuntimeWorkbench'
+          ? 'Platform configuration'
+          : entryStem === REGISTRY_ENTRY_STEM
+            ? 'Content schema registry'
+            : entryStem;
   const resolvedDistDirectory = resolve(distDirectory);
   const clientDirectory = join(resolvedDistDirectory, CLIENT_DIRECTORY);
   const absoluteClientAssets = findClientAssets(clientDirectory);
@@ -737,7 +958,11 @@ export function measureBundleBudget({
   const initialAssetSet = new Set();
   const dynamicAssetSet = new Set();
 
-  if (manifest) {
+  if (entryStem === null) {
+    for (const routePath of findRouteAssets(clientAssets, entryStem, route)) {
+      initialAssetSet.add(routePath);
+    }
+  } else if (manifest) {
     const manifestEntryName = manifest.entries[entryName]
       ? entryName
       : Object.keys(manifest.entries).find((name) =>
@@ -765,7 +990,7 @@ export function measureBundleBudget({
     for (const runtimePath of findAstroRuntimeAssets(clientAssets)) {
       initialAssetSet.add(runtimePath);
     }
-    for (const routePath of findRouteAssets(clientAssets, entryStem)) {
+    for (const routePath of findRouteAssets(clientAssets, entryStem, route)) {
       initialAssetSet.add(routePath);
     }
   } else {
@@ -777,7 +1002,7 @@ export function measureBundleBudget({
     for (const runtimePath of findAstroRuntimeAssets(clientAssets)) {
       initialAssetSet.add(runtimePath);
     }
-    for (const routePath of findRouteAssets(clientAssets, entryStem)) {
+    for (const routePath of findRouteAssets(clientAssets, entryStem, route)) {
       initialAssetSet.add(routePath);
     }
   }
@@ -823,38 +1048,22 @@ export function measureBundleBudget({
   const lazyChunks = normalizedDynamicAssets.map((path) =>
     measureAsset(resolvedDistDirectory, path),
   );
-  const escapedEntryStem = entryStem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const workbenchPattern = new RegExp(
-    `^${escapedEntryStem}\\.[^/]+\\.(?:js|mjs)$`,
-  );
-  const workbenchPath = normalizedInitialAssets.find((path) =>
-    workbenchPattern.test(basename(path)),
-  );
-  if (!workbenchPath) {
-    throw new Error(`${entryStem} browser entry is not an initial asset`);
-  }
-  const workbench = measuredInitial.find(
-    (asset) => asset.path === workbenchPath,
-  );
-  if (!workbench) {
-    throw new Error(`${entryStem} browser entry could not be measured`);
-  }
-  const workbenchClosure = promoteImmediateHydrationAssets(
-    collectBuiltStaticClosure(
-      [resolve(resolvedDistDirectory, workbenchPath)],
-      absoluteAssetSet,
-      clientDirectory,
-    ),
-    absoluteAssetSet,
-    clientDirectory,
-  );
-  const workbenchAssets = [...workbenchClosure]
-    .map((path) => relative(resolvedDistDirectory, path))
-    .filter((path) => clientAssets.includes(path))
-    .sort();
-  const measuredWorkbench = workbenchAssets.map((path) =>
-    measureAsset(resolvedDistDirectory, path),
-  );
+  const { workbench, workbenchAssets, measuredWorkbench } =
+    entryStem === null
+      ? {
+          workbench: { path: '', rawBytes: 0, gzipBytes: 0 },
+          workbenchAssets: [],
+          measuredWorkbench: [],
+        }
+      : measureWorkbench({
+          entryStem,
+          normalizedInitialAssets,
+          measuredInitial,
+          clientAssets,
+          resolvedDistDirectory,
+          absoluteAssetSet,
+          clientDirectory,
+        });
   const allClientGzipBytes = clientAssets.reduce(
     (total, path) =>
       total + measureAsset(resolvedDistDirectory, path).gzipBytes,
@@ -924,6 +1133,52 @@ export function assertBundleBudget(report) {
 }
 
 /**
+ * Measure one CMS editorial route: its island (if any), the Astro and React
+ * runtimes the island needs, and the scripts its document shell loads.
+ *
+ * @param {CmsEditorialRoute} route
+ * @param {{ distDirectory?: string, manifestPath?: string }} [options]
+ * @returns {BundleBudgetReport}
+ */
+export function measureCmsEditorialRoute(
+  route,
+  { distDirectory, manifestPath } = {},
+) {
+  return measureBundleBudget({
+    ...(distDirectory === undefined ? {} : { distDirectory }),
+    ...(manifestPath === undefined ? {} : { manifestPath }),
+    entryName: route.island === null ? null : `${route.island}.tsx`,
+    route,
+  });
+}
+
+/**
+ * Measure every CMS editorial route that no other measurement already owns
+ * (the registry routes are measured by `main`).
+ *
+ * @param {{ distDirectory?: string, manifestPath?: string }} [options]
+ * @returns {BundleBudgetReport[]}
+ */
+export function measureCmsEditorialRoutes(options = {}) {
+  return CMS_EDITORIAL_ROUTES.filter(
+    (route) => route.measuredBy === undefined,
+  ).map((route) => measureCmsEditorialRoute(route, options));
+}
+
+/**
+ * Every failure of every route, so one run names all the routes to fix. A lazy
+ * chunk several routes share is reported once.
+ *
+ * @param {BundleBudgetReport[]} reports
+ * @returns {string[]}
+ */
+export function cmsEditorialBundleBudgetFailures(reports) {
+  return [
+    ...new Set(reports.flatMap((report) => bundleBudgetFailures(report))),
+  ];
+}
+
+/**
  * Add the immutable promotion fields to the human-readable budget report.
  * Direct callers can continue to inspect the structural report; CI and
  * staging consume this explicitly versioned evidence shape.
@@ -953,6 +1208,10 @@ async function main() {
     ...manifestOption,
     entryName: `${REGISTRY_ENTRY_STEM}.tsx`,
   });
+  const cmsEditorial = measureCmsEditorialRoutes({
+    distDirectory,
+    ...manifestOption,
+  });
   const sourceRevision = resolveSourceRevision();
   console.log(
     JSON.stringify(
@@ -966,14 +1225,21 @@ async function main() {
           contentSchemaRegistry,
           sourceRevision,
         ),
+        cmsEditorial: cmsEditorial.map((route) =>
+          formatBundleBudgetEvidence(route, sourceRevision),
+        ),
       },
       null,
       2,
     ),
   );
-  assertBundleBudget(report);
-  assertBundleBudget(platformConfiguration);
-  assertBundleBudget(contentSchemaRegistry);
+  const failures = [
+    ...bundleBudgetFailures(report),
+    ...bundleBudgetFailures(platformConfiguration),
+    ...bundleBudgetFailures(contentSchemaRegistry),
+    ...cmsEditorialBundleBudgetFailures(cmsEditorial),
+  ];
+  if (failures.length > 0) throw new Error(failures.join('\n'));
 }
 
 if (

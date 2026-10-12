@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act } from 'react';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import {
   afterAll,
   afterEach,
@@ -32,6 +33,7 @@ import {
 } from './CmsEditorialEntryEditorIsland.test-support';
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 
 beforeEach(() => {

@@ -23,10 +23,8 @@ import {
   mountElement,
   typeInto,
 } from './cms-editor-dom.test-support';
-import {
-  describeCmsAuthoringFields,
-  type CmsFieldDescriptor,
-} from './cms-field-descriptor';
+import { describeCmsAuthoringFields } from './cms-field-descriptor-decode';
+import { type CmsFieldDescriptor } from './cms-field-descriptor';
 import { allKindFields, fieldUuid } from './cms-field-fixtures.test-support';
 import { validateCmsFieldValue, type CmsFieldIssue } from './cms-field-value';
 

@@ -1,9 +1,9 @@
-import {
-  CmsCapabilityGrantListPageSchema,
-  CmsCapabilityGrantResourceSchema,
-} from '@wejammin/contracts';
-
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import {
+  loadCmsValidators,
+  loadedCmsValidators,
+  type CmsValidators,
+} from '../../lib/cms-contract-validators';
 import {
   executeContentSchemaRegistryMutation,
   parseContentSchemaRegistryRetryAfter,
@@ -94,8 +94,24 @@ const requestIdOf = (body: unknown): string | null => {
   return typeof id === 'string' && REQUEST_ID.test(id) ? id : null;
 };
 
-const resourceOf = (body: unknown): CmsCapabilityGrantResource | null => {
-  const parsed = CmsCapabilityGrantResourceSchema.safeParse(body);
+/**
+ * The lazily loaded validators. A form submit has loaded them already; if they
+ * still cannot be fetched the answer is unverified and the caller degrades.
+ */
+const validatorsOrNull = async (): Promise<CmsValidators | null> => {
+  try {
+    return loadedCmsValidators() ?? (await loadCmsValidators());
+  } catch {
+    return null;
+  }
+};
+
+const resourceOf = async (
+  body: unknown,
+): Promise<CmsCapabilityGrantResource | null> => {
+  const validators = await validatorsOrNull();
+  if (validators === null) return null;
+  const parsed = validators.CmsCapabilityGrantResourceSchema.safeParse(body);
   return parsed.success ? parsed.data : null;
 };
 
@@ -133,7 +149,7 @@ export const runGrantCommand = async (input: {
     reconciled: result.reconciled,
     status: result.status,
     retryAfterSeconds: result.retryAfterSeconds,
-    resource: success ? resourceOf(body) : null,
+    resource: success ? await resourceOf(body) : null,
     violations: result.outcome === 'validation' ? violationsOf(body) : [],
     requestId: success ? null : requestIdOf(body),
     recoveryAction:
@@ -212,8 +228,12 @@ export const readGrantList = async (input: {
         response.headers.get('retry-after'),
       ),
     };
+  // A list that cannot be checked is an unverifiable answer: degraded and
+  // retryable, never rendered.
+  const validators = await validatorsOrNull();
+  if (validators === null) return { kind: 'degraded' };
   try {
-    const parsed = CmsCapabilityGrantListPageSchema.safeParse(
+    const parsed = validators.CmsCapabilityGrantListPageSchema.safeParse(
       await response.json(),
     );
     return parsed.success

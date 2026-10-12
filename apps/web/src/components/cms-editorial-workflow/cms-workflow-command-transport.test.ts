@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -69,13 +70,15 @@ const refusal = async (
 describe('workflow command path', () => {
   it.each(OPERATIONS)('%s posts to its registry path', (id) => {
     const testCase = COMMAND_CASES[id];
-    expect(workflowCommandPath(id, testCase.params)).toBe(testCase.browserPath);
+    expect(workflowCommandPath(validators, id, testCase.params)).toBe(
+      testCase.browserPath,
+    );
   });
 
   it('encodes an identifier it substitutes', () => {
-    expect(workflowCommandPath('CMS-03B-06', { reviewId: 'a/b' })).toBe(
-      '/api/v1/cms/reviews/a%2Fb/decision',
-    );
+    expect(
+      workflowCommandPath(validators, 'CMS-03B-06', { reviewId: 'a/b' }),
+    ).toBe('/api/v1/cms/reviews/a%2Fb/decision');
   });
 });
 

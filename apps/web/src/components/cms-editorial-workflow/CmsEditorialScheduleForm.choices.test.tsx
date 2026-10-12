@@ -3,6 +3,7 @@ import { loadPinnedTimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
 import {
   buttonNamed,
@@ -34,6 +35,10 @@ import { mountWorkflowIsland } from './cms-workflow-island-mount.test-support';
 vi.setConfig({ testTimeout: 90_000 });
 
 beforeAll(enableReactAct);
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 afterAll(disableReactAct);
 
 const KEY = 'idem-key-schedule-002';

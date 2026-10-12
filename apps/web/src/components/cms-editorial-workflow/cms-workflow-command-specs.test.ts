@@ -1,4 +1,5 @@
 import { cmsEditorialRoutePolicies } from '@wejammin/contracts';
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -36,8 +37,9 @@ const verify = (
   const spec = WORKFLOW_COMMAND_SPECS[testCase.operationId];
   return verifyCommandSuccess(
     spec as never,
+    validators,
     testCase.params as never,
-    spec.requestSchema.parse(testCase.body) as never,
+    spec.schemas(validators).requestSchema.parse(testCase.body) as never,
     {
       status: testCase.successStatus,
       json: testCase.resource,
@@ -57,19 +59,20 @@ describe('workflow command specs follow the generated registry', () => {
     expect(row.ifMatch).toBe('required');
     expect(row.idempotency).toBe('required');
     expect(row.csrf).toBe('required');
+    const schemas = spec.schemas(validators);
     expect(
-      spec.successStatus(spec.requestSchema.parse(testCase.body) as never),
+      spec.successStatus(schemas.requestSchema.parse(testCase.body) as never),
     ).toBe(row.successStatus);
     expect(
       row.path
         .replace('{entryId}', testCase.params.entryId ?? '')
         .replace('{reviewId}', testCase.params.reviewId ?? ''),
     ).toBe(testCase.upstreamPath);
-    const resource = spec.resourceSchema.parse(testCase.resource);
+    const resource = schemas.resourceSchema.parse(testCase.resource);
     expect(spec.etag(resource as never) !== null).toBe(row.etag === 'strong');
     const location = spec.location(
       testCase.params as never,
-      spec.requestSchema.parse(testCase.body) as never,
+      schemas.requestSchema.parse(testCase.body) as never,
       resource as never,
     );
     expect(location !== null).toBe(row.location !== 'none');

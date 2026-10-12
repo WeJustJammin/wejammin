@@ -4,12 +4,18 @@ import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  CLIENT_WORKFLOW_CONTRACT_MODULES,
+  CLIENT_CORE_CONTRACT_MODULES,
   CLIENT_RULE_CONTRACT_MODULES,
   CLIENT_SAFE_CONTRACT_MODULES,
+  CLIENT_EDITOR_CONTRACT_MODULES,
   clientChunkFor,
   clientChunkGroups,
+  isClientWorkflowContractModule,
+  isClientCoreContractModule,
   isClientRuleContractModule,
   isClientSafeContractModule,
+  isClientEditorContractModule,
 } from '../client-chunk-boundaries.mjs';
 
 /**
@@ -58,17 +64,57 @@ describe('[P2-S09-AC-261] client chunk boundaries', () => {
   });
 
   it('[P2-S09-AC-261] declares the zod-free groups before the dependency group, rules first, with falling priority', () => {
-    const [rulesGroup, clientGroup, dependencyGroup] = clientChunkGroups;
+    const [
+      rulesGroup,
+      clientGroup,
+      workflowGroup,
+      editorGroup,
+      dependencyGroup,
+    ] = clientChunkGroups;
     expect(rulesGroup).toMatchObject({ name: 'contracts-client-rules' });
     expect(clientGroup).toMatchObject({ name: 'contracts-client' });
+    expect(workflowGroup).toMatchObject({ name: 'contracts-client-workflow' });
+    expect(editorGroup).toMatchObject({
+      name: 'contracts-client-editor',
+    });
     expect(rulesGroup?.priority ?? 0).toBeGreaterThan(
       clientGroup?.priority ?? 0,
     );
+    expect(workflowGroup?.priority ?? 0).toBe(clientGroup?.priority ?? 0);
+    expect(editorGroup?.priority ?? 0).toBe(clientGroup?.priority ?? 0);
     expect(clientGroup?.priority ?? 0).toBeGreaterThan(
       dependencyGroup?.priority ?? 0,
     );
     expect(dependencyGroup?.name).toBe(clientChunkFor);
-    expect(clientChunkGroups).toHaveLength(3);
+    expect(clientChunkGroups).toHaveLength(5);
+  });
+
+  it('[P2-S09-AC-261] keeps the editor walkers out of the workflow and core chunks', () => {
+    expect(CLIENT_EDITOR_CONTRACT_MODULES.length).toBeGreaterThan(0);
+    for (const module of CLIENT_EDITOR_CONTRACT_MODULES) {
+      const file = resolve(CONTRACTS_SRC, '..', '..', '..', module.slice(1));
+      expect(CLIENT_CORE_CONTRACT_MODULES).not.toContain(module);
+      expect(CLIENT_WORKFLOW_CONTRACT_MODULES).not.toContain(module);
+      expect(isClientEditorContractModule(file)).toBe(true);
+      expect(isClientCoreContractModule(file)).toBe(false);
+      expect(isClientWorkflowContractModule(file)).toBe(false);
+    }
+  });
+
+  it('[P2-S09-AC-261] keeps the workflow-only zod-free modules out of the core chunk the registry routes load', () => {
+    expect(CLIENT_WORKFLOW_CONTRACT_MODULES.length).toBeGreaterThan(0);
+    for (const module of CLIENT_WORKFLOW_CONTRACT_MODULES) {
+      const file = resolve(CONTRACTS_SRC, '..', '..', '..', module.slice(1));
+      expect(CLIENT_CORE_CONTRACT_MODULES).not.toContain(module);
+      expect(isClientWorkflowContractModule(file)).toBe(true);
+      expect(isClientCoreContractModule(file)).toBe(false);
+    }
+    for (const module of CLIENT_CORE_CONTRACT_MODULES)
+      expect(
+        isClientWorkflowContractModule(
+          resolve(CONTRACTS_SRC, '..', '..', '..', module.slice(1)),
+        ),
+      ).toBe(false);
   });
 
   it('[P2-S09-AC-261] keeps the registry field rules, used only by the lazy command enhancement, out of the hydration chunk', () => {

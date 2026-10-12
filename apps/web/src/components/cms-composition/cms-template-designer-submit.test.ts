@@ -1,3 +1,4 @@
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -48,6 +49,7 @@ describe('CMS-11 first-party draft submission', () => {
       }),
     );
     const result = await submitCmsTemplateDraft(
+      validators,
       body,
       'csrf-token',
       'draft-attempt-001',
@@ -75,6 +77,7 @@ describe('CMS-11 first-party draft submission', () => {
       );
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -86,6 +89,7 @@ describe('CMS-11 first-party draft submission', () => {
       .fn<typeof fetch>()
       .mockRejectedValue(new Error('offline'));
     const result: CmsTemplateSubmitResult = await submitCmsTemplateDraft(
+      validators,
       body,
       'csrf-token',
       'draft-attempt-001',
@@ -107,6 +111,7 @@ describe('CMS-11 first-party draft submission', () => {
       .mockResolvedValue(Response.json(value, { status: 409 }));
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -124,6 +129,7 @@ describe('CMS-11 first-party draft submission', () => {
       );
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -138,6 +144,7 @@ describe('CMS-11 first-party draft submission', () => {
       .mockResolvedValue(Response.json({ private: true }, { status: 403 }));
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -151,6 +158,7 @@ describe('CMS-11 first-party draft submission', () => {
       );
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -176,6 +184,7 @@ describe('CMS-11 first-party draft submission', () => {
       .mockResolvedValue(Response.json(apiError(code), { status }));
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -195,6 +204,7 @@ describe('CMS-11 first-party draft submission', () => {
       );
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -212,6 +222,7 @@ describe('CMS-11 first-party draft submission', () => {
       );
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -226,6 +237,7 @@ describe('CMS-11 first-party draft submission', () => {
       .mockResolvedValue(Response.json({ id: TEMPLATE_ID }, { status: 201 }));
     expect(
       await submitCmsTemplateDraft(
+        validators,
         body,
         'csrf-token',
         'draft-attempt-001',
@@ -245,6 +257,7 @@ describe('CMS-11 first-party draft submission', () => {
     );
     expect(
       await submitCmsTemplateSuccessorDraft(
+        validators,
         successor,
         'csrf-token',
         'successor-attempt-001',
@@ -268,6 +281,7 @@ describe('CMS-11 first-party draft submission', () => {
     );
     expect(
       await submitCmsTemplateSuccessorDraft(
+        validators,
         { ...body, expectedVersion: '2' },
         'csrf-token',
         'successor-attempt-001',
@@ -276,6 +290,7 @@ describe('CMS-11 first-party draft submission', () => {
     ).toEqual({ kind: 'uncertain' });
     expect(
       await submitCmsTemplateSuccessorDraft(
+        validators,
         body,
         'csrf-token',
         'successor-attempt-001',

@@ -1,14 +1,14 @@
-import {
-  ApiErrorSchema,
-  CmsEditorialRefusalDetailsSchema,
-  CmsPreflightUnavailableDetailsSchema,
-  CmsSlice11ReasonCodeSchema,
-  cmsEditorialRoutePolicies,
-  type CmsEditorialRefusalDetails,
-  type CmsSlice11ReasonCode,
+import type {
+  CmsEditorialRefusalDetails,
+  CmsSlice11ReasonCode,
 } from '@wejammin/contracts';
 
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import {
+  loadCmsValidators,
+  loadedCmsValidators,
+  type CmsValidators,
+} from '../../lib/cms-contract-validators';
 import { classifyStepUpResponse } from '../content-schema-registry/content-schema-registry-step-up-classify';
 import {
   verifyCommandSuccess,
@@ -83,7 +83,11 @@ export type WorkflowCommandResult<TResource> =
   | { readonly kind: 'refused'; readonly refusal: WorkflowRefusal }
   | {
       readonly kind: 'local';
-      readonly reason: 'csrf_missing' | 'request_invalid';
+      readonly reason:
+        | 'csrf_missing'
+        | 'request_invalid'
+        /** The lazily loaded validators could not be fetched: nothing was sent. */
+        | 'validators_unavailable';
     };
 
 const UNKNOWN_OUTCOME_HEADER = 'x-cms-editorial-outcome';
@@ -95,24 +99,23 @@ const CONFLICT_KINDS: ReadonlySet<string> = new Set([
   'INVALID_TRANSITION',
 ]);
 
-const COMMAND_PATHS: Readonly<Record<string, string>> = Object.fromEntries(
-  cmsEditorialRoutePolicies.map((row) => [row.operationId, row.path]),
-);
-
 /** The browser path of a command, from the generated registry row. */
 export const workflowCommandPath = (
+  validators: Pick<CmsValidators, 'cmsEditorialRoutePolicies'>,
   operationId: CmsWorkflowCommandOperationId,
   ids: Readonly<{
     entryId?: string | undefined;
     reviewId?: string | undefined;
   }>,
 ): string =>
-  (COMMAND_PATHS[operationId] as string).replace(
-    /\{(\w+)\}/gu,
-    (_, name: string) =>
-      encodeURIComponent(
-        (ids as Readonly<Record<string, string>>)[name] as string,
-      ),
+  (
+    validators.cmsEditorialRoutePolicies.find(
+      (row) => row.operationId === operationId,
+    )?.path as string
+  ).replace(/\{(\w+)\}/gu, (_, name: string) =>
+    encodeURIComponent(
+      (ids as Readonly<Record<string, string>>)[name] as string,
+    ),
   );
 
 const csrfTokenOf = (
@@ -149,14 +152,17 @@ const violationsOf = (value: unknown): WorkflowRefusal['violations'] =>
     : [];
 
 const refusalOf = (
+  validators: CmsValidators,
   response: Response,
-  error: ReturnType<typeof ApiErrorSchema.safeParse>,
+  error: ReturnType<CmsValidators['ApiErrorSchema']['safeParse']>,
 ): WorkflowRefusal => {
   const details: Readonly<Record<string, unknown>> = error.success
     ? error.data.details
     : {};
-  const reason = CmsSlice11ReasonCodeSchema.safeParse(details.reasonCode);
-  const typed = CmsEditorialRefusalDetailsSchema.safeParse(details);
+  const reason = validators.CmsSlice11ReasonCodeSchema.safeParse(
+    details.reasonCode,
+  );
+  const typed = validators.CmsEditorialRefusalDetailsSchema.safeParse(details);
   const conflict =
     typeof details.conflict === 'string' && CONFLICT_KINDS.has(details.conflict)
       ? (details.conflict as WorkflowConflictKind)
@@ -176,7 +182,8 @@ const refusalOf = (
         : null),
     preflightUnavailable:
       response.status === 503 &&
-      CmsPreflightUnavailableDetailsSchema.safeParse(details).success,
+      validators.CmsPreflightUnavailableDetailsSchema.safeParse(details)
+        .success,
     requestId: error.success
       ? error.data.requestId
       : requestIdOf(response.headers.get('x-request-id')),
@@ -204,8 +211,15 @@ export const sendWorkflowCommand = async <TPath, TBody, TResource>(
   const documentRef = environment.documentRef ?? document;
   const csrfToken = csrfTokenOf(documentRef);
   if (csrfToken === null) return { kind: 'local', reason: 'csrf_missing' };
-  const body = spec.requestSchema.safeParse(input.body);
-  const headers = spec.headersSchema.safeParse({
+  let validators: CmsValidators;
+  try {
+    validators = loadedCmsValidators() ?? (await loadCmsValidators());
+  } catch {
+    return { kind: 'local', reason: 'validators_unavailable' };
+  }
+  const schemas = spec.schemas(validators);
+  const body = schemas.requestSchema.safeParse(input.body);
+  const headers = schemas.headersSchema.safeParse({
     contentType: 'application/json',
     idempotencyKey: input.idempotencyKey,
     ifMatch: input.ifMatch,
@@ -214,7 +228,11 @@ export const sendWorkflowCommand = async <TPath, TBody, TResource>(
     return { kind: 'local', reason: 'request_invalid' };
 
   const base = environment.fetcher ?? fetch;
-  const path = workflowCommandPath(spec.operationId, input.ids as never);
+  const path = workflowCommandPath(
+    validators,
+    spec.operationId,
+    input.ids as never,
+  );
   let response: Response;
   try {
     response = await base(
@@ -238,18 +256,24 @@ export const sendWorkflowCommand = async <TPath, TBody, TResource>(
   }
 
   const answer = await parsedJson(response);
-  const error = ApiErrorSchema.safeParse(answer);
+  const error = validators.ApiErrorSchema.safeParse(answer);
   const requestId = error.success
     ? error.data.requestId
     : requestIdOf(response.headers.get('x-request-id'));
 
   if (response.ok) {
-    const resource = verifyCommandSuccess(spec, input.ids, body.data, {
-      status: response.status,
-      json: answer,
-      etag: response.headers.get('etag'),
-      location: response.headers.get('location'),
-    });
+    const resource = verifyCommandSuccess(
+      spec,
+      validators,
+      input.ids,
+      body.data,
+      {
+        status: response.status,
+        json: answer,
+        etag: response.headers.get('etag'),
+        location: response.headers.get('location'),
+      },
+    );
     return resource === null
       ? { kind: 'unknown', requestId: null }
       : { kind: 'committed', resource, status: response.status };
@@ -260,7 +284,7 @@ export const sendWorkflowCommand = async <TPath, TBody, TResource>(
       ? { kind: 'signed-out', requestId }
       : { kind: 'step-up', recovery };
   }
-  const refusal = refusalOf(response, error);
+  const refusal = refusalOf(validators, response, error);
   if (refusal.preflightUnavailable) return { kind: 'refused', refusal };
   // A redirect (or an opaque one) is not an answer to the command: the effect
   // is unknown exactly like a 5xx or a marked refusal.

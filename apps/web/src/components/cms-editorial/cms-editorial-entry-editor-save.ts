@@ -6,7 +6,7 @@ import { draftValuesFromDetail } from './cms-editorial-draft-values';
 import {
   newCmsEditorialIdempotencyKey,
   READ_CSRF_COOKIE_FROM_DOCUMENT,
-} from './cms-editorial-entry-create-submit';
+} from './cms-editorial-request-support';
 import type {
   CmsEditorialEditorContext,
   CmsEditorialPendingSave,
@@ -20,12 +20,29 @@ import { divergentCmsEditorialFieldIds } from './cms-editorial-entry-editor-reba
 import { savedProvenance } from './cms-editorial-provenance-copy';
 import { createCmsEditorialStaleBaseFlow } from './cms-editorial-entry-editor-stale-base';
 import { cmsEditorialPointersFor } from './cms-editorial-entry-editor-state';
-import {
-  executeCmsEditorialRevisionMutation,
-  type CmsEditorialMutationResult,
-} from './cms-editorial-runtime';
+import type { CmsEditorialMutationResult } from './cms-editorial-runtime';
 
 export type CmsEditorialSaveOutcome = 'saved' | 'unknown' | 'stopped' | 'noop';
+
+/**
+ * The revision transport (and the contract schemas it validates with) loads on
+ * the first save, never with the editor island (FE03 "Performance budgets and
+ * loading strategy", AC-106). If that chunk cannot be fetched nothing was sent:
+ * the save is reported exactly like a request whose answer was lost, so the
+ * author's values stay and the identical request is replayed under its key.
+ */
+const loadRuntime = () => import('./cms-editorial-runtime');
+const TRANSPORT_UNAVAILABLE: CmsEditorialMutationResult = {
+  outcome: 'unknown',
+  status: null,
+  retryable: true,
+  outcomeUnknown: true,
+  resource: null,
+  errorCode: null,
+  errorDetails: [],
+  reasonCode: null,
+  retryAfterSeconds: null,
+};
 
 /** How long to wait before replaying a save whose outcome is unknown. */
 export const CMS_EDITORIAL_RECONCILE_DELAY_MS = 2_000;
@@ -165,15 +182,19 @@ export const createCmsEditorialSaveFlow = (
     ctx.inFlight = true;
     ctx.set({ phase: 'saving', alert: false, message: SAVE_COPY.saving });
     try {
-      const result = await executeCmsEditorialRevisionMutation({
-        path: `/api/v1/cms/entries/${ctx.init.entryId}/revisions`,
-        request: sent.request,
-        csrfToken: csrf,
-        idempotencyKey: sent.key,
-        ...(ctx.deps.fetcher === undefined
-          ? {}
-          : { fetcher: ctx.deps.fetcher }),
-      });
+      const result = await loadRuntime().then(
+        (runtime) =>
+          runtime.executeCmsEditorialRevisionMutation({
+            path: `/api/v1/cms/entries/${ctx.init.entryId}/revisions`,
+            request: sent.request,
+            csrfToken: csrf,
+            idempotencyKey: sent.key,
+            ...(ctx.deps.fetcher === undefined
+              ? {}
+              : { fetcher: ctx.deps.fetcher }),
+          }),
+        () => TRANSPORT_UNAVAILABLE,
+      );
       return await onResult(result, sent);
     } finally {
       ctx.inFlight = false;

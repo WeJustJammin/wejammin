@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { TemplateDesignerContext } from '@wejammin/contracts';
 
+import { warmCmsValidators } from '../../lib/cms-contract-validators';
 import CmsTemplateBindings from './CmsTemplateBindings';
 import CmsTemplateFields from './CmsTemplateFields';
 import CmsTemplateSlots from './CmsTemplateSlots';
@@ -15,6 +16,10 @@ import type {
 import { buildCmsTemplateDraftRequest } from './cms-template-designer-request';
 import { submitCmsTemplateDraft } from './cms-template-designer-submit';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import {
+  CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
+  useCmsTemplateValidators,
+} from './use-cms-template-validators';
 
 interface Props {
   readonly context: TemplateDesignerContext;
@@ -38,6 +43,7 @@ export default function CmsTemplateDesigner({
   const [status, setStatus] = useState<CmsTemplateFormStatus>({ kind: 'idle' });
   const summaryRef = useRef<HTMLDivElement>(null);
   const attemptRef = useRef<{ body: string; key: string } | null>(null);
+  const gate = useCmsTemplateValidators();
   const rateWait = useCmsTemplateRateWait();
   const cannotSubmit =
     context.contentTypes.length === 0 ||
@@ -53,9 +59,24 @@ export default function CmsTemplateDesigner({
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (cannotSubmit || status.kind === 'pending' || status.kind === 'created')
+    if (
+      cannotSubmit ||
+      gate.isChecking() ||
+      status.kind === 'pending' ||
+      status.kind === 'created'
+    )
       return;
+    // If the lazily loaded schemas cannot be fetched the draft is unchecked.
+    const validators = await gate.obtain();
+    if (validators === null) {
+      setStatus({
+        kind: 'validation',
+        message: CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
+      });
+      return;
+    }
     const prepared = buildCmsTemplateDraftRequest(
+      validators,
       {
         templateKey,
         compatibleTypeIds,
@@ -78,7 +99,12 @@ export default function CmsTemplateDesigner({
         : crypto.randomUUID();
     attemptRef.current = { body: serialized, key };
     setStatus({ kind: 'pending' });
-    const result = await submitCmsTemplateDraft(prepared.value, csrfToken, key);
+    const result = await submitCmsTemplateDraft(
+      validators,
+      prepared.value,
+      csrfToken,
+      key,
+    );
     if (
       result.kind === 'rejected' &&
       result.status === 429 &&
@@ -124,7 +150,11 @@ export default function CmsTemplateDesigner({
         <p role="status">Reload to restore the protected form session.</p>
       ) : null}
       <CmsTemplateStatus status={status} summaryRef={summaryRef} />
-      <form onSubmit={(event) => void submit(event)} noValidate>
+      <form
+        onSubmit={(event) => void submit(event)}
+        onFocus={warmCmsValidators}
+        noValidate
+      >
         <fieldset
           disabled={status.kind === 'pending' || status.kind === 'created'}
         >

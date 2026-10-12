@@ -1,6 +1,9 @@
-import { CmsCapabilityGrantListPageSchema } from '@wejammin/contracts';
-
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import {
+  loadCmsValidators,
+  loadedCmsValidators,
+  type CmsValidators,
+} from '../../lib/cms-contract-validators';
 
 /**
  * The reviewers an owner may assign (CMS-03B-18, DEC-136): the owner-only grant
@@ -31,7 +34,9 @@ const MAX_PAGES = 5;
 const readPage = async (
   path: string,
   fetcher: Fetcher,
-): Promise<ReturnType<typeof CmsCapabilityGrantListPageSchema.safeParse>> => {
+): Promise<
+  ReturnType<CmsValidators['CmsCapabilityGrantListPageSchema']['safeParse']>
+> => {
   const response = await fetcher(
     path,
     await addClientBindingIdHeader(path, {
@@ -48,7 +53,10 @@ const readPage = async (
   } catch {
     // An unreadable body fails the strict parse below.
   }
-  return CmsCapabilityGrantListPageSchema.safeParse(response.ok ? body : null);
+  const validators = loadedCmsValidators() ?? (await loadCmsValidators());
+  return validators.CmsCapabilityGrantListPageSchema.safeParse(
+    response.ok ? body : null,
+  );
 };
 
 export const loadReviewerOptions = async (

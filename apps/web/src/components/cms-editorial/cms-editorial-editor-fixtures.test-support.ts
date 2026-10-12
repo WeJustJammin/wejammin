@@ -1,5 +1,6 @@
 import type { JsonValue } from '@wejammin/contracts';
 
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import {
   RELATION_DEFINITION,
   authoringField,
@@ -58,7 +59,7 @@ export const editorInit = (
   state: 'draft',
   validationState: 'valid',
   openConflict: null,
-  fields: editorFields(),
+  descriptors: describeCmsAuthoringFields(editorFields()),
   values: {
     [TITLE]: 'Release notes',
     [BLURB]: null,

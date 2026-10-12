@@ -1,12 +1,9 @@
 import type { JsonValue } from '@wejammin/contracts';
 
-import {
-  describeCmsAuthoringFields,
-  type CmsFieldDescriptor,
-} from '../cms-editorial-fields/cms-field-descriptor';
+import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 import type { CmsEditorialAutosaveClock } from './cms-editorial-autosave';
 import { draftValuesFromDetail } from './cms-editorial-draft-values';
-import { executeCmsEditorialEntryDraftDetailRead } from './cms-editorial-entry-draft-detail-transport';
+import type { executeCmsEditorialEntryDraftDetailRead } from './cms-editorial-entry-draft-detail-transport';
 import {
   changedCmsFieldIds,
   editableCmsFieldIds,
@@ -91,7 +88,7 @@ export const createCmsEditorialEditorContext = (
   deps: CmsEditorialEntryEditorDeps,
 ): CmsEditorialEditorContext => {
   const init = deps.init;
-  const descriptors = describeCmsAuthoringFields(init.fields);
+  const { descriptors } = init;
   const editable = editableCmsFieldIds(descriptors, init);
   const context: CmsEditorialEditorContext = {
     deps,
@@ -149,8 +146,15 @@ export const createCmsEditorialEditorContext = (
       if (context.timer !== null) context.clock.clearTimer(context.timer);
       context.timer = null;
     },
+    // The draft-detail transport loads on the first re-read, not with the island
+    // (AC-106); a chunk that cannot be fetched is a read that did not succeed.
     readCurrent: async () => {
-      const read = await executeCmsEditorialEntryDraftDetailRead({
+      const transport =
+        await import('./cms-editorial-entry-draft-detail-transport').catch(
+          () => null,
+        );
+      if (transport === null) return null;
+      const read = await transport.executeCmsEditorialEntryDraftDetailRead({
         basePath: '/api/v1/cms/entries',
         entryId: init.entryId,
         ...(deps.fetcher === undefined ? {} : { fetcher: deps.fetcher }),

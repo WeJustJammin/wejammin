@@ -1,10 +1,10 @@
-import {
-  CMS_TZDB_VERSION,
-  CmsPublicationAudienceSchema,
-  type PublicationAction,
-  type PublicationScheduleRequest,
+import type {
+  PublicationAction,
+  PublicationScheduleRequest,
 } from '@wejammin/contracts';
+import { CMS_TZDB_VERSION } from '@wejammin/contracts/client';
 
+import type { CmsValidators } from '../../lib/cms-contract-validators';
 import { refusalMessage } from './CmsEditorialScheduleResolution';
 import type { WorkflowLocalError } from './CmsWorkflowCommandFrame';
 import type { WorkflowSubmission } from './cms-workflow-command-controller';
@@ -57,6 +57,7 @@ const errorOn = (
  * pinned resolver makes of the local time. Empty means the form may send.
  */
 export const scheduleLocalErrors = (
+  validators: Pick<CmsValidators, 'CmsPublicationAudienceSchema'>,
   typed: ScheduleTyped,
   timeStatus: TimeAuthorityStatus,
   resolution: ScheduleResolution,
@@ -69,7 +70,9 @@ export const scheduleLocalErrors = (
   if (typed.zone === '') found.push(errorOn(timezone, 'Choose a time zone.'));
   if (typed.audience === '')
     found.push(errorOn(audience, 'Enter an audience.'));
-  else if (!CmsPublicationAudienceSchema.safeParse(typed.audience).success)
+  else if (
+    !validators.CmsPublicationAudienceSchema.safeParse(typed.audience).success
+  )
     found.push(
       errorOn(
         audience,

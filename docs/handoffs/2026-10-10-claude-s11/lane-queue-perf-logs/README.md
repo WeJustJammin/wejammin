@@ -3,6 +3,8 @@
 Evidence for `../lane-queue-perf-report.md`. All runs are on the ALT stack (`lanes/lane-db-alt.sh`, fresh `supabase db reset`
 first) at HEAD `4c679486` plus this lane's uncommitted files.
 
+## Contents
+
 | File                                    | What it is                                                                                                       |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `diag3.full`                            | plain EXPLAIN and EXPLAIN ANALYZE of the OLD page query under stale statistics (65 s, 27 M buffer hits)          |
@@ -18,3 +20,24 @@ first) at HEAD `4c679486` plus this lane's uncommitted files.
 | `alt-bench-exclusive.sh`, `alt-lint.sh` | the exclusive-lock bench variant (from lane reviewA-2) and the `db lint` runner used here                        |
 
 The full 3.5 MB TAP is `.lane-logs/queue-perf/full2.tap` (ignored by git).
+
+## Ownership
+
+The `queue-perf` lane owns this directory. Nothing here is acceptance evidence by itself: the criteria are proven by the tests the report
+cites and by the ledger.
+
+## Extension
+
+A new run adds its output here under a name that says RED, GREEN or the mutation it covers, with its command in the report. Never record a
+result that was not observed.
+
+## Conventions
+
+`*.log` files are git-ignored; the `.out`, `.tap`, `.full` and `.txt` captures are kept as produced. Credentials, tokens and personal data never
+enter a log.
+
+## Related links
+
+- `../lane-queue-perf-report.md`
+- `../lanes/lane-db-alt.sh`
+- `../impl-lane-brief.md`

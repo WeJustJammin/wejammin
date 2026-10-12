@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { warmCmsValidators } from '../../lib/cms-contract-validators';
 import CmsWorkflowRefusalAlert, {
   type WorkflowFieldReference,
 } from './CmsWorkflowRefusalAlert';
@@ -67,6 +68,9 @@ export const workflowStatusText = <TResource,>(
 };
 
 /**
+ * Focusing any control of the form starts loading the lazy validators its
+ * submit checks need (a sign of intent; a cold load fetches none of them).
+ *
  * Everything a Slice 11 command form shows that is not a field: the focusable
  * heading, the one polite status line, the refusal (an alert that takes focus,
  * with a link to each control it names), the capability gate (never a step-up
@@ -105,6 +109,7 @@ export default function CmsWorkflowCommandFrame<TResource>({
       aria-labelledby={headingId}
       data-cms-workflow-form=""
       className="cms-workflow-form"
+      onFocus={warmCmsValidators}
     >
       <h3 id={headingId} tabIndex={-1}>
         {title}

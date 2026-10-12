@@ -7,12 +7,16 @@ import CmsWorkflowCommandFrame, {
 import { WorkflowRadioGroup, WorkflowTextArea } from './CmsWorkflowFields';
 import { REVIEW_DETAIL_HEADING_IDS } from './CmsEditorialReviewDetail';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
-import { isCommitBlocked } from './cms-workflow-form-state';
+import {
+  isCommitBlocked,
+  validatorsUnavailableError,
+} from './cms-workflow-form-state';
 import {
   DECISION_REASON_MAX,
   countCharacters,
   validateDecisionReason,
 } from './cms-workflow-reason';
+import { withCmsValidators } from '../../lib/cms-contract-validators';
 import { useDraftFields } from './use-cms-workflow-draft-fields';
 import {
   useWorkflowCommand,
@@ -97,32 +101,43 @@ export default function CmsEditorialDecisionForm({
         onSubmit={(event) => {
           event.preventDefault();
           if (blocked) return;
-          const found: WorkflowLocalError[] = [];
-          if (decision === '')
-            found.push({
-              id: 'decision-approve',
-              label: 'Decision',
-              message: 'Choose approve or reject.',
-            });
-          const reasonError = validateDecisionReason(reason);
-          if (reasonError !== null)
-            found.push({
-              id: 'decision-reason',
-              label: 'Reason',
-              message: reasonError,
-            });
-          setLocalErrors(found);
-          if (decision === '' || found.length > 0) return;
-          void controller.submit({
-            body: {
-              reviewId: review.id,
-              decision,
-              reason,
-              expectedVersion: version,
+          withCmsValidators(
+            (validators) => {
+              const found: WorkflowLocalError[] = [];
+              if (decision === '')
+                found.push({
+                  id: 'decision-approve',
+                  label: 'Decision',
+                  message: 'Choose approve or reject.',
+                });
+              const reasonError = validateDecisionReason(validators, reason);
+              if (reasonError !== null)
+                found.push({
+                  id: 'decision-reason',
+                  label: 'Reason',
+                  message: reasonError,
+                });
+              setLocalErrors(found);
+              if (decision === '' || found.length > 0) return;
+              void controller.submit({
+                body: {
+                  reviewId: review.id,
+                  decision,
+                  reason,
+                  expectedVersion: version,
+                },
+                ifMatch: `"${version}"`,
+                draft: { decision, reason },
+              });
             },
-            ifMatch: `"${version}"`,
-            draft: { decision, reason },
-          });
+            () =>
+              setLocalErrors([
+                validatorsUnavailableError({
+                  id: 'decision-reason',
+                  label: 'Reason',
+                }),
+              ]),
+          );
         }}
       >
         <WorkflowRadioGroup

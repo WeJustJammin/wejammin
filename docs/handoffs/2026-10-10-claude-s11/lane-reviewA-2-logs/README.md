@@ -35,6 +35,11 @@ produced the log and were deleted straight after; none is in the tree.
 A new log goes beside these with its command in the first line of the file. Never record a result that was not
 observed.
 
+## Conventions
+
+Logs name the run they hold; a mutant is named in the file that proves it. The `.out` and `.tap` captures are kept as produced.
+Credentials, tokens and personal data never enter a log.
+
 ## Related links
 
 - `../lane-reviewA-2-report.md`

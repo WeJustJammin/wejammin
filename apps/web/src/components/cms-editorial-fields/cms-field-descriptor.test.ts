@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  describeCmsAuthoringFields,
-  describeCmsConstraints,
-  humanizeCmsKey,
-} from './cms-field-descriptor';
+import { describeCmsAuthoringFields } from './cms-field-descriptor-decode';
+import { describeCmsConstraints, humanizeCmsKey } from './cms-field-descriptor';
 import {
   OBJECT_STRUCTURE,
   allKindFields,

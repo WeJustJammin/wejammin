@@ -1,7 +1,7 @@
 import { EntryDraftDetailResourceSchema } from '@wejammin/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { fieldUuid } from '../cms-editorial-fields/cms-field-fixtures.test-support';
 import { draftValuesFromDetail } from './cms-editorial-draft-values';
 import {

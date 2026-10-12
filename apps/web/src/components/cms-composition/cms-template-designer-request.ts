@@ -1,11 +1,22 @@
-import {
-  TemplateDesignerContextSchema,
-  TemplateVersionDetailSchema,
-  TemplateVersionRequestSchema,
-  type TemplateDesignerContext,
-  type TemplateVersionDetail,
-  type TemplateVersionRequest,
+import type {
+  TemplateDesignerContext,
+  TemplateVersionDetail,
+  TemplateVersionRequest,
 } from '@wejammin/contracts';
+
+import type { CmsValidators } from '../../lib/cms-contract-validators';
+
+/**
+ * The schemas the request builders use. They come from the lazily loaded
+ * validators (never a static import of the contracts), so the template routes
+ * ship no zod until a form is really submitted (FE03 performance, AC261).
+ */
+export type CmsTemplateRequestValidators = Pick<
+  CmsValidators,
+  | 'TemplateDesignerContextSchema'
+  | 'TemplateVersionDetailSchema'
+  | 'TemplateVersionRequestSchema'
+>;
 
 const PROTECTED_REGIONS = [
   'header',
@@ -66,11 +77,12 @@ export const templateDetailToDraftFields = (
 
 /** Client-side preparation only. The Worker rechecks every choice and authority. */
 export const buildCmsTemplateDraftRequest = (
+  validators: CmsTemplateRequestValidators,
   fields: CmsTemplateDraftFields,
   selectorContext: TemplateDesignerContext,
 ): CmsTemplateDraftBuildResult => {
   const checkedContext =
-    TemplateDesignerContextSchema.safeParse(selectorContext);
+    validators.TemplateDesignerContextSchema.safeParse(selectorContext);
   if (!checkedContext.success)
     return { ok: false, message: 'Template choices are unavailable. Reload.' };
 
@@ -135,7 +147,7 @@ export const buildCmsTemplateDraftRequest = (
     audience: fields.audience.trim(),
     expectedVersion: null,
   };
-  const checked = TemplateVersionRequestSchema.safeParse(candidate);
+  const checked = validators.TemplateVersionRequestSchema.safeParse(candidate);
   if (!checked.success)
     return {
       ok: false,
@@ -146,11 +158,13 @@ export const buildCmsTemplateDraftRequest = (
 
 /** Edit CAS: never change the immutable key or invent a parent version. */
 export const buildCmsTemplateSuccessorRequest = (
+  validators: CmsTemplateRequestValidators,
   fields: CmsTemplateDraftFields,
   selectorContext: TemplateDesignerContext,
   detail: TemplateVersionDetail,
 ): CmsTemplateDraftBuildResult => {
-  const checkedDetail = TemplateVersionDetailSchema.safeParse(detail);
+  const checkedDetail =
+    validators.TemplateVersionDetailSchema.safeParse(detail);
   if (
     !checkedDetail.success ||
     checkedDetail.data.version !== String(checkedDetail.data.templateVersion)
@@ -158,9 +172,13 @@ export const buildCmsTemplateSuccessorRequest = (
     return { ok: false, message: 'Template version is unavailable. Reload.' };
   if (fields.templateKey.trim() !== checkedDetail.data.templateKey)
     return { ok: false, message: 'The template key cannot be changed.' };
-  const prepared = buildCmsTemplateDraftRequest(fields, selectorContext);
+  const prepared = buildCmsTemplateDraftRequest(
+    validators,
+    fields,
+    selectorContext,
+  );
   if (!prepared.ok) return prepared;
-  const successor = TemplateVersionRequestSchema.safeParse({
+  const successor = validators.TemplateVersionRequestSchema.safeParse({
     ...prepared.value,
     expectedVersion: checkedDetail.data.version,
   });

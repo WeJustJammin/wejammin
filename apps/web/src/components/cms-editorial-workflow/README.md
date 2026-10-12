@@ -20,6 +20,13 @@ refusal come from the Worker through the first-party proxies in
 
 ## Module map
 
+- Lazy contracts (AC-106): the island and its forms ship no zod. The specs table
+  is zod-free (`schemas(validators)` reads the generated schemas from the lazily
+  loaded validators); the transport, the canonical reads and the form checks
+  obtain them with `loadedCmsValidators() ?? (await loadCmsValidators())` or
+  `withCmsValidators`, and a command frame warms them when a control takes
+  focus. Validators that cannot be fetched send nothing and say so
+  (`validators_unavailable`).
 - Contracts and transport: `cms-workflow-command-specs.ts` (the six commands as
   one table shared with the proxy), `cms-workflow-command-transport.ts` (send one
   command, reduce the answer to one closed result), `cms-workflow-canonical-read.ts`

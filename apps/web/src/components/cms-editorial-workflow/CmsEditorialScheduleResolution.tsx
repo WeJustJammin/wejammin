@@ -1,4 +1,4 @@
-import { CMS_TZDB_VERSION } from '@wejammin/contracts';
+import { CMS_TZDB_VERSION } from '@wejammin/contracts/client';
 import * as React from 'react';
 
 import {

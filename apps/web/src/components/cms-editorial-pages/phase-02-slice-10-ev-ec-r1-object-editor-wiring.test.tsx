@@ -11,6 +11,7 @@ import {
   vi,
 } from 'vitest';
 
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import CmsEditorialEntryCreateIsland from '../cms-editorial/CmsEditorialEntryCreateIsland';
 import { json } from '../cms-editorial/cms-editorial-editor-fixtures.test-support';
 import {
@@ -86,6 +87,7 @@ describe('EC-081 the object editor renders every declared property from the load
       <CmsEditorialEntryCreateIsland
         type={view.selected as NonNullable<typeof view.selected>}
         fields={view.fields}
+        descriptors={describeCmsAuthoringFields(view.fields)}
         fetcher={vi.fn() as unknown as typeof fetch}
       />,
     );
@@ -166,6 +168,7 @@ describe('EC-081 the object editor renders every declared property from the load
       <CmsEditorialEntryCreateIsland
         type={view.selected as NonNullable<typeof view.selected>}
         fields={view.fields}
+        descriptors={describeCmsAuthoringFields(view.fields)}
         fetcher={vi.fn() as unknown as typeof fetch}
       />,
     );
@@ -197,6 +200,7 @@ describe('EC-081 the object editor renders every declared property from the load
       <CmsEditorialEntryCreateIsland
         type={view.selected as NonNullable<typeof view.selected>}
         fields={view.fields}
+        descriptors={describeCmsAuthoringFields(view.fields)}
         fetcher={vi.fn() as unknown as typeof fetch}
       />,
     );

@@ -1,5 +1,5 @@
 import {
-  RichTextLinkSchema,
+  canonicalRichTextLink,
   type RichTextLink,
 } from './cms-rich-text-contracts';
 
@@ -24,23 +24,19 @@ export const linkFromHref = (href: string): RichTextLink | null => {
   if (HTTPS_HREF_PATTERN.test(href)) {
     // Through the shared schema, like mailto and internal links, so the 2048
     // character bound and the DEL / C1 control refusal hold here too.
-    const parsed = RichTextLinkSchema.safeParse({ kind: 'https', href });
-    return parsed.success ? parsed.data : null;
+    return canonicalRichTextLink({ kind: 'https', href });
   }
   const mailto = MAILTO_HREF_PATTERN.exec(href);
   if (mailto?.groups?.address !== undefined) {
-    const parsed = RichTextLinkSchema.safeParse({
+    const link = canonicalRichTextLink({
       kind: 'mailto',
       address: mailto.groups.address,
     });
-    if (parsed.success) return parsed.data;
+    if (link !== null) return link;
   }
   if (INTERNAL_ROUTE_PATTERN.test(href)) {
-    const parsed = RichTextLinkSchema.safeParse({
-      kind: 'internal',
-      route: href,
-    });
-    if (parsed.success) return parsed.data;
+    const link = canonicalRichTextLink({ kind: 'internal', route: href });
+    if (link !== null) return link;
   }
   return null;
 };

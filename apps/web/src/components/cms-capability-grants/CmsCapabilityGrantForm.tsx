@@ -1,12 +1,17 @@
 import * as React from 'react';
 
 import {
+  warmCmsValidators,
+  withCmsValidators,
+} from '../../lib/cms-contract-validators';
+import CmsCapabilityGrantCheckNotice from './CmsCapabilityGrantCheckNotice';
+import {
   CapabilityField,
   PersonField,
   ReasonField,
   TermField,
 } from './CmsCapabilityGrantFields';
-import { CMS_CAPABILITY_GRANT_CONSOLE_PATH } from './cms-capability-grant-url';
+import { CMS_CAPABILITY_GRANT_CONSOLE_PATH } from './cms-capability-grant-console-url';
 import {
   validateGrantFields,
   type CmsCapabilityGrantTermBounds,
@@ -58,33 +63,45 @@ export default function CmsCapabilityGrantForm(
     reason: '',
   });
   const [errors, setErrors] = React.useState<GrantFieldErrors>({});
+  const [checkUnavailable, setCheckUnavailable] = React.useState(false);
   const shown: GrantFieldErrors = { ...props.serverErrors, ...errors };
   const set = (patch: Partial<typeof values>): void =>
     setValues((previous) => ({ ...previous, ...patch }));
+  // A blur or change check that cannot load its schemas shows nothing: the
+  // submit runs the same checks and reports that they were unavailable.
   const check = (name: GrantFieldName, next = values): void =>
-    setErrors((previous) => {
-      const found = validateGrantFields(next, props.termWindow);
-      const rest: { -readonly [K in GrantFieldName]?: string } = {
-        ...previous,
-      };
-      delete rest[name];
-      return found[name] === undefined
-        ? rest
-        : { ...rest, [name]: found[name] };
-    });
+    withCmsValidators(
+      (validators) =>
+        setErrors((previous) => {
+          const found = validateGrantFields(validators, next, props.termWindow);
+          const rest: { -readonly [K in GrantFieldName]?: string } = {
+            ...previous,
+          };
+          delete rest[name];
+          return found[name] === undefined
+            ? rest
+            : { ...rest, [name]: found[name] };
+        }),
+      () => undefined,
+    );
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
     if (props.disabled || props.pending) return;
-    const found = validateGrantFields(values, props.termWindow);
-    setErrors(found);
-    const first = FIELD_ORDER.find((name) => found[name] !== undefined);
-    if (first !== undefined) {
-      event.currentTarget
-        .querySelector<HTMLElement>(`#${FIELD_IDS[first]}`)
-        ?.focus();
-      return;
-    }
-    props.onSubmit(event.currentTarget);
+    const form = event.currentTarget;
+    withCmsValidators(
+      (validators) => {
+        setCheckUnavailable(false);
+        const found = validateGrantFields(validators, values, props.termWindow);
+        setErrors(found);
+        const first = FIELD_ORDER.find((name) => found[name] !== undefined);
+        if (first !== undefined) {
+          form.querySelector<HTMLElement>(`#${FIELD_IDS[first]}`)?.focus();
+          return;
+        }
+        props.onSubmit(form);
+      },
+      () => setCheckUnavailable(true),
+    );
   };
   return (
     <form
@@ -96,6 +113,7 @@ export default function CmsCapabilityGrantForm(
       action={CMS_CAPABILITY_GRANT_CONSOLE_PATH}
       noValidate
       onSubmit={onSubmit}
+      onFocus={warmCmsValidators}
     >
       <input type="hidden" name="operationId" value="CMS-03A-15" />
       <input type="hidden" name="csrf" value={props.csrfToken} />
@@ -143,6 +161,10 @@ export default function CmsCapabilityGrantForm(
         Consequence: the person holds this capability until the end of the
         chosen date, at most 90 days. Changes need a verified identity.
       </p>
+      <CmsCapabilityGrantCheckNotice
+        id="cms-grant-check-unavailable"
+        unavailable={checkUnavailable}
+      />
       <button
         type="submit"
         disabled={props.disabled || props.pending}

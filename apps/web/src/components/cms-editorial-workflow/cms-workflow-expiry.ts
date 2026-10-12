@@ -1,4 +1,4 @@
-import { cmsReviewAssignmentExpiryCeiling } from '@wejammin/contracts';
+import { cmsReviewAssignmentExpiryCeiling } from '@wejammin/contracts/client';
 
 /**
  * The client-side bound of a reviewer assignment's expiry (BE03b, DEC-136): after

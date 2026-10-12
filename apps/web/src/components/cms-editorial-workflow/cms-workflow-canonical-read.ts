@@ -1,12 +1,14 @@
-import {
-  ApiErrorSchema,
-  EditorialReviewDetailResourceSchema,
-  EntryWorkflowResourceSchema,
-  type EditorialReviewDetailResource,
-  type EntryWorkflowResource,
+import type {
+  EditorialReviewDetailResource,
+  EntryWorkflowResource,
 } from '@wejammin/contracts';
 
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import {
+  loadCmsValidators,
+  loadedCmsValidators,
+  type CmsValidators,
+} from '../../lib/cms-contract-validators';
 
 /**
  * The browser's canonical refetch of a workflow or review (FE03 Slice 11 states:
@@ -32,7 +34,7 @@ const STRONG_ETAG = /^"[\x21\x23-\x7e]{1,256}"$/u;
 
 const read = async <T>(
   path: string,
-  verify: (body: unknown, etag: string) => T | null,
+  verify: (validators: CmsValidators, body: unknown, etag: string) => T | null,
   fetcher: Fetcher,
 ): Promise<CanonicalReadResult<T>> => {
   let response: Response;
@@ -59,13 +61,23 @@ const read = async <T>(
   } catch {
     // An unreadable body is degraded below.
   }
+  // The validators load on the first read that needs them; if they cannot be
+  // fetched the surface is degraded exactly like an unverifiable answer.
+  let validators: CmsValidators;
+  try {
+    validators = loadedCmsValidators() ?? (await loadCmsValidators());
+  } catch {
+    return { kind: 'degraded', requestId: null };
+  }
   if (response.status === 200) {
     const etag = response.headers.get('etag');
     const resource =
-      etag !== null && STRONG_ETAG.test(etag) ? verify(body, etag) : null;
+      etag !== null && STRONG_ETAG.test(etag)
+        ? verify(validators, body, etag)
+        : null;
     if (resource !== null) return { kind: 'ok', resource };
   }
-  const error = ApiErrorSchema.safeParse(body);
+  const error = validators.ApiErrorSchema.safeParse(body);
   return {
     kind: 'degraded',
     requestId: error.success ? error.data.requestId : null,
@@ -82,8 +94,8 @@ export const readCanonicalWorkflow = (
     `/api/v1/cms/entries/${encodeURIComponent(entryId)}/workflow${
       revisionId === null ? '' : `?revisionId=${encodeURIComponent(revisionId)}`
     }`,
-    (body) => {
-      const resource = EntryWorkflowResourceSchema.safeParse(body);
+    (validators, body) => {
+      const resource = validators.EntryWorkflowResourceSchema.safeParse(body);
       return resource.success &&
         resource.data.entry.id === entryId &&
         (revisionId === null || resource.data.revision.id === revisionId)
@@ -100,8 +112,9 @@ export const readCanonicalReview = (
 ): Promise<CanonicalReadResult<EditorialReviewDetailResource>> =>
   read(
     `/api/v1/cms/reviews/${encodeURIComponent(reviewId)}`,
-    (body, etag) => {
-      const resource = EditorialReviewDetailResourceSchema.safeParse(body);
+    (validators, body, etag) => {
+      const resource =
+        validators.EditorialReviewDetailResourceSchema.safeParse(body);
       return resource.success &&
         resource.data.id === reviewId &&
         etag === `"${resource.data.version}"`

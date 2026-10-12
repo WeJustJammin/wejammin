@@ -1,15 +1,5 @@
-import {
-  CmsEditorialDecisionHeadersSchema,
-  CmsEditorialDecisionPathParamsSchema,
-  CmsEditorialReviewAssignmentHeadersSchema,
-  CmsEditorialReviewSubmissionHeadersSchema,
-  CmsEditorialReviewSubmissionPathParamsSchema,
-  CmsPreviewRequestHeadersSchema,
-  CmsPublicationRequestHeadersSchema,
-  CmsPublicationScheduleHeadersSchema,
-  CmsPublicationSchedulePathParamsSchema,
+import type {
   EditorialDecisionRequestSchema,
-  EditorialReviewAssignmentPathParamsSchema,
   EditorialReviewAssignmentRequestSchema,
   EditorialReviewAssignmentResourceSchema,
   EditorialReviewResourceSchema,
@@ -20,18 +10,26 @@ import {
   PublicationScheduleRequestSchema,
   PublicationScheduleResourceSchema,
   ReviewSubmissionRequestSchema,
+} from '@wejammin/contracts';
+import {
   cmsJsonEqual,
   reviewAssignmentSuccessStatus,
-} from '@wejammin/contracts';
+} from '@wejammin/contracts/client';
 import type { z } from 'zod';
+
+import type { CmsValidators } from '../../lib/cms-contract-validators';
 
 /**
  * The six Slice 11 browser commands as one table (CMS-03B-05 submit, -06
  * decision, -07 schedule, -08 preview, -09 publish, -18 assignment): the
- * generated request, header and resource schemas, the identity a committed
- * resource must be bound to, and the validator and Location it must carry.
- * The first-party proxy (server) and the browser transport share this table, so
- * the two verifications of a success can never disagree.
+ * identity a committed resource must be bound to, the validator and Location it
+ * must carry, and (through `schemas`) the generated request, header and
+ * resource schemas.
+ *
+ * The table is zod-free so a form can hold a spec at hydration. `schemas` reads
+ * the generated schemas from the lazily loaded validators
+ * (`lib/cms-contract-validators.ts`), which the transport and the form checks
+ * load on first need; nothing here imports a schema as a value.
  */
 
 export type CmsWorkflowCommandOperationId =
@@ -47,12 +45,20 @@ export interface CommandHeaders {
   readonly ifMatch: string;
 }
 
-export interface CommandSpec<TPath, TBody, TResource> {
-  readonly operationId: CmsWorkflowCommandOperationId;
+/** The strict generated schemas of one command. */
+export interface CommandSchemas<TPath, TBody, TResource> {
   readonly pathSchema: z.ZodType<TPath>;
   readonly requestSchema: z.ZodType<TBody>;
   readonly headersSchema: z.ZodType<CommandHeaders>;
   readonly resourceSchema: z.ZodType<TResource>;
+}
+
+export interface CommandSpec<TPath, TBody, TResource> {
+  readonly operationId: CmsWorkflowCommandOperationId;
+  /** The generated schemas, read from the lazily loaded validators. */
+  readonly schemas: (
+    validators: CmsValidators,
+  ) => CommandSchemas<TPath, TBody, TResource>;
   /** The body member the strong `If-Match` must equal, or null for a free operand. */
   readonly expectedVersion: (body: TBody) => string | null;
   /** The first path/body identifier that disagrees, or null. */
@@ -68,7 +74,6 @@ export interface CommandSpec<TPath, TBody, TResource> {
   ) => string | null;
 }
 
-const NO_PATH = CmsPublicationSchedulePathParamsSchema;
 const noMismatch = (): null => null;
 const quoted = (version: string): string => `"${version}"`;
 
@@ -78,10 +83,12 @@ const SUBMIT: CommandSpec<
   z.infer<typeof EditorialReviewResourceSchema>
 > = {
   operationId: 'CMS-03B-05',
-  pathSchema: CmsEditorialReviewSubmissionPathParamsSchema,
-  requestSchema: ReviewSubmissionRequestSchema,
-  headersSchema: CmsEditorialReviewSubmissionHeadersSchema,
-  resourceSchema: EditorialReviewResourceSchema,
+  schemas: (validators) => ({
+    pathSchema: validators.CmsEditorialReviewSubmissionPathParamsSchema,
+    requestSchema: validators.ReviewSubmissionRequestSchema,
+    headersSchema: validators.CmsEditorialReviewSubmissionHeadersSchema,
+    resourceSchema: validators.EditorialReviewResourceSchema,
+  }),
   expectedVersion: () => null,
   mismatchedId: (path, body) =>
     path.entryId === body.entryId ? null : 'entryId',
@@ -101,10 +108,12 @@ const DECIDE: CommandSpec<
   z.infer<typeof EditorialReviewResourceSchema>
 > = {
   operationId: 'CMS-03B-06',
-  pathSchema: CmsEditorialDecisionPathParamsSchema,
-  requestSchema: EditorialDecisionRequestSchema,
-  headersSchema: CmsEditorialDecisionHeadersSchema,
-  resourceSchema: EditorialReviewResourceSchema,
+  schemas: (validators) => ({
+    pathSchema: validators.CmsEditorialDecisionPathParamsSchema,
+    requestSchema: validators.EditorialDecisionRequestSchema,
+    headersSchema: validators.CmsEditorialDecisionHeadersSchema,
+    resourceSchema: validators.EditorialReviewResourceSchema,
+  }),
   expectedVersion: (body) => body.expectedVersion,
   mismatchedId: (path, body) =>
     path.reviewId === body.reviewId ? null : 'reviewId',
@@ -120,10 +129,12 @@ const SCHEDULE: CommandSpec<
   z.infer<typeof PublicationScheduleResourceSchema>
 > = {
   operationId: 'CMS-03B-07',
-  pathSchema: NO_PATH,
-  requestSchema: PublicationScheduleRequestSchema,
-  headersSchema: CmsPublicationScheduleHeadersSchema,
-  resourceSchema: PublicationScheduleResourceSchema,
+  schemas: (validators) => ({
+    pathSchema: validators.CmsPublicationSchedulePathParamsSchema,
+    requestSchema: validators.PublicationScheduleRequestSchema,
+    headersSchema: validators.CmsPublicationScheduleHeadersSchema,
+    resourceSchema: validators.PublicationScheduleResourceSchema,
+  }),
   expectedVersion: (body) => body.expectedVersion,
   mismatchedId: noMismatch,
   successStatus: () => 202,
@@ -147,10 +158,12 @@ const PREVIEW: CommandSpec<
   z.infer<typeof PreviewTokenResourceSchema>
 > = {
   operationId: 'CMS-03B-08',
-  pathSchema: NO_PATH,
-  requestSchema: PreviewRequestSchema,
-  headersSchema: CmsPreviewRequestHeadersSchema,
-  resourceSchema: PreviewTokenResourceSchema,
+  schemas: (validators) => ({
+    pathSchema: validators.CmsPublicationSchedulePathParamsSchema,
+    requestSchema: validators.PreviewRequestSchema,
+    headersSchema: validators.CmsPreviewRequestHeadersSchema,
+    resourceSchema: validators.PreviewTokenResourceSchema,
+  }),
   expectedVersion: () => null,
   mismatchedId: noMismatch,
   successStatus: () => 201,
@@ -172,10 +185,12 @@ const PUBLISH: CommandSpec<
   z.infer<typeof PublicationResourceSchema>
 > = {
   operationId: 'CMS-03B-09',
-  pathSchema: NO_PATH,
-  requestSchema: PublicationRequestSchema,
-  headersSchema: CmsPublicationRequestHeadersSchema,
-  resourceSchema: PublicationResourceSchema,
+  schemas: (validators) => ({
+    pathSchema: validators.CmsPublicationSchedulePathParamsSchema,
+    requestSchema: validators.PublicationRequestSchema,
+    headersSchema: validators.CmsPublicationRequestHeadersSchema,
+    resourceSchema: validators.PublicationResourceSchema,
+  }),
   expectedVersion: (body) => body.expectedVersion,
   mismatchedId: noMismatch,
   successStatus: () => 202,
@@ -195,10 +210,12 @@ const ASSIGN: CommandSpec<
   z.infer<typeof EditorialReviewAssignmentResourceSchema>
 > = {
   operationId: 'CMS-03B-18',
-  pathSchema: EditorialReviewAssignmentPathParamsSchema,
-  requestSchema: EditorialReviewAssignmentRequestSchema,
-  headersSchema: CmsEditorialReviewAssignmentHeadersSchema,
-  resourceSchema: EditorialReviewAssignmentResourceSchema,
+  schemas: (validators) => ({
+    pathSchema: validators.EditorialReviewAssignmentPathParamsSchema,
+    requestSchema: validators.EditorialReviewAssignmentRequestSchema,
+    headersSchema: validators.CmsEditorialReviewAssignmentHeadersSchema,
+    resourceSchema: validators.EditorialReviewAssignmentResourceSchema,
+  }),
   expectedVersion: (body) => body.expectedVersion,
   mismatchedId: noMismatch,
   successStatus: (body) => reviewAssignmentSuccessStatus(body.action),
@@ -231,12 +248,15 @@ export interface CommandAnswer {
  */
 export const verifyCommandSuccess = <TPath, TBody, TResource>(
   spec: CommandSpec<TPath, TBody, TResource>,
+  validators: CmsValidators,
   path: TPath,
   body: TBody,
   answer: CommandAnswer,
 ): TResource | null => {
   if (answer.status !== spec.successStatus(body)) return null;
-  const resource = spec.resourceSchema.safeParse(answer.json);
+  const resource = spec
+    .schemas(validators)
+    .resourceSchema.safeParse(answer.json);
   if (!resource.success || !spec.bound(path, body, resource.data)) return null;
   const etag = spec.etag(resource.data);
   const location = spec.location(path, body, resource.data);

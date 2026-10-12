@@ -1,8 +1,8 @@
+import type { CmsEditorialRefusalDetails } from '@wejammin/contracts';
 import {
   CMS_TZDB_VERSION,
-  CmsScheduleLocalDateTimeSchema,
-  type CmsEditorialRefusalDetails,
-} from '@wejammin/contracts';
+  parseLocalDateTime,
+} from '@wejammin/contracts/client';
 import type { TimeAuthority } from '@wejammin/contracts/time-authority';
 
 /**
@@ -66,10 +66,7 @@ export const resolveScheduleInput = (
   input: ScheduleInput,
   nowMs: number,
 ): ScheduleResolution => {
-  if (
-    input.timezone === '' ||
-    !CmsScheduleLocalDateTimeSchema.safeParse(input.localDateTime).success
-  )
+  if (input.timezone === '' || parseLocalDateTime(input.localDateTime) === null)
     return { kind: 'empty' };
   const ask = (resolvedUtc: string, disambiguation: Disambiguation) =>
     authority.resolveSchedule(

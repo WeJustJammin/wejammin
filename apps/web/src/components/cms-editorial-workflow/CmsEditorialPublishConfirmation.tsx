@@ -1,17 +1,18 @@
-import {
-  CMS_PREFLIGHT_CATEGORIES,
-  CmsPublicationAudienceSchema,
-  type FrozenCandidate,
-} from '@wejammin/contracts';
+import type { FrozenCandidate } from '@wejammin/contracts';
+import { CMS_PREFLIGHT_CATEGORIES } from '@wejammin/contracts/client';
 import * as React from 'react';
 
+import { withCmsValidators } from '../../lib/cms-contract-validators';
 import CmsWorkflowCommandFrame, {
   type WorkflowLocalError,
 } from './CmsWorkflowCommandFrame';
 import { WorkflowTextField } from './CmsWorkflowFields';
 import { WORKFLOW_HEADING_IDS } from './CmsEditorialWorkflowPanel';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
-import { isCommitBlocked } from './cms-workflow-form-state';
+import {
+  isCommitBlocked,
+  validatorsUnavailableError,
+} from './cms-workflow-form-state';
 import {
   PREFLIGHT_CATEGORY_LABEL,
   PROJECTION_COPY,
@@ -79,34 +80,47 @@ export default function CmsEditorialPublishConfirmation({
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (blocked) return;
-    const found: WorkflowLocalError[] = [];
-    if (audience === '')
-      found.push({
-        id: 'publish-audience',
-        label: 'Audience',
-        message: 'Enter an audience.',
-      });
-    else if (!CmsPublicationAudienceSchema.safeParse(audience).success)
-      found.push({
-        id: 'publish-audience',
-        label: 'Audience',
-        message:
-          'Use lowercase letters, digits, hyphens and underscores, up to 48 characters.',
-      });
-    setLocalErrors(found);
-    if (found.length > 0) return;
-    void controller.submit({
-      body: {
-        entryId,
-        revisionId,
-        frozenHash: frozen.frozenHash,
-        expectedVersionSet: versionSet,
-        audience,
-        expectedVersion: reviewVersion,
+    withCmsValidators(
+      (validators) => {
+        const found: WorkflowLocalError[] = [];
+        if (audience === '')
+          found.push({
+            id: 'publish-audience',
+            label: 'Audience',
+            message: 'Enter an audience.',
+          });
+        else if (
+          !validators.CmsPublicationAudienceSchema.safeParse(audience).success
+        )
+          found.push({
+            id: 'publish-audience',
+            label: 'Audience',
+            message:
+              'Use lowercase letters, digits, hyphens and underscores, up to 48 characters.',
+          });
+        setLocalErrors(found);
+        if (found.length > 0) return;
+        void controller.submit({
+          body: {
+            entryId,
+            revisionId,
+            frozenHash: frozen.frozenHash,
+            expectedVersionSet: versionSet,
+            audience,
+            expectedVersion: reviewVersion,
+          },
+          ifMatch: `"${reviewVersion}"`,
+          draft: { audience },
+        });
       },
-      ifMatch: `"${reviewVersion}"`,
-      draft: { audience },
-    });
+      () =>
+        setLocalErrors([
+          validatorsUnavailableError({
+            id: 'publish-audience',
+            label: 'Audience',
+          }),
+        ]),
+    );
   };
   return (
     <details

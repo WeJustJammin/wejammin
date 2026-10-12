@@ -3,6 +3,7 @@ import { loadPinnedTimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
 import {
   buttonNamed,
@@ -51,6 +52,10 @@ import {
  */
 
 beforeAll(enableReactAct);
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 afterAll(disableReactAct);
 // The tz snapshot and jsdom work are slow on a loaded host; waits are
 // conditions, not budgets.

@@ -1,4 +1,7 @@
 import type { CmsEditorialRestoreSubmitResult } from '../components/cms-editorial/cms-editorial-restore-response';
+import { clearRestoreFailure } from './cms-editorial-restore-summary';
+
+export { clearRestoreFailure };
 
 /**
  * The typed-failure surface of the restore confirmation (FE03 error behavior,
@@ -10,8 +13,6 @@ import type { CmsEditorialRestoreSubmitResult } from '../components/cms-editoria
  * the confirmation, the carrier and the source revision stay exactly as the
  * author confirmed them ("a refusal preserves the source and draft", :582).
  */
-
-const SUMMARY = '[data-cms-editorial-restore-error]';
 
 const NOTHING_CHANGED =
   'Nothing was changed; the source revision and your confirmation are unchanged.';
@@ -57,11 +58,6 @@ export const restoreFailureOf = (
     signIn: unauthenticated,
     interrupted: result.outcomeUnknown || unauthenticated || result.retryable,
   };
-};
-
-export const clearRestoreFailure = (form: HTMLFormElement): void => {
-  for (const existing of Array.from(form.querySelectorAll(SUMMARY)))
-    existing.remove();
 };
 
 /** Renders the summary at the top of the form and moves focus to its heading. */

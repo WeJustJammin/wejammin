@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import {
-  RichTextV1DocumentSchema,
+  isCanonicalRichText,
   type RichTextV1Document,
 } from './cms-rich-text-contracts';
 
@@ -21,9 +21,9 @@ import {
  * - no dangerouslySetInnerHTML, ever.
  *
  * Untrusted-input safety: the value is never trusted. The document never
- * reaches a DOM element until RichTextV1DocumentSchema (the shared canonical
- * grammar, which admits only absolute https, mailto and internal links) has
- * accepted it, so a javascript:, data: or protocol-relative link cannot
+ * reaches a DOM element until isCanonicalRichText (the zod-free walker of the
+ * shared canonical grammar, which admits only absolute https, mailto and
+ * internal links) has accepted it, so a javascript:, data: or protocol-relative link cannot
  * render. On refusal the component emits an inert accessibility-exposed notice
  * and no document markup. Every member must satisfy the shared grammar exactly;
  * invalid or legacy values are refused, not repaired into a different document.
@@ -169,17 +169,14 @@ export interface CmsRichTextRendererProps {
 const CmsRichTextRenderer = ({
   value,
 }: CmsRichTextRendererProps): React.ReactElement => {
-  const parsed = RichTextV1DocumentSchema.safeParse(value);
-  if (!parsed.success) {
+  if (!isCanonicalRichText(value)) {
     return (
       <div className="cms-rich-text cms-rich-text-invalid" role="note">
         This rich text could not be displayed.
       </div>
     );
   }
-  return (
-    <div className="cms-rich-text">{renderBlocks(parsed.data.blocks)}</div>
-  );
+  return <div className="cms-rich-text">{renderBlocks(value.blocks)}</div>;
 };
 
 export default CmsRichTextRenderer;

@@ -1,10 +1,13 @@
 import {
   RICH_TEXT_MARKS,
-  RichTextLinkSchema,
-  RichTextSpanSchema,
-  RichTextV1Schema,
-} from '@wejammin/contracts';
-import type { z } from 'zod';
+  isRichTextDocument,
+  isRichTextLink,
+  type RichTextBlock,
+  type RichTextLink,
+  type RichTextMark,
+  type RichTextSpan,
+  type RichTextV1Document,
+} from '@wejammin/contracts/client';
 
 /**
  * Browser projection of the locked DEC-112 rich_text.v1 grammar
@@ -13,37 +16,43 @@ import type { z } from 'zod';
  *
  * There is exactly one grammar: the code-owned shared schemas in
  * packages/contracts/src/content-schema-registry/structured-values.ts, which
- * PostgreSQL `cms_rich_text_v1_valid` mirrors. The span, link and document
- * schemas are re-exported here under the slice names and never redeclared, so
- * the editor, the server and the database can neither drift on a bound (lengths
- * count Unicode characters, not UTF-16 units) nor on what `jsonb` can store
- * (no lone surrogate, no NUL). Any change to the grammar is a locked-decision
- * change made in the shared schema first.
+ * PostgreSQL `cms_rich_text_v1_valid` mirrors. The editors cannot ship zod
+ * (FE03 "Performance budgets and loading strategy", AC-106), so they decide
+ * with the zod-free walker of `structured-values-rules.ts`, whose leaf rules the
+ * schemas import and whose verdicts `structured-values-rules.test.ts` proves
+ * equal to the schemas' over a corpus and a mutation sweep. The editor, the
+ * server and the database can therefore neither drift on a bound (lengths count
+ * Unicode characters, not UTF-16 units) nor on what `jsonb` can store (no lone
+ * surrogate, no NUL). Any change to the grammar is a locked-decision change made
+ * in the shared rules first. `cms-rich-text-schemas.ts` keeps the zod schemas
+ * for the parity tests.
  */
 
-export { RICH_TEXT_MARKS, RichTextLinkSchema, RichTextSpanSchema };
+export { RICH_TEXT_MARKS };
+export type {
+  RichTextBlock,
+  RichTextLink,
+  RichTextMark,
+  RichTextSpan,
+  RichTextV1Document,
+};
 
 /**
- * The canonical rich_text.v1 block document. The shared schema is the final
- * authority; the browser-side backslash guard stays as defence in depth for an
- * internal route, because a browser reads `/\host` as `//host`.
+ * True for the canonical rich_text.v1 block document. The shared grammar is the
+ * final authority; the browser-side backslash guard stays as defence in depth
+ * for an internal route, because a browser reads `/\host` as `//host`.
  */
-export const RichTextV1DocumentSchema = RichTextV1Schema.superRefine(
-  (document, context) => {
-    document.blocks.forEach((block, blockIndex) => {
-      block.spans.forEach((span, spanIndex) => {
-        if (span.link?.kind === 'internal' && /\\/u.test(span.link.route))
-          context.addIssue({
-            code: 'custom',
-            path: ['blocks', blockIndex, 'spans', spanIndex, 'link', 'route'],
-            message: 'route must not contain backslashes',
-          });
-      });
-    });
-  },
-);
+export const isCanonicalRichText = (
+  value: unknown,
+): value is RichTextV1Document =>
+  isRichTextDocument(value) &&
+  value.blocks.every((block) =>
+    block.spans.every(
+      (span) =>
+        !(span.link?.kind === 'internal' && /\\/u.test(span.link.route)),
+    ),
+  );
 
-export type RichTextMark = (typeof RICH_TEXT_MARKS)[number];
-export type RichTextLink = z.infer<typeof RichTextLinkSchema>;
-export type RichTextSpan = z.infer<typeof RichTextSpanSchema>;
-export type RichTextV1Document = z.infer<typeof RichTextV1DocumentSchema>;
+/** The link `value` is, when one of the three shared canonical variants accepts it. */
+export const canonicalRichTextLink = (value: unknown): RichTextLink | null =>
+  isRichTextLink(value) ? value : null;

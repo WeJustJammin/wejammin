@@ -1,7 +1,4 @@
-import {
-  DecisionReasonSchema,
-  ReviewAssignmentReasonSchema,
-} from '@wejammin/contracts';
+import type { CmsValidators } from '../../lib/cms-contract-validators';
 
 /** BE03b decision reason bound: 1-2000 Unicode characters (code points). */
 export const DECISION_REASON_MAX = 2000;
@@ -28,8 +25,11 @@ const REASON_MESSAGES: readonly (readonly [string, string])[] = [
  * the browser refuses exactly what the server would (it never sends it). Null
  * when the reason is valid; an empty reason is the remaining failure.
  */
-export const validateDecisionReason = (reason: string): string | null => {
-  const parsed = DecisionReasonSchema.safeParse(reason);
+export const validateDecisionReason = (
+  validators: Pick<CmsValidators, 'DecisionReasonSchema'>,
+  reason: string,
+): string | null => {
+  const parsed = validators.DecisionReasonSchema.safeParse(reason);
   if (parsed.success) return null;
   const tokens = new Set(parsed.error.issues.map((issue) => issue.message));
   const found = REASON_MESSAGES.find(([token]) => tokens.has(token));
@@ -40,9 +40,12 @@ export const validateDecisionReason = (reason: string): string | null => {
 export const ASSIGNMENT_REASON_MAX = 256;
 
 /** The inline refusal of an optional assignment reason; an empty one is simply omitted. */
-export const validateAssignmentReason = (reason: string): string | null => {
+export const validateAssignmentReason = (
+  validators: Pick<CmsValidators, 'ReviewAssignmentReasonSchema'>,
+  reason: string,
+): string | null => {
   if (reason === '') return null;
-  const parsed = ReviewAssignmentReasonSchema.safeParse(reason);
+  const parsed = validators.ReviewAssignmentReasonSchema.safeParse(reason);
   if (parsed.success) return null;
   return parsed.error.issues.some(
     (issue) => issue.message === 'reason_too_long',

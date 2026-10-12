@@ -7,8 +7,14 @@ import {
   click,
   disableReactAct,
   enableReactAct,
+  flush,
   mountElement,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  loadedCmsValidators,
+  resetCmsValidatorsForTest,
+  type CmsValidators,
+} from '../../lib/cms-contract-validators';
 import type { CommandState } from './cms-workflow-command-controller';
 import type { ClassifiedRefusal } from './cms-workflow-refusal';
 import CmsWorkflowCommandFrame, {
@@ -313,5 +319,23 @@ describe('CmsWorkflowCommandFrame', () => {
       { result: <p id="result">Done</p> },
     );
     expect(container.querySelector('#result')?.textContent).toBe('Done');
+  });
+
+  it('loads no validator until a control of the form takes focus, then loads them once', async () => {
+    const loader = vi.fn(() => Promise.resolve({} as unknown as CmsValidators));
+    resetCmsValidatorsForTest(loader);
+    try {
+      const { container } = mount(state());
+      await flush();
+      expect(loader).not.toHaveBeenCalled();
+      const input = container.querySelector('#reason-field') as HTMLElement;
+      input.focus();
+      input.blur();
+      input.focus();
+      await vi.waitFor(() => expect(loadedCmsValidators()).not.toBeNull());
+      expect(loader).toHaveBeenCalledTimes(1);
+    } finally {
+      resetCmsValidatorsForTest();
+    }
   });
 });

@@ -56,3 +56,7 @@ export const isCmsLabel = (value: string): boolean => {
 /** RFC 9562 UUID text as `z.uuid()` accepts it (versions 1 to 8, plus nil and max). */
 export const CMS_UUID_PATTERN =
   /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/u;
+
+/** True for UUID text `z.uuid()` accepts (`CmsUuidSchema`); the rule the browser applies to a route id. */
+export const isCmsUuid = (value: string): boolean =>
+  CMS_UUID_PATTERN.test(value);

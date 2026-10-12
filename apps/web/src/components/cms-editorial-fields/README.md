@@ -18,7 +18,12 @@ mirrors `cms_field_kind_value_shape`; the server stays the authority.
 
 ## Module map
 
-- `cms-field-descriptor.ts` — `describeCmsAuthoringFields`: a typed descriptor per
+- `cms-field-descriptor-decode.ts` — `describeCmsAuthoringFields`: the decode of the
+  projected field definitions into descriptors, with the contract schemas. It runs
+  where zod is available (the page loaders and the Astro create form), and the
+  islands receive the result in their `init` (AC-106). `cms-field-descriptor.ts`
+  keeps the descriptor types and the zod-free helpers.
+- `cms-field-descriptor.ts` — the descriptor types and helpers; the decode of
   kind (scalar, rich_text, list with `itemKind`, DEC-133 object with its declared
   `properties[]`, relation with its definition bounds, taxonomy/media/unsupported
   as an unavailable state). Labels and help come from `editorConfig`; the object

@@ -1,17 +1,17 @@
-import {
-  CmsPreviewRouteSchema,
-  CmsPublicationAudienceSchema,
-  type VersionSet,
-} from '@wejammin/contracts';
+import type { VersionSet } from '@wejammin/contracts';
 import * as React from 'react';
 
+import { withCmsValidators } from '../../lib/cms-contract-validators';
 import CmsEditorialPreviewToken from './CmsEditorialPreviewToken';
 import CmsWorkflowCommandFrame, {
   type WorkflowLocalError,
 } from './CmsWorkflowCommandFrame';
 import { WorkflowTextField } from './CmsWorkflowFields';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
-import { isCommitBlocked } from './cms-workflow-form-state';
+import {
+  isCommitBlocked,
+  validatorsUnavailableError,
+} from './cms-workflow-form-state';
 import {
   useWorkflowCommand,
   type WorkflowCommandEnvironment,
@@ -83,34 +83,51 @@ export default function CmsEditorialPreviewForm({
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (blocked) return;
-    const found: WorkflowLocalError[] = [];
-    if (audience === '')
-      found.push({
-        id: 'preview-audience',
-        label: 'Audience',
-        message: 'Enter an audience.',
-      });
-    else if (!CmsPublicationAudienceSchema.safeParse(audience).success)
-      found.push({
-        id: 'preview-audience',
-        label: 'Audience',
-        message: AUDIENCE_ERROR,
-      });
-    if (route === '')
-      found.push({
-        id: 'preview-route',
-        label: 'Route',
-        message: 'Enter a route.',
-      });
-    else if (!CmsPreviewRouteSchema.safeParse(route).success)
-      found.push({ id: 'preview-route', label: 'Route', message: ROUTE_ERROR });
-    setLocalErrors(found);
-    if (found.length > 0) return;
-    void controller.submit({
-      body: { entryId, revisionId, locale, audience, route, versionSet },
-      ifMatch: `"${entryVersion}"`,
-      draft: { audience, route },
-    });
+    withCmsValidators(
+      (validators) => {
+        const found: WorkflowLocalError[] = [];
+        if (audience === '')
+          found.push({
+            id: 'preview-audience',
+            label: 'Audience',
+            message: 'Enter an audience.',
+          });
+        else if (
+          !validators.CmsPublicationAudienceSchema.safeParse(audience).success
+        )
+          found.push({
+            id: 'preview-audience',
+            label: 'Audience',
+            message: AUDIENCE_ERROR,
+          });
+        if (route === '')
+          found.push({
+            id: 'preview-route',
+            label: 'Route',
+            message: 'Enter a route.',
+          });
+        else if (!validators.CmsPreviewRouteSchema.safeParse(route).success)
+          found.push({
+            id: 'preview-route',
+            label: 'Route',
+            message: ROUTE_ERROR,
+          });
+        setLocalErrors(found);
+        if (found.length > 0) return;
+        void controller.submit({
+          body: { entryId, revisionId, locale, audience, route, versionSet },
+          ifMatch: `"${entryVersion}"`,
+          draft: { audience, route },
+        });
+      },
+      () =>
+        setLocalErrors([
+          validatorsUnavailableError({
+            id: 'preview-audience',
+            label: 'Audience',
+          }),
+        ]),
+    );
   };
   const hide = (): void => {
     controller.startOver();

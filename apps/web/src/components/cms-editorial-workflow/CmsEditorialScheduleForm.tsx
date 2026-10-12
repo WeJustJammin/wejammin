@@ -7,7 +7,10 @@ import CmsWorkflowCommandFrame, {
 } from './CmsWorkflowCommandFrame';
 import { WORKFLOW_HEADING_IDS } from './CmsEditorialWorkflowPanel';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
-import { isCommitBlocked } from './cms-workflow-form-state';
+import {
+  isCommitBlocked,
+  validatorsUnavailableError,
+} from './cms-workflow-form-state';
 import { PUBLICATION_ACTION_LABEL } from './cms-workflow-labels';
 import {
   effectiveScheduleAction,
@@ -21,6 +24,7 @@ import {
   type ScheduleTyped,
 } from './cms-workflow-schedule-form-model';
 import { resolveScheduleInput } from './cms-workflow-schedule-resolution';
+import { withCmsValidators } from '../../lib/cms-contract-validators';
 import { useTimeAuthority } from './use-cms-schedule-time';
 import { useDraftFields } from './use-cms-workflow-draft-fields';
 import {
@@ -123,11 +127,24 @@ export default function CmsEditorialScheduleForm({
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (blocked) return;
-    const found = scheduleLocalErrors(typed, time.status, resolution);
-    setLocalErrors(found);
-    if (found.length > 0 || resolution.kind !== 'resolved') return;
-    void controller.submit(
-      scheduleSubmission(revisionId, reviewVersion, typed, resolution),
+    withCmsValidators(
+      (validators) => {
+        const found = scheduleLocalErrors(
+          validators,
+          typed,
+          time.status,
+          resolution,
+        );
+        setLocalErrors(found);
+        if (found.length > 0 || resolution.kind !== 'resolved') return;
+        void controller.submit(
+          scheduleSubmission(revisionId, reviewVersion, typed, resolution),
+        );
+      },
+      () =>
+        setLocalErrors([
+          validatorsUnavailableError(SCHEDULE_FIELD_IDS.audience),
+        ]),
     );
   };
   return (

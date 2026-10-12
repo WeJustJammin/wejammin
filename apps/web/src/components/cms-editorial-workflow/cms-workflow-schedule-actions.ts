@@ -1,5 +1,5 @@
-import { PublicationActionSchema } from '@wejammin/contracts';
 import type { PublicationAction } from '@wejammin/contracts';
+import { PUBLICATION_ACTIONS } from '@wejammin/contracts/client';
 
 /**
  * The actions the schedule form offers, from the publish permission the server
@@ -25,7 +25,7 @@ const AUTHOR_DEFAULT_ACTION: PublicationAction = 'unpublish';
 export const scheduleActionChoices = (
   publishPermitted: boolean,
 ): ScheduleActionChoices => ({
-  options: PublicationActionSchema.options.filter(
+  options: PUBLICATION_ACTIONS.filter(
     (action) => publishPermitted || action !== AUTHOR_REFUSED_ACTION,
   ),
   defaultAction: publishPermitted

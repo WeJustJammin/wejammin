@@ -11,13 +11,17 @@ import {
 import { REVIEW_DETAIL_HEADING_IDS } from './CmsEditorialReviewDetail';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
 import { parseAssignmentExpiry } from './cms-workflow-expiry';
-import { isCommitBlocked } from './cms-workflow-form-state';
+import {
+  isCommitBlocked,
+  validatorsUnavailableError,
+} from './cms-workflow-form-state';
 import {
   ASSIGNMENT_REASON_MAX,
   countCharacters,
   validateAssignmentReason,
 } from './cms-workflow-reason';
 import type { ReviewerOptionsResult } from './cms-workflow-reviewer-options';
+import { withCmsValidators } from '../../lib/cms-contract-validators';
 import { useDraftFields } from './use-cms-workflow-draft-fields';
 import {
   useWorkflowCommand,
@@ -96,45 +100,56 @@ export default function CmsEditorialAssignmentCreate({
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
     if (blocked) return;
-    const found: WorkflowLocalError[] = [];
-    if (chosen === null)
-      found.push({
-        id: 'assignment-reviewer',
-        label: 'Reviewer',
-        message: 'Choose a reviewer.',
-      });
-    const expiry = parseAssignmentExpiry(
-      expires,
-      now(),
-      chosen?.endsAt ?? null,
-    );
-    if (!expiry.ok)
-      found.push({
-        id: 'assignment-expires',
-        label: 'Assignment ends',
-        message: expiry.message,
-      });
-    const reasonError = validateAssignmentReason(reason);
-    if (reasonError !== null)
-      found.push({
-        id: 'assignment-reason',
-        label: 'Reason (optional)',
-        message: reasonError,
-      });
-    setLocalErrors(found);
-    if (chosen === null || !expiry.ok || found.length > 0) return;
-    void controller.submit({
-      body: {
-        action: 'create',
-        expectedVersion: version,
-        reviewerPersonId: chosen.personId,
-        expiresAt: expiry.instant,
-        ...(reason === '' ? {} : { reason }),
+    withCmsValidators(
+      (validators) => {
+        const found: WorkflowLocalError[] = [];
+        if (chosen === null)
+          found.push({
+            id: 'assignment-reviewer',
+            label: 'Reviewer',
+            message: 'Choose a reviewer.',
+          });
+        const expiry = parseAssignmentExpiry(
+          expires,
+          now(),
+          chosen?.endsAt ?? null,
+        );
+        if (!expiry.ok)
+          found.push({
+            id: 'assignment-expires',
+            label: 'Assignment ends',
+            message: expiry.message,
+          });
+        const reasonError = validateAssignmentReason(validators, reason);
+        if (reasonError !== null)
+          found.push({
+            id: 'assignment-reason',
+            label: 'Reason (optional)',
+            message: reasonError,
+          });
+        setLocalErrors(found);
+        if (chosen === null || !expiry.ok || found.length > 0) return;
+        void controller.submit({
+          body: {
+            action: 'create',
+            expectedVersion: version,
+            reviewerPersonId: chosen.personId,
+            expiresAt: expiry.instant,
+            ...(reason === '' ? {} : { reason }),
+          },
+          ifMatch: `"${version}"`,
+          // The reviewer is deliberately absent: a person id is never stored.
+          draft: { expiresAt: expires, reason },
+        });
       },
-      ifMatch: `"${version}"`,
-      // The reviewer is deliberately absent: a person id is never stored.
-      draft: { expiresAt: expires, reason },
-    });
+      () =>
+        setLocalErrors([
+          validatorsUnavailableError({
+            id: 'assignment-reason',
+            label: 'Reason (optional)',
+          }),
+        ]),
+    );
   };
   const startAnother = (): void => {
     controller.startOver();

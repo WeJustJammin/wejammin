@@ -6,6 +6,7 @@ import {
   CmsUuidSchema,
   CmsVersionSchema,
 } from '../content-schema-registry/primitives.ts';
+import { CMS_PREFLIGHT_CATEGORIES } from './preflight-categories.ts';
 
 /*
  * BE03b Publication preflight registry (D19, DEC-134, D25). Review submission,
@@ -15,26 +16,7 @@ import {
  * test compares the SQL rows with `CMS_PREFLIGHT_REGISTRY` and the enum.
  */
 
-/** The seventeen categories in registry order (BE03b `PreflightCategory`). */
-export const CMS_PREFLIGHT_CATEGORIES = [
-  'contract',
-  'schema',
-  'template',
-  'block',
-  'pattern',
-  'taxonomy',
-  'settings',
-  'relation',
-  'privacy',
-  'security',
-  'accessibility',
-  'media',
-  'route',
-  'locale',
-  'migration',
-  'domain_binding',
-  'revocation',
-] as const;
+export { CMS_PREFLIGHT_CATEGORIES };
 
 export const PreflightCategorySchema = z.enum(CMS_PREFLIGHT_CATEGORIES);
 export type PreflightCategory = z.infer<typeof PreflightCategorySchema>;

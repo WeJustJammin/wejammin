@@ -9,6 +9,7 @@
 import { ConflictDetailResourceSchema } from '@wejammin/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { fieldUuid } from '../cms-editorial-fields/cms-field-fixtures.test-support';
 import { createCmsEditorialConflictController } from './cms-editorial-conflict-controller';
 import { conflictDetailBody } from './cms-editorial-conflict-fixtures.test-support';
@@ -47,7 +48,7 @@ const init = () =>
         ],
       }),
     ),
-    editorFields(),
+    describeCmsAuthoringFields(editorFields()),
   );
 
 const resolved = () =>

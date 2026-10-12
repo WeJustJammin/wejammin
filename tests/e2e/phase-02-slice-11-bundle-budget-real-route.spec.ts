@@ -21,15 +21,17 @@ import {
 import { signInS11 } from './support/s11-real-browser';
 
 /*
- * P2-S11-AC-106 (FE03 "Performance budgets and loading strategy", E8): the shared Time authority module
- * is lazy-loaded when the schedule form opens and stays within the bundle-budget thresholds. Measured on
- * the PRODUCTION-built Astro route that Chrome really loads cold: every JavaScript response is gzipped
- * exactly as `pnpm bundle:check` gzips a built asset and compared with the lazy-chunk threshold that
- * script declares (`BUNDLE_BUDGETS`, imported, never copied). `bundle:check` itself measures only the
- * Infrastructure, platform-configuration and content-schema-registry routes: it never names this chunk.
- * The workflow route's own initial JavaScript is a different measurement (the route and island
- * thresholds) and is not asserted here. The entry, review and approval come from the first-party
- * routes of the real stack (see s11-approved-entry.ts). Local loopback only; never hosted evidence.
+ * P2-S11-AC-106 (FE03 "Performance budgets and loading strategy", E8): the workflow route stays within the
+ * bundle-budget thresholds, and the shared Time authority module is lazy-loaded when the schedule form
+ * opens. Measured on the PRODUCTION-built Astro route that Chrome really loads cold: every JavaScript
+ * response is gzipped exactly as `pnpm bundle:check` gzips a built asset and compared with the
+ * thresholds that script declares (`BUNDLE_BUDGETS`, imported, never copied). `bundle:check` measures the
+ * same route from the build output (the `CMS entry workflow` row of its route table); this spec proves
+ * the browser agrees: the route's initial JavaScript (island, Astro and React runtimes, document-shell
+ * scripts) is within the initial-route threshold, no contract-schema (zod) chunk is fetched before a
+ * form needs it, and the Time authority chunk is withheld until the form opens and then fetched once
+ * within the lazy-chunk threshold. The entry, review and approval come from the first-party routes of
+ * the real stack (see s11-approved-entry.ts). Local loopback only; never hosted evidence.
  */
 
 const ENTRY_PAGE = (entryId: string): string =>
@@ -38,6 +40,8 @@ const ENTRY_PAGE = (entryId: string): string =>
 /** The lazy chunk and the tiny module that loads it; both belong to `@wejammin/contracts/time-authority`. */
 const TIME_AUTHORITY = /\/(?:contracts-)?time-authority\.[\w-]+\.m?js$/u;
 const TIME_AUTHORITY_SNAPSHOT = /\/contracts-time-authority\.[\w-]+\.m?js$/u;
+/** The lazy chunk of the contract schemas (zod): the islands load it on the first check that needs it. */
+const CONTRACT_SCHEMAS = /\/contracts\.[\w-]+\.m?js$/u;
 
 type LoadedScript = Readonly<{ path: string; gzipBytes: number }>;
 
@@ -111,6 +115,40 @@ test('[P2-S11-AC-106] a cold load of the production workflow route fetches no Ti
   expect(
     initial.filter((script) => TIME_AUTHORITY.test(script.path)),
     'no Time authority module is fetched before the form opens',
+  ).toEqual([]);
+  expect(publisher.browserErrors).toEqual([]);
+  await publisher.context.close();
+});
+
+test('[P2-S11-AC-106] a cold load of the production workflow route stays within the initial-route JavaScript threshold and fetches no contract schema', async ({
+  browser,
+}) => {
+  const publisher = await signInS11(
+    browser,
+    cast.world,
+    cast.publisher,
+    new Date(),
+  );
+  const scripts = recordScripts(publisher.page);
+  await gotoHydrated(publisher.page, ENTRY_PAGE(entryId));
+  await expect(disclosure(publisher.page, 'Schedule publication')).toHaveCount(
+    1,
+  );
+  await publisher.page.waitForLoadState('networkidle');
+  const initial = await scripts.drain();
+  scripts.stop();
+  const threshold = BUNDLE_BUDGETS.initialRouteGzipBytes;
+  expect(
+    initial.some((script) => /CmsEditorialWorkflowIsland/u.test(script.path)),
+    'the workflow island is part of the cold load',
+  ).toBe(true);
+  expect(
+    gzipTotal(initial),
+    `the initial JavaScript of the route (${JSON.stringify(initial)}) stays within the ${String(threshold)} gzip byte initial-route threshold`,
+  ).toBeLessThanOrEqual(threshold);
+  expect(
+    initial.filter((script) => CONTRACT_SCHEMAS.test(script.path)),
+    'no contract schema chunk is fetched before a form check needs it',
   ).toEqual([]);
   expect(publisher.browserErrors).toEqual([]);
   await publisher.context.close();

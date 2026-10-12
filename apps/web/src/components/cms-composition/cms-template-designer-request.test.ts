@@ -1,3 +1,4 @@
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 import { describe, expect, it } from 'vitest';
 import type { TemplateVersionDetail } from '@wejammin/contracts';
 
@@ -73,7 +74,7 @@ const detail: TemplateVersionDetail = {
 
 describe('CMS-11 template draft request', () => {
   it('builds a complete schema-validated create body with the protected spine', () => {
-    const result = buildCmsTemplateDraftRequest(fields, context);
+    const result = buildCmsTemplateDraftRequest(validators, fields, context);
     expect(result).toEqual({
       ok: true,
       value: {
@@ -106,12 +107,14 @@ describe('CMS-11 template draft request', () => {
   it('refuses a content type or block absent from the protected projection', () => {
     expect(
       buildCmsTemplateDraftRequest(
+        validators,
         { ...fields, compatibleTypeIds: [OTHER_ID] },
         context,
       ),
     ).toMatchObject({ ok: false });
     expect(
       buildCmsTemplateDraftRequest(
+        validators,
         {
           ...fields,
           slots: [{ ...fields.slots[0]!, allowedBlockRefs: ['other@1'] }],
@@ -124,6 +127,7 @@ describe('CMS-11 template draft request', () => {
   it('rejects duplicate binding names and invalid slot values before POST', () => {
     expect(
       buildCmsTemplateDraftRequest(
+        validators,
         {
           ...fields,
           bindings: [fields.bindings[0]!, fields.bindings[0]!],
@@ -133,6 +137,7 @@ describe('CMS-11 template draft request', () => {
     ).toMatchObject({ ok: false });
     expect(
       buildCmsTemplateDraftRequest(
+        validators,
         { ...fields, slots: [{ ...fields.slots[0]!, maxCount: '0' }] },
         context,
       ),
@@ -141,10 +146,12 @@ describe('CMS-11 template draft request', () => {
 
   it('loads every editable field from canonical detail and builds a version-checked successor', () => {
     expect(templateDetailToDraftFields(detail)).toEqual(fields);
-    const created = buildCmsTemplateDraftRequest(fields, context);
+    const created = buildCmsTemplateDraftRequest(validators, fields, context);
     expect(created.ok).toBe(true);
     if (!created.ok) throw new Error('test draft should be valid');
-    expect(buildCmsTemplateSuccessorRequest(fields, context, detail)).toEqual({
+    expect(
+      buildCmsTemplateSuccessorRequest(validators, fields, context, detail),
+    ).toEqual({
       ok: true,
       value: {
         ...created.value,
@@ -156,6 +163,7 @@ describe('CMS-11 template draft request', () => {
   it('refuses an immutable-key mismatch or stale protected picker choice before successor POST', () => {
     expect(
       buildCmsTemplateSuccessorRequest(
+        validators,
         { ...fields, templateKey: 'different-key' },
         context,
         detail,
@@ -163,6 +171,7 @@ describe('CMS-11 template draft request', () => {
     ).toMatchObject({ ok: false });
     expect(
       buildCmsTemplateSuccessorRequest(
+        validators,
         fields,
         { ...context, registeredBlocks: [] },
         detail,

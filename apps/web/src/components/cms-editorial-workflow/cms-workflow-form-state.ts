@@ -15,6 +15,25 @@ const BLOCKING_PHASES: ReadonlySet<CommandState<unknown>['phase']> = new Set([
   'conflict',
 ]);
 
+/**
+ * The one local error of a form whose checks could not run because the lazily
+ * loaded validators could not be fetched. Nothing was sent; the person can
+ * submit again.
+ */
+export const validatorsUnavailableError = (field: {
+  readonly id: string;
+  readonly label: string;
+}): {
+  readonly id: string;
+  readonly label: string;
+  readonly message: string;
+} => ({
+  id: field.id,
+  label: field.label,
+  message:
+    'This form could not be checked before sending, so nothing was sent. Check your connection and try again.',
+});
+
 export const isCommitBlocked = (
   state: CommandState<unknown>,
   disabledReason: string | null,

@@ -12,6 +12,7 @@ import {
   mountElement,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { CSRF } from '../../server/cms-workflow-platform-command.test-support';
 import CmsEditorialPreviewForm from './CmsEditorialPreviewForm';
 import {
@@ -25,6 +26,10 @@ import {
 } from './cms-workflow-fixtures.test-support';
 
 beforeAll(enableReactAct);
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 afterAll(disableReactAct);
 
 const KEY = 'idem-key-preview-001';

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
 import {
   buttonNamed,
@@ -51,6 +52,10 @@ import {
  */
 
 beforeAll(enableReactAct);
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 afterAll(disableReactAct);
 // jsdom work is slow on a loaded host; waits are conditions, not budgets.
 vi.setConfig({ testTimeout: 90_000 });

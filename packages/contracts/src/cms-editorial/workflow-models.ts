@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { PUBLICATION_ACTIONS } from './publication-vocabulary.ts';
+
 /*
  * BE03b closed vocabularies for the Slice 11 review, schedule, preview and
  * publication resources. Every browser-visible state is one of these exact
@@ -38,12 +40,7 @@ export const PublicationStateSchema = z.enum([
 ]);
 
 /** BE03b publication action vocabulary, shared by schedule and publication rows. */
-export const PublicationActionSchema = z.enum([
-  'publish',
-  'unpublish',
-  'expire',
-  'archive',
-]);
+export const PublicationActionSchema = z.enum(PUBLICATION_ACTIONS);
 
 /** BE03b editorial risk class: derived from the frozen workflow-policy evidence. */
 export const WorkflowRiskClassSchema = z.enum(['ordinary', 'protected']);

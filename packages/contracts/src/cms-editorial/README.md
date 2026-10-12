@@ -19,6 +19,12 @@ and they are never browser routes, registry rows or OpenAPI operations.
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `primitives.ts`                     | `Bcp47Schema`, `JsonPointerSchema`, `FieldPointerSchema`, `ChangedPathsSchema`, `BoundedEntryValuesSchema`, `cmsEditorialJsonDepth`              |
 | `models.ts`                         | Entry revision and conflict state vocabularies, plus the shared revision meta shape                                                              |
+| `field-pointer.ts`                  | Zod-free `FIELD_POINTER_PREFIX` and `fieldIdOfPointer`, exported through `client.ts`                                                             |
+| `json-equal.ts`                     | Zod-free `cmsJsonEqual` (the preview binding and the version-set check share it)                                                                 |
+| `preflight-categories.ts`           | Zod-free `CMS_PREFLIGHT_CATEGORIES` in registry order; `preflight.ts` builds its enum from it                                                    |
+| `publication-vocabulary.ts`         | Zod-free `PUBLICATION_ACTIONS`; `workflow-models.ts` builds `PublicationActionSchema` from it                                                    |
+| `review-assignment-rules.ts`        | Zod-free assignment bounds, `reviewAssignmentSuccessStatus` and `cmsReviewAssignmentExpiryCeiling`                                               |
+| `validators.ts`                     | The curated, lazily loaded schema list of the CMS editorial browser islands (never `export *`)                                                   |
 | `resources.ts`                      | `EntryRevisionResourceSchema`, `ConflictRecordResourceSchema`, and the bounded proposed-values envelope                                          |
 | `requests.ts`                       | `EntryRevisionRequestSchema` plus its path-parameter and header schemas, and the CMS-03B-01 `*ApiRequestSchema` transport view                   |
 | `schema-evidence.ts`                | `SchemaArtifactEvidenceSchema`, `ValidatorEvidenceSchema`                                                                                        |

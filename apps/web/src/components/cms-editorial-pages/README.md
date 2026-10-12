@@ -17,6 +17,9 @@ Worker and the proxies.
 
 ## Module map
 
+- The edit and conflict loaders (and the Astro create form) decode the author-safe
+  field definitions into descriptors with `describeCmsAuthoringFields` and put
+  them in the island's `init`, so the islands ship no zod (AC-106).
 - `cms-editorial-page-outcome.ts` — every non-200 becomes a 401 redirect to the
   allowlisted sign-in route (safe `returnTo`) or one fixed notice (400/422 invalid
   request, 403, 404, 409 stale list position, 429 with a coarse wait, 5xx

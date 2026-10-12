@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  describeCmsAuthoringFields,
-  type CmsFieldDescriptor,
-} from './cms-field-descriptor';
+import { describeCmsAuthoringFields } from './cms-field-descriptor-decode';
+import { type CmsFieldDescriptor } from './cms-field-descriptor';
 import {
   cmsDatetimeToLocalInput,
   cmsLocalInputToDatetime,

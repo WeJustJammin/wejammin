@@ -5,6 +5,7 @@ import type {
 } from '@wejammin/contracts';
 
 import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 
 /*
  * Presentation of the CMS-03B-10 create surface: the native GET type selector
@@ -23,6 +24,8 @@ interface Props {
 }
 
 const { types, selected, fields } = Astro.props;
+// Decoded here, on the server: the island ships no zod (AC-106).
+const descriptors = describeCmsAuthoringFields(fields);
 ---
 
 {
@@ -63,6 +66,7 @@ const { types, selected, fields } = Astro.props;
     <CmsEditorialEntryCreateIsland
       type={selected}
       fields={fields}
+      descriptors={descriptors}
       client:load
     />
   )

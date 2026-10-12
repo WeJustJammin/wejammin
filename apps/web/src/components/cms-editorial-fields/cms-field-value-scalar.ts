@@ -1,7 +1,5 @@
-import {
-  isWellFormedAuthoredString,
-  type JsonValue,
-} from '@wejammin/contracts';
+import type { JsonValue } from '@wejammin/contracts';
+import { isWellFormedAuthoredString } from '@wejammin/contracts/client';
 
 import type {
   CmsScalarConstraints,

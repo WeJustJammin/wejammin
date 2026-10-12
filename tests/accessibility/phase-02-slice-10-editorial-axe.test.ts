@@ -12,6 +12,7 @@ import * as React from '../../apps/web/node_modules/react/index.js';
 
 const { act } = React;
 import CmsEditorialConflictResolveIsland from '../../apps/web/src/components/cms-editorial/CmsEditorialConflictResolveIsland';
+import { describeCmsAuthoringFields } from '../../apps/web/src/components/cms-editorial-fields/cms-field-descriptor-decode';
 import CmsEditorialEntryCreateIsland from '../../apps/web/src/components/cms-editorial/CmsEditorialEntryCreateIsland';
 import CmsEditorialEntryEditorIsland from '../../apps/web/src/components/cms-editorial/CmsEditorialEntryEditorIsland';
 import CmsEditorialEntryList from '../../apps/web/src/components/cms-editorial/CmsEditorialEntryList';
@@ -130,6 +131,7 @@ describe('Slice 10 editorial surfaces: axe', () => {
       React.createElement(CmsEditorialEntryCreateIsland, {
         type: selectedType(),
         fields: allKindFields(),
+        descriptors: describeCmsAuthoringFields(allKindFields()),
       }),
     );
     expect(await findings()).toEqual([]);
@@ -141,6 +143,7 @@ describe('Slice 10 editorial surfaces: axe', () => {
       React.createElement(CmsEditorialEntryCreateIsland, {
         type: selectedType(),
         fields: allKindFields(),
+        descriptors: describeCmsAuthoringFields(allKindFields()),
       }),
     );
     await click(buttonNamed(container, 'Create entry'));
@@ -156,7 +159,7 @@ describe('Slice 10 editorial surfaces: axe', () => {
     const { container } = mountInShell(
       React.createElement(CmsEditorialEntryEditorIsland, {
         init: editorInit({
-          fields: editorFields(),
+          descriptors: describeCmsAuthoringFields(editorFields()),
           openConflict: {
             conflictId: '018f0c45-73fe-7dc2-9c09-68f7ecf132ee',
             version: '1',
