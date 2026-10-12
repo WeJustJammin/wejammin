@@ -134,6 +134,29 @@ const disclosure = (page: Page, summary: string) =>
 const readoutAfter = async (page: Page): Promise<string> =>
   (await page.locator('main').innerText()).replaceAll(/\s+/gu, ' ');
 
+/**
+ * FE03 "announce status": the confirmation of a committed command is kept by
+ * the island in one persistent polite line, not by the form the canonical
+ * refetch removes. So it is still on the page AFTER that refetch (a plain
+ * assertion, not the recorder's), it is a polite atomic live region, and no form
+ * repeats it in a second live region.
+ */
+const expectConfirmationStays = async (
+  page: Page,
+  expected: string | RegExp,
+): Promise<void> => {
+  const line = page.locator('[data-cms-workflow-status="island"]');
+  await expect(line).toHaveText(expected);
+  await expect(line).toHaveAttribute('role', 'status');
+  await expect(line).toHaveAttribute('aria-live', 'polite');
+  await expect(line).toHaveAttribute('aria-atomic', 'true');
+  await expect(
+    page
+      .locator('[data-cms-workflow-form] [data-cms-workflow-status]')
+      .filter({ hasText: /\S/u }),
+  ).toHaveCount(0);
+};
+
 test('[S11-RR-05] the author submits the current draft from the workflow page and the open review is canonical', async () => {
   const entry = await seedEntry(authorSession.client, cast.world, 'Submit me');
   const page = authorSession.page;
@@ -141,9 +164,9 @@ test('[S11-RR-05] the author submits the current draft from the workflow page an
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await startRecordingStatusTexts(page);
   await page.getByRole('button', { name: /^Submit for review/u }).click();
-  // The confirmation lasts only until the canonical read that follows (see
-  // s11-status-recorder.ts), so it is observed as announced, and the page that
-  // replaced it is asserted separately.
+  // The recorder proves the confirmation was announced when it appeared; the
+  // canonical read that follows removes the submit form, and the island's own
+  // line must still read it after that.
   await expectStatusAnnounced(
     page,
     'Review submitted. It is open for decisions.',
@@ -151,6 +174,10 @@ test('[S11-RR-05] the author submits the current draft from the workflow page an
   await expect(
     page.getByRole('region', { name: 'Review', exact: true }),
   ).toContainText('Open. Risk class:');
+  await expectConfirmationStays(
+    page,
+    'Review submitted. It is open for decisions.',
+  );
   const view = await readWorkflow(authorSession.client, entry.entryId);
   expect(view.reviewState, view.text).toBe('open');
   expect(authorSession.browserErrors).toEqual([]);
@@ -244,15 +271,20 @@ test('[S11-RR-06] a review decision interrupted by step-up returns to its draft,
   expect(mid.reviewState, 'no automatic replay').toBe('open');
   await startRecordingStatusTexts(page);
   await page.getByRole('button', { name: 'Record approval' }).click();
-  // The confirmation was announced (it lasts only until the canonical read that
-  // follows, see s11-status-recorder.ts) ...
+  // The confirmation was announced when it appeared ...
   await expectStatusAnnounced(page, 'Decision recorded.');
-  // ... and the canonical read that followed shows the approved review with the
-  // reviewer's own decision.
+  // ... the canonical read that followed shows the approved review with the
+  // reviewer's own decision ...
   await expect(page.getByText(/State: Approved/u)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Decisions' })).toContainText(
     'Your decision: approve',
   );
+  // ... and the confirmation is still on the page after that read, in the
+  // island's persistent line, though the decision form is gone.
+  await expect(
+    page.getByRole('heading', { name: 'Record your decision' }),
+  ).toHaveCount(0);
+  await expectConfirmationStays(page, 'Decision recorded.');
   const after = await readWorkflow(authorSession.client, entry.entryId);
   expect(after.reviewState, after.text).toBe('approved');
   expect(reviewer.browserErrors).toEqual([]);
@@ -281,10 +313,15 @@ test('[S11-RR-09] publish now records a pending publication and never claims pub
     /^Publication recorded as version/u,
   );
   expect(announced).toContain('not confirmed visible to readers');
-  // The canonical read that follows lists the publication, still unconfirmed.
+  // The canonical read that follows lists the publication, still unconfirmed ...
   await expect(
     page.getByRole('region', { name: 'Publications', exact: true }),
   ).toContainText('not confirmed visible to readers');
+  // ... and the island's line still says so after that read.
+  await expectConfirmationStays(
+    page,
+    /^Publication recorded as version \d+\. .*not confirmed visible to readers/u,
+  );
   const text = await readoutAfter(page);
   expect(text).not.toMatch(/now live|is live|publicly visible/iu);
   for (const shown of await recordedStatusTexts(page))
@@ -324,6 +361,8 @@ test('[S11-RR-07] a schedule resolves the local time, blocks a nonexistent one, 
   await expect(
     page.getByRole('region', { name: 'Schedules', exact: true }),
   ).toContainText('Scheduled, not published');
+  // The island's line still reads it after the canonical read.
+  await expectConfirmationStays(page, /^Scheduled, not published: /u);
   expect(publisher.browserErrors).toEqual([]);
   await publisher.context.close();
 });

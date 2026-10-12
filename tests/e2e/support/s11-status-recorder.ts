@@ -5,11 +5,13 @@ import { expect, type Page } from '@playwright/test';
  * line (`[data-cms-workflow-status]`), and FE03 then refetches the workflow or
  * review so the page shows the canonical resource: "the form clears its draft
  * and the workflow, review and queue are refetched". For a command that closes
- * its own form (a decision, a submit, a publish) the refetch removes the form,
- * and the confirmation with it, a few milliseconds after it appeared.
+ * its own form (a decision, a submit, a publish) the refetch removes the form.
+ * The island's own polite line then keeps the confirmation (see the a11y-status
+ * fix), but the form's line still disappears with the form a few milliseconds
+ * after it appeared.
  *
- * A visibility check on that text is therefore a race against the refetch. It
- * passes or fails with the speed of the host, not with the behavior. This module
+ * A visibility check on the form's line is therefore a race against the refetch;
+ * it passes or fails with the speed of the host, not with the behavior. This module
  * records every text the status lines show from a point on, so a spec asserts
  * that the confirmation WAS announced and then asserts the canonical page state
  * that replaced it, and neither assertion depends on timing.

@@ -39,6 +39,7 @@ import {
   mountWorkflowIsland,
   ok,
 } from './cms-workflow-island-mount.test-support';
+import { islandStatus } from './cms-workflow-status.test-support';
 import { COMMAND_CASES } from '../../server/cms-workflow-platform-command.test-support';
 
 beforeAll(enableReactAct);
@@ -212,7 +213,9 @@ describe('CmsEditorialWorkflowIsland focus', () => {
     const confirm = focusOn(buttonNamed(publishDetails, 'Confirm publish'));
     await click(confirm);
     await settle();
-    expect(publishDetails.textContent).toContain('Publication recorded');
+    expect(islandStatus(container)?.textContent).toContain(
+      'Publication recorded',
+    );
     expect(document.activeElement).toBe(confirm);
     await release(pending, ok(approvedWorkflowFixture()));
     expect(document.activeElement?.id).toBe('workflow-publications-title');
@@ -269,7 +272,9 @@ describe('CmsEditorialWorkflowIsland focus', () => {
     const schedule = focusOn(buttonNamed(scheduleDetails, 'Schedule'));
     await click(schedule);
     await settle();
-    expect(scheduleDetails.textContent).toContain('Scheduled, not published');
+    expect(islandStatus(container)?.textContent).toContain(
+      'Scheduled, not published',
+    );
     expect(document.activeElement).toBe(schedule);
     await release(pending, ok(approvedWorkflowFixture()));
     expect(document.activeElement?.id).toBe('workflow-schedules-title');

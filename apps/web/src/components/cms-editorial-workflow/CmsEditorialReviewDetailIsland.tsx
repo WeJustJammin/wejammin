@@ -5,6 +5,7 @@ import CmsEditorialDecisionForm from './CmsEditorialDecisionForm';
 import CmsEditorialReviewAssignmentForm from './CmsEditorialReviewAssignmentForm';
 import CmsEditorialReviewDetail from './CmsEditorialReviewDetail';
 import CmsWorkflowClosedState from './CmsWorkflowClosedState';
+import CmsWorkflowStatusRegion from './CmsWorkflowStatusRegion';
 import {
   readCanonicalReview,
   type CanonicalReadResult,
@@ -13,6 +14,10 @@ import { disabledActionCopy } from './cms-workflow-labels';
 import type { ReviewerOptionsResult } from './cms-workflow-reviewer-options';
 import { useCanonicalResource } from './use-cms-workflow-canonical';
 import type { WorkflowCommandEnvironment } from './use-cms-workflow-command';
+import {
+  WorkflowAnnouncerContext,
+  useIslandConfirmation,
+} from './use-cms-workflow-status';
 
 export interface CmsEditorialReviewDetailIslandInit {
   readonly review: EditorialReviewDetailResource;
@@ -57,6 +62,7 @@ export default function CmsEditorialReviewDetailIsland({
     readReview,
   );
   const { data: review, status, refetch } = canonical;
+  const confirmation = useIslandConfirmation();
   if (review === null)
     return (
       <CmsWorkflowClosedState
@@ -74,30 +80,33 @@ export default function CmsEditorialReviewDetailIsland({
     ...(environment === undefined ? {} : { environment }),
   };
   return (
-    <div>
-      <CmsEditorialReviewDetail
-        review={review}
-        degradedSince={degraded ? canonical.lastVerifiedAt : null}
-      />
-      <section aria-labelledby="review-actions-title">
-        <h2 id="review-actions-title" tabIndex={-1}>
-          Actions
-        </h2>
-        {review.state === 'open' && !permitted.has('record_decision') ? (
-          <p>{disabledActionCopy('record_decision')}</p>
-        ) : null}
-        {permitted.has('record_decision') ? (
-          <CmsEditorialDecisionForm {...shared} review={review} />
-        ) : null}
-        {permitted.has('assign_reviewer') ||
-        permitted.has('revoke_assignment') ? (
-          <CmsEditorialReviewAssignmentForm
-            {...shared}
-            review={review}
-            {...(loadOptions === undefined ? {} : { loadOptions })}
-          />
-        ) : null}
-      </section>
-    </div>
+    <WorkflowAnnouncerContext.Provider value={confirmation.announcer}>
+      <div>
+        <CmsEditorialReviewDetail
+          review={review}
+          degradedSince={degraded ? canonical.lastVerifiedAt : null}
+        />
+        <section aria-labelledby="review-actions-title">
+          <h2 id="review-actions-title" tabIndex={-1}>
+            Actions
+          </h2>
+          <CmsWorkflowStatusRegion text={confirmation.text} />
+          {review.state === 'open' && !permitted.has('record_decision') ? (
+            <p>{disabledActionCopy('record_decision')}</p>
+          ) : null}
+          {permitted.has('record_decision') ? (
+            <CmsEditorialDecisionForm {...shared} review={review} />
+          ) : null}
+          {permitted.has('assign_reviewer') ||
+          permitted.has('revoke_assignment') ? (
+            <CmsEditorialReviewAssignmentForm
+              {...shared}
+              review={review}
+              {...(loadOptions === undefined ? {} : { loadOptions })}
+            />
+          ) : null}
+        </section>
+      </div>
+    </WorkflowAnnouncerContext.Provider>
   );
 }

@@ -7,6 +7,7 @@ import CmsEditorialReviewSubmitForm from './CmsEditorialReviewSubmitForm';
 import CmsEditorialScheduleForm from './CmsEditorialScheduleForm';
 import CmsEditorialWorkflowPanel from './CmsEditorialWorkflowPanel';
 import CmsWorkflowClosedState from './CmsWorkflowClosedState';
+import CmsWorkflowStatusRegion from './CmsWorkflowStatusRegion';
 import {
   readCanonicalWorkflow,
   type CanonicalReadResult,
@@ -14,6 +15,10 @@ import {
 import { disabledActionCopy } from './cms-workflow-labels';
 import { useCanonicalResource } from './use-cms-workflow-canonical';
 import type { WorkflowCommandEnvironment } from './use-cms-workflow-command';
+import {
+  WorkflowAnnouncerContext,
+  useIslandConfirmation,
+} from './use-cms-workflow-status';
 
 export interface CmsEditorialWorkflowIslandInit {
   readonly workflow: EntryWorkflowResource;
@@ -59,6 +64,7 @@ export default function CmsEditorialWorkflowIsland({
     readWorkflow,
   );
   const { data: workflow, status, refetch } = canonical;
+  const confirmation = useIslandConfirmation();
   if (workflow === null)
     return (
       <CmsWorkflowClosedState
@@ -91,57 +97,60 @@ export default function CmsEditorialWorkflowIsland({
       : null,
   ].filter((note): note is string => note !== null);
   return (
-    <div>
-      <CmsEditorialWorkflowPanel
-        workflow={workflow}
-        degradedSince={degraded ? canonical.lastVerifiedAt : null}
-      />
-      <section aria-labelledby="workflow-actions-title">
-        <h2 id="workflow-actions-title" tabIndex={-1}>
-          Actions
-        </h2>
-        {notes.map((note) => (
-          <p key={note}>{note}</p>
-        ))}
-        {permitted.has('submit_review') && preparation !== null ? (
-          <CmsEditorialReviewSubmitForm
-            {...shared}
-            entryId={workflow.entry.id}
-            entryVersion={workflow.entry.version}
-            revisionId={workflow.revision.id}
-            preparation={preparation}
-          />
-        ) : null}
-        {permitted.has('schedule') && approved ? (
-          <CmsEditorialScheduleForm
-            {...shared}
-            revisionId={workflow.revision.id}
-            reviewVersion={review.version}
-            publishPermitted={permitted.has('publish')}
-          />
-        ) : null}
-        {permitted.has('preview') && versionSet !== null ? (
-          <CmsEditorialPreviewForm
-            disabledReason={disabledReason}
-            refetch={refetch}
-            {...(environment === undefined ? {} : { environment })}
-            entryId={workflow.entry.id}
-            entryVersion={workflow.entry.version}
-            revisionId={workflow.revision.id}
-            locale={workflow.revision.locale}
-            versionSet={versionSet}
-          />
-        ) : null}
-        {permitted.has('publish') && approved ? (
-          <CmsEditorialPublishConfirmation
-            {...shared}
-            entryId={workflow.entry.id}
-            revisionId={workflow.revision.id}
-            reviewVersion={review.version}
-            frozen={review.frozen}
-          />
-        ) : null}
-      </section>
-    </div>
+    <WorkflowAnnouncerContext.Provider value={confirmation.announcer}>
+      <div>
+        <CmsEditorialWorkflowPanel
+          workflow={workflow}
+          degradedSince={degraded ? canonical.lastVerifiedAt : null}
+        />
+        <section aria-labelledby="workflow-actions-title">
+          <h2 id="workflow-actions-title" tabIndex={-1}>
+            Actions
+          </h2>
+          <CmsWorkflowStatusRegion text={confirmation.text} />
+          {notes.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
+          {permitted.has('submit_review') && preparation !== null ? (
+            <CmsEditorialReviewSubmitForm
+              {...shared}
+              entryId={workflow.entry.id}
+              entryVersion={workflow.entry.version}
+              revisionId={workflow.revision.id}
+              preparation={preparation}
+            />
+          ) : null}
+          {permitted.has('schedule') && approved ? (
+            <CmsEditorialScheduleForm
+              {...shared}
+              revisionId={workflow.revision.id}
+              reviewVersion={review.version}
+              publishPermitted={permitted.has('publish')}
+            />
+          ) : null}
+          {permitted.has('preview') && versionSet !== null ? (
+            <CmsEditorialPreviewForm
+              disabledReason={disabledReason}
+              refetch={refetch}
+              {...(environment === undefined ? {} : { environment })}
+              entryId={workflow.entry.id}
+              entryVersion={workflow.entry.version}
+              revisionId={workflow.revision.id}
+              locale={workflow.revision.locale}
+              versionSet={versionSet}
+            />
+          ) : null}
+          {permitted.has('publish') && approved ? (
+            <CmsEditorialPublishConfirmation
+              {...shared}
+              entryId={workflow.entry.id}
+              revisionId={workflow.revision.id}
+              reviewVersion={review.version}
+              frozen={review.frozen}
+            />
+          ) : null}
+        </section>
+      </div>
+    </WorkflowAnnouncerContext.Provider>
   );
 }

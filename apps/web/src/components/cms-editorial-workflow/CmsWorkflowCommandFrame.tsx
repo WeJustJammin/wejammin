@@ -1,16 +1,15 @@
 import * as React from 'react';
 
-import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
-import CmsEditorialPreflightSummary from './CmsEditorialPreflightSummary';
+import CmsWorkflowRefusalAlert, {
+  type WorkflowFieldReference,
+} from './CmsWorkflowRefusalAlert';
 import type {
   CommandState,
   WorkflowCommandController,
 } from './cms-workflow-command-controller';
+import { useCommittedAnnouncement } from './use-cms-workflow-status';
 
-export interface WorkflowFieldReference {
-  readonly id: string;
-  readonly label: string;
-}
+export type { WorkflowFieldReference };
 
 export interface WorkflowLocalError {
   readonly id: string;
@@ -67,9 +66,6 @@ export const workflowStatusText = <TResource,>(
   }
 };
 
-const reference = (requestId: string | null): React.ReactNode =>
-  requestId === null ? null : <p>Reference: {requestId}</p>;
-
 /**
  * Everything a Slice 11 command form shows that is not a field: the focusable
  * heading, the one polite status line, the refusal (an alert that takes focus,
@@ -90,25 +86,20 @@ export default function CmsWorkflowCommandFrame<TResource>({
   result = null,
   children,
 }: CmsWorkflowCommandFrameProps<TResource>): React.ReactElement {
-  const alertRef = React.useRef<HTMLDivElement>(null);
   const alertShown =
     state.phase === 'refused' ||
     state.phase === 'step-up-unavailable' ||
     state.phase === 'signed-out';
-  React.useEffect(() => {
-    if (alertShown) alertRef.current?.focus();
-  }, [alertShown, state.refusal, state.stepUpIssue, state.signInHref]);
 
   const localRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     if (localErrors.length > 0) localRef.current?.focus();
   }, [localErrors]);
 
-  const refusal = state.phase === 'refused' ? state.refusal : null;
-  const links = (refusal?.fields ?? []).flatMap((name) => {
-    const field = fieldIds[name];
-    return field === undefined ? [] : [field];
-  });
+  // A committed sentence belongs to the island's line, which outlives this form.
+  const statusText = workflowStatusText(state, pendingLabel, committedLabel);
+  const handedOver = useCommittedAnnouncement(state.phase, statusText);
+
   return (
     <section
       aria-labelledby={headingId}
@@ -124,7 +115,7 @@ export default function CmsWorkflowCommandFrame<TResource>({
         aria-atomic="true"
         data-cms-workflow-status=""
       >
-        {workflowStatusText(state, pendingLabel, committedLabel)}
+        {handedOver ? '' : statusText}
       </p>
       {disabledReason === null ? null : (
         <p data-cms-workflow-disabled="">{disabledReason}</p>
@@ -166,64 +157,11 @@ export default function CmsWorkflowCommandFrame<TResource>({
         </div>
       )}
       {alertShown ? (
-        <div
-          role="alert"
-          tabIndex={-1}
-          ref={alertRef}
-          data-cms-workflow-refusal={refusal?.kind ?? state.phase}
-        >
-          {refusal === null ? null : refusal.kind === 'gate' ? (
-            <CmsEditorialCapabilityGate
-              headingId={`${headingId}-gate`}
-              title="Not available to you"
-              reason={refusal.message}
-              requestId={refusal.requestId}
-            />
-          ) : (
-            <>
-              <p>{refusal.message}</p>
-              {refusal.preflight === null ? null : (
-                <CmsEditorialPreflightSummary
-                  headingId={`${headingId}-checks`}
-                  title="Checks that did not pass"
-                  results={refusal.preflight}
-                />
-              )}
-              {links.length === 0 ? null : (
-                <ul>
-                  {links.map((field) => (
-                    <li key={field.id}>
-                      <a href={`#${field.id}`}>{field.label}</a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {reference(refusal.requestId)}
-            </>
-          )}
-          {state.phase === 'step-up-unavailable' &&
-          state.stepUpIssue !== null ? (
-            <>
-              <p>
-                {state.stepUpIssue.kind === 'no-method'
-                  ? 'No verification method is available. Nothing was sent.'
-                  : 'Verification could not be started. Nothing was sent.'}
-              </p>
-              {reference(state.stepUpIssue.requestId)}
-            </>
-          ) : null}
-          {state.phase === 'signed-out' ? (
-            <>
-              <p>Your session expired. Your entries were not saved.</p>
-              {state.signInHref === null ? null : (
-                <p>
-                  <a href={state.signInHref}>Sign in again</a>
-                </p>
-              )}
-              {reference(state.requestId)}
-            </>
-          ) : null}
-        </div>
+        <CmsWorkflowRefusalAlert
+          headingId={headingId}
+          state={state}
+          fieldIds={fieldIds}
+        />
       ) : null}
       {state.phase === 'unknown' ? (
         <p>

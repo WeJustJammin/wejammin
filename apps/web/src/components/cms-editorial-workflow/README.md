@@ -40,7 +40,11 @@ refusal come from the Worker through the first-party proxies in
   `CmsEditorialReviewAssignmentForm` over `CmsEditorialAssignmentCreate` and
   `CmsEditorialAssignmentRevoke` (18). Shared parts: `CmsWorkflowCommandFrame`,
   `CmsWorkflowFields`, `CmsWorkflowClosedState`.
-- Islands: `CmsEditorialWorkflowIsland` and `CmsEditorialReviewDetailIsland`.
+- Islands: `CmsEditorialWorkflowIsland` and `CmsEditorialReviewDetailIsland`. Each
+  owns one persistent confirmation line (`CmsWorkflowStatusRegion`, fed by
+  `useIslandConfirmation` and read by the forms through `useCommittedAnnouncement`,
+  both in `use-cms-workflow-status.ts`); `CmsWorkflowRefusalAlert` is the alert a
+  form frame renders for a refusal, an unavailable step-up or an ended session.
 - `*.test-support.ts(x)` — fixtures parsed through the real contracts
   (`cms-workflow-fixtures`), the island mounts (`cms-workflow-island-mount`) and
   the focus drivers (`cms-workflow-focus`, `cms-workflow-focus-harness`).
@@ -68,6 +72,26 @@ read behind the command has landed. A commit control is `aria-disabled`, never
 are pinned per form by `cms-workflow-focus-forms.test.tsx` (every command form)
 and through the real islands by `*Island.focus.test.tsx`; the route heading on
 navigation only is `apps/web/src/lib/route-heading-focus.ts`.
+
+## Confirmations (FE03 "announce status")
+
+A committed command is confirmed by one polite atomic status line that the
+island owns (`data-cms-workflow-status="island"`, under the Actions heading),
+never by the form that sent it: the canonical refetch that follows a decision, a
+submission, a publication or a schedule removes that form within a few
+milliseconds, and a confirmation inside it would be gone before assistive
+technology could read it. The line is mounted empty with the island, so it is
+registered before the first message. A committed form hands its sentence to the
+line and its own status line then stays empty, so exactly one live region says
+it. The sentence stays until the next command begins (any form in the island
+reaching `pending`), until the form that produced it starts over (`startOver`: hiding
+a preview token, assigning another reviewer) or until navigation. A refusal, a lost
+answer and a step-up detour put nothing in the line: the pending, restored and
+unknown sentences stay in the form's own status line and a refusal in its alert. When the island ends
+(session over, record gone) the line goes with the protected data. A form mounted
+alone, outside an island, keeps its committed sentence in its own line. Focus is
+unaffected: the line never takes it. Pinned by `*Island.status.test.tsx` (through the
+real islands and the real controller) and `use-cms-workflow-status.test.tsx`.
 
 ## Schedule actions
 

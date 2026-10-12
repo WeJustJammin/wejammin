@@ -106,10 +106,11 @@ layers these on the same world:
 - `s11-real-browser.ts` / `s11-real-flow.ts` — signed-in contexts, the completed
   step-up instant, and the first-party submit, assign and decide preconditions.
 - `s11-status-recorder.ts` — records every text a command form's polite status
-  line shows. A committed command is confirmed there only until the canonical
-  read that follows replaces the form (20 to 40 ms on a quiet host), so a spec
-  asserts that the confirmation was announced and then asserts the canonical
-  page state, never a visibility check on the transient text.
+  line shows. The form's own line lasts only until the canonical read replaces
+  the form (20 to 40 ms on a quiet host); the island's persistent status line
+  keeps the confirmation after the refetch. Specs assert that the confirmation
+  was announced, that the island line still holds it, and the canonical page
+  state, never a visibility check on the transient form line.
 - `s11-dst-gap.ts` (with `s11-dst-gap.test.ts`) — the next real spring-forward
   gap inside the schedule horizon, read from the host's tz data, so the schedule
   spec never types a fixed calendar date that goes stale.
