@@ -48,6 +48,26 @@ A missing stack fails loudly; nothing is skipped.
 
 ## Extension
 
+### Slice 12 CMS-03C composition (`phase-02-slice-12-*.apispec.ts`)
+
+`phase-02-slice-12-template-version.apispec.ts` (CMS-03C-01), `-template-reads.apispec.ts` (cmsTemplateContextRead and
+cmsTemplateLatestRead) and `-locale-variant.apispec.ts` (CMS-03C-04) drive browser request -> first-party web proxy ->
+private binding -> the production Hono routes -> the production RPC adapters -> Kong -> PostgREST -> the newest SQL. Only the
+verified session and an always-allow limiter are supplied (`support/phase-02-slice-12-composition-stack.ts`), so 201, 403,
+404, 409 and 422 are what the database decided; the cross-owner cases compare two owners' refusals field for field. Every suite
+makes its own isolated owners (`createDesignerOwner`, `prepareLocaleWorld`), so none of them shares a world with another
+suite. They commit fixtures: run them right after `pnpm db:reset` and reset again afterwards.
+
+### B-08 production dry-run Job (`phase-02-b08-*.apispec.ts`)
+
+`phase-02-b08-preparation-job-disposition.apispec.ts` (DEC-183) and `phase-02-b08-preparation-budget.apispec.ts` (DEC-184, stage
+fence 2C) deliver the original `job.requested` envelope of a real CMS-03A-10 attempt through the PRODUCTION async entrypoint
+(`createProductionAsyncEntrypoint`) over real `fetch` to Kong and PostgREST: a sealed passing scan is Job `succeeded` with the
+report reference, a sealed failing scan is `failed` `MIGRATION_BLOCKED`, a three-row type at one row per page needs five
+deliveries so delivery 4 rolls the plan back and fails the Job `MIGRATION_RETRIES_EXHAUSTED` (and the version pair is free
+again), and a Job lease that lapses mid-run stops the next state-advancing RPC before it is sent. `support/phase-02-b08-preparation-support.ts`
+builds the populated world and records the wire; it only records. Run them right after `pnpm db:reset`; they commit fixtures.
+
 ### Slice 11 native preparation (not acceptance)
 
 The native API preparation is split by operation: submit/decision (05/06),

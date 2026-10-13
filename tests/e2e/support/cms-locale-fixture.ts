@@ -78,6 +78,7 @@ export const createCmsLocaleFixture = (
         sourceRevisionId: SOURCE_REVISION_ID,
         fallbackChain: input.body.fallbackChain,
         noFallbackFieldIds: input.body.noFallbackFieldIds,
+        staleFieldIds: [],
       };
       return ok(resource);
     },

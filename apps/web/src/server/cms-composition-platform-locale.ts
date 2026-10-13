@@ -33,9 +33,9 @@ const LOCALE_CODES = {
   422: 'LOCALE_VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'DEPENDENCY_INVALID_RESPONSE',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
-  504: 'DEPENDENCY_DEADLINE_EXCEEDED',
+  504: 'DEPENDENCY_UNAVAILABLE',
 } as const;
 type LocaleStatus = keyof typeof LOCALE_CODES;
 const isLocaleStatus = (status: number): status is LocaleStatus =>

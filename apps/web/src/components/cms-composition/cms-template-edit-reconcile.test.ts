@@ -13,6 +13,7 @@ const detail = {
   createdAt: '2026-09-27T12:00:00.000Z',
   updatedAt: '2026-09-27T13:00:00.000Z',
   state: 'draft',
+  templateId: '90000000-0000-4000-8000-000000000009',
   templateKey: 'release-note',
   compatibleTypeIds: [TYPE_ID],
   reservedRegions: ['header', 'now', 'record', 'detail', 'provenance'],

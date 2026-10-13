@@ -19,6 +19,7 @@ const detail: TemplateVersionDetail = {
   createdAt: '2026-09-27T12:00:00Z',
   updatedAt: '2026-09-27T12:00:00Z',
   state: 'draft',
+  templateId: '90000000-0000-4000-8000-000000000009',
   templateKey: 'profile-header',
   templateVersion: 2,
   compatibleTypeIds: ['40000000-0000-4000-8000-000000000004'],
@@ -260,7 +261,7 @@ describe('CMS-11 protected current-template detail HTTP route', () => {
     const response = await malformed.app.request(path);
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 

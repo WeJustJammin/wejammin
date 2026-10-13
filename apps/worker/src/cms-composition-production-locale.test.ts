@@ -56,6 +56,7 @@ const resource = {
   sourceRevisionId,
   fallbackChain: ['en-US'],
   noFallbackFieldIds: [],
+  staleFieldIds: [],
 };
 const create = (fetchImpl: typeof fetch) =>
   createProductionCmsLocaleDependencies({

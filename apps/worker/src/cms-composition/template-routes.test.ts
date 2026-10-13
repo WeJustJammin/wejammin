@@ -50,6 +50,7 @@ const resource: TemplateVersionResource = {
   createdAt: '2026-09-27T12:00:00Z',
   updatedAt: '2026-09-27T12:00:00Z',
   state: 'draft',
+  templateId: '90000000-0000-4000-8000-000000000009',
   templateKey: 'profile-header',
   templateVersion: 1,
   compatibleTypeIds: [typeId],
@@ -365,9 +366,9 @@ describe('CMS-03C-01 protected template-version route', () => {
     [404, 'TEMPLATE_NOT_FOUND'],
     [409, 'TEMPLATE_VERSION_CONFLICT'],
     [422, 'TEMPLATE_VALIDATION_FAILED'],
-    [502, 'DEPENDENCY_INVALID_RESPONSE'],
+    [502, 'DEPENDENCY_UNAVAILABLE'],
     [503, 'DEPENDENCY_UNAVAILABLE'],
-    [504, 'DEPENDENCY_DEADLINE_EXCEEDED'],
+    [504, 'DEPENDENCY_UNAVAILABLE'],
     [500, 'INTERNAL_ERROR'],
   ] as const)(
     'normalizes a %i port failure to %s without leaking dependency prose',
@@ -395,7 +396,7 @@ describe('CMS-03C-01 protected template-version route', () => {
         value: { ...resource, blockRegistryDigest: 'b'.repeat(64) },
       }),
     });
-    await expectError(await post(app), 502, 'DEPENDENCY_INVALID_RESPONSE');
+    await expectError(await post(app), 502, 'DEPENDENCY_UNAVAILABLE');
   });
 
   it('reports safe field violations and authorized version metadata but discards foreign details', async () => {
@@ -524,7 +525,7 @@ describe('CMS-03C-01 protected template-version route', () => {
         }).app,
       ),
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
     await expectError(
       await post(
@@ -548,7 +549,7 @@ describe('CMS-03C-01 protected template-version route', () => {
         }).app,
       ),
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
     await expectError(
       await post(
@@ -557,7 +558,7 @@ describe('CMS-03C-01 protected template-version route', () => {
         }).app,
       ),
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
     await expectError(
       await post(
@@ -566,7 +567,7 @@ describe('CMS-03C-01 protected template-version route', () => {
         }).app,
       ),
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
     await expectError(
       await post(
@@ -575,7 +576,7 @@ describe('CMS-03C-01 protected template-version route', () => {
         }).app,
       ),
       502,
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
   });
 
@@ -597,7 +598,7 @@ describe('CMS-03C-01 protected template-version route', () => {
           }),
         }).app,
       );
-      await expectError(response, 502, 'DEPENDENCY_INVALID_RESPONSE');
+      await expectError(response, 502, 'DEPENDENCY_UNAVAILABLE');
     }
   });
 
@@ -696,7 +697,7 @@ describe('CMS-03C-01 protected template-version route', () => {
       const pending = post(app);
       await vi.advanceTimersByTimeAsync(15_000);
       const response = await pending;
-      await expectError(response, 504, 'DEPENDENCY_DEADLINE_EXCEEDED');
+      await expectError(response, 504, 'DEPENDENCY_UNAVAILABLE');
       expect(response.headers.get('retry-after')).toBe('15');
       release({
         ok: true,
@@ -743,7 +744,7 @@ describe('CMS-03C-01 protected template-version route', () => {
       const { app, defineTemplate } = harness({ rateLimit });
       const pending = post(app);
       await vi.advanceTimersByTimeAsync(15_000);
-      await expectError(await pending, 504, 'DEPENDENCY_DEADLINE_EXCEEDED');
+      await expectError(await pending, 504, 'DEPENDENCY_UNAVAILABLE');
       release({
         ok: true,
         value: { allowed: true, limit: 60, remaining: 59, resetAt: 60_000 },
@@ -819,6 +820,7 @@ describe('CMS-03C-01 protected template-version route', () => {
           createdAt: '2026-09-27T12:00:00Z',
           updatedAt: '2026-09-27T12:00:00Z',
           state: 'draft',
+          templateId: '90000000-0000-4000-8000-000000000009',
           templateKey: 'profile-header',
           compatibleTypeIds: [typeId],
           reservedRegions: ['header'],

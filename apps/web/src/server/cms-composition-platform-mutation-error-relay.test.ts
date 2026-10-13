@@ -109,7 +109,7 @@ describe('CMS-11 first-party template mutation boundary', () => {
       [500, 'INTERNAL_ERROR', { secret: 'private' }, {}],
       [
         502,
-        'DEPENDENCY_INVALID_RESPONSE',
+        'DEPENDENCY_UNAVAILABLE',
         { dependencyClass: 'private', retryable: true },
         { dependencyClass: 'cms_composition', retryable: false },
       ],
@@ -121,7 +121,7 @@ describe('CMS-11 first-party template mutation boundary', () => {
       ],
       [
         504,
-        'DEPENDENCY_DEADLINE_EXCEEDED',
+        'DEPENDENCY_UNAVAILABLE',
         { dependencyClass: 'private' },
         { dependencyClass: 'cms_composition', retryable: true },
       ],
@@ -205,7 +205,7 @@ describe('CMS-11 first-party template mutation boundary', () => {
       [429, 'RATE_LIMITED', '7', '7'],
       [429, 'RATE_LIMITED', 'private', null],
       [503, 'DEPENDENCY_UNAVAILABLE', '0', null],
-      [504, 'DEPENDENCY_DEADLINE_EXCEEDED', '9', '9'],
+      [504, 'DEPENDENCY_UNAVAILABLE', '9', '9'],
       [409, 'TEMPLATE_VERSION_CONFLICT', '9', null],
     ];
     for (const [status, code, retryAfter, expected] of retryCases) {

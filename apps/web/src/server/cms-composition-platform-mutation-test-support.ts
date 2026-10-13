@@ -36,6 +36,7 @@ export const RESOURCE: TemplateVersionResource = {
   createdAt: '2026-09-27T12:00:00Z',
   updatedAt: '2026-09-27T12:00:00Z',
   state: 'draft',
+  templateId: '90000000-0000-4000-8000-000000000009',
   templateKey: BODY.templateKey,
   templateVersion: 1,
   compatibleTypeIds: [TYPE_ID],

@@ -243,7 +243,7 @@ describe('CMS-03C-05 port failure mapping', () => {
     ).request(request());
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
       details: { dependencyClass: 'cms_composition', retryable: false },
     });
   });

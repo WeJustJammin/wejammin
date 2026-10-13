@@ -804,23 +804,20 @@
 | `25.08.04` | `CFG-05B-05` — `POST /api/v1/admin/audit-diagnostics/actions`, `read_audit` only | `run_diagnostic` remains unmounted                                    |
 | `25.08.05` | None                                                                             | Site-health/configuration diagnostics remain deferred                 |
 
-<!-- spec-graph: auto-generated -->
 
+<!-- spec-graph: auto-generated -->
 ## Related Specs
 
 ### Phases into
-
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
 ### Constrained by
-
 - [[decisions.md#d-31|D-31]]
 - [[decisions.md#d-85|D-85]]
 - [[decisions.md#d-29|D-29]]
 - [[decisions.md#d-20|D-20]]
 
 ### References
-
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
 - [[specs/be/05a-settings-flags-runtime|BE 05a — Settings, flags and runtime governance]]
 - [[specs/fe/05-platform-configuration-admin|Platform configuration, admin and quality: Frontend Specification]]

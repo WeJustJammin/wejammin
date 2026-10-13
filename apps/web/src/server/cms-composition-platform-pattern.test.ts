@@ -225,7 +225,7 @@ describe('CMS-03C-02 first-party private forwarding', () => {
       ],
       [
         502,
-        'DEPENDENCY_INVALID_RESPONSE',
+        'DEPENDENCY_UNAVAILABLE',
         { secret: 'private' },
         { dependencyClass: 'cms_composition', retryable: false },
       ],
@@ -237,7 +237,7 @@ describe('CMS-03C-02 first-party private forwarding', () => {
       ],
       [
         504,
-        'DEPENDENCY_DEADLINE_EXCEEDED',
+        'DEPENDENCY_UNAVAILABLE',
         { secret: 'private' },
         { dependencyClass: 'cms_composition', retryable: true },
       ],

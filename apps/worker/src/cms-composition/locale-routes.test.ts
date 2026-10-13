@@ -45,6 +45,7 @@ const resource: LocaleVariantResource = {
   sourceRevisionId,
   fallbackChain: ['en-US'],
   noFallbackFieldIds: [],
+  staleFieldIds: [],
 };
 
 const request = (
@@ -199,7 +200,7 @@ describe('CMS-03C-04 locale authoring route', () => {
     const response = await app.request(request());
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 

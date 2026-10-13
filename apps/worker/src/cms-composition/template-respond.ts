@@ -1,5 +1,5 @@
 import { mediaTypeDetails } from './media-type-details';
-import { ApiErrorSchema } from '@wejammin/contracts';
+import { ApiErrorSchema, CMS_KEY_RESERVED_REASON } from '@wejammin/contracts';
 
 import {
   ERROR_CODES,
@@ -18,6 +18,7 @@ const VIOLATION_CODES = new Set([
   'audience_invalid',
   'compatible_type_duplicate',
   'template_slot_duplicate',
+  CMS_KEY_RESERVED_REASON,
 ]);
 
 /** Detail projection never forwards SQL/provider prose, resource names, or content. */
@@ -32,28 +33,30 @@ const safeDetails = (
   const details = source as Readonly<Record<string, unknown>>;
   if (status === 400 || status === 422) {
     if (!Array.isArray(details.violations)) return {};
-    return {
-      violations: details.violations.slice(0, 50).flatMap((candidate) => {
-        if (
-          typeof candidate !== 'object' ||
-          candidate === null ||
-          Array.isArray(candidate)
-        )
-          return [];
-        const value = candidate as Readonly<Record<string, unknown>>;
-        return [
-          {
-            path:
-              typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
-            code:
-              typeof value.code === 'string' && VIOLATION_CODES.has(value.code)
-                ? value.code
-                : 'invalid',
-            message: 'The value is invalid.',
-          },
-        ];
-      }),
-    };
+    const violations = details.violations.slice(0, 50).flatMap((candidate) => {
+      if (
+        typeof candidate !== 'object' ||
+        candidate === null ||
+        Array.isArray(candidate)
+      )
+        return [];
+      const value = candidate as Readonly<Record<string, unknown>>;
+      return [
+        {
+          path: typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
+          code:
+            typeof value.code === 'string' && VIOLATION_CODES.has(value.code)
+              ? value.code
+              : 'invalid',
+          message: 'The value is invalid.',
+        },
+      ];
+    });
+    // BE03c E13: a reserved key carries the typed reasonCode beside its pointer.
+    return status === 422 &&
+      violations.some(({ code }) => code === CMS_KEY_RESERVED_REASON)
+      ? { reasonCode: CMS_KEY_RESERVED_REASON, violations }
+      : { violations };
   }
   if (status === 403)
     return details.reasonCode === 'CAPABILITY_REQUIRED'

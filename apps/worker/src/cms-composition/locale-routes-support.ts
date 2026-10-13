@@ -25,9 +25,9 @@ export const ERROR_CODES: Readonly<Record<CmsLocaleStatus, string>> = {
   422: 'LOCALE_VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'DEPENDENCY_INVALID_RESPONSE',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
-  504: 'DEPENDENCY_DEADLINE_EXCEEDED',
+  504: 'DEPENDENCY_UNAVAILABLE',
 };
 
 export const statusOf = (value: number): CmsLocaleStatus =>

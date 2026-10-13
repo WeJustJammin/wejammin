@@ -107,7 +107,7 @@ describe('CMS-11 protected template context read', () => {
     const response = await app.request('/api/v1/cms/templates/context');
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 

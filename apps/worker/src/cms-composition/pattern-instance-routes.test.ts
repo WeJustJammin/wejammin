@@ -211,7 +211,7 @@ describe('CMS-03C-02 protected pattern instance route', () => {
     expect(response.status).toBe(502);
     expect((await response.json()) as { code: string }).toHaveProperty(
       'code',
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
   });
 });

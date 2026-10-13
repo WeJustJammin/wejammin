@@ -188,7 +188,7 @@ describe('CMS-03C-05 first-party related-content proxy', () => {
       );
       expect(response.status).toBe(502);
       expect(await response.json()).toMatchObject({
-        code: 'DEPENDENCY_INVALID_RESPONSE',
+        code: 'DEPENDENCY_UNAVAILABLE',
       });
       expect(fetch).toHaveBeenCalledTimes(1);
     }
@@ -207,7 +207,7 @@ describe('CMS-03C-05 first-party related-content proxy', () => {
     );
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 

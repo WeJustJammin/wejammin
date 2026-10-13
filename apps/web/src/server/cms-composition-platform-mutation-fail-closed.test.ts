@@ -48,7 +48,7 @@ describe('CMS-11 first-party template mutation boundary', () => {
       });
       expect(response.status).toBe(502);
       expect(await response.json()).toMatchObject({
-        code: 'DEPENDENCY_INVALID_RESPONSE',
+        code: 'DEPENDENCY_UNAVAILABLE',
       });
     }
   });

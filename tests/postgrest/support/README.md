@@ -108,6 +108,17 @@
   Parent runtime confirms first-plan null IDs cause Worker dead-letter before
   any batch; independent source safety review passes. No authority acceptance.
 
+- `phase-02-slice-12-composition-stack.ts`: the Slice 12 CMS-03C request chain (browser
+  request -> first-party web proxy -> private binding -> the production template, latest-template
+  and locale Hono routes -> production RPC adapters -> Kong -> PostgREST). Only the verified
+  session (`as(...)`) and an always-allow rate limiter are supplied; `loseNextResponse` and
+  `failNextRpc` inject the two transport faults; `createDesignerOwner` adds the
+  `cms.template_designer` grant to an isolated CMS owner.
+- `phase-02-slice-12-locale-world.ts`: an isolated owner with one active two-locale content type
+  (`en-US` source, `fr-FR` chain `["en-US"]`, a localized `title` and an unlocalized `note`) and
+  `seedLocaleEntry`, which creates an entry through the real editorial chain and reads back the
+  source revision, its payload hash and the entry version CMS-03C-04 needs.
+
 These additions are preparation, not acceptance proof. The inherited
 frozen-review trigger bypass remains an execution/authority hold pending legal
 successor replacement. New helpers do not legalize it.
@@ -145,3 +156,9 @@ API surface guard.
 - Related: `tests/postgrest/README.md` (suites and how to run them),
   `supabase/tests/README.md` (pgTAP) and `apps/worker/src/content-schema-registry`
   (the production adapters composed here).
+- `phase-02-b08-preparation-support.ts`: tracked boundary #128 helpers: delivers a queue
+  message through the production async entrypoint over real `fetch` (recording the RPCs,
+  never rewriting them), reads Job, report, plan, evidence and processed-event rows, polls
+  the Job through the production status read and parser, builds a populated type with a
+  successor draft, and starts CMS-03A-10 attempts. SQL reads evidence; the one write is the
+  declared Job-lease expiry control `expireJobLease`.

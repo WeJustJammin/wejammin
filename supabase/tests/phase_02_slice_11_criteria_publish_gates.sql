@@ -43,7 +43,7 @@ select plan(35);
 
 -- A second, retirable template and a withdrawable block (the registry ones are shared with other fixtures).
 select pg_temp.h11_raw_insert('platform_private.cms_template_versions', jsonb_build_object(
-  'id', 'a9200000-0000-4000-8000-0000000d0011', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
+  'id', 'a9200000-0000-4000-8000-0000000d0011', 'template_id', 'a9200000-0000-4000-8000-0000000d0011', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
   'version', 1, 'template_key', 'c11-template-retired',
   'compatible_type_ids', jsonb_build_array((select value from h11w_ids where key = 'typeId')),
   'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', false, 'maxCount', 4,

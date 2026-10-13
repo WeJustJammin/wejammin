@@ -20,6 +20,7 @@ import {
   mapCmsEditorialRpcFailure,
   unavailable,
 } from './cms-editorial-production-errors';
+import { mapTemplateRpcFailure } from './cms-composition-production-template-errors';
 import {
   createDeadline,
   fetchWithDeadline,
@@ -238,7 +239,7 @@ export const createProductionCmsTemplateDependencies = (
       );
       if (!response.ok) return response;
       if (!response.value.ok) {
-        const error = mapCmsEditorialRpcFailure(
+        const error = mapTemplateRpcFailure(
           response.value.status,
           await readRpcError(response.value, maxResponseBytes, deadline.signal),
         );

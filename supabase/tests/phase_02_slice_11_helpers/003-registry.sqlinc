@@ -81,7 +81,7 @@ end;
 $body$;
 
 select pg_temp.h11_raw_insert('platform_private.cms_template_versions', jsonb_build_object(
-  'id', 'a9200000-0000-4000-8000-0000000d0001', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
+  'id', 'a9200000-0000-4000-8000-0000000d0001', 'template_id', 'a9200000-0000-4000-8000-0000000d0001', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
   'version', 1, 'template_key', 'h11-template',
   'compatible_type_ids', jsonb_build_array((select value from h11w_ids where key = 'typeId')),
   'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', false, 'maxCount', 4,

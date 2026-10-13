@@ -25,7 +25,7 @@ describe('CMS-03C-05 port envelope validation', () => {
     ).request(request());
     expect(malformed.status).toBe(502);
     expect(await malformed.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
     const mismatched = await createCmsRelatedContentApp(
       dependencies({
@@ -70,7 +70,7 @@ describe('CMS-03C-05 port envelope validation', () => {
     ).request(request());
     expect(malformed.status).toBe(502);
     expect(await malformed.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
     const invalidHuman = await createCmsRelatedContentApp(
       dependencies({
@@ -183,7 +183,7 @@ describe('CMS-03C-05 port envelope validation', () => {
     ).request(request());
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
     expect(actRelatedContent).not.toHaveBeenCalled();
   });

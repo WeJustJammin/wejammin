@@ -1,5 +1,6 @@
 import {
   ApiErrorSchema,
+  CMS_KEY_RESERVED_REASON,
   createRequestId,
   TemplateVersionHeadersSchema,
   TemplateVersionRequestSchema,
@@ -37,9 +38,9 @@ const ERROR_CODES = {
   422: 'TEMPLATE_VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'DEPENDENCY_INVALID_RESPONSE',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
-  504: 'DEPENDENCY_DEADLINE_EXCEEDED',
+  504: 'DEPENDENCY_UNAVAILABLE',
 } as const;
 type Status = keyof typeof ERROR_CODES;
 const SAFE_VIOLATION_CODES = new Set([
@@ -51,9 +52,14 @@ const SAFE_VIOLATION_CODES = new Set([
   'audience_invalid',
   'compatible_type_duplicate',
   'template_slot_duplicate',
+  CMS_KEY_RESERVED_REASON,
 ]);
 
-export const localError = (request: Request, status: Status): Response => {
+export const localError = (
+  request: Request,
+  status: Status,
+  details: Record<string, unknown> = {},
+): Response => {
   const code = ERROR_CODES[status];
   const requestId = createRequestId(
     request.headers.get('x-request-id') ?? undefined,
@@ -69,11 +75,48 @@ export const localError = (request: Request, status: Status): Response => {
       code,
       message: `${code}: template operation rejected or unavailable.`,
       requestId,
-      details: {},
+      details,
     }),
     { status, headers },
   );
 };
+
+type SchemaIssue = Readonly<{
+  path: readonly PropertyKey[];
+  message: string;
+  code?: string;
+  keys?: readonly string[];
+}>;
+
+/**
+ * The bounded RFC 6901 violations of a body the contract refused, exactly as the Worker route
+ * reports them (BE03b `issues`): a lowercase machine token, never the submitted value. The codes the
+ * relay publishes are filtered by `safeDetails`.
+ */
+const violationsOf = (issues: readonly SchemaIssue[]) =>
+  issues
+    .flatMap((issue) =>
+      issue.code === 'unrecognized_keys' && Array.isArray(issue.keys)
+        ? issue.keys.map((key) => ({
+            path: [...issue.path, key],
+            code: 'unknown_field',
+          }))
+        : [
+            {
+              path: [...issue.path],
+              code: /^[a-z][a-z0-9_]{0,63}$/u.test(issue.message)
+                ? issue.message
+                : 'invalid_value',
+            },
+          ],
+    )
+    .slice(0, 50)
+    .map(({ path, code }) => ({
+      path: `/${path
+        .map((part) => String(part).replaceAll('~', '~0').replaceAll('/', '~1'))
+        .join('/')}`,
+      code,
+    }));
 
 const safeDetails = (
   status: Status,
@@ -82,29 +125,31 @@ const safeDetails = (
   if (status === 401) return { recoveryAction: 'reauthenticate' };
   if (status === 400 || status === 422) {
     if (!Array.isArray(details.violations)) return {};
-    return {
-      violations: details.violations.slice(0, 50).flatMap((candidate) => {
-        if (
-          typeof candidate !== 'object' ||
-          candidate === null ||
-          Array.isArray(candidate)
-        )
-          return [];
-        const value = candidate as Readonly<Record<string, unknown>>;
-        return [
-          {
-            path:
-              typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
-            code:
-              typeof value.code === 'string' &&
-              SAFE_VIOLATION_CODES.has(value.code)
-                ? value.code
-                : 'invalid',
-            message: 'The value is invalid.',
-          },
-        ];
-      }),
-    };
+    const violations = details.violations.slice(0, 50).flatMap((candidate) => {
+      if (
+        typeof candidate !== 'object' ||
+        candidate === null ||
+        Array.isArray(candidate)
+      )
+        return [];
+      const value = candidate as Readonly<Record<string, unknown>>;
+      return [
+        {
+          path: typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
+          code:
+            typeof value.code === 'string' &&
+            SAFE_VIOLATION_CODES.has(value.code)
+              ? value.code
+              : 'invalid',
+          message: 'The value is invalid.',
+        },
+      ];
+    });
+    // BE03c E13: a reserved key carries the typed reasonCode beside its pointer.
+    return status === 422 &&
+      violations.some(({ code }) => code === CMS_KEY_RESERVED_REASON)
+      ? { reasonCode: CMS_KEY_RESERVED_REASON, violations }
+      : { violations };
   }
   if (status === 403)
     return details.reasonCode === 'CAPABILITY_REQUIRED'
@@ -215,7 +260,12 @@ export const forwardCmsTemplateDefineMutation = async (
   const read = await cmsEditorialBoundedRequestJson(request);
   if (!read.ok) return localError(request, 400);
   const body = TemplateVersionRequestSchema.safeParse(read.value);
-  if (!body.success) return localError(request, 422);
+  if (!body.success)
+    return localError(
+      request,
+      422,
+      safeDetails(422, { violations: violationsOf(body.error.issues) }),
+    );
   const ifMatch =
     headers.data.ifMatch === undefined
       ? null

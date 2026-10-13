@@ -674,6 +674,35 @@ MD5-pinned by these files, so later changes to those functions must also be new 
   reversible anchors; owner, ACL, `search_path`, comment and signature unchanged. The relationship policies of `170200` are not the
   cause (dropped, the same statistics take 62.6 s against 65.0 s) and are untouched.
 
+### Slice 12 FIX forward migrations (`20261013100000`-`20261013100500`)
+
+CMS-03C-01 (templates), the two template reads and CMS-03C-04 (locale) made to match the locked BE03c text
+(`../../docs/handoffs/2026-10-12-claude-s12/lane-fix-report.md`).
+
+- `100000` (`../tests/phase_02_slice_12_fix_template_per_owner.sql`, `..._key_audience.sql`, `..._populated.sql`): E14 makes
+  `UNIQUE (template_key, version)` per owner, `UNIQUE (owner_id, template_key, version)`: the global constraint answered a second
+  owner's first version of a key with a 409 and so disclosed the key. Adds the lineage id `template_id` (the version-1 row's id,
+  backfilled over the `supersedes_id` chain before `NOT NULL`), `UNIQUE (template_id, version)` and one active version per lineage,
+  and the table CHECKs of E13 (`template_key` not `context`, `versions`, `new`) and E4 (audience `^[a-z0-9_-]{1,48}$`). Runs on a
+  populated table: both CHECKs are added `NOT VALID` and validated only when no row violates them, so a legacy row can never abort
+  the deploy (it just cannot be updated again); the definition CHECK is paused for the backfill UPDATE and restored. The lineage
+  rules are folded into `cms_template_versions_guard()` (no new trigger; the AC215 inventory is unchanged) and the guard moves to
+  the definer role (SEC-2). The text between the `BEGIN/END FIX-TEMPLATE-LINEAGE-DDL` markers is replayed verbatim by the
+  populated-table witness (a vitest fails if the copies differ).
+- `100100`: `cms_template_manifest_valid` takes the audience grammar (E4); every other clause is the body of `20261002210000`.
+- `100200`: `cms_define_template` looks the previous version up inside the caller's owner scope (E14), refuses a reserved key with the
+  typed token `key_reserved` (DETAIL `["/templateKey"]`) and a bad audience with `VALIDATION_FAILED` (DETAIL `["/audience"]`) before any
+  lookup, writes the lineage id and answers it as `templateId`; a stored idempotent response that predates `templateId` is completed.
+- `100300`: `cms_template_latest` answers `templateId` and sets the RPC-context flag it never set (SEC-2: the definer role is held to
+  the forced CMS policies, so over the real API the read found no row and answered NOT_FOUND for the caller's own template; every pgTAP
+  suite missed it because its fixtures leave the flag set, `../tests/phase_02_slice_12_fix_template_reads_rpc_context.sql` starts the
+  request without it). Its `platform_api` wrapper becomes the flag-restoring wrapper of the other CMS reads.
+- `100400` (`../tests/phase_02_slice_12_fix_locale_stale_field_ids.sql`): the CMS-03C-04 command answers and stores
+  `staleFieldIds: []` (LocaleVariantResource, DEC-121) and completes an older stored receipt on replay. A guarded amendment of the LIVE
+  source (two anchors, inverse-replacement proof, attributes unchanged), because `20261010130000` (E7) had already amended the body in
+  place with the settings-snapshot tail.
+- `100500`: the same flag and wrapper for `cms_template_context` (the picker listed no content type and no block over the real API).
+
 ## Related links
 
 - `../tests/README.md`
