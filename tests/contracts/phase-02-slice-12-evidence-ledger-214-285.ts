@@ -13,7 +13,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the accept command (CMS-03C-15, RPC cms_apply_pattern_update with the three-way merge over pending_diff instances) is not built.',
   },
   {
     criterion: 'P2-S12-AC-215',
@@ -25,7 +26,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the detach command (CMS-03C-15 action detach, RPC cms_apply_pattern_update) is not built.',
   },
   {
     criterion: 'P2-S12-AC-216',
@@ -37,7 +39,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the RPC cms_insert_pattern_instance is not deployed and CMS-03C-02 still takes a caller revisionId; the only database check is a table guard that raises VALIDATION_FAILED for a non-draft target, not the 409 revision_not_editable current-draft rule.',
   },
   {
     criterion: 'P2-S12-AC-217',
@@ -49,7 +52,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_insert_pattern_instance is not deployed and cms_pattern_versions has no compatible_type_ids column (AC-257), so the active-state and compatibility checks cannot run.',
   },
   {
     criterion: 'P2-S12-AC-218',
@@ -76,12 +80,24 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
         citations: [],
       },
       {
-        text: '`(revision_id, path)` is unique per version, and an override collision produces `pending_diff` and never overwrites.',
+        text: '`(revision_id, path)` is unique per version,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_composition_authority.sql',
+            title:
+              'pattern and composition versions have stable unique identities',
+          },
+        ],
+      },
+      {
+        text: 'and an override collision produces `pending_diff` and never overwrites.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: slotPath existence in the template or root path; nested pattern expansion into block roots; one append-only row per block root (at most 512, all-or-nothing, 201 PatternPlacementResource items); per-row pin, block identity, path suffix, digest, link mode and overrides; normalized override keys with 422 COMPOSITION_VALIDATION_FAILED at /overrides; the override collision producing pending_diff. Only the (revision_id, path, version) unique index is asserted.',
   },
   {
     criterion: 'P2-S12-AC-219',
@@ -93,7 +109,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no composition writer appends rows or invalidates a live review (cms_insert_pattern_instance, CMS-03C-15, the linked-update scan and the carry-over are not built).',
   },
   {
     criterion: 'P2-S12-AC-220',
@@ -105,7 +122,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_terms has no taxonomy_id column and keeps UNIQUE (taxonomy_version_id, term_key, version), so the lineage vocabulary model is not built.',
   },
   {
     criterion: 'P2-S12-AC-221',
@@ -117,7 +135,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the term action RPC cms_act_taxonomy_term is not built and the production adapter fails closed.',
   },
   {
     criterion: 'P2-S12-AC-222',
@@ -129,7 +148,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: neither cms_canonical_taxonomy_match, the canonical domain registry nor the term action RPC exists.',
   },
   {
     criterion: 'P2-S12-AC-223',
@@ -141,31 +161,86 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no canonical domain provider registry, taxonomy-version activation or term action RPC exists.',
   },
   {
     criterion: 'P2-S12-AC-224',
     text: 'Term actions: `create` inserts a term with lifecycle `active` and its first labels, `rename` appends a new label version and never changes the key, `alias` appends an alias, `deprecate` moves the term to `deprecated` (still resolvable, not newly assignable), a `merged` term never reactivates, and label versions are immutable (a replacement creates a new version).',
     clauses: [
       {
-        text: 'Term actions: `create` inserts a term with lifecycle `active` and its first labels, `rename` appends a new label version and never changes the key, `alias` appends an alias, `deprecate` moves the term to `deprecated` (still resolvable, not newly assignable), a `merged` term never reactivates, and label versions are immutable (a replacement creates a new version).',
+        text: 'Term actions: `create` inserts a term with lifecycle `active` and its first labels, `rename` appends a new label version and never changes the key, `alias` appends an alias, `deprecate` moves the term to `deprecated` (still resolvable, not newly assignable),',
+        citations: [],
+      },
+      {
+        text: 'a `merged` term never reactivates,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_authority.sql',
+            title: 'a merged term cannot reactivate',
+          },
+        ],
+      },
+      {
+        text: 'and label versions are immutable',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_authority.sql',
+            title: 'a label version cannot be changed in place',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_authority.sql',
+            title: 'label and assignment version rows reject UPDATE and DELETE',
+          },
+        ],
+      },
+      {
+        text: '(a replacement creates a new version).',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: the create, rename, alias and deprecate term actions (no cms_act_taxonomy_term RPC) and the rule that a replacement label is a new version. Cited: a merged term never reactivates and label versions reject in-place change at table level.',
   },
   {
     criterion: 'P2-S12-AC-225',
     text: 'Term merge: `merge` locks the survivor and the retired term (`FOR UPDATE` in id order), requires a survivor that is `active` or `deprecated` and a retired term that is not already `merged`, sets the retired term `merged` with its `successor_id`, and keeps the retired id as a permanent redirect.',
     clauses: [
       {
-        text: 'Term merge: `merge` locks the survivor and the retired term (`FOR UPDATE` in id order), requires a survivor that is `active` or `deprecated` and a retired term that is not already `merged`, sets the retired term `merged` with its `successor_id`, and keeps the retired id as a permanent redirect.',
+        text: 'Term merge: `merge` locks the survivor and the retired term (`FOR UPDATE` in id order),',
         citations: [],
       },
+      {
+        text: 'requires a survivor that is `active` or `deprecated` and a retired term that is not already `merged`,',
+        citations: [],
+      },
+      {
+        text: 'sets the retired term `merged` with its `successor_id`,',
+        citations: [],
+      },
+      {
+        text: 'and keeps the retired id as a permanent redirect.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_authority.sql',
+            title: 'merge requires a permanent survivor redirect',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_authority.sql',
+            title: 'a merged term cannot reactivate',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: the merge command locking survivor and retired term FOR UPDATE in id order; the survivor `active` or `deprecated` rule (the existing guard accepts only `active`) and the retired-term-not-already-merged rule; the command setting the retired term merged with its successor_id. Cited: the permanent-redirect invariant.',
   },
   {
     criterion: 'P2-S12-AC-226',
@@ -177,7 +252,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no merge command, convergence, cms.taxonomy.merge_converge job or durable cursor exists.',
   },
   {
     criterion: 'P2-S12-AC-227',
@@ -189,19 +265,55 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the curation RPC cms_curate_related_content is not built and the production adapter fails closed.',
   },
   {
     criterion: 'P2-S12-AC-228',
     text: 'Related-content rule storage: rules are append-only versions, a request replaces the whole rule set (pins in array order as `position`, exclusions and the derived rule) by appending `revoked` rows for removed items and `active` rows for new ones, the strong `If-Match` is the source entry `version`, and derived rows carry no target while pin and exclude rows require one.',
     clauses: [
       {
-        text: 'Related-content rule storage: rules are append-only versions, a request replaces the whole rule set (pins in array order as `position`, exclusions and the derived rule) by appending `revoked` rows for removed items and `active` rows for new ones, the strong `If-Match` is the source entry `version`, and derived rows carry no target while pin and exclude rows require one.',
+        text: 'Related-content rule storage: rules are append-only versions,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_related_authority.sql',
+            title: 'related-content rules are append-only',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_related_authority.sql',
+            title:
+              'locale and related-content versions reject direct writes and mutation',
+          },
+        ],
+      },
+      {
+        text: 'a request replaces the whole rule set (pins in array order as `position`, exclusions and the derived rule) by appending `revoked` rows for removed items and `active` rows for new ones,',
+        citations: [],
+      },
+      {
+        text: 'the strong `If-Match` is the source entry `version`,',
+        citations: [],
+      },
+      {
+        text: 'and derived rows carry no target while',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_related_authority.sql',
+            title: 'derived rule cannot hardcode a target entry',
+          },
+        ],
+      },
+      {
+        text: 'pin and exclude rows require one.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: whole-rule-set replacement by appending revoked and active rows with position, the strong If-Match equalling the source entry version, and the pin and exclude rows requiring a target (a CHECK exists but no assertion drives it). Cited: append-only rules and the derived rule carrying no target.',
   },
   {
     criterion: 'P2-S12-AC-229',
@@ -213,7 +325,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the code-owned CMS_RELATED_RULES registry and cms_related_rule_valid do not exist; the contract accepts any rule key and reason code.',
   },
   {
     criterion: 'P2-S12-AC-230',
@@ -225,7 +338,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the write RPC and the eligibleCount computation are not built; the resource only carries a contract-shaped eligibleCount field.',
   },
   {
     criterion: 'P2-S12-AC-231',
@@ -237,7 +351,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no derived-rule evaluator or cms_related_content_public_targets exists.',
   },
   {
     criterion: 'P2-S12-AC-232',
@@ -249,23 +364,104 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation: 'No test can exist yet: no same-type-recent evaluator exists.',
   },
   {
     criterion: 'P2-S12-AC-233',
     text: "Locale configuration check (OD-4): CMS-03C-04 requires `locale` to be a member of the active content-type version's `supportedLocales` (422 `LOCALE_VALIDATION_FAILED` otherwise) and `fallbackChain` to equal, element for element, that version's `fallbackChains` entry for `locale` (`[]` exactly when `locale` is its `defaultLocale`); any difference in membership, order or length is 409 `LOCALE_VERSION_CONFLICT` with `details.reasonCode` `FALLBACK_CHAIN_MISMATCH` and `details.activeFallbackChain` (at most 16 tags) and writes no variant, and after a successor changes the chain the new chain applies and the old chain is refused.",
     clauses: [
       {
-        text: "Locale configuration check (OD-4): CMS-03C-04 requires `locale` to be a member of the active content-type version's `supportedLocales` (422 `LOCALE_VALIDATION_FAILED` otherwise) and `fallbackChain` to equal, element for element, that version's `fallbackChains` entry for `locale` (`[]` exactly when `locale` is its `defaultLocale`);",
+        text: "Locale configuration check (OD-4): CMS-03C-04 requires `locale` to be a member of the active content-type version's `supportedLocales` (422 `LOCALE_VALIDATION_FAILED` otherwise)",
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              "a locale outside the active version's supportedLocales is a validation failure (422)",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-locale.test.ts',
+            title:
+              'CMS-03C-04 production locale adapter maps a locale outside supportedLocales to the 422 catalog code without a chain',
+          },
+        ],
+      },
+      {
+        text: "and `fallbackChain` to equal, element for element, that version's `fallbackChains` entry for `locale`",
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'the exact active chain and a supported locale author a variant',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'a fallbackChain that differs from the active chain is a 409 version conflict',
+          },
+        ],
+      },
+      {
+        text: '(`[]` exactly when `locale` is its `defaultLocale`);',
         citations: [],
       },
       {
-        text: 'any difference in membership, order or length is 409 `LOCALE_VERSION_CONFLICT` with `details.reasonCode` `FALLBACK_CHAIN_MISMATCH` and `details.activeFallbackChain` (at most 16 tags) and writes no variant, and after a successor changes the chain the new chain applies and the old chain is refused.',
+        text: 'any difference in membership, order or length is 409 `LOCALE_VERSION_CONFLICT` with `details.reasonCode` `FALLBACK_CHAIN_MISMATCH` and `details.activeFallbackChain` (at most 16 tags) and writes no variant,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'a fallbackChain that differs from the active chain is a 409 version conflict',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'the conflict detail carries the reason code and the active chain',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'an empty chain for a locale whose active chain is [en-US] is a conflict',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title: 'a longer chain than the active one is a conflict',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'a refused authoring writes no variant, no revision and does not move the entry version',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-locale.test.ts',
+            title:
+              'CMS-03C-04 production locale adapter carries the active fallback chain on a chain-equality conflict (OD-4)',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/locale-variant.test.ts',
+            title:
+              'CMS-03C-04 fallback-chain equality conflict (OD-4) accepts the active chain, bounded at sixteen canonical tags',
+          },
+        ],
+      },
+      {
+        text: 'and after a successor changes the chain the new chain applies and the old chain is refused.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: the `[]` chain exactly when the locale is its defaultLocale (no authoring assertion for a default-locale target); after a successor changes the chain the new chain applies and the old chain is refused. Caveats on cited clauses: the mismatch tests cover length and membership differences, an order-only difference has no assertion, and the 409/422 catalog mapping is evidenced only by Worker unit tests with a stubbed RPC response (no real-stack apispec for CMS-03C-04 exists).',
   },
   {
     criterion: 'P2-S12-AC-234',
@@ -277,7 +473,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_locale_variants.state still allows five physical values and nothing derives review, approved or untranslated from the editorial review of the locale revision.',
   },
   {
     criterion: 'P2-S12-AC-235',
@@ -289,19 +486,55 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_locale_variants has no field_source_hashes or stale_field_ids and no per-field revalidation path exists.',
   },
   {
     criterion: 'P2-S12-AC-236',
     text: 'Locale fan-out bound (D12): a source-locale change appends stale rows synchronously for at most 32 dependent locale variants per entry, and a request that would create a 33rd distinct locale variant is refused 409 `LOCALE_VERSION_CONFLICT` `locale_limit_reached`.',
     clauses: [
       {
-        text: 'Locale fan-out bound (D12): a source-locale change appends stale rows synchronously for at most 32 dependent locale variants per entry, and a request that would create a 33rd distinct locale variant is refused 409 `LOCALE_VERSION_CONFLICT` `locale_limit_reached`.',
+        text: 'Locale fan-out bound (D12): a source-locale change appends stale rows synchronously for at most 32 dependent locale variants per entry,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_locale_fanout_branch.sql',
+            title:
+              'a fan-out at exactly the limit answers the number of dependent locales',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_locale_fanout_branch.sql',
+            title:
+              'three dependent locales over a limit of two are refused, never truncated',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_locale_fanout_branch.sql',
+            title: 'one stale variant is appended per dependent locale',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_source_stale.sql',
+            title:
+              'a changed source appends one stale version for each dependent locale',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_source_stale.sql',
+            title:
+              'the second source-dependent locale is invalidated in the same transaction',
+          },
+        ],
+      },
+      {
+        text: 'and a request that would create a 33rd distinct locale variant is refused 409 `LOCALE_VERSION_CONFLICT` `locale_limit_reached`.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: a request that would create a 33rd distinct locale variant is refused 409 LOCALE_VERSION_CONFLICT `locale_limit_reached`. Caveat on the cited clause: the bound is exercised with limits 2 and 3; the limit 32 only appears in a weak refusal assertion and no test creates 32 or 33 real variants.',
   },
   {
     criterion: 'P2-S12-AC-237',
@@ -313,7 +546,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: locale events still use aggregate type cms_content_entry and the entry id; no UUIDv5 locale aggregate or cms.locale_variant identity exists.',
   },
   {
     criterion: 'P2-S12-AC-238',
@@ -325,7 +559,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the cms.pattern.active_digest provider and its registry row are not built.',
   },
   {
     criterion: 'P2-S12-AC-239',
@@ -337,23 +572,21 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the cms.taxonomy.assignment_integrity provider is not built.',
   },
   {
     criterion: 'P2-S12-AC-240',
     text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, a revision whose locale variant is not in effective state `approved` or `published` fails with `locale_variant_not_approved`, and otherwise the category passes; the `route`, `media` and `privacy` categories stay on the reference gate.",
     clauses: [
       {
-        text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, a revision whose locale variant is not in effective state `approved` or `published` fails with `locale_variant_not_approved`, and otherwise the category passes;",
-        citations: [],
-      },
-      {
-        text: 'the `route`, `media` and `privacy` categories stay on the reference gate.',
+        text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, a revision whose locale variant is not in effective state `approved` or `published` fails with `locale_variant_not_approved`, and otherwise the category passes; the `route`, `media` and `privacy` categories stay on the reference gate.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the cms.locale.no_fallback_gate provider and cms_resolve_locale_field (CMS-03C-20) are not built.',
   },
   {
     criterion: 'P2-S12-AC-241',
@@ -365,7 +598,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no Slice 12 provider is implemented, so neither the dispatch order nor the closed per-category reason sets and copy exist.',
   },
   {
     criterion: 'P2-S12-AC-242',
@@ -377,7 +611,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: platform_private.cms_resolve_taxonomy_version does not exist and comparison still fails closed for a non-empty taxonomy reference.',
   },
   {
     criterion: 'P2-S12-AC-243',
@@ -389,7 +624,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_restore_revision does not carry composition instances.',
   },
   {
     criterion: 'P2-S12-AC-244',
@@ -401,7 +637,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: restore copies the source taxonomy_version_ids unchanged and carries no term assignments.',
   },
   {
     criterion: 'P2-S12-AC-245',
@@ -413,7 +650,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_create_revision, cms_resolve_conflict and cms_restore_revision carry no composition instances and cms_composition_instances has no carried_from_id.',
   },
   {
     criterion: 'P2-S12-AC-246',
@@ -425,7 +663,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the taxonomy value encoder still returns taxonomy_source_unavailable for a non-empty value.',
   },
   {
     criterion: 'P2-S12-AC-247',
@@ -437,7 +676,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet for the Slice 12 derivation: the render plan still reads only draft and active rows, with no highest-version selection, pending_diff rendering or block-root rows. The Slice 11 test orders two blocks by path inside one slot only.',
   },
   {
     criterion: 'P2-S12-AC-248',
@@ -449,7 +689,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the relay still pins cms.localization.changed.v1 to cms_content_entry and accepts any registry-key aggregate for the three Slice 12 events.',
   },
   {
     criterion: 'P2-S12-AC-249',
@@ -461,7 +702,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: CMS-03C-09 activation, retirement and scheduled execution are not built, so cms.template.activated.v1 and cms.pattern.activated.v1 have no producer.',
   },
   {
     criterion: 'P2-S12-AC-250',
@@ -473,23 +715,21 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: neither the term action RPC nor CMS-03C-09 exists, so cms.taxonomy.changed.v1 has no producer.',
   },
   {
     criterion: 'P2-S12-AC-251',
     text: "Persistence `cms_governed_reviews`: rows are inserted only through `cms_submit_governed_review`, with `state` one of `open`, `approved`, `rejected`, `invalidated`, `subject_kind` one of the three subject kinds, a polymorphic `subject_id` validated by `platform_private.cms_governed_subject_resolve(kind,id)` in the RPC and a BEFORE INSERT trigger, `subject_hash`, `policy_basis_hash` and `approval_evidence_hash` as 64 lowercase hex (the last the JCS SHA-256 of `{ policyBasisHash, subjectHash, subjectId, subjectKind }`), `required_decision_count` 1 to 8 with `recorded_decision_count` at most that count, `required_capabilities` of 1 to 16 and `policy_basis` of 1 to 64 entries, CHECKs tying `protected` to at least 2 decisions and 2 capabilities, `invalidated` to `invalidated_reason` and `approved` or `rejected` to `decided_at`, and `UNIQUE(subject_kind, subject_id) WHERE state IN ('open','approved')`; the frozen columns are immutable, only the named RPCs advance `state`, the recorded count, `activated_at`, `version` and `updated_at` under CAS, and direct UPDATE, DELETE and table grants are revoked.",
     clauses: [
       {
-        text: "Persistence `cms_governed_reviews`: rows are inserted only through `cms_submit_governed_review`, with `state` one of `open`, `approved`, `rejected`, `invalidated`, `subject_kind` one of the three subject kinds, a polymorphic `subject_id` validated by `platform_private.cms_governed_subject_resolve(kind,id)` in the RPC and a BEFORE INSERT trigger, `subject_hash`, `policy_basis_hash` and `approval_evidence_hash` as 64 lowercase hex (the last the JCS SHA-256 of `{ policyBasisHash, subjectHash, subjectId, subjectKind }`), `required_decision_count` 1 to 8 with `recorded_decision_count` at most that count, `required_capabilities` of 1 to 16 and `policy_basis` of 1 to 64 entries, CHECKs tying `protected` to at least 2 decisions and 2 capabilities, `invalidated` to `invalidated_reason` and `approved` or `rejected` to `decided_at`, and `UNIQUE(subject_kind, subject_id) WHERE state IN ('open','approved')`;",
-        citations: [],
-      },
-      {
-        text: 'the frozen columns are immutable, only the named RPCs advance `state`, the recorded count, `activated_at`, `version` and `updated_at` under CAS, and direct UPDATE, DELETE and table grants are revoked.',
+        text: "Persistence `cms_governed_reviews`: rows are inserted only through `cms_submit_governed_review`, with `state` one of `open`, `approved`, `rejected`, `invalidated`, `subject_kind` one of the three subject kinds, a polymorphic `subject_id` validated by `platform_private.cms_governed_subject_resolve(kind,id)` in the RPC and a BEFORE INSERT trigger, `subject_hash`, `policy_basis_hash` and `approval_evidence_hash` as 64 lowercase hex (the last the JCS SHA-256 of `{ policyBasisHash, subjectHash, subjectId, subjectKind }`), `required_decision_count` 1 to 8 with `recorded_decision_count` at most that count, `required_capabilities` of 1 to 16 and `policy_basis` of 1 to 64 entries, CHECKs tying `protected` to at least 2 decisions and 2 capabilities, `invalidated` to `invalidated_reason` and `approved` or `rejected` to `decided_at`, and `UNIQUE(subject_kind, subject_id) WHERE state IN ('open','approved')`; the frozen columns are immutable, only the named RPCs advance `state`, the recorded count, `activated_at`, `version` and `updated_at` under CAS, and direct UPDATE, DELETE and table grants are revoked.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_governed_reviews and cms_submit_governed_review do not exist.',
   },
   {
     criterion: 'P2-S12-AC-252',
@@ -501,7 +741,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_governed_review_decisions does not exist.',
   },
   {
     criterion: 'P2-S12-AC-253',
@@ -513,7 +754,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_governed_review_assignments and cms_assign_governed_reviewer do not exist.',
   },
   {
     criterion: 'P2-S12-AC-254',
@@ -525,7 +767,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_governed_review_dependencies does not exist.',
   },
   {
     criterion: 'P2-S12-AC-255',
@@ -537,23 +780,21 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_governed_activation_schedules does not exist.',
   },
   {
     criterion: 'P2-S12-AC-256',
     text: 'Persistence `cms_canonical_domain_registry`: rows are seeded by forward migration only, immutable and never writable by a caller (`state` `seeded`, `updated_at = created_at`, `owner_id` the seeding release record), hold `domain` one of `role`, `instrument`, `gear`, `place`, `rights` and `jurisdiction` with `provider_state` `built` or `unbuilt` and `provider_key` and `provider_version` non-null exactly when `built`, `UNIQUE(domain, version)`, the current row of a domain being the one with the greatest `version`; Phase 2 seeds `role` as `built` (its provider reading the Shard 02 role facet assertion projection) and the other five `unbuilt`, and an owning shard registers its provider by inserting a newer row.',
     clauses: [
       {
-        text: 'Persistence `cms_canonical_domain_registry`: rows are seeded by forward migration only, immutable and never writable by a caller (`state` `seeded`, `updated_at = created_at`, `owner_id` the seeding release record), hold `domain` one of `role`, `instrument`, `gear`, `place`, `rights` and `jurisdiction` with `provider_state` `built` or `unbuilt` and `provider_key` and `provider_version` non-null exactly when `built`, `UNIQUE(domain, version)`, the current row of a domain being the one with the greatest `version`;',
-        citations: [],
-      },
-      {
-        text: 'Phase 2 seeds `role` as `built` (its provider reading the Shard 02 role facet assertion projection) and the other five `unbuilt`, and an owning shard registers its provider by inserting a newer row.',
+        text: 'Persistence `cms_canonical_domain_registry`: rows are seeded by forward migration only, immutable and never writable by a caller (`state` `seeded`, `updated_at = created_at`, `owner_id` the seeding release record), hold `domain` one of `role`, `instrument`, `gear`, `place`, `rights` and `jurisdiction` with `provider_state` `built` or `unbuilt` and `provider_key` and `provider_version` non-null exactly when `built`, `UNIQUE(domain, version)`, the current row of a domain being the one with the greatest `version`; Phase 2 seeds `role` as `built` (its provider reading the Shard 02 role facet assertion projection) and the other five `unbuilt`, and an owning shard registers its provider by inserting a newer row.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_canonical_domain_registry and its seed do not exist.',
   },
   {
     criterion: 'P2-S12-AC-257',
@@ -565,19 +806,40 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_pattern_versions has no compatible_type_ids or node_count and its block_tree is not the PatternNode forest.',
   },
   {
     criterion: 'P2-S12-AC-258',
     text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.",
     clauses: [
       {
-        text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.",
+        text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`,",
         citations: [],
       },
+      {
+        text: '`carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance,',
+        citations: [],
+      },
+      {
+        text: 'and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_composition_authority.sql',
+            title: 'composition instance version cannot mutate after creation',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_composition_authority.sql',
+            title: 'composition instance versions reject UPDATE and DELETE',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: pending_pattern_version non-null exactly when state is pending_diff, and carried_from_id referencing cms_composition_instances(id). Caveat on the cited clause: the DELETE rejection and the updated_at = created_at CHECK have no direct assertion (UPDATE rejection and the guard trigger are asserted).',
   },
   {
     criterion: 'P2-S12-AC-259',
@@ -589,39 +851,69 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: cms_taxonomy_versions has no canonical_overlap_domains column.',
   },
   {
     criterion: 'P2-S12-AC-260',
     text: "Persistence `cms_locale_variants` (Slice 12 delta): `field_source_hashes jsonb NOT NULL DEFAULT '{}'` is an object of at most 128 field-id keys to 64-hex hashes, `stale_field_ids jsonb NOT NULL DEFAULT '[]'` is an array of at most 128 UUIDs, the physical state is `draft` or `stale`, and each snapshot is immutable (`updated_at = created_at`), source changes appending a stale or new variant row.",
     clauses: [
       {
-        text: "Persistence `cms_locale_variants` (Slice 12 delta): `field_source_hashes jsonb NOT NULL DEFAULT '{}'` is an object of at most 128 field-id keys to 64-hex hashes, `stale_field_ids jsonb NOT NULL DEFAULT '[]'` is an array of at most 128 UUIDs, the physical state is `draft` or `stale`, and each snapshot is immutable (`updated_at = created_at`), source changes appending a stale or new variant row.",
+        text: "Persistence `cms_locale_variants` (Slice 12 delta): `field_source_hashes jsonb NOT NULL DEFAULT '{}'` is an object of at most 128 field-id keys to 64-hex hashes,",
         citations: [],
       },
+      {
+        text: "`stale_field_ids jsonb NOT NULL DEFAULT '[]'` is an array of at most 128 UUIDs,",
+        citations: [],
+      },
+      {
+        text: 'the physical state is `draft` or `stale`,',
+        citations: [],
+      },
+      {
+        text: 'and each snapshot is immutable (`updated_at = created_at`), source changes appending a stale or new variant row.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_related_authority.sql',
+            title: 'locale snapshots are append-only',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_related_authority.sql',
+            title:
+              'locale and related-content versions reject direct writes and mutation',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_source_stale.sql',
+            title:
+              'a changed source appends one stale version for each dependent locale',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title: 'one immutable locale variant is committed',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: field_source_hashes (object of at most 128 field-id keys to 64-hex hashes), stale_field_ids (array of at most 128 UUIDs) and the physical state restricted to draft or stale (the CHECK still allows five values). Caveat on the cited clause: the updated_at = created_at CHECK has no direct assertion.',
   },
   {
     criterion: 'P2-S12-AC-261',
     text: 'RPC and grant inventory: all fifteen 03c tables use forced RLS with no direct write grants for `authenticated` and `anon`; the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version` and `cms_list_taxonomy_selector`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person` and `cms_recheck_governed_reviews(kind, ref_id, batch)` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row); every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
     clauses: [
       {
-        text: 'RPC and grant inventory: all fifteen 03c tables use forced RLS with no direct write grants for `authenticated` and `anon`;',
-        citations: [],
-      },
-      {
-        text: 'the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version` and `cms_list_taxonomy_selector`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person` and `cms_recheck_governed_reviews(kind, ref_id, batch)` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row);',
-        citations: [],
-      },
-      {
-        text: 'every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
+        text: 'RPC and grant inventory: all fifteen 03c tables use forced RLS with no direct write grants for `authenticated` and `anon`; the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version` and `cms_list_taxonomy_selector`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person` and `cms_recheck_governed_reviews(kind, ref_id, batch)` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row); every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: six of the fifteen 03c tables and most of the listed RPCs and job handlers do not exist; existing grant tests cover only the Slice 09/12 tables.',
   },
   {
     criterion: 'P2-S12-AC-262',
@@ -633,7 +925,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the governed review tables and their read policies do not exist.',
   },
   {
     criterion: 'P2-S12-AC-263',
@@ -645,7 +938,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: none of the twelve Slice 12 metrics is emitted.',
   },
   {
     criterion: 'P2-S12-AC-264',
@@ -657,7 +951,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the Slice 12 alerts, trace coverage and allowlisted diagnostics do not exist; only per-route scrubbed telemetry for CMS-03C-01..05 exists.',
   },
   {
     criterion: 'P2-S12-AC-265',
@@ -669,7 +964,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No cited test proves a clause: the template pages exist but their route test only greps the page source text, the real-route specs use an in-memory port, there is no CmsGovernedReviewPanel, and a malformed key renders 404 where this criterion says 400.',
   },
   {
     criterion: 'P2-S12-AC-266',
@@ -681,7 +977,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the page and its islands do not exist (patterns/new and patterns/:patternKey with CmsPatternVersionDesigner).',
   },
   {
     criterion: 'P2-S12-AC-267',
@@ -693,7 +990,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the page and its islands do not exist (taxonomies/new and taxonomies/:taxonomyId with CmsTaxonomyVersionDesigner and CmsTaxonomyTermForm).',
   },
   {
     criterion: 'P2-S12-AC-268',
@@ -705,7 +1003,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the page and its islands do not exist (definition-reviews and definition-reviews/:reviewId with the queue, detail, decision, assignment and activation components).',
   },
   {
     criterion: 'P2-S12-AC-269',
@@ -717,7 +1016,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the page and its islands do not exist (entries/:entryId/composition with CmsCompositionInstanceList, CmsPatternSelector and CmsPatternUpdateDiff).',
   },
   {
     criterion: 'P2-S12-AC-270',
@@ -729,7 +1029,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the page and its islands do not exist (entries/:entryId/locales/:locale with CmsLocaleVariantForm).',
   },
   {
     criterion: 'P2-S12-AC-271',
@@ -741,7 +1042,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: none of the Slice 12 islands exist, so the seven-state tables are untested.',
   },
   {
     criterion: 'P2-S12-AC-272',
@@ -753,27 +1055,21 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no governed surface, diff view or canonical-id handling exists, and no test asserts that no browser route, form, proxy or client type exists for CMS-03C-18 to CMS-03C-21.',
   },
   {
     criterion: 'P2-S12-AC-273',
     text: 'End-to-end journeys: Playwright, using the real routes and two people, creates, submits, assigns, decides (ordinary and protected) and activates, schedules and retires a template, a pattern and a vocabulary; shows a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, a term merged with convergence, a locale variant with a `no_fallback` block, and related content pinned and excluded; and runs keyboard-only and at 200% zoom with no diff value, canonical id or person id in the URL, storage, logs or telemetry.',
     clauses: [
       {
-        text: 'End-to-end journeys: Playwright, using the real routes and two people, creates, submits, assigns, decides (ordinary and protected) and activates, schedules and retires a template, a pattern and a vocabulary;',
-        citations: [],
-      },
-      {
-        text: 'shows a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, a term merged with convergence, a locale variant with a `no_fallback` block, and related content pinned and excluded;',
-        citations: [],
-      },
-      {
-        text: 'and runs keyboard-only and at 200% zoom with no diff value, canonical id or person id in the URL, storage, logs or telemetry.',
+        text: 'End-to-end journeys: Playwright, using the real routes and two people, creates, submits, assigns, decides (ordinary and protected) and activates, schedules and retires a template, a pattern and a vocabulary; shows a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, a term merged with convergence, a locale variant with a `no_fallback` block, and related content pinned and excluded; and runs keyboard-only and at 200% zoom with no diff value, canonical id or person id in the URL, storage, logs or telemetry.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the Slice 12 end-to-end journeys cannot run because governed review, pattern, vocabulary, locale-variant and related-content surfaces are not built.',
   },
   {
     criterion: 'P2-S12-AC-274',
@@ -785,7 +1081,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: of the closed reasonCode list only FALLBACK_CHAIN_MISMATCH exists; the other members, the GOVERNED_REVIEW_VERSION_CONFLICT mapping and the catalog-wide 503/500 rules are not implemented for the unbuilt operations.',
   },
   {
     criterion: 'P2-S12-AC-275',
@@ -797,7 +1094,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test covers the criterion: the registry and OpenAPI contain only CMS-03C-01..05, and nothing asserts CMS-03C-18 to CMS-03C-21 are absent from the browser inventory.',
   },
   {
     criterion: 'P2-S12-AC-276',
@@ -809,7 +1107,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: most Slice 12 writers do not exist and no test proves the Slice 12 lock order, capability re-proof under locks or the deadlock mapping.',
   },
   {
     criterion: 'P2-S12-AC-277',
@@ -821,7 +1120,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no Slice 12 race scenario exists; the Slice 10/11 race directories hold no template, pattern, term, locale or related-content cases.',
   },
   {
     criterion: 'P2-S12-AC-278',
@@ -833,7 +1133,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test proves the whole criterion: only two pgTAP assertions show locale text absent from the author and stale event payloads; public projection, log, cache and the other four classes are untested.',
   },
   {
     criterion: 'P2-S12-AC-279',
@@ -845,83 +1146,167 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no representative-size fixtures or Slice 12 performance gate exist.',
   },
   {
     criterion: 'P2-S12-AC-280',
     text: 'CMS-15 Author locale variant: given Actor may edit the entry in the requested BCP 47 target locale, a source-locale revision exists for the fields being translated, only schema-localizable fields are in scope, and the ordered fallback chain is the one the active content-type version declares for the target locale (the request may carry it only as an equality expectation), implement locked behavior and completion exactly. Operation: CMS-03C-04 (author locale variant), BE03c ledger 25.05.03.',
     clauses: [
       {
-        text: 'CMS-15 Author locale variant: given Actor may edit the entry in the requested BCP 47 target locale, a source-locale revision exists for the fields being translated, only schema-localizable fields are in scope, and the ordered fallback chain is the one the active content-type version declares for the target locale (the request may carry it only as an equality expectation), implement locked behavior and completion exactly.',
-        citations: [],
+        text: 'CMS-15 Author locale variant: given Actor may edit the entry in the requested BCP 47 target locale,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title:
+              'member without entry assignment and author/editor capability is denied',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title:
+              'assigned author receives a draft locale resource tied to the exact source',
+          },
+        ],
       },
       {
-        text: 'Operation: CMS-03C-04 (author locale variant), BE03c ledger 25.05.03.',
+        text: 'a source-locale revision exists for the fields being translated,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title:
+              'assigned author receives a draft locale resource tied to the exact source',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_revision_integrity.sql',
+            title:
+              'source locale must match the immutable source revision locale',
+          },
+        ],
+      },
+      {
+        text: 'only schema-localizable fields are in scope,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title:
+              'nonlocalizable source-schema field cannot be translated [P2-S09-AC-1166]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title:
+              'nonlocalizable field cannot be misdeclared as no-fallback [P2-S09-AC-1166]',
+          },
+        ],
+      },
+      {
+        text: 'and the ordered fallback chain is the one the active content-type version declares for the target locale (the request may carry it only as an equality expectation),',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'the exact active chain and a supported locale author a variant',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              'a fallbackChain that differs from the active chain is a 409 version conflict',
+          },
+        ],
+      },
+      {
+        text: 'implement locked behavior and completion exactly. Operation: CMS-03C-04 (author locale variant), BE03c ledger 25.05.03.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: implement locked behavior and completion exactly for CMS-03C-04 (the unbuilt per-field staleness, derived state, 33rd-variant refusal and locale aggregate identity of AC-234 to AC-237). Caveat on the cited clauses: evidence is database pgTAP and Worker unit tests; no real-stack (Worker + PostgREST) test exists for CMS-03C-04, and tests/e2e/phase-02-slice-12-locale-real-route.spec.ts runs on an in-memory port.',
   },
   {
     criterion: 'P2-S12-AC-281',
     text: 'CMS-15 Author locale variant: preserve declared failure and recovery across invalid authority, concurrency, revocation, deletion, and cascade.',
     clauses: [
       {
-        text: 'CMS-15 Author locale variant: preserve declared failure and recovery across invalid authority, concurrency, revocation, deletion, and cascade.',
+        text: 'CMS-15 Author locale variant: preserve declared failure and recovery across invalid authority,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title:
+              'member without entry assignment and author/editor capability is denied',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title: 'other-tenant entry existence remains concealed',
+          },
+        ],
+      },
+      {
+        text: 'concurrency,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title: 'stale entry version cannot create a second variant',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',
+            title: 'false source hash is rejected before mutation',
+          },
+        ],
+      },
+      {
+        text: 'revocation,',
+        citations: [],
+      },
+      {
+        text: 'deletion,',
+        citations: [],
+      },
+      {
+        text: 'and cascade.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      'Uncited: revocation, deletion and cascade failure-and-recovery for CMS-03C-04 (no test revokes authority mid-flight, deletes a source, or drives the stale cascade through to recovery by revalidation, which is not built). Caveat on the cited clauses: they prove the refusal and that nothing is written; the recovery path in the browser flow is not exercised.',
   },
   {
     criterion: 'P2-S12-AC-282',
     text: '`CMS-15` Author locale variant: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success.',
     clauses: [
       {
-        text: '`CMS-15` Author locale variant: implement Native link/button/form;',
+        text: '`CMS-15` Author locale variant: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success.',
         citations: [],
       },
-      {
-        text: 'focus stays until navigation or named result heading;',
-        citations: [],
-      },
-      {
-        text: 'Server-derived actor/context/capability, valid Zod input, required ETag/idempotency;',
-        citations: [],
-      },
-      {
-        text: 'Render authoritative response/version/provenance/next action;',
-        citations: [],
-      },
-      { text: 'announce status;', citations: [] },
-      { text: 'Map exact `ApiError`;', citations: [] },
-      { text: 'retain input;', citations: [] },
-      { text: 'focus summary/field;', citations: [] },
-      { text: 'reconcile unknown mutation before retry;', citations: [] },
-      { text: 'URL for navigation/filter;', citations: [] },
-      { text: 'scoped draft before commit;', citations: [] },
-      { text: 'server after success.', citations: [] },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the locale page and CmsLocaleVariantForm do not exist.',
   },
   {
     criterion: 'P2-S12-AC-283',
     text: 'CMS-16 Curate related content: given Actor may edit the source entry, every pinned or excluded target is an existing entry the acting context is authorized to reference, and derived candidates come only from explainable bounded deterministic rules over currently authorized projections, implement locked behavior and completion exactly. Operation: CMS-03C-05 (curate related content), BE03c ledger 25.05.04.',
     clauses: [
       {
-        text: 'CMS-16 Curate related content: given Actor may edit the source entry, every pinned or excluded target is an existing entry the acting context is authorized to reference, and derived candidates come only from explainable bounded deterministic rules over currently authorized projections, implement locked behavior and completion exactly.',
-        citations: [],
-      },
-      {
-        text: 'Operation: CMS-03C-05 (curate related content), BE03c ledger 25.05.04.',
+        text: 'CMS-16 Curate related content: given Actor may edit the source entry, every pinned or excluded target is an existing entry the acting context is authorized to reference, and derived candidates come only from explainable bounded deterministic rules over currently authorized projections, implement locked behavior and completion exactly. Operation: CMS-03C-05 (curate related content), BE03c ledger 25.05.04.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: the curation RPC and its target-authorization and derived-candidate rules are not built; Worker boundary tests use a stubbed port and the production adapter fails closed.',
   },
   {
     criterion: 'P2-S12-AC-284',
@@ -933,38 +1318,20 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no related-content write exists to fail or recover.',
   },
   {
     criterion: 'P2-S12-AC-285',
     text: '`CMS-16` Curate related content: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success.',
     clauses: [
       {
-        text: '`CMS-16` Curate related content: implement Native link/button/form;',
+        text: '`CMS-16` Curate related content: implement Native link/button/form; focus stays until navigation or named result heading; Server-derived actor/context/capability, valid Zod input, required ETag/idempotency; Render authoritative response/version/provenance/next action; announce status; Map exact `ApiError`; retain input; focus summary/field; reconcile unknown mutation before retry; URL for navigation/filter; scoped draft before commit; server after success.',
         citations: [],
       },
-      {
-        text: 'focus stays until navigation or named result heading;',
-        citations: [],
-      },
-      {
-        text: 'Server-derived actor/context/capability, valid Zod input, required ETag/idempotency;',
-        citations: [],
-      },
-      {
-        text: 'Render authoritative response/version/provenance/next action;',
-        citations: [],
-      },
-      { text: 'announce status;', citations: [] },
-      { text: 'Map exact `ApiError`;', citations: [] },
-      { text: 'retain input;', citations: [] },
-      { text: 'focus summary/field;', citations: [] },
-      { text: 'reconcile unknown mutation before retry;', citations: [] },
-      { text: 'URL for navigation/filter;', citations: [] },
-      { text: 'scoped draft before commit;', citations: [] },
-      { text: 'server after success.', citations: [] },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'No test can exist yet: no related-content page or form exists.',
   },
 ];

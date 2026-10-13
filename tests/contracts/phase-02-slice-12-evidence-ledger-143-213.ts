@@ -2,6 +2,8 @@ import type { EvidenceLedgerEntry } from './phase-02-evidence-ledger';
 
 // Slice 12 evidence ledger, criteria AC143-AC213. Aggregated by
 // tests/contracts/phase-02-slice-12-evidence-ledger.ts and the guard tests/contracts/phase-02-slice-12-evidence-guard.test.ts.
+// Filled by evidence lane C (2026-10-12): citations name only tests whose assertions produce and check the
+// condition of the clause; every uncited clause is named in `limitation`; unbuilt behaviour stays unverified.
 export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
   {
     criterion: 'P2-S12-AC-143',
@@ -13,7 +15,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: no CMS-03C-19 claim/execute RPC, governed activation schedule table, lease logic or Worker sweep exists, so there is no behavior to test yet.',
   },
   {
     criterion: 'P2-S12-AC-144',
@@ -25,7 +28,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the CMS-03C-19 RPCs, their EXECUTE grants and the registered scheduled-sweep principal do not exist yet.',
   },
   {
     criterion: 'P2-S12-AC-145',
@@ -37,7 +41,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: no governed-activation sweep (cron, batch 25, SKIP LOCKED claim, lease, retry ladder) exists to test.',
   },
   {
     criterion: 'P2-S12-AC-146',
@@ -49,55 +54,47 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: lease-expiry return, already_completed replay, terminal reasonCode blocking, review-invalidation cancel and late-run deviation_seconds have no implementation.',
   },
   {
     criterion: 'P2-S12-AC-147',
     text: 'CMS-03C-19 performs the `activate` switch for a due schedule, sets the schedule `completed` with `actual_at_utc` and `deviation_seconds`, and commits one activation event, the audit record and the schedule CAS atomically as CMS-03B-20 does; verification covers execution with only a revocation and grant-end recheck, worker lease expiry, the retry ladder and every `reasonCode`, a late run and a repeated run, and the absence of both RPCs from browser routes and generated OpenAPI.',
     clauses: [
       {
-        text: 'CMS-03C-19 performs the `activate` switch for a due schedule, sets the schedule `completed` with `actual_at_utc` and `deviation_seconds`, and commits one activation event, the audit record and the schedule CAS atomically as CMS-03B-20 does;',
-        citations: [],
-      },
-      {
-        text: 'verification covers execution with only a revocation and grant-end recheck, worker lease expiry, the retry ladder and every `reasonCode`, a late run and a repeated run, and the absence of both RPCs from browser routes and generated OpenAPI.',
+        text: 'CMS-03C-19 performs the `activate` switch for a due schedule, sets the schedule `completed` with `actual_at_utc` and `deviation_seconds`, and commits one activation event, the audit record and the schedule CAS atomically as CMS-03B-20 does; verification covers execution with only a revocation and grant-end recheck, worker lease expiry, the retry ladder and every `reasonCode`, a late run and a repeated run, and the absence of both RPCs from browser routes and generated OpenAPI.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: there is no governed activate-switch execution, atomic event/audit/schedule commit, or browser-route absence check to test.',
   },
   {
     criterion: 'P2-S12-AC-148',
     text: 'CMS-03C-20 is the database RPC `platform_private.cms_resolve_locale_field(p_entry_id uuid, p_locale text, p_field_id uuid)` returning the strict `LocaleFieldResolution` (`fieldId`, `locale`, `mode` `none`, `localized` or `no_fallback`, `outcome` `resolved` or `missing`, `provenance` `authored`, `localized_fallback` or `missing`, `resolvedFromLocale`, `stale`, `blocking`, and `reasonCode` `no_fallback_missing`, `no_fallback_stale` or null) and the registered preflight provider `cms.locale.no_fallback_gate`; it is the one resolver used by the 03b `locale` preflight provider, the Shard 04 delivery projection and editorial reads, and it has no browser route.',
     clauses: [
       {
-        text: 'CMS-03C-20 is the database RPC `platform_private.cms_resolve_locale_field(p_entry_id uuid, p_locale text, p_field_id uuid)` returning the strict `LocaleFieldResolution` (`fieldId`, `locale`, `mode` `none`, `localized` or `no_fallback`, `outcome` `resolved` or `missing`, `provenance` `authored`, `localized_fallback` or `missing`, `resolvedFromLocale`, `stale`, `blocking`, and `reasonCode` `no_fallback_missing`, `no_fallback_stale` or null) and the registered preflight provider `cms.locale.no_fallback_gate`;',
-        citations: [],
-      },
-      {
-        text: 'it is the one resolver used by the 03b `locale` preflight provider, the Shard 04 delivery projection and editorial reads, and it has no browser route.',
+        text: 'CMS-03C-20 is the database RPC `platform_private.cms_resolve_locale_field(p_entry_id uuid, p_locale text, p_field_id uuid)` returning the strict `LocaleFieldResolution` (`fieldId`, `locale`, `mode` `none`, `localized` or `no_fallback`, `outcome` `resolved` or `missing`, `provenance` `authored`, `localized_fallback` or `missing`, `resolvedFromLocale`, `stale`, `blocking`, and `reasonCode` `no_fallback_missing`, `no_fallback_stale` or null) and the registered preflight provider `cms.locale.no_fallback_gate`; it is the one resolver used by the 03b `locale` preflight provider, the Shard 04 delivery projection and editorial reads, and it has no browser route.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: platform_private.cms_resolve_locale_field and the LocaleFieldResolution contract do not exist.',
   },
   {
     criterion: 'P2-S12-AC-149',
     text: "CMS-03C-20 resolves a field by its `localizationMode`: with `none` the value is the source-locale value, and with `localized` (fallback permitted) it is the field in the target locale's own revision when present, otherwise the first locale of the active version's `fallbackChains[locale]` (ordered, at most 16, ending at the default locale) that has a value, recording `resolvedFromLocale` and provenance `localized_fallback`, otherwise `missing`; the `no_fallback` and stale clauses are owned by AC051 and AC052.",
     clauses: [
       {
-        text: "CMS-03C-20 resolves a field by its `localizationMode`: with `none` the value is the source-locale value, and with `localized` (fallback permitted) it is the field in the target locale's own revision when present, otherwise the first locale of the active version's `fallbackChains[locale]` (ordered, at most 16, ending at the default locale) that has a value, recording `resolvedFromLocale` and provenance `localized_fallback`, otherwise `missing`;",
-        citations: [],
-      },
-      {
-        text: 'the `no_fallback` and stale clauses are owned by AC051 and AC052.',
+        text: "CMS-03C-20 resolves a field by its `localizationMode`: with `none` the value is the source-locale value, and with `localized` (fallback permitted) it is the field in the target locale's own revision when present, otherwise the first locale of the active version's `fallbackChains[locale]` (ordered, at most 16, ending at the default locale) that has a value, recording `resolvedFromLocale` and provenance `localized_fallback`, otherwise `missing`; the `no_fallback` and stale clauses are owned by AC051 and AC052.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: no resolver exists, so mode none/localized/no_fallback resolution, the fallback-chain walk and resolvedFromLocale are untested.',
   },
   {
     criterion: 'P2-S12-AC-150',
@@ -109,7 +106,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the resolver, its restricted EXECUTE grants and its absence from the browser inventory cannot be tested yet.',
   },
   {
     criterion: 'P2-S12-AC-151',
@@ -121,39 +119,34 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: determinism and read-only behavior cannot be tested without the resolver.',
   },
   {
     criterion: 'P2-S12-AC-152',
     text: 'CMS-03C-20 is consumed by the 03b `locale` preflight provider, by the Shard 04 delivery projection (which adds no resolution rule of its own) and by `CmsLocaleVariantForm` per-field resolution, so a field blocked at publication is never resolved differently at delivery; verification covers the resolver for each `localizationMode`, the fallback chain walk and `resolvedFromLocale`, and the absence of the RPC from browser routes.',
     clauses: [
       {
-        text: 'CMS-03C-20 is consumed by the 03b `locale` preflight provider, by the Shard 04 delivery projection (which adds no resolution rule of its own) and by `CmsLocaleVariantForm` per-field resolution, so a field blocked at publication is never resolved differently at delivery;',
-        citations: [],
-      },
-      {
-        text: 'verification covers the resolver for each `localizationMode`, the fallback chain walk and `resolvedFromLocale`, and the absence of the RPC from browser routes.',
+        text: 'CMS-03C-20 is consumed by the 03b `locale` preflight provider, by the Shard 04 delivery projection (which adds no resolution rule of its own) and by `CmsLocaleVariantForm` per-field resolution, so a field blocked at publication is never resolved differently at delivery; verification covers the resolver for each `localizationMode`, the fallback chain walk and `resolvedFromLocale`, and the absence of the RPC from browser routes.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: neither the 03b locale preflight provider call, the Shard 04 delivery projection nor CmsLocaleVariantForm consume a resolver.',
   },
   {
     criterion: 'P2-S12-AC-153',
     text: 'CMS-03C-21 is the database RPC `platform_private.cms_related_content_public_targets(p_source_entry_id uuid, p_locale text, p_audience text)` returning an ordered array of at most 128 strict `RelatedPublicTarget` records (`entryId`, `source` `pin` or `derived`, a nullable `reasonCode` and `position` 0-127); it has no browser route and is absent from the browser route inventory.',
     clauses: [
       {
-        text: 'CMS-03C-21 is the database RPC `platform_private.cms_related_content_public_targets(p_source_entry_id uuid, p_locale text, p_audience text)` returning an ordered array of at most 128 strict `RelatedPublicTarget` records (`entryId`, `source` `pin` or `derived`, a nullable `reasonCode` and `position` 0-127);',
-        citations: [],
-      },
-      {
-        text: 'it has no browser route and is absent from the browser route inventory.',
+        text: 'CMS-03C-21 is the database RPC `platform_private.cms_related_content_public_targets(p_source_entry_id uuid, p_locale text, p_audience text)` returning an ordered array of at most 128 strict `RelatedPublicTarget` records (`entryId`, `source` `pin` or `derived`, a nullable `reasonCode` and `position` 0-127); it has no browser route and is absent from the browser route inventory.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: platform_private.cms_related_content_public_targets and the RelatedPublicTarget contract do not exist.',
   },
   {
     criterion: 'P2-S12-AC-154',
@@ -165,7 +158,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: ordering, public eligibility and exclusion/refill rules have no implementation.',
   },
   {
     criterion: 'P2-S12-AC-155',
@@ -177,7 +171,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the RPC, its restricted callers and its draft/hidden/other-owner filtering cannot be tested yet.',
   },
   {
     criterion: 'P2-S12-AC-156',
@@ -189,7 +184,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: bound, statelessness and read-only behavior cannot be tested without the RPC.',
   },
   {
     criterion: 'P2-S12-AC-157',
@@ -201,94 +197,583 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: disappearance of an unpublished target while the editorial explanation stays private cannot be tested without the RPC.',
   },
   {
     criterion: 'P2-S12-AC-158',
     text: 'CMS-03C-21 is consumed by the Shard 04 delivery projection (which re-implements neither resolution nor eligibility) and by the Slice 11 related-content recheck; verification covers pins-first ordering, the deterministic `shared-terms` and `same-type-recent` ranking and tie-breaks, the 128-target bound, refill only from eligible derived candidates, recomputation at every projection, and the absence of the RPC from browser routes.',
     clauses: [
       {
-        text: 'CMS-03C-21 is consumed by the Shard 04 delivery projection (which re-implements neither resolution nor eligibility) and by the Slice 11 related-content recheck;',
-        citations: [],
-      },
-      {
-        text: 'verification covers pins-first ordering, the deterministic `shared-terms` and `same-type-recent` ranking and tie-breaks, the 128-target bound, refill only from eligible derived candidates, recomputation at every projection, and the absence of the RPC from browser routes.',
+        text: 'CMS-03C-21 is consumed by the Shard 04 delivery projection (which re-implements neither resolution nor eligibility) and by the Slice 11 related-content recheck; verification covers pins-first ordering, the deterministic `shared-terms` and `same-type-recent` ranking and tie-breaks, the 128-target bound, refill only from eligible derived candidates, recomputation at every projection, and the absence of the RPC from browser routes.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: neither consumer (Shard 04 delivery projection, Slice 11 related-content recheck) calls a public-targets RPC.',
   },
   {
     criterion: 'P2-S12-AC-159',
     text: 'cmsTemplateContextRead registers GET /api/v1/cms/templates/context with an empty request and returns the strict `TemplateDesignerContext`: at most 64 owned active compiled content-type selectors (`id`, `typeKey`, `activeVersionId`, `activeVersion`, `sourceLocale`) and at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`), excluding owner IDs, grant records, renderer refs, manifests and policy internals; generated OpenAPI and the discovered Hono route match the registry row.',
     clauses: [
       {
-        text: 'cmsTemplateContextRead registers GET /api/v1/cms/templates/context with an empty request and returns the strict `TemplateDesignerContext`: at most 64 owned active compiled content-type selectors (`id`, `typeKey`, `activeVersionId`, `activeVersion`, `sourceLocale`) and at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`), excluding owner IDs, grant records, renderer refs, manifests and policy internals;',
+        text: 'cmsTemplateContextRead registers GET /api/v1/cms/templates/context with an empty request',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-openapi.test.ts',
+            title:
+              'Slice 12 CMS-03C-01 canonical OpenAPI authority registers a separate protected, no-store CMS-11 context read',
+          },
+        ],
+      },
+      {
+        text: 'returns the strict `TemplateDesignerContext`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template.test.ts',
+            title:
+              'CMS-03C-01 template definition contracts accepts only a bounded, disclosure-safe designer context',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read fails closed on malformed provider data',
+          },
+        ],
+      },
+      {
+        text: 'at most 64',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template.test.ts',
+            title:
+              'CMS-03C-01 template definition contracts accepts only a bounded, disclosure-safe designer context',
+          },
+        ],
+      },
+      {
+        text: 'owned active compiled content-type selectors (`id`, `typeKey`, `activeVersionId`, `activeVersion`, `sourceLocale`)',
         citations: [],
       },
       {
-        text: 'generated OpenAPI and the discovered Hono route match the registry row.',
+        text: 'at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`)',
+        citations: [],
+      },
+      {
+        text: 'excluding owner IDs, grant records, renderer refs, manifests and policy internals',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template.test.ts',
+            title:
+              'CMS-03C-01 template definition contracts accepts only a bounded, disclosure-safe designer context',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_context.sql',
+            title:
+              'context contains only bounded safe active type and block selectors',
+          },
+        ],
+      },
+      {
+        text: 'generated OpenAPI',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-openapi.test.ts',
+            title:
+              'Slice 12 CMS-03C-01 canonical OpenAPI authority registers a separate protected, no-store CMS-11 context read',
+          },
+        ],
+      },
+      {
+        text: 'the discovered Hono route match the registry row.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'owned active compiled content-type selectors' - no test asserts owner scoping, active-version-only or compiled-artifact-only selection (the pgTAP only checks that one fixture type is returned); (2) 'at most 128 owned registered, currently supported block selectors' - the 128 bound is not tested (only 64 content types are) and no test excludes other-owner or non-supported blocks; (3) 'the discovered Hono route match the registry row' - no test compares the mounted Hono route to the registry row.",
   },
   {
     criterion: 'P2-S12-AC-160',
     text: 'cmsTemplateContextRead accepts an empty request only: no request body, no CSRF requirement, no `Idempotency-Key`, no `If-Match` and no owner selector, with the owner and acting context derived server-side, and an invalid query is 400.',
     clauses: [
       {
-        text: 'cmsTemplateContextRead accepts an empty request only: no request body, no CSRF requirement, no `Idempotency-Key`, no `If-Match` and no owner selector, with the owner and acting context derived server-side, and an invalid query is 400.',
-        citations: [],
+        text: 'cmsTemplateContextRead accepts an empty request only',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-openapi.test.ts',
+            title:
+              'Slice 12 CMS-03C-01 canonical OpenAPI authority registers a separate protected, no-store CMS-11 context read',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects query selector before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects nonempty body claim on a read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'no request body',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read answers request media on a read with 415 and an empty allowlist (BE00)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects request media on a read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects nonempty body claim on a read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects transfer encoding on a read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'no CSRF requirement',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-openapi.test.ts',
+            title:
+              'Slice 12 CMS-03C-01 canonical OpenAPI authority registers a separate protected, no-store CMS-11 context read',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read returns only validated owner-scoped selectors with no-store',
+          },
+        ],
+      },
+      {
+        text: 'no `Idempotency-Key`, no `If-Match`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects idempotency key on a read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects write precondition on a read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'no owner selector',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects query selector before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/context.test.ts',
+            title:
+              'same-origin template context read rejects query authority and malformed provider data',
+          },
+        ],
+      },
+      {
+        text: 'with the owner and acting context derived server-side',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-context.test.ts',
+            title:
+              'CMS-03C-01 production template adapter reads only the named protected context RPC with server-derived identity',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-context.test.ts',
+            title:
+              'CMS-03C-01 production template adapter rejects invalid context operation and mismatched verified session before transport',
+          },
+        ],
+      },
+      {
+        text: 'an invalid query is 400.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects query selector before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/context.test.ts',
+            title:
+              'same-origin template context read rejects query authority and malformed provider data',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-161',
     text: 'cmsTemplateContextRead serves only an authenticated human with confirmed acting-party membership and an active `cms.template_designer` grant, rechecks the actor, acting party, confirmed membership and current designer grant on every read in a private RPC that the browser and authenticated database roles cannot call or read through its source tables, answers a denied read as 403, and never reserves permission for a later write.',
     clauses: [
       {
-        text: 'cmsTemplateContextRead serves only an authenticated human with confirmed acting-party membership and an active `cms.template_designer` grant, rechecks the actor, acting party, confirmed membership and current designer grant on every read in a private RPC that the browser and authenticated database roles cannot call or read through its source tables, answers a denied read as 403, and never reserves permission for a later write.',
+        text: 'cmsTemplateContextRead serves only an authenticated human with confirmed acting-party membership and an active `cms.template_designer` grant',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read fails closed for unauthenticated session',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read fails closed for malformed human session',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read fails closed for no acting party session',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read denies missing designer authority before invoking the RPC',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_context.sql',
+            title: 'authorized template designer can read context',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_context.sql',
+            title:
+              'revoked designer grant denies context without disclosing records',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_09_dec119_future_membership.sql',
+            title:
+              'with the tenure not yet started every effective-capability predicate refuses, whatever grant exists',
+          },
+        ],
+      },
+      {
+        text: 'rechecks the actor, acting party, confirmed membership and current designer grant on every read',
+        citations: [],
+      },
+      {
+        text: 'in a private RPC that the browser and authenticated database roles cannot call',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_context.sql',
+            title: 'browser roles cannot execute the context RPC directly',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_09_r8_api_surface.sql',
+            title:
+              'every amendment and supporting RPC is service-role only: never anon, PUBLIC or authenticated [P2-S09-AC-180]',
+          },
+        ],
+      },
+      {
+        text: 'read through its source tables',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_09_evidence_misc.sql',
+            title:
+              'no cms_ table grants any direct privilege to anon, authenticated or service_role [P2-S09-AC-181]',
+          },
+        ],
+      },
+      {
+        text: 'answers a denied read as 403',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read denies missing designer authority before invoking the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-context.test.ts',
+            title:
+              'CMS-03C-01 production template adapter maps context RPC denial and refuses malformed or unavailable projections',
+          },
+        ],
+      },
+      {
+        text: 'never reserves permission for a later write.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'rechecks the actor, acting party, confirmed membership and current designer grant on every read' - only the grant revocation is asserted against cms_template_context (an acting party the actor is not a confirmed member of, an absent actor and an ended or pending membership are not tested against the RPC; the membership predicate is tested on the helper only); (2) 'never reserves permission for a later write' - no test asserts that a context read stores or mints nothing.",
   },
   {
     criterion: 'P2-S12-AC-162',
     text: 'cmsTemplateContextRead is a no-store, read-only call that accepts neither `Idempotency-Key` nor `If-Match` and enforces read buckets of 60/min/user and 60/min/party, a 15,000 ms deadline and the Tier 2 target.',
     clauses: [
       {
-        text: 'cmsTemplateContextRead is a no-store, read-only call that accepts neither `Idempotency-Key` nor `If-Match` and enforces read buckets of 60/min/user and 60/min/party, a 15,000 ms deadline and the Tier 2 target.',
+        text: 'cmsTemplateContextRead is a no-store',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read returns only validated owner-scoped selectors with no-store',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/context.test.ts',
+            title:
+              'same-origin template context read is dynamic, forwards only approved cookies, and validates its body',
+          },
+        ],
+      },
+      {
+        text: 'read-only call that accepts neither `Idempotency-Key` nor `If-Match`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects idempotency key on a read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects write precondition on a read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'enforces read buckets of 60/min/user and 60/min/party',
+        citations: [],
+      },
+      {
+        text: 'a 15,000 ms deadline',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read enforces a total deadline and catches unexpected execution failures',
+          },
+        ],
+      },
+      {
+        text: 'the Tier 2 target.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'enforces read buckets of 60/min/user and 60/min/party' - no context-route test asserts that both the user and the party bucket are consulted with limit 60 and window 60 s (only the 429 header limit and a rejected wrong limit are checked; the detail route has the scope assertion, the context route does not); (2) 'the Tier 2 target' - no latency or SLO evidence.",
   },
   {
     criterion: 'P2-S12-AC-163',
     text: 'cmsTemplateContextRead answers a denied read as 403, an invalid query as 400, a malformed provider projection as 502 and a dependency or deadline failure as 503 or 504 with a typed ApiError, and the POST independently rechecks all authority and compatibility so a stale context never authorizes a write.',
     clauses: [
       {
-        text: 'cmsTemplateContextRead answers a denied read as 403, an invalid query as 400, a malformed provider projection as 502 and a dependency or deadline failure as 503 or 504 with a typed ApiError, and the POST independently rechecks all authority and compatibility so a stale context never authorizes a write.',
-        citations: [],
+        text: 'cmsTemplateContextRead answers a denied read as 403, an invalid query as 400, a malformed provider projection as 502 and a dependency or deadline failure as 503 or 504 with a typed ApiError',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read denies missing designer authority before invoking the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read rejects query selector before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read fails closed on malformed provider data',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read fails closed for throw context provider',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-routes.test.ts',
+            title:
+              'CMS-11 protected template context read enforces a total deadline and catches unexpected execution failures',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-context.test.ts',
+            title:
+              'CMS-03C-01 production template adapter maps context RPC denial and refuses malformed or unavailable projections',
+          },
+        ],
+      },
+      {
+        text: 'the POST independently rechecks all authority and compatibility so a stale context never authorizes a write.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title:
+              'CMS-03C-01 confirmed member without designer grant cannot define templates',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title: 'CMS-03C-01 anonymous caller cannot define templates',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title:
+              'CMS-03C-01 refuses nonexistent or inactive compatible types',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title:
+              'CMS-03C-01 rejects a registered block absent from the active type renderer',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-routes.test.ts',
+            title:
+              'CMS-03C-01 protected template-version route fails closed on missing identity, wrong capability and absent acting party',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-164',
     text: 'cmsTemplateContextRead is consumed by the protected `CmsTemplateDesigner`, `CmsTemplateEditDesigner` and `CmsPatternVersionDesigner`, which load their picker options (active content types and supported blocks) from this same-origin no-store GET before enabling the form, disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded, and neither extend the general auth-session resource nor grant designer authority in the browser; verification covers each denied or degraded state and that the POST revalidates authority.',
     clauses: [
       {
-        text: 'cmsTemplateContextRead is consumed by the protected `CmsTemplateDesigner`, `CmsTemplateEditDesigner` and `CmsPatternVersionDesigner`, which load their picker options (active content types and supported blocks) from this same-origin no-store GET before enabling the form, disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded, and neither extend the general auth-session resource nor grant designer authority in the browser;',
+        text: 'cmsTemplateContextRead is consumed by the protected `CmsTemplateDesigner`, `CmsTemplateEditDesigner`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.test.tsx',
+            title:
+              'CMS-11 template designer shell renders a native form with protected selectors and no privileged evidence fields',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-real-route.spec.ts',
+            title:
+              'CMS-11 keeps a stale tab’s unsent values through a real-route conflict and explicit rebase',
+            project: 'real-route-chrome',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-edit.spec.ts',
+            title:
+              'Phase 2 Slice 12 protected template edit > without validated protected projections, a valid key does not fabricate an editable draft',
+            project: 'chrome',
+          },
+        ],
+      },
+      {
+        text: '`CmsPatternVersionDesigner`',
+        citations: [],
+      },
+      {
+        text: 'which load their picker options (active content types and supported blocks) from this same-origin no-store GET before enabling the form',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.test.tsx',
+            title:
+              'CMS-11 template designer shell renders a native form with protected selectors and no privileged evidence fields',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.test.tsx',
+            title:
+              'CMS-11 template designer shell disables submission when a selector or CSRF prerequisite is absent',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/context.test.ts',
+            title:
+              'same-origin template context read is dynamic, forwards only approved cookies, and validates its body',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-edit.spec.ts',
+            title:
+              'Phase 2 Slice 12 protected template edit > without validated protected projections, a valid key does not fabricate an editable draft',
+            project: 'chrome',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-real-route.spec.ts',
+            title:
+              'CMS-11 keeps a stale tab’s unsent values through a real-route conflict and explicit rebase',
+            project: 'real-route-chrome',
+          },
+        ],
+      },
+      {
+        text: 'disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded',
+        citations: [],
+      },
+      {
+        text: 'neither extend the general auth-session resource nor grant designer authority in the browser',
         citations: [],
       },
       {
@@ -296,79 +781,553 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) '`CmsPatternVersionDesigner`' - that consumer does not exist; (2) 'disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded' - only the no-types/no-CSRF disabled state and the degraded fail-closed page are behavior-tested; the 401 sign-in redirect, 403 capability copy and 429 rate-wait of the context load are asserted only as source substrings in template-designer-route.test.ts; (3) 'neither extend the general auth-session resource nor grant designer authority in the browser' - no test; (4) 'verification covers each denied or degraded state and that the POST revalidates authority' - the per-state verification does not exist.",
   },
   {
     criterion: 'P2-S12-AC-165',
     text: "cmsTemplateLatestRead registers GET /api/v1/cms/templates/{templateKey} with `TemplateLatestQuery` (path) and returns the strict `TemplateVersionDetail` of the caller owner's latest version of the key: the `TemplateVersionResource` plus `slots`, `bindings`, `locale` and `audience`, with no owner or authority field; generated OpenAPI and the discovered Hono route match the registry row.",
     clauses: [
       {
-        text: "cmsTemplateLatestRead registers GET /api/v1/cms/templates/{templateKey} with `TemplateLatestQuery` (path) and returns the strict `TemplateVersionDetail` of the caller owner's latest version of the key: the `TemplateVersionResource` plus `slots`, `bindings`, `locale` and `audience`, with no owner or authority field;",
-        citations: [],
+        text: 'cmsTemplateLatestRead registers GET /api/v1/cms/templates/{templateKey} with `TemplateLatestQuery` (path)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-openapi.test.ts',
+            title:
+              'Slice 12 CMS-03C-01 canonical OpenAPI authority registers a protected current-definition read for edit and conflict reconciliation',
+          },
+        ],
       },
       {
-        text: 'generated OpenAPI and the discovered Hono route match the registry row.',
+        text: "returns the strict `TemplateVersionDetail` of the caller owner's latest version of the key",
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-detail.test.ts',
+            title:
+              'CMS-11 protected latest-template detail contract returns a complete editable definition with a strong current version',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_detail.sql',
+            title: 'read returns the current version, not a stale first draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route reads only the validated latest definition with a strong ETag and no-store',
+          },
+        ],
+      },
+      {
+        text: 'the `TemplateVersionResource` plus `slots`, `bindings`, `locale` and `audience`, with no owner or authority field',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-detail.test.ts',
+            title:
+              'CMS-11 protected latest-template detail contract returns a complete editable definition with a strong current version',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_detail.sql',
+            title:
+              'detail carries exact editable fields but no private authority data',
+          },
+        ],
+      },
+      {
+        text: 'generated OpenAPI',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-openapi.test.ts',
+            title:
+              'Slice 12 CMS-03C-01 canonical OpenAPI authority registers a protected current-definition read for edit and conflict reconciliation',
+          },
+        ],
+      },
+      {
+        text: 'the discovered Hono route match the registry row.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: 'the discovered Hono route match the registry row' - no route-discovery parity test for GET /api/v1/cms/templates/{templateKey} (the OpenAPI/registry half is tested). The 'caller owner's latest version' scoping is only proven for a single owner; cross-owner scoping is the open item of AC-166/AC-167.",
   },
   {
     criterion: 'P2-S12-AC-166',
     text: "cmsTemplateLatestRead accepts only a path `templateKey` that matches the template grammar and is not a reserved key (`context`, `versions`, `new`), resolves it only within the caller's owner scope, rejects a body, `Idempotency-Key` and `If-Match`, and answers a hidden or absent key with the same 404.",
     clauses: [
       {
-        text: "cmsTemplateLatestRead accepts only a path `templateKey` that matches the template grammar and is not a reserved key (`context`, `versions`, `new`), resolves it only within the caller's owner scope, rejects a body, `Idempotency-Key` and `If-Match`, and answers a hidden or absent key with the same 404.",
+        text: 'cmsTemplateLatestRead accepts only a path `templateKey` that matches the template grammar',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects invalid selectors after authentication and before authorization or the read',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template.test.ts',
+            title:
+              'CMS-03C-01 template definition contracts enforces immutable template-key grammar and a positive version field',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/template-detail.test.ts',
+            title:
+              'same-origin current-template detail proxy rejects invalid path or query selectors before transport',
+          },
+        ],
+      },
+      {
+        text: 'is not a reserved key (`context`, `versions`, `new`)',
+        citations: [],
+      },
+      {
+        text: "resolves it only within the caller's owner scope",
+        citations: [],
+      },
+      {
+        text: 'rejects a body, `Idempotency-Key` and `If-Match`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects idempotency key on a detail read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects write precondition on a detail read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects request media on a detail read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects nonempty body claim on a detail read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects transfer encoding on a detail read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'answers a hidden or absent key with the same 404.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'is not a reserved key (`context`, `versions`, `new`)' - E13 is not built: CmsTemplateKeySchema accepts all three; (2) 'resolves it only within the caller's owner scope' - no cross-owner test exists; (3) 'answers a hidden or absent key with the same 404' - only the absent key is tested (pgTAP NOT_FOUND for missing and unknown keys, route and adapter 404 mapping); no test reads a key held by another owner.",
   },
   {
     criterion: 'P2-S12-AC-167',
     text: "cmsTemplateLatestRead serves only `cms.template_designer` in the caller's owner scope (a caller without the capability is 403), resolves the key only within that scope so that a key held by another owner is the same 404 as an unused key, and serializes no owner or authority field.",
     clauses: [
       {
-        text: "cmsTemplateLatestRead serves only `cms.template_designer` in the caller's owner scope (a caller without the capability is 403), resolves the key only within that scope so that a key held by another owner is the same 404 as an unused key, and serializes no owner or authority field.",
+        text: 'cmsTemplateLatestRead serves only `cms.template_designer`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route requires the live designer capability before reading',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_detail.sql',
+            title: 'authorized designer reads the current template definition',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_detail.sql',
+            title: 'revoked designer grant denies the current template read',
+          },
+        ],
+      },
+      {
+        text: "in the caller's owner scope",
         citations: [],
       },
+      {
+        text: '(a caller without the capability is 403)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route requires the live designer capability before reading',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-detail.test.ts',
+            title:
+              'CMS-11 protected latest-template production adapter rejects invalid operation, key, and both missing authority cases before transport',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_detail.sql',
+            title: 'revoked designer grant denies the current template read',
+          },
+        ],
+      },
+      {
+        text: 'resolves the key only within that scope so that a key held by another owner is the same 404 as an unused key',
+        citations: [],
+      },
+      {
+        text: 'serializes no owner or authority field.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-detail.test.ts',
+            title:
+              'CMS-11 protected latest-template detail contract returns a complete editable definition with a strong current version',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-detail.test.ts',
+            title:
+              'CMS-11 protected latest-template detail contract rejects hidden renderer data and malformed editable fields',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_detail.sql',
+            title:
+              'detail carries exact editable fields but no private authority data',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route preserves concealed not-found and rejects malformed dependency data',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/template-detail.test.ts',
+            title:
+              'same-origin current-template detail proxy fails closed on mismatched or private provider fields',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) \"in the caller's owner scope\" and (2) 'resolves the key only within that scope so that a key held by another owner is the same 404 as an unused key' - there is no cross-owner test at any layer (the owner_id predicate in the RPC query is unexercised).",
   },
   {
     criterion: 'P2-S12-AC-168',
     text: 'cmsTemplateLatestRead is a no-store, read-only call that accepts neither `Idempotency-Key` nor `If-Match`, carries the strong ETag `"{version}"` of the returned version, and enforces read buckets of 60/min/user and 60/min/party, a 15,000 ms deadline and the Tier 2 target.',
     clauses: [
       {
-        text: 'cmsTemplateLatestRead is a no-store, read-only call that accepts neither `Idempotency-Key` nor `If-Match`, carries the strong ETag `"{version}"` of the returned version, and enforces read buckets of 60/min/user and 60/min/party, a 15,000 ms deadline and the Tier 2 target.',
+        text: 'cmsTemplateLatestRead is a no-store',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route reads only the validated latest definition with a strong ETag and no-store',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/template-detail.test.ts',
+            title:
+              'same-origin current-template detail proxy forwards only approved identity material and exact validated definition',
+          },
+        ],
+      },
+      {
+        text: 'read-only call that accepts neither `Idempotency-Key` nor `If-Match`',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects idempotency key on a detail read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects write precondition on a detail read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'carries the strong ETag `"{version}"` of the returned version',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route reads only the validated latest definition with a strong ETag and no-store',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/pages/api/v1/cms/templates/template-detail.test.ts',
+            title:
+              'same-origin current-template detail proxy forwards only approved identity material and exact validated definition',
+          },
+        ],
+      },
+      {
+        text: 'enforces read buckets of 60/min/user and 60/min/party',
+        citations: [],
+      },
+      {
+        text: 'a 15,000 ms deadline',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route returns the deadline even when a session dependency never resolves',
+          },
+        ],
+      },
+      {
+        text: 'the Tier 2 target.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'enforces read buckets of 60/min/user and 60/min/party' - the user and party scopes and the 60 limit are asserted, but the 60-second window is passed by the route (windowSeconds 60) and never asserted, so '/min' is unproven; (2) 'the Tier 2 target' - no latency or SLO evidence.",
   },
   {
     criterion: 'P2-S12-AC-169',
     text: 'cmsTemplateLatestRead maps a malformed path (400 `INVALID_REQUEST`), a missing session (401), a missing capability (403 `TEMPLATE_FORBIDDEN`), a hidden or absent key (404 `TEMPLATE_NOT_FOUND`), an unsupported body (415), the read limit (429), a dependency failure (502/503/504 `DEPENDENCY_UNAVAILABLE`) and an internal failure (500) to typed ApiError of catalog `cms.03c.template.v1`, and as a safe read retries at most three times at 15 s, 60 s and 300 s with jitter.',
     clauses: [
       {
-        text: 'cmsTemplateLatestRead maps a malformed path (400 `INVALID_REQUEST`), a missing session (401), a missing capability (403 `TEMPLATE_FORBIDDEN`), a hidden or absent key (404 `TEMPLATE_NOT_FOUND`), an unsupported body (415), the read limit (429), a dependency failure (502/503/504 `DEPENDENCY_UNAVAILABLE`) and an internal failure (500) to typed ApiError of catalog `cms.03c.template.v1`, and as a safe read retries at most three times at 15 s, 60 s and 300 s with jitter.',
+        text: 'cmsTemplateLatestRead maps a malformed path (400 `INVALID_REQUEST`)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects invalid selectors after authentication and before authorization or the read',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects idempotency key on a detail read before authorization or the RPC',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects write precondition on a detail read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'a missing session (401)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route fails closed when unauthenticated',
+          },
+        ],
+      },
+      {
+        text: 'a missing capability (403 `TEMPLATE_FORBIDDEN`)',
+        citations: [],
+      },
+      {
+        text: 'a hidden or absent key (404 `TEMPLATE_NOT_FOUND`)',
+        citations: [],
+      },
+      {
+        text: 'an unsupported body (415)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route answers request media on a read with 415 and an empty allowlist (BE00)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route rejects request media on a detail read before authorization or the RPC',
+          },
+        ],
+      },
+      {
+        text: 'the read limit (429)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route publishes the BE00 429 details and RateLimit headers on the detail route',
+          },
+        ],
+      },
+      {
+        text: 'a dependency failure (502/503/504 `DEPENDENCY_UNAVAILABLE`)',
+        citations: [],
+      },
+      {
+        text: 'an internal failure (500)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-detail-routes.test.ts',
+            title:
+              'CMS-11 protected current-template detail HTTP route contains an unexpected execution error in the generic 500 envelope',
+          },
+        ],
+      },
+      {
+        text: 'to typed ApiError of catalog `cms.03c.template.v1`',
+        citations: [],
+      },
+      {
+        text: 'as a safe read retries at most three times at 15 s, 60 s and 300 s with jitter.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'a missing capability (403 `TEMPLATE_FORBIDDEN`)' and (2) 'a hidden or absent key (404 `TEMPLATE_NOT_FOUND`)' - the read-route tests assert the status only, never the catalog code (the codes are asserted only on the POST route); (3) 'a dependency failure (502/503/504 `DEPENDENCY_UNAVAILABLE`)' - the implementation maps 502 to DEPENDENCY_INVALID_RESPONSE and 504 to DEPENDENCY_DEADLINE_EXCEEDED (apps/worker/src/cms-composition/template-shared.ts:108-121), contradicting the clause (spec/code drift to resolve); (4) 'to typed ApiError of catalog `cms.03c.template.v1`' - no such catalog id exists in code; (5) 'as a safe read retries at most three times at 15 s, 60 s and 300 s with jitter' - no client retry ladder exists.",
   },
   {
     criterion: 'P2-S12-AC-170',
     text: "cmsTemplateLatestRead is consumed by the protected `CmsTemplateEditDesigner` at `/app/cms-content-modeling/templates/:templateKey`, which prefills the form from the owner's latest version, sends its `version` as `expectedVersion` to create a successor through CMS-03C-01, reconciles a 409 by refetching this read, reuses the idempotency key for an unchanged uncertain attempt, and never resolves `context`, `versions` or `new` as a template key; verification covers the prefill, the successor `expectedVersion`, the 409 reconciliation and the 403/404 split.",
     clauses: [
       {
-        text: "cmsTemplateLatestRead is consumed by the protected `CmsTemplateEditDesigner` at `/app/cms-content-modeling/templates/:templateKey`, which prefills the form from the owner's latest version, sends its `version` as `expectedVersion` to create a successor through CMS-03C-01, reconciles a 409 by refetching this read, reuses the idempotency key for an unchanged uncertain attempt, and never resolves `context`, `versions` or `new` as a template key;",
+        text: 'cmsTemplateLatestRead is consumed by the protected `CmsTemplateEditDesigner` at `/app/cms-content-modeling/templates/:templateKey`',
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-real-route.spec.ts',
+            title:
+              'CMS-11 keeps a stale tab’s unsent values through a real-route conflict and explicit rebase',
+            project: 'real-route-chrome',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-edit.spec.ts',
+            title:
+              'Phase 2 Slice 12 protected template edit > without validated protected projections, a valid key does not fabricate an editable draft',
+            project: 'chrome',
+          },
+        ],
+      },
+      {
+        text: "which prefills the form from the owner's latest version",
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-designer-request.test.ts',
+            title:
+              'CMS-11 template draft request loads every editable field from canonical detail and builds a version-checked successor',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateEditDesigner.interaction.test.tsx',
+            title:
+              'CMS-11 successor edit and reconciliation keeps unsent values through conflict and requires an explicit latest-version rebase',
+          },
+        ],
+      },
+      {
+        text: 'sends its `version` as `expectedVersion` to create a successor through CMS-03C-01',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-designer-request.test.ts',
+            title:
+              'CMS-11 template draft request loads every editable field from canonical detail and builds a version-checked successor',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-designer-submit.test.ts',
+            title:
+              'CMS-11 first-party draft submission posts a successor with exact strong If-Match and accepts only a newer authoritative draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateEditDesigner.interaction.test.tsx',
+            title:
+              'CMS-11 successor edit and reconciliation keeps unsent values through conflict and requires an explicit latest-version rebase',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-real-route.spec.ts',
+            title:
+              'CMS-11 keeps a stale tab’s unsent values through a real-route conflict and explicit rebase',
+            project: 'real-route-chrome',
+          },
+        ],
+      },
+      {
+        text: 'reconciles a 409 by refetching this read',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateEditDesigner.interaction.test.tsx',
+            title:
+              'CMS-11 successor edit and reconciliation keeps unsent values through conflict and requires an explicit latest-version rebase',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-edit-reconcile.test.ts',
+            title:
+              'CMS-11 canonical reconciliation read reads only the same-origin protected latest version and checks identity and ETag',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-real-route.spec.ts',
+            title:
+              'CMS-11 keeps a stale tab’s unsent values through a real-route conflict and explicit rebase',
+            project: 'real-route-chrome',
+          },
+        ],
+      },
+      {
+        text: 'reuses the idempotency key for an unchanged uncertain attempt',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateEditDesigner.interaction.test.tsx',
+            title:
+              'CMS-11 successor edit and reconciliation retains the key after an uncertain same-version reconciliation read',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-uncertain-real-route.spec.ts',
+            title:
+              'Phase 2 Slice 12 uncertain template mutation > an unknown outcome keeps values, reuses the idempotency key, and reconciles before retry',
+            project: 'real-route-chrome',
+          },
+        ],
+      },
+      {
+        text: 'never resolves `context`, `versions` or `new` as a template key',
         citations: [],
       },
       {
@@ -376,24 +1335,22 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'never resolves `context`, `versions` or `new` as a template key' - E13 reserved keys are not built (the edit page accepts any grammar-valid key); (2) 'verification covers the prefill, the successor `expectedVersion`, the 409 reconciliation and the 403/404 split' - the prefill, expectedVersion and 409 parts are tested, but no test asserts the distinct 403 vs 404 outcome of the edit page.",
   },
   {
     criterion: 'P2-S12-AC-171',
     text: "cmsPatternLatestRead registers GET /api/v1/cms/patterns/{patternKey} with `PatternLatestQuery` (path) and returns the strict `PatternVersionDetail` of the caller owner's latest version of the key in any state: the `PatternVersionResource` plus the `blockTree` of 1-32 root nodes; generated OpenAPI and the discovered Hono route match the registry row.",
     clauses: [
       {
-        text: "cmsPatternLatestRead registers GET /api/v1/cms/patterns/{patternKey} with `PatternLatestQuery` (path) and returns the strict `PatternVersionDetail` of the caller owner's latest version of the key in any state: the `PatternVersionResource` plus the `blockTree` of 1-32 root nodes;",
-        citations: [],
-      },
-      {
-        text: 'generated OpenAPI and the discovered Hono route match the registry row.',
+        text: "cmsPatternLatestRead registers GET /api/v1/cms/patterns/{patternKey} with `PatternLatestQuery` (path) and returns the strict `PatternVersionDetail` of the caller owner's latest version of the key in any state: the `PatternVersionResource` plus the `blockTree` of 1-32 root nodes; generated OpenAPI and the discovered Hono route match the registry row.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-172',
@@ -405,7 +1362,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-173',
@@ -417,7 +1375,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-174',
@@ -429,7 +1388,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-175',
@@ -441,39 +1401,34 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-176',
     text: "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`, which address the owner's latest version by key, prefill the node list from it, send the read version as `expectedVersion` for a successor and show the version's lifecycle; verification covers the prefill, the successor `expectedVersion`, the 403/404 split and that the reserved keys never resolve as `:patternKey`.",
     clauses: [
       {
-        text: "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`, which address the owner's latest version by key, prefill the node list from it, send the read version as `expectedVersion` for a successor and show the version's lifecycle;",
-        citations: [],
-      },
-      {
-        text: 'verification covers the prefill, the successor `expectedVersion`, the 403/404 split and that the reserved keys never resolve as `:patternKey`.',
+        text: "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`, which address the owner's latest version by key, prefill the node list from it, send the read version as `expectedVersion` for a successor and show the version's lifecycle; verification covers the prefill, the successor `expectedVersion`, the 403/404 split and that the reserved keys never resolve as `:patternKey`.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-177',
     text: 'cmsTaxonomyVersionsRead registers GET /api/v1/cms/taxonomies/{taxonomyId}/versions with `TaxonomyVersionsQuery` (path) and returns the strict `TaxonomyVersionsPage` of at most 50 `TaxonomyVersionResource` items, newest first, and `pageVersion`; generated OpenAPI and the discovered Hono route match the registry row.',
     clauses: [
       {
-        text: 'cmsTaxonomyVersionsRead registers GET /api/v1/cms/taxonomies/{taxonomyId}/versions with `TaxonomyVersionsQuery` (path) and returns the strict `TaxonomyVersionsPage` of at most 50 `TaxonomyVersionResource` items, newest first, and `pageVersion`;',
-        citations: [],
-      },
-      {
-        text: 'generated OpenAPI and the discovered Hono route match the registry row.',
+        text: 'cmsTaxonomyVersionsRead registers GET /api/v1/cms/taxonomies/{taxonomyId}/versions with `TaxonomyVersionsQuery` (path) and returns the strict `TaxonomyVersionsPage` of at most 50 `TaxonomyVersionResource` items, newest first, and `pageVersion`; generated OpenAPI and the discovered Hono route match the registry row.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-178',
@@ -485,7 +1440,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-179',
@@ -497,7 +1453,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-180',
@@ -509,7 +1466,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-181',
@@ -521,23 +1479,21 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-182',
     text: "cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/taxonomies/:taxonomyId`, which read the vocabulary's versions (newest first, at most 50) to show each version's lifecycle, review summary and permitted actions, while term actions render only against an `active` version and `taxonomy_not_active` links to the vocabulary's governed review; verification covers the 403/404 split, the 50-version bound and the active-version gating of term actions.",
     clauses: [
       {
-        text: "cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/taxonomies/:taxonomyId`, which read the vocabulary's versions (newest first, at most 50) to show each version's lifecycle, review summary and permitted actions, while term actions render only against an `active` version and `taxonomy_not_active` links to the vocabulary's governed review;",
-        citations: [],
-      },
-      {
-        text: 'verification covers the 403/404 split, the 50-version bound and the active-version gating of term actions.',
+        text: "cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/taxonomies/:taxonomyId`, which read the vocabulary's versions (newest first, at most 50) to show each version's lifecycle, review summary and permitted actions, while term actions render only against an `active` version and `taxonomy_not_active` links to the vocabulary's governed review; verification covers the 403/404 split, the 50-version bound and the active-version gating of term actions.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-183',
@@ -549,7 +1505,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-184',
@@ -561,7 +1518,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-185',
@@ -573,7 +1531,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-186',
@@ -585,7 +1544,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-187',
@@ -597,27 +1557,21 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-188',
     text: "cmsTaxonomyTermsRead is consumed by the protected `CmsTaxonomyTermForm`, which lists the vocabulary's terms with their lifecycle, keeps the term list cursor as URL state without serializing a protected value, shows a merged term's survivor redirect, renders `canonical_overlap` as \"This matches a canonical {domain} record. Reference the canonical record instead\" with the canonical id as copyable text and never creates the term, and links `taxonomy_not_active` to the vocabulary's governed review; verification covers term keyset order, cursor binding and merged terms listed with their successor.",
     clauses: [
       {
-        text: "cmsTaxonomyTermsRead is consumed by the protected `CmsTaxonomyTermForm`, which lists the vocabulary's terms with their lifecycle, keeps the term list cursor as URL state without serializing a protected value, shows a merged term's survivor redirect, renders `canonical_overlap` as \"This matches a canonical {domain} record.",
-        citations: [],
-      },
-      {
-        text: 'Reference the canonical record instead" with the canonical id as copyable text and never creates the term, and links `taxonomy_not_active` to the vocabulary\'s governed review;',
-        citations: [],
-      },
-      {
-        text: 'verification covers term keyset order, cursor binding and merged terms listed with their successor.',
+        text: "cmsTaxonomyTermsRead is consumed by the protected `CmsTaxonomyTermForm`, which lists the vocabulary's terms with their lifecycle, keeps the term list cursor as URL state without serializing a protected value, shows a merged term's survivor redirect, renders `canonical_overlap` as \"This matches a canonical {domain} record. Reference the canonical record instead\" with the canonical id as copyable text and never creates the term, and links `taxonomy_not_active` to the vocabulary's governed review; verification covers term keyset order, cursor binding and merged terms listed with their successor.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: this operation has no route, RPC or contract yet, so there is nothing to test.',
   },
   {
     criterion: 'P2-S12-AC-189',
@@ -629,7 +1583,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built (E13): neither the contracts schema nor a SQL CHECK rejects the reserved template and pattern keys; CmsTemplateKeySchema accepts context, versions and new.',
   },
   {
     criterion: 'P2-S12-AC-190',
@@ -641,23 +1596,21 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built (E14): uniqueness is still global per key and cms_define_template looks the previous version up without the owner, so a second owner creating an existing key gets CONFLICT - a live cross-owner existence signal.',
   },
   {
     criterion: 'P2-S12-AC-191',
     text: "Lineage ids: `templateId`, `patternId` and `taxonomyId` are the stable lineage ids of (owner, key), the `id` of the version-1 row carried on every successor row as `template_id`, `pattern_id` and `taxonomy_id`; a version number is unique within its lineage, a successor names its parent through `supersedes_id`, and a partial unique index on each lineage id `WHERE state = 'active'` allows one active version per lineage.",
     clauses: [
       {
-        text: 'Lineage ids: `templateId`, `patternId` and `taxonomyId` are the stable lineage ids of (owner, key), the `id` of the version-1 row carried on every successor row as `template_id`, `pattern_id` and `taxonomy_id`;',
-        citations: [],
-      },
-      {
-        text: "a version number is unique within its lineage, a successor names its parent through `supersedes_id`, and a partial unique index on each lineage id `WHERE state = 'active'` allows one active version per lineage.",
+        text: "Lineage ids: `templateId`, `patternId` and `taxonomyId` are the stable lineage ids of (owner, key), the `id` of the version-1 row carried on every successor row as `template_id`, `pattern_id` and `taxonomy_id`; a version number is unique within its lineage, a successor names its parent through `supersedes_id`, and a partial unique index on each lineage id `WHERE state = 'active'` allows one active version per lineage.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: no template_id/pattern_id/taxonomy_id lineage columns and no partial unique index on the active version of a lineage exist; supersedes_id exists only on templates.',
   },
   {
     criterion: 'P2-S12-AC-192',
@@ -669,27 +1622,53 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built (E4): audience still follows the older safe-text rule (1-64 characters excluding <>{}), not the BE04c grammar ^[a-z0-9_-]{1,48}$.',
   },
   {
     criterion: 'P2-S12-AC-193',
     text: 'blockRegistryDigest: the server resolves every reachable block from the 03a safe registry and computes the lowercase SHA-256 of the RFC 8785/JCS array of the reachable, deduplicated `{blockKey,blockVersion,releaseDigest,propsSchemaHash,rendererRef,lifecycle}` tuples sorted by the UTF-8 bytes of `blockKey` and then numeric `blockVersion`; a client-supplied digest is only an equality expectation, compared with the server result and never stored in place of it, so the recomputed server digest is authoritative; and the server recomputes the digest at template create, template activate, pattern create, pattern activate and 03b publication preflight.',
     clauses: [
       {
-        text: 'blockRegistryDigest: the server resolves every reachable block from the 03a safe registry and computes the lowercase SHA-256 of the RFC 8785/JCS array of the reachable, deduplicated `{blockKey,blockVersion,releaseDigest,propsSchemaHash,rendererRef,lifecycle}` tuples sorted by the UTF-8 bytes of `blockKey` and then numeric `blockVersion`;',
+        text: 'blockRegistryDigest: the server resolves every reachable block from the 03a safe registry and computes the lowercase SHA-256 of the RFC 8785/JCS array of the reachable',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title:
+              'CMS-03C-01 empty reachable-block set hashes exact canonical JSON []',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title:
+              'CMS-03C-01 persisted digest equals exact server-derived safe tuple hash',
+          },
+        ],
+      },
+      {
+        text: 'deduplicated `{blockKey,blockVersion,releaseDigest,propsSchemaHash,rendererRef,lifecycle}` tuples sorted by the UTF-8 bytes of `blockKey` and then numeric `blockVersion`',
         citations: [],
       },
       {
-        text: 'a client-supplied digest is only an equality expectation, compared with the server result and never stored in place of it, so the recomputed server digest is authoritative;',
-        citations: [],
+        text: 'a client-supplied digest is only an equality expectation, compared with the server result and never stored in place of it, so the recomputed server digest is authoritative',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
+            title:
+              'CMS-03C-01 refuses caller digest that differs from current registry',
+          },
+        ],
       },
       {
-        text: 'and the server recomputes the digest at template create, template activate, pattern create, pattern activate and 03b publication preflight.',
+        text: 'the server recomputes the digest at template create, template activate, pattern create, pattern activate and 03b publication preflight.',
         citations: [],
       },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: (1) 'deduplicated ... tuples sorted by the UTF-8 bytes of `blockKey` and then numeric `blockVersion`' - the SQL digest is tested with zero or one block only (no duplicate reference, no multi-block ordering); the multi-block TypeScript reference apps/worker/src/cms-composition/block-registry-digest.ts has unit tests but no production caller; (2) 'the server recomputes the digest at template create, template activate, pattern create, pattern activate and 03b publication preflight' - only template create exists; activation, pattern create/activate and a registry-recomputing preflight do not.",
   },
   {
     criterion: 'P2-S12-AC-194',
@@ -701,7 +1680,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not proven as a whole: only the template-create SQL path reads the registry (pgTAP refuses withdrawn, deprecated and renderer-incompatible blocks); missing/duplicate/unreachable blocks, the safe BlockDefinitionRegistryRecord adapter (block-registry-digest.ts has no production caller), the never-mutates guarantee, the lifecycle-event consumer and pattern validation are untested or unbuilt.',
   },
   {
     criterion: 'P2-S12-AC-195',
@@ -713,89 +1693,47 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      "Not proven as a whole: definition immutability is enforced by guard triggers and tested for patterns ('pattern definition cannot mutate in place') and taxonomies ('taxonomy definition is immutable after creation') but the TemplateVersion guard has no test, activation-immutability is unbuilt, and the governed RPCs CMS-03C-06..09 that are the only lifecycle writers do not exist.",
   },
   {
     criterion: 'P2-S12-AC-196',
     text: 'Governed review tables: CMS-03C-06 to CMS-03C-11 serve the closed, code-owned `subject_kind` set (`template_version`, `pattern_version`, `taxonomy_version`) through one set of private tables keyed by `(subject_kind, subject_id)` (`cms_governed_reviews`, `cms_governed_review_decisions`, `cms_governed_review_assignments`, `cms_governed_review_dependencies` and, for scheduled activation, `cms_governed_activation_schedules`) so that slot semantics, MFA, assignment, strictest-policy counting and invalidation have one implementation; a later subject kind is added only by forward migration; and the 03a `cms_schema_reviews` set and the 03b editorial review tables keep their own tables and operations.',
     clauses: [
       {
-        text: 'Governed review tables: CMS-03C-06 to CMS-03C-11 serve the closed, code-owned `subject_kind` set (`template_version`, `pattern_version`, `taxonomy_version`) through one set of private tables keyed by `(subject_kind, subject_id)` (`cms_governed_reviews`, `cms_governed_review_decisions`, `cms_governed_review_assignments`, `cms_governed_review_dependencies` and, for scheduled activation, `cms_governed_activation_schedules`) so that slot semantics, MFA, assignment, strictest-policy counting and invalidation have one implementation;',
-        citations: [],
-      },
-      {
-        text: 'a later subject kind is added only by forward migration;',
-        citations: [],
-      },
-      {
-        text: 'and the 03a `cms_schema_reviews` set and the 03b editorial review tables keep their own tables and operations.',
+        text: 'Governed review tables: CMS-03C-06 to CMS-03C-11 serve the closed, code-owned `subject_kind` set (`template_version`, `pattern_version`, `taxonomy_version`) through one set of private tables keyed by `(subject_kind, subject_id)` (`cms_governed_reviews`, `cms_governed_review_decisions`, `cms_governed_review_assignments`, `cms_governed_review_dependencies` and, for scheduled activation, `cms_governed_activation_schedules`) so that slot semantics, MFA, assignment, strictest-policy counting and invalidation have one implementation; a later subject kind is added only by forward migration; and the 03a `cms_schema_reviews` set and the 03b editorial review tables keep their own tables and operations.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the five governed review/schedule tables keyed by (subject_kind, subject_id) do not exist.',
   },
   {
     criterion: 'P2-S12-AC-197',
     text: 'Subject state machine: `draft` becomes `review` at submission and `review` becomes `approved` when the last required approval lands; a rejection or invalidation returns the subject from `review` (or from `approved`, `scheduled` or `blocked`) to `draft` through an audited transition while the review stays `rejected` or `invalidated`; `approved` becomes `active` or `scheduled`; `scheduled` becomes `active` at execution or `blocked` when execution fails terminally; `blocked` becomes `active` or `scheduled` through a new activation command while its review is still `approved` and current; `active` becomes `superseded` in the transaction that activates a newer version of the lineage, or `retired`; `superseded` and `retired` are terminal; and the review states are `open` to `approved`, `rejected` or `invalidated` and `approved` to `invalidated`, with assignment create and revoke never changing the review state.',
     clauses: [
       {
-        text: 'Subject state machine: `draft` becomes `review` at submission and `review` becomes `approved` when the last required approval lands;',
-        citations: [],
-      },
-      {
-        text: 'a rejection or invalidation returns the subject from `review` (or from `approved`, `scheduled` or `blocked`) to `draft` through an audited transition while the review stays `rejected` or `invalidated`;',
-        citations: [],
-      },
-      { text: '`approved` becomes `active` or `scheduled`;', citations: [] },
-      {
-        text: '`scheduled` becomes `active` at execution or `blocked` when execution fails terminally;',
-        citations: [],
-      },
-      {
-        text: '`blocked` becomes `active` or `scheduled` through a new activation command while its review is still `approved` and current;',
-        citations: [],
-      },
-      {
-        text: '`active` becomes `superseded` in the transaction that activates a newer version of the lineage, or `retired`;',
-        citations: [],
-      },
-      { text: '`superseded` and `retired` are terminal;', citations: [] },
-      {
-        text: 'and the review states are `open` to `approved`, `rejected` or `invalidated` and `approved` to `invalidated`, with assignment create and revoke never changing the review state.',
+        text: 'Subject state machine: `draft` becomes `review` at submission and `review` becomes `approved` when the last required approval lands; a rejection or invalidation returns the subject from `review` (or from `approved`, `scheduled` or `blocked`) to `draft` through an audited transition while the review stays `rejected` or `invalidated`; `approved` becomes `active` or `scheduled`; `scheduled` becomes `active` at execution or `blocked` when execution fails terminally; `blocked` becomes `active` or `scheduled` through a new activation command while its review is still `approved` and current; `active` becomes `superseded` in the transaction that activates a newer version of the lineage, or `retired`; `superseded` and `retired` are terminal; and the review states are `open` to `approved`, `rejected` or `invalidated` and `approved` to `invalidated`, with assignment create and revoke never changing the review state.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the subject and review state machines are not implemented, so no transition is testable.',
   },
   {
     criterion: 'P2-S12-AC-198',
     text: "Governed policy basis: the review count and slots are the strictest DEC-110 workflow policy among the content types the subject is bound to (a template or pattern version's `compatibleTypeIds`; for a taxonomy version the content types of the caller's owner scope whose keys appear in `allowedTypeKeys`), each resolved through the fail-closed `cms_editorial_workflow_policy_evidence` seam; the basis is the array of `{ contentTypeId, policyKey, policyVersion, policyHash }` sorted by `(policyKey, policyVersion, contentTypeId)`; `risk_class` is `protected` if any member is protected, `required_decision_count` is the largest member count and `required_capabilities` is the base slot `cms.reviewer` followed by each specialist capability in order of first appearance (at most 16); a subject with no resolvable bound type uses the registry member `editorial.default` version 1 (`CMS_GOVERNED_DEFAULT_POLICY`); and `policy_basis_hash` is the lowercase SHA-256 of the JCS basis array.",
     clauses: [
       {
-        text: "Governed policy basis: the review count and slots are the strictest DEC-110 workflow policy among the content types the subject is bound to (a template or pattern version's `compatibleTypeIds`; for a taxonomy version the content types of the caller's owner scope whose keys appear in `allowedTypeKeys`), each resolved through the fail-closed `cms_editorial_workflow_policy_evidence` seam;",
-        citations: [],
-      },
-      {
-        text: 'the basis is the array of `{ contentTypeId, policyKey, policyVersion, policyHash }` sorted by `(policyKey, policyVersion, contentTypeId)`;',
-        citations: [],
-      },
-      {
-        text: '`risk_class` is `protected` if any member is protected, `required_decision_count` is the largest member count and `required_capabilities` is the base slot `cms.reviewer` followed by each specialist capability in order of first appearance (at most 16);',
-        citations: [],
-      },
-      {
-        text: 'a subject with no resolvable bound type uses the registry member `editorial.default` version 1 (`CMS_GOVERNED_DEFAULT_POLICY`);',
-        citations: [],
-      },
-      {
-        text: 'and `policy_basis_hash` is the lowercase SHA-256 of the JCS basis array.',
+        text: "Governed policy basis: the review count and slots are the strictest DEC-110 workflow policy among the content types the subject is bound to (a template or pattern version's `compatibleTypeIds`; for a taxonomy version the content types of the caller's owner scope whose keys appear in `allowedTypeKeys`), each resolved through the fail-closed `cms_editorial_workflow_policy_evidence` seam; the basis is the array of `{ contentTypeId, policyKey, policyVersion, policyHash }` sorted by `(policyKey, policyVersion, contentTypeId)`; `risk_class` is `protected` if any member is protected, `required_decision_count` is the largest member count and `required_capabilities` is the base slot `cms.reviewer` followed by each specialist capability in order of first appearance (at most 16); a subject with no resolvable bound type uses the registry member `editorial.default` version 1 (`CMS_GOVERNED_DEFAULT_POLICY`); and `policy_basis_hash` is the lowercase SHA-256 of the JCS basis array.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: no governed policy basis resolution (strictest DEC-110 policy, basis array, basis hash) exists.',
   },
   {
     criterion: 'P2-S12-AC-199',
@@ -807,7 +1745,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: template_version submission (CMS-03C-06) does not exist.',
   },
   {
     criterion: 'P2-S12-AC-200',
@@ -819,7 +1758,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: pattern_version submission does not exist (no pattern definition command at all).',
   },
   {
     criterion: 'P2-S12-AC-201',
@@ -831,7 +1771,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: taxonomy_version submission and the canonical-domain provider registry do not exist.',
   },
   {
     criterion: 'P2-S12-AC-202',
@@ -843,23 +1784,21 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: no invalidation producers or cms.governed_review.recheck job exist.',
   },
   {
     criterion: 'P2-S12-AC-203',
     text: 'Governed review recheck: the job `cms.governed_review.recheck` (`cms_recheck_governed_reviews(kind, ref_id, batch)`) handles at most 500 reviews per run with a continuation cursor, is idempotent (an already `invalidated` review is skipped), rebuilds the hash, policy basis and identities of each live review and invalidates on any difference with the closed reason `dependency_changed` or `reviewer_authority_changed`, returning the subject to `draft` and, while the subject is `scheduled`, cancelling its schedule (`cancelled`, `approval_invalidated`) in the invalidating transaction; governed review state changes emit no event in Phase 2.',
     clauses: [
       {
-        text: 'Governed review recheck: the job `cms.governed_review.recheck` (`cms_recheck_governed_reviews(kind, ref_id, batch)`) handles at most 500 reviews per run with a continuation cursor, is idempotent (an already `invalidated` review is skipped), rebuilds the hash, policy basis and identities of each live review and invalidates on any difference with the closed reason `dependency_changed` or `reviewer_authority_changed`, returning the subject to `draft` and, while the subject is `scheduled`, cancelling its schedule (`cancelled`, `approval_invalidated`) in the invalidating transaction;',
-        citations: [],
-      },
-      {
-        text: 'governed review state changes emit no event in Phase 2.',
+        text: 'Governed review recheck: the job `cms.governed_review.recheck` (`cms_recheck_governed_reviews(kind, ref_id, batch)`) handles at most 500 reviews per run with a continuation cursor, is idempotent (an already `invalidated` review is skipped), rebuilds the hash, policy basis and identities of each live review and invalidates on any difference with the closed reason `dependency_changed` or `reviewer_authority_changed`, returning the subject to `draft` and, while the subject is `scheduled`, cancelling its schedule (`cancelled`, `approval_invalidated`) in the invalidating transaction; governed review state changes emit no event in Phase 2.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: cms_recheck_governed_reviews and the recheck job do not exist.',
   },
   {
     criterion: 'P2-S12-AC-204',
@@ -871,23 +1810,21 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: cms_invalidate_governed_reviews_for_person and reviewer_authority_changed handling for governed reviews do not exist.',
   },
   {
     criterion: 'P2-S12-AC-205',
     text: "Immediate activation: `activate` requires the subject `approved` or `blocked` (else 409 `subject_not_activatable`) and in one transaction makes it `active` (`version` + 1, `activated_at`), makes the lineage's previous `active` version `superseded` (`version` + 1), records `activated_at` on the review and advances its `version`, and commits the audit record and exactly one activation event; an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.",
     clauses: [
       {
-        text: "Immediate activation: `activate` requires the subject `approved` or `blocked` (else 409 `subject_not_activatable`) and in one transaction makes it `active` (`version` + 1, `activated_at`), makes the lineage's previous `active` version `superseded` (`version` + 1), records `activated_at` on the review and advances its `version`, and commits the audit record and exactly one activation event;",
-        citations: [],
-      },
-      {
-        text: 'an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.',
+        text: "Immediate activation: `activate` requires the subject `approved` or `blocked` (else 409 `subject_not_activatable`) and in one transaction makes it `active` (`version` + 1, `activated_at`), makes the lineage's previous `active` version `superseded` (`version` + 1), records `activated_at` on the review and advances its `version`, and commits the audit record and exactly one activation event; an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.",
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: governed immediate activation (activate RPC) does not exist.',
   },
   {
     criterion: 'P2-S12-AC-206',
@@ -899,19 +1836,38 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: governed scheduled activation (schedule RPC, cms_governed_activation_schedules) does not exist.',
   },
   {
     criterion: 'P2-S12-AC-207',
     text: 'Retirement: `retire` requires the subject `active` (else 409 `subject_not_retirable`) and needs no review, makes it `retired`, emits the same event type naming the retired version, and a retired version fails the 03b `template` preflight and the 03a compatibility resolver as `WITHDRAWN`.',
     clauses: [
       {
-        text: 'Retirement: `retire` requires the subject `active` (else 409 `subject_not_retirable`) and needs no review, makes it `retired`, emits the same event type naming the retired version, and a retired version fails the 03b `template` preflight and the 03a compatibility resolver as `WITHDRAWN`.',
+        text: 'Retirement: `retire` requires the subject `active` (else 409 `subject_not_retirable`) and needs no review, makes it `retired`, emits the same event type naming the retired version',
         citations: [],
       },
+      {
+        text: 'a retired version fails the 03b `template` preflight and the 03a compatibility resolver as `WITHDRAWN`.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_09_dec108_resolver.sql',
+            title:
+              'a withdrawn template definition is the typed failure WITHDRAWN [P2-S09-AC-705]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
+            title:
+              'a template that is no longer active fails template_not_active (before any compatibility or digest reason) [P2-S11-AC-095]',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    status: 'partial',
+    limitation:
+      "Uncited: 'Retirement: `retire` requires the subject `active` (else 409 `subject_not_retirable`) and needs no review, makes it `retired`, emits the same event type naming the retired version' - the retire command and its event do not exist. Cited: only the consumer side of an already retired template (resolver WITHDRAWN and preflight template_not_active).",
   },
   {
     criterion: 'P2-S12-AC-208',
@@ -923,7 +1879,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: template activation/scheduling (CMS-03C-08/09 for templates) with its pre-switch compatibility and digest recheck does not exist.',
   },
   {
     criterion: 'P2-S12-AC-209',
@@ -935,7 +1892,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: pattern activation/scheduling and its nested-pattern state check do not exist.',
   },
   {
     criterion: 'P2-S12-AC-210',
@@ -947,23 +1905,21 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: taxonomy activation/scheduling and the canonical-domain provider check do not exist.',
   },
   {
     criterion: 'P2-S12-AC-211',
     text: 'Pattern graph: a pattern tree is a bounded forest of depth at most 8 and at most 512 nodes after expanding nested pattern references, with unique sibling node `key`s, no cycle through a nested lineage (the visited set is the lineage `pattern_id`) and every nested pattern `active` and listing every `compatibleTypeIds` member of the new pattern; a violation is typed (422 `pattern_depth_exceeded`, `pattern_nodes_exceeded` and `nested_pattern_not_active`; 409 `pattern_cycle`), is refused before save and again before publish, and `node_count` stores the expanded count.',
     clauses: [
       {
-        text: 'Pattern graph: a pattern tree is a bounded forest of depth at most 8 and at most 512 nodes after expanding nested pattern references, with unique sibling node `key`s, no cycle through a nested lineage (the visited set is the lineage `pattern_id`) and every nested pattern `active` and listing every `compatibleTypeIds` member of the new pattern;',
-        citations: [],
-      },
-      {
-        text: 'a violation is typed (422 `pattern_depth_exceeded`, `pattern_nodes_exceeded` and `nested_pattern_not_active`; 409 `pattern_cycle`), is refused before save and again before publish, and `node_count` stores the expanded count.',
+        text: 'Pattern graph: a pattern tree is a bounded forest of depth at most 8 and at most 512 nodes after expanding nested pattern references, with unique sibling node `key`s, no cycle through a nested lineage (the visited set is the lineage `pattern_id`) and every nested pattern `active` and listing every `compatibleTypeIds` member of the new pattern; a violation is typed (422 `pattern_depth_exceeded`, `pattern_nodes_exceeded` and `nested_pattern_not_active`; 409 `pattern_cycle`), is refused before save and again before publish, and `node_count` stores the expanded count.',
         citations: [],
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the pattern graph validation (depth 8, 512 nodes after expansion, cycles, nested-active/compatible rules) and node_count do not exist.',
   },
   {
     criterion: 'P2-S12-AC-212',
@@ -975,7 +1931,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the cms.pattern.linked_update_scan consumer job does not exist.',
   },
   {
     criterion: 'P2-S12-AC-213',
@@ -987,6 +1944,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
     ],
     status: 'unverified',
-    limitation: 'No test is cited for this criterion yet.',
+    limitation:
+      'Not built: the linked-update scan, its 500-instance bound and idempotency do not exist.',
   },
 ];
