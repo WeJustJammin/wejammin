@@ -6,6 +6,7 @@ import type {
 } from './async-entrypoint';
 import type { CmsPublicationScheduleRpcName } from './cms-publication-schedule-rpc-names';
 import type { CmsReviewRecheckRpcName } from './cms-editorial/review-recheck/rpc-names';
+import type { JobEffectDeliveryContext } from './async-runtime-job-context';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
 import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
@@ -44,7 +45,19 @@ export type AsyncRpcClient = <T>(
 export type AsyncJobRuntimeDependencies = Readonly<{
   rpc?: AsyncRpcClient;
   fetch?: typeof fetch;
-  effect?: import('@wejammin/application').JobEffectPort['execute'];
+  /**
+   * The job effect. Only the CMS preparation family receives the third argument, the Worker-layer delivery
+   * context; every other effect keeps the application consumer's one- or two-argument call.
+   */
+  effect?: (
+    input: Parameters<
+      import('@wejammin/application').JobEffectPort['execute']
+    >[0],
+    control?: Parameters<
+      import('@wejammin/application').JobEffectPort['execute']
+    >[1],
+    context?: JobEffectDeliveryContext,
+  ) => ReturnType<import('@wejammin/application').JobEffectPort['execute']>;
   verifyCmsSchemaDryRunOrigin?: (
     input: Readonly<{
       env: AsyncWorkerBindings;

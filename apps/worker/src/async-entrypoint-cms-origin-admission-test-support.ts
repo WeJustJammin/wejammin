@@ -266,7 +266,8 @@ const fixture = (options: Options = {}) => {
   };
   const check = (expected: unknown[][], readerCount: number) => {
     same(history, expected);
-    // Each verified CMS delivery hands the effect its input and private lease control.
+    // Each verified CMS delivery hands the effect its input, its private lease control and the Worker-layer
+    // delivery context (DEC-184): the environment, the invocation signal and that delivery's number.
     same(
       effect.mock.calls.map(([input]) => [input]),
       expected.filter((x) => x[0] === 'effect').map((x) => [x[1]]),
@@ -274,18 +275,35 @@ const fixture = (options: Options = {}) => {
     expect(
       effect.mock.calls.every(
         (call) =>
-          call.length === 2 && typeof call[1]?.checkpoint === 'function',
+          (call as unknown[]).length === 3 &&
+          typeof call[1]?.checkpoint === 'function',
       ),
     ).toBe(true);
+    (effect.mock.calls as unknown[][]).forEach((call, index) => {
+      const delivery = call[2] as {
+        env: unknown;
+        signal: AbortSignal;
+        deliveryAttempt: number;
+      };
+      same(Reflect.ownKeys(delivery).sort(), [
+        'deliveryAttempt',
+        'env',
+        'signal',
+      ]);
+      expect(delivery.env === env).toBe(true);
+      expect(delivery.deliveryAttempt).toBe(index + 1);
+      expect(delivery.signal instanceof AbortSignal).toBe(true);
+    });
     for (const [input] of effect.mock.calls)
       expect(Object.isFrozen(input.envelope)).toBe(true);
     same(
       ack.mock.calls,
       expected.filter((x) => x[0] === 'ack').map(() => []),
     );
+    // A bare retry is `['retry']`; a CMS retry-type disposition is paced: `['retry', { delaySeconds }]`.
     same(
       retry.mock.calls,
-      expected.filter((x) => x[0] === 'retry').map(() => []),
+      expected.filter((x) => x[0] === 'retry').map((x) => x.slice(1)),
     );
     expect(verifyCmsSchemaDryRunOrigin.mock.calls.length).toBe(readerCount);
     for (const [input] of verifyCmsSchemaDryRunOrigin.mock.calls) {

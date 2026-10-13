@@ -1,9 +1,15 @@
 import type {
   CmsLeaseControl,
   JobEffectInput,
-  JobEffectPort,
   JobEffectResult,
 } from '@wejammin/application';
+
+import {
+  deliveryAttemptOf,
+  isFinalDelivery,
+  type JobEffectDeliveryContext,
+} from './async-runtime-job-context';
+import { PREPARATION_JOB_ERROR } from './content-schema-registry/claimed-schema-migration-preparation-job-result';
 
 const APPROVED_VERIFICATION_TYPES = new Set([
   'object.verify',
@@ -24,13 +30,23 @@ export type ProductionJobEffectDependencies = Readonly<{
   verifyObject?: ProductionVerificationDependencies['verifyObject'];
   /**
    * Executes only the private CMS schema preparation contract. It receives the
-   * private lease control when, and only when, the consumer supplied one.
+   * private lease control when, and only when, the consumer supplied one, and
+   * the Worker-layer delivery context (environment, invocation signal and
+   * delivery number) when, and only when, the Job path supplied one.
    */
   prepareSchemaDryRun?: (
     input: JobEffectInput,
     control?: CmsLeaseControl,
+    context?: JobEffectDeliveryContext,
   ) => Promise<JobEffectResult>;
 }>;
+
+/** The dispatcher is a `JobEffectPort['execute']` that also accepts the Worker-layer delivery context. */
+export type ProductionJobEffect = (
+  input: JobEffectInput,
+  control?: CmsLeaseControl,
+  context?: JobEffectDeliveryContext,
+) => Promise<JobEffectResult>;
 
 const manualReview = (errorCode: string): JobEffectResult => ({
   errorCode,
@@ -51,6 +67,36 @@ const validResultRef = (value: unknown): boolean => {
     RESULT_REF_TYPE.test(record.type)
   );
 };
+
+/**
+ * The CMS preparation never answers `cancelled` or `pending_manual_review` (BE03a "Preparation Job
+ * disposition"): a manual-review answer writes no outcome and acknowledges the message, which leaves the Job
+ * `running` for good (B-08, #128).
+ */
+const CMS_DISPOSITIONS: ReadonlySet<string> = new Set([
+  'queued',
+  'succeeded',
+  'failed',
+]);
+
+/**
+ * The CMS family's own refusal: back to `queued` while a delivery remains, `failed` once the BE00 delivery
+ * budget is spent (the queue would dead-letter the message and nothing would ever settle the Job).
+ */
+const cmsUnavailable = (
+  context: JobEffectDeliveryContext | undefined,
+): JobEffectResult =>
+  isFinalDelivery(deliveryAttemptOf(context?.deliveryAttempt))
+    ? {
+        state: 'failed',
+        errorCode: PREPARATION_JOB_ERROR.exhausted,
+        resultRef: null,
+      }
+    : {
+        state: 'queued',
+        errorCode: PREPARATION_JOB_ERROR.unavailable,
+        resultRef: null,
+      };
 
 const validResult = (value: unknown): value is JobEffectResult => {
   if (typeof value !== 'object' || value === null) return false;
@@ -76,41 +122,46 @@ const validResult = (value: unknown): value is JobEffectResult => {
 /**
  * Builds the production job effect boundary for exact internal verification
  * and CMS preparation families. Provider and arbitrary job names never select
- * a credential, adapter, or network effect. The private lease control reaches
- * only the CMS preparation callback; an absent control leaves its arity at one
- * and verification callbacks never see it.
+ * a credential, adapter, or network effect. The private lease control and the
+ * delivery context reach only the CMS preparation callback; an absent control
+ * or context leaves its arity unchanged and verification callbacks never see
+ * either. The CMS family answers `queued`, `succeeded` or `failed` only.
  */
 export const createProductionJobEffectDispatcher =
-  (dependencies?: ProductionJobEffectDependencies): JobEffectPort['execute'] =>
-  async (input, control): Promise<JobEffectResult> => {
+  (dependencies?: ProductionJobEffectDependencies): ProductionJobEffect =>
+  async (input, control, context): Promise<JobEffectResult> => {
     const isPreparation = input.job.type === 'cms.schema.dry_run';
     if (!isPreparation && !APPROVED_VERIFICATION_TYPES.has(input.job.type)) {
       return manualReview('UNSUPPORTED_JOB_TYPE');
     }
-    try {
-      let result: JobEffectResult;
-      if (isPreparation) {
-        // BOUNDARY: production CMS preparation needs a contract that BE00 and BE03a do not state: the map from a
-        // MigrationWorkerResult outcome (completed, progress, retry, blocked, failed_*, dead_letter, ...) to the Job
-        // state, error code and `resultRef` type; where `control.checkpoint()` sits against the migration stage RPCs
-        // (the enduring SQL stage fence); and the source of the attempt number and the per-invocation budget.
-        // Sentinel: production-job-effect-dispatcher-cms-preparation.test.ts, "CMS with only object verification
-        // configured is unavailable without invoking it".
-        // Detail: docs/handoffs/2026-10-10-claude-s11/lane-reviewB-2-report.md (B-08).
-        // TRACKING: #128
-        if (typeof dependencies?.prepareSchemaDryRun !== 'function') {
-          return manualReview('DEPENDENCY_UNAVAILABLE');
-        }
-        result =
-          control === undefined
-            ? await dependencies.prepareSchemaDryRun(input)
-            : await dependencies.prepareSchemaDryRun(input, control);
-      } else {
-        if (typeof dependencies?.verifyObject !== 'function') {
-          return manualReview('DEPENDENCY_UNAVAILABLE');
-        }
-        result = await dependencies.verifyObject(input);
+    if (isPreparation) {
+      if (typeof dependencies?.prepareSchemaDryRun !== 'function')
+        return cmsUnavailable(context);
+      try {
+        // A method call: the injected dependency keeps its container as `this`.
+        const result =
+          context !== undefined
+            ? await dependencies.prepareSchemaDryRun(input, control, context)
+            : control === undefined
+              ? await dependencies.prepareSchemaDryRun(input)
+              : await dependencies.prepareSchemaDryRun(input, control);
+        if (!validResult(result) || !CMS_DISPOSITIONS.has(result.state))
+          return cmsUnavailable(context);
+        // Backstop: the queue dead-letters the message after the last delivery, so a Job left `queued`
+        // would never settle. The real callback has already rolled its plan back before it gets here.
+        return result.state === 'queued' &&
+          isFinalDelivery(deliveryAttemptOf(context?.deliveryAttempt))
+          ? cmsUnavailable(context)
+          : result;
+      } catch {
+        return cmsUnavailable(context);
       }
+    }
+    try {
+      if (typeof dependencies?.verifyObject !== 'function') {
+        return manualReview('DEPENDENCY_UNAVAILABLE');
+      }
+      const result = await dependencies.verifyObject(input);
       return validResult(result)
         ? result
         : manualReview('DEPENDENCY_UNAVAILABLE');

@@ -110,14 +110,6 @@ export const TRACKED_BOUNDARIES: readonly TrackedBoundary[] = [
     sentinel: 'supabase/tests/phase_02_slice_11_projection_state.sql',
     sentinelTitle: 'BOUNDARY sentinel: projection_id has no foreign key yet',
   },
-  {
-    issue: 128,
-    file: 'apps/worker/src/production-job-effect-dispatcher.ts',
-    sentinel:
-      'apps/worker/src/production-job-effect-dispatcher-cms-preparation.test.ts',
-    sentinelTitle:
-      'CMS with only object verification configured is unavailable without invoking it',
-  },
 ];
 
 /** The files of `files` whose text satisfies `predicate`. */

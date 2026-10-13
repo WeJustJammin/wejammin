@@ -29,6 +29,15 @@ original event identity and idempotency binding.
    terminal error. Terminal states never reopen.
 5. Unknown event pairs or schema versions are acknowledged only through the
    dead-letter/manual-review path; they must not execute.
+6. A `cms.schema.dry_run` job follows BE03a "Preparation Job disposition" and
+   "Preparation delivery budget": it settles `succeeded` (with the dry-run report
+   reference), `failed` `MIGRATION_BLOCKED` (a sealed failing scan) or `failed`
+   `MIGRATION_RETRIES_EXHAUSTED`, never `pending_manual_review`. Retry-type results
+   are redelivered after 15, 60 and 300 seconds. A preparation completes inside the
+   four deliveries only for at most `256 x maxBatchesPerInvocation` source rows (256
+   at the default); a larger type ends `MIGRATION_RETRIES_EXHAUSTED` on delivery 4
+   with its plan rolled back. Triage and the plan states are in the CMS publication
+   runbook, "Preparation Job trigger".
 
 ## Restore fence and recovery
 

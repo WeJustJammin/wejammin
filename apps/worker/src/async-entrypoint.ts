@@ -8,6 +8,10 @@ import {
 } from '@wejammin/contracts';
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
+import {
+  settleJobMessage,
+  type JobQueueMessageOutcome,
+} from './async-entrypoint-job-outcome';
 import { classifyReviewRecheckMessage } from './cms-editorial/review-recheck/message';
 import type { EventConsumerOutcome } from './event-consumers/types';
 import {
@@ -64,6 +68,7 @@ export type AsyncScheduledController = Pick<
 >;
 
 export type QueueMessageOutcome = 'ack' | 'retry';
+export type { JobQueueMessageOutcome };
 export type OutboxSweepOutcome = 'completed' | 'retry';
 
 export type QueueOrchestrationInput = Readonly<{
@@ -95,7 +100,7 @@ export type OutboxSweepInput = Readonly<{
 export type AsyncEntrypointDependencies = Readonly<{
   orchestrateQueueMessage?: (
     input: QueueOrchestrationInput,
-  ) => MaybePromise<QueueMessageOutcome>;
+  ) => MaybePromise<JobQueueMessageOutcome>;
   processSchemaMigration?: (
     input: SchemaMigrationOrchestrationInput,
   ) => MaybePromise<QueueMessageOutcome>;
@@ -259,11 +264,7 @@ export const createAsyncEntrypoint = (
           executionContext,
           message,
         });
-        if (outcome === 'ack') {
-          message.ack();
-        } else {
-          retryMessage(message);
-        }
+        settleJobMessage(message, outcome);
       } catch {
         retryMessage(message);
       }

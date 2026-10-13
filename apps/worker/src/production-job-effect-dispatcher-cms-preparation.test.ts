@@ -19,7 +19,9 @@ const CORRELATION_ID = '33333333-3333-4333-8333-333333333333';
 const LEASE_TOKEN = '44444444-4444-4444-8444-444444444444';
 const RESULT_ID = '55555555-5555-4555-8555-555555555555';
 const approvedTypes = [CMS_TYPE, 'object.verify', 'platform.object.verify'];
+const verificationTypes = ['object.verify', 'platform.object.verify'];
 type Effect = (input: JobEffectInput) => Promise<JobEffectResult>;
+
 type PreparationDependencies = ProductionVerificationDependencies &
   Readonly<{ prepareSchemaDryRun: Effect }>;
 
@@ -74,6 +76,16 @@ const unavailable: JobEffectResult = {
   errorCode: 'DEPENDENCY_UNAVAILABLE',
   resultRef: null,
 };
+// The CMS family never answers pending_manual_review: it writes no outcome and acknowledges the message,
+// which leaves the Job running for good (B-08, #128). It returns the Job to queued, and fails it on the
+// last delivery (DEC-184).
+const cmsUnavailable: JobEffectResult = {
+  state: 'queued',
+  errorCode: 'DEPENDENCY_UNAVAILABLE',
+  resultRef: null,
+};
+const expectedUnavailable = (type: string): JobEffectResult =>
+  type === CMS_TYPE ? cmsUnavailable : unavailable;
 const fixture = () => {
   const verifyObject = vi.fn<Effect>(async () => verified);
   const prepareSchemaDryRun = vi.fn<Effect>(async () => prepared);
@@ -143,12 +155,6 @@ describe('production exact CMS preparation job family dispatch', () => {
     { state: 'queued', resultRef: null, errorCode: null },
     { state: 'succeeded', resultRef: null, errorCode: null },
     { state: 'failed', resultRef: null, errorCode: 'PREPARATION_FAILED' },
-    { state: 'cancelled', resultRef: null, errorCode: null },
-    {
-      state: 'pending_manual_review',
-      resultRef: null,
-      errorCode: 'REVIEW_REQUIRED',
-    },
   ] satisfies JobEffectResult[])(
     'CMS preserves the validated $state result without claiming extra success',
     async (expected) => {
@@ -159,6 +165,26 @@ describe('production exact CMS preparation job family dispatch', () => {
       expect(await f.dispatch(input)).toBe(expected);
       expect(f.prepareSchemaDryRun.mock.calls).toEqual([[input]]);
       expect(f.prepareSchemaDryRun.mock.calls[0]?.[0]).toBe(input);
+      expect(f.verifyObject.mock.calls).toEqual([]);
+    },
+  );
+
+  it.each([
+    { state: 'cancelled', resultRef: null, errorCode: null },
+    {
+      state: 'pending_manual_review',
+      resultRef: null,
+      errorCode: 'REVIEW_REQUIRED',
+    },
+  ] satisfies JobEffectResult[])(
+    'CMS refuses a $state result outside the BE00 preparation disposition as a queued unavailable Job [P2-S12-AC-050]',
+    async (refused) => {
+      const f = fixture();
+      const input = inputFor(CMS_TYPE);
+      f.prepareSchemaDryRun.mockResolvedValue(refused);
+
+      expect(await f.dispatch(input)).toEqual(cmsUnavailable);
+      expect(f.prepareSchemaDryRun.mock.calls).toEqual([[input]]);
       expect(f.verifyObject.mock.calls).toEqual([]);
     },
   );
@@ -186,7 +212,7 @@ describe('production exact CMS preparation job family dispatch', () => {
     expect(f.verifyObject.mock.calls).toEqual([]);
   });
 
-  it.each(approvedTypes)(
+  it.each(verificationTypes)(
     '%s reports an absent dependency container as unavailable',
     async (type) => {
       const dispatch = createProductionJobEffectDispatcher();
@@ -194,12 +220,16 @@ describe('production exact CMS preparation job family dispatch', () => {
     },
   );
 
-  // BOUNDARY sentinel for the undefined production preparation trigger. TRACKING: #128
-  it('CMS with only object verification configured is unavailable without invoking it', async () => {
+  it('CMS reports an absent dependency container as a queued unavailable Job, never manual review [P2-S12-AC-050]', async () => {
+    const dispatch = createProductionJobEffectDispatcher();
+    expect(await dispatch(inputFor(CMS_TYPE))).toEqual(cmsUnavailable);
+  });
+
+  it('CMS with only object verification configured is a queued unavailable Job, never manual review, and does not invoke verification [P2-S12-AC-050]', async () => {
     const verifyObject = vi.fn<Effect>(async () => verified);
     const dispatch = createProductionJobEffectDispatcher({ verifyObject });
 
-    expect(await dispatch(inputFor(CMS_TYPE))).toEqual(unavailable);
+    expect(await dispatch(inputFor(CMS_TYPE))).toEqual(cmsUnavailable);
     expect(verifyObject.mock.calls).toEqual([]);
   });
 
@@ -213,7 +243,7 @@ describe('production exact CMS preparation job family dispatch', () => {
       const f = fixture();
       Object.defineProperty(f.dependencies, 'prepareSchemaDryRun', { value });
 
-      expect(await f.dispatch(inputFor(CMS_TYPE))).toEqual(unavailable);
+      expect(await f.dispatch(inputFor(CMS_TYPE))).toEqual(cmsUnavailable);
       expect(f.verifyObject.mock.calls).toEqual([]);
       expect(f.prepareSchemaDryRun.mock.calls).toEqual([]);
     },
@@ -229,7 +259,7 @@ describe('production exact CMS preparation job family dispatch', () => {
       const other = type === CMS_TYPE ? f.verifyObject : f.prepareSchemaDryRun;
       selected.mockRejectedValue(new Error('controlled dependency failure'));
 
-      expect(await f.dispatch(input)).toEqual(unavailable);
+      expect(await f.dispatch(input)).toEqual(expectedUnavailable(type));
       expect(selected.mock.calls).toEqual([[input]]);
       expect(selected.mock.calls[0]?.[0]).toBe(input);
       expect(other.mock.calls).toEqual([]);
@@ -255,7 +285,7 @@ describe('production exact CMS preparation job family dispatch', () => {
         { value: malformed },
       );
 
-      expect(await f.dispatch(input)).toEqual(unavailable);
+      expect(await f.dispatch(input)).toEqual(expectedUnavailable(type));
       expect(malformed.mock.calls).toEqual([[input]]);
       expect(malformed.mock.calls[0]?.[0]).toBe(input);
       expect(f.prepareSchemaDryRun.mock.calls).toEqual([]);

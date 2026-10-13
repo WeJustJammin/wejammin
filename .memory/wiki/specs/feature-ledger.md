@@ -10,7 +10,7 @@
 >
 > **Slice 07 graph references:** [[specs/ia/05-platform-configuration-admin|Shard 05 IA]], [[specs/be/05a-settings-flags-runtime|BE 05a]], [[specs/fe/05-platform-configuration-admin|Shard 05 FE]], and [[specs/phases/phase-2|Phase 2 plan]].
 >
-> **Phase 2 Slice 11 implementation evidence:** `25.02.03` (Review, Approval & Editorial Ownership), `25.02.04` (Scheduling, Expiry & Archive) and `25.03.04` (Preview, Diff & Safe Publish) remain assigned to P2-S11 and to nothing else. The IA, BE and FE columns of those rows record specification status, not implementation, and stay `complete`. Their implementation is on disk on branch `claude/phase2-slice11` and is tracked in [the Slice 11 progress log](../../pipeline/progress/slices/phase-02-slice-11.md), [the CMS publication runbook](../../../docs/runbooks/platform/cms-publication.md), [the wiki editorial runbook](../operations/runbooks/cms-editorial.md) and [the implementation delta of the architecture map](../../../docs/ARCHITECTURE.md). The operations they own are `CMS-03B-05` to `-09` and `-15` to `-18` (browser routes) and `CMS-03B-19` and `-20` (internal operations); the BE03b Feature Ledger Coverage table fixes which row owns which. This records code on disk, not acceptance: acceptance, the depth ratio and closure are recorded only in the tracker, and no hosted or production acceptance is claimed. Two implementation boundaries stay open by design, each with its tracking issue and sentinel test: the `projection_id` foreign key of the projection consumer state (issue #127) and the production trigger of the claimed schema-migration preparation entry (issue #128).
+> **Phase 2 Slice 11 implementation evidence:** `25.02.03` (Review, Approval & Editorial Ownership), `25.02.04` (Scheduling, Expiry & Archive) and `25.03.04` (Preview, Diff & Safe Publish) remain assigned to P2-S11 and to nothing else. The IA, BE and FE columns of those rows record specification status, not implementation, and stay `complete`. Their implementation is on disk on branch `claude/phase2-slice11` and is tracked in [the Slice 11 progress log](../../pipeline/progress/slices/phase-02-slice-11.md), [the CMS publication runbook](../../../docs/runbooks/platform/cms-publication.md), [the wiki editorial runbook](../operations/runbooks/cms-editorial.md) and [the implementation delta of the architecture map](../../../docs/ARCHITECTURE.md). The operations they own are `CMS-03B-05` to `-09` and `-15` to `-18` (browser routes) and `CMS-03B-19` and `-20` (internal operations); the BE03b Feature Ledger Coverage table fixes which row owns which. This records code on disk, not acceptance: acceptance, the depth ratio and closure are recorded only in the tracker, and no hosted or production acceptance is claimed. One implementation boundary stays open by design, with its tracking issue and sentinel test: the `projection_id` foreign key of the projection consumer state (issue #127). The production trigger of the claimed schema-migration preparation entry (issue #128) is implemented on the Slice 12 branch under DEC-183 and DEC-184.
 
 > Total features: 776 | Must: 230 | Should: 292 | Could: 201 | Won't: 53
 
@@ -796,28 +796,31 @@
 
 ## Phase 2 operation assignments
 
-| Feature | Active operation assignment | Deferred boundary |
-| --- | --- | --- |
-| `25.08.01` | `CFG-05B-01` — `GET /api/v1/admin/inbox` | None |
-| `25.08.02` | None | `CFG-05B-02` search and `CFG-05B-03` bulk operations remain unmounted |
-| `25.08.03` | `CFG-05B-04` — `POST /api/v1/admin/capability-grants/actions` | None |
-| `25.08.04` | `CFG-05B-05` — `POST /api/v1/admin/audit-diagnostics/actions`, `read_audit` only | `run_diagnostic` remains unmounted |
-| `25.08.05` | None | Site-health/configuration diagnostics remain deferred |
-
+| Feature    | Active operation assignment                                                      | Deferred boundary                                                     |
+| ---------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `25.08.01` | `CFG-05B-01` — `GET /api/v1/admin/inbox`                                         | None                                                                  |
+| `25.08.02` | None                                                                             | `CFG-05B-02` search and `CFG-05B-03` bulk operations remain unmounted |
+| `25.08.03` | `CFG-05B-04` — `POST /api/v1/admin/capability-grants/actions`                    | None                                                                  |
+| `25.08.04` | `CFG-05B-05` — `POST /api/v1/admin/audit-diagnostics/actions`, `read_audit` only | `run_diagnostic` remains unmounted                                    |
+| `25.08.05` | None                                                                             | Site-health/configuration diagnostics remain deferred                 |
 
 <!-- spec-graph: auto-generated -->
+
 ## Related Specs
 
 ### Phases into
+
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]]
 
 ### Constrained by
+
 - [[decisions.md#d-31|D-31]]
 - [[decisions.md#d-85|D-85]]
 - [[decisions.md#d-29|D-29]]
 - [[decisions.md#d-20|D-20]]
 
 ### References
+
 - [[specs/ia/05-platform-configuration-admin|Shard 05 — Platform configuration, admin and quality]]
 - [[specs/be/05a-settings-flags-runtime|BE 05a — Settings, flags and runtime governance]]
 - [[specs/fe/05-platform-configuration-admin|Platform configuration, admin and quality: Frontend Specification]]

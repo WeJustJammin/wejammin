@@ -22,6 +22,7 @@ import {
   createProductionJobEffectDispatcher,
   type ProductionVerificationDependencies,
 } from './production-job-effect-dispatcher';
+import { createProductionClaimedPreparationEffect } from './production-schema-migration-preparation-claimed';
 import {
   createProductionSchemaMigrationWorker,
   migrationQueueOutcome,
@@ -38,7 +39,15 @@ export const createProductionAsyncEntrypoint = (
   (() => {
     const originRpc = createSupabaseRpc(fetchImpl);
     const dependencies = createAsyncJobDependencies({
-      effect: createProductionJobEffectDispatcher(verification),
+      // The CMS preparation callback is composed per Worker environment object (#128, DEC-183, DEC-184); the
+      // dispatcher hands it the delivery context and never lets it answer `pending_manual_review`.
+      effect: createProductionJobEffectDispatcher({
+        ...verification,
+        prepareSchemaDryRun: createProductionClaimedPreparationEffect(
+          fetchImpl,
+          migrationOptions,
+        ),
+      }),
       fetch: fetchImpl,
       verifyCmsSchemaDryRunOrigin: ({ env, envelope, signal }) =>
         createCmsSchemaDryRunOriginVerifier({

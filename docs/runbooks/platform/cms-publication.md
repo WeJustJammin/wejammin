@@ -371,11 +371,51 @@ effect and no acknowledgement; a receipt that cannot be attributed to the claim
 writes nothing and is a plain retry. A job found `running` for good under a lease
 nobody renews is a defect: escalate with the job id hash.
 
-The production preparation entry for the claimed schema-migration dry run has no
-trigger yet: a `cms.schema.dry_run` job delivered to a Worker without the
-preparation dependency is answered `pending_manual_review` with
-`DEPENDENCY_UNAVAILABLE`, and the callback is not composed (tracked boundary,
-issue #128; BOUNDARY comment in `apps/worker/src/production-job-effect-dispatcher.ts`).
+### Preparation Job trigger (boundary #128, DEC-183, DEC-184)
+
+A verified `cms.schema.dry_run` delivery reaches the claimed preparation through the
+production async entrypoint: the callback is composed once per Worker environment object
+(`apps/worker/src/production-schema-migration-preparation-claimed.ts`), receives the
+delivery context (environment, an invocation abort signal, the delivery number) and answers
+exactly one of `queued`, `succeeded` or `failed`. It never answers `pending_manual_review`, so
+a Job is never parked `running` with its message acknowledged. The map is BE03a "Preparation
+Job disposition":
+
+- completed: `succeeded`, `resultRef { cms_schema_dry_run_report, <dryRunId> }`.
+- sealed failing scan or blocked plan: `failed` `MIGRATION_BLOCKED`, no `resultRef`; the sealed
+  report remains the only pass/fail authority and a new CMS-03A-10 attempt is the recovery.
+- progress (batch limit reached): `queued`, no error code, redelivered at once. Retry-type
+  results (`LEASE_UNAVAILABLE`, `DEPENDENCY_UNAVAILABLE`, `JOB_LEASE_LOST`, a refused or
+  unreadable stage RPC, an environment that fails validation): `queued` with the reason, redelivered
+  after 15, 60 and 300 seconds for deliveries 1, 2 and 3. The status read shows that stored code as
+  `error { code, retryable: false }` while the Job polls `queued`.
+- terminal worker failure: `failed` with the worker reason (`MIGRATION_FAILED` when it is not a safe
+  token).
+
+Capacity. One invocation scans or backfills at most `maxBatchesPerInvocation` (m, default 1,
+1 to 32) batches of at most 128 rows and is bounded by `min(240000, Job lease remaining - 60000)` ms.
+A preparation of N source rows needs `2 x ceil(ceil(N / 128) / m) - 1` deliveries (1 when N = 0), so it
+completes inside the four BE00 deliveries only when `N <= 256 x m`: 256 source rows at the default,
+512 at m = 2, 8,192 at m = 32. A type above that ceiling cannot be prepared until m is raised
+(measure the CPU of one batch against `limits.cpu_ms` first) or the owner decides an early cap.
+
+Exhaustion signal. A preparation that would continue after the fourth delivery fails the Job
+`failed` `MIGRATION_RETRIES_EXHAUSTED` (status read `error.code`), with the plan rolled back through
+the terminal rollback: a `dry_running` plan becomes `blocked` with its report `failed`
+(`failure_code` `MIGRATION_RETRIES_EXHAUSTED`), a `running`, `verifying` or `failed_retryable` plan becomes
+`failed_terminal`, so the next CMS-03A-10 attempt is admitted instead of answering 409. Triage:
+the queue-attempt log events (`cms.registry.queue_attempt`, attempt 4, outcome failure) and the
+`migration retry >3` alert name the occurrence; read the plan state and the report. If the plan is
+still `running`, `verifying` or `failed_retryable` after the Job failed, the rollback could not be
+made (an unreadable plan, or a `verifying` plan whose 30 s plan lease lapsed): escalate with the
+plan id hash. Never edit the plan, report or Job directly. A message that the queue dead-letters
+before the effect runs leaves its Job `queued` or `running` and raises the `DLQ > 0` alert: escalate
+with the job id hash.
+
+Stage fence. Each of the eight state-advancing worker RPCs is preceded by one lease checkpoint
+(BE03a "Job lease checkpoints"); a lost lease stops the delivery with no further worker RPC and no
+Job write, and the Job is redelivered on the schedule above. The plan lease, plan version and
+cursor CAS and the BE00 outcome CAS remain the authority.
 
 ## Dependency failures
 

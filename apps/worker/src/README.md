@@ -19,10 +19,24 @@ provider and lookalike families never select a dependency. The private CMS lease
 control the consumer supplies for a verified origin reaches only the preparation
 callback, and only when present; every other callback keeps one argument. These
 construction seams do not themselves supply claimed-job resolution or persistent
-job fences. The production preparation callback itself is a boundary: the
-dispatcher answers a typed manual-review refusal until BE00/BE03a state the
-worker-outcome to Job-state map, the stage-fence/checkpoint contract and the
-attempt and budget source (see the `BOUNDARY:` comment in the dispatcher).
+job fences. The production preparation callback is composed per Worker
+environment. `orchestrateQueueMessage` hands the dispatcher the delivery's `env`,
+an abort signal bounded by the invocation budget `min(240000, lease remaining -
+60000)` ms and the delivery number (`max(1, message.attempts)`) as a third,
+Worker-layer argument, only for `cms.schema.dry_run`; the production entrypoint
+builds one claimed-preparation object per `env` object (a `WeakMap`, like the legacy
+worker) from that environment's validated service credentials and never from module
+state (`production-schema-migration-preparation-claimed.ts`). The callback maps every
+preparation result to a BE00 Job disposition (BE03a "Preparation Job disposition",
+`content-schema-registry/claimed-schema-migration-preparation-job-result.ts`), never
+throws, and never answers `pending_manual_review`; the dispatcher refuses any other
+CMS answer as a queued unavailable Job (failed `MIGRATION_RETRIES_EXHAUSTED` on the
+fourth delivery). Retry-type dispositions are redelivered after 15, 60 and 300
+seconds. The claimed entry awaits one lease checkpoint before each of eight
+state-advancing worker RPCs (`claimed-schema-migration-preparation-lease-fence.ts`)
+and, on the last delivery, rolls an in-flight plan back
+(`claimed-schema-migration-preparation-exhaustion.ts`). A preparation completes inside
+the four deliveries for at most `256 x maxBatchesPerInvocation` source rows.
 
 `cms-publication-schedule-sweep.ts` runs the CMS-03B-20 tick under one 15,000 ms
 job deadline shared by the claim and every execute; no schedule is started after

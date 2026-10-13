@@ -2,14 +2,20 @@ import { QueueEnvelopeSchema } from '@wejammin/contracts';
 import {
   executeJobDispatch,
   type JobConsumerDecision,
-  type JobEffectPort,
 } from '@wejammin/application';
 
 import type {
   AsyncEntrypointDependencies,
   AsyncWorkerBindings,
+  JobQueueMessageOutcome,
   PlatformJobsMessage,
 } from './async-entrypoint';
+import { deliveryAttemptOf } from './async-runtime-job-context';
+import {
+  CMS_SCHEMA_DRY_RUN_TYPE,
+  createDeliveryEffect,
+  pacedRetry,
+} from './async-runtime-job-delivery';
 import {
   AsyncRpcTransportError,
   createJobPersistence,
@@ -89,7 +95,7 @@ export const createAsyncJobDependencies = (
     env: AsyncWorkerBindings;
     executionContext: { waitUntil(promise: Promise<unknown>): void };
     message: PlatformJobsMessage;
-  }): Promise<'ack' | 'retry'> => {
+  }): Promise<JobQueueMessageOutcome> => {
     const parsed = QueueEnvelopeSchema.safeParse(message.body);
     if (
       !parsed.success ||
@@ -99,7 +105,8 @@ export const createAsyncJobDependencies = (
     ) {
       return 'retry';
     }
-    if (dependencies.effect === undefined || !validLeaseSeconds(leaseSeconds)) {
+    const effect = dependencies.effect;
+    if (effect === undefined || !validLeaseSeconds(leaseSeconds)) {
       return 'retry';
     }
     try {
@@ -133,9 +140,16 @@ export const createAsyncJobDependencies = (
         }
       }
       const leaseToken = tokenFor(message);
+      const deliveryAttempt = deliveryAttemptOf(message.attempts);
+      const delivery = createDeliveryEffect({
+        effect,
+        env,
+        deliveryAttempt,
+        now,
+      });
       const decision = await executeJobDispatch({
         persistence,
-        effect: { execute: dependencies.effect } as JobEffectPort,
+        effect: { execute: delivery.execute },
         envelope: parsed.data,
         leaseToken,
         leaseSeconds,
@@ -149,7 +163,10 @@ export const createAsyncJobDependencies = (
             }
           : {}),
       });
-      return queueOutcome(decision);
+      const outcome = queueOutcome(decision);
+      return outcome === 'retry' && canonical.type === CMS_SCHEMA_DRY_RUN_TYPE
+        ? pacedRetry(decision, delivery.lastResult(), deliveryAttempt)
+        : outcome;
     } catch (error) {
       if (isManualReviewTransportError(error)) return 'ack';
       return 'retry';

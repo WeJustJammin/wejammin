@@ -35,12 +35,12 @@ import { S11_EVIDENCE_LEDGER } from './phase-02-slice-11-evidence-ledger';
  * What this proves: the recorded artifacts exist and agree with the code. What it cannot prove:
  * that they were updated in the same change as the code (the commit or pull request shows that).
  *
- * The second clause is NOT proved. The sources of Slice 11 carry exactly two implementation
- * boundaries (`.claude/rules/boundary-not-placeholder.md`): the `projection_id` foreign key
- * (issue #127) and the production trigger of the claimed schema-migration preparation entry
- * (issue #128). Each is a typed interface with a tracking issue and a sentinel test, which is
- * what that rule allows when the governing specification does not exist, but both are
- * unresolved by definition. What the tests below pin is that the open set is closed and
+ * The second clause is NOT proved. The sources of Slice 11 carry exactly one implementation
+ * boundary (`.claude/rules/boundary-not-placeholder.md`): the `projection_id` foreign key
+ * (issue #127), a typed interface with a tracking issue and a sentinel test, which is what that
+ * rule allows when the governing specification does not exist, but unresolved by definition.
+ * The second tracked boundary, the production trigger of the claimed schema-migration
+ * preparation entry (issue #128), was implemented under DEC-183/DEC-184 on the Slice 12 branch. What the tests below pin is that the open set is closed and
  * tracked: nothing else is a boundary, and no TODO, FIXME or not-implemented marker remains.
  * Whether tracked boundaries satisfy "leave no unresolved implementation boundary" is an owner
  * ruling; until it is made the criterion stays partial.
@@ -392,10 +392,10 @@ describe('Slice 11 implementation boundaries (P2-S11-AC-045)', () => {
     expect(filesWhere(sources, hasLazyMarker)).toEqual([]);
   });
 
-  it('boundaries: the only BOUNDARY: markers in the Slice 11 sources and migrations are the two tracked ones, each with its issue, typed interface and sentinel test', () => {
+  it('boundaries: the only BOUNDARY: marker in the Slice 11 sources and migrations is the tracked one, with its issue, typed interface and sentinel test', () => {
     const marked = filesWhere([...sources, ...migrations], hasBoundaryMarker);
     expect(marked).toEqual(TRACKED_BOUNDARIES.map((b) => b.file).sort());
-    expect(TRACKED_BOUNDARIES.map((b) => b.issue)).toEqual([127, 128]);
+    expect(TRACKED_BOUNDARIES.map((b) => b.issue)).toEqual([127]);
     for (const boundary of TRACKED_BOUNDARIES)
       expect(boundaryProblems(boundary), boundary.file).toEqual([]);
   });

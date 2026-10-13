@@ -543,7 +543,9 @@ while missing/failed/malformed reader or cancellation is retry. Already
 terminal Jobs keep effect-free terminal ACK. Other registered Job types retain
 existing stale/future event-version rules. This reconciles INF-05 canonical-
 state retry with immutable accepted intent; it does not permit replay of stale
-commands or mutable entity writes.
+commands or mutable entity writes. The `cms.schema.dry_run` effect's disposition vocabulary, error codes and
+`resultRef` type are defined in BE03a "Preparation Job disposition" (DEC-183) and its delivery budget in BE03a
+"Preparation delivery budget" (DEC-184).
 
 All Queue consumers use Cloudflare at-least-once delivery, `max_retries = 3`, explicit per-message acknowledgement, and a configured DLQ. Retry delays are 15s, 60s, and 300s with bounded jitter; a consumer may suppress retry after a deterministic/stale result. Each attempt first persists its sanitized summary and CAS-acquires the canonical lease. It acknowledges only after a durable terminal/next state; unknown schema versions exhaust directly to DLQ/manual review without execution.
 

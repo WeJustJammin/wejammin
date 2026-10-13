@@ -3,6 +3,7 @@ import { createLogger, type Logger } from '@wejammin/observability/logging';
 
 import type { AuthenticationDependencies } from './authentication/types';
 import { createSupabaseRpc } from './async-runtime-support';
+import { cmsSchemaMigrationWorkerId } from './cms-schema-migration-worker-id';
 import { createProductionCmsTemplateDependencies } from './cms-composition-production';
 import { createProductionCmsLocaleDependencies } from './cms-composition-production-locale';
 import { createProductionCmsPatternInstanceDependencies } from './cms-composition-production-pattern';
@@ -151,7 +152,7 @@ export const productionMigrationTelemetry =
   };
 
 const productionMigrationWorkerId = (environment: WorkerBindings): string =>
-  `cms-schema-migration-${environment.APP_ENVIRONMENT}-${environment.APP_RELEASE}`;
+  cmsSchemaMigrationWorkerId(environment);
 
 /**
  * Compose the S09 migration worker from the protected Supabase RPC transport.
